@@ -959,7 +959,7 @@ impl HostSqueezeOp {
 }
 
 impl HostConcatOp {
-    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+    pub fn kernel<S: Session, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         axis: u32,
@@ -973,6 +973,19 @@ impl HostConcatOp {
 
         let c = ndarray::concatenate(ax, &arr).expect("Failed to concatenate arrays with ndarray");
         HostTensor(c, plc.clone())
+    }
+
+    pub fn rep_kernel<S: Session>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[cs!(Fixed128Tensor)],
+    ) -> cs!(Fixed128Tensor)
+    where
+        Fixed128Tensor: KnownType<S>,
+        ReplicatedPlacement: PlacementSum<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
+    {
+        unimplemented!()
     }
 }
 

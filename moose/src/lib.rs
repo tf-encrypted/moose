@@ -135,18 +135,25 @@ macro_rules! derive_runtime_kernel {
     (variadic, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
         {
             $(
-            let $attr = $self.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => panic!("Incorrect constant type"), // TODO: another way to report the error
-                    };
-                )?
-            )+
-            Box::new(move |sess, plc, xs| {
-                $k(sess, plc, $($attr.clone()),+, &xs)
-            })
+                let $attr = $self.$attr.clone();
+                    // The following block applies the optional Constant type restriction to the attribute and unwraps it
+                    $(
+                        let $attr = match $attr {
+                            Constant::$prim_ty(v) => v,
+                            _ => return Err(crate::error::Error::TypeMismatch{
+                                expected: stringify!($prim_ty).to_string(),
+                                found: $attr.ty(),
+                            })
+                        };
+                    )?
+                )+
+                {
+                    crate::error::Result::<Box<dyn Fn(&_, &_, Vec<_>) -> _>>::Ok(
+                        Box::new(move |sess, plc, xs| {
+                            $k(sess, plc, $($attr.clone()),+, &xs)
+                        })
+                    )
+                }
         }
     };
 
@@ -385,7 +392,7 @@ macro_rules! concrete_dispatch_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
 
-                            let k = <$op as VariadicKernel<SyncSession, $plc, $ts, $u>>::compile(self, &plc);
+                            let k = <$op as VariadicKernel<SyncSession, $plc, $ts, $u>>::compile(self, &plc)?;
 
                             Ok(Box::new(move |sess, operands: Vec<Value>| {
                                 let xs: Vec<$ts> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
@@ -396,7 +403,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => unimplemented!(), // ok
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
                 }
             }
         }
@@ -645,14 +652,14 @@ macro_rules! symbolic_dispatch_kernel {
                                 ret: <$u as KnownType<SymbolicSession>>::TY,
                             })
                         ) => {
-                            let plc: $plc = plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into()?;
 
                             let k = <$op as VariadicKernel<
                                 SymbolicSession,
                                 $plc,
                                 <$ts as KnownType<SymbolicSession>>::Type,
                                 <$u as KnownType<SymbolicSession>>::Type,
-                            >>::compile(self, &plc);
+                            >>::compile(self, &plc)?;
 
                             Ok(Box::new(move |sess, operands| {
                                 let xs: Vec<<$ts as KnownType<SymbolicSession>>::Type> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
@@ -662,7 +669,7 @@ macro_rules! symbolic_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => panic!("No kernel for {:?}", self), // ok
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
                 }
             }
         }
@@ -1148,7 +1155,7 @@ macro_rules! kernel {
                 fn compile(
                     &self,
                     _plc: &$plc,
-                ) -> Box<dyn Fn(&crate::kernels::SyncSession, &$plc, Vec<$ts>) -> $u> {
+                ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, &$plc, Vec<$ts>) -> $u>> {
                     derive_runtime_kernel![variadic, $($kp)+, self]
                 }
             }
@@ -1174,7 +1181,6 @@ macro_rules! kernel {
             ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
-                use std::convert::TryInto;
 
                 let op = self.clone();
 
@@ -1189,30 +1195,34 @@ macro_rules! kernel {
 
                     let k = derive_runtime_kernel![variadic, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
 
-                    let vs = xs.clone().try_into();
+                    let res : Vec<_> = xs.iter().filter_map(|x| {
+                        let v = x.clone();
 
-                    match vs {
-                        Ok(vs) => {
-                            let y = k(sess, plc, vs);
-                            y.into()
+                        match v {
+                            Symbolic::Concrete(_) => Some(v),
+                            _ => None,
                         }
-                        _ => {
-                            let res: Vec<&str> = xs.iter().filter_map(|x| {
-                                match x {
-                                    Symbolic::Symbolic(h0) => {
-                                        Some(&h0.op[..])
-                                    }
-                                    _ => None
+                    }).collect();
+
+                    if res.len() == xs.len() {
+                        let y = k(sess, plc, res);
+                        y.into()
+                    } else {
+                        let res: Vec<&str> = xs.iter().filter_map(|x| {
+                            match x {
+                                Symbolic::Symbolic(h0) => {
+                                    Some(&h0.op[..])
                                 }
-                            }).collect();
-
-                            if  res.len() == xs.len() {
-                                let op_name = sess.add_operation(&op, &res, &plc.clone().into());
-                                return Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() });
+                                _ => None
                             }
+                        }).collect();
 
-                            unimplemented!()
+                        if  res.len() == xs.len() {
+                            let op_name = sess.add_operation(op, &res, &plc.clone().into());
+                            return Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() });
                         }
+
+                        unimplemented!()
                     }
                 }))
             }
@@ -1227,17 +1237,17 @@ macro_rules! kernel {
             <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self, _plc: &$plc) -> Box<dyn Fn(
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>)
-                -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
+                -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>
             {
                 use crate::computation::{KnownType};
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
                 let op = self.clone();
-                Box::new(move |
+                Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
                     xs: Vec<<$ts as KnownType<SymbolicSession>>::Type>
@@ -1257,7 +1267,7 @@ macro_rules! kernel {
                     }
 
                     unimplemented!()
-                })
+                }))
             }
         }
     };
