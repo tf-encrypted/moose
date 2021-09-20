@@ -1,4 +1,3 @@
-use moose::compilation::typing::update_types_one_hop;
 use moose::compilation::{compile_passes, into_pass, Pass};
 use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
