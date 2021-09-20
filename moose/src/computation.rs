@@ -5,17 +5,18 @@ use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{
-    HostBitTensor, HostFixed128Tensor, HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor,
-    HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor,
-    HostRing64Tensor, HostShape, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor,
-    HostUint8Tensor, RawShape, SliceInfo,
+    HostBitArray128, HostBitArray64, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
+    HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor,
+    HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostUint16Tensor,
+    HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::kernels::Session;
 use crate::logical::Tensor;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::{
-    ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
-    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup, ReplicatedShape,
+    ReplicatedBitArray128, ReplicatedBitArray64, ReplicatedBitTensor, ReplicatedFixed128Tensor,
+    ReplicatedFixed64Tensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup,
+    ReplicatedShape,
 };
 use crate::symbolic::Symbolic;
 use byteorder::{ByteOrder, LittleEndian};
@@ -399,6 +400,8 @@ values![
     String,
     Tensor,
     HostBitTensor,
+    HostBitArray64,
+    HostBitArray128,
     HostRing64Tensor,
     HostRing128Tensor,
     HostFixed64Tensor,
@@ -420,6 +423,8 @@ values![
     ReplicatedRing64Tensor,
     ReplicatedRing128Tensor,
     ReplicatedBitTensor,
+    ReplicatedBitArray64,
+    ReplicatedBitArray128,
     ReplicatedFixed64Tensor,
     ReplicatedFixed128Tensor,
     ReplicatedSetup,
@@ -839,6 +844,7 @@ operators![
     RepTruncPr,
     RepToAdt,
     RepIndexAxis,
+    RepIndex,
     RepDiag,
     RepSlice,
     RepBitDec,
@@ -1493,6 +1499,12 @@ pub struct RepShlDimOp {
 pub struct RepIndexAxisOp {
     pub sig: Signature,
     pub axis: usize,
+    pub index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepIndexOp {
+    pub sig: Signature,
     pub index: usize,
 }
 

@@ -789,6 +789,8 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "PrfKey" => Ok((i, Ty::PrfKey)),
         "String" => Ok((i, Ty::String)),
         "BitTensor" => Ok((i, Ty::HostBitTensor)),
+        "BitArray64" => Ok((i, Ty::HostBitArray64)),
+        "BitArray128" => Ok((i, Ty::HostBitArray128)),
         "Ring64Tensor" => Ok((i, Ty::HostRing64Tensor)),
         "Ring128Tensor" => Ok((i, Ty::HostRing128Tensor)),
         "Float32Tensor" => Ok((i, Ty::HostFloat32Tensor)),
@@ -1343,6 +1345,7 @@ impl ToTextual for Operator {
             RepShl(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
             RepIndexAxis(op) => op.to_textual(),
+            RepIndex(op) => op.to_textual(),
             RepDiag(op) => op.to_textual(),
             RepBitDec(op) => op.to_textual(),
             RepSlice(op) => op.to_textual(),
@@ -1522,6 +1525,7 @@ impl_to_textual!(
     index,
     sig
 );
+impl_to_textual!(RepIndexOp, "{op}{{index={}}}: {}", index, sig);
 impl_to_textual!(RepDiagOp, "{op}: {}", sig);
 impl_to_textual!(RepBitDecOp, "{op}: {}", sig);
 impl_to_textual!(RepSliceOp, "{op}{{slice}}: {} {}", sig, slice);
@@ -1704,6 +1708,8 @@ impl ToTextual for Ty {
             Ty::HostRing128Tensor => "Ring128Tensor",
             Ty::Bit => "Bit",
             Ty::HostBitTensor => "BitTensor",
+            Ty::HostBitArray64 => "BitArray64",
+            Ty::HostBitArray128 => "BitArray128",
             Ty::HostShape => "Shape",
             Ty::Seed => "Seed",
             Ty::PrfKey => "PrfKey",
@@ -1725,6 +1731,8 @@ impl ToTextual for Ty {
             Ty::ReplicatedFixed64Tensor => "ReplicatedFixed64Tensor",
             Ty::ReplicatedFixed128Tensor => "ReplicatedFixed128Tensor",
             Ty::ReplicatedBitTensor => "ReplicatedBitTensor",
+            Ty::ReplicatedBitArray64 => "ReplicatedBitArray64",
+            Ty::ReplicatedBitArray128 => "ReplicatedBitArray128",
             Ty::ReplicatedSetup => "ReplicatedSetup",
             Ty::ReplicatedShape => "ReplicatedShape",
             Ty::AdditiveBitTensor => "AdditiveBitTensor",
@@ -1767,9 +1775,10 @@ impl ToTextual for Value {
             Value::Unit(_) => "Unit".to_string(),
             Value::HostBitTensor(x) => format!("HostBitTensor({})", x.0.to_textual()),
             // TODO
-            Value::HostFixed64Tensor(_) | Value::HostFixed128Tensor(_) | Value::Tensor(_) => {
-                unimplemented!()
-            }
+            Value::HostFixed64Tensor(_)
+            | Value::HostFixed128Tensor(_)
+            | Value::HostBitArray64(_)
+            | Value::HostBitArray128(_) => unimplemented!(),
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)
             | Value::Fixed128Tensor(_)
@@ -1778,6 +1787,8 @@ impl ToTextual for Value {
             | Value::ReplicatedShape(_)
             | Value::ReplicatedSetup(_)
             | Value::ReplicatedBitTensor(_)
+            | Value::ReplicatedBitArray64(_)
+            | Value::ReplicatedBitArray128(_)
             | Value::ReplicatedRing64Tensor(_)
             | Value::ReplicatedRing128Tensor(_)
             | Value::ReplicatedFixed64Tensor(_)

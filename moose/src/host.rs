@@ -1,5 +1,5 @@
 use crate::computation::*;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -526,9 +526,9 @@ impl HostDiagOp {
     }
 }
 
-modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostRing64Tensor) -> HostRing64Tensor, HostIndexAxisOp);
-modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostRing128Tensor) -> HostRing128Tensor, HostIndexAxisOp);
-modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostBitTensor) -> HostBitTensor, HostIndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostRing64Tensor) -> HostRing64Tensor, HostIndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostRing128Tensor) -> HostRing128Tensor, HostIndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostBitTensor) -> HostBitTensor, HostIndexAxisOp);
 
 kernel! {
     HostIndexAxisOp,
@@ -1532,7 +1532,25 @@ impl HostBitTensor {
 #[allow(dead_code)]
 impl HostBitTensor {
     pub(crate) fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> HostBitTensor {
-        HostBitTensor(raw_tensor.into_dyn(), plc)
+        HostBitTensor(raw_tensor, plc)
+    }
+
+    pub(crate) fn from_vec_plc(vec: Vec<u8>, plc: HostPlacement) -> HostBitTensor {
+        let raw_tensor = ArrayBase::from_vec(vec).into_dyn();
+        Self::from_raw_plc(raw_tensor, plc)
+    }
+
+    pub(crate) fn from_slice_plc(slice: &[u8], plc: HostPlacement) -> HostBitTensor {
+        let data = slice.to_vec();
+        Self::from_vec_plc(data, plc)
+    }
+
+    pub(crate) fn from_array_plc<const N: usize>(
+        array: [u8; N],
+        plc: HostPlacement,
+    ) -> HostBitTensor {
+        let data = array.to_vec();
+        Self::from_vec_plc(data, plc)
     }
 }
 
@@ -1643,6 +1661,62 @@ impl RingInjectOp {
         Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
     {
         AbstractHostRingTensor(x.0.mapv(|ai| Wrapping(T::from(ai)) << bit_idx), plc.clone())
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AbstractHostBitArray<HostBitTensorT, const N: usize>(pub HostBitTensorT);
+
+pub type HostBitArray64 = AbstractHostBitArray<HostBitTensor, 64>;
+
+#[cfg(test)]
+impl<const N: usize> AbstractHostBitArray<HostBitTensor, N> {
+    pub(crate) fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> Self {
+        // TODO check that first dimension equals N
+        AbstractHostBitArray::<_, N>(HostBitTensor::from_raw_plc(raw_tensor, plc))
+    }
+}
+
+// TODO implement using moose_type macro
+impl<HostBitTensorT: Placed, const N: usize> Placed for AbstractHostBitArray<HostBitTensorT, N> {
+    type Placement = HostBitTensorT::Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        self.0.placement()
+    }
+}
+
+impl SymbolicType for HostBitArray64 {
+    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, 64>>;
+}
+
+pub type HostBitArray128 = AbstractHostBitArray<HostBitTensor, 128>;
+
+impl SymbolicType for HostBitArray128 {
+    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, 128>>;
+}
+
+impl<HostBitT: Placed, const N: usize> From<AbstractHostBitArray<HostBitT, N>>
+    for Symbolic<AbstractHostBitArray<HostBitT, N>>
+where
+    HostBitT: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractHostBitArray<HostBitT, N>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<HostBitT, const N: usize> TryFrom<Symbolic<AbstractHostBitArray<HostBitT, N>>>
+    for AbstractHostBitArray<HostBitT, N>
+where
+    HostBitT: Placed<Placement = HostPlacement>,
+{
+    type Error = crate::error::Error;
+    fn try_from(v: Symbolic<AbstractHostBitArray<HostBitT, N>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(crate::error::Error::Unexpected), // TODO err message
+        }
     }
 }
 
@@ -2042,24 +2116,28 @@ kernel! {
     [
         (HostPlacement, (HostShape) -> HostRing64Tensor => [runtime] custom |op| {
             match op.max_value {
-                None => Box::new(|ctx, plc, shape| {
+                None => Ok(Box::new(|ctx, plc, shape| {
                     Self::kernel_uniform_u64(ctx, plc, shape)
-                }),
-                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, shape| {
+                })),
+                Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape| {
                     Self::kernel_bits_u64(ctx, plc, shape)
-                }),
-                _ => unimplemented!(),
+                })),
+                _ => Err(Error::UnimplementedOperator(
+                    "RingSampleOp with max_value != 1".to_string()
+                )),
             }
         }),
         (HostPlacement, (HostShape) -> HostRing128Tensor => [runtime] custom |op| {
             match op.max_value {
-                None => Box::new(|ctx, plc, shape| {
+                None => Ok(Box::new(|ctx, plc, shape| {
                     Self::kernel_uniform_u128(ctx, plc, shape)
-                }),
-                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, shape| {
+                })),
+                Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape| {
                     Self::kernel_bits_u128(ctx, plc, shape)
-                }),
-                _ => unimplemented!(),
+                })),
+                _ => Err(Error::UnimplementedOperator(
+                    "RingSampleOp with max_value != 1".to_string()
+                )),
             }
         }),
     ]
@@ -2126,24 +2204,28 @@ kernel! {
     [
         (HostPlacement, (HostShape, Seed) -> HostRing64Tensor => [runtime] custom |op| {
             match op.max_value {
-                None => Box::new(|ctx, plc, shape, seed| {
+                None => Ok(Box::new(|ctx, plc, shape, seed| {
                     Self::kernel_uniform_u64(ctx, plc, shape, seed)
-                }),
-                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, shape, seed| {
+                })),
+                Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape, seed| {
                     Self::kernel_bits_u64(ctx, plc, shape, seed)
-                }),
-                _ => unimplemented!(),
+                })),
+                _ => Err(Error::UnimplementedOperator(
+                    "RingSampleSeededOp with max_value != 1".to_string()
+                )),
             }
         }),
         (HostPlacement, (HostShape, Seed) -> HostRing128Tensor => [runtime] custom |op| {
             match op.max_value {
-                None => Box::new(|ctx, plc, shape, seed| {
+                None => Ok(Box::new(|ctx, plc, shape, seed| {
                     Self::kernel_uniform_u128(ctx, plc, shape, seed)
-                }),
-                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, shape, seed| {
+                })),
+                Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape, seed| {
                     Self::kernel_bits_u128(ctx, plc, shape, seed)
-                }),
-                _ => unimplemented!(),
+                })),
+                _ => Err(Error::UnimplementedOperator(
+                    "RingSampleSeededOp with max_value != 1".to_string()
+                )),
             }
         }),
     ]
