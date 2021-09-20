@@ -2736,7 +2736,7 @@ mod tests {
             owner: "TODO".into(),
         });
 
-        let fun = <HostConcatOp as DispatchKernel<SyncSession>>::compile(&op, &plc);
+        let fun = <HostConcatOp as DispatchKernel<SyncSession>>::compile(&op, &plc).unwrap();
 
         let sess = SyncSession::default();
 
@@ -2758,7 +2758,7 @@ mod tests {
         );
 
         let vs: Vec<Value> = [a, b, c].iter().map(|x| x.clone().into()).collect();
-        let res = fun(&sess, vs);
+        let res = fun(&sess, vs).unwrap();
 
         let expected = HostTensor::<f64>::from(
             array![

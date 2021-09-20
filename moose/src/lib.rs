@@ -368,7 +368,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::computation::Value>
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value>>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature, Value};
                 use crate::kernels::{SyncSession, VariadicKernel};
@@ -387,13 +387,13 @@ macro_rules! concrete_dispatch_kernel {
 
                             let k = <$op as VariadicKernel<SyncSession, $plc, $ts, $u>>::compile(self, &plc);
 
-                            Box::new(move |sess, operands: Vec<Value>| {
+                            Ok(Box::new(move |sess, operands: Vec<Value>| {
                                 let xs: Vec<$ts> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
 
                                 let y: $u = k(sess, &plc, xs);
                                 debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
-                                y.into()
-                            })
+                                Ok(y.into())
+                            }))
                         }
                     )+
                     _ => unimplemented!(), // ok
@@ -627,10 +627,10 @@ macro_rules! symbolic_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> Box<dyn Fn(
+            )-> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 Vec<crate::computation::SymbolicValue>
-            ) -> crate::computation::SymbolicValue> {
+            ) -> crate::error::Result<crate::computation::SymbolicValue>>> {
                 use crate::computation::{KnownPlacement, Signature, VariadicSignature, KnownType};
                 use crate::kernels::{VariadicKernel};
                 use crate::symbolic::SymbolicSession;
@@ -654,12 +654,12 @@ macro_rules! symbolic_dispatch_kernel {
                                 <$u as KnownType<SymbolicSession>>::Type,
                             >>::compile(self, &plc);
 
-                            Box::new(move |sess, operands| {
+                            Ok(Box::new(move |sess, operands| {
                                 let xs: Vec<<$ts as KnownType<SymbolicSession>>::Type> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
 
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, xs);
-                                y.into()
-                            })
+                                Ok(y.into())
+                            }))
                         }
                     )+
                     _ => panic!("No kernel for {:?}", self), // ok
@@ -1159,6 +1159,66 @@ macro_rules! kernel {
         )+
     };
 
+    (__variadic hybrid, $op:ty, $plc:ty, vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::VariadicKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc,
+                Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
+            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            {
+                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use std::convert::TryInto;
+
+                let op = self.clone();
+
+                Ok(Box::new(move |
+                    sess: &SymbolicSession,
+                    plc: &$plc,
+                    xs: Vec<<$ts as KnownType<SymbolicSession>>::Type>,
+                | {
+                    // TODO derive k outside box (using self instead of op)
+                    // Magic by Morten
+                    let op = &op;
+
+                    let k = derive_runtime_kernel![variadic, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
+
+                    let vs = xs.clone().try_into();
+
+                    match vs {
+                        Ok(vs) => {
+                            let y = k(sess, plc, vs);
+                            y.into()
+                        }
+                        _ => {
+                            let res: Vec<&str> = xs.iter().filter_map(|x| {
+                                match x {
+                                    Symbolic::Symbolic(h0) => {
+                                        Some(&h0.op[..])
+                                    }
+                                    _ => None
+                                }
+                            }).collect();
+
+                            if  res.len() == xs.len() {
+                                let op_name = sess.add_operation(&op, &res, &plc.clone().into());
+                                return Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() });
+                            }
+
+                            unimplemented!()
+                        }
+                    }
+                }))
+            }
+        }
+    };
+
     (__variadic runtime, $op:ty, $plc:ty, vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::VariadicKernel<
             crate::symbolic::SymbolicSession,
@@ -1182,8 +1242,6 @@ macro_rules! kernel {
                     plc: &$plc,
                     xs: Vec<<$ts as KnownType<SymbolicSession>>::Type>
                 | {
-                    // TODO is there anything else we need to do here to capture that this is a
-                    // variadic kernel?
                     let res: Vec<&str> = xs.iter().filter_map(|x| {
                         match x {
                             Symbolic::Symbolic(h0) => {
@@ -1527,6 +1585,7 @@ macro_rules! modelled {
                 };
                 let vs: Vec<Value> = xs.iter().map(|x| x.clone().into()).collect();
                 sess.execute(op.into(), &self.into(), vs)
+                    .unwrap()
                     .try_into()
                     .unwrap()
             }
@@ -1565,6 +1624,7 @@ macro_rules! modelled {
                 };
                 let vs: Vec<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
                 sess.execute(op.into(), &self.into(), vs)
+                    .unwrap()
                     .try_into()
                     .unwrap()
             }

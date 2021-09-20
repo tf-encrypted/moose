@@ -1032,7 +1032,7 @@ impl Compile<Kernel> for HostConcatOp {
             signature![vec[_]  -> Ty::HostUint64Tensor] => {
                 closure_kernel!(vec[HostUint64Tensor], |xs| concatenate(axis, &xs))
             }
-            _ => Err(Error::UnimplementedOperator(format!("yes here {:?}", self))),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
