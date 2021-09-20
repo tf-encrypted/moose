@@ -245,6 +245,15 @@ impl From<u128> for Constant {
     }
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
+pub enum InnerTy {
+    Fixed64,
+    Fixed128,
+    Float32,
+    Float64,
+    Unknown,
+}
+
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
 macro_rules! values {
@@ -254,6 +263,8 @@ macro_rules! values {
         pub enum Ty {
             Unknown,
             $($val,)+
+            // TODO enhance macros to support optional inner type
+            Tensor(InnerTy),
             // TODO promote below to match other values
             Bit,
             Float32,
@@ -266,6 +277,7 @@ macro_rules! values {
         #[allow(clippy::large_enum_variant)] // TODO (lvorona): figure out why enum is big out of the sudden
         pub enum Value {
             $($val($val),)+
+            Tensor(Tensor),
             // TODO promote below to match other values
             Bit(u8),
             Float32(f32),
@@ -278,6 +290,7 @@ macro_rules! values {
             pub fn ty(&self) -> Ty {
                 match self {
                     $(Value::$val(_) => Ty::$val,)+
+                    Value::Tensor(t) => t.ty(),
                     // TODO promote below to match other values
                     Value::Bit(_) => Ty::Bit,
                     Value::Float32(_) => Ty::Float32,
@@ -345,12 +358,14 @@ macro_rules! values {
         #[allow(clippy::large_enum_variant)] // TODO (lvorona): figure out why enum is big out of the sudden
         pub enum SymbolicValue {
             $($val(<$val as SymbolicType>::Type),)+
+            Tensor(<Tensor as SymbolicType>::Type),
         }
 
         impl SymbolicValue {
             pub fn ty(&self) -> Ty {
                 match self {
                     $(SymbolicValue::$val(_) => Ty::$val,)+
+                    SymbolicValue::Tensor(_) => Ty::Tensor(InnerTy::Unknown),
                     // TODO promote below to match other values
                     // SymbolicValue::Unit => Ty::Unit,
                     // SymbolicValue::Bit(_) => Ty::Bit,
@@ -400,7 +415,6 @@ values![
     Seed,
     PrfKey,
     String,
-    Tensor,
     HostBitTensor,
     HostBitArray64,
     HostBitArray128,
@@ -478,6 +492,82 @@ impl Placed for Unit {
 
     fn placement(&self) -> Result<Self::Placement> {
         Ok(self.0.clone())
+    }
+}
+
+impl From<Tensor> for Value {
+    fn from(x: Tensor) -> Self {
+        Value::Tensor(x)
+    }
+}
+
+impl From<&Tensor> for Value {
+    fn from(x: &Tensor) -> Self {
+        Value::Tensor(x.clone())
+    }
+}
+
+impl TryFrom<Value> for Tensor {
+    type Error = Error;
+    fn try_from(v: Value) -> Result<Self> {
+        match v {
+            Value::Tensor(x) => Ok(x),
+            _ => Err(Error::TypeMismatch {
+                expected: stringify!($val).to_string(),
+                found: v.ty(),
+            }),
+        }
+    }
+}
+
+impl<'v> TryFrom<&'v Value> for &'v Tensor {
+    type Error = Error;
+    fn try_from(v: &'v Value) -> Result<Self> {
+        match v {
+            Value::Tensor(x) => Ok(x),
+            _ => Err(Error::TypeMismatch {
+                expected: "Tensor".to_string(),
+                found: v.ty(),
+            }),
+        }
+    }
+}
+
+impl KnownType<crate::kernels::SyncSession> for Tensor {
+    type Type = Tensor;
+    const TY: Ty = Ty::Tensor(InnerTy::Unknown);
+}
+
+impl From<<Tensor as SymbolicType>::Type> for SymbolicValue {
+    fn from(x: <Tensor as SymbolicType>::Type) -> Self {
+        SymbolicValue::Tensor(x)
+    }
+}
+
+impl TryFrom<SymbolicValue> for <Tensor as SymbolicType>::Type {
+    type Error = Error;
+    fn try_from(v: SymbolicValue) -> Result<Self> {
+        match v {
+            SymbolicValue::Tensor(x) => Ok(x),
+            _ => Err(Error::TypeMismatch {
+                expected: "Tensor".to_string(),
+                found: v.ty(),
+            }),
+        }
+    }
+}
+
+impl KnownType<crate::symbolic::SymbolicSession> for Tensor {
+    type Type = <Tensor as SymbolicType>::Type;
+    const TY: Ty = Ty::Tensor(InnerTy::Unknown);
+}
+
+impl Ty {
+    pub fn flatten(&self) -> Ty {
+        match self {
+            Ty::Tensor(_) => Ty::Tensor(InnerTy::Unknown),
+            _ => self.clone(),
+        }
     }
 }
 
@@ -585,6 +675,22 @@ impl Signature {
             Signature::Unary(_) => 1,
             Signature::Binary(_) => 2,
             Signature::Ternary(_) => 3,
+        }
+    }
+
+    pub fn flatten(&self) -> Self {
+        match self {
+            Signature::Nullary(s) => Signature::nullary(s.ret.flatten()),
+            Signature::Unary(s) => Signature::unary(s.arg0.flatten(), s.ret.flatten()),
+            Signature::Binary(s) => {
+                Signature::binary(s.arg0.flatten(), s.arg1.flatten(), s.ret.flatten())
+            }
+            Signature::Ternary(s) => Signature::ternary(
+                s.arg0.flatten(),
+                s.arg1.flatten(),
+                s.arg2.flatten(),
+                s.ret.flatten(),
+            ),
         }
     }
 

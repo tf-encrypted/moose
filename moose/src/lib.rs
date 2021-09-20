@@ -156,7 +156,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, NullaryKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -198,7 +198,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, UnaryKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -243,7 +243,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, BinaryKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -297,7 +297,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, TernaryKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -352,7 +352,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -400,7 +400,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -452,7 +452,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -507,7 +507,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,

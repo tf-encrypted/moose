@@ -810,17 +810,17 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_ShapeType => Ok(Ty::HostShape),
         PyValueType::std_UnitType => Ok(Ty::Unit),
         PyValueType::std_StringType => Ok(Ty::String),
-        PyValueType::std_TensorType { dtype: _ } => Ok(Ty::Tensor),
-        // PyValueType::std_TensorType { dtype } => match dtype {
-        //     PyDType::float32 => Ok(Ty::HostFloat32Tensor),
-        //     PyDType::float64 => Ok(Ty::HostFloat64Tensor),
-        //     PyDType::int32 => Ok(Ty::HostInt32Tensor),
-        //     PyDType::int64 => Ok(Ty::HostInt64Tensor),
-        //     PyDType::uint32 => Ok(Ty::HostUint32Tensor),
-        //     PyDType::uint64 => Ok(Ty::HostUint64Tensor),
-        //     PyDType::fixed14_23 => Err(anyhow::anyhow!("unimplemented dtype 'fixed14_23'")),
-        //     PyDType::fixed8_27 => Ok(Ty::Fixed128Tensor), // TODO: store the precision (27)
-        // },
+        PyValueType::std_TensorType { dtype } => match dtype {
+            PyDType::float32 => Ok(Ty::Tensor(InnerTy::Float32)),
+            PyDType::float64 => Ok(Ty::Tensor(InnerTy::Float64)),
+            // PyDType::int32 => Ok(Ty::HostInt32Tensor),
+            // PyDType::int64 => Ok(Ty::HostInt64Tensor),
+            // PyDType::uint32 => Ok(Ty::HostUint32Tensor),
+            // PyDType::uint64 => Ok(Ty::HostUint64Tensor),
+            // PyDType::fixed14_23 => Err(anyhow::anyhow!("unimplemented dtype 'fixed14_23'")),
+            PyDType::fixed8_27 => Ok(Ty::Tensor(InnerTy::Fixed128)), // TODO: store the precision (27)
+            _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", py_type)),
+        },
         PyValueType::std_UnknownType => Ok(Ty::Unknown),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
         PyValueType::ring_RingTensorType => Ok(Ty::HostRing128Tensor),
@@ -1178,8 +1178,9 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
+                        // TODO (lvorona): We can actually use InnerTy::Unknown and let the type inference figure the type out.
                         kind: ShapeOp {
-                            sig: Signature::unary(Ty::Tensor, Ty::HostShape),
+                            sig: Signature::unary(Ty::Tensor(InnerTy::Float64), Ty::HostShape),
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
