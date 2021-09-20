@@ -55,7 +55,7 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Ok(Box::new(move |sess, plc| {
+            crate::error::Result::<Box<dyn Fn(&_, &_) -> _>>::Ok(Box::new(move |sess, plc| {
                 $k(sess, plc, $($attr.clone()),+)
             }))
         }
@@ -99,7 +99,7 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Ok(Box::new(move |sess, plc, x0, x1| {
+            crate::error::Result::<Box<dyn Fn(&_, &_, _, _) -> _>>::Ok(Box::new(move |sess, plc, x0, x1| {
                 $k(sess, plc, $($attr.clone()),+, x0, x1)
             }))
         }
@@ -119,9 +119,9 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Box::new(move |sess, plc, x0, x1, x2| {
+            crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> _>>::Ok(Box::new(move |sess, plc, x0, x1, x2| {
                 $k(sess, plc, $($attr.clone()),+), x0, x1, x2
-            })
+            }))
         }
     };
 
@@ -132,10 +132,10 @@ macro_rules! derive_runtime_kernel {
         crate::error::Result::<Box<dyn Fn(&_, &_, _) -> _>>::Ok(Box::new($k))
     };
     (binary, $k:expr, $self:ident) => {
-        Ok(Box::new($k))
+        crate::error::Result::<Box<dyn Fn(&_, &_, _, _) -> _>>::Ok(Box::new($k))
     };
     (ternary, $k:expr, $self:ident) => {
-        Ok(Box::new($k))
+        crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> _>>::Ok(Box::new($k))
     };
 }
 
