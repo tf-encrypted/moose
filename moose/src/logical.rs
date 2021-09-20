@@ -29,8 +29,12 @@ impl<Fixed64T, Fixed128T, Float32T, Float64T>
 {
     pub fn ty(&self) -> Ty {
         match self {
-            AbstractTensor::Fixed64(_) => Ty::Tensor(InnerTy::Fixed64),
-            AbstractTensor::Fixed128(_) => Ty::Tensor(InnerTy::Fixed128),
+            AbstractTensor::Fixed64(_) => Ty::Tensor(InnerTy::Fixed64 {
+                precision: FIXEDPOINT_PRECISON,
+            }),
+            AbstractTensor::Fixed128(_) => Ty::Tensor(InnerTy::Fixed128 {
+                precision: FIXEDPOINT_PRECISON,
+            }),
             AbstractTensor::Float32(_) => Ty::Tensor(InnerTy::Float32),
             AbstractTensor::Float64(_) => Ty::Tensor(InnerTy::Float64),
         }

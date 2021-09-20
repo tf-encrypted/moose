@@ -10,8 +10,8 @@ fn lower_ty(ty: Ty) -> Ty {
     match ty {
         Ty::Tensor(InnerTy::Float32) => Ty::HostFloat32Tensor,
         Ty::Tensor(InnerTy::Float64) => Ty::HostFloat64Tensor,
-        Ty::Tensor(InnerTy::Fixed64) => Ty::HostFixed64Tensor,
-        Ty::Tensor(InnerTy::Fixed128) => Ty::HostFixed128Tensor,
+        Ty::Tensor(InnerTy::Fixed64 { precision: _ }) => Ty::HostFixed64Tensor,
+        Ty::Tensor(InnerTy::Fixed128 { precision: _ }) => Ty::HostFixed128Tensor,
         _ => ty,
     }
 }

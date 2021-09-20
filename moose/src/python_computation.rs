@@ -817,8 +817,8 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
             // PyDType::int64 => Ok(Ty::HostInt64Tensor),
             // PyDType::uint32 => Ok(Ty::HostUint32Tensor),
             // PyDType::uint64 => Ok(Ty::HostUint64Tensor),
-            // PyDType::fixed14_23 => Err(anyhow::anyhow!("unimplemented dtype 'fixed14_23'")),
-            PyDType::fixed8_27 => Ok(Ty::Tensor(InnerTy::Fixed128)), // TODO: store the precision (27)
+            PyDType::fixed14_23 => Ok(Ty::Tensor(InnerTy::Fixed128 { precision: 23 })),
+            PyDType::fixed8_27 => Ok(Ty::Tensor(InnerTy::Fixed128 { precision: 27 })),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", py_type)),
         },
         PyValueType::std_UnknownType => Ok(Ty::Unknown),

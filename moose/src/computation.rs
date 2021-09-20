@@ -247,8 +247,8 @@ impl From<u128> for Constant {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
 pub enum InnerTy {
-    Fixed64,
-    Fixed128,
+    Fixed64 { precision: u32 },
+    Fixed128 { precision: u32 },
     Float32,
     Float64,
     Unknown,
