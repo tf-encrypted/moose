@@ -129,7 +129,7 @@ impl AdtFillOp {
         plc: &AdditivePlacement,
         value: Constant,
         shape: ShapeT,
-    ) -> AbstractAdditiveTensor<RingT>
+    ) -> Result<AbstractAdditiveTensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -141,7 +141,7 @@ impl AdtFillOp {
             player0.fill(sess, value, &shape),
             player1.fill(sess, Constant::Ring64(0), &shape),
         ];
-        AbstractAdditiveTensor { shares }
+        Ok(AbstractAdditiveTensor { shares })
     }
 
     fn adt_kernel<S: Session, ShapeT, RingT>(
@@ -149,7 +149,7 @@ impl AdtFillOp {
         plc: &AdditivePlacement,
         value: Constant,
         shape: AbstractAdditiveShape<ShapeT>,
-    ) -> AbstractAdditiveTensor<RingT>
+    ) -> Result<AbstractAdditiveTensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -165,7 +165,7 @@ impl AdtFillOp {
             player0.fill(sess, value, shape0),
             player1.fill(sess, Constant::Ring64(0), shape1),
         ];
-        AbstractAdditiveTensor { shares }
+        Ok(AbstractAdditiveTensor { shares })
     }
 }
 
@@ -187,12 +187,12 @@ impl AdtRevealOp {
         sess: &S,
         plc: &HostPlacement,
         xe: AbstractAdditiveTensor<RingT>,
-    ) -> RingT
+    ) -> Result<RingT>
     where
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
     {
         let AbstractAdditiveTensor { shares: [x0, x1] } = &xe;
-        with_context!(plc, sess, x1 + x0)
+        Ok(with_context!(plc, sess, x1 + x0))
     }
 }
 
@@ -462,7 +462,7 @@ impl AdtShlOp {
         plc: &AdditivePlacement,
         amount: usize,
         x: AbstractAdditiveTensor<RingT>,
-    ) -> AbstractAdditiveTensor<RingT>
+    ) -> Result<AbstractAdditiveTensor<RingT>>
     where
         HostPlacement: PlacementShl<S, RingT, RingT>,
     {
@@ -470,7 +470,7 @@ impl AdtShlOp {
         let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
         let z0 = player0.shl(sess, amount, x0);
         let z1 = player1.shl(sess, amount, x1);
-        AbstractAdditiveTensor { shares: [z0, z1] }
+        Ok(AbstractAdditiveTensor { shares: [z0, z1] })
     }
 }
 

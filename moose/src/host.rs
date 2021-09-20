@@ -199,14 +199,14 @@ impl RingFixedpointMeanOp {
         scaling_base: u64,
         scaling_exp: u32,
         x: HostRing64Tensor,
-    ) -> HostRing64Tensor
+    ) -> Result<HostRing64Tensor>
     where
         HostPlacement: PlacementPlace<S, HostRing64Tensor>,
     {
         let scaling_factor = u64::pow(scaling_base, scaling_exp);
         let axis = axis.map(|a| a as usize);
         let mean = HostRing64Tensor::fixedpoint_mean(x, axis, scaling_factor);
-        plc.place(sess, mean)
+        Ok(plc.place(sess, mean))
     }
 
     fn ring128_kernel<S: RuntimeSession>(
@@ -216,14 +216,14 @@ impl RingFixedpointMeanOp {
         scaling_base: u64,
         scaling_exp: u32,
         x: HostRing128Tensor,
-    ) -> HostRing128Tensor
+    ) -> Result<HostRing128Tensor>
     where
         HostPlacement: PlacementPlace<S, HostRing128Tensor>,
     {
         let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
         let axis = axis.map(|a| a as usize);
         let mean = HostRing128Tensor::fixedpoint_mean(x, axis, scaling_factor);
-        plc.place(sess, mean)
+        Ok(plc.place(sess, mean))
     }
 }
 
@@ -444,14 +444,14 @@ impl HostSliceOp {
         plc: &HostPlacement,
         slice_info: SliceInfo,
         x: AbstractHostRingTensor<T>,
-    ) -> AbstractHostRingTensor<T>
+    ) -> Result<AbstractHostRingTensor<T>>
     where
         T: Clone,
     {
         let slice_info =
             ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(slice_info);
         let sliced = x.0.slice(slice_info).to_owned();
-        AbstractHostRingTensor(sliced, plc.clone())
+        Ok(AbstractHostRingTensor(sliced, plc.clone()))
     }
 
     pub fn shape_kernel<S: RuntimeSession>(
@@ -459,12 +459,12 @@ impl HostSliceOp {
         plc: &HostPlacement,
         slice_info: SliceInfo,
         x: HostShape,
-    ) -> HostShape {
+    ) -> Result<HostShape> {
         let slice = x.0.slice(
             slice_info.0[0].start as usize,
             slice_info.0[0].end.unwrap() as usize,
         );
-        HostShape(slice, plc.clone())
+        Ok(HostShape(slice, plc.clone()))
     }
 }
 
@@ -548,13 +548,13 @@ impl HostIndexAxisOp {
         axis: usize,
         index: usize,
         x: AbstractHostRingTensor<T>,
-    ) -> AbstractHostRingTensor<T>
+    ) -> Result<AbstractHostRingTensor<T>>
     where
         T: Clone,
     {
         let axis = Axis(axis);
         let result = x.0.index_axis(axis, index);
-        AbstractHostRingTensor(result.to_owned(), plc.clone())
+        Ok(AbstractHostRingTensor(result.to_owned(), plc.clone()))
     }
 
     pub fn bit_kernel<S: RuntimeSession>(
@@ -563,10 +563,10 @@ impl HostIndexAxisOp {
         axis: usize,
         index: usize,
         x: HostBitTensor,
-    ) -> HostBitTensor {
+    ) -> Result<HostBitTensor> {
         let axis = Axis(axis);
         let result = x.0.index_axis(axis, index);
-        HostBitTensor(result.to_owned(), plc.clone())
+        Ok(HostBitTensor(result.to_owned(), plc.clone()))
     }
 }
 
@@ -586,7 +586,7 @@ impl HostShlDimOp {
         amount: usize,
         bit_length: usize,
         x: HostBitTensor,
-    ) -> HostBitTensor {
+    ) -> Result<HostBitTensor> {
         let axis = Axis(0);
         let mut raw_tensor_shape = x.0.shape().to_vec();
         raw_tensor_shape.remove(0);
@@ -605,9 +605,10 @@ impl HostShlDimOp {
             })
             .collect();
 
-        let result = ndarray::stack(Axis(0), &concatenated).unwrap();
+        let result = ndarray::stack(Axis(0), &concatenated)
+            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
 
-        HostBitTensor(result, plc.clone())
+        Ok(HostBitTensor(result, plc.clone()))
     }
 }
 
@@ -631,8 +632,7 @@ impl HostBitDecOp {
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing64Tensor,
-    ) -> HostRing64Tensor
-where {
+    ) -> HostRing64Tensor {
         let shape = x.shape();
         let raw_shape = shape.0 .0;
         let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
@@ -652,8 +652,7 @@ where {
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing128Tensor,
-    ) -> HostRing128Tensor
-where {
+    ) -> HostRing128Tensor {
         let shape = x.shape();
         let raw_shape = shape.0 .0;
         let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
@@ -671,8 +670,7 @@ where {
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing64Tensor,
-    ) -> HostBitTensor
-where {
+    ) -> HostBitTensor {
         let shape = x.shape();
         let raw_shape = shape.0 .0;
         let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
@@ -691,8 +689,7 @@ where {
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing128Tensor,
-    ) -> HostBitTensor
-where {
+    ) -> HostBitTensor {
         let shape = x.shape();
         let raw_shape = shape.0 .0;
         let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
@@ -1657,12 +1654,15 @@ impl RingInjectOp {
         plc: &HostPlacement,
         bit_idx: usize,
         x: HostBitTensor,
-    ) -> AbstractHostRingTensor<T>
+    ) -> Result<AbstractHostRingTensor<T>>
     where
         T: From<u8>,
         Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
     {
-        AbstractHostRingTensor(x.0.mapv(|ai| Wrapping(T::from(ai)) << bit_idx), plc.clone())
+        Ok(AbstractHostRingTensor(
+            x.0.mapv(|ai| Wrapping(T::from(ai)) << bit_idx),
+            plc.clone(),
+        ))
     }
 }
 
@@ -2132,51 +2132,58 @@ impl RingSampleOp {
         _sess: &S,
         plc: &HostPlacement,
         shape: HostShape,
-    ) -> HostRing64Tensor {
+    ) -> Result<HostRing64Tensor> {
         let mut rng = AesRng::from_random_seed();
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        let raw_array = Array::from_shape_vec(ix, values).unwrap();
-        AbstractHostRingTensor(raw_array, plc.clone())
+        let raw_array = Array::from_shape_vec(ix, values)
+            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+        Ok(AbstractHostRingTensor(raw_array, plc.clone()))
     }
 
     fn kernel_bits_u64<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         shape: HostShape,
-    ) -> HostRing64Tensor {
+    ) -> Result<HostRing64Tensor> {
         let mut rng = AesRng::from_random_seed();
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+        let arr = Array::from_shape_vec(ix, values)
+            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+        Ok(AbstractHostRingTensor(arr, plc.clone()))
     }
 
     fn kernel_uniform_u128<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         shape: HostShape,
-    ) -> HostRing128Tensor {
+    ) -> Result<HostRing128Tensor> {
         let mut rng = AesRng::from_random_seed();
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size)
             .map(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
             .collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+        let arr = Array::from_shape_vec(ix, values)
+            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+        Ok(AbstractHostRingTensor(arr, plc.clone()))
     }
 
     fn kernel_bits_u128<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         shape: HostShape,
-    ) -> HostRing128Tensor {
+    ) -> Result<HostRing128Tensor> {
         let mut rng = AesRng::from_random_seed();
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+        let arr = Array::from_shape_vec(ix, values)
+            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+        Ok(AbstractHostRingTensor(arr, plc.clone()))
     }
 }
 
@@ -2221,13 +2228,14 @@ impl RingSampleSeededOp {
         plc: &HostPlacement,
         shape: HostShape,
         seed: Seed,
-    ) -> HostRing64Tensor {
+    ) -> Result<HostRing64Tensor> {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        let raw_array = Array::from_shape_vec(ix, values).unwrap();
-        AbstractHostRingTensor(raw_array, plc.clone())
+        let raw_array = Array::from_shape_vec(ix, values)
+            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+        Ok(AbstractHostRingTensor(raw_array, plc.clone()))
     }
 
     fn kernel_bits_u64<S: RuntimeSession>(
@@ -2235,12 +2243,14 @@ impl RingSampleSeededOp {
         plc: &HostPlacement,
         shape: HostShape,
         seed: Seed,
-    ) -> HostRing64Tensor {
+    ) -> Result<HostRing64Tensor> {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+        let arr = Array::from_shape_vec(ix, values)
+            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+        Ok(AbstractHostRingTensor(arr, plc.clone()))
     }
 
     fn kernel_uniform_u128<S: RuntimeSession>(
@@ -2248,14 +2258,16 @@ impl RingSampleSeededOp {
         plc: &HostPlacement,
         shape: HostShape,
         seed: Seed,
-    ) -> HostRing128Tensor {
+    ) -> Result<HostRing128Tensor> {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size)
             .map(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
             .collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+        let arr = Array::from_shape_vec(ix, values)
+            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+        Ok(AbstractHostRingTensor(arr, plc.clone()))
     }
 
     fn kernel_bits_u128<S: RuntimeSession>(
@@ -2263,12 +2275,14 @@ impl RingSampleSeededOp {
         plc: &HostPlacement,
         shape: HostShape,
         seed: Seed,
-    ) -> HostRing128Tensor {
+    ) -> Result<HostRing128Tensor> {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+        let arr = Array::from_shape_vec(ix, values)
+            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+        Ok(AbstractHostRingTensor(arr, plc.clone()))
     }
 }
 

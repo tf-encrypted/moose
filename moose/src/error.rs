@@ -18,6 +18,9 @@ pub enum Error {
     #[error("Operator instantiation not supported: {0}")]
     UnimplementedOperator(String),
 
+    #[error("Kernel error: {0}")]
+    KernelError(String),
+
     #[error("Missing argument '{0}'")]
     MissingArgument(String),
 

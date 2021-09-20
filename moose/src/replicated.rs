@@ -1972,7 +1972,7 @@ impl RingInjectOp {
         rep: &ReplicatedPlacement,
         bit_idx: usize,
         x: ReplicatedBitT,
-    ) -> RepTen<RingT>
+    ) -> Result<RepTen<RingT>>
     where
         ReplicatedPlacement: PlacementShape<S, ReplicatedBitT, AbstractReplicatedShape<ShapeT>>,
         ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<RingT>, RepTen<RingT>>,
@@ -2017,7 +2017,7 @@ impl RingInjectOp {
             b_ring + c_ring - b_ring * c_ring - b_ring * c_ring
         );
         let shifted_x_adt = adt.shl(sess, bit_idx, &x_adt_ring);
-        rep.adt_to_rep(sess, &shifted_x_adt)
+        Ok(rep.adt_to_rep(sess, &shifted_x_adt))
     }
 }
 
