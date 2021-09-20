@@ -263,6 +263,7 @@ macro_rules! values {
         }
 
         #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+        #[allow(clippy::large_enum_variant)] // TODO (lvorona): figure out why enum is big out of the sudden
         pub enum Value {
             $($val($val),)+
             // TODO promote below to match other values
@@ -341,6 +342,7 @@ macro_rules! values {
         )+
 
         #[derive(PartialEq, Clone, Debug)]
+        #[allow(clippy::large_enum_variant)] // TODO (lvorona): figure out why enum is big out of the sudden
         pub enum SymbolicValue {
             $($val(<$val as SymbolicType>::Type),)+
         }
