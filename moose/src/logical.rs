@@ -8,9 +8,6 @@ use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
-// TODO get rid of this
-const FIXEDPOINT_PRECISON: u32 = 27;
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Shape {
     Host(HostShape),
@@ -30,10 +27,10 @@ impl<Fixed64T, Fixed128T, Float32T, Float64T>
     pub fn ty(&self) -> Ty {
         match self {
             AbstractTensor::Fixed64(_) => Ty::Tensor(InnerTy::Fixed64 {
-                precision: FIXEDPOINT_PRECISON,
+                precision: 0, // Precision should not matter, since this method only used in the Value.ty() call
             }),
             AbstractTensor::Fixed128(_) => Ty::Tensor(InnerTy::Fixed128 {
-                precision: FIXEDPOINT_PRECISON,
+                precision: 0, // Precision should not matter, since this method only used in the Value.ty() call
             }),
             AbstractTensor::Float32(_) => Ty::Tensor(InnerTy::Float32),
             AbstractTensor::Float64(_) => Ty::Tensor(InnerTy::Float64),
@@ -254,8 +251,8 @@ modelled!(PlacementMul::mul, HostPlacement, (Tensor, Tensor) -> Tensor, MulOp);
 kernel! {
     MulOp,
     [
-        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::rep_kernel),
+        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] attributes[sig] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] attributes[sig] Self::rep_kernel),
     ]
 }
 
@@ -263,6 +260,7 @@ impl MulOp {
     fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
+        sig: Signature,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
         y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
@@ -274,15 +272,20 @@ impl MulOp {
         HostPlacement: PlacementMul<S, Float32T, Float32T, Float32T>,
         HostPlacement: PlacementMul<S, Float64T, Float64T, Float64T>,
     {
+        let precision = match sig.arg(0) {
+            Ok(Ty::Tensor(InnerTy::Fixed64 { precision })) => Some(precision),
+            Ok(Ty::Tensor(InnerTy::Fixed128 { precision })) => Some(precision),
+            _ => None,
+        };
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let z = plc.mul(sess, &x, &y);
-                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                let result = plc.trunc_pr(sess, precision.unwrap(), &z);
                 AbstractTensor::Fixed64(result)
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let z = plc.mul(sess, &x, &y);
-                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                let result = plc.trunc_pr(sess, precision.unwrap(), &z);
                 AbstractTensor::Fixed128(result)
             }
             (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
@@ -300,6 +303,7 @@ impl MulOp {
     fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &ReplicatedPlacement,
+        sig: Signature,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
         y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
@@ -309,15 +313,21 @@ impl MulOp {
         ReplicatedPlacement: PlacementTruncPr<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
     {
+        let precision = match sig.arg(0) {
+            Ok(Ty::Tensor(InnerTy::Fixed64 { precision })) => Some(precision),
+            Ok(Ty::Tensor(InnerTy::Fixed128 { precision })) => Some(precision),
+            _ => None,
+        };
+
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let z = plc.mul(sess, &x, &y);
-                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                let result = plc.trunc_pr(sess, precision.unwrap(), &z);
                 AbstractTensor::Fixed64(result)
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let z = plc.mul(sess, &x, &y);
-                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                let result = plc.trunc_pr(sess, precision.unwrap(), &z);
                 AbstractTensor::Fixed128(result)
             }
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
@@ -390,8 +400,8 @@ modelled!(PlacementDot::dot, HostPlacement, (Tensor, Tensor) -> Tensor, DotOp);
 kernel! {
     DotOp,
     [
-        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::rep_kernel),
+        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] attributes[sig] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] attributes[sig] Self::rep_kernel),
     ]
 }
 
@@ -399,6 +409,7 @@ impl DotOp {
     fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
+        sig: Signature,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
         y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
@@ -410,15 +421,20 @@ impl DotOp {
         HostPlacement: PlacementDot<S, Float32T, Float32T, Float32T>,
         HostPlacement: PlacementDot<S, Float64T, Float64T, Float64T>,
     {
+        let precision = match sig.arg(0) {
+            Ok(Ty::Tensor(InnerTy::Fixed64 { precision })) => Some(precision),
+            Ok(Ty::Tensor(InnerTy::Fixed128 { precision })) => Some(precision),
+            _ => None,
+        };
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let z = plc.dot(sess, &x, &y);
-                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                let result = plc.trunc_pr(sess, precision.unwrap(), &z);
                 AbstractTensor::Fixed64(result)
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let z = plc.dot(sess, &x, &y);
-                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                let result = plc.trunc_pr(sess, precision.unwrap(), &z);
                 AbstractTensor::Fixed128(result)
             }
             (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
@@ -436,6 +452,7 @@ impl DotOp {
     fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &ReplicatedPlacement,
+        sig: Signature,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
         y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
@@ -445,15 +462,20 @@ impl DotOp {
         ReplicatedPlacement: PlacementTruncPr<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
     {
+        let precision = match sig.arg(0) {
+            Ok(Ty::Tensor(InnerTy::Fixed64 { precision })) => Some(precision),
+            Ok(Ty::Tensor(InnerTy::Fixed128 { precision })) => Some(precision),
+            _ => None,
+        };
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let z = plc.dot(sess, &x, &y);
-                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                let result = plc.trunc_pr(sess, precision.unwrap(), &z);
                 AbstractTensor::Fixed64(result)
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let z = plc.dot(sess, &x, &y);
-                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                let result = plc.trunc_pr(sess, precision.unwrap(), &z);
                 AbstractTensor::Fixed128(result)
             }
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
@@ -466,7 +488,7 @@ modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);
 kernel! {
     CastOp,
     [
-        (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::kernel),
+        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[sig] Self::kernel),
     ]
 }
 
@@ -476,6 +498,7 @@ impl CastOp {
     fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
+        sig: Signature,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
     where
@@ -484,21 +507,32 @@ impl CastOp {
         HostPlacement: PlacementFixedpointEncode<S, Float32T, Fixed64T>,
         HostPlacement: PlacementFixedpointEncode<S, Float64T, Fixed128T>,
     {
+        let arg0_precision = match sig.arg(0) {
+            Ok(Ty::Tensor(InnerTy::Fixed64 { precision })) => Some(precision),
+            Ok(Ty::Tensor(InnerTy::Fixed128 { precision })) => Some(precision),
+            _ => None,
+        };
+        let ret_precision = match sig.ret() {
+            Ty::Tensor(InnerTy::Fixed64 { precision }) => Some(precision),
+            Ty::Tensor(InnerTy::Fixed128 { precision }) => Some(precision),
+            _ => None,
+        };
+
         match x {
             AbstractTensor::Fixed64(x) => {
-                let inner = plc.fixedpoint_decode(sess, FIXEDPOINT_PRECISON, &x);
+                let inner = plc.fixedpoint_decode(sess, arg0_precision.unwrap(), &x);
                 AbstractTensor::Float32(inner)
             }
             AbstractTensor::Fixed128(x) => {
-                let inner = plc.fixedpoint_decode(sess, FIXEDPOINT_PRECISON, &x);
+                let inner = plc.fixedpoint_decode(sess, arg0_precision.unwrap(), &x);
                 AbstractTensor::Float64(inner)
             }
             AbstractTensor::Float32(x) => {
-                let inner = plc.fixedpoint_encode(sess, FIXEDPOINT_PRECISON, &x);
+                let inner = plc.fixedpoint_encode(sess, ret_precision.unwrap(), &x);
                 AbstractTensor::Fixed64(inner)
             }
             AbstractTensor::Float64(x) => {
-                let inner = plc.fixedpoint_encode(sess, FIXEDPOINT_PRECISON, &x);
+                let inner = plc.fixedpoint_encode(sess, ret_precision.unwrap(), &x);
                 AbstractTensor::Fixed128(inner)
             }
         }

@@ -14,6 +14,8 @@ from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 FIXED = edsl.fixed(8, 27)
+# Feel free to try different precision. Rust compiler currently supports only limited set of alternative precisions:
+# FIXED = edsl.fixed(14, 23)
 
 
 def generate_data(seed, n_instances, n_features, coeff=3, shift=10):
