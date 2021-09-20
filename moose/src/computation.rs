@@ -566,7 +566,7 @@ impl Ty {
     pub fn flatten(&self) -> Ty {
         match self {
             Ty::Tensor(_) => Ty::Tensor(InnerTy::Unknown),
-            _ => self.clone(),
+            _ => *self,
         }
     }
 }

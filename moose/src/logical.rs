@@ -713,13 +713,12 @@ impl SumOp {
 }
 
 modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> Tensor, OnesOp);
-// TODO(lvorona): figure out modelled op for the replicated tensor
-// modelled!(PlacementOnes::ones, ReplicatedPlacement, (HostShape) -> Tensor, OnesOp);
 
 kernel! {
     OnesOp,
     [
         (HostPlacement, (HostShape) -> Tensor => [hybrid] Self::host_kernel),
+        // TODO(lvorona): figure out modelled op for the replicated tensor
         // (ReplicatedPlacement, (HostShape) -> Tensor => [hybrid] Self::rep_kernel),
     ]
 }
