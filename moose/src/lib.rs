@@ -815,8 +815,6 @@ macro_rules! kernel {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
 
-                let k = derive_runtime_kernel![binary, $($kp)+, self]?;
-
                 let op = self.clone();
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
@@ -824,6 +822,12 @@ macro_rules! kernel {
                     x0: <$t0 as KnownType<SymbolicSession>>::Type,
                     x1: <$t1 as KnownType<SymbolicSession>>::Type,
                 | {
+                    // TODO derive k outside box (using self instead of op)
+                    // Magic by Morten
+                    let op = &op;
+
+                    let k = derive_runtime_kernel![binary, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
+
                     let v0 = x0.clone().try_into();
                     let v1 = x1.clone().try_into();
 
@@ -834,7 +838,7 @@ macro_rules! kernel {
                         }
                         _ => match (x0, x1) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                                let op_name = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
+                                let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
                                 Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
                             }
                             _ => unimplemented!() // ok

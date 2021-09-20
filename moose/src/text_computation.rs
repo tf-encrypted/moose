@@ -1778,6 +1778,7 @@ impl ToTextual for Value {
             Value::HostFixed64Tensor(_)
             | Value::HostFixed128Tensor(_)
             | Value::HostBitArray64(_)
+            | Value::Tensor(_)
             | Value::HostBitArray128(_) => unimplemented!(),
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)
