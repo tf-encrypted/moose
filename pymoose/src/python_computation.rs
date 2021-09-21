@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use moose::compilation::typing::update_types_one_hop;
+    use moose::compilation::compile_passes;
+    use moose::compilation::Pass;
     use moose::execution::*;
     use moose::storage::{LocalSyncStorage, SyncStorage};
     use moose::{computation::*, host::HostFloat64Tensor, python_computation::PyComputation};
@@ -18,7 +19,8 @@ mod tests {
         let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
 
         let rust_comp: Computation = comp.try_into().unwrap();
-        let rust_comp = update_types_one_hop(&rust_comp).unwrap().unwrap();
+        let rust_comp =
+            compile_passes(&rust_comp, &[Pass::Typing, Pass::DeprecatedLogical]).unwrap();
         rust_comp.toposort().unwrap()
     }
 

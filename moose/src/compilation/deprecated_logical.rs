@@ -1,6 +1,9 @@
 use crate::computation::*;
 
-/// The pass replaces the logical level ops with their Host counterparts. It assumes Float64 type, until the Ty::Ty spike is done.
+/// The pass replaces the logical level ops with their Host counterparts.
+///
+/// It is used to process computations deserialized from python-traced-and-compiled computations.
+/// Once we full switch to Rust compiling of python-traced computations, this pass should be deleted.
 pub fn deprecated_logical_lowering(comp: &Computation) -> anyhow::Result<Option<Computation>> {
     let operations = comp.operations.iter().map(lower_op).collect();
     Ok(Some(Computation { operations }))
