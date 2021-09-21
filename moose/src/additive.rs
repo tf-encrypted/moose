@@ -5,7 +5,7 @@ use crate::computation::{
     ShapeOp,
 };
 use crate::error::Result;
-use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape, RingSize};
+use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};
 use crate::kernels::{
     PlacementAdd, PlacementDaBitProvider, PlacementDeriveSeed, PlacementFill, PlacementKeyGen,
     PlacementMul, PlacementNeg, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
@@ -17,6 +17,7 @@ use crate::replicated::{
     AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor,
     ReplicatedRing64Tensor,
 };
+use crate::{Const, Ring};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
@@ -538,7 +539,7 @@ where
     PrfKey: KnownType<S>,
     HostShape: KnownType<S>,
     Seed: KnownType<S>,
-    R: RingSize + Clone,
+    R: Ring + Clone,
     HostPlacement: PlacementDeriveSeed<S, cs!(PrfKey), cs!(Seed)>,
     HostPlacement: PlacementSampleUniform<S, cs!(HostShape), R>,
     HostPlacement: PlacementSampleUniformSeeded<S, cs!(HostShape), cs!(Seed), R>,
@@ -558,7 +559,7 @@ where
         AbstractAdditiveTensor<R>,
     ) {
         let r = self.sample_uniform(sess, shape);
-        let r_msb = self.shr(sess, R::SIZE - 1, &r);
+        let r_msb = self.shr(sess, R::BitLength::VALUE - 1, &r);
         let r_top = self.shr(sess, amount + 1, &self.shl(sess, 1, &r));
 
         let key = self.gen_key(sess);
@@ -587,7 +588,7 @@ where
     <AbstractAdditiveTensor<R> as CanonicalType>::Type: KnownType<S>,
     AbstractReplicatedRingTensor<R>: CanonicalType,
     <AbstractReplicatedRingTensor<R> as CanonicalType>::Type: KnownType<S>,
-    R: RingSize,
+    R: Ring,
     HostShape: KnownType<S>,
     HostPlacement: TruncMaskGen<S, cs!(HostShape), R>,
     HostPlacement: PlacementReveal<S, st!(AbstractAdditiveTensor<R>), R>,
@@ -643,7 +644,7 @@ where
         // NOTE we assume that input numbers are in range -2^{k-2} <= x < 2^{k-2}
         // so that 0 <= x + 2^{k-2} < 2^{k-1}
         // TODO we could insert debug_assert! to check above conditions
-        let k = R::SIZE - 1;
+        let k = R::BitLength::VALUE - 1;
         let ones = player_a.ones(sess, &shape);
         let upshifter = player_a.shl(sess, k - 1, &ones);
         let downshifter = player_a.shl(sess, k - amount - 1, &ones);
@@ -662,7 +663,7 @@ where
         let c_no_msb = player_a.shl(sess, 1, &c);
         // also called shifted
         let c_top = player_a.shr(sess, amount + 1, &c_no_msb);
-        let c_msb = player_a.shr(sess, R::SIZE - 1, &c);
+        let c_msb = player_a.shr(sess, R::BitLength::VALUE - 1, &c);
 
         // OK
         let overflow = with_context!(
