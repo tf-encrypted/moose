@@ -9,9 +9,9 @@ use crate::computation::{
 };
 use crate::error::{Error, Result};
 use crate::host::{
-    AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128, HostBitArray64, HostBitTensor,
-    HostFixed128Tensor, HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
-    RingSize, SliceInfo,
+    AbstractHostBitArray, AbstractHostFixedTensor, Const, HostBitArray128, HostBitArray64,
+    HostBitTensor, HostFixed128Tensor, HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor,
+    HostShape, RingSize, SliceInfo, N128, N64,
 };
 use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAndSetup, PlacementBitDec,
@@ -28,6 +28,7 @@ use crate::symbolic::Symbolic;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
+use std::marker::PhantomData;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedRingTensor<HostRingT> {
@@ -43,14 +44,12 @@ moose_type!(ReplicatedRing128Tensor = AbstractReplicatedRingTensor<HostRing128Te
 moose_type!(ReplicatedBitTensor = AbstractReplicatedRingTensor<HostBitTensor>);
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedBitArray<RepBitTensorT, const N: usize>(RepBitTensorT);
+pub struct AbstractReplicatedBitArray<RepBitTensorT, N>(RepBitTensorT, PhantomData<N>);
 
-pub type ReplicatedBitArray64 = AbstractReplicatedBitArray<ReplicatedBitTensor, 64>;
+pub type ReplicatedBitArray64 = AbstractReplicatedBitArray<ReplicatedBitTensor, N64>;
 
 // TODO implement using moose_type macro
-impl<RepBitTensorT: Placed, const N: usize> Placed
-    for AbstractReplicatedBitArray<RepBitTensorT, N>
-{
+impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTensorT, N> {
     type Placement = RepBitTensorT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -60,17 +59,17 @@ impl<RepBitTensorT: Placed, const N: usize> Placed
 
 impl SymbolicType for ReplicatedBitArray64 {
     type Type =
-        Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, 64>>;
+        Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N64>>;
 }
 
-pub type ReplicatedBitArray128 = AbstractReplicatedBitArray<ReplicatedBitTensor, 128>;
+pub type ReplicatedBitArray128 = AbstractReplicatedBitArray<ReplicatedBitTensor, N128>;
 
 impl SymbolicType for ReplicatedBitArray128 {
     type Type =
-        Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, 128>>;
+        Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N128>>;
 }
 
-impl<RepBitT: Placed, const N: usize> From<AbstractReplicatedBitArray<RepBitT, N>>
+impl<RepBitT: Placed, N> From<AbstractReplicatedBitArray<RepBitT, N>>
     for Symbolic<AbstractReplicatedBitArray<RepBitT, N>>
 where
     RepBitT: Placed<Placement = ReplicatedPlacement>,
@@ -80,7 +79,7 @@ where
     }
 }
 
-impl<RepBitT, const N: usize> TryFrom<Symbolic<AbstractReplicatedBitArray<RepBitT, N>>>
+impl<RepBitT, N> TryFrom<Symbolic<AbstractReplicatedBitArray<RepBitT, N>>>
     for AbstractReplicatedBitArray<RepBitT, N>
 where
     RepBitT: Placed<Placement = ReplicatedPlacement>,
@@ -440,7 +439,7 @@ impl RepRevealOp {
         AbstractHostFixedTensor(x)
     }
 
-    fn bit_array_kernel<S: Session, RepBitT, HostBitT, const N: usize>(
+    fn bit_array_kernel<S: Session, RepBitT, HostBitT, N>(
         sess: &S,
         receiver: &HostPlacement,
         xe: AbstractReplicatedBitArray<RepBitT, N>,
@@ -449,7 +448,7 @@ impl RepRevealOp {
         HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
     {
         let x = receiver.reveal(sess, &xe.0);
-        AbstractHostBitArray(x)
+        AbstractHostBitArray(x, PhantomData)
     }
 
     fn ring_kernel<S: Session, R: Clone>(sess: &S, receiver: &HostPlacement, xe: RepTen<R>) -> R
@@ -1591,7 +1590,7 @@ kernel! {
 }
 
 impl RepIndexOp {
-    fn kernel<S: Session, RepBitT, const N: usize>(
+    fn kernel<S: Session, RepBitT, N>(
         sess: &S,
         plc: &ReplicatedPlacement,
         index: usize,
@@ -2033,7 +2032,7 @@ impl RepBitDecOp {
     // we may be able to do so (and should!) in the near future,
     // see https://github.com/rust-lang/rust/issues/60551
 
-    fn ring_kernel<S: Session, SetupT, ShapeT, HostRingT, HostBitT, RepBitT, const N: usize>(
+    fn ring_kernel<S: Session, SetupT, ShapeT, HostRingT, HostBitT, RepBitT, N>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
@@ -2041,6 +2040,7 @@ impl RepBitDecOp {
     ) -> AbstractReplicatedBitArray<RepBitT, N>
     where
         HostRingT: RingSize,
+        N: Const,
 
         RepBitT: From<RepTen<HostBitT>>,
         RepBitT: Clone,
@@ -2082,10 +2082,10 @@ impl RepBitDecOp {
         .into();
 
         // TODO would be nice to have this as compile time check, see NOTE earlier
-        assert_eq!(HostRingT::SIZE, N);
+        assert_eq!(HostRingT::SIZE, N::VALUE);
 
         let res = rep.binary_adder(sess, setup, rep_bsl, rep_bsr, HostRingT::SIZE);
-        AbstractReplicatedBitArray(res)
+        AbstractReplicatedBitArray(res, PhantomData)
     }
 }
 
@@ -2463,7 +2463,7 @@ mod tests {
     }
 
     macro_rules! index_op_test {
-        ($func_name:ident, $rt:ty, $tt:ident, $s:expr) => {
+        ($func_name:ident, $rt:ty, $tt:ident, $n:ty) => {
             fn $func_name() {
                 let x = array![[1 as $rt, 2], [3, 4]].into_dyn();
                 let exp = array![1 as $rt, 2].into_dyn();
@@ -2482,7 +2482,7 @@ mod tests {
 
                 let x_shared = rep.share(&sess, &setup, &xr);
                 let x_shared_bit_array =
-                    AbstractReplicatedBitArray::<ReplicatedBitTensor, $s>(x_shared);
+                    AbstractReplicatedBitArray::<ReplicatedBitTensor, $n>(x_shared, PhantomData);
 
                 let index = rep.index(&sess, 0, &x_shared_bit_array);
                 let opened_index = alice.reveal(&sess, &index);
@@ -2491,8 +2491,8 @@ mod tests {
         };
     }
 
-    index_op_test!(rep_index_bit64, u8, HostBitTensor, 64);
-    index_op_test!(rep_index_bit128, u8, HostBitTensor, 128);
+    index_op_test!(rep_index_bit64, u8, HostBitTensor, N64);
+    index_op_test!(rep_index_bit128, u8, HostBitTensor, N128);
 
     #[test]
     fn test_rep_index_bit64() {
