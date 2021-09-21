@@ -1550,6 +1550,34 @@ macro_rules! moose_type {
     };
 }
 
+// NOTE const generics is currently not mature in stable
+// so we go the old route for now;
+// see https://github.com/rust-lang/rust/issues/60551
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct N64;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct N128;
+
+pub trait Const {
+    const VALUE: usize;
+}
+
+impl Const for N64 {
+    const VALUE: usize = 64;
+}
+
+impl Const for N128 {
+    const VALUE: usize = 128;
+}
+
+pub trait Ring {
+    type BitLength: Const;
+}
+
 macro_rules! unmodelled {
     /*
     Nullary
