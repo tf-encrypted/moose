@@ -23,10 +23,10 @@ fn pyobj_to_value(py: Python, obj: PyObject) -> PyResult<Value> {
     let obj_ref = obj.as_ref(py);
     if obj_ref.is_instance::<PyString>()? {
         let string_value: String = obj.extract(py)?;
-        Ok(Value::String(string_value))
+        Ok(Value::String(Box::new(string_value)))
     } else if obj_ref.is_instance::<PyFloat>()? {
         let float_value: f64 = obj.extract(py)?;
-        Ok(Value::Float64(float_value))
+        Ok(Value::Float64(Box::new(float_value)))
     } else if obj_ref.is_instance::<PyArrayDyn<f32>>()? {
         // NOTE: this passes for any inner dtype, since python's isinstance will
         // only do a shallow typecheck. inside the pyobj_tensor_to_value we do further
@@ -211,7 +211,7 @@ impl LocalRuntime {
                         Value::Unit(_) => None,
                         // TODO: not sure what to support, should eventually standardize output types of computations
                         Value::String(s) => Some(PyString::new(py, &s).to_object(py)),
-                        Value::Float64(f) => Some(PyFloat::new(py, f).to_object(py)),
+                        Value::Float64(f) => Some(PyFloat::new(py, *f).to_object(py)),
                         // assume it's a tensor
                         _ => outputs_py_val
                             .insert(output_name, tensorval_to_pyobj(py, value).unwrap()),

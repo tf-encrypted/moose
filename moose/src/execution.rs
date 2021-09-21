@@ -1961,7 +1961,10 @@ mod tests {
                     owner: "alice".into(),
                 },
             ));
-            assert_eq!(expected_result, Value::Float32(shaped_result.0[0]));
+            assert_eq!(
+                expected_result,
+                Value::Float32(Box::new(shaped_result.0[0]))
+            );
         } else {
             assert_eq!(expected_result, comp_result.into());
         }

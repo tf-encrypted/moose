@@ -1839,9 +1839,9 @@ impl Compile<SyncKernel> for SendOp {
         Ok(SyncKernel::Unary(Box::new(move |sess, v| {
             sess.networking
                 .send(&v, &receiver_id, &rendezvous_key, &sess.sid)?;
-            Ok(Value::Unit(Unit(HostPlacement {
+            Ok(Value::Unit(Box::new(Unit(HostPlacement {
                 owner: "TODO".into(), // Fake owner for the older kernels.
-            })))
+            }))))
         })))
     }
 }
@@ -1873,9 +1873,9 @@ impl Compile<AsyncKernel> for SendOp {
                 sess.networking
                     .send(&v, &receiver_id, &rendezvous_key, &sess.sid)
                     .await?;
-                map_send_result(sender.send(Value::Unit(Unit(HostPlacement {
+                map_send_result(sender.send(Value::Unit(Box::new(Unit(HostPlacement {
                     owner: "TODO".into(), // Fake owner for the older kernels.
-                }))))
+                })))))
             })
         })))
     }
@@ -2231,9 +2231,9 @@ impl Compile<SyncKernel> for SaveOp {
             let key = String::try_from(key)?;
             check_type(&val, expected_ty)?;
             sess.storage.save(&key, &sess.sid, &val)?;
-            Ok(Value::Unit(Unit(HostPlacement {
+            Ok(Value::Unit(Box::new(Unit(HostPlacement {
                 owner: "TODO".into(), // Fake owner for the old kernel
-            })))
+            }))))
         })))
     }
 }
@@ -2253,9 +2253,9 @@ impl Compile<AsyncKernel> for SaveOp {
                     let val = val.await.map_err(map_receive_error)?;
                     check_type(&val, expected_ty)?;
                     sess.storage.save(&key, &sess.sid, &val).await?;
-                    map_send_result(sender.send(Value::Unit(Unit(HostPlacement {
+                    map_send_result(sender.send(Value::Unit(Box::new(Unit(HostPlacement {
                         owner: "TODO".into(), // Fake owner for the old kernel
-                    }))))
+                    })))))
                 })
             },
         )))

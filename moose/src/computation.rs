@@ -177,11 +177,11 @@ macro_rules! constants {
                         Constant::$val(x) => {constants!(@value(x.clone(), plc.clone().into()) $val $($t)?)},
                     )+
                     // TODO promote below to match other values
-                    Constant::Bit(x) => Value::Bit(x.clone()),
-                    Constant::Float32(x) => Value::Float32(x.clone()),
-                    Constant::Float64(x) => Value::Float64(x.clone()),
-                    Constant::Ring64(x) => Value::Ring64(x.clone()),
-                    Constant::Ring128(x) => Value::Ring128(x.clone()),
+                    Constant::Bit(x) => Value::Bit(Box::new(x.clone())),
+                    Constant::Float32(x) => Value::Float32(Box::new(x.clone())),
+                    Constant::Float64(x) => Value::Float64(Box::new(x.clone())),
+                    Constant::Ring64(x) => Value::Ring64(Box::new(x.clone())),
+                    Constant::Ring128(x) => Value::Ring128(Box::new(x.clone())),
                 }
             }
         }
@@ -198,8 +198,8 @@ macro_rules! constants {
     (@ty $val:ident $t:ident) => {Ty::$t};
     (@ty $val:ident) => {Ty::$val};
 
-    (@value($x:expr, $plc:expr) $val:ident $t:ident) => {Value::$t($t($x, $plc))};
-    (@value($x:expr, $plc:expr) $val:ident) => {Value::$val($x)};
+    (@value($x:expr, $plc:expr) $val:ident $t:ident) => {Value::$t(Box::new($t($x, $plc)))};
+    (@value($x:expr, $plc:expr) $val:ident) => {Value::$val(Box::new($x))};
 }
 
 // The lines with 2 identifiers are for linking to the "Placed" values - the types whose `Value` incarnation has a placement already.
@@ -274,16 +274,15 @@ macro_rules! values {
         }
 
         #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-        #[allow(clippy::large_enum_variant)] // TODO (lvorona): figure out why enum is big out of the sudden
         pub enum Value {
-            $($val($val),)+
-            Tensor(Tensor),
+            $($val(Box<$val>),)+
+            Tensor(Box<Tensor>),
             // TODO promote below to match other values
-            Bit(u8),
-            Float32(f32),
-            Float64(f64),
-            Ring64(u64),
-            Ring128(u128),
+            Bit(Box<u8>),
+            Float32(Box<f32>),
+            Float64(Box<f64>),
+            Ring64(Box<u64>),
+            Ring128(Box<u128>),
         }
 
         impl Value {
@@ -304,7 +303,7 @@ macro_rules! values {
         $(
         impl From<$val> for Value {
             fn from(x: $val) -> Self {
-                Value::$val(x)
+                Value::$val(Box::new(x))
             }
         }
         )+
@@ -312,7 +311,7 @@ macro_rules! values {
         $(
         impl From<&$val> for Value {
             fn from(x: &$val) -> Self {
-                Value::$val(x.clone())
+                Value::$val(Box::new(x.clone()))
             }
         }
         )+
@@ -322,7 +321,7 @@ macro_rules! values {
             type Error = Error;
             fn try_from(v: Value) -> Result<Self> {
                 match v {
-                    Value::$val(x) => Ok(x),
+                    Value::$val(x) => Ok(*x),
                     _ => Err(Error::TypeMismatch {
                         expected: stringify!($val).to_string(),
                         found: v.ty(),
@@ -355,7 +354,6 @@ macro_rules! values {
         )+
 
         #[derive(PartialEq, Clone, Debug)]
-        #[allow(clippy::large_enum_variant)] // TODO (lvorona): figure out why enum is big out of the sudden
         pub enum SymbolicValue {
             $($val(<$val as SymbolicType>::Type),)+
             Tensor(<Tensor as SymbolicType>::Type),
@@ -497,13 +495,13 @@ impl Placed for Unit {
 
 impl From<Tensor> for Value {
     fn from(x: Tensor) -> Self {
-        Value::Tensor(x)
+        Value::Tensor(Box::new(x))
     }
 }
 
 impl From<&Tensor> for Value {
     fn from(x: &Tensor) -> Self {
-        Value::Tensor(x.clone())
+        Value::Tensor(Box::new(x.clone()))
     }
 }
 
@@ -511,7 +509,7 @@ impl TryFrom<Value> for Tensor {
     type Error = Error;
     fn try_from(v: Value) -> Result<Self> {
         match v {
-            Value::Tensor(x) => Ok(x),
+            Value::Tensor(x) => Ok(*x),
             _ => Err(Error::TypeMismatch {
                 expected: stringify!($val).to_string(),
                 found: v.ty(),

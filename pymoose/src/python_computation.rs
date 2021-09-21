@@ -215,7 +215,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x1) * HostFloat64Tensor::from(y1))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x1) * HostFloat64Tensor::from(y1)
+            ))
         );
 
         let x2 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -230,7 +232,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x2) + HostFloat64Tensor::from(y2))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x2) + HostFloat64Tensor::from(y2)
+            ))
         );
 
         let x3 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -245,7 +249,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x3) - HostFloat64Tensor::from(y3))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x3) - HostFloat64Tensor::from(y3)
+            ))
         );
 
         let x4 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -260,7 +266,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x4).dot(HostFloat64Tensor::from(y4)))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x4).dot(HostFloat64Tensor::from(y4))
+            ))
         );
     }
 
@@ -390,7 +398,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x1) * HostFloat64Tensor::from(y1))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x1) * HostFloat64Tensor::from(y1)
+            ))
         );
 
         let x2 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -405,7 +415,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x2) + HostFloat64Tensor::from(y2))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x2) + HostFloat64Tensor::from(y2)
+            ))
         );
 
         let x3 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -420,7 +432,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x3) - HostFloat64Tensor::from(y3))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x3) - HostFloat64Tensor::from(y3)
+            ))
         );
 
         let x4 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -435,7 +449,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x4).dot(HostFloat64Tensor::from(y4)))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x4).dot(HostFloat64Tensor::from(y4))
+            ))
         );
     }
     #[test]
@@ -719,7 +735,7 @@ def f(arg1):
         let y1 = x1.mapv(f64::abs);
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(y1))
+            Value::HostFloat64Tensor(Box::new(HostFloat64Tensor::from(y1)))
         );
     }
 }

@@ -1,6 +1,6 @@
 use crate::computation::*;
-use crate::host::{HostShape, RawShape, SliceInfo, SliceInfoElem};
-use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
+use crate::host::{RawShape, SliceInfo, SliceInfoElem};
+use crate::prim::{RawPrfKey, RawSeed, SyncKey};
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
@@ -1767,9 +1767,9 @@ impl ToTextual for Value {
             Value::String(x) => format!("String({})", x.to_textual()),
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
-            Value::HostShape(HostShape(x, _)) => format!("HostShape({:?})", x),
-            Value::Seed(Seed(x, _)) => format!("Seed({})", x.0.to_textual()),
-            Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.0.to_textual()),
+            Value::HostShape(x) => format!("HostShape({:?})", x.0),
+            Value::Seed(x) => format!("Seed({})", x.0 .0.to_textual()),
+            Value::PrfKey(x) => format!("PrfKey({})", x.0 .0.to_textual()),
             Value::Bit(x) => format!("Bit({})", x),
             Value::Unit(_) => "Unit".to_string(),
             Value::HostBitTensor(x) => format!("HostBitTensor({})", x.0.to_textual()),
