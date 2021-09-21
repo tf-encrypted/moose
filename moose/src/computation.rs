@@ -254,17 +254,25 @@ pub enum InnerTy {
     Unknown,
 }
 
+macro_rules! ty_expression {
+    ($_:ident => $val:ident) => {
+        Ty::$val
+    };
+
+    ($t:ident => $_val:ident($_inner:ident)) => {
+        $t.ty()
+    };
+}
+
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
 macro_rules! values {
-    ($($val:ident,)+) => {
+    ($($val:ident$(($inner:ident::$default:ident))?,)+) => {
 
         #[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
         pub enum Ty {
             Unknown,
-            $($val,)+
-            // TODO enhance macros to support optional inner type
-            Tensor(InnerTy),
+            $($val$(($inner))?,)+
             // TODO promote below to match other values
             Bit,
             Float32,
@@ -276,7 +284,6 @@ macro_rules! values {
         #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
         pub enum Value {
             $($val(Box<$val>),)+
-            Tensor(Box<Tensor>),
             // TODO promote below to match other values
             Bit(Box<u8>),
             Float32(Box<f32>),
@@ -288,8 +295,7 @@ macro_rules! values {
         impl Value {
             pub fn ty(&self) -> Ty {
                 match self {
-                    $(Value::$val(_) => Ty::$val,)+
-                    Value::Tensor(t) => t.ty(),
+                    $(Value::$val(_t) => ty_expression!(_t => $val$(($inner))?),)+
                     // TODO promote below to match other values
                     Value::Bit(_) => Ty::Bit,
                     Value::Float32(_) => Ty::Float32,
@@ -349,21 +355,19 @@ macro_rules! values {
         $(
         impl KnownType<crate::kernels::SyncSession> for $val {
             type Type = $val;
-            const TY: Ty = Ty::$val;
+            const TY: Ty = Ty::$val$(($inner::$default))?;
         }
         )+
 
         #[derive(PartialEq, Clone, Debug)]
         pub enum SymbolicValue {
             $($val(<$val as SymbolicType>::Type),)+
-            Tensor(<Tensor as SymbolicType>::Type),
         }
 
         impl SymbolicValue {
             pub fn ty(&self) -> Ty {
                 match self {
-                    $(SymbolicValue::$val(_) => Ty::$val,)+
-                    SymbolicValue::Tensor(_) => Ty::Tensor(InnerTy::Unknown),
+                    $(SymbolicValue::$val(_) => Ty::$val$(($inner::$default))?,)+
                     // TODO promote below to match other values
                     // SymbolicValue::Unit => Ty::Unit,
                     // SymbolicValue::Bit(_) => Ty::Bit,
@@ -401,7 +405,7 @@ macro_rules! values {
         $(
         impl KnownType<crate::symbolic::SymbolicSession> for $val {
             type Type = <$val as SymbolicType>::Type;
-            const TY: Ty = Ty::$val;
+            const TY: Ty = Ty::$val$(($inner::$default))?;
         }
         )+
     };
@@ -413,6 +417,7 @@ values![
     Seed,
     PrfKey,
     String,
+    Tensor(InnerTy::Unknown),
     HostBitTensor,
     HostBitArray64,
     HostBitArray128,
@@ -491,73 +496,6 @@ impl Placed for Unit {
     fn placement(&self) -> Result<Self::Placement> {
         Ok(self.0.clone())
     }
-}
-
-impl From<Tensor> for Value {
-    fn from(x: Tensor) -> Self {
-        Value::Tensor(Box::new(x))
-    }
-}
-
-impl From<&Tensor> for Value {
-    fn from(x: &Tensor) -> Self {
-        Value::Tensor(Box::new(x.clone()))
-    }
-}
-
-impl TryFrom<Value> for Tensor {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Tensor(x) => Ok(*x),
-            _ => Err(Error::TypeMismatch {
-                expected: stringify!($val).to_string(),
-                found: v.ty(),
-            }),
-        }
-    }
-}
-
-impl<'v> TryFrom<&'v Value> for &'v Tensor {
-    type Error = Error;
-    fn try_from(v: &'v Value) -> Result<Self> {
-        match v {
-            Value::Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch {
-                expected: "Tensor".to_string(),
-                found: v.ty(),
-            }),
-        }
-    }
-}
-
-impl KnownType<crate::kernels::SyncSession> for Tensor {
-    type Type = Tensor;
-    const TY: Ty = Ty::Tensor(InnerTy::Unknown);
-}
-
-impl From<<Tensor as SymbolicType>::Type> for SymbolicValue {
-    fn from(x: <Tensor as SymbolicType>::Type) -> Self {
-        SymbolicValue::Tensor(x)
-    }
-}
-
-impl TryFrom<SymbolicValue> for <Tensor as SymbolicType>::Type {
-    type Error = Error;
-    fn try_from(v: SymbolicValue) -> Result<Self> {
-        match v {
-            SymbolicValue::Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch {
-                expected: "Tensor".to_string(),
-                found: v.ty(),
-            }),
-        }
-    }
-}
-
-impl KnownType<crate::symbolic::SymbolicSession> for Tensor {
-    type Type = <Tensor as SymbolicType>::Type;
-    const TY: Ty = Ty::Tensor(InnerTy::Unknown);
 }
 
 impl Ty {
