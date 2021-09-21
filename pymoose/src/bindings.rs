@@ -121,7 +121,7 @@ impl LocalRuntime {
     }
 
     fn evaluate_computation(
-        &self,
+        &mut self,
         py: Python,
         computation: Vec<u8>,
         role_assignments: HashMap<String, String>,
@@ -135,7 +135,7 @@ impl LocalRuntime {
     }
 
     fn evaluate_compiled(
-        &self,
+        &mut self,
         py: Python,
         computation: PyObject,
         role_assignments: HashMap<String, String>,
@@ -185,7 +185,7 @@ impl LocalRuntime {
 
 impl LocalRuntime {
     fn evaluate_compiled_computation(
-        &self,
+        &mut self,
         py: Python,
         computation: &Computation,
         role_assignments: HashMap<String, String>,

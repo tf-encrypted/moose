@@ -41,6 +41,9 @@ pub enum Error {
 
     #[error("Test runtime error: {0}")]
     TestRuntime(String),
+
+    #[error("Session {0} already exists for this executor")]
+    SessionAlreadyExists(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
