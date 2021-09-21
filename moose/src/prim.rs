@@ -1,5 +1,5 @@
 use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, TAG_BYTES};
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::kernels::{
     NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession, Session,
 };
@@ -143,7 +143,7 @@ impl PrimDeriveSeedOp {
         plc: &HostPlacement,
         sync_key: SyncKey,
         key: PrfKey,
-    ) -> Seed {
+    ) -> Result<Seed> {
         let sid = sess.session_id();
         let key_bytes = key.0.as_bytes();
 
@@ -154,11 +154,12 @@ impl PrimDeriveSeedOp {
         nonce.extend(&sid_bytes);
         nonce.extend(&sync_key_bytes);
         sodiumoxide::init().expect("failed to initialize sodiumoxide");
-        let digest = generichash::hash(&nonce, Some(SEED_SIZE), Some(key_bytes)).unwrap();
+        let digest = generichash::hash(&nonce, Some(SEED_SIZE), Some(key_bytes))
+            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
         let mut raw_seed: RngSeed = [0u8; SEED_SIZE];
         raw_seed.copy_from_slice(digest.as_ref());
 
-        Seed(RawSeed(raw_seed), plc.clone())
+        Ok(Seed(RawSeed(raw_seed), plc.clone()))
     }
 }
 

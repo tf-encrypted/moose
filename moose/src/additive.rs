@@ -96,15 +96,15 @@ impl ShapeOp {
         sess: &S,
         adt: &AdditivePlacement,
         x: AbstractAdditiveTensor<HostT>,
-    ) -> AbstractAdditiveShape<ShapeT>
+    ) -> Result<AbstractAdditiveShape<ShapeT>>
     where
         HostPlacement: PlacementShape<S, HostT, ShapeT>,
     {
         let (player0, player1) = adt.host_placements();
         let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
-        AbstractAdditiveShape {
+        Ok(AbstractAdditiveShape {
             shapes: [player0.shape(sess, x0), player1.shape(sess, x1)],
-        }
+        })
     }
 }
 
@@ -711,7 +711,7 @@ impl RepToAdtOp {
         sess: &S,
         adt: &AdditivePlacement,
         x: AbstractReplicatedRingTensor<RingT>,
-    ) -> AbstractAdditiveTensor<RingT>
+    ) -> Result<AbstractAdditiveTensor<RingT>>
     where
         AbstractReplicatedRingTensor<RingT>: Placed<Placement = ReplicatedPlacement>,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
@@ -773,7 +773,7 @@ impl RepToAdtOp {
                 [y0, y1]
             }
         };
-        adt.place(sess, AbstractAdditiveTensor { shares })
+        Ok(adt.place(sess, AbstractAdditiveTensor { shares }))
     }
 }
 

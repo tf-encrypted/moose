@@ -1869,7 +1869,7 @@ impl SendOp {
         _rendezvous_key: RendezvousKey,
         _receiver: Role,
         _x: T,
-    ) -> Unit {
+    ) -> Result<Unit> {
         unimplemented!("Send Op kernel implementation missing, because RuntimeSession does not have role_assignment yet")
     }
 }
@@ -2070,8 +2070,8 @@ kernel! {
 }
 
 impl IdentityOp {
-    fn kernel<S: RuntimeSession, T>(_sess: &S, _plc: &HostPlacement, x: T) -> T {
-        x
+    fn kernel<S: RuntimeSession, T>(_sess: &S, _plc: &HostPlacement, x: T) -> Result<T> {
+        Ok(x)
     }
 }
 
@@ -2209,7 +2209,7 @@ kernel! {
 }
 
 impl OutputOp {
-    fn kernel<S: RuntimeSession, O>(_sess: &S, _plc: &HostPlacement, _x: O) -> Unit {
+    fn kernel<S: RuntimeSession, O>(_sess: &S, _plc: &HostPlacement, _x: O) -> Result<Unit> {
         unimplemented!() // TODO: Save to the environment for the Sync and Async sessions to work.
     }
 }

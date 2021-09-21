@@ -855,7 +855,7 @@ macro_rules! kernel {
 
                     match v0 {
                         Ok(v0) => {
-                            let y = k(sess, plc, v0)?;
+                            let y = k(sess, plc, v0);
                             y.into()
                         }
                         _ => match x0 {
