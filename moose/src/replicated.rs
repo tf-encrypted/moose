@@ -1724,6 +1724,10 @@ kernel! {
 }
 
 impl RepMsbOp {
+
+    // TODO merge bit64_kernel and bit128_kernel; should be possible
+    // after getting rid of const generics
+
     fn bit64_kernel<S: Session, SetupT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -1744,8 +1748,6 @@ impl RepMsbOp {
             &bits,
         )
     }
-
-    // TODO
 
     fn bit128_kernel<S: Session, SetupT, RepBitT>(
         sess: &S,
