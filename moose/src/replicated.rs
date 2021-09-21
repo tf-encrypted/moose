@@ -1,30 +1,16 @@
 //! Placements backed by replicated secret sharing
 use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor};
-use crate::computation::{
-    AdditivePlacement, AdtToRepOp, CanonicalType, Constant, HostPlacement, KnownType, Placed,
-    RepAbsOp, RepAddOp, RepBitDecOp, RepDiagOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepIndexOp,
-    RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepShlDimOp, RepShlOp,
-    RepSliceOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp,
-    SymbolicType,
-};
+use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::{
-    AbstractHostBitArray, AbstractHostFixedTensor, Const, HostBitArray128, HostBitArray64,
-    HostBitTensor, HostFixed128Tensor, HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor,
-    HostShape, RingSize, SliceInfo, N128, N64,
+    AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128, HostBitArray64, HostBitTensor,
+    HostFixed128Tensor, HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
+    SliceInfo,
 };
-use crate::kernels::{
-    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAndSetup, PlacementBitDec,
-    PlacementBitDecSetup, PlacementDaBitProvider, PlacementDeriveSeed, PlacementDiag, PlacementDot,
-    PlacementDotSetup, PlacementFill, PlacementIndex, PlacementIndexAxis, PlacementKeyGen,
-    PlacementMean, PlacementMsb, PlacementMul, PlacementMulSetup, PlacementPlace,
-    PlacementRepToAdt, PlacementReveal, PlacementRingInject, PlacementSampleUniformSeeded,
-    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementShl, PlacementShlDim,
-    PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr, PlacementTruncPrProvider,
-    PlacementXor, PlacementZeros, Session, Tensor,
-};
+use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::symbolic::Symbolic;
+use crate::{Const, Ring, N128, N64};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
@@ -35,8 +21,8 @@ pub struct AbstractReplicatedRingTensor<HostRingT> {
     pub shares: [[HostRingT; 2]; 3],
 }
 
-impl<HostRingT: RingSize> RingSize for AbstractReplicatedRingTensor<HostRingT> {
-    const SIZE: usize = HostRingT::SIZE;
+impl<HostRingT: Ring> Ring for AbstractReplicatedRingTensor<HostRingT> {
+    type BitLength = HostRingT::BitLength;
 }
 
 moose_type!(ReplicatedRing64Tensor = AbstractReplicatedRingTensor<HostRing64Tensor>);
@@ -1752,8 +1738,14 @@ impl RepMsbOp {
         ReplicatedPlacement: PlacementIndex<S, cs!(ReplicatedBitArray64), RepBitT>,
     {
         let bits = rep.bit_decompose(sess, &setup, &x);
-        rep.index(sess, ReplicatedRing64Tensor::SIZE - 1, &bits)
+        rep.index(
+            sess,
+            <ReplicatedRing64Tensor as Ring>::BitLength::VALUE - 1,
+            &bits,
+        )
     }
+
+    // TODO
 
     fn bit128_kernel<S: Session, SetupT, RepBitT>(
         sess: &S,
@@ -1773,7 +1765,11 @@ impl RepMsbOp {
         ReplicatedPlacement: PlacementIndex<S, cs!(ReplicatedBitArray128), RepBitT>,
     {
         let bits = rep.bit_decompose(sess, &setup, &x);
-        rep.index(sess, ReplicatedRing128Tensor::SIZE - 1, &bits)
+        rep.index(
+            sess,
+            <ReplicatedRing128Tensor as Ring>::BitLength::VALUE - 1,
+            &bits,
+        )
     }
 
     fn ring_kernel<S: Session, SetupT, RingT>(
@@ -2028,19 +2024,14 @@ kernel! {
 }
 
 impl RepBitDecOp {
-    // NOTE rustc is currently _not_ checking N against RingSize::SIZE but
-    // we may be able to do so (and should!) in the near future,
-    // see https://github.com/rust-lang/rust/issues/60551
-
-    fn ring_kernel<S: Session, SetupT, ShapeT, HostRingT, HostBitT, RepBitT, N>(
+    fn ring_kernel<S: Session, SetupT, ShapeT, HostRingT, HostBitT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
         x: RepTen<HostRingT>,
     ) -> AbstractReplicatedBitArray<RepBitT, N>
     where
-        HostRingT: RingSize,
-        N: Const,
+        HostRingT: Ring<BitLength = N>,
 
         RepBitT: From<RepTen<HostBitT>>,
         RepBitT: Clone,
@@ -2081,10 +2072,7 @@ impl RepBitDecOp {
         }
         .into();
 
-        // TODO would be nice to have this as compile time check, see NOTE earlier
-        assert_eq!(HostRingT::SIZE, N::VALUE);
-
-        let res = rep.binary_adder(sess, setup, rep_bsl, rep_bsr, HostRingT::SIZE);
+        let res = rep.binary_adder(sess, setup, rep_bsl, rep_bsr, HostRingT::BitLength::VALUE);
         AbstractReplicatedBitArray(res, PhantomData)
     }
 }
