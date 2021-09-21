@@ -1724,7 +1724,6 @@ kernel! {
 }
 
 impl RepMsbOp {
-
     // TODO merge bit64_kernel and bit128_kernel; should be possible
     // after getting rid of const generics
 
