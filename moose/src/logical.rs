@@ -791,11 +791,11 @@ impl ExpandDimsOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (Tensor, Tensor) -> Tensor, ConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
 
 kernel! {
     ConcatOp, [
-        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] attributes[axis] Self::host_kernel),
+        (HostPlacement, vec[Tensor] -> Tensor => [hybrid] attributes[axis] Self::host_kernel),
     ]
 }
 
@@ -804,14 +804,15 @@ impl ConcatOp {
         sess: &S,
         plc: &HostPlacement,
         axis: u32,
-        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>],
     ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
     where
-        HostPlacement: PlacementConcatenate<S, Float32T, Float32T, Float32T>,
-        HostPlacement: PlacementConcatenate<S, Float64T, Float64T, Float64T>,
+        HostPlacement: PlacementConcatenate<S, Float32T, Float32T>,
+        HostPlacement: PlacementConcatenate<S, Float64T, Float64T>,
+        Float32T: Clone,
+        Float64T: Clone,
     {
-        match (x, y) {
+        match xs[0] {
             // (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
             //     let result = plc.concatenate(sess, axis, &x, &y);
             //     AbstractTensor::Fixed64(result)
@@ -820,12 +821,30 @@ impl ConcatOp {
             //     let result = plc.concatenate(sess, axis, &x, &y);
             //     AbstractTensor::Fixed128(result)
             // }
-            (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-                let result = plc.concatenate(sess, axis, &x, &y);
+            AbstractTensor::Float32(_) => {
+                let xs: Vec<Float32T> = xs
+                    .iter()
+                    .map(|x| match x {
+                        AbstractTensor::Float32(x) => (*x).clone(),
+                        _ => {
+                            unimplemented!("ConcatOp can not concatenate tensors of differnt kind")
+                        }
+                    })
+                    .collect();
+                let result = plc.concatenate(sess, axis, &xs);
                 AbstractTensor::Float32(result)
             }
-            (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-                let result = plc.concatenate(sess, axis, &x, &y);
+            AbstractTensor::Float64(_) => {
+                let xs: Vec<Float64T> = xs
+                    .iter()
+                    .map(|x| match x {
+                        AbstractTensor::Float64(x) => (*x).clone(),
+                        _ => {
+                            unimplemented!("ConcatOp can not concatenate tensors of differnt kind")
+                        }
+                    })
+                    .collect();
+                let result = plc.concatenate(sess, axis, &xs);
                 AbstractTensor::Float64(result)
             }
             _ => unimplemented!("ConcatOp missing an implementation"), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!

@@ -339,14 +339,14 @@ impl FloatingpointExpandDimsOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (Float32Tensor, Float32Tensor) -> Float32Tensor, FloatingpointConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (Float64Tensor, Float64Tensor) -> Float64Tensor, FloatingpointConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Float32Tensor] -> Float32Tensor, FloatingpointConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Float64Tensor] -> Float64Tensor, FloatingpointConcatOp);
 
 kernel! {
     FloatingpointConcatOp,
     [
-        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, vec[Float32Tensor] -> Float32Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, vec[Float64Tensor] -> Float64Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
     ]
 }
 
@@ -355,16 +355,20 @@ impl FloatingpointConcatOp {
         sess: &S,
         plc: &HostPlacement,
         axis: u32,
-        x: FloatTensor<HostFloatT>,
-        y: FloatTensor<HostFloatT>,
+        xs: &[FloatTensor<HostFloatT>],
     ) -> FloatTensor<HostFloatT>
     where
-        HostPlacement: PlacementConcatenate<S, HostFloatT, HostFloatT, HostFloatT>,
+        HostPlacement: PlacementConcatenate<S, HostFloatT, HostFloatT>,
+        HostFloatT: Clone,
     {
-        let FloatTensor::Host(x) = x;
-        let FloatTensor::Host(y) = y;
+        let xs: Vec<HostFloatT> = xs
+            .iter()
+            .map(|x| match x {
+                FloatTensor::Host(x) => (*x).clone(),
+            })
+            .collect();
 
-        let z = plc.concatenate(sess, axis, &x, &y);
+        let z = plc.concatenate(sess, axis, &xs);
         FloatTensor::Host(z)
     }
 }

@@ -261,6 +261,11 @@ pub trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
     fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Y>>;
 }
 
+pub trait VariadicKernel<S: Session, P, XS, Y> {
+    #[allow(clippy::type_complexity)] // TODO
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Y>>;
+}
+
 pub(crate) trait NullaryKernelCheck<S: Session, P, Y>
 where
     Self: NullaryKernel<S, P, Y>,
@@ -282,6 +287,12 @@ where
 pub(crate) trait TernaryKernelCheck<S: Session, P, X0, X1, X2, Y>
 where
     Self: TernaryKernel<S, P, X0, X1, X2, Y>,
+{
+}
+
+pub(crate) trait VariadicKernelCheck<S: Session, P, XS, Y>
+where
+    Self: VariadicKernel<S, P, XS, Y>,
 {
 }
 
@@ -616,8 +627,8 @@ pub trait PlacementSqueeze<S: Session, T, O> {
     fn squeeze(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
 
-pub trait PlacementConcatenate<S: Session, T1, T2, O> {
-    fn concatenate(&self, sess: &S, axis: u32, x: &T1, y: &T2) -> O;
+pub trait PlacementConcatenate<S: Session, TS, O> {
+    fn concatenate(&self, sess: &S, axis: u32, xs: &[TS]) -> O;
 }
 
 pub trait PlacementTranspose<S: Session, T, O> {
@@ -687,7 +698,6 @@ impl Compile<SyncKernel> for Operator {
             HostDot(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostMean(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostOnes(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostConcat(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostExpandDims(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostReshape(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostAtLeast2D(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -695,6 +705,7 @@ impl Compile<SyncKernel> for Operator {
             HostSum(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostTranspose(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostInverse(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostConcat(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingNeg(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -791,7 +802,6 @@ impl Compile<AsyncKernel> for Operator {
             HostDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostMean(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostOnes(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostConcat(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostExpandDims(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostReshape(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostAtLeast2D(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -799,6 +809,7 @@ impl Compile<AsyncKernel> for Operator {
             HostSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostTranspose(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostInverse(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostConcat(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingNeg(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -888,6 +899,12 @@ macro_rules! signature {
             arg0: $t0,
             arg1: $t1,
             arg2: $t2,
+            ret: $ret,
+        })
+    };
+    (vec[$ts: pat] -> $ret: pat) => {
+        Signature::Variadic(VariadicSignature {
+            args: $ts,
             ret: $ret,
         })
     };
@@ -1033,22 +1050,22 @@ impl Compile<Kernel> for HostConcatOp {
         use crate::host::concatenate;
         let axis = self.axis as usize;
         match self.sig {
-            signature![(_, _) -> Ty::HostFloat32Tensor] => {
+            signature![vec[_] -> Ty::HostFloat32Tensor] => {
                 closure_kernel!(vec[HostFloat32Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::HostFloat64Tensor] => {
+            signature![vec[_] -> Ty::HostFloat64Tensor] => {
                 closure_kernel!(vec[HostFloat64Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::HostInt32Tensor] => {
+            signature![vec[_]  -> Ty::HostInt32Tensor] => {
                 closure_kernel!(vec[HostInt32Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::HostInt64Tensor] => {
+            signature![vec[_]  -> Ty::HostInt64Tensor] => {
                 closure_kernel!(vec[HostInt64Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::HostUint32Tensor] => {
+            signature![vec[_] -> Ty::HostUint32Tensor] => {
                 closure_kernel!(vec[HostUint32Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::HostUint64Tensor] => {
+            signature![vec[_]  -> Ty::HostUint64Tensor] => {
                 closure_kernel!(vec[HostUint64Tensor], |xs| concatenate(axis, &xs))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),

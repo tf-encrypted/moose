@@ -504,6 +504,7 @@ pub enum Signature {
     Unary(UnarySignature),
     Binary(BinarySignature),
     Ternary(TernarySignature),
+    Variadic(VariadicSignature),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
@@ -532,6 +533,12 @@ pub struct TernarySignature {
     pub ret: Ty,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
+pub struct VariadicSignature {
+    pub args: Ty,
+    pub ret: Ty,
+}
+
 impl From<NullarySignature> for Signature {
     fn from(s: NullarySignature) -> Signature {
         Signature::Nullary(s)
@@ -556,6 +563,12 @@ impl From<TernarySignature> for Signature {
     }
 }
 
+impl From<VariadicSignature> for Signature {
+    fn from(s: VariadicSignature) -> Signature {
+        Signature::Variadic(s)
+    }
+}
+
 impl Signature {
     pub fn nullary(ret: Ty) -> Signature {
         NullarySignature { ret }.into()
@@ -575,12 +588,17 @@ impl Signature {
         }
         .into()
     }
+    pub fn variadic(args: Ty, ret: Ty) -> Signature {
+        VariadicSignature { args, ret }.into()
+    }
+
     pub fn ret(&self) -> Ty {
         match self {
             Signature::Nullary(s) => s.ret,
             Signature::Unary(s) => s.ret,
             Signature::Binary(s) => s.ret,
             Signature::Ternary(s) => s.ret,
+            Signature::Variadic(s) => s.ret,
         }
     }
 
@@ -592,16 +610,18 @@ impl Signature {
             (Signature::Ternary(s), 0) => Ok(s.arg0),
             (Signature::Ternary(s), 1) => Ok(s.arg1),
             (Signature::Ternary(s), 2) => Ok(s.arg2),
+            (Signature::Variadic(s), _) => Ok(s.args),
             _ => Err(Error::OperandUnavailable),
         }
     }
 
-    pub fn arity(&self) -> usize {
+    pub fn arity(&self) -> Option<usize> {
         match self {
-            Signature::Nullary(_) => 0,
-            Signature::Unary(_) => 1,
-            Signature::Binary(_) => 2,
-            Signature::Ternary(_) => 3,
+            Signature::Nullary(_) => Some(0),
+            Signature::Unary(_) => Some(1),
+            Signature::Binary(_) => Some(2),
+            Signature::Ternary(_) => Some(3),
+            Signature::Variadic(_) => None,
         }
     }
 
@@ -618,6 +638,7 @@ impl Signature {
                 s.arg2.flatten(),
                 s.ret.flatten(),
             ),
+            Signature::Variadic(s) => Signature::variadic(s.args.flatten(), s.ret.flatten()),
         }
     }
 
@@ -627,6 +648,8 @@ impl Signature {
             (Signature::Unary(s), Signature::Unary(o)) => s.merge(o),
             (Signature::Binary(s), Signature::Binary(o)) => s.merge(o),
             (Signature::Ternary(s), Signature::Ternary(o)) => s.merge(o),
+            (Signature::Variadic(s), o) => s.merge(o),
+
             (Signature::Nullary(s), o) => Err(anyhow::anyhow!(
                 "Can not merge {:?} with an incompatible signature {:?}",
                 s,
@@ -702,6 +725,56 @@ impl TernarySignature {
             self.ret = new_type;
         }
         Ok(())
+    }
+}
+
+impl VariadicSignature {
+    pub fn merge(&mut self, another: &Signature) -> anyhow::Result<()> {
+        match another {
+            Signature::Variadic(sig) => {
+                if let Some(new_type) = self.args.merge(&sig.args) {
+                    self.args = new_type;
+                }
+                if let Some(new_type) = self.ret.merge(&sig.ret) {
+                    self.ret = new_type;
+                }
+                Ok(())
+            }
+            Signature::Unary(sig) => {
+                if self.args == sig.arg0 {
+                    if let Some(new_type) = self.args.merge(&sig.arg0) {
+                        self.args = new_type;
+                    }
+                }
+
+                if let Some(new_type) = self.ret.merge(&sig.ret) {
+                    self.ret = new_type;
+                }
+                Ok(())
+            }
+            Signature::Binary(sig) => {
+                if self.args == sig.arg0 && self.args == sig.arg1 {
+                    if let Some(new_type) = self.args.merge(&sig.arg0) {
+                        self.args = new_type;
+                    }
+
+                    if let Some(new_type) = self.args.merge(&sig.arg1) {
+                        self.args = new_type;
+                    }
+                }
+
+                if let Some(new_type) = self.ret.merge(&sig.ret) {
+                    self.ret = new_type;
+                }
+
+                Ok(())
+            }
+            o => Err(anyhow::anyhow!(
+                "Can not merge {:?} with an incompatible signature {:?}",
+                self,
+                o
+            )),
+        }
     }
 }
 
