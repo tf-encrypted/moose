@@ -87,7 +87,7 @@ impl RendezvousKey {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SessionId(pub(crate) [u8; TAG_BYTES]);
 
 impl std::fmt::Display for SessionId {

@@ -5,6 +5,7 @@ use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::symbolic::Symbolic;
+use crate::{Const, Ring, N128, N64};
 use macros::with_context;
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
@@ -18,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
 use std::convert::TryFrom;
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::num::Wrapping;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 use std::ops::{BitAnd, BitXor, Neg, Shl, Shr};
@@ -711,7 +713,7 @@ where {
         let raw_shape = shape.0 .0;
         let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
 
-        let bit_rep: Vec<_> = (0..HostRing64Tensor::SIZE)
+        let bit_rep: Vec<_> = (0..<HostRing64Tensor as Ring>::BitLength::VALUE)
             .map(|i| (&x.0 >> i) & (&ones))
             .collect();
         let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
@@ -732,7 +734,7 @@ where {
         let raw_shape = shape.0 .0;
         let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
 
-        let bit_rep: Vec<_> = (0..HostRing128Tensor::SIZE)
+        let bit_rep: Vec<_> = (0..<HostRing128Tensor as Ring>::BitLength::VALUE)
             .map(|i| (&x.0 >> i) & (&ones))
             .collect();
 
@@ -751,7 +753,7 @@ where {
         let raw_shape = shape.0 .0;
         let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
 
-        let bit_rep: Vec<_> = (0..HostRing64Tensor::SIZE)
+        let bit_rep: Vec<_> = (0..<HostRing64Tensor as Ring>::BitLength::VALUE)
             .map(|i| (&x.0 >> i) & (&ones))
             .collect();
 
@@ -771,7 +773,7 @@ where {
         let raw_shape = shape.0 .0;
         let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
 
-        let bit_rep: Vec<_> = (0..HostRing128Tensor::SIZE)
+        let bit_rep: Vec<_> = (0..<HostRing128Tensor as Ring>::BitLength::VALUE)
             .map(|i| (&x.0 >> i) & (&ones))
             .collect();
 
@@ -1628,20 +1630,20 @@ impl RingInjectOp {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractHostBitArray<HostBitTensorT, const N: usize>(pub HostBitTensorT);
+pub struct AbstractHostBitArray<HostBitTensorT, N>(pub HostBitTensorT, pub PhantomData<N>);
 
-pub type HostBitArray64 = AbstractHostBitArray<HostBitTensor, 64>;
+pub type HostBitArray64 = AbstractHostBitArray<HostBitTensor, N64>;
 
 #[cfg(test)]
-impl<const N: usize> AbstractHostBitArray<HostBitTensor, N> {
+impl<N> AbstractHostBitArray<HostBitTensor, N> {
     pub(crate) fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> Self {
         // TODO check that first dimension equals N
-        AbstractHostBitArray::<_, N>(HostBitTensor::from_raw_plc(raw_tensor, plc))
+        AbstractHostBitArray::<_, N>(HostBitTensor::from_raw_plc(raw_tensor, plc), PhantomData)
     }
 }
 
 // TODO implement using moose_type macro
-impl<HostBitTensorT: Placed, const N: usize> Placed for AbstractHostBitArray<HostBitTensorT, N> {
+impl<HostBitTensorT: Placed, N> Placed for AbstractHostBitArray<HostBitTensorT, N> {
     type Placement = HostBitTensorT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -1650,16 +1652,16 @@ impl<HostBitTensorT: Placed, const N: usize> Placed for AbstractHostBitArray<Hos
 }
 
 impl SymbolicType for HostBitArray64 {
-    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, 64>>;
+    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N64>>;
 }
 
-pub type HostBitArray128 = AbstractHostBitArray<HostBitTensor, 128>;
+pub type HostBitArray128 = AbstractHostBitArray<HostBitTensor, N128>;
 
 impl SymbolicType for HostBitArray128 {
-    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, 128>>;
+    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N128>>;
 }
 
-impl<HostBitT: Placed, const N: usize> From<AbstractHostBitArray<HostBitT, N>>
+impl<HostBitT: Placed, N> From<AbstractHostBitArray<HostBitT, N>>
     for Symbolic<AbstractHostBitArray<HostBitT, N>>
 where
     HostBitT: Placed<Placement = HostPlacement>,
@@ -1669,7 +1671,7 @@ where
     }
 }
 
-impl<HostBitT, const N: usize> TryFrom<Symbolic<AbstractHostBitArray<HostBitT, N>>>
+impl<HostBitT, N> TryFrom<Symbolic<AbstractHostBitArray<HostBitT, N>>>
     for AbstractHostBitArray<HostBitT, N>
 where
     HostBitT: Placed<Placement = HostPlacement>,
@@ -1721,6 +1723,14 @@ pub struct AbstractHostRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement)
 moose_type!(HostRing64Tensor = [atomic] AbstractHostRingTensor<u64>);
 moose_type!(HostRing128Tensor = [atomic] AbstractHostRingTensor<u128>);
 
+impl Ring for HostRing64Tensor {
+    type BitLength = N64;
+}
+
+impl Ring for HostRing128Tensor {
+    type BitLength = N128;
+}
+
 impl<T> Placed for AbstractHostRingTensor<T> {
     type Placement = HostPlacement;
 
@@ -1735,18 +1745,6 @@ impl<S: Session, T> Tensor<S> for AbstractHostRingTensor<T> {
 
 impl<S: Session, T> Tensor<S> for Symbolic<AbstractHostRingTensor<T>> {
     type Scalar = T;
-}
-
-pub trait RingSize {
-    const SIZE: usize;
-}
-
-impl RingSize for HostRing64Tensor {
-    const SIZE: usize = 64;
-}
-
-impl RingSize for HostRing128Tensor {
-    const SIZE: usize = 128;
 }
 
 pub trait FromRawPlc<P, T> {
@@ -1773,8 +1771,8 @@ where
     }
 }
 
-impl<R: RingSize + Placed> RingSize for Symbolic<R> {
-    const SIZE: usize = R::SIZE;
+impl<R: Ring + Placed> Ring for Symbolic<R> {
+    type BitLength = R::BitLength;
 }
 
 impl<S: Session, T> PlacementPlace<S, AbstractHostRingTensor<T>> for HostPlacement
