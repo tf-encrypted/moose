@@ -352,7 +352,7 @@ macro_rules! values {
         #[derive(PartialEq, Clone, Debug)]
         #[allow(clippy::large_enum_variant)]
         pub enum SymbolicValue {
-            $($val(<$val as SymbolicType>::Type),)+
+            $($val(Box<<$val as SymbolicType>::Type>),)+
         }
 
         impl SymbolicValue {
@@ -373,7 +373,7 @@ macro_rules! values {
         $(
         impl From<<$val as SymbolicType>::Type> for SymbolicValue {
             fn from(x: <$val as SymbolicType>::Type) -> Self {
-                SymbolicValue::$val(x)
+                SymbolicValue::$val(Box::new(x))
             }
         }
         )+
@@ -383,7 +383,7 @@ macro_rules! values {
             type Error = Error;
             fn try_from(v: SymbolicValue) -> Result<Self> {
                 match v {
-                    SymbolicValue::$val(x) => Ok(x),
+                    SymbolicValue::$val(x) => Ok(*x),
                     _ => Err(Error::TypeMismatch {
                         expected: stringify!($val).to_string(),
                         found: v.ty(),
