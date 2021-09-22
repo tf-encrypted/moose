@@ -265,6 +265,25 @@ fn lower_op(op: &Operation) -> Operation {
             inputs: op.inputs.clone(),
             placement: op.placement.clone(),
         },
+        Operator::Input(ref i) => Operation {
+            name: op.name.clone(),
+            kind: InputOp {
+                sig: Signature::nullary(lower_ty(i.sig.ret())),
+                arg_name: i.arg_name.clone(),
+            }
+            .into(),
+            inputs: op.inputs.clone(),
+            placement: op.placement.clone(),
+        },
+        Operator::Output(ref i) => Operation {
+            name: op.name.clone(),
+            kind: OutputOp {
+                sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
+            }
+            .into(),
+            inputs: op.inputs.clone(),
+            placement: op.placement.clone(),
+        },
 
         _ => op.clone(),
     }
