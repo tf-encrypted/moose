@@ -54,11 +54,7 @@ fn lower_op(op: &Operation) -> Operation {
         Operator::Concat(ref i) => Operation {
             name: op.name.clone(),
             kind: HostConcatOp {
-                sig: Signature::binary(
-                    lower_ty(i.sig.arg(0).unwrap()),
-                    lower_ty(i.sig.arg(1).unwrap()),
-                    lower_ty(i.sig.ret()),
-                ),
+                sig: Signature::variadic(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 axis: i.axis,
             }
             .into(),

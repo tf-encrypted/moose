@@ -381,7 +381,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, VariadicKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -643,7 +643,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
