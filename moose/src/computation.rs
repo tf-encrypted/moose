@@ -11,7 +11,7 @@ use crate::host::{
     HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::kernels::Session;
-use crate::logical::Tensor;
+use crate::logical::{Tensor, TensorDType};
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::{
     ReplicatedBitArray128, ReplicatedBitArray64, ReplicatedBitTensor, ReplicatedFixed128Tensor,
@@ -245,15 +245,6 @@ impl From<u128> for Constant {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
-pub enum InnerTy {
-    Fixed64 { precision: u32 },
-    Fixed128 { precision: u32 },
-    Float32,
-    Float64,
-    Unknown,
-}
-
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
 macro_rules! values {
@@ -408,7 +399,7 @@ values![
     Seed,
     PrfKey,
     String,
-    Tensor(InnerTy::Unknown),
+    Tensor(TensorDType::Unknown),
     HostBitTensor,
     HostBitArray64,
     HostBitArray128,
@@ -492,7 +483,7 @@ impl Placed for Unit {
 impl Ty {
     pub fn flatten(&self) -> Ty {
         match self {
-            Ty::Tensor(_) => Ty::Tensor(InnerTy::Unknown),
+            Ty::Tensor(_) => Ty::Tensor(TensorDType::Unknown),
             _ => *self,
         }
     }

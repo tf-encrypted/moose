@@ -1,5 +1,6 @@
 use crate::computation::*;
 use crate::host::{RawShape, SliceInfo, SliceInfoElem};
+use crate::logical::TensorDType;
 use crate::prim::{RawPrfKey, RawSeed, SyncKey};
 use nom::{
     branch::{alt, permutation},
@@ -861,7 +862,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Float64" => Ok((i, Ty::Float64)),
         "Ring64" => Ok((i, Ty::Ring64)),
         "Ring128" => Ok((i, Ty::Ring128)),
-        "Tensor" => Ok((i, Ty::Tensor(InnerTy::Float64))), // TODO: Find the way to represent inner in the textual
+        "Tensor" => Ok((i, Ty::Tensor(TensorDType::Float64))), // TODO: Find the way to represent inner in the textual
         _ => Err(Error(make_error(input, ErrorKind::Tag))),
     }
 }
