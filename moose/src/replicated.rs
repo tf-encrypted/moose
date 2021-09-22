@@ -2110,7 +2110,13 @@ where
     }
 }
 trait DivNorm<S: Session, SetupT, RingT, N: Const> {
-    fn norm(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> (RepTen<RingT>, RepTen<RingT>);
+    fn norm(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        max_bits: usize,
+        x: RepTen<RingT>,
+    ) -> (RepTen<RingT>, RepTen<RingT>);
 }
 
 impl<S: Session, SetupT, RingT, N: Const> DivNorm<S, SetupT, RingT, N> for ReplicatedPlacement
@@ -2147,7 +2153,13 @@ where
     ReplicatedPlacement:
         PlacementMulSetup<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
 {
-    fn norm(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> (RepTen<RingT>, RepTen<RingT>) {
+    fn norm(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        max_bits: usize,
+        x: RepTen<RingT>,
+    ) -> (RepTen<RingT>, RepTen<RingT>) {
         let rep = self;
         let msb = rep.msb(sess, setup, &x.clone().into());
         let sign = rep.sign_from_msb(sess, &msb.into());
@@ -2155,8 +2167,10 @@ where
         let standard_typed_x: st!(RepTen<RingT>) = x.into();
 
         let abs_x = rep.mul_setup(sess, setup, &sign, &standard_typed_x);
+        // (Dragos) TODO: optimize this in the future, we don't need all bits (only max_bits from the bit-decomposition)
         let x_bits = rep.bit_decompose(sess, setup, &abs_x);
-        let top_most = rep.top_most(sess, setup, x_bits);
+
+        let top_most = rep.top_most(sess, setup, max_bits, x_bits);
 
         let upshifted = rep.mul_setup(sess, setup, &standard_typed_x, &top_most);
         let signed_topmost = rep.mul_setup(sess, setup, &sign, &top_most);
@@ -2165,7 +2179,7 @@ where
 }
 
 trait TopMost<S: Session, SetupT, RepBitArrayT, RepRingT, N: Const> {
-    fn top_most(&self, sess: &S, setup: &SetupT, x: RepBitArrayT) -> RepRingT;
+    fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: RepBitArrayT) -> RepRingT;
 }
 
 impl<S: Session, SetupT, RepRingT, N: Const>
@@ -2199,27 +2213,28 @@ where
         &self,
         sess: &S,
         setup: &SetupT,
+        max_bits: usize,
         x: st!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
     ) -> RepRingT {
-        let ring_size = RepRingT::BitLength::VALUE;
         let rep = self;
         let x_rev = rep.rev_dim(sess, &x);
         let y = rep.prefix_or(sess, setup, x_rev);
         let y_vec: Vec<_> = y
             .iter()
+            .take(max_bits)
             .map(|item| rep.ring_inject(sess, 0, item))
             .collect();
-        let z: Vec<_> = (0..ring_size - 1)
+        let z: Vec<_> = (0..max_bits - 1)
             .map(|i| rep.sub(sess, &y_vec[i], &y_vec[i + 1]))
             .collect();
 
-        let s_vec: Vec<_> = (0..ring_size - 1)
-            .map(|i| rep.shl(sess, ring_size - i - 1, &z[i]))
+        let s_vec: Vec<_> = (0..max_bits - 1)
+            .map(|i| rep.shl(sess, max_bits - i - 1, &z[i]))
             .collect();
 
         // note this can be replaced with a variadic kernel for replicated sum operation
-        let mut res = rep.shl(sess, 0, &s_vec[ring_size - 1]);
-        for item in s_vec.iter().take(ring_size).skip(1) {
+        let mut res = rep.shl(sess, 0, &s_vec[max_bits - 1]);
+        for item in s_vec.iter().take(max_bits).skip(1) {
             res = rep.add(sess, &res, item);
         }
         res
@@ -2227,7 +2242,14 @@ where
 }
 
 trait ApproximateReciprocal<S: Session, SetupT, RingT, N: Const> {
-    fn approximate_reciprocal(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> RepTen<RingT>;
+    fn approximate_reciprocal(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        int_precision: usize,
+        frac_precision: usize,
+        x: RepTen<RingT>,
+    ) -> RepTen<RingT>;
 }
 
 impl<S: Session, SetupT, RingT, N: Const> ApproximateReciprocal<S, SetupT, RingT, N>
@@ -2235,9 +2257,18 @@ impl<S: Session, SetupT, RingT, N: Const> ApproximateReciprocal<S, SetupT, RingT
 where
     ReplicatedPlacement: DivNorm<S, SetupT, RingT, N>,
 {
-    fn approximate_reciprocal(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> RepTen<RingT> {
+    fn approximate_reciprocal(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        int_precision: usize,
+        frac_precision: usize,
+        x: RepTen<RingT>,
+    ) -> RepTen<RingT> {
         let rep = self;
-        let (upshifted, _signed_topmost) = rep.norm(sess, setup, x);
+        let total_precision = int_precision + frac_precision;
+
+        let (upshifted, _signed_topmost) = rep.norm(sess, setup, total_precision, x);
         upshifted
     }
 }
@@ -3243,5 +3274,28 @@ mod tests {
     )]
     fn test_rep_bit_dec_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u8>) {
         test_rep_bit_dec64(x, y);
+    }
+
+    #[test]
+    fn test_norm() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let x_shared = rep.share(&sess, &setup, &x);
+
+        let (upshifted, topmost) = rep.norm(&sess, &setup, 12, x_shared);
+        let upshifted_clear = alice.reveal(&sess, &upshifted);
+        let topmost_clear = alice.reveal(&sess, &topmost);
+
+        assert_eq!(6, upshifted_clear.0[[]].0);
     }
 }
