@@ -275,7 +275,7 @@ impl RepShareOp {
     where
         ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostRingT, RepRingT>,
     {
-        AbstractReplicatedFixedTensor(plc.share(sess, &setup, &x.0))
+        AbstractReplicatedFixedTensor(plc.share(sess, &setup, &x.tensor))
     }
 
     fn ring_kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
@@ -422,7 +422,10 @@ impl RepRevealOp {
         HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
     {
         let x = receiver.reveal(sess, &xe.0);
-        AbstractHostFixedTensor(x)
+        AbstractHostFixedTensor {
+            tensor: x,
+            precision: 27,
+        } // TODO fix that when AbstractReplicatedFixedTensor has precision as well
     }
 
     fn bit_array_kernel<S: Session, RepBitT, HostBitT, N>(

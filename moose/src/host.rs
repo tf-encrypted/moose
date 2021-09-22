@@ -1723,34 +1723,19 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractHostFixedTensor<HostRingT>(pub HostRingT);
+pub struct AbstractHostFixedTensor<HostRingT> {
+    pub tensor: HostRingT,
+    pub precision: u32,
+}
 
 moose_type!(HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>);
 moose_type!(HostFixed128Tensor = AbstractHostFixedTensor<HostRing128Tensor>);
-
-impl<T> From<T> for HostFixed64Tensor
-where
-    HostRing64Tensor: From<T>,
-{
-    fn from(x: T) -> Self {
-        AbstractHostFixedTensor(HostRing64Tensor::from(x))
-    }
-}
-
-impl<T> From<T> for HostFixed128Tensor
-where
-    HostRing128Tensor: From<T>,
-{
-    fn from(x: T) -> Self {
-        AbstractHostFixedTensor(HostRing128Tensor::from(x))
-    }
-}
 
 impl<RingT: Placed> Placed for AbstractHostFixedTensor<RingT> {
     type Placement = RingT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        self.0.placement()
+        self.tensor.placement()
     }
 }
 
