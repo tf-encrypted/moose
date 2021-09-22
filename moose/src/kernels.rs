@@ -234,6 +234,7 @@ pub trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
 }
 
 pub trait VariadicKernel<S: Session, P, XS, Y> {
+    #[allow(clippy::type_complexity)] // TODO
     fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Y>>;
 }
 
@@ -1006,7 +1007,6 @@ modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32
 kernel! {
     HostConcatOp, [
         (HostPlacement, vec[HostFloat64Tensor] -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-        (ReplicatedPlacement, vec[Fixed128Tensor] -> Fixed128Tensor => [hybrid] attributes[axis] Self::rep_kernel),
     ]
 }
 

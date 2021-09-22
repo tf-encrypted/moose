@@ -974,19 +974,6 @@ impl HostConcatOp {
         let c = ndarray::concatenate(ax, &arr).expect("Failed to concatenate arrays with ndarray");
         HostTensor(c, plc.clone())
     }
-
-    pub fn rep_kernel<S: Session>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        axis: u32,
-        xs: &[st!(Fixed128Tensor)],
-    ) -> st!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        // ReplicatedPlacement: PlacementSum<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        unimplemented!()
-    }
 }
 
 impl HostTransposeOp {
@@ -2735,62 +2722,23 @@ mod tests {
 
     #[test]
     fn test_concatenate() {
-        let sig = VariadicSignature {
-            args: <HostFloat64Tensor as KnownType<SyncSession>>::TY,
-            ret: <HostFloat64Tensor as KnownType<SyncSession>>::TY,
-        };
-
-        let op = HostConcatOp {
-            sig: sig.into(),
-            axis: 0,
-        };
-
-        let plc = Placement::Host(HostPlacement {
-            owner: "TODO".into(),
-        });
-
-        let fun = <HostConcatOp as DispatchKernel<SyncSession>>::compile(&op, &plc).unwrap();
-
-        let sess = SyncSession::default();
-
-        let a = HostTensor::<f64>::from(
+        let a = HostTensor::<f32>::from(
             array![[[1.0, 2.0], [3.0, 4.0]]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let b = HostTensor::<f64>::from(
+        let b = HostTensor::<f32>::from(
             array![[[1.0, 2.0], [3.0, 4.0]]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-
-        let c = HostTensor::<f64>::from(
-            array![[[1.0, 2.0], [3.0, 4.0]]]
+        let expected = HostTensor::<f32>::from(
+            array![[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-
-        let vs: Vec<Value> = [a, b, c].iter().map(|x| x.clone().into()).collect();
-        let res = fun(&sess, vs).unwrap();
-
-        let expected = HostTensor::<f64>::from(
-            array![
-                [[1.0, 2.0], [3.0, 4.0]],
-                [[1.0, 2.0], [3.0, 4.0]],
-                [[1.0, 2.0], [3.0, 4.0]]
-            ]
-            .into_dimensionality::<IxDyn>()
-            .unwrap(),
-        );
-
-        match res {
-            Value::HostFloat64Tensor(tensor) => {
-                assert_eq!(tensor, expected)
-            }
-            _ => {
-                panic!("result was not a host float 64 tensor")
-            }
-        }
+        let conc = concatenate(0, &vec![a, b]);
+        assert_eq!(conc, expected)
     }
 
     #[test]
