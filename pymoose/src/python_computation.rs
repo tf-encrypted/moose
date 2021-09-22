@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use moose::compilation::typing::update_types_one_hop;
+    use moose::compilation::compile_passes;
+    use moose::compilation::Pass;
     use moose::execution::*;
     use moose::storage::{LocalSyncStorage, SyncStorage};
     use moose::{computation::*, host::HostFloat64Tensor, python_computation::PyComputation};
@@ -18,7 +19,8 @@ mod tests {
         let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
 
         let rust_comp: Computation = comp.try_into().unwrap();
-        let rust_comp = update_types_one_hop(&rust_comp).unwrap().unwrap();
+        let rust_comp =
+            compile_passes(&rust_comp, &[Pass::Typing, Pass::DeprecatedLogical]).unwrap();
         rust_comp.toposort().unwrap()
     }
 
@@ -215,7 +217,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x1) * HostFloat64Tensor::from(y1))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x1) * HostFloat64Tensor::from(y1)
+            ))
         );
 
         let x2 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -230,7 +234,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x2) + HostFloat64Tensor::from(y2))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x2) + HostFloat64Tensor::from(y2)
+            ))
         );
 
         let x3 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -245,7 +251,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x3) - HostFloat64Tensor::from(y3))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x3) - HostFloat64Tensor::from(y3)
+            ))
         );
 
         let x4 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -260,7 +268,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x4).dot(HostFloat64Tensor::from(y4)))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x4).dot(HostFloat64Tensor::from(y4))
+            ))
         );
     }
 
@@ -390,7 +400,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x1) * HostFloat64Tensor::from(y1))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x1) * HostFloat64Tensor::from(y1)
+            ))
         );
 
         let x2 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -405,7 +417,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x2) + HostFloat64Tensor::from(y2))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x2) + HostFloat64Tensor::from(y2)
+            ))
         );
 
         let x3 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -420,7 +434,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x3) - HostFloat64Tensor::from(y3))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x3) - HostFloat64Tensor::from(y3)
+            ))
         );
 
         let x4 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -435,7 +451,9 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(x4).dot(HostFloat64Tensor::from(y4)))
+            Value::HostFloat64Tensor(Box::new(
+                HostFloat64Tensor::from(x4).dot(HostFloat64Tensor::from(y4))
+            ))
         );
     }
     #[test]
@@ -719,7 +737,7 @@ def f(arg1):
         let y1 = x1.mapv(f64::abs);
         assert_eq!(
             result,
-            Value::HostFloat64Tensor(HostFloat64Tensor::from(y1))
+            Value::HostFloat64Tensor(Box::new(HostFloat64Tensor::from(y1)))
         );
     }
 }

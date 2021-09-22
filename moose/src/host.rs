@@ -1,12 +1,10 @@
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::fixedpoint::Fixed128Tensor;
 use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::symbolic::Symbolic;
 use crate::{Const, Ring, N128, N64};
-use macros::with_context;
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray::Slice;
@@ -112,6 +110,17 @@ impl<S: Session> PlacementPlace<S, HostShape> for HostPlacement {
     }
 }
 
+// TODO(lvorona): should probably become part of moose_type!
+impl TryFrom<Symbolic<HostShape>> for HostShape {
+    type Error = ();
+    fn try_from(v: Symbolic<HostShape>) -> std::result::Result<Self, ()> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(()),
+        }
+    }
+}
+
 /// One slice for slicing op
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SliceInfoElem {
@@ -171,31 +180,8 @@ impl<S: Session, T> PlacementPlace<S, HostTensor<T>> for HostPlacement {
     }
 }
 
-kernel! {
-    HostAddOp,
-    [
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
-    ]
-}
-
-impl HostAddOp {
-    fn rep_kernel<S: Session>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        x: cs!(Fixed128Tensor),
-        y: cs!(Fixed128Tensor),
-    ) -> cs!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        ReplicatedPlacement:
-            PlacementAdd<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        with_context!(plc, sess, x + y)
-    }
-}
-
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostRing64Tensor, RingFixedpointMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostRing128Tensor, RingFixedpointMeanOp);
+modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostRing64Tensor, RingFixedpointMeanOp);
+modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostRing128Tensor, RingFixedpointMeanOp);
 
 kernel! {
     RingFixedpointMeanOp,
@@ -241,6 +227,17 @@ impl RingFixedpointMeanOp {
     }
 }
 
+modelled!(PlacementAdd::add, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostAddOp);
+
+kernel! {
+    HostAddOp,
+    [
+        (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+    ]
+}
+
 impl HostAddOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
@@ -255,30 +252,18 @@ impl HostAddOp {
     }
 }
 
+modelled!(PlacementSub::sub, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostSubOp);
+
 kernel! {
     HostSubOp,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
     ]
 }
 
 impl HostSubOp {
-    fn rep_kernel<S: Session>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        x: cs!(Fixed128Tensor),
-        y: cs!(Fixed128Tensor),
-    ) -> cs!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        ReplicatedPlacement:
-            PlacementSub<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        with_context!(plc, sess, x - y)
-    }
-
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -292,32 +277,15 @@ impl HostSubOp {
     }
 }
 
+modelled!(PlacementMul::mul, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostMulOp);
+
 kernel! {
     HostMulOp,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
     ]
-}
-
-impl HostMulOp {
-    fn rep_kernel<S: Session>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        x: cs!(Fixed128Tensor),
-        y: cs!(Fixed128Tensor),
-    ) -> cs!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        ReplicatedPlacement:
-            PlacementMul<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-        ReplicatedPlacement: PlacementTruncPr<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        let mul = with_context!(plc, sess, x * y);
-        // TODO: Grab precision (27) from the type
-        plc.trunc_pr(sess, 27, &mul)
-    }
 }
 
 impl HostMulOp {
@@ -334,28 +302,18 @@ impl HostMulOp {
     }
 }
 
+modelled!(PlacementDiv::div, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostDivOp);
+
 kernel! {
     HostDivOp,
     [
+        (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
     ]
 }
 
 impl HostDivOp {
-    fn rep_kernel<S: Session>(
-        _sess: &S,
-        _plc: &ReplicatedPlacement,
-        _x: cs!(Fixed128Tensor),
-        _y: cs!(Fixed128Tensor),
-    ) -> cs!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        // ReplicatedPlacement: PlacementDiv<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        unimplemented!("Lacking division protocols yet") // TODO: implement those
-    }
-
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -369,32 +327,15 @@ impl HostDivOp {
     }
 }
 
+modelled!(PlacementDot::dot, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostDotOp);
+modelled!(PlacementDot::dot, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostDotOp);
+
 kernel! {
     HostDotOp,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
     ]
-}
-
-impl HostDotOp {
-    fn rep_kernel<S: Session>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        x: cs!(Fixed128Tensor),
-        y: cs!(Fixed128Tensor),
-    ) -> cs!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        ReplicatedPlacement:
-            PlacementDot<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-        ReplicatedPlacement: PlacementTruncPr<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        let mul = plc.dot(sess, &x, &y);
-        // TODO: Grab precision (27) from the type
-        plc.trunc_pr(sess, 27, &mul)
-    }
 }
 
 impl HostDotOp {
@@ -432,6 +373,55 @@ impl ShapeOp {
     ) -> HostShape {
         let raw_shape = RawShape(x.0.shape().into());
         HostShape(raw_shape, plc.clone())
+    }
+}
+
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat32Tensor) -> HostFloat32Tensor, HostAtLeast2DOp);
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat64Tensor) -> HostFloat64Tensor, HostAtLeast2DOp);
+
+kernel! {
+    HostAtLeast2DOp,
+    [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[to_column_vector] Self::hostfloat_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[to_column_vector] Self::hostfloat_kernel),
+    ]
+}
+
+impl HostAtLeast2DOp {
+    fn hostfloat_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _to_column_vector: bool,
+        _x: HostTensor<T>,
+    ) -> HostTensor<T> {
+        unimplemented!()
+    }
+}
+
+unmodelled!(HostPlacement, attributes[slice: SliceInfo] (HostShape) -> HostShape, SliceOp);
+
+kernel! {
+    SliceOp,
+    [
+        (HostPlacement, (HostShape) -> HostShape => [hybrid] attributes[slice] Self::kernel),
+        // (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [hybrid] attributes[slice] Self::kernel),
+        // (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [hybrid] attributes[slice] Self::kernel),
+    ]
+}
+
+impl SliceOp {
+    // TODO(lvorona): type inferring fails if I try to make it more generic and have one kernel work for all the types
+    pub fn kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        slice_info: SliceInfo,
+        x: cs!(HostShape),
+    ) -> cs!(HostShape)
+    where
+        HostShape: KnownType<S>,
+        HostPlacement: PlacementSlice<S, cs!(HostShape), cs!(HostShape)>,
+    {
+        plc.slice(sess, slice_info, &x)
     }
 }
 
@@ -844,6 +834,17 @@ where
     }
 }
 
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat32Tensor) -> HostFloat32Tensor, HostMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostMeanOp);
+
+kernel! {
+    HostMeanOp,
+    [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
+    ]
+}
+
 impl HostMeanOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
@@ -868,23 +869,16 @@ impl HostMeanOp {
             }
         }
     }
+}
 
-    // TODO: Make it generic for any FixedTensor
-    pub fn rep_kernel<S: Session>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        axis: Option<u32>,
-        x: cs!(Fixed128Tensor),
-    ) -> cs!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        ReplicatedPlacement: PlacementMean<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-        ReplicatedPlacement: PlacementTruncPr<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        // TODO: grab scaling base and exp from somewhere else
-        let mean = plc.mean(sess, axis, 2, 27, &x);
-        plc.trunc_pr(sess, 27, &mean)
-    }
+modelled!(PlacementSqrt::sqrt, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, HostSqrtOp);
+modelled!(PlacementSqrt::sqrt, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostSqrtOp);
+
+kernel! {
+    HostSqrtOp, [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+    ]
 }
 
 impl HostSqrtOp {
@@ -901,6 +895,16 @@ impl HostSqrtOp {
     }
 }
 
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostFloat32Tensor) -> HostFloat32Tensor, HostSumOp);
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostSumOp);
+
+kernel! {
+    HostSumOp, [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
+    ]
+}
+
 impl HostSumOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
@@ -914,20 +918,16 @@ impl HostSumOp {
         let axis = axis.map(|a| a as usize);
         plc.place(sess, x.sum(axis))
     }
+}
 
-    // TODO: Make it generic for any FixedTensor
-    pub fn rep_kernel<S: Session>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        axis: Option<u32>,
-        x: cs!(Fixed128Tensor),
-    ) -> cs!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        ReplicatedPlacement: PlacementSum<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        plc.sum(sess, axis, &x)
-    }
+modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostFloat32Tensor) -> HostFloat32Tensor, HostExpandDimsOp);
+modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostExpandDimsOp);
+
+kernel! {
+    HostExpandDimsOp, [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
+    ]
 }
 
 impl HostExpandDimsOp {
@@ -943,6 +943,16 @@ impl HostExpandDimsOp {
         let axis = axis.iter().map(|a| *a as usize).collect();
         plc.place(sess, x.expand_dims(axis))
     }
+}
+
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat32Tensor] -> HostFloat32Tensor, HostConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat64Tensor] -> HostFloat64Tensor, HostConcatOp);
+
+kernel! {
+    HostConcatOp, [
+        (HostPlacement, vec[HostFloat32Tensor] -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, vec[HostFloat64Tensor] -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
+    ]
 }
 
 impl HostSqueezeOp {
@@ -978,6 +988,16 @@ impl HostConcatOp {
     }
 }
 
+modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, HostTransposeOp);
+modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostTransposeOp);
+
+kernel! {
+    HostTransposeOp, [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+    ]
+}
+
 impl HostTransposeOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
@@ -989,6 +1009,16 @@ impl HostTransposeOp {
     {
         plc.place(sess, x.transpose())
     }
+}
+
+modelled!(PlacementInverse::inverse, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, HostInverseOp);
+modelled!(PlacementInverse::inverse, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostInverseOp);
+
+kernel! {
+    HostInverseOp, [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+    ]
 }
 
 impl HostInverseOp {
@@ -1026,6 +1056,79 @@ where
                 other_rank,
             ),
         }
+    }
+}
+
+modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat64Tensor) -> HostRing128Tensor, RingFixedpointEncodeOp);
+modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat32Tensor) -> HostRing64Tensor, RingFixedpointEncodeOp);
+
+kernel! {
+    RingFixedpointEncodeOp, [
+        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float64_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float32_kernel),
+    ]
+}
+
+impl RingFixedpointEncodeOp {
+    fn float32_kernel<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _scaling_base: u64,
+        _scaling_exp: u32,
+        _x: HostFloat32Tensor,
+    ) -> HostRing64Tensor {
+        // let scaling_factor = u64::pow(scaling_base, scaling_exp);
+        // HostRing64Tensor::encode(&x, scaling_factor)
+        unimplemented!()
+    }
+
+    fn float64_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: HostFloat64Tensor,
+    ) -> HostRing128Tensor {
+        let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
+        let x_upshifted = &x.0 * (scaling_factor as f64);
+        let x_converted: ArrayD<Wrapping<u128>> =
+            x_upshifted.mapv(|el| Wrapping((el as i128) as u128));
+        AbstractHostRingTensor(x_converted, plc.clone())
+    }
+}
+
+modelled!(PlacementRingFixedpointDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostFloat64Tensor, RingFixedpointDecodeOp);
+modelled!(PlacementRingFixedpointDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostFloat32Tensor, RingFixedpointDecodeOp);
+
+kernel! {
+    RingFixedpointDecodeOp, [
+        (HostPlacement, (HostRing128Tensor) -> HostFloat64Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float64_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostFloat32Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float32_kernel),
+    ]
+}
+
+impl RingFixedpointDecodeOp {
+    fn float32_kernel<S: RuntimeSession, ST, TT>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _scaling_base: u64,
+        _scaling_exp: u32,
+        _x: AbstractHostRingTensor<ST>,
+    ) -> HostTensor<TT> {
+        unimplemented!()
+    }
+
+    fn float64_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: HostRing128Tensor,
+    ) -> HostFloat64Tensor {
+        let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
+        let x_upshifted: ArrayD<i128> = x.0.mapv(|xi| xi.0 as i128);
+        let x_converted = x_upshifted.mapv(|el| el as f64);
+        HostTensor(x_converted / scaling_factor as f64, plc.clone())
     }
 }
 
@@ -1682,7 +1785,7 @@ impl<S: Session, T> Tensor<S> for Symbolic<AbstractHostRingTensor<T>> {
 }
 
 pub trait FromRawPlc<P, T> {
-    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> AbstractHostRingTensor<T>;
+    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> Self;
 }
 
 impl<P> FromRawPlc<P, u64> for HostRing64Tensor
@@ -1702,6 +1805,15 @@ where
     fn from_raw_plc(raw_tensor: ArrayD<u128>, plc: P) -> HostRing128Tensor {
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
         AbstractHostRingTensor(tensor, plc.into())
+    }
+}
+
+impl<P, T> FromRawPlc<P, T> for HostTensor<T>
+where
+    P: Into<HostPlacement>,
+{
+    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> HostTensor<T> {
+        HostTensor(raw_tensor, plc.into())
     }
 }
 

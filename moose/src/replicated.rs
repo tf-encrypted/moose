@@ -1078,18 +1078,18 @@ impl RepDotOp {
     }
 }
 
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMeanOp);
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMeanOp);
+modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepFixedpointMeanOp);
+modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepFixedpointMeanOp);
 
 kernel! {
-    RepMeanOp,
+    RepFixedpointMeanOp,
     [
         (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::kernel),
     ]
 }
 
-impl RepMeanOp {
+impl RepFixedpointMeanOp {
     fn kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -1099,8 +1099,7 @@ impl RepMeanOp {
         x: RepTen<HostRingT>,
     ) -> RepTen<HostRingT>
     where
-        HostPlacement: PlacementMean<S, HostRingT, HostRingT>,
-        ReplicatedPlacement: PlacementPlace<S, RepTen<HostRingT>>,
+        HostPlacement: PlacementMeanAsFixedpoint<S, HostRingT, HostRingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -1108,19 +1107,16 @@ impl RepMeanOp {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let z00 = player0.mean(sess, axis, scaling_base, scaling_exp, x00);
-        let z10 = player0.mean(sess, axis, scaling_base, scaling_exp, x10);
-        let z11 = player1.mean(sess, axis, scaling_base, scaling_exp, x11);
-        let z21 = player1.mean(sess, axis, scaling_base, scaling_exp, x21);
-        let z22 = player2.mean(sess, axis, scaling_base, scaling_exp, x22);
-        let z02 = player2.mean(sess, axis, scaling_base, scaling_exp, x02);
+        let z00 = player0.mean_as_fixedpoint(sess, axis, scaling_base, scaling_exp, x00);
+        let z10 = player0.mean_as_fixedpoint(sess, axis, scaling_base, scaling_exp, x10);
+        let z11 = player1.mean_as_fixedpoint(sess, axis, scaling_base, scaling_exp, x11);
+        let z21 = player1.mean_as_fixedpoint(sess, axis, scaling_base, scaling_exp, x21);
+        let z22 = player2.mean_as_fixedpoint(sess, axis, scaling_base, scaling_exp, x22);
+        let z02 = player2.mean_as_fixedpoint(sess, axis, scaling_base, scaling_exp, x02);
 
-        rep.place(
-            sess,
-            RepTen {
-                shares: [[z00, z10], [z11, z21], [z22, z02]],
-            },
-        )
+        RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
     }
 }
 
@@ -2189,9 +2185,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixedpoint::Convert;
     use crate::host::AbstractHostRingTensor;
-    use crate::kernels::SyncSession;
+    use crate::host::FromRawPlc;
+    use crate::kernels::{
+        PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, SyncSession,
+    };
     use ndarray::array;
     use proptest::prelude::*;
 
@@ -2317,19 +2315,21 @@ mod tests {
 
         let scaling_base = 2;
         let scaling_exp = 24;
-        let scaling_factor = u64::pow(scaling_base, scaling_exp);
-        let x = crate::host::HostTensor::<f64>::from(
+
+        let x = crate::host::HostFloat64Tensor::from_raw_plc(
             array![1.0, 2.0, 3.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
+            alice.clone(),
         );
-        let x = HostFixed64Tensor::encode(&x, scaling_factor);
+        let x = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &x);
         let x_shared = rep.share(&sess, &setup, &x);
 
-        let mean = rep.mean(&sess, None, scaling_base, scaling_exp, &x_shared);
+        let mean = rep.mean_as_fixedpoint(&sess, None, scaling_base, scaling_exp, &x_shared);
         let mean = rep.trunc_pr(&sess, scaling_exp, &mean);
         let opened_result = alice.reveal(&sess, &mean);
-        let decoded_result = HostFixed64Tensor::decode(&opened_result, scaling_factor);
+        let decoded_result =
+            alice.fixedpoint_ring_decode(&sess, scaling_base, scaling_exp, &opened_result);
 
         assert!(num_traits::abs(2.0 - decoded_result.0[[]]) < 0.01);
     }

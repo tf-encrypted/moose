@@ -1,21 +1,10 @@
 //! Support for fixed-point arithmetic
 
-use crate::computation::{
-    CastOp, FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp,
-    FixedpointMeanOp, FixedpointMulOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp,
-    HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement,
-};
+use crate::computation::*;
 use crate::error::Result;
-use crate::host::{
-    AbstractHostFixedTensor, AbstractHostRingTensor, HostFixed128Tensor, HostFixed64Tensor,
-    HostFloat32Tensor, HostFloat64Tensor, HostRing128Tensor, HostRing64Tensor,
-};
-use crate::kernels::{
-    PlacementAdd, PlacementCast, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
-    PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementMulSetup, PlacementReveal,
-    PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, PlacementSetupGen,
-    PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr, Session,
-};
+use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
+use crate::host::*;
+use crate::kernels::*;
 use crate::replicated::{
     AbstractReplicatedFixedTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
 };
@@ -144,16 +133,16 @@ where
     }
 }
 
+modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (Float32Tensor) -> Fixed64Tensor, FixedpointEncodeOp);
+modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (Float64Tensor) -> Fixed128Tensor, FixedpointEncodeOp);
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat32Tensor) -> HostFixed64Tensor, FixedpointEncodeOp);
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat64Tensor) -> HostFixed128Tensor, FixedpointEncodeOp);
-modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat32Tensor) -> Fixed64Tensor, FixedpointEncodeOp);
-modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat64Tensor) -> Fixed128Tensor, FixedpointEncodeOp);
 
 kernel! {
     FixedpointEncodeOp,
     [
-        (HostPlacement, (HostFloat32Tensor) -> Fixed64Tensor => [hybrid] attributes[precision] Self::fixed_kernel),
-        (HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor => [hybrid] attributes[precision] Self::fixed_kernel),
+        (HostPlacement, (Float32Tensor) -> Fixed64Tensor => [hybrid] attributes[precision] Self::fixed_kernel),
+        (HostPlacement, (Float64Tensor) -> Fixed128Tensor => [hybrid] attributes[precision] Self::fixed_kernel),
         (HostPlacement, (HostFloat32Tensor) -> HostFixed64Tensor => [hybrid] attributes[precision] Self::hostfixed_kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFixed128Tensor => [hybrid] attributes[precision] Self::hostfixed_kernel),
     ]
@@ -164,13 +153,17 @@ impl FixedpointEncodeOp {
         sess: &S,
         plc: &HostPlacement,
         precision: u32,
-        x: HostFloatT,
+        x: FloatTensor<HostFloatT>,
     ) -> FixedTensor<HostFixedT, RepFixedT>
     where
         HostPlacement: PlacementFixedpointEncode<S, HostFloatT, HostFixedT>,
     {
-        let x = plc.fixedpoint_encode(sess, precision, &x);
-        FixedTensor::Host(x)
+        match x {
+            FloatTensor::Host(x) => {
+                let x = plc.fixedpoint_encode(sess, precision, &x);
+                FixedTensor::Host(x)
+            }
+        }
     }
 
     fn hostfixed_kernel<S: Session, HostFloatT, HostRingT>(
@@ -188,17 +181,16 @@ impl FixedpointEncodeOp {
     }
 }
 
-modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed64Tensor) -> HostFloat32Tensor, FixedpointDecodeOp);
-modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> HostFloat64Tensor, FixedpointDecodeOp);
+modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed64Tensor) -> Float32Tensor, FixedpointDecodeOp);
+modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> Float64Tensor, FixedpointDecodeOp);
 modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (HostFixed64Tensor) -> HostFloat32Tensor, FixedpointDecodeOp);
 modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (HostFixed128Tensor) -> HostFloat64Tensor, FixedpointDecodeOp);
 
-// TODO(Morten) these should produce Float32Tensor and Float64Tensor instead
 kernel! {
     FixedpointDecodeOp,
     [
-        (HostPlacement, (Fixed64Tensor) -> HostFloat32Tensor => [hybrid] attributes[precision] Self::fixed_kernel),
-        (HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor => [hybrid] attributes[precision] Self::fixed_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Float32Tensor => [hybrid] attributes[precision] Self::fixed_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Float64Tensor => [hybrid] attributes[precision] Self::fixed_kernel),
         (HostPlacement, (HostFixed64Tensor) -> HostFloat32Tensor => [hybrid] attributes[precision] Self::hostfixed_kernel),
         (HostPlacement, (HostFixed128Tensor) -> HostFloat64Tensor => [hybrid] attributes[precision] Self::hostfixed_kernel),
     ]
@@ -210,7 +202,7 @@ impl FixedpointDecodeOp {
         plc: &HostPlacement,
         precision: u32,
         x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> HostFloatT
+    ) -> FloatTensor<HostFloatT>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementFixedpointDecode<S, HostFixedT, HostFloatT>,
@@ -219,7 +211,8 @@ impl FixedpointDecodeOp {
             FixedTensor::Host(v) => v,
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
-        plc.fixedpoint_decode(sess, precision, &v)
+        let y = plc.fixedpoint_decode(sess, precision, &v);
+        FloatTensor::Host(y)
     }
 
     fn hostfixed_kernel<S: Session, HostRingT, HostFloatT>(
@@ -826,26 +819,26 @@ impl FixedpointSumOp {
     }
 }
 
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostFixed64Tensor) -> HostFixed64Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostFixed128Tensor) -> HostFixed128Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Fixed128Tensor) -> Fixed128Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>] (Fixed128Tensor) -> Fixed128Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (HostFixed64Tensor) -> HostFixed64Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (HostFixed128Tensor) -> HostFixed128Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>] (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>] (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointMeanOp);
 
 kernel! {
     FixedpointMeanOp,
     [
-        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::fixed_host_kernel),
-        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::fixed_host_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::fixed_rep_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::fixed_rep_kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::hostfixed_kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::hostfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::repfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::repfixed_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::fixed_host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::fixed_rep_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [hybrid] attributes[axis] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] attributes[axis] Self::hostfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] attributes[axis] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] attributes[axis] Self::repfixed_kernel),
     ]
 }
 
@@ -854,8 +847,6 @@ impl FixedpointMeanOp {
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
         x: FixedTensor<HostFixedT, RepFixedT>,
     ) -> FixedTensor<HostFixedT, RepFixedT>
     where
@@ -867,7 +858,7 @@ impl FixedpointMeanOp {
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
-        let result = plc.mean(sess, axis, scaling_base, scaling_exp, &x_revealed);
+        let result = plc.mean(sess, axis, &x_revealed);
         FixedTensor::Host(result)
     }
 
@@ -875,8 +866,6 @@ impl FixedpointMeanOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
         x: FixedTensor<HostFixedT, RepFixedT>,
     ) -> FixedTensor<HostFixedT, RepFixedT>
     where
@@ -892,7 +881,7 @@ impl FixedpointMeanOp {
             FixedTensor::Replicated(x) => x,
         };
 
-        let result = plc.mean(sess, axis, scaling_base, scaling_exp, &x_shared);
+        let result = plc.mean(sess, axis, &x_shared);
         FixedTensor::Replicated(result)
     }
 
@@ -900,14 +889,12 @@ impl FixedpointMeanOp {
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
         x: AbstractHostFixedTensor<HostRingT>,
     ) -> AbstractHostFixedTensor<HostRingT>
     where
-        HostPlacement: PlacementMean<S, HostRingT, HostRingT>,
+        HostPlacement: PlacementMeanAsFixedpoint<S, HostRingT, HostRingT>,
     {
-        let y = plc.mean(sess, axis, scaling_base, scaling_exp, &x.0);
+        let y = plc.mean_as_fixedpoint(sess, axis, 2, 27, &x.0); // TODO hardcoded fixedpoint params
         AbstractHostFixedTensor(y)
     }
 
@@ -915,44 +902,13 @@ impl FixedpointMeanOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
         x: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> AbstractReplicatedFixedTensor<RepRingT>
     where
-        ReplicatedPlacement: PlacementMean<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMeanAsFixedpoint<S, RepRingT, RepRingT>,
     {
-        let y = plc.mean(sess, axis, scaling_base, scaling_exp, &x.0);
+        let y = plc.mean_as_fixedpoint(sess, axis, 2, 27, &x.0); // TODO hardcoded fixedpoint params
         AbstractReplicatedFixedTensor(y)
-    }
-}
-
-modelled!(PlacementCast::cast, HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor, CastOp);
-modelled!(PlacementCast::cast, HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor, CastOp);
-
-kernel! {
-    CastOp,
-    [
-        (HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor => [hybrid] Self::encode_kernel),
-        (HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor => [hybrid] Self::decode_kernel),
-    ]
-}
-
-impl CastOp {
-    fn encode_kernel<S: Session, T>(sess: &S, plc: &HostPlacement, x: T) -> cs!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        HostPlacement: PlacementFixedpointEncode<S, T, cs!(Fixed128Tensor)>,
-    {
-        plc.fixedpoint_encode(sess, 27, &x) // TODO: Get the precision from python
-    }
-
-    fn decode_kernel<S: Session, R>(sess: &S, plc: &HostPlacement, x: cs!(Fixed128Tensor)) -> R
-    where
-        Fixed128Tensor: KnownType<S>,
-        HostPlacement: PlacementFixedpointDecode<S, cs!(Fixed128Tensor), R>,
-    {
-        plc.fixedpoint_decode(sess, 27, &x) // TODO: Get the precision from python
     }
 }
 

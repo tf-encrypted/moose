@@ -62,7 +62,7 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Ok(Box::new(move |sess, plc| {
+            crate::error::Result::<Box<dyn Fn(&_, &_) -> _>>::Ok(Box::new(move |sess, plc| {
                 $k(sess, plc, $($attr.clone()),+)
             }))
         }
@@ -106,7 +106,7 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Ok(Box::new(move |sess, plc, x0, x1| {
+            crate::error::Result::<Box<dyn Fn(&_, &_, _, _) -> _>>::Ok(Box::new(move |sess, plc, x0, x1| {
                 $k(sess, plc, $($attr.clone()),+, x0, x1)
             }))
         }
@@ -126,9 +126,9 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Box::new(move |sess, plc, x0, x1, x2| {
+            crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> _>>::Ok(Box::new(move |sess, plc, x0, x1, x2| {
                 $k(sess, plc, $($attr.clone()),+), x0, x1, x2
-            })
+            }))
         }
     };
 
@@ -164,10 +164,10 @@ macro_rules! derive_runtime_kernel {
         crate::error::Result::<Box<dyn Fn(&_, &_, _) -> _>>::Ok(Box::new($k))
     };
     (binary, $k:expr, $self:ident) => {
-        Ok(Box::new($k))
+        crate::error::Result::<Box<dyn Fn(&_, &_, _, _) -> _>>::Ok(Box::new($k))
     };
     (ternary, $k:expr, $self:ident) => {
-        Ok(Box::new($k))
+        crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> _>>::Ok(Box::new($k))
     };
     (variadic, $k:expr, $self:ident) => {
         Box::new($k)
@@ -191,7 +191,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, NullaryKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -233,7 +233,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, UnaryKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -278,7 +278,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, BinaryKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -332,7 +332,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, TernaryKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -381,7 +381,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, VariadicKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -430,7 +430,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -478,7 +478,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -530,7 +530,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -585,7 +585,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -643,7 +643,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -943,8 +943,6 @@ macro_rules! kernel {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
 
-                let k = derive_runtime_kernel![binary, $($kp)+, self]?;
-
                 let op = self.clone();
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
@@ -952,6 +950,12 @@ macro_rules! kernel {
                     x0: <$t0 as KnownType<SymbolicSession>>::Type,
                     x1: <$t1 as KnownType<SymbolicSession>>::Type,
                 | {
+                    // TODO derive k outside box (using self instead of op)
+                    // Magic by Morten
+                    let op = &op;
+
+                    let k = derive_runtime_kernel![binary, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
+
                     let v0 = x0.clone().try_into();
                     let v1 = x1.clone().try_into();
 
@@ -962,7 +966,7 @@ macro_rules! kernel {
                         }
                         _ => match (x0, x1) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                                let op_name = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
+                                let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
                                 Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
                             }
                             _ => unimplemented!() // ok
@@ -1903,6 +1907,43 @@ pub trait Ring {
     type BitLength: Const;
 }
 
+macro_rules! unmodelled {
+    /*
+    Nullary
+    */
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? () -> $u:ty, $op:ident) => {
+        impl crate::kernels::NullaryKernelCheck<crate::kernels::SyncSession, $plc, $u> for $op {}
+    };
+
+    /*
+    Unary
+    */
+    ($plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty) -> $u:ty, $op:ident) => {
+        impl crate::kernels::UnaryKernelCheck<crate::kernels::SyncSession, $plc, $t0, $u> for $op {}
+    };
+
+    /*
+    Binary
+    */
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
+        impl crate::kernels::BinaryKernelCheck<crate::kernels::SyncSession, $plc, $t0, $t1, $u>
+            for $op
+        {
+        }
+    };
+
+    /*
+    Ternary
+    */
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
+        impl
+            crate::kernels::TernaryKernelCheck<crate::kernels::SyncSession, $plc, $t0, $t1, $t2, $u>
+            for $op
+        {
+        }
+    };
+}
+
 pub mod additive;
 pub mod common;
 pub mod compilation;
@@ -1910,8 +1951,10 @@ pub mod computation;
 pub mod error;
 pub mod execution;
 pub mod fixedpoint;
+pub mod floatingpoint;
 pub mod host;
 pub mod kernels;
+pub mod logical;
 pub mod networking;
 pub mod prim;
 pub mod prng;

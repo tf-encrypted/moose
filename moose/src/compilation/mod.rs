@@ -6,6 +6,9 @@ use crate::compilation::typing::update_types_one_hop;
 use crate::computation::Computation;
 use crate::text_computation::ToTextual;
 
+use self::deprecated_logical::deprecated_logical_lowering;
+
+pub mod deprecated_logical;
 pub mod networking;
 pub mod print;
 pub mod pruning;
@@ -19,6 +22,7 @@ pub enum Pass {
     Symbolic,
     Typing,
     Dump,
+    DeprecatedLogical, // A simple pass to support older Python compiler
 }
 
 fn parse_pass(name: &str) -> anyhow::Result<Pass> {
@@ -55,6 +59,7 @@ fn do_pass(pass: &Pass, comp: &Computation) -> anyhow::Result<Option<Computation
         Pass::Prune => prune_graph(comp),
         Pass::Symbolic => replicated_lowering(comp),
         Pass::Typing => update_types_one_hop(comp),
+        Pass::DeprecatedLogical => deprecated_logical_lowering(comp),
         Pass::Dump => {
             println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
             Ok(None)
