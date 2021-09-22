@@ -254,16 +254,6 @@ pub enum InnerTy {
     Unknown,
 }
 
-macro_rules! ty_expression {
-    ($_:ident => $val:ident) => {
-        Ty::$val
-    };
-
-    ($t:ident => $_val:ident($_inner:ident)) => {
-        $t.ty()
-    };
-}
-
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
 macro_rules! values {
@@ -295,7 +285,7 @@ macro_rules! values {
         impl Value {
             pub fn ty(&self) -> Ty {
                 match self {
-                    $(Value::$val(_t) => ty_expression!(_t => $val$(($inner))?),)+
+                    $(Value::$val(_) => Ty::$val$(($inner::$default))?,)+
                     // TODO promote below to match other values
                     Value::Bit(_) => Ty::Bit,
                     Value::Float32(_) => Ty::Float32,
@@ -360,6 +350,7 @@ macro_rules! values {
         )+
 
         #[derive(PartialEq, Clone, Debug)]
+        #[allow(clippy::large_enum_variant)]
         pub enum SymbolicValue {
             $($val(<$val as SymbolicType>::Type),)+
         }
