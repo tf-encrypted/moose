@@ -506,7 +506,7 @@ impl HostDiagOp {
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>> {
         let diag = x.0.into_diag().into_dimensionality::<IxDyn>()
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostTensor::<T>(diag, plc.clone()))
     }
 
@@ -516,7 +516,7 @@ impl HostDiagOp {
         x: AbstractHostRingTensor<T>,
     ) -> Result<AbstractHostRingTensor<T>> {
         let diag = x.0.into_diag().into_dimensionality::<IxDyn>()
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor::<T>(diag, plc.clone()))
     }
 
@@ -526,7 +526,7 @@ impl HostDiagOp {
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
         let diag = x.0.into_diag().into_dimensionality::<IxDyn>()
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostBitTensor(diag, plc.clone()))
     }
 }
@@ -609,7 +609,7 @@ impl HostShlDimOp {
             .collect();
 
         let result = ndarray::stack(Axis(0), &concatenated)
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|e| Error::KernelError(e.to_string()))?;
 
         Ok(HostBitTensor(result, plc.clone()))
     }
@@ -648,7 +648,7 @@ impl HostBitDecOp {
         // by default we put bits as rows, ie access i'th bit from tensor T is done through index_axis(Axis(0), T)
         // in the current protocols it's easier to reason that the bits are stacked on axis(0)
         let result = ndarray::stack(Axis(0), &bit_rep_view)
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor(result, plc.clone()))
     }
 
@@ -667,7 +667,7 @@ impl HostBitDecOp {
 
         let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
         let result = ndarray::stack(Axis(0), &bit_rep_view)
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor(result, plc.clone()))
     }
 
@@ -686,7 +686,7 @@ impl HostBitDecOp {
 
         let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
         let result = ndarray::stack(Axis(0), &bit_rep_view)
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|e| Error::KernelError(e.to_string()))?;
         // we unwrap only at the end since shifting can cause overflow
         Ok(HostBitTensor(result.map(|v| v.0 as u8), plc.clone()))
     }
@@ -706,7 +706,7 @@ impl HostBitDecOp {
 
         let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
         let result = ndarray::stack(Axis(0), &bit_rep_view)
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|e| Error::KernelError(e.to_string()))?;
         // we unwrap only at the end since shifting can cause overflow
         Ok(HostBitTensor(result.map(|v| v.0 as u8), plc.clone()))
     }
@@ -874,7 +874,7 @@ impl HostMeanOp {
                 };
                 let out = Array::from_elem([], mean.unwrap())
                     .into_dimensionality::<IxDyn>()
-                    .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+                    .map_err(|e| Error::KernelError(e.to_string()))?;
                 Ok(HostTensor::place(plc, out))
             }
         }
@@ -1411,7 +1411,7 @@ impl BitSampleOp {
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
         let arr = Array::from_shape_vec(ix, values)
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostBitTensor(arr, plc.clone()))
     }
 }
@@ -2173,7 +2173,7 @@ impl RingSampleOp {
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
         let raw_array = Array::from_shape_vec(ix, values)
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor(raw_array, plc.clone()))
     }
 
@@ -2187,7 +2187,7 @@ impl RingSampleOp {
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
         let arr = Array::from_shape_vec(ix, values)
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor(arr, plc.clone()))
     }
 
@@ -2203,7 +2203,7 @@ impl RingSampleOp {
             .collect();
         let ix = IxDyn(shape.0 .0.as_ref());
         let arr = Array::from_shape_vec(ix, values)
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor(arr, plc.clone()))
     }
 
@@ -2217,7 +2217,7 @@ impl RingSampleOp {
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
         let arr = Array::from_shape_vec(ix, values)
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor(arr, plc.clone()))
     }
 }

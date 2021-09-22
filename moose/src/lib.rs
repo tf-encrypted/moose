@@ -856,7 +856,7 @@ macro_rules! kernel {
                     match v0 {
                         Ok(v0) => {
                             let y = k(sess, plc, v0);
-                            y.into()
+                            y.map(|x| x.into())
                         }
                         _ => match x0 {
                             Symbolic::Symbolic(h0) => {

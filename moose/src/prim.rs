@@ -155,7 +155,7 @@ impl PrimDeriveSeedOp {
         nonce.extend(&sync_key_bytes);
         sodiumoxide::init().expect("failed to initialize sodiumoxide");
         let digest = generichash::hash(&nonce, Some(SEED_SIZE), Some(key_bytes))
-            .map_err(|e| Error::KernelError(stringify!(e).to_string()))?;
+            .map_err(|_e| Error::KernelError("Failure to derive seed.".to_string()))?;
         let mut raw_seed: RngSeed = [0u8; SEED_SIZE];
         raw_seed.copy_from_slice(digest.as_ref());
 
