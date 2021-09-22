@@ -201,7 +201,7 @@ macro_rules! attributes {
 macro_rules! unary {
     ($sub:ident) => {
         |input: &'a str| {
-            let (input, sig) = type_definition(1)(input)?;
+            let (input, sig) = operator_signature(1)(input)?;
             Ok((input, $sub { sig }.into()))
         }
     };
@@ -211,7 +211,7 @@ macro_rules! unary {
 macro_rules! binary {
     ($sub:ident) => {
         |input: &'a str| {
-            let (input, sig) = type_definition(2)(input)?;
+            let (input, sig) = operator_signature(2)(input)?;
             Ok((input, $sub { sig }.into()))
         }
     };
@@ -222,7 +222,7 @@ macro_rules! operation_on_axis {
     ($sub:ident) => {
         |input: &'a str| {
             let (input, opt_axis) = opt(attributes_single("axis", parse_int))(input)?;
-            let (input, sig) = type_definition(1)(input)?;
+            let (input, sig) = operator_signature(1)(input)?;
             Ok((
                 input,
                 $sub {
@@ -329,7 +329,7 @@ fn constant<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, value) = attributes_single("value", constant_literal)(input)?;
-    let (input, optional_type) = opt(type_definition(0))(input)?;
+    let (input, optional_type) = opt(operator_signature(0))(input)?;
     let sig = optional_type.unwrap_or_else(|| Signature::nullary(value.ty()));
 
     Ok((input, ConstantOp { sig, value }.into()))
@@ -343,7 +343,7 @@ fn send_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         attributes_member("rendezvous_key", map(parse_hex, RendezvousKey::from_bytes)),
         attributes_member("receiver", string)
     ))(input)?;
-    let (input, optional_type) = opt(type_definition(0))(input)?;
+    let (input, optional_type) = opt(operator_signature(0))(input)?;
     let sig = optional_type.unwrap_or_else(|| Signature::unary(Ty::Unknown, Ty::Unknown));
     Ok((
         input,
@@ -364,7 +364,7 @@ fn receive_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         attributes_member("rendezvous_key", map(parse_hex, RendezvousKey::from_bytes)),
         attributes_member("sender", string)
     ))(input)?;
-    let (input, sig) = type_definition(0)(input)?;
+    let (input, sig) = operator_signature(0)(input)?;
     Ok((
         input,
         ReceiveOp {
@@ -381,7 +381,7 @@ fn input_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, arg_name) = attributes_single("arg_name", string)(input)?;
-    let (input, sig) = type_definition(0)(input)?;
+    let (input, sig) = operator_signature(0)(input)?;
     Ok((input, InputOp { sig, arg_name }.into()))
 }
 
@@ -390,7 +390,7 @@ fn hostexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, axis) = attributes_single("axis", vector(parse_int))(input)?;
-    let (input, sig) = type_definition(1)(input)?;
+    let (input, sig) = operator_signature(1)(input)?;
     Ok((input, HostExpandDimsOp { sig, axis }.into()))
 }
 
@@ -399,7 +399,7 @@ fn hostsqueeze<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, axis) = opt(attributes_single("axis", parse_int))(input)?;
-    let (input, sig) = type_definition(1)(input)?;
+    let (input, sig) = operator_signature(1)(input)?;
     Ok((input, HostSqueezeOp { sig, axis }.into()))
 }
 
@@ -408,7 +408,7 @@ fn hostatleast2d<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, to_column_vector) = attributes_single("to_column_vector", parse_bool)(input)?;
-    let (input, sig) = type_definition(1)(input)?;
+    let (input, sig) = operator_signature(1)(input)?;
     Ok((
         input,
         HostAtLeast2DOp {
@@ -427,7 +427,7 @@ fn hostslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         attributes_member("start", parse_int),
         attributes_member("end", parse_int)
     ))(input)?;
-    let (input, sig) = type_definition(1)(input)?;
+    let (input, sig) = operator_signature(1)(input)?;
     Ok((
         input,
         HostSliceOp {
@@ -447,7 +447,7 @@ fn hostconcat<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, axis) = attributes_single("axis", parse_int)(input)?;
-    let (input, sig) = type_definition(1)(input)?;
+    let (input, sig) = operator_signature(2)(input)?;
     Ok((input, HostConcatOp { sig, axis }.into()))
 }
 
@@ -456,7 +456,7 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, opt_max_value) = opt(attributes_single("max_value", parse_int))(input)?;
-    let (input, sig) = type_definition(0)(input)?;
+    let (input, sig) = operator_signature(0)(input)?;
     Ok((
         input,
         RingSampleOp {
@@ -472,7 +472,7 @@ fn ring_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, opt_max_value) = opt(attributes_single("max_value", parse_int))(input)?;
-    let (input, sig) = type_definition(0)(input)?;
+    let (input, sig) = operator_signature(0)(input)?;
     Ok((
         input,
         RingSampleSeededOp {
@@ -487,7 +487,7 @@ fn ring_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, sig) = type_definition(0)(input)?;
+    let (input, sig) = operator_signature(0)(input)?;
     Ok((input, BitSampleOp { sig }.into()))
 }
 
@@ -495,7 +495,7 @@ fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn bit_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, sig) = type_definition(0)(input)?;
+    let (input, sig) = operator_signature(0)(input)?;
     Ok((input, BitSampleSeededOp { sig }.into()))
 }
 
@@ -504,7 +504,7 @@ fn bit_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, value) = attributes_single("value", constant_literal)(input)?;
-    let (input, sig) = type_definition(1)(input)?;
+    let (input, sig) = operator_signature(1)(input)?;
     Ok((input, BitFillOp { sig, value }.into()))
 }
 
@@ -513,7 +513,7 @@ fn ring_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, value) = attributes_single("value", constant_literal)(input)?;
-    let (input, sig) = type_definition(1)(input)?;
+    let (input, sig) = operator_signature(1)(input)?;
     Ok((input, RingFillOp { sig, value }.into()))
 }
 
@@ -522,7 +522,7 @@ fn ring_shl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, amount) = attributes_single("amount", parse_int)(input)?;
-    let (input, sig) = type_definition(0)(input)?;
+    let (input, sig) = operator_signature(0)(input)?;
     Ok((input, RingShlOp { sig, amount }.into()))
 }
 
@@ -531,7 +531,7 @@ fn ring_shr<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, amount) = attributes_single("amount", parse_int)(input)?;
-    let (input, sig) = type_definition(0)(input)?;
+    let (input, sig) = operator_signature(0)(input)?;
     Ok((input, RingShrOp { sig, amount }.into()))
 }
 
@@ -557,7 +557,7 @@ fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             .map_err(|_: nom::Err<nom::error::Error<&str>>| {
                 Error(make_error(input, ErrorKind::MapRes))
             })?;
-    let (input, opt_sig) = opt(type_definition(0))(input)?;
+    let (input, opt_sig) = opt(operator_signature(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
     Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
 }
@@ -570,7 +570,7 @@ fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
         attributes_member("scaling_base", parse_int),
         attributes_member("scaling_exp", parse_int)
     ))(input)?;
-    let (input, sig) = type_definition(0)(input)?;
+    let (input, sig) = operator_signature(0)(input)?;
     Ok((
         input,
         RingFixedpointEncodeOp {
@@ -590,7 +590,7 @@ fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
         attributes_member("scaling_base", parse_int),
         attributes_member("scaling_exp", parse_int)
     ))(input)?;
-    let (input, sig) = type_definition(1)(input)?;
+    let (input, sig) = operator_signature(1)(input)?;
     Ok((
         input,
         RingFixedpointDecodeOp {
@@ -607,7 +607,7 @@ fn fixed_point_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, precision) = attributes_single("precision", parse_int)(input)?;
-    let (input, sig) = type_definition(0)(input)?;
+    let (input, sig) = operator_signature(0)(input)?;
     Ok((input, FixedpointEncodeOp { sig, precision }.into()))
 }
 
@@ -616,7 +616,7 @@ fn fixed_point_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, precision) = attributes_single("precision", parse_int)(input)?;
-    let (input, sig) = type_definition(1)(input)?;
+    let (input, sig) = operator_signature(1)(input)?;
     Ok((input, FixedpointDecodeOp { sig, precision }.into()))
 }
 
@@ -624,7 +624,7 @@ fn fixed_point_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn save_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, sig) = type_definition(2)(input)?;
+    let (input, sig) = operator_signature(2)(input)?;
     Ok((input, SaveOp { sig }.into()))
 }
 
@@ -638,7 +638,7 @@ fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>
         opt(attributes_member("axis", parse_int))
     ))(input)?;
 
-    let (input, sig) = type_definition(0)(input)?;
+    let (input, sig) = operator_signature(0)(input)?;
     Ok((
         input,
         RingFixedpointMeanOp {
@@ -656,7 +656,7 @@ fn ring_inject<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, bit_idx) = attributes_single("bit_idx", parse_int)(input)?;
-    let (input, sig) = type_definition(1)(input)?;
+    let (input, sig) = operator_signature(1)(input)?;
     Ok((input, RingInjectOp { sig, bit_idx }.into()))
 }
 
@@ -665,7 +665,7 @@ fn bit_extract<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, bit_idx) = attributes_single("bit_idx", parse_int)(input)?;
-    let (input, sig) = type_definition(1)(input)?;
+    let (input, sig) = operator_signature(1)(input)?;
     Ok((input, BitExtractOp { sig, bit_idx }.into()))
 }
 
@@ -673,7 +673,7 @@ fn bit_extract<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, opt_sig) = opt(type_definition(0))(input)?;
+    let (input, opt_sig) = opt(operator_signature(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
     Ok((input, BitXorOp { sig }.into()))
 }
@@ -682,7 +682,7 @@ fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn bit_and<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, opt_sig) = opt(type_definition(0))(input)?;
+    let (input, opt_sig) = opt(operator_signature(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
     Ok((input, BitAndOp { sig }.into()))
 }
@@ -732,18 +732,34 @@ where
     )
 }
 
-/// Parses operator's type definition
+/// Parses operator's type signature
 ///
 /// Accepts input in the form of
 ///
 /// `: (Float32Tensor, Float32Tensor) -> Float32Tensor`
+/// `: ([Float32Tensor]) -> Float32Tensor`
 ///
 /// * `arg_count` - the number of required arguments
-fn type_definition<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+fn operator_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    arg_count: usize,
+) -> impl FnMut(&'a str) -> IResult<&'a str, Signature, E> {
+    preceded(
+        ws(tag(":")),
+        alt((fixed_arrity_signature(arg_count), variadic_signature())),
+    )
+}
+
+/// Parses operator's type signature - fixed arity form
+///
+/// Accepts input in the form of
+///
+/// `(Float32Tensor, Float32Tensor) -> Float32Tensor`
+///
+/// * `arg_count` - the number of required arguments
+fn fixed_arrity_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     arg_count: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Signature, E> {
     move |input: &'a str| {
-        let (input, _) = ws(tag(":"))(input)?;
         let (input, args_types) = verify(
             delimited(
                 tag("("),
@@ -752,6 +768,7 @@ fn type_definition<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             ),
             |v: &Vec<Ty>| v.len() >= arg_count,
         )(input)?;
+
         let (input, _) = ws(tag("->"))(input)?;
         let (input, result_type) = ws(parse_type)(input)?;
 
@@ -768,6 +785,29 @@ fn type_definition<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             )),
             _ => Err(Error(make_error(input, ErrorKind::Tag))),
         }
+    }
+}
+
+/// Parses operator's type signature - variadic form
+///
+/// Accepts input in the form of
+///
+/// `([Float32Tensor]) -> Float32Tensor`
+fn variadic_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+) -> impl FnMut(&'a str) -> IResult<&'a str, Signature, E> {
+    move |input: &'a str| {
+        let (input, (_, _, args_type, _, _)) = tuple((
+            ws(tag("(")),
+            ws(tag("[")),
+            ws(parse_type),
+            ws(tag("]")),
+            ws(tag(")")),
+        ))(input)?;
+
+        let (input, _) = ws(tag("->"))(input)?;
+        let (input, result_type) = ws(parse_type)(input)?;
+
+        Ok((input, Signature::variadic(args_type, result_type)))
     }
 }
 
@@ -1847,6 +1887,9 @@ impl ToTextual for Signature {
                 arg2.to_textual(),
                 ret.to_textual()
             ),
+            Signature::Variadic(VariadicSignature { args, ret }) => {
+                format!("(vec[{}]) -> {}", args.to_textual(), ret.to_textual())
+            }
         }
     }
 }
@@ -1968,7 +2011,7 @@ mod tests {
     fn test_type_parsing() -> Result<(), anyhow::Error> {
         let (_, parsed_type) = parse_type::<(&str, ErrorKind)>("Unit")?;
         assert_eq!(parsed_type, Ty::Unit);
-        let (_, parsed) = type_definition::<(&str, ErrorKind)>(0)(
+        let (_, parsed) = operator_signature::<(&str, ErrorKind)>(0)(
             ": (Float32Tensor, Float64Tensor) -> Uint16Tensor",
         )?;
         assert_eq!(
@@ -1978,6 +2021,13 @@ mod tests {
                 Ty::HostFloat64Tensor,
                 Ty::HostUint16Tensor
             ),
+        );
+
+        let (_, parsed) =
+            operator_signature::<(&str, ErrorKind)>(0)(": ([Float32Tensor]) -> Float32Tensor")?;
+        assert_eq!(
+            parsed,
+            Signature::variadic(Ty::HostFloat32Tensor, Ty::HostFloat32Tensor),
         );
 
         let parsed: IResult<_, _, VerboseError<&str>> = parse_type("blah");
@@ -2062,9 +2112,19 @@ mod tests {
     #[test]
     fn test_stdadd_err() {
         let data = "z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)";
+        let emsg = r#"0: at line 1, in Tag:
+z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+              ^
+
+1: at line 1, in Alt:
+z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+             ^
+
+"#;
+
         let parsed: IResult<_, _, VerboseError<&str>> = parse_assignment(data);
         if let Err(Failure(e)) = parsed {
-            assert_eq!(convert_error(data, e), "0: at line 1, in Verify:\nz = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)\n             ^\n\n");
+            assert_eq!(convert_error(data, e), emsg);
         } else {
             panic!("Type parsing should have given an error on an invalid type, but did not");
         }
@@ -2303,9 +2363,18 @@ mod tests {
         let data = r#"a = Constant{value = "a"} () @Host(alice)
             err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
             b = Constant{value = "b"} () @Host(alice)"#;
+        let emsg = r#"0: at line 2, in Tag:
+            err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+                            ^
+
+1: at line 2, in Alt:
+            err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+                           ^
+
+"#;
         let parsed: IResult<_, _, VerboseError<&str>> = parse_computation(data);
         if let Err(Failure(e)) = parsed {
-            assert_eq!(convert_error(data, e), "0: at line 2, in Verify:\n            err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)\n                           ^\n\n");
+            assert_eq!(convert_error(data, e), emsg);
         }
     }
 

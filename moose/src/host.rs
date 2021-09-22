@@ -961,19 +961,19 @@ impl HostSqueezeOp {
 }
 
 impl HostConcatOp {
-    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+    pub fn kernel<S: Session, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         axis: u32,
-        x: HostTensor<T>,
-        y: HostTensor<T>,
+        xs: &[HostTensor<T>],
     ) -> HostTensor<T> {
+        use ndarray::IxDynImpl;
+        use ndarray::ViewRepr;
         let ax = Axis(axis as usize);
-        let x = x.0.view();
-        let y = y.0.view();
+        let arr: Vec<ArrayBase<ViewRepr<&T>, Dim<IxDynImpl>>> =
+            xs.iter().map(|x| x.0.view()).collect();
 
-        let c =
-            ndarray::concatenate(ax, &[x, y]).expect("Failed to concatenate arrays with ndarray");
+        let c = ndarray::concatenate(ax, &arr).expect("Failed to concatenate arrays with ndarray");
         HostTensor(c, plc.clone())
     }
 }
@@ -2945,7 +2945,7 @@ mod tests {
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let c = alice.concatenate(&sess, 0, &x, &y);
+        let c = alice.concatenate(&sess, 0, &[x, y]);
         assert_eq!("[[1, 2],\n [3, 4],\n [5, 6],\n [7, 8]]", format!("{}", c.0));
     }
 
