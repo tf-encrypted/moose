@@ -979,11 +979,11 @@ impl HostConcatOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: u32,
-        xs: &[cs!(Fixed128Tensor)],
-    ) -> cs!(Fixed128Tensor)
+        xs: &[st!(Fixed128Tensor)],
+    ) -> st!(Fixed128Tensor)
     where
         Fixed128Tensor: KnownType<S>,
-        ReplicatedPlacement: PlacementSum<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
+        // ReplicatedPlacement: PlacementSum<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
     {
         unimplemented!()
     }

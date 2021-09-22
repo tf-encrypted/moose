@@ -1181,6 +1181,7 @@ macro_rules! kernel {
             ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use std::convert::TryInto;
 
                 let op = self.clone();
 
@@ -1195,34 +1196,23 @@ macro_rules! kernel {
 
                     let k = derive_runtime_kernel![variadic, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
 
-                    let res : Vec<_> = xs.iter().filter_map(|x| {
-                        let v = x.clone();
-
-                        match v {
-                            Symbolic::Concrete(_) => Some(v),
-                            _ => None,
-                        }
-                    }).collect();
-
-                    if res.len() == xs.len() {
-                        let y = k(sess, plc, res);
+                    // attempt to convert operands to match kernel
+                    let kernel_vals: Vec<_> = xs.iter().cloned().filter_map(|x| x.try_into().ok()).collect();
+                    if kernel_vals.len() == xs.len() {
+                        // success; we can apply kernel
+                        let y = k(sess, plc, kernel_vals);
                         y.into()
                     } else {
-                        let res: Vec<&str> = xs.iter().filter_map(|x| {
-                            match x {
-                                Symbolic::Symbolic(h0) => {
-                                    Some(&h0.op[..])
-                                }
-                                _ => None
-                            }
-                        }).collect();
-
-                        if  res.len() == xs.len() {
-                            let op_name = sess.add_operation(op, &res, &plc.clone().into());
+                        // operands did not match kernel so record in graph instead
+                        let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
+                        if handles.len() == xs.len() {
+                            // success; we can record in graph
+                            let op_name = sess.add_operation(op, &handles, &plc.clone().into());
                             return Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() });
+                        } else {
+                            // unexpected
+                            unimplemented!()
                         }
-
-                        unimplemented!()
                     }
                 }))
             }
