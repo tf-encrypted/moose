@@ -1048,7 +1048,7 @@ mod tests {
     }
 
     macro_rules! host_binary_func_test {
-        ($func_name:ident, $test_func: ident<$tt: ty>) => {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $factor: expr) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
                 let alice = HostPlacement {
                     owner: "alice".into(),
@@ -1069,21 +1069,26 @@ mod tests {
                     _ => panic!("Should not produce a replicated tensor on a host placement"),
                 };
                 assert_eq!(
-                    opened_product,
-                    new_host_fixed_tensor(AbstractHostRingTensor::from_raw_plc(zs, alice.clone()))
+                    opened_product.tensor,
+                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
                 );
+                let expected_precision = match x {
+                    FixedTensor::Host(x) => x.precision * $factor,
+                    _ => unreachable!(),
+                };
+                assert_eq!(opened_product.precision, expected_precision);
             }
         };
     }
 
-    host_binary_func_test!(test_host_add64, add<u64>);
-    host_binary_func_test!(test_host_add128, add<u128>);
-    host_binary_func_test!(test_host_sub64, sub<u64>);
-    host_binary_func_test!(test_host_sub128, sub<u128>);
-    host_binary_func_test!(test_host_mul64, mul<u64>);
-    host_binary_func_test!(test_host_mul128, mul<u128>);
-    host_binary_func_test!(test_host_dot64, dot<u64>);
-    host_binary_func_test!(test_host_dot128, dot<u128>);
+    host_binary_func_test!(test_host_add64, add<u64>, 1);
+    host_binary_func_test!(test_host_add128, add<u128>, 1);
+    host_binary_func_test!(test_host_sub64, sub<u64>, 1);
+    host_binary_func_test!(test_host_sub128, sub<u128>, 1);
+    host_binary_func_test!(test_host_mul64, mul<u64>, 2);
+    host_binary_func_test!(test_host_mul128, mul<u128>, 2);
+    host_binary_func_test!(test_host_dot64, dot<u64>, 2);
+    host_binary_func_test!(test_host_dot128, dot<u128>, 2);
 
     #[test]
     fn test_fixed_host_mul64() {
@@ -1099,7 +1104,7 @@ mod tests {
     }
 
     macro_rules! rep_binary_func_test {
-        ($func_name:ident, $test_func: ident<$tt: ty>) => {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $factor: expr) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
                 let alice = HostPlacement {
                     owner: "alice".into(),
@@ -1119,21 +1124,29 @@ mod tests {
                     _ => panic!("Should not produce an unreplicated tensor on a replicated placement"),
                 };
                 assert_eq!(
-                    opened_product,
-                    new_host_fixed_tensor(AbstractHostRingTensor::from_raw_plc(zs, alice.clone()))
+                    opened_product.tensor,
+                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
+                );
+                let expected_precision = match x {
+                    FixedTensor::Host(x) => x.precision * $factor,
+                    _ => unreachable!(),
+                };
+                assert_eq!(
+                    opened_product.precision,
+                    expected_precision
                 );
             }
         };
     }
 
-    rep_binary_func_test!(test_rep_add64, add<u64>);
-    rep_binary_func_test!(test_rep_add128, add<u128>);
-    rep_binary_func_test!(test_rep_sub64, sub<u64>);
-    rep_binary_func_test!(test_rep_sub128, sub<u128>);
-    rep_binary_func_test!(test_rep_mul64, mul<u64>);
-    rep_binary_func_test!(test_rep_mul128, mul<u128>);
-    rep_binary_func_test!(test_rep_dot64, dot<u64>);
-    rep_binary_func_test!(test_rep_dot128, dot<u128>);
+    rep_binary_func_test!(test_rep_add64, add<u64>, 1);
+    rep_binary_func_test!(test_rep_add128, add<u128>, 1);
+    rep_binary_func_test!(test_rep_sub64, sub<u64>, 1);
+    rep_binary_func_test!(test_rep_sub128, sub<u128>, 1);
+    rep_binary_func_test!(test_rep_mul64, mul<u64>, 2);
+    rep_binary_func_test!(test_rep_mul128, mul<u128>, 2);
+    rep_binary_func_test!(test_rep_dot64, dot<u64>, 2);
+    rep_binary_func_test!(test_rep_dot128, dot<u128>, 2);
 
     macro_rules! pairwise_same_length {
         ($func_name:ident, $tt: ident) => {
