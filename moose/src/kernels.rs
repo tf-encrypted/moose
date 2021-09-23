@@ -1744,7 +1744,7 @@ impl Compile<Kernel> for FixedpointMulOp {
                     assert_eq!(x.precision, y.precision);
                     AbstractHostFixedTensor {
                         tensor: x.tensor * y.tensor,
-                        precision: x.precision,
+                        precision: x.precision + y.precision,
                     }
                 })
             }
@@ -1753,7 +1753,7 @@ impl Compile<Kernel> for FixedpointMulOp {
                     assert_eq!(x.precision, y.precision);
                     AbstractHostFixedTensor {
                         tensor: x.tensor * y.tensor,
-                        precision: x.precision,
+                        precision: x.precision + y.precision,
                     }
                 })
             }

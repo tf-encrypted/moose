@@ -507,7 +507,7 @@ impl FixedpointMulOp {
         let z = plc.mul(sess, &x.tensor, &y.tensor);
         AbstractHostFixedTensor {
             tensor: z,
-            precision: x.precision,
+            precision: x.precision + y.precision,
         }
     }
 
@@ -613,7 +613,7 @@ impl FixedpointDotOp {
         let z = plc.dot(sess, &x.tensor, &y.tensor);
         AbstractHostFixedTensor {
             tensor: z,
-            precision: x.precision,
+            precision: x.precision + y.precision,
         }
     }
 
@@ -707,12 +707,11 @@ impl FixedpointTruncPrOp {
     where
         HostPlacement: PlacementShr<S, HostRingT, HostRingT>,
     {
-        assert_eq!(x.precision, precision);
         // NOTE(Morten) we assume fixedpoint base is 2 so that truncation becomes (integer) division by 2**precision
         let z = plc.shr(sess, precision as usize, &x.tensor);
         AbstractHostFixedTensor {
             tensor: z,
-            precision: x.precision,
+            precision: x.precision - precision,
         }
     }
 
@@ -904,7 +903,7 @@ impl FixedpointMeanOp {
         let y = plc.mean_as_fixedpoint(sess, axis, 2, x.precision, &x.tensor);
         AbstractHostFixedTensor {
             tensor: y,
-            precision: x.precision,
+            precision: x.precision * 2,
         }
     }
 
