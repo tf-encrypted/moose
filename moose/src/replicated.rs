@@ -34,6 +34,8 @@ pub struct AbstractReplicatedBitArray<RepBitTensorT, N>(RepBitTensorT, PhantomDa
 
 pub type ReplicatedBitArray64 = AbstractReplicatedBitArray<ReplicatedBitTensor, N64>;
 
+pub type ReplicatedBitArray128 = AbstractReplicatedBitArray<ReplicatedBitTensor, N128>;
+
 // TODO implement using moose_type macro
 impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTensorT, N> {
     type Placement = RepBitTensorT::Placement;
@@ -43,17 +45,43 @@ impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTenso
     }
 }
 
-impl SymbolicType for ReplicatedBitArray64 {
+impl<N> SymbolicType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
     type Type =
-        Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N64>>;
+        Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>>;
 }
 
-pub type ReplicatedBitArray128 = AbstractReplicatedBitArray<ReplicatedBitTensor, N128>;
-
-impl SymbolicType for ReplicatedBitArray128 {
-    type Type =
-        Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N128>>;
+impl<N> CanonicalType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
+    type Type = Self;
 }
+
+impl<N> CanonicalType
+    for AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>
+{
+    type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
+}
+
+impl<N> CanonicalType
+    for Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>>
+{
+    type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
+}
+
+// impl SymbolicType for ReplicatedBitArray128 {
+//     type Type =
+//         Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N128>>;
+// }
+
+// impl CanonicalType for AbstractReplicatedBitArray<ReplicatedBitTensor, N128> {
+//     type Type = Self;
+// }
+
+// impl CanonicalType for AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N128> {
+//     type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N128>;
+// }
+
+// impl CanonicalType for <AbstractReplicatedBitArray<ReplicatedBitTensor, N128> as SymbolicType>::Type {
+//     type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N128>;
+// }
 
 impl<RepBitT: Placed, N> From<AbstractReplicatedBitArray<RepBitT, N>>
     for Symbolic<AbstractReplicatedBitArray<RepBitT, N>>
@@ -2012,40 +2040,25 @@ where
     }
 }
 
-trait PrefixOr<S: Session, SetupT, RepBitArrayT, RepBitT, N: Const> {
-    fn prefix_or(&self, sess: &S, setup: &SetupT, x: RepBitArrayT) -> Vec<RepBitT>;
-    // TODO(Dragos) replace output type with RepBitSlice
+trait PrefixOr<S: Session, SetupT, RepBitT> {
+    fn prefix_or(&self, sess: &S, setup: &SetupT, x: Vec<RepBitT>) -> Vec<RepBitT>;
 }
 
-impl<S: Session, SetupT, RepBitT, N: Const>
-    PrefixOr<S, SetupT, st!(AbstractReplicatedBitArray<RepBitT, N>), RepBitT, N>
-    for ReplicatedPlacement
+impl<S: Session, SetupT, RepBitT> PrefixOr<S, SetupT, RepBitT> for ReplicatedPlacement
 where
-    RepBitT: Ring<BitLength = N>,
-
-    AbstractReplicatedBitArray<RepBitT, N>: CanonicalType,
-    <AbstractReplicatedBitArray<RepBitT, N> as CanonicalType>::Type: KnownType<S>,
-
-    AbstractReplicatedBitArray<RepBitT, N>: Into<st!(AbstractReplicatedBitArray<RepBitT, N>)>,
-
     ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
-    ReplicatedPlacement: PlacementIndex<S, st!(AbstractReplicatedBitArray<RepBitT, N>), RepBitT>,
+    RepBitT: Clone,
 {
     /// Prefix Or protocol
     ///
     /// `x` is a replicated bit tensor.
-    fn prefix_or(
-        &self,
-        sess: &S,
-        setup: &SetupT,
-        x: st!(AbstractReplicatedBitArray<RepBitT, N>),
-    ) -> Vec<RepBitT> {
+    fn prefix_or(&self, sess: &S, setup: &SetupT, x: Vec<RepBitT>) -> Vec<RepBitT> {
         // OR(x, y) = (x xor y) xor (x and y)
 
-        let ring_size = RepBitT::BitLength::VALUE;
+        let v_len = x.len();
 
-        let log_r = (ring_size as f64).log2() as u32; // we know that R = 64/128
+        let log_r = ((v_len as f64).log2().ceil()) as u32;
         let rep = self;
 
         let bitwise_or = |x: &RepBitT, y: &RepBitT| -> RepBitT {
@@ -2056,16 +2069,16 @@ where
             )
         };
 
-        let mut res: Vec<_> = (0..ring_size).map(|i| rep.index(sess, i, &x)).collect();
-
+        let mut res = x.clone();
         for i in 0..(log_r - 1) {
             for j in 0..(2_i32.pow(log_r) / 2_i32.pow(i + 1)) {
                 let y = (2_i32.pow(i) + j * 2_i32.pow(i + 1) - 1) as usize;
                 let k_bound = 2_i32.pow(i) as usize;
                 for k in 1..k_bound {
                     // let mut res[i, y+k] = bitwise_or(x[i, y], x[i, y+k]);
-                    if y + k < ring_size {
+                    if y + k < v_len {
                         res[y + k] = bitwise_or(&res[y], &res[y + k]);
+                        println!("Pairing {:?}, {:?}", y, y + k);
                     }
                 }
             }
@@ -2074,161 +2087,139 @@ where
     }
 }
 
-trait SignFromMsb<S: Session, RingT>
-where
-    RepTen<RingT>: CanonicalType,
-    <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
-{
-    fn sign_from_msb(&self, sess: &S, msb_ring: &RepTen<RingT>) -> st!(RepTen<RingT>);
+trait SignFromMsb<S: Session, HostRingT, RepRingT> {
+    fn sign_from_msb(&self, sess: &S, msb_ring: &RepTen<HostRingT>) -> RepRingT;
 }
 
-impl<S: Session, RingT> SignFromMsb<S, RingT> for ReplicatedPlacement
+impl<S: Session, HostRingT> SignFromMsb<S, HostRingT, st!(RepTen<HostRingT>)>
+    for ReplicatedPlacement
 where
-    RepTen<RingT>: CanonicalType,
-    <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
-    RepTen<RingT>: Into<st!(RepTen<RingT>)>,
+    RepTen<HostRingT>: CanonicalType,
+    <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+    RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
 
     ReplicatedShape: KnownType<S>,
-    RepTen<RingT>: Clone,
+    RepTen<HostRingT>: Clone,
 
-    RingT: Tensor<S>,
-    RingT::Scalar: Into<Constant>,
-    RingT::Scalar: From<u8>,
+    HostRingT: Tensor<S>,
+    HostRingT::Scalar: Into<Constant>,
+    HostRingT::Scalar: From<u8>,
 
-    ReplicatedPlacement: PlacementFill<S, st!(ReplicatedShape), st!(RepTen<RingT>)>,
-    ReplicatedPlacement: PlacementShape<S, st!(RepTen<RingT>), st!(ReplicatedShape)>,
-    ReplicatedPlacement: PlacementShl<S, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
+    ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), st!(RepTen<HostRingT>)>,
+    ReplicatedPlacement: PlacementShape<S, st!(RepTen<HostRingT>), cs!(ReplicatedShape)>,
+    ReplicatedPlacement: PlacementShl<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
     ReplicatedPlacement:
-        PlacementSub<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
+        PlacementSub<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
 {
-    fn sign_from_msb(&self, sess: &S, msb_ring: &RepTen<RingT>) -> st!(RepTen<RingT>) {
+    fn sign_from_msb(&self, sess: &S, msb_ring: &RepTen<HostRingT>) -> st!(RepTen<HostRingT>) {
         let rep = self;
         let double = rep.shl(sess, 1, &msb_ring.clone().into());
-        let one_r = RingT::Scalar::from(1).into();
+        let one_r = HostRingT::Scalar::from(1).into();
         let ones = rep.fill(sess, one_r, &rep.shape(sess, &msb_ring.clone().into()));
         rep.sub(sess, &ones, &double)
     }
 }
-trait DivNorm<S: Session, SetupT, RingT, N: Const> {
+trait DivNorm<S: Session, SetupT, HostRingT> {
     fn norm(
         &self,
         sess: &S,
         setup: &SetupT,
         max_bits: usize,
-        x: RepTen<RingT>,
-    ) -> (RepTen<RingT>, RepTen<RingT>);
+        x: RepTen<HostRingT>,
+    ) -> (RepTen<HostRingT>, RepTen<HostRingT>);
 }
 
-impl<S: Session, SetupT, RingT, N: Const> DivNorm<S, SetupT, RingT, N> for ReplicatedPlacement
+impl<S: Session, SetupT, HostRingT> DivNorm<S, SetupT, HostRingT> for ReplicatedPlacement
 where
-    RepTen<RingT>: CanonicalType,
-    <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
-    RepTen<RingT>: Into<st!(RepTen<RingT>)>,
-    RepTen<RingT>: Clone,
-    RingT: Ring<BitLength = N>,
+    // HostRingT: CanonicalType,
+    RepTen<HostRingT>: CanonicalType,
+    <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
 
+    AbstractReplicatedBitArray<ReplicatedBitTensor, N64>: KnownType<S>,
     ReplicatedBitTensor: KnownType<S>,
 
-    AbstractReplicatedBitArray<ReplicatedBitTensor, N>: CanonicalType,
-    <AbstractReplicatedBitArray<ReplicatedBitTensor, N> as CanonicalType>::Type: KnownType<S>,
+    RepTen<HostRingT>: Clone,
+    RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
+    ReplicatedPlacement: PlacementMsb<S, SetupT, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
+    st!(RepTen<HostRingT>): Into<RepTen<HostRingT>>,
+    ReplicatedPlacement: SignFromMsb<S, HostRingT, st!(RepTen<HostRingT>)>,
 
-    st!(RepTen<RingT>): Clone,
-    st!(RepTen<RingT>): Into<RepTen<RingT>>,
-
-    ReplicatedPlacement: PlacementMsb<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
-    ReplicatedPlacement: SignFromMsb<S, RingT>,
+    ReplicatedPlacement: PlacementMulSetup<
+        S,
+        SetupT,
+        st!(RepTen<HostRingT>),
+        st!(RepTen<HostRingT>),
+        st!(RepTen<HostRingT>),
+    >,
     ReplicatedPlacement: PlacementBitDecSetup<
         S,
         SetupT,
-        st!(RepTen<RingT>),
-        st!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
+        st!(RepTen<HostRingT>),
+        cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N64>),
     >,
-    ReplicatedPlacement: TopMost<
+    ReplicatedPlacement: TopMost<S, SetupT, cs!(ReplicatedBitTensor), st!(RepTen<HostRingT>)>,
+    ReplicatedPlacement: PlacementIndex<
         S,
-        SetupT,
-        st!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
-        st!(RepTen<RingT>),
-        N,
+        cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N64>),
+        cs!(ReplicatedBitTensor),
     >,
-    ReplicatedPlacement:
-        PlacementMulSetup<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
 {
     fn norm(
         &self,
         sess: &S,
         setup: &SetupT,
         max_bits: usize,
-        x: RepTen<RingT>,
-    ) -> (RepTen<RingT>, RepTen<RingT>) {
+        x: RepTen<HostRingT>,
+    ) -> (RepTen<HostRingT>, RepTen<HostRingT>) {
         let rep = self;
         let msb = rep.msb(sess, setup, &x.clone().into());
         let sign = rep.sign_from_msb(sess, &msb.into());
-
-        let standard_typed_x: st!(RepTen<RingT>) = x.into();
-
-        let abs_x = rep.mul_setup(sess, setup, &sign, &standard_typed_x);
+        let abs_x = rep.mul_setup(sess, setup, &sign, &x.clone().into());
         // (Dragos) TODO: optimize this in the future, we don't need all bits (only max_bits from the bit-decomposition)
         let x_bits = rep.bit_decompose(sess, setup, &abs_x);
 
-        let top_most = rep.top_most(sess, setup, max_bits, x_bits);
+        let x_bits_vec: Vec<_> = (0..max_bits).map(|i| rep.index(sess, i, &x_bits)).collect();
+        let top_most = rep.top_most(sess, setup, max_bits, x_bits_vec);
 
-        let upshifted = rep.mul_setup(sess, setup, &standard_typed_x, &top_most);
+        let upshifted = rep.mul_setup(sess, setup, &x.into(), &top_most);
         let signed_topmost = rep.mul_setup(sess, setup, &sign, &top_most);
         (upshifted.into(), signed_topmost.into())
     }
 }
 
-trait TopMost<S: Session, SetupT, RepBitArrayT, RepRingT, N: Const> {
-    fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: RepBitArrayT) -> RepRingT;
+trait TopMost<S: Session, SetupT, RepBitT, RepRingT> {
+    fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: Vec<RepBitT>) -> RepRingT;
 }
 
-impl<S: Session, SetupT, RepRingT, N: Const>
-    TopMost<S, SetupT, st!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>), RepRingT, N>
+impl<S: Session, SetupT, RepBitT, RepRingT> TopMost<S, SetupT, RepBitT, RepRingT>
     for ReplicatedPlacement
 where
-    RepRingT: Ring<BitLength = N>,
-
-    AbstractReplicatedBitArray<ReplicatedBitTensor, N>: CanonicalType,
-    <AbstractReplicatedBitArray<ReplicatedBitTensor, N> as CanonicalType>::Type: KnownType<S>,
     ReplicatedBitTensor: KnownType<S>,
+    ReplicatedPlacement: PrefixOr<S, SetupT, RepBitT>,
+    RepBitT: Clone,
+    RepRingT: Clone,
 
-    ReplicatedPlacement: PlacementRevDim<
-        S,
-        st!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
-        st!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
-    >,
-    ReplicatedPlacement: PrefixOr<
-        S,
-        SetupT,
-        st!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
-        st!(ReplicatedBitTensor),
-        N,
-    >,
-    ReplicatedPlacement: PlacementRingInject<S, st!(ReplicatedBitTensor), RepRingT>,
+    ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
 {
-    fn top_most(
-        &self,
-        sess: &S,
-        setup: &SetupT,
-        max_bits: usize,
-        x: st!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
-    ) -> RepRingT {
+    fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: Vec<RepBitT>) -> RepRingT {
         let rep = self;
-        let x_rev = rep.rev_dim(sess, &x);
+        let x_rev: Vec<_> = (0..max_bits).map(|i| x[max_bits - i - 1].clone()).collect();
         let y = rep.prefix_or(sess, setup, x_rev);
         let y_vec: Vec<_> = y
             .iter()
             .take(max_bits)
             .map(|item| rep.ring_inject(sess, 0, item))
             .collect();
-        let z: Vec<_> = (0..max_bits - 1)
+        let mut z: Vec<_> = (0..max_bits - 1)
             .map(|i| rep.sub(sess, &y_vec[i], &y_vec[i + 1]))
             .collect();
 
-        let s_vec: Vec<_> = (0..max_bits - 1)
+        z.push(y_vec[max_bits - 1].clone());
+
+        let s_vec: Vec<_> = (0..max_bits)
             .map(|i| rep.shl(sess, max_bits - i - 1, &z[i]))
             .collect();
 
@@ -2255,7 +2246,7 @@ trait ApproximateReciprocal<S: Session, SetupT, RingT, N: Const> {
 impl<S: Session, SetupT, RingT, N: Const> ApproximateReciprocal<S, SetupT, RingT, N>
     for ReplicatedPlacement
 where
-    ReplicatedPlacement: DivNorm<S, SetupT, RingT, N>,
+    ReplicatedPlacement: DivNorm<S, SetupT, RingT>,
 {
     fn approximate_reciprocal(
         &self,
@@ -3285,17 +3276,28 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
+        let x = AbstractHostRingTensor::from_raw_plc(array![3u64], alice.clone());
 
         let sess = SyncSession::default();
         let setup = rep.gen_setup(&sess);
 
         let x_shared = rep.share(&sess, &setup, &x);
+        let x_bits = rep.bit_decompose(&sess, &setup, &x_shared);
+        let x_bits_vec: Vec<_> = (0..64).map(|i| rep.index(&sess, i, &x_bits)).collect();
 
-        let (upshifted, topmost) = rep.norm(&sess, &setup, 12, x_shared);
-        let upshifted_clear = alice.reveal(&sess, &upshifted);
-        let topmost_clear = alice.reveal(&sess, &topmost);
+        let prefixes = rep.prefix_or(&sess, &setup, x_bits_vec);
+        for i in 0..64 {
+            println!("{:?}", alice.reveal(&sess, &prefixes[i]));
+        }
 
-        assert_eq!(6, upshifted_clear.0[[]].0);
+        // let topmost: ReplicatedRing64Tensor = rep.top_most(&sess, &setup, 12, x_bits_vec);
+
+        // let (upshifted, topmost) = rep.norm(&sess, &setup, 12, x_shared);
+        // let upshifted_clear = alice.reveal(&sess, &upshifted);
+        // let topmost_clear = alice.reveal(&sess, &topmost);
+
+        // let target = AbstractHostRingTensor::from_raw_plc(array![6u64], alice.clone());
+        // assert_eq!(target, topmost_clear);
+        assert_eq!(false, true);
     }
 }
