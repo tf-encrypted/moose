@@ -2070,15 +2070,14 @@ where
         };
 
         let mut res = x.clone();
-        for i in 0..(log_r - 1) {
+        for i in 0..log_r {
             for j in 0..(2_i32.pow(log_r) / 2_i32.pow(i + 1)) {
                 let y = (2_i32.pow(i) + j * 2_i32.pow(i + 1) - 1) as usize;
-                let k_bound = 2_i32.pow(i) as usize;
+                let k_bound = (2_i32.pow(i) + 1) as usize;
                 for k in 1..k_bound {
                     // let mut res[i, y+k] = bitwise_or(x[i, y], x[i, y+k]);
                     if y + k < v_len {
                         res[y + k] = bitwise_or(&res[y], &res[y + k]);
-                        println!("Pairing {:?}, {:?}", y, y + k);
                     }
                 }
             }
@@ -3276,7 +3275,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(array![3u64], alice.clone());
+        let x = AbstractHostRingTensor::from_raw_plc(array![8u64], alice.clone());
 
         let sess = SyncSession::default();
         let setup = rep.gen_setup(&sess);
