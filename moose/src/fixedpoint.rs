@@ -312,8 +312,12 @@ impl FixedpointAddOp {
     where
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
     {
-        let z = plc.add(sess, &x.0, &y.0);
-        AbstractReplicatedFixedTensor(z)
+        assert_eq!(x.precision, y.precision);
+        let z = plc.add(sess, &x.tensor, &y.tensor);
+        AbstractReplicatedFixedTensor {
+            tensor: z,
+            precision: x.precision,
+        }
     }
 }
 
@@ -416,8 +420,12 @@ impl FixedpointSubOp {
     where
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     {
-        let z = plc.sub(sess, &x.0, &y.0);
-        AbstractReplicatedFixedTensor(z)
+        assert_eq!(x.precision, y.precision);
+        let z = plc.sub(sess, &x.tensor, &y.tensor);
+        AbstractReplicatedFixedTensor {
+            tensor: z,
+            precision: x.precision,
+        }
     }
 }
 
@@ -521,9 +529,13 @@ impl FixedpointMulOp {
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
     {
+        assert_eq!(x.precision, y.precision);
         let setup = plc.gen_setup(sess);
-        let z = plc.mul_setup(sess, &setup, &x.0, &y.0);
-        AbstractReplicatedFixedTensor(z)
+        let z = plc.mul_setup(sess, &setup, &x.tensor, &y.tensor);
+        AbstractReplicatedFixedTensor {
+            tensor: z,
+            precision: x.precision + y.precision,
+        }
     }
 }
 
@@ -627,9 +639,13 @@ impl FixedpointDotOp {
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementDotSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
     {
+        assert_eq!(x.precision, y.precision);
         let setup = plc.gen_setup(sess);
-        let z = plc.dot_setup(sess, &setup, &x.0, &y.0);
-        AbstractReplicatedFixedTensor(z)
+        let z = plc.dot_setup(sess, &setup, &x.tensor, &y.tensor);
+        AbstractReplicatedFixedTensor {
+            tensor: z,
+            precision: x.precision + y.precision,
+        }
     }
 }
 
@@ -724,8 +740,11 @@ impl FixedpointTruncPrOp {
     where
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
     {
-        let z = plc.trunc_pr(sess, precision, &x.0);
-        AbstractReplicatedFixedTensor(z)
+        let z = plc.trunc_pr(sess, precision, &x.tensor);
+        AbstractReplicatedFixedTensor {
+            tensor: z,
+            precision: x.precision - precision,
+        }
     }
 }
 
@@ -820,8 +839,11 @@ impl FixedpointSumOp {
     where
         ReplicatedPlacement: PlacementSum<S, RepRingT, RepRingT>,
     {
-        let z = plc.sum(sess, axis, &x.0);
-        AbstractReplicatedFixedTensor(z)
+        let z = plc.sum(sess, axis, &x.tensor);
+        AbstractReplicatedFixedTensor {
+            tensor: z,
+            precision: x.precision,
+        }
     }
 }
 
@@ -916,8 +938,11 @@ impl FixedpointMeanOp {
     where
         ReplicatedPlacement: PlacementMeanAsFixedpoint<S, RepRingT, RepRingT>,
     {
-        let y = plc.mean_as_fixedpoint(sess, axis, 2, 27, &x.0); // TODO hardcoded fixedpoint params
-        AbstractReplicatedFixedTensor(y)
+        let y = plc.mean_as_fixedpoint(sess, axis, 2, x.precision, &x.tensor);
+        AbstractReplicatedFixedTensor {
+            tensor: y,
+            precision: x.precision * 2,
+        }
     }
 }
 
