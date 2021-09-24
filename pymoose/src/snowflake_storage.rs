@@ -19,7 +19,12 @@ impl SnowflakeStorage {
         let password = std::env::var("CAPE_SNOWFLAKE_PASSWORD").unwrap();
         let account_identifier = std::env::var("CAPE_SNOWFLAKE_ACCOUNT_IDENTIFIER").unwrap();
         let aes_key = std::env::var("CAPE_SNOWFLAKE_AES_KEY").unwrap();
-        SnowflakeStorage { user, password, account_identifier, aes_key }
+        SnowflakeStorage {
+            user,
+            password,
+            account_identifier,
+            aes_key,
+        }
     }
 }
 
