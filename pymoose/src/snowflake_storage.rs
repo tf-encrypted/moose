@@ -15,10 +15,14 @@ pub struct SnowflakeStorage {
 
 impl SnowflakeStorage {
     pub fn new() -> Self {
-        let user = std::env::var("CAPE_SNOWFLAKE_USER").unwrap();
-        let password = std::env::var("CAPE_SNOWFLAKE_PASSWORD").unwrap();
-        let account_identifier = std::env::var("CAPE_SNOWFLAKE_ACCOUNT_IDENTIFIER").unwrap();
-        let aes_key = std::env::var("CAPE_SNOWFLAKE_AES_KEY").unwrap();
+        let user =
+            std::env::var("CAPE_SNOWFLAKE_USER").expect("failed to read CAPE_SNOWFLAKE_USER");
+        let password = std::env::var("CAPE_SNOWFLAKE_PASSWORD")
+            .expect("failed to read CAPE_SNOWFLAKE_PASSWORD");
+        let account_identifier = std::env::var("CAPE_SNOWFLAKE_ACCOUNT_IDENTIFIER")
+            .expect("failed to read CAPE_SNOWFLAKE_ACCOUNT_IDENTIFIER");
+        let aes_key =
+            std::env::var("CAPE_SNOWFLAKE_AES_KEY").expect("failed to read CAPE_SNOWFLAKE_AES_KEY");
         SnowflakeStorage {
             user,
             password,
