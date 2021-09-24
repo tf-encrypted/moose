@@ -757,6 +757,8 @@ where {
             .map(|i| (&x.0 >> i) & (&ones))
             .collect();
 
+        println!("input - {:?}", x);
+
         let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
         let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
         // we unwrap only at the end since shifting can cause overflow
@@ -1231,8 +1233,14 @@ where
     )
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct HostBitTensor(pub ArrayD<u8>, HostPlacement);
+
+impl std::fmt::Debug for HostBitTensor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.as_slice().fmt(f)
+    }
+}
 
 moose_type!(HostBitTensor);
 
@@ -3220,6 +3228,22 @@ mod tests {
             let sliced = alice.index_axis(&sess, 0, i, &x_bits);
             assert_eq!(&sliced, target);
         }
+
+        let y_target: ArrayD<u8> = array![
+            0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0,
+            0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0,
+            1, 1, 1, 0, 1, 0
+        ]
+        .into_dyn().into_shape((64,1)).unwrap().into_dyn();
+
+        let x_back1: ArrayD<u64> = array![6743216615002642708]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let x_host = HostRing64Tensor::from_raw_plc(x_back1, alice.clone());
+        let x_back1_bits: HostBitTensor = alice.bit_decompose(&sess, &x_host);
+
+        assert_eq!(x_back1_bits.0, y_target);
     }
 
     #[test]
