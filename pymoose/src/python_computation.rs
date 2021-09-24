@@ -39,6 +39,7 @@ mod tests {
 
         (file_name + ".py", module_name)
     }
+
     fn run_binary_func(x: &ArrayD<f64>, y: &ArrayD<f64>, py_code: &str) -> Value {
         pyo3::prepare_freethreaded_python();
         let gil = Python::acquire_gil();
@@ -78,6 +79,7 @@ mod tests {
             .unwrap();
         outputs["result"].clone()
     }
+    
     fn run_unary_func(x: &ArrayD<f64>, py_code: &str) -> Value {
         pyo3::prepare_freethreaded_python();
         let gil = Python::acquire_gil();
