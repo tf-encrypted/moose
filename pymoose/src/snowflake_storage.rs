@@ -13,6 +13,16 @@ pub struct SnowflakeStorage {
     aes_key: String,
 }
 
+impl SnowflakeStorage {
+    pub fn new() -> Self {
+        let user = std::env::var("CAPE_SNOWFLAKE_USER").unwrap();
+        let password = std::env::var("CAPE_SNOWFLAKE_PASSWORD").unwrap();
+        let account_identifier = std::env::var("CAPE_SNOWFLAKE_ACCOUNT_IDENTIFIER").unwrap();
+        let aes_key = std::env::var("CAPE_SNOWFLAKE_AES_KEY").unwrap();
+        SnowflakeStorage { user, password, account_identifier, aes_key }
+    }
+}
+
 fn generate_python_names() -> (String, String) {
     const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
     const STRING_LEN: usize = 30;
@@ -165,9 +175,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_snowflake() {
-        let storage = SnowflakeStorage {
-            ...
-        };
+        let storage = SnowflakeStorage::new();
         let val = storage
             .load(
                 "my_key",
@@ -179,6 +187,5 @@ mod tests {
             .unwrap();
 
         println!("{:?}", val);
-        // assert!(false);
     }
 }
