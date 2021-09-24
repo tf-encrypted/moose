@@ -17,6 +17,7 @@ crate-type = ["cdylib"]
 [dependencies]
 anyhow = "~1.0"
 approx = "~0.4"
+async-trait = "~0.1"
 maplit = "~1.0"
 numpy = "~0.14"
 ndarray = "~0.15"
