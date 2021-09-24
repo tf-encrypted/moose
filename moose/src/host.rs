@@ -607,10 +607,10 @@ impl HostShlDimOp {
 
         let concatenated: Vec<_> = (0..bit_length)
             .map(|i| {
-                if i < bit_length - amount {
-                    x.0.index_axis(axis, i + amount)
-                } else {
+                if i < amount {
                     zero_view.clone()
+                } else {
+                    x.0.index_axis(axis, i - amount)
                 }
             })
             .collect();
@@ -3234,7 +3234,10 @@ mod tests {
             0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0,
             1, 1, 1, 0, 1, 0
         ]
-        .into_dyn().into_shape((64,1)).unwrap().into_dyn();
+        .into_dyn()
+        .into_shape((64, 1))
+        .unwrap()
+        .into_dyn();
 
         let x_back1: ArrayD<u64> = array![6743216615002642708]
             .into_dimensionality::<IxDyn>()

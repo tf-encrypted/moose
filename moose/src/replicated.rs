@@ -1975,6 +1975,9 @@ where
     ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementShlDim<S, RepBitT, RepBitT>,
+    HostPlacement: PlacementReveal<S, RepBitT, cs!(HostBitTensor)>,
+    HostBitTensor: KnownType<S>,
+    cs!(HostBitTensor): std::fmt::Debug,
 {
     fn binary_adder(
         &self,
@@ -1988,6 +1991,8 @@ where
 
         let rep = self;
         let log_r = (ring_size as f64).log2() as usize; // we know that R = 64/128
+
+        let (player0, player1, player2) = rep.host_placements();
 
         // g is part of the generator set, p propagator set
         // A few helpful diagrams to understand what is happening here:
@@ -2023,7 +2028,7 @@ where
             // Note that the original algorithm had G_a and P_b, but we can have
             // G_a and P_a instead because the 1s in P_a do not matter in the final result
             // since they are cancelled out by the zeros in G_a
-            let p_and_g = rep.and_setup(sess, &setup, &p1, &g1);
+            let p_and_g = rep.and_setup(sess, &setup, &p, &g1);
 
             // update `g = g xor p1 and g1`
             g = rep.xor(sess, &g, &p_and_g);
@@ -2118,23 +2123,18 @@ where
         rep.sub(sess, &ones, &double)
     }
 }
-trait DivNorm<S: Session, SetupT, HostRingT>
-where
-    AbstractReplicatedBitArray<ReplicatedBitTensor, N64>: KnownType<S>,
-{
+trait DivNorm<S: Session, SetupT, HostRingT> {
     fn norm(
         &self,
         sess: &S,
         setup: &SetupT,
         max_bits: usize,
         x: RepTen<HostRingT>,
-    ) -> cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N64>);
-    //(RepTen<HostRingT>, RepTen<HostRingT>);
+    ) -> (RepTen<HostRingT>, RepTen<HostRingT>);
 }
 
 impl<S: Session, SetupT, HostRingT> DivNorm<S, SetupT, HostRingT> for ReplicatedPlacement
 where
-    // HostRingT: CanonicalType,
     RepTen<HostRingT>: CanonicalType,
     <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
 
@@ -2171,12 +2171,6 @@ where
     HostBitTensor: KnownType<S>,
     ReplicatedBitArray64: KnownType<S>,
     HostBitArray64: KnownType<S>,
-
-    HostPlacement: PlacementReveal<S, cs!(ReplicatedBitTensor), cs!(HostBitTensor)>,
-    HostPlacement: PlacementReveal<S, cs!(ReplicatedBitArray64), cs!(HostBitArray64)>,
-    HostRingT: std::fmt::Debug,
-    cs!(HostBitTensor): std::fmt::Debug,
-    cs!(HostBitArray64): std::fmt::Debug,
 {
     fn norm(
         &self,
@@ -2184,36 +2178,26 @@ where
         setup: &SetupT,
         max_bits: usize,
         x: RepTen<HostRingT>,
-    ) -> cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N64>) {
+    ) -> (RepTen<HostRingT>, RepTen<HostRingT>) {
         // (RepTen<HostRingT>, RepTen<HostRingT>) {
         let rep = self;
-        let (player0, player1, player2) = rep.host_placements();
 
         let msb = rep.msb(sess, setup, &x.clone().into());
         let sign = rep.sign_from_msb(sess, &msb.into());
         let abs_x = rep.mul_setup(sess, setup, &sign, &x.clone().into());
 
-        println!("abs value(p0): {:?}", player0.reveal(sess, &abs_x));
         // (Dragos) TODO: optimize this in the future, we don't need all bits (only max_bits from the bit-decomposition)
         let x_bits = rep.bit_decompose(sess, setup, &abs_x);
-        x_bits
 
         // println!("abstract array: {:?}", player0.reveal(sess, &x_bits));
 
-        // let x_bits_vec: Vec<_> = (0..max_bits).map(|i| rep.index(sess, i, &x_bits)).collect();
-        // for (i, item) in x_bits_vec.iter().enumerate() {
-        //     println!("sliced x_bits({:?}): {:?}", i, player0.reveal(sess, item));
-        // }
+        let x_bits_vec: Vec<_> = (0..max_bits).map(|i| rep.index(sess, i, &x_bits)).collect();
 
-        // let top_most = rep.top_most(sess, setup, max_bits, x_bits_vec);
-        // let upshifted = rep.mul_setup(sess, setup, &x.clone().into(), &top_most);
+        let top_most = rep.top_most(sess, setup, max_bits, x_bits_vec);
+        let upshifted = rep.mul_setup(sess, setup, &x.clone().into(), &top_most);
 
-        // println!("x_value: {:?}", player0.reveal(sess, &x.clone().into()));
-        // println!("topmost: {:?}", player0.reveal(sess, &top_most));
-        // println!("upshifted: {:?}", player0.reveal(sess, &upshifted));
-
-        // // let signed_topmost = rep.mul_setup(sess, setup, &sign, &top_most);
-        // (upshifted.into(), top_most.into())
+        let signed_topmost = rep.mul_setup(sess, setup, &sign, &top_most);
+        (upshifted.into(), signed_topmost.into())
     }
 }
 
@@ -2235,27 +2219,13 @@ where
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
-
-    HostPlacement: PlacementReveal<S, RepBitT, cs!(HostBitTensor)>,
-    cs!(HostBitTensor): std::fmt::Debug,
 {
     fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: Vec<RepBitT>) -> RepRingT {
         assert_eq!(max_bits, x.len());
 
         let rep = self;
-        // debug code
-        let (player0, player1, player2) = rep.host_placements();
-
-        for (i, item) in x.iter().enumerate() {
-            println!("x_bits({:?}): {:?}", i, player0.reveal(sess, item));
-        }
-
         let x_rev: Vec<_> = (0..max_bits).map(|i| x[max_bits - i - 1].clone()).collect();
         let y = rep.prefix_or(sess, setup, x_rev);
-
-        for item in y.iter() {
-            println!("y: {:?}", player0.reveal(sess, item));
-        }
 
         let mut y_vec: Vec<_> = y
             .iter()
@@ -2419,19 +2389,11 @@ impl RepBitDecOp {
         let p1_zero = player1.fill(sess, 0_u8.into(), &player1.shape(sess, x11));
         let p2_zero = player2.fill(sess, 0_u8.into(), &player2.shape(sess, x22));
 
-        println!("x00: {:?}", x00);
-        println!("x10: {:?}", x10);
-        println!("x21: {:?}", x21);
-
         let left = with_context!(player0, sess, x00 + x10);
         let bsl = player0.bit_decompose(sess, &left);
 
-        println!("bits_left {:?}", bsl);
-
         // transform x2 into boolean sharing
         let x2_on_1 = player1.bit_decompose(sess, x21);
-
-        println!("bits_right {:?}", x2_on_1);
 
         let x2_on_2 = player2.bit_decompose(sess, x22);
 
@@ -2446,7 +2408,6 @@ impl RepBitDecOp {
         .into();
 
         let res = rep.binary_adder(sess, setup, rep_bsl, rep_bsr, HostRingT::BitLength::VALUE);
-        println!("binary_adder: {:?}", player0.reveal(sess, &res));
         AbstractReplicatedBitArray(res, PhantomData)
     }
 }
@@ -3343,33 +3304,19 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(array![2u64], alice.clone());
+        let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
 
         let sess = SyncSession::default();
         let setup = rep.gen_setup(&sess);
 
         let x_shared = rep.share(&sess, &setup, &x);
-        // let x_bits = rep.bit_decompose(&sess, &setup, &x_shared);
-        // let x_bits_vec: Vec<_> = (0..12).map(|i| rep.index(&sess, i, &x_bits)).collect();
 
-        // println!("test_norm bits : {:?}", alice.reveal(&sess, &x_bits));
-        // let topmost: ReplicatedRing64Tensor = rep.top_most(&sess, &setup, 12, x_bits_vec);
+        let (upshifted, topmost) = rep.norm(&sess, &setup, 12, x_shared);
 
-        // let (upshifted, topmost) = rep.norm(&sess, &setup, 12, x_shared);
+        let topmost_target = AbstractHostRingTensor::from_raw_plc(array![4u64], alice.clone());
+        let upshifted_target = AbstractHostRingTensor::from_raw_plc(array![3584], alice.clone());
 
-        println!(
-            "output from norm: {:?}",
-            alice.reveal(&sess, &rep.norm(&sess, &setup, 12, x_shared))
-        );
-        // let upshifted_clear = alice.reveal(&sess, &upshifted);
-        // let topmost_clear = alice.reveal(&sess, &topmost);
-
-        // println!("{:?}", topmost_clear);
-        // // println!("{:?}", upshifted_clear);
-
-        // let target = AbstractHostRingTensor::from_raw_plc(array![4u64], alice.clone());
-        // assert_eq!(target, topmost_clear);
-
-        assert_eq!(false, true);
+        assert_eq!(topmost_target, alice.reveal(&sess, &topmost));
+        assert_eq!(upshifted_target, alice.reveal(&sess, &upshifted));
     }
 }
