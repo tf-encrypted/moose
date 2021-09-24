@@ -3319,4 +3319,33 @@ mod tests {
         assert_eq!(topmost_target, alice.reveal(&sess, &topmost));
         assert_eq!(upshifted_target, alice.reveal(&sess, &upshifted));
     }
+
+    #[test]
+    fn test_binary_adder() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x = AbstractHostRingTensor::from_raw_plc(array![3884509700957842751u64], alice.clone());
+        let y =
+            AbstractHostRingTensor::from_raw_plc(array![13611438098135434720u64], alice.clone());
+        let expected_output = x.clone() + y.clone();
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let x_bit = alice.bit_decompose(&sess, &x);
+        let y_bit = alice.bit_decompose(&sess, &y);
+        let expected_output_bit: HostBitTensor = alice.bit_decompose(&sess, &expected_output);
+
+        let x_shared = rep.share(&sess, &setup, &x_bit);
+        let y_shared = rep.share(&sess, &setup, &y_bit);
+        let binary_adder = rep.binary_adder(&sess, setup, x_shared, y_shared, 64);
+        let binary_adder_clear = alice.reveal(&sess, &binary_adder);
+
+        assert_eq!(expected_output_bit, binary_adder_clear);
+    }
 }
