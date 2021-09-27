@@ -208,6 +208,7 @@ impl FixedpointDecodeOp {
         HostPlacement: PlacementRingFixedpointDecode<S, HostRingT, HostFloatT>,
     {
         // TODO(Morten) inline this function?
+        assert_eq!(x.precision, precision);
         plc.fixedpoint_ring_decode(sess, 2, precision, &x.tensor)
     }
 }
