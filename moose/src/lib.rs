@@ -989,6 +989,90 @@ macro_rules! kernel {
         }
     };
 
+    (__binary concrete, $op:ty, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::BinaryKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc,
+                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            {
+                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use std::convert::TryInto;
+
+                let op = self.clone();
+                Ok(Box::new(move |
+                    sess: &SymbolicSession,
+                    plc: &$plc,
+                    x0: <$t0 as KnownType<SymbolicSession>>::Type,
+                    x1: <$t1 as KnownType<SymbolicSession>>::Type,
+                | {
+                    // TODO derive k outside box (using self instead of op)
+                    // Magic by Morten
+                    let op = &op;
+
+                    let k = derive_runtime_kernel![binary, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
+                
+                    match (x0, x1) {
+                        (Symbolic::Concrete(v0), Symbolic::Concrete(v1)) => {
+                            let y = k(sess, plc, v0, v1);
+                            y
+                        }
+                        (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
+                            let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                        }
+                        _ => unimplemented!() // ok
+                    }
+                }))
+            }
+        }
+    };
+
+    (__binary transparent, $op:ty, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::BinaryKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc,
+                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            {
+                use crate::symbolic::SymbolicSession;
+
+                let op = self.clone();
+                Ok(Box::new(move |
+                    sess: &SymbolicSession,
+                    plc: &$plc,
+                    x0: <$t0 as KnownType<SymbolicSession>>::Type,
+                    x1: <$t1 as KnownType<SymbolicSession>>::Type,
+                | {
+                    // TODO derive k outside box (using self instead of op)
+                    // Magic by Morten
+                    let op = &op;
+
+                    let k = derive_runtime_kernel![binary, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
+                    k(sess, plc, x0, x1)
+                }))
+            }
+        }
+    };
+
     (__binary runtime, $op:ty, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
@@ -1917,6 +2001,7 @@ impl Const for N128 {
 
 pub trait Ring {
     type BitLength: Const;
+    fn one() -> crate::computation::Constant;
 }
 
 macro_rules! unmodelled {

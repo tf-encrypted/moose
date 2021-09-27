@@ -1762,10 +1762,18 @@ moose_type!(HostRing128Tensor = [atomic] AbstractHostRingTensor<u128>);
 
 impl Ring for HostRing64Tensor {
     type BitLength = N64;
+
+    fn one() -> Constant {
+        Constant::Ring64(1)
+    }
 }
 
 impl Ring for HostRing128Tensor {
     type BitLength = N128;
+
+    fn one() -> Constant {
+        Constant::Ring128(1)
+    }
 }
 
 impl<T> Placed for AbstractHostRingTensor<T> {
@@ -1819,6 +1827,10 @@ where
 
 impl<R: Ring + Placed> Ring for Symbolic<R> {
     type BitLength = R::BitLength;
+
+    fn one() -> Constant {
+        R::one()
+    }
 }
 
 impl<S: Session, T> PlacementPlace<S, AbstractHostRingTensor<T>> for HostPlacement

@@ -23,6 +23,10 @@ pub struct AbstractReplicatedRingTensor<HostRingT> {
 
 impl<HostRingT: Ring> Ring for AbstractReplicatedRingTensor<HostRingT> {
     type BitLength = HostRingT::BitLength;
+
+    fn one() -> Constant {
+        HostRingT::one()
+    }
 }
 
 moose_type!(ReplicatedRing64Tensor = AbstractReplicatedRingTensor<HostRing64Tensor>);
@@ -1796,52 +1800,42 @@ modelled!(PlacementAbs::abs, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRi
 kernel! {
     RepAbsOp,
     [
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::kernel),
     ]
 }
 
 impl RepAbsOp {
-    fn kernel<S: Session, SetupT, RingT, ShapeT>(
+    fn kernel<S: Session, SetupT, RepT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
-        x: RepTen<RingT>,
-    ) -> st!(RepTen<RingT>)
+        x: RepT,
+    ) -> RepT
     where
-        RepTen<RingT>: Into<st!(RepTen<RingT>)>,
-        RepTen<RingT>: CanonicalType,
-        <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
-
-        RepTen<RingT>: Clone,
-
-        RingT: Tensor<S>,
-        RingT::Scalar: Into<Constant>,
-        RingT::Scalar: From<u8>,
-
-        ReplicatedPlacement: PlacementMsb<S, SetupT, m!(c!(RepTen<RingT>)), st!(RepTen<RingT>)>,
-        ReplicatedPlacement: PlacementFill<S, ShapeT, st!(RepTen<RingT>)>,
-        ReplicatedPlacement: PlacementShape<S, st!(RepTen<RingT>), ShapeT>,
+        RepT: Ring,
+        ReplicatedPlacement: PlacementMsb<S, SetupT, RepT, RepT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepT>,
+        ReplicatedPlacement: PlacementShape<S, RepT, ShapeT>,
         ReplicatedPlacement: PlacementMulSetup<
             S,
             SetupT,
-            st!(RepTen<RingT>),
-            st!(RepTen<RingT>),
-            st!(RepTen<RingT>),
+            RepT,
+            RepT,
+            RepT,
         >,
-        ReplicatedPlacement: PlacementShl<S, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
-        ReplicatedPlacement:
-            PlacementSub<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
+        ReplicatedPlacement: PlacementShl<S, RepT, RepT>,
+        ReplicatedPlacement: PlacementSub<S, RepT, RepT, RepT>,
     {
         // TODO(Dragos) Remove un-necessary cloning due to st! macro
-        let msb_ring: st!(RepTen<RingT>) = rep.msb(sess, &setup, &x.clone().into());
+        let msb_ring = rep.msb(sess, &setup, &x);
         let double = rep.shl(sess, 1, &msb_ring);
 
-        let one_r = RingT::Scalar::from(1).into();
+        let one_r = RepT::one();
         let ones = rep.fill(sess, one_r, &rep.shape(sess, &msb_ring));
         let sign = rep.sub(sess, &ones, &double);
 
-        rep.mul_setup(sess, &setup, &sign, &x.into())
+        rep.mul_setup(sess, &setup, &sign, &x)
     }
 }
 
