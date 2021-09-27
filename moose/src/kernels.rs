@@ -1687,12 +1687,20 @@ impl Compile<Kernel> for FixedpointAddOp {
         match self.sig {
             signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
                 function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 + y.0)
+                    assert_eq!(x.precision, y.precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor + y.tensor,
+                        precision: x.precision,
+                    }
                 })
             }
             signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
                 function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 + y.0)
+                    assert_eq!(x.precision, y.precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor + y.tensor,
+                        precision: x.precision,
+                    }
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -1706,12 +1714,20 @@ impl Compile<Kernel> for FixedpointSubOp {
         match self.sig {
             signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
                 function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 - y.0)
+                    assert_eq!(x.precision, y.precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor - y.tensor,
+                        precision: x.precision,
+                    }
                 })
             }
             signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
                 function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 - y.0)
+                    assert_eq!(x.precision, y.precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor - y.tensor,
+                        precision: x.precision,
+                    }
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -1725,12 +1741,20 @@ impl Compile<Kernel> for FixedpointMulOp {
         match self.sig {
             signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
                 function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 * y.0)
+                    assert_eq!(x.precision, y.precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor * y.tensor,
+                        precision: x.precision + y.precision,
+                    }
                 })
             }
             signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
                 function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 * y.0)
+                    assert_eq!(x.precision, y.precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor * y.tensor,
+                        precision: x.precision + y.precision,
+                    }
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
