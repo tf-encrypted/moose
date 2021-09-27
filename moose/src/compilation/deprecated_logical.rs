@@ -14,8 +14,8 @@ fn lower_ty(ty: Ty) -> Ty {
     match ty {
         Ty::Tensor(TensorDType::Float32) => Ty::HostFloat32Tensor,
         Ty::Tensor(TensorDType::Float64) => Ty::HostFloat64Tensor,
-        Ty::Tensor(TensorDType::Fixed64 { precision: _ }) => Ty::HostFixed64Tensor,
-        Ty::Tensor(TensorDType::Fixed128 { precision: _ }) => Ty::HostFixed128Tensor,
+        Ty::Tensor(TensorDType::Fixed64 { .. }) => Ty::HostFixed64Tensor,
+        Ty::Tensor(TensorDType::Fixed128 { .. }) => Ty::HostFixed128Tensor,
         _ => ty,
     }
 }

@@ -16,8 +16,16 @@ pub enum Shape {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
 pub enum TensorDType {
-    Fixed64 { precision: u32 },
-    Fixed128 { precision: u32 },
+    #[display(fmt = "Fixed64({}, {})", integral_precision, fractional_precision)]
+    Fixed64 {
+        integral_precision: u32,
+        fractional_precision: u32,
+    },
+    #[display(fmt = "Fixed128({}, {})", integral_precision, fractional_precision)]
+    Fixed128 {
+        integral_precision: u32,
+        fractional_precision: u32,
+    },
     Float32,
     Float64,
     Unknown,
@@ -266,8 +274,14 @@ impl MulOp {
         HostPlacement: PlacementMul<S, Float64T, Float64T, Float64T>,
     {
         let precision = match sig.arg(0) {
-            Ok(Ty::Tensor(TensorDType::Fixed64 { precision })) => Some(precision),
-            Ok(Ty::Tensor(TensorDType::Fixed128 { precision })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed64 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed128 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
             _ => None,
         };
         match (x, y) {
@@ -307,8 +321,14 @@ impl MulOp {
         ReplicatedPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
     {
         let precision = match sig.arg(0) {
-            Ok(Ty::Tensor(TensorDType::Fixed64 { precision })) => Some(precision),
-            Ok(Ty::Tensor(TensorDType::Fixed128 { precision })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed64 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed128 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
             _ => None,
         };
 
@@ -415,8 +435,14 @@ impl DotOp {
         HostPlacement: PlacementDot<S, Float64T, Float64T, Float64T>,
     {
         let precision = match sig.arg(0) {
-            Ok(Ty::Tensor(TensorDType::Fixed64 { precision })) => Some(precision),
-            Ok(Ty::Tensor(TensorDType::Fixed128 { precision })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed64 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed128 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
             _ => None,
         };
         match (x, y) {
@@ -456,8 +482,14 @@ impl DotOp {
         ReplicatedPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
     {
         let precision = match sig.arg(0) {
-            Ok(Ty::Tensor(TensorDType::Fixed64 { precision })) => Some(precision),
-            Ok(Ty::Tensor(TensorDType::Fixed128 { precision })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed64 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed128 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
             _ => None,
         };
         match (x, y) {
@@ -501,13 +533,25 @@ impl CastOp {
         HostPlacement: PlacementFixedpointEncode<S, Float64T, Fixed128T>,
     {
         let arg0_precision = match sig.arg(0) {
-            Ok(Ty::Tensor(TensorDType::Fixed64 { precision })) => Some(precision),
-            Ok(Ty::Tensor(TensorDType::Fixed128 { precision })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed64 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed128 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
             _ => None,
         };
         let ret_precision = match sig.ret() {
-            Ty::Tensor(TensorDType::Fixed64 { precision }) => Some(precision),
-            Ty::Tensor(TensorDType::Fixed128 { precision }) => Some(precision),
+            Ty::Tensor(TensorDType::Fixed64 {
+                fractional_precision: precision,
+                ..
+            }) => Some(precision),
+            Ty::Tensor(TensorDType::Fixed128 {
+                fractional_precision: precision,
+                ..
+            }) => Some(precision),
             _ => None,
         };
 
@@ -599,8 +643,14 @@ impl MeanOp {
         HostPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
     {
         let precision = match sig.arg(0) {
-            Ok(Ty::Tensor(TensorDType::Fixed64 { precision })) => Some(precision),
-            Ok(Ty::Tensor(TensorDType::Fixed128 { precision })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed64 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed128 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
             _ => None,
         };
         match x {
@@ -639,8 +689,14 @@ impl MeanOp {
         ReplicatedPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
     {
         let precision = match sig.arg(0) {
-            Ok(Ty::Tensor(TensorDType::Fixed64 { precision })) => Some(precision),
-            Ok(Ty::Tensor(TensorDType::Fixed128 { precision })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed64 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
+            Ok(Ty::Tensor(TensorDType::Fixed128 {
+                fractional_precision: precision,
+                ..
+            })) => Some(precision),
             _ => None,
         };
         match x {
