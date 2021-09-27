@@ -14,6 +14,18 @@ macro_rules! st {
     };
 }
 
+macro_rules! c {
+    ($t:ty) => {
+        <$t as crate::computation::CanonicalType>::Type
+    }
+}
+
+macro_rules! m {
+    ($t:ty) => {
+        <$t as KnownType<S>>::Type
+    }
+}
+
 macro_rules! derive_runtime_kernel {
     (nullary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
