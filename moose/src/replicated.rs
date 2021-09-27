@@ -1159,12 +1159,9 @@ impl RepSumOp {
         let z22 = player2.sum(sess, axis, x22);
         let z02 = player2.sum(sess, axis, x02);
 
-        rep.place(
-            sess,
-            RepTen {
-                shares: [[z00, z10], [z11, z21], [z22, z02]],
-            },
-        )
+        RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
     }
 }
 
