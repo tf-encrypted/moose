@@ -870,6 +870,41 @@ macro_rules! kernel {
         }
     };
 
+    (__unary transparent, $op:ty, $plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::UnaryKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc,
+                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            {
+                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use std::convert::TryInto;
+
+                let op = self.clone();
+
+                Ok(Box::new(move |
+                    sess: &SymbolicSession,
+                    plc: &$plc,
+                    x0: <$t0 as KnownType<SymbolicSession>>::Type,
+                | {
+                    // TODO derive k outside box (using self instead of op)
+                    // Magic by Morten
+                    let op = &op;
+
+                    let k = derive_runtime_kernel![unary, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
+                    k(sess, plc, x0)
+                }))
+            }
+        }
+    };
+
     (__unary runtime, $op:ty, $plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,

@@ -1638,7 +1638,7 @@ modelled!(PlacementSlice::slice, ReplicatedPlacement, attributes[slice: SliceInf
 kernel! {
     RepSliceOp,
     [
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedShape => [runtime] attributes[slice] Self::shape_kernel),
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedShape => [hybrid] attributes[slice] Self::shape_kernel),
     ]
 }
 
