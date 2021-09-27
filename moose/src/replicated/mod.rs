@@ -2922,3 +2922,5 @@ mod tests {
         test_rep_bit_dec64(x, y);
     }
 }
+
+pub mod log;
