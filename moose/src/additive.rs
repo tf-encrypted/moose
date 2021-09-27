@@ -6,16 +6,19 @@ use crate::computation::{
 };
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};
-use crate::kernels::{
-    PlacementAdd, PlacementDaBitProvider, PlacementDeriveSeed, PlacementFill, PlacementKeyGen,
-    PlacementMul, PlacementNeg, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
-    PlacementRingInject, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShape,
-    PlacementShl, PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
-};
-use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::replicated::{
     AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor,
     ReplicatedRing64Tensor,
+};
+use crate::{
+    kernels::{
+        PlacementAdd, PlacementDaBitProvider, PlacementDeriveSeed, PlacementFill, PlacementKeyGen,
+        PlacementMul, PlacementNeg, PlacementOnes, PlacementPlace, PlacementRepToAdt,
+        PlacementReveal, PlacementRingInject, PlacementSampleUniform, PlacementSampleUniformSeeded,
+        PlacementShape, PlacementShl, PlacementShr, PlacementSub, PlacementTruncPrProvider,
+        Session,
+    },
+    prim::{PrfKey, Seed, SyncKey},
 };
 use crate::{Const, Ring};
 use macros::with_context;
@@ -580,6 +583,35 @@ where
     }
 }
 
+use crate::symbolic::Symbolic;
+
+impl<S: Session, R: Placed<Placement = HostPlacement>>
+    PlacementTruncPrProvider<
+        S,
+        Symbolic<AbstractAdditiveTensor<R>>,
+        Symbolic<AbstractAdditiveTensor<R>>,
+    > for AdditivePlacement
+where
+    AdditivePlacement:
+        PlacementTruncPrProvider<S, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
+
+    Symbolic<AbstractAdditiveTensor<R>>: Clone,
+    AbstractAdditiveTensor<R>: TryFrom<Symbolic<AbstractAdditiveTensor<R>>>,
+    AbstractAdditiveTensor<R>: Into<Symbolic<AbstractAdditiveTensor<R>>>,
+{
+    fn trunc_pr(
+        &self,
+        sess: &S,
+        amount: usize,
+        provider: &HostPlacement,
+        x: &Symbolic<AbstractAdditiveTensor<R>>,
+    ) -> Symbolic<AbstractAdditiveTensor<R>> {
+        let concrete_x = x.clone().try_into().ok().unwrap();
+        let concrete_y = Self::trunc_pr(self, sess, amount, provider, &concrete_x);
+        concrete_y.into()
+    }
+}
+
 impl<S: Session, R>
     PlacementTruncPrProvider<S, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>
     for AdditivePlacement
@@ -711,11 +743,15 @@ impl RepToAdtOp {
         sess: &S,
         adt: &AdditivePlacement,
         x: AbstractReplicatedRingTensor<RingT>,
-    ) -> AbstractAdditiveTensor<RingT>
+    ) -> st!(AbstractAdditiveTensor<RingT>)
     where
+        AbstractAdditiveTensor<RingT>: CanonicalType,
+        <AbstractAdditiveTensor<RingT> as CanonicalType>::Type: KnownType<S>,
+        AbstractAdditiveTensor<RingT>: Into<st!(AbstractAdditiveTensor<RingT>)>,
+
         AbstractReplicatedRingTensor<RingT>: Placed<Placement = ReplicatedPlacement>,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
-        AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
+        AdditivePlacement: PlacementPlace<S, st!(AbstractAdditiveTensor<RingT>)>,
     {
         let (adt_player0, adt_player1) = adt.host_placements();
         let (rep_player0, rep_player1, rep_player2) = x.placement().unwrap().host_placements();
@@ -773,7 +809,7 @@ impl RepToAdtOp {
                 [y0, y1]
             }
         };
-        adt.place(sess, AbstractAdditiveTensor { shares })
+        adt.place(sess, AbstractAdditiveTensor { shares }.into())
     }
 }
 

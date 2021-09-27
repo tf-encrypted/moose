@@ -757,8 +757,6 @@ where {
             .map(|i| (&x.0 >> i) & (&ones))
             .collect();
 
-        println!("input - {:?}", x);
-
         let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
         let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
         // we unwrap only at the end since shifting can cause overflow
@@ -1776,6 +1774,25 @@ where
     fn from_raw_plc(raw_tensor: ArrayD<u128>, plc: P) -> HostRing128Tensor {
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
         AbstractHostRingTensor(tensor, plc.into())
+    }
+}
+
+// (Dragos) TODO: Make this private
+pub trait RingFromFixedPoint {
+    fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant;
+}
+
+impl RingFromFixedPoint for HostRing64Tensor {
+    fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant {
+        let encoded_value = (fixed_point * ((1 << scaling_exp) as f64)) as u64;
+        Constant::Ring64(encoded_value)
+    }
+}
+
+impl RingFromFixedPoint for HostRing128Tensor {
+    fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant {
+        let encoded_value = (fixed_point * ((1 << scaling_exp) as f64)) as u128;
+        Constant::Ring128(encoded_value)
     }
 }
 

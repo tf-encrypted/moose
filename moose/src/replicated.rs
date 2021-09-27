@@ -5,7 +5,7 @@ use crate::error::{Error, Result};
 use crate::host::{
     AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128, HostBitArray64, HostBitTensor,
     HostFixed128Tensor, HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
-    SliceInfo,
+    RingFromFixedPoint, SliceInfo,
 };
 use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
@@ -1209,29 +1209,28 @@ kernel! {
 }
 
 impl RepTruncPrOp {
-    fn kernel<S: Session, RingT>(
+    fn kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         amount: u32,
-        xe: RepTen<RingT>,
-    ) -> st!(RepTen<RingT>, S)
+        xe: RepTen<HostRingT>,
+    ) -> st!(RepTen<HostRingT>)
     where
-        RingT: Clone,
-        RepTen<RingT>: Into<st!(RepTen<RingT>)>,
-        st!(AdtTen<RingT>): TryInto<AdtTen<RingT>>,
-        AdtTen<RingT>: Into<st!(AdtTen<RingT>)>,
-        st!(AdtTen<RingT>): TryInto<AdtTen<RingT>>,
+        RepTen<HostRingT>: Clone,
 
-        AdtTen<RingT>: CanonicalType,
-        <AdtTen<RingT> as CanonicalType>::Type: KnownType<S>,
-        RepTen<RingT>: CanonicalType,
-        <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
+        RepTen<HostRingT>: CanonicalType,
+        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
 
-        AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<RingT>), st!(AdtTen<RingT>)>,
+        AdtTen<HostRingT>: CanonicalType,
+        <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
 
-        AdditivePlacement: PlacementTruncPrProvider<S, AdtTen<RingT>, AdtTen<RingT>>,
+        RepTen<HostRingT>: TryInto<st!(RepTen<HostRingT>)>,
+        RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
 
-        ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtTen<RingT>), st!(RepTen<RingT>)>,
+        AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<HostRingT>), st!(AdtTen<HostRingT>)>,
+        AdditivePlacement:
+            PlacementTruncPrProvider<S, st!(AdtTen<HostRingT>), st!(AdtTen<HostRingT>)>,
+        ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtTen<HostRingT>), st!(RepTen<HostRingT>)>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -1240,9 +1239,9 @@ impl RepTruncPrOp {
         };
         let provider = player2;
 
-        let x_adt = adt.rep_to_adt(sess, &xe.into()).try_into().ok().unwrap();
+        let x_adt = adt.rep_to_adt(sess, &xe.into());
         let y_adt = adt.trunc_pr(sess, amount as usize, &provider, &x_adt);
-        rep.adt_to_rep(sess, &y_adt.into())
+        rep.adt_to_rep(sess, &y_adt)
     }
 }
 
@@ -1262,11 +1261,17 @@ impl AdtToRepOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AdtTen<RingT>,
-    ) -> RepTen<RingT>
+    ) -> st!(RepTen<RingT>)
     where
         RingT: Placed<Placement = HostPlacement> + Clone,
         AdtTen<RingT>: CanonicalType,
         <AdtTen<RingT> as CanonicalType>::Type: KnownType<S>,
+
+        RepTen<RingT>: CanonicalType,
+        <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
+
+        RepTen<RingT>: Into<st!(RepTen<RingT>)>,
+
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementKeyGen<S, KeyT>,
         HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, RingT>,
@@ -1275,7 +1280,7 @@ impl AdtToRepOp {
             PlacementSub<S, st!(AdtTen<RingT>, S), st!(AdtTen<RingT>, S), st!(AdtTen<RingT>, S)>,
         AdtTen<RingT>: Into<st!(AdtTen<RingT>, S)>,
         HostPlacement: PlacementReveal<S, st!(AdtTen<RingT>, S), RingT>,
-        ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
+        ReplicatedPlacement: PlacementPlace<S, st!(RepTen<RingT>)>,
     {
         let AdtTen { shares: [x0, x1] } = &x;
 
@@ -1360,7 +1365,7 @@ impl AdtToRepOp {
                 }
             }
         };
-        rep.place(sess, RepTen { shares })
+        rep.place(sess, RepTen { shares }.into())
     }
 }
 
@@ -1376,7 +1381,6 @@ kernel! {
                     Constant::Ring64(v) => v,
                     _ => unimplemented!()  // TODO: replace
                 };
-                assert!(value == 0 || value == 1);
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::ring64_kernel(sess, rep, value, rep_shape)
                 }))
@@ -1386,7 +1390,6 @@ kernel! {
                     Constant::Ring128(v) => v,
                     _ => unimplemented!()  // TODO: replace
                 };
-                assert!(value == 0 || value == 1);
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::ring128_kernel(sess, rep, value, rep_shape)
                 }))
@@ -1975,9 +1978,6 @@ where
     ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementShlDim<S, RepBitT, RepBitT>,
-    HostPlacement: PlacementReveal<S, RepBitT, cs!(HostBitTensor)>,
-    HostBitTensor: KnownType<S>,
-    cs!(HostBitTensor): std::fmt::Debug,
 {
     fn binary_adder(
         &self,
@@ -1991,8 +1991,6 @@ where
 
         let rep = self;
         let log_r = (ring_size as f64).log2() as usize; // we know that R = 64/128
-
-        let (player0, player1, player2) = rep.host_placements();
 
         // g is part of the generator set, p propagator set
         // A few helpful diagrams to understand what is happening here:
@@ -2166,11 +2164,6 @@ where
         cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N64>),
         cs!(ReplicatedBitTensor),
     >,
-    HostPlacement: PlacementReveal<S, st!(RepTen<HostRingT>), HostRingT>,
-
-    HostBitTensor: KnownType<S>,
-    ReplicatedBitArray64: KnownType<S>,
-    HostBitArray64: KnownType<S>,
 {
     fn norm(
         &self,
@@ -2179,7 +2172,6 @@ where
         max_bits: usize,
         x: RepTen<HostRingT>,
     ) -> (RepTen<HostRingT>, RepTen<HostRingT>) {
-        // (RepTen<HostRingT>, RepTen<HostRingT>) {
         let rep = self;
 
         let msb = rep.msb(sess, setup, &x.clone().into());
@@ -2253,21 +2245,45 @@ where
     }
 }
 
-trait ApproximateReciprocal<S: Session, SetupT, RingT, N: Const> {
+trait ApproximateReciprocal<S: Session, SetupT, HostRingT, RepRingT> {
     fn approximate_reciprocal(
         &self,
         sess: &S,
         setup: &SetupT,
         int_precision: usize,
         frac_precision: usize,
-        x: RepTen<RingT>,
-    ) -> RepTen<RingT>;
+        x: RepTen<HostRingT>,
+    ) -> RepRingT;
 }
 
-impl<S: Session, SetupT, RingT, N: Const> ApproximateReciprocal<S, SetupT, RingT, N>
-    for ReplicatedPlacement
-// where
-// ReplicatedPlacement: DivNorm<S, SetupT, RingT>,
+impl<S: Session, SetupT, HostRingT>
+    ApproximateReciprocal<S, SetupT, HostRingT, st!(RepTen<HostRingT>)> for ReplicatedPlacement
+where
+    ReplicatedShape: KnownType<S>,
+    RepTen<HostRingT>: Clone,
+
+    RepTen<HostRingT>: CanonicalType,
+    <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+
+    RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
+    st!(RepTen<HostRingT>): Into<RepTen<HostRingT>>,
+
+    HostRingT: RingFromFixedPoint,
+    ReplicatedPlacement: DivNorm<S, SetupT, HostRingT>,
+    ReplicatedPlacement: PlacementShape<S, st!(RepTen<HostRingT>), cs!(ReplicatedShape)>,
+    ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), st!(RepTen<HostRingT>)>,
+
+    ReplicatedPlacement:
+        PlacementSub<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
+    ReplicatedPlacement: PlacementShl<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
+    ReplicatedPlacement: PlacementMulSetup<
+        S,
+        SetupT,
+        st!(RepTen<HostRingT>),
+        st!(RepTen<HostRingT>),
+        st!(RepTen<HostRingT>),
+    >,
+    ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
 {
     fn approximate_reciprocal(
         &self,
@@ -2275,14 +2291,22 @@ impl<S: Session, SetupT, RingT, N: Const> ApproximateReciprocal<S, SetupT, RingT
         setup: &SetupT,
         int_precision: usize,
         frac_precision: usize,
-        x: RepTen<RingT>,
-    ) -> RepTen<RingT> {
+        x: RepTen<HostRingT>,
+    ) -> st!(RepTen<HostRingT>) {
         let rep = self;
         let total_precision = int_precision + frac_precision;
 
-        // let (upshifted, _signed_topmost) = rep.norm(sess, setup, total_precision, x);
-        // upshifted
-        x
+        let (upshifted, signed_topmost) = rep.norm(sess, setup, total_precision, x.clone());
+
+        let x_shape = rep.shape(sess, &x.into());
+        // 2.9142 * 2^{total_precision}
+        let alpha_int = HostRingT::from_fixed_encoding(2.9142, total_precision as u32);
+        let alpha = rep.fill(sess, alpha_int, &x_shape);
+        let d = with_context!(rep, sess, alpha - rep.shl(sess, 1, &upshifted.into()));
+        let w = rep.mul_setup(sess, setup, &d, &signed_topmost.into());
+
+        // truncate result
+        rep.trunc_pr(sess, 2 * int_precision as u32, &w)
     }
 }
 
@@ -3347,5 +3371,38 @@ mod tests {
         let binary_adder_clear = alice.reveal(&sess, &binary_adder);
 
         assert_eq!(expected_output_bit, binary_adder_clear);
+    }
+
+    #[test]
+    fn test_approximate_reciprocal() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        // 3.5 * 2^8
+        let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let expected_output = array![74i64];
+
+        let x_shared = rep.share(&sess, &setup, &x);
+        let approximation = rep.approximate_reciprocal(&sess, &setup, 4, 8, x_shared);
+
+        let out = alice.reveal(&sess, &approximation).0;
+        for (i, item) in out.iter().enumerate() {
+            match item {
+                std::num::Wrapping(x) => {
+                    let d = (*x as i64) - expected_output[i];
+                    assert!(d * d <= 1);
+                }
+            }
+        }
+
+        println!("output {:?}", out);
     }
 }
