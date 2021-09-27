@@ -1107,13 +1107,13 @@ impl RepDotOp {
 }
 
 modelled!(PlacementDivSetup::div_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepDivOp);
-modelled!(PlacementDivSetup::div_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepDivOp);
+// modelled!(PlacementDivSetup::div_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepDivOp);
 
 kernel! {
     RepDivOp,
     [
         (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
+        // (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
     ]
 }
 
@@ -1124,11 +1124,16 @@ impl RepDivOp {
         setup: SetupT,
         x: RepTen<RingT>,
         y: RepTen<RingT>,
-    ) -> RepTen<RingT>
+    ) -> st!(RepTen<RingT>)
     where
         RepTen<RingT>: Into<st!(RepTen<RingT>)>,
         RepTen<RingT>: CanonicalType,
         <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
+        st!(RepTen<RingT>): Clone,
+
+        ReplicatedShape: KnownType<S>,
+
+        RingT: RingFromFixedPoint,
         ReplicatedPlacement: PlacementMulSetup<
             S,
             SetupT,
@@ -1140,6 +1145,10 @@ impl RepDivOp {
             PlacementSub<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
         ReplicatedPlacement:
             PlacementAdd<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
+        ReplicatedPlacement: ApproximateReciprocal<S, SetupT, RingT, st!(RepTen<RingT>)>,
+        ReplicatedPlacement: PlacementShape<S, st!(RepTen<RingT>), cs!(ReplicatedShape)>,
+        ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), st!(RepTen<RingT>)>,
+        ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -1147,7 +1156,13 @@ impl RepDivOp {
         let frac_precision = 20_u32;
         let k = int_precision + frac_precision;
         let theta = (k as f64 / 3.5_f64).log2().ceil() as u32;
-        let alpha = RingT::from_fixed_encoding(2, 2_u32 * frac_precision);
+
+        let x_st = x.into();
+        let y_st = y.into();
+
+        let x_shape = rep.shape(sess, &x_st);
+        let alpha = RingT::from_fixed_encoding(2.0, 2_u32 * frac_precision);
+        let rep_alpha = rep.fill(sess, alpha, &x_shape);
 
         let w = rep.approximate_reciprocal(
             sess,
@@ -1157,18 +1172,18 @@ impl RepDivOp {
             x,
         );
 
-        let a = rep.sub(sess, &alpha, &rep.mul_setup(sess, &setup, &y, &w));
-        let mut b = rep.mul_setup(sess, &setup, &x, &w);
+        let a = rep.sub(sess, &rep_alpha, &rep.mul_setup(sess, &setup, &y_st, &w));
+        let mut b = rep.mul_setup(sess, &setup, &x_st, &w);
         let b = rep.trunc_pr(sess, 2 * frac_precision, &b); // TODO whart's the actual amount? the paper refers to integral and fractional
 
         for i in 0..(theta - 1) {
-            let b = rep.mul_setup(b, rep.add(sess, &alpha, &a));
+            let b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
             let a = rep.mul_setup(sess, &setup, &a, &a);
-            let b = rep.trunc_pr(sess, 2 * frac_precision, b);
-            let a = rep.trunc_pr(sess, 2 * frac_precision, a);
+            let b = rep.trunc_pr(sess, 2 * frac_precision, &b);
+            let a = rep.trunc_pr(sess, 2 * frac_precision, &a);
         }
-        let b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &alpha, &a));
-        rep.trunc_pr(b, 2 * frac_precision)
+        let b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
+        rep.trunc_pr(sess, 2 * frac_precision, &b)
     }
 }
 
