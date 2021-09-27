@@ -1145,7 +1145,8 @@ impl RepDivOp {
             PlacementSub<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
         ReplicatedPlacement:
             PlacementAdd<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
-        ReplicatedPlacement: ApproximateReciprocal<S, SetupT, RingT, st!(RepTen<RingT>)>,
+        ReplicatedPlacement:
+            ApproximateReciprocal<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
         ReplicatedPlacement: PlacementShape<S, st!(RepTen<RingT>), cs!(ReplicatedShape)>,
         ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), st!(RepTen<RingT>)>,
         ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
@@ -1176,7 +1177,7 @@ impl RepDivOp {
         let mut b = rep.mul_setup(sess, &setup, &x_st, &w);
         let b = rep.trunc_pr(sess, 2 * frac_precision, &b); // TODO whart's the actual amount? the paper refers to integral and fractional
 
-        for i in 0..(theta - 1) {
+        for i in 0..theta {
             let b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
             let a = rep.mul_setup(sess, &setup, &a, &a);
             let b = rep.trunc_pr(sess, 2 * frac_precision, &b);
@@ -2326,19 +2327,52 @@ where
     }
 }
 
-trait ApproximateReciprocal<S: Session, SetupT, HostRingT, RepRingT> {
+trait ApproximateReciprocal<S: Session, SetupT, T, O> {
     fn approximate_reciprocal(
         &self,
         sess: &S,
         setup: &SetupT,
         int_precision: usize,
         frac_precision: usize,
-        x: RepTen<HostRingT>,
-    ) -> RepRingT;
+        x: T,
+    ) -> O;
 }
 
-impl<S: Session, SetupT, HostRingT>
-    ApproximateReciprocal<S, SetupT, HostRingT, st!(RepTen<HostRingT>)> for ReplicatedPlacement
+impl<S: Session, R: Placed<Placement = HostPlacement>>
+    ApproximateReciprocal<S, Symbolic<ReplicatedSetup>, Symbolic<RepTen<R>>, Symbolic<RepTen<R>>>
+    for ReplicatedPlacement
+where
+    ReplicatedPlacement: ApproximateReciprocal<S, ReplicatedSetup, RepTen<R>, RepTen<R>>,
+
+    Symbolic<RepTen<R>>: Clone,
+    RepTen<R>: TryFrom<Symbolic<RepTen<R>>>,
+    RepTen<R>: Into<Symbolic<RepTen<R>>>,
+{
+    fn approximate_reciprocal(
+        &self,
+        sess: &S,
+        setup: &Symbolic<ReplicatedSetup>,
+        int_precision: usize,
+        frac_precision: usize,
+        x: &Symbolic<AbstractReplicatedRingTensor<R>>,
+    ) -> Symbolic<AbstractReplicatedRingTensor<R>> {
+        let concrete_x = x.clone().try_into().ok().unwrap();
+        let concrete_y = Self::approximate_reciprocal(
+            self,
+            sess,
+            setup,
+            int_precision,
+            frac_precision,
+            concrete_x,
+        );
+        concrete_y.into()
+    }
+}
+
+// TODO(Dragos) What exactly should we do with this HostRingT generic to constrain it?
+impl<S: Session, SetupT, HostRingT: Placed<Placement = HostPlacement>>
+    ApproximateReciprocal<S, SetupT, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>
+    for ReplicatedPlacement
 where
     ReplicatedShape: KnownType<S>,
     RepTen<HostRingT>: Clone,
