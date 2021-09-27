@@ -214,6 +214,7 @@ where
 // Type aliases to shorten out impl in replicated protocols
 type RepTen<T> = AbstractReplicatedRingTensor<T>;
 type AdtTen<T> = AbstractAdditiveTensor<T>;
+type RepBits<N> = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
 
 modelled!(PlacementSetupGen::gen_setup, ReplicatedPlacement, () -> ReplicatedSetup, RepSetupOp);
 
@@ -1713,75 +1714,42 @@ modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRi
 kernel! {
     RepMsbOp,
     [
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit64_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit128_kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::bit_kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::bit_kernel),
         (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::ring_kernel),
         (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::ring_kernel),
     ]
 }
 
 impl RepMsbOp {
-    // TODO merge bit64_kernel and bit128_kernel; should be possible
-    // after getting rid of const generics
-
-    fn bit64_kernel<S: Session, SetupT, RepBitT>(
+    fn bit_kernel<S: Session, SetupT, RepRingT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
-        x: cs!(ReplicatedRing64Tensor),
+        x: RepRingT,
     ) -> RepBitT
     where
-        ReplicatedRing64Tensor: KnownType<S>,
-        ReplicatedBitArray64: KnownType<S>,
-        ReplicatedPlacement:
-            PlacementBitDecSetup<S, SetupT, cs!(ReplicatedRing64Tensor), cs!(ReplicatedBitArray64)>,
-        ReplicatedPlacement: PlacementIndex<S, cs!(ReplicatedBitArray64), RepBitT>,
+        RepRingT: Ring<BitLength=N>,
+        RepBits<N>: KnownType<S>,
+        ReplicatedPlacement: PlacementBitDecSetup<S, SetupT, RepRingT, cs!(RepBits<N>)>,
+        ReplicatedPlacement: PlacementIndex<S, cs!(RepBits<N>), RepBitT>,
     {
         let bits = rep.bit_decompose(sess, &setup, &x);
-        rep.index(
-            sess,
-            <ReplicatedRing64Tensor as Ring>::BitLength::VALUE - 1,
-            &bits,
-        )
+        rep.index(sess, N::VALUE - 1, &bits)
     }
 
-    fn bit128_kernel<S: Session, SetupT, RepBitT>(
+    fn ring_kernel<S: Session, SetupT, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
-        x: cs!(ReplicatedRing128Tensor),
-    ) -> RepBitT
-    where
-        ReplicatedRing128Tensor: KnownType<S>,
-        ReplicatedBitArray128: KnownType<S>,
-        ReplicatedPlacement: PlacementBitDecSetup<
-            S,
-            SetupT,
-            cs!(ReplicatedRing128Tensor),
-            cs!(ReplicatedBitArray128),
-        >,
-        ReplicatedPlacement: PlacementIndex<S, cs!(ReplicatedBitArray128), RepBitT>,
-    {
-        let bits = rep.bit_decompose(sess, &setup, &x);
-        rep.index(
-            sess,
-            <ReplicatedRing128Tensor as Ring>::BitLength::VALUE - 1,
-            &bits,
-        )
-    }
-
-    fn ring_kernel<S: Session, SetupT, RepT>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        setup: SetupT,
-        x: RepT,
-    ) -> RepT
+        x: RepRingT,
+    ) -> RepRingT
     where
         ReplicatedBitTensor: KnownType<S>,
-        ReplicatedPlacement: PlacementMsb<S, SetupT, RepT, st!(ReplicatedBitTensor)>,
-        ReplicatedPlacement: PlacementRingInject<S, st!(ReplicatedBitTensor), RepT>,
+        ReplicatedPlacement: PlacementMsb<S, SetupT, RepRingT, st!(ReplicatedBitTensor)>,
+        ReplicatedPlacement: PlacementRingInject<S, st!(ReplicatedBitTensor), RepRingT>,
     {
-        let x_bin = rep.msb(sess, &setup, &x.into());
+        let x_bin = rep.msb(sess, &setup, &x);
         rep.ring_inject(sess, 0, &x_bin)
     }
 }
