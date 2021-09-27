@@ -1298,6 +1298,7 @@ impl ToTextual for Operator {
             RepAdd(op) => op.to_textual(),
             RepSub(op) => op.to_textual(),
             RepMul(op) => op.to_textual(),
+            RepDiv(op) => op.to_textual(),
             RepTruncPr(op) => op.to_textual(),
             AdtReveal(op) => op.to_textual(),
             AdtFill(op) => op.to_textual(),
@@ -1454,6 +1455,7 @@ impl_to_textual!(RepDotOp, "{op}: {}", sig);
 impl_to_textual!(RepAddOp, "{op}: {}", sig);
 impl_to_textual!(RepSubOp, "{op}: {}", sig);
 impl_to_textual!(RepMulOp, "{op}: {}", sig);
+impl_to_textual!(RepDivOp, "{op}: {}", sig);
 impl_to_textual!(RepTruncPrOp, "{op}{{amount={}}}: {}", amount, sig);
 impl_to_textual!(AdtRevealOp, "{op}: {}", sig);
 impl_to_textual!(AdtFillOp, "{op}{{value={}}}: {}", value, sig);

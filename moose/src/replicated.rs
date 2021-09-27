@@ -1106,6 +1106,72 @@ impl RepDotOp {
     }
 }
 
+modelled!(PlacementDivSetup::div_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepDivOp);
+modelled!(PlacementDivSetup::div_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepDivOp);
+
+kernel! {
+    RepDivOp,
+    [
+        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
+    ]
+}
+
+impl RepDivOp {
+    fn rep_rep_kernel<S: Session, RingT, SetupT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        setup: SetupT,
+        x: RepTen<RingT>,
+        y: RepTen<RingT>,
+    ) -> RepTen<RingT>
+    where
+        RepTen<RingT>: Into<st!(RepTen<RingT>)>,
+        RepTen<RingT>: CanonicalType,
+        <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
+        ReplicatedPlacement: PlacementMulSetup<
+            S,
+            SetupT,
+            st!(RepTen<RingT>),
+            st!(RepTen<RingT>),
+            st!(RepTen<RingT>),
+        >,
+        ReplicatedPlacement:
+            PlacementSub<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
+        ReplicatedPlacement:
+            PlacementAdd<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let int_precision = 27_u32; // TODO how to get the integral part of the fixed point encoding?
+        let frac_precision = 20_u32;
+        let k = int_precision + frac_precision;
+        let theta = (k as f64 / 3.5_f64).log2().ceil() as u32;
+        let alpha = RingT::from_fixed_encoding(2, 2_u32 * frac_precision);
+
+        let w = rep.approximate_reciprocal(
+            sess,
+            &setup,
+            int_precision as usize,
+            frac_precision as usize,
+            x,
+        );
+
+        let a = rep.sub(sess, &alpha, &rep.mul_setup(sess, &setup, &y, &w));
+        let mut b = rep.mul_setup(sess, &setup, &x, &w);
+        let b = rep.trunc_pr(sess, 2 * frac_precision, &b); // TODO whart's the actual amount? the paper refers to integral and fractional
+
+        for i in 0..(theta - 1) {
+            let b = rep.mul_setup(b, rep.add(sess, &alpha, &a));
+            let a = rep.mul_setup(sess, &setup, &a, &a);
+            let b = rep.trunc_pr(sess, 2 * frac_precision, b);
+            let a = rep.trunc_pr(sess, 2 * frac_precision, a);
+        }
+        let b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &alpha, &a));
+        rep.trunc_pr(b, 2 * frac_precision)
+    }
+}
+
 modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMeanOp);
 modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMeanOp);
 
@@ -2907,6 +2973,47 @@ mod tests {
     ]
     fn test_rep_add_128(#[case] x: ArrayD<u128>, #[case] y: ArrayD<u128>, #[case] z: ArrayD<u128>) {
         test_rep_add128(x, y, z);
+    }
+
+    // TODO (Yann) check if we should use rep_binary_func_test macro instead to test division.
+    macro_rules! rep_div_test {
+        ($func_name:ident, $tt: ident) => {
+            fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+                let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &x);
+                let y_shared = rep.share(&sess, &setup, &y);
+
+                let sum = rep.div_setup(&sess, &setup, &x_shared, &y_shared);
+                let opened_sum = alice.reveal(&sess, &sum);
+                assert_eq!(
+                    opened_sum,
+                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
+                );
+            }
+        };
+    }
+
+    rep_div_test!(test_rep_div64, u64);
+
+    #[rstest]
+    #[case(array![1_u64, 2, 3].into_dyn(),
+        array![1_u64, 2, 3].into_dyn(),
+        array![1_u64, 1, 1].into_dyn())
+    ]
+    fn test_rep_div_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u64>, #[case] z: ArrayD<u64>) {
+        test_rep_div64(x, y, z);
     }
 
     macro_rules! rep_binary_func_test {

@@ -182,6 +182,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepSub(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepMul(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepDot(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            RepDiv(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepShl(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
