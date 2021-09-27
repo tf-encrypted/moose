@@ -17,13 +17,13 @@ macro_rules! st {
 macro_rules! c {
     ($t:ty) => {
         <$t as crate::computation::CanonicalType>::Type
-    }
+    };
 }
 
 macro_rules! m {
     ($t:ty) => {
         <$t as KnownType<S>>::Type
-    }
+    };
 }
 
 macro_rules! derive_runtime_kernel {
@@ -1020,7 +1020,7 @@ macro_rules! kernel {
                     let op = &op;
 
                     let k = derive_runtime_kernel![binary, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
-                
+
                     match (x0, x1) {
                         (Symbolic::Concrete(v0), Symbolic::Concrete(v1)) => {
                             let y = k(sess, plc, v0, v1);
@@ -1064,6 +1064,7 @@ macro_rules! kernel {
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
+                    #[allow(unused_variables)]
                     let op = &op;
 
                     let k = derive_runtime_kernel![binary, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)

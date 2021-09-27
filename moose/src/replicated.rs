@@ -1673,7 +1673,7 @@ modelled!(PlacementShlDim::shl_dim, ReplicatedPlacement, attributes[amount: usiz
 kernel! {
     RepShlDimOp,
     [
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [runtime] attributes[amount, bit_length] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] attributes[amount, bit_length] Self::kernel),
     ]
 }
 
@@ -1718,8 +1718,8 @@ kernel! {
     [
         (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit64_kernel),
         (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit128_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::ring_kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::ring_kernel),
     ]
 }
 
@@ -1773,21 +1773,16 @@ impl RepMsbOp {
         )
     }
 
-    fn ring_kernel<S: Session, SetupT, RingT>(
+    fn ring_kernel<S: Session, SetupT, RepT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
-        x: RepTen<RingT>,
-    ) -> st!(RepTen<RingT>)
+        x: RepT,
+    ) -> RepT
     where
-        RepTen<RingT>: Into<st!(RepTen<RingT>)>,
-
-        RepTen<RingT>: CanonicalType,
-        <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
-        RepTen<HostBitTensor>: KnownType<S>,
-
-        ReplicatedPlacement: PlacementMsb<S, SetupT, st!(RepTen<RingT>), st!(ReplicatedBitTensor)>,
-        ReplicatedPlacement: PlacementRingInject<S, st!(ReplicatedBitTensor), st!(RepTen<RingT>)>,
+        ReplicatedBitTensor: KnownType<S>,
+        ReplicatedPlacement: PlacementMsb<S, SetupT, RepT, st!(ReplicatedBitTensor)>,
+        ReplicatedPlacement: PlacementRingInject<S, st!(ReplicatedBitTensor), RepT>,
     {
         let x_bin = rep.msb(sess, &setup, &x.into());
         rep.ring_inject(sess, 0, &x_bin)
@@ -1817,24 +1812,14 @@ impl RepAbsOp {
         ReplicatedPlacement: PlacementMsb<S, SetupT, RepT, RepT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepT>,
         ReplicatedPlacement: PlacementShape<S, RepT, ShapeT>,
-        ReplicatedPlacement: PlacementMulSetup<
-            S,
-            SetupT,
-            RepT,
-            RepT,
-            RepT,
-        >,
+        ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepT, RepT, RepT>,
         ReplicatedPlacement: PlacementShl<S, RepT, RepT>,
         ReplicatedPlacement: PlacementSub<S, RepT, RepT, RepT>,
     {
-        // TODO(Dragos) Remove un-necessary cloning due to st! macro
         let msb_ring = rep.msb(sess, &setup, &x);
         let double = rep.shl(sess, 1, &msb_ring);
-
-        let one_r = RepT::one();
-        let ones = rep.fill(sess, one_r, &rep.shape(sess, &msb_ring));
+        let ones = rep.fill(sess, RepT::one(), &rep.shape(sess, &msb_ring));
         let sign = rep.sub(sess, &ones, &double);
-
         rep.mul_setup(sess, &setup, &sign, &x)
     }
 }
