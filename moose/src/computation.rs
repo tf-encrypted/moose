@@ -154,6 +154,9 @@ macro_rules! constants {
             Float64(f64),
             Ring64(u64),
             Ring128(u128),
+            // Int64(u64),
+            // Int128(u128),
+            // Fixed64(2.983453),
         }
 
         impl Constant {

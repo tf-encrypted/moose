@@ -1130,6 +1130,7 @@ impl RepDivOp {
         RepTen<RingT>: CanonicalType,
         <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
         st!(RepTen<RingT>): Clone,
+        RepTen<RingT>: Clone,
 
         ReplicatedShape: KnownType<S>,
 
@@ -1145,8 +1146,7 @@ impl RepDivOp {
             PlacementSub<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
         ReplicatedPlacement:
             PlacementAdd<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
-        ReplicatedPlacement:
-            ApproximateReciprocal<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
+        ReplicatedPlacement: ApproximateReciprocal<S, SetupT, RepTen<RingT>, st!(RepTen<RingT>)>,
         ReplicatedPlacement: PlacementShape<S, st!(RepTen<RingT>), cs!(ReplicatedShape)>,
         ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), st!(RepTen<RingT>)>,
         ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
@@ -1158,19 +1158,19 @@ impl RepDivOp {
         let k = int_precision + frac_precision;
         let theta = (k as f64 / 3.5_f64).log2().ceil() as u32;
 
-        let x_st = x.into();
+        let x_st = x.clone().into();
         let y_st = y.into();
 
         let x_shape = rep.shape(sess, &x_st);
         let alpha = RingT::from_fixed_encoding(2.0, 2_u32 * frac_precision);
         let rep_alpha = rep.fill(sess, alpha, &x_shape);
 
-        let w = rep.approximate_reciprocal(
+        let w: st!(RepTen<RingT>) = rep.approximate_reciprocal(
             sess,
             &setup,
             int_precision as usize,
             frac_precision as usize,
-            &x.into(),
+            &x,
         );
 
         let a = rep.sub(sess, &rep_alpha, &rep.mul_setup(sess, &setup, &y_st, &w));
@@ -2224,7 +2224,7 @@ where
     RepTen<HostRingT>: Clone,
     RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
     ReplicatedPlacement: PlacementMsb<S, SetupT, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
-    st!(RepTen<HostRingT>): Into<RepTen<HostRingT>>,
+    st!(RepTen<HostRingT>): TryInto<RepTen<HostRingT>>,
     ReplicatedPlacement: SignFromMsb<S, HostRingT, st!(RepTen<HostRingT>)>,
 
     ReplicatedPlacement: PlacementMulSetup<
@@ -2257,7 +2257,7 @@ where
         let rep = self;
 
         let msb = rep.msb(sess, setup, &x.clone().into());
-        let sign = rep.sign_from_msb(sess, &msb.into());
+        let sign = rep.sign_from_msb(sess, &msb.try_into().ok().unwrap());
         let abs_x = rep.mul_setup(sess, setup, &sign, &x.clone().into());
 
         // (Dragos) TODO: optimize this in the future, we don't need all bits (only max_bits from the bit-decomposition)
@@ -2271,7 +2271,10 @@ where
         let upshifted = rep.mul_setup(sess, setup, &x.clone().into(), &top_most);
 
         let signed_topmost = rep.mul_setup(sess, setup, &sign, &top_most);
-        (upshifted.into(), signed_topmost.into())
+        (
+            upshifted.try_into().ok().unwrap(),
+            signed_topmost.try_into().ok().unwrap(),
+        )
     }
 }
 
@@ -2338,56 +2341,114 @@ trait ApproximateReciprocal<S: Session, SetupT, T, O> {
     ) -> O;
 }
 
-impl<S: Session, R: Placed<Placement = HostPlacement>>
-    ApproximateReciprocal<S, Symbolic<ReplicatedSetup>, Symbolic<RepTen<R>>, Symbolic<RepTen<R>>>
-    for ReplicatedPlacement
-where
-    ReplicatedPlacement: ApproximateReciprocal<S, ReplicatedSetup, RepTen<R>, RepTen<R>>,
+// impl<S: Session, R: Placed<Placement = HostPlacement>>
+//     ApproximateReciprocal<S, Symbolic<ReplicatedSetup>, Symbolic<RepTen<R>>, Symbolic<RepTen<R>>>
+//     for ReplicatedPlacement
+// where
+//     ReplicatedPlacement: ApproximateReciprocal<S, ReplicatedSetup, RepTen<R>, RepTen<R>>,
 
-    Symbolic<RepTen<R>>: Clone,
-    RepTen<R>: TryFrom<Symbolic<RepTen<R>>>,
-    RepTen<R>: Into<Symbolic<RepTen<R>>>,
-{
-    fn approximate_reciprocal(
-        &self,
-        sess: &S,
-        setup: &Symbolic<ReplicatedSetup>,
-        int_precision: usize,
-        frac_precision: usize,
-        x: &Symbolic<AbstractReplicatedRingTensor<R>>,
-    ) -> Symbolic<AbstractReplicatedRingTensor<R>> {
-        let concrete_x: &RepTen<R> = *x.try_into().ok().unwrap();
-        let concrete_y = Self::approximate_reciprocal(
-            self,
-            sess,
-            setup.clone().try_into().ok().unwrap(),
-            int_precision,
-            frac_precision,
-            concrete_x,
-        );
-        concrete_y.into()
-    }
-}
+//     Symbolic<RepTen<R>>: Clone,
+//     RepTen<R>: TryFrom<Symbolic<RepTen<R>>>,
+//     RepTen<R>: Into<Symbolic<RepTen<R>>>,
+//     AbstractReplicatedSetup<Symbolic<PrfKey>>: TryFrom<Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>,
 
-// TODO(Dragos) What exactly should we do with this HostRingT generic to constrain it?
-impl<S: Session, SetupT, HostRingT: Placed<Placement = HostPlacement>>
-    ApproximateReciprocal<S, SetupT, RepTen<HostRingT>, RepTen<HostRingT>>
+//     // AbstractReplicatedSetup<PrfKey>: TryFrom<Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>,
+// {
+//     fn approximate_reciprocal(
+//         &self,
+//         sess: &S,
+//         setup: &Symbolic<ReplicatedSetup>,
+//         int_precision: usize,
+//         frac_precision: usize,
+//         x: &Symbolic<AbstractReplicatedRingTensor<R>>,
+//     ) -> Symbolic<AbstractReplicatedRingTensor<R>> {
+//         let concrete_x: RepTen<R> = (*x).try_into().ok().unwrap();
+//         let concrete_setup = (*setup).try_into().ok().unwrap();
+//         let concrete_y = Self::approximate_reciprocal(
+//             self,
+//             sess,
+//             &concrete_setup,
+//             int_precision,
+//             frac_precision,
+//             &concrete_x,
+//         );
+//         concrete_y.into()
+//     }
+// }
+
+// // TODO(Dragos) What exactly should we do with this HostRingT generic to constrain it?
+// impl<S: Session, SetupT, HostRingT>
+//     ApproximateReciprocal<S, SetupT, RepTen<HostRingT>, RepTen<HostRingT>>
+//     for ReplicatedPlacement
+// where
+//     ReplicatedShape: KnownType<S>,
+//     RepTen<HostRingT>: Clone,
+
+//     RepTen<HostRingT>: CanonicalType,
+//     <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+
+//     RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
+//     st!(RepTen<HostRingT>): Into<RepTen<HostRingT>>,
+
+//     HostRingT: RingFromFixedPoint,
+//     ReplicatedPlacement: DivNorm<S, SetupT, HostRingT>,
+//     ReplicatedPlacement: PlacementShape<S, st!(RepTen<HostRingT>), cs!(ReplicatedShape)>,
+//     ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), st!(RepTen<HostRingT>)>,
+
+//     ReplicatedPlacement:
+//         PlacementSub<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
+//     ReplicatedPlacement: PlacementShl<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
+//     ReplicatedPlacement: PlacementMulSetup<
+//         S,
+//         SetupT,
+//         st!(RepTen<HostRingT>),
+//         st!(RepTen<HostRingT>),
+//         st!(RepTen<HostRingT>),
+//     >,
+//     ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
+
+//     st!(RepTen<HostRingT>): Into<RepTen<HostRingT>>,
+//     RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
+// {
+//     fn approximate_reciprocal(
+//         &self,
+//         sess: &S,
+//         setup: &SetupT,
+//         int_precision: usize,
+//         frac_precision: usize,
+//         x: &RepTen<HostRingT>,
+//     ) -> RepTen<HostRingT> {
+//         let rep = self;
+//         let total_precision = int_precision + frac_precision;
+
+//         let (upshifted, signed_topmost) = rep.norm(sess, setup, total_precision, x.clone());
+
+//         let x_shape = rep.shape(sess, &x.clone().into());
+//         // 2.9142 * 2^{total_precision}
+//         let alpha_int = HostRingT::from_fixed_encoding(2.9142, total_precision as u32);
+//         let alpha = rep.fill(sess, alpha_int, &x_shape);
+//         let d = with_context!(rep, sess, alpha - rep.shl(sess, 1, &upshifted.into()));
+//         let w = rep.mul_setup(sess, setup, &d, &signed_topmost.into());
+
+//         // truncate result
+//         rep.trunc_pr(sess, 2 * int_precision as u32, &w).into()
+//     }
+// }
+
+impl<S: Session, SetupT, HostRingT>
+    ApproximateReciprocal<S, SetupT, RepTen<HostRingT>, st!(RepTen<HostRingT>)>
     for ReplicatedPlacement
 where
     ReplicatedShape: KnownType<S>,
-    RepTen<HostRingT>: Clone,
-
     RepTen<HostRingT>: CanonicalType,
     <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-
+    RepTen<HostRingT>: Clone,
     RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
-    st!(RepTen<HostRingT>): Into<RepTen<HostRingT>>,
 
     HostRingT: RingFromFixedPoint,
     ReplicatedPlacement: DivNorm<S, SetupT, HostRingT>,
     ReplicatedPlacement: PlacementShape<S, st!(RepTen<HostRingT>), cs!(ReplicatedShape)>,
     ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), st!(RepTen<HostRingT>)>,
-
     ReplicatedPlacement:
         PlacementSub<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
     ReplicatedPlacement: PlacementShl<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
@@ -2399,9 +2460,6 @@ where
         st!(RepTen<HostRingT>),
     >,
     ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
-
-    st!(RepTen<HostRingT>): Into<RepTen<HostRingT>>,
-    RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
 {
     fn approximate_reciprocal(
         &self,
@@ -2410,7 +2468,7 @@ where
         int_precision: usize,
         frac_precision: usize,
         x: &RepTen<HostRingT>,
-    ) -> RepTen<HostRingT> {
+    ) -> st!(RepTen<HostRingT>) {
         let rep = self;
         let total_precision = int_precision + frac_precision;
 
@@ -2424,7 +2482,7 @@ where
         let w = rep.mul_setup(sess, setup, &d, &signed_topmost.into());
 
         // truncate result
-        rep.trunc_pr(sess, 2 * int_precision as u32, &w).into()
+        rep.trunc_pr(sess, 2 * int_precision as u32, &w)
     }
 }
 
