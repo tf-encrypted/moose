@@ -1354,13 +1354,14 @@ pub struct BitNegOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointEncodeOp {
     pub sig: Signature,
-    pub precision: u32,
+    pub fractional_precision: u32,
+    pub integral_precision: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointDecodeOp {
     pub sig: Signature,
-    pub precision: u32,
+    pub fractional_precision: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

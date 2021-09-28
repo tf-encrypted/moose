@@ -163,7 +163,8 @@ where
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractReplicatedFixedTensor<RepRingT> {
     pub tensor: RepRingT,
-    pub precision: u32,
+    pub fractional_precision: u32,
+    pub integral_precision: u32,
 }
 
 moose_type!(ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>);
@@ -308,7 +309,8 @@ impl RepShareOp {
     {
         AbstractReplicatedFixedTensor {
             tensor: plc.share(sess, &setup, &x.tensor),
-            precision: x.precision,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
         }
     }
 
@@ -458,7 +460,8 @@ impl RepRevealOp {
         let x = receiver.reveal(sess, &xe.tensor);
         AbstractHostFixedTensor {
             tensor: x,
-            precision: xe.precision,
+            fractional_precision: xe.fractional_precision,
+            integral_precision: xe.integral_precision,
         }
     }
 
