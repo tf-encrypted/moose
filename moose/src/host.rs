@@ -1875,39 +1875,6 @@ where
     }
 }
 
-// (Dragos) TODO: Make this private
-pub trait RingFromFixedPoint {
-    fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant;
-}
-
-impl RingFromFixedPoint for HostRing64Tensor {
-    fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant {
-        let encoded_value = (fixed_point * ((1 << scaling_exp) as f64)) as u64;
-        Constant::Ring64(encoded_value)
-    }
-}
-
-impl RingFromFixedPoint for Symbolic<HostRing64Tensor> {
-    fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant {
-        let encoded_value = (fixed_point * ((1 << scaling_exp) as f64)) as u64;
-        Constant::Ring64(encoded_value)
-    }
-}
-
-impl RingFromFixedPoint for HostRing128Tensor {
-    fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant {
-        let encoded_value = (fixed_point * ((1 << scaling_exp) as f64)) as u128;
-        Constant::Ring128(encoded_value)
-    }
-}
-
-impl RingFromFixedPoint for Symbolic<HostRing128Tensor> {
-    fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant {
-        let encoded_value = (fixed_point * ((1 << scaling_exp) as f64)) as u128;
-        Constant::Ring128(encoded_value)
-    }
-}
-
 impl<R: Ring + Placed> Ring for Symbolic<R> {
     type BitLength = R::BitLength;
 }
