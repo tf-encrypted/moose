@@ -1132,6 +1132,31 @@ impl RepFixedpointMeanOp {
     }
 }
 
+modelled!(PlacementTensorSum::tensorsum, ReplicatedPlacement, attributes[axis: Option<u32>] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepTensorSumOp);
+
+kernel! {
+    RepTensorSumOp,
+    [
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] attributes[axis] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] attributes[axis] Self::kernel),
+    ]
+}
+
+impl RepTensorSumOp {
+    fn kernel<S: Session, RingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        axis: Option<u32>,
+        x: RepTen<RingT>,
+    ) -> RepTen<RingT>
+    where
+        HostPlacement: PlacementSum<S, RingT, RingT>,
+        ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
+    {
+        // TODO
+    }
+}
+
 modelled!(PlacementSum::sum, ReplicatedPlacement, attributes[axis: Option<u32>] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepSumOp);
 modelled!(PlacementSum::sum, ReplicatedPlacement, attributes[axis: Option<u32>] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepSumOp);
 
@@ -2348,6 +2373,32 @@ mod tests {
 
     use ndarray::prelude::*;
     use rstest::rstest;
+
+    #[test]
+    fn test_rep_tensor_sum() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let a = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
+        let b = AbstractHostRingTensor::from_raw_plc(array![2u64, 3, 4], alice.clone());
+        let c = AbstractHostRingTensor::from_raw_plc(array![5u64, 12, 13], alice.clone());
+
+        let inputs = vec![a, b, c];
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let x_shared = rep.share(&sess, &setup, &inputs);
+
+        let sum = rep.sum(&sess, None, &x_shared);
+        let opened_result = alice.reveal(&sess, &sum);
+
+        assert_eq!(6, opened_result.0[[]].0);
+    }
 
     #[test]
     fn test_rep_sum() {
