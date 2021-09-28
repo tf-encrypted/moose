@@ -1393,6 +1393,7 @@ impl ToTextual for Operator {
             RepBitDec(op) => op.to_textual(),
             RepSlice(op) => op.to_textual(),
             RepShlDim(op) => op.to_textual(),
+            RepRevDim(op) => op.to_textual(),
         }
     }
 }
@@ -1575,6 +1576,7 @@ impl_to_textual!(RepDiagOp, "{op}: {}", sig);
 impl_to_textual!(RepBitDecOp, "{op}: {}", sig);
 impl_to_textual!(RepSliceOp, "{op}{{slice}}: {} {}", sig, slice);
 impl_to_textual!(RepShlDimOp, "{op}: {} {} {}", sig, amount, bit_length);
+impl_to_textual!(RepRevDimOp, "{op}: {}", sig);
 
 macro_rules! op_with_axis_to_textual {
     ($op:tt) => {

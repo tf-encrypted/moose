@@ -1827,6 +1827,60 @@ impl RepShlDimOp {
     }
 }
 
+modelled!(PlacementRevDim::rev_dim, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor, RepRevDimOp);
+modelled!(PlacementRevDim::rev_dim, ReplicatedPlacement, (ReplicatedBitArray64) -> ReplicatedBitArray64, RepRevDimOp);
+modelled!(PlacementRevDim::rev_dim, ReplicatedPlacement, (ReplicatedBitArray128) -> ReplicatedBitArray128, RepRevDimOp);
+
+kernel! {
+    RepRevDimOp,
+    [
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [runtime] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedBitArray64) -> ReplicatedBitArray64 => [runtime] Self::bit_array_kernel),
+        (ReplicatedPlacement, (ReplicatedBitArray128) -> ReplicatedBitArray128 => [runtime] Self::bit_array_kernel),
+    ]
+}
+
+impl RepRevDimOp {
+    fn kernel<S: Session, HostBitTensorT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: RepTen<HostBitTensorT>,
+    ) -> RepTen<HostBitTensorT>
+    where
+        HostPlacement: PlacementRevDim<S, HostBitTensorT, HostBitTensorT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = x;
+
+        let z00 = player0.rev_dim(sess, &x00);
+        let z10 = player0.rev_dim(sess, &x10);
+
+        let z11 = player1.rev_dim(sess, &x11);
+        let z21 = player1.rev_dim(sess, &x21);
+
+        let z22 = player2.rev_dim(sess, &x22);
+        let z02 = player2.rev_dim(sess, &x02);
+
+        RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+    }
+
+    fn bit_array_kernel<S: Session, RepBitT, N: Const>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractReplicatedBitArray<RepBitT, N>,
+    ) -> AbstractReplicatedBitArray<RepBitT, N>
+    where
+        ReplicatedPlacement: PlacementRevDim<S, RepBitT, RepBitT>,
+    {
+        let reversed = plc.rev_dim(sess, &x.0);
+        AbstractReplicatedBitArray::<_, N>(reversed, PhantomData)
+    }
+}
+
 modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor, RepMsbOp);
 modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor, RepMsbOp);
 modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMsbOp);

@@ -209,6 +209,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepShl(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            RepRevDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepMsb(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepAbs(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
