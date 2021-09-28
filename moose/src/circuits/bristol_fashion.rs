@@ -32,15 +32,25 @@ pub enum GateKind {
 }
 
 fn parse_circuit(bytes: &[u8]) -> io::Result<()> {
-    // let reader = BufReader::new(bytes);
+    let mut reader = BufReader::new(bytes);
+    // let mut buffer = String::new();
+    // reader.read_line(&mut buffer)?;
+    // let ngates_nwires = buffer.clone();
+    // buffer.clear();
+    // reader.read_line(&mut buffer)?;
+    // let inputs = buffer.clone();
+    // buffer.clear();
+    // reader.read_line(&mut buffer)?;
+    // let outputs = buffer;
 
-    // let lines = reader.lines().collect::<io::Result<Vec<_>>>()?;
-    // let ngates_nwires = lines.get(0).unwrap();
-    // let inputs = lines.get(1).unwrap();
-    // let outputs = lines.get(2).unwrap();
+    let lines = reader.lines().collect::<io::Result<Vec<_>>>()?;
+    let ngates_nwires = lines.get(0).unwrap();
+    let inputs = lines.get(1).unwrap();
+    let outputs = lines.get(2).unwrap();
 
-    // Ok(())
-
+    let gates: Vec<Gate> = lines.iter().skip(3).map(|s| {
+        parse_gate(s).unwrap().1
+    }).collect();
     // let txt = std::str::from_utf8(bytes).unwrap();
     // let parser = separated_list0(newline, parse_gate);
     // let _ = parser(txt);
