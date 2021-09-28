@@ -1077,7 +1077,7 @@ where
 /// Wraps the innner parser in optional spaces.
 ///
 /// From nom::recepies
-fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
+pub fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where
@@ -1195,7 +1195,7 @@ fn string<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
 where
     E: ParseError<&'a str>,
 {
-    let build_string = fold_many0(parse_fragment, String::new(), |mut string, fragment| {
+    let build_string = fold_many0(parse_fragment, String::new, |mut string, fragment| {
         match fragment {
             StringFragment::Literal(s) => string.push_str(s),
             StringFragment::EscapedChar(c) => string.push(c),
