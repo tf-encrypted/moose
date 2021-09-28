@@ -843,7 +843,7 @@ impl RepMulOp {
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
-        ReplicatedPlacement: ZeroShareGen<S, KeyT, RingT, ShapeT>,
+        ReplicatedPlacement: ZeroShareGen<S, KeyT, ShapeT, RingT>,
         ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -964,7 +964,7 @@ kernel! {
 }
 
 impl RepDotOp {
-    fn rep_rep_kernel<S: Session, RingT, KeyT, ShapeT>(
+    fn rep_rep_kernel<S: Session, KeyT, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: AbstractReplicatedSetup<KeyT>,
@@ -976,7 +976,7 @@ impl RepDotOp {
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: PlacementDot<S, RingT, RingT, RingT>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
-        ReplicatedPlacement: ZeroShareGen<S, KeyT, RingT, ShapeT>,
+        ReplicatedPlacement: ZeroShareGen<S, KeyT, ShapeT, RingT>,
         ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -2074,7 +2074,7 @@ struct AbstractReplicatedZeroShare<R> {
     alphas: [R; 3],
 }
 
-trait ZeroShareGen<S: Session, KeyT, RingT, ShapeT> {
+trait ZeroShareGen<S: Session, KeyT, ShapeT, RingT> {
     fn gen_zero_share(
         &self,
         sess: &S,
@@ -2083,20 +2083,20 @@ trait ZeroShareGen<S: Session, KeyT, RingT, ShapeT> {
     ) -> AbstractReplicatedZeroShare<RingT>;
 }
 
-impl<S: Session, RingT> ZeroShareGen<S, m!(PrfKey), RingT, m!(HostShape)> for ReplicatedPlacement
+impl<S: Session, RingT, ShapeT, KeyT> ZeroShareGen<S, KeyT, ShapeT, RingT> for ReplicatedPlacement
 where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
     HostShape: KnownType<S>,
-    HostPlacement: PlacementSampleUniformSeeded<S, m!(HostShape), m!(Seed), RingT>,
+    HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, m!(Seed), RingT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
-    ReplicatedPlacement: ReplicatedSeedsGen<S, m!(PrfKey), m!(Seed)>,
+    ReplicatedPlacement: ReplicatedSeedsGen<S, KeyT, m!(Seed)>,
 {
     fn gen_zero_share(
         &self,
         sess: &S,
-        setup: &AbstractReplicatedSetup<m!(PrfKey)>,
-        shape: &AbstractReplicatedShape<m!(HostShape)>,
+        setup: &AbstractReplicatedSetup<KeyT>,
+        shape: &AbstractReplicatedShape<ShapeT>,
     ) -> AbstractReplicatedZeroShare<RingT> {
         let (player0, player1, player2) = self.host_placements();
 
