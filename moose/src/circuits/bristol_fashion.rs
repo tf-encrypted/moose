@@ -1,26 +1,25 @@
 //! This module contains code for loading Bistrol Fashion circuits as (partial) computations.
 
-use std::io::{self, prelude::*, BufReader};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
-use nom::error::Error;
-use nom::multi::many_m_n;
-use nom::character::complete::{u64};
+use nom::character::complete::{newline, space0, u64};
 use nom::combinator::value;
+use nom::error::Error;
+use nom::multi::{length_count, many0, many_m_n, separated_list0};
+use nom::sequence::{delimited, terminated, tuple};
+use std::io::{self, prelude::*, BufReader};
 
-use crate::text_computation::ws;
-
+#[derive(Debug)]
 pub struct Circuit {
     number_of_gates: usize,
     number_of_wires: usize,
     gates: Vec<Gate>,
 }
 
-
 #[derive(Debug)]
 pub struct Gate {
     kind: GateKind,
-    input_wires: Vec<usize>, // TODO could use small_vec here
+    input_wires: Vec<usize>,  // TODO could use small_vec here
     output_wires: Vec<usize>, // TODO could use small_vec here
 }
 
@@ -31,61 +30,58 @@ pub enum GateKind {
     Inv,
 }
 
-fn parse_circuit(bytes: &[u8]) -> io::Result<()> {
-    let mut reader = BufReader::new(bytes);
-    // let mut buffer = String::new();
-    // reader.read_line(&mut buffer)?;
-    // let ngates_nwires = buffer.clone();
-    // buffer.clear();
-    // reader.read_line(&mut buffer)?;
-    // let inputs = buffer.clone();
-    // buffer.clear();
-    // reader.read_line(&mut buffer)?;
-    // let outputs = buffer;
-
-    let lines = reader.lines().collect::<io::Result<Vec<_>>>()?;
-    let ngates_nwires = lines.get(0).unwrap();
-    let inputs = lines.get(1).unwrap();
-    let outputs = lines.get(2).unwrap();
-
-    let gates: Vec<Gate> = lines.iter().skip(3).map(|s| {
-        parse_gate(s).unwrap().1
-    }).collect();
-    // let txt = std::str::from_utf8(bytes).unwrap();
-    // let parser = separated_list0(newline, parse_gate);
-    // let _ = parser(txt);
-
-    Ok(())
-}
-
 type Res<T, U> = nom::IResult<T, U, Error<T>>;
 
-fn parse_usize(line: &str) -> Res<&str, usize> {
-    let (line, res) = ws(u64)(line)?;
+fn parse_circuit(bytes: &[u8]) -> Res<&[u8], Circuit> {
+    // First line is just two usize values
+    let (bytes, (number_of_gates, number_of_wires)) =
+        terminated(tuple((parse_usize, parse_usize)), newline)(bytes)?;
+    // Next two lines contain a count of inputs/outputs followed by its indexes
+    let (bytes, _inputs) = terminated(length_count(parse_usize, parse_usize), newline)(bytes)?;
+    let (bytes, _outputs) = terminated(length_count(parse_usize, parse_usize), newline)(bytes)?;
+    // Some empty line in the input. I wonder if we should allow more empty lines or make it optional (lvorona)
+    let (bytes, _) = terminated(many0(parse_usize), newline)(bytes)?;
+    // The rest of the file is gate definitions
+    let (bytes, gates) = separated_list0(newline, parse_gate)(bytes)?;
+
+    Ok((
+        bytes,
+        Circuit {
+            number_of_gates,
+            number_of_wires,
+            gates,
+        },
+    ))
+}
+
+fn parse_usize(line: &[u8]) -> Res<&[u8], usize> {
+    let (line, res) = delimited(space0, u64, space0)(line)?;
     Ok((line, res as usize))
 }
 
-fn parse_gate(line: &str) -> Res<&str, Gate> {
+fn parse_gate(line: &[u8]) -> Res<&[u8], Gate> {
     let (line, inputs_count) = parse_usize(line)?;
     let (line, outputs_count) = parse_usize(line)?;
     let (line, input_wires) = many_m_n(inputs_count, inputs_count, parse_usize)(line)?;
     let (line, output_wires) = many_m_n(outputs_count, outputs_count, parse_usize)(line)?;
-    let (line, kind) = ws(parse_kind)(line)?;
-    Ok((line, Gate {
-        kind,
-        input_wires,
-        output_wires
-    }))
+    let (line, kind) = delimited(space0, parse_kind, space0)(line)?;
+    Ok((
+        line,
+        Gate {
+            kind,
+            input_wires,
+            output_wires,
+        },
+    ))
 }
 
-fn parse_kind(line: &str) -> Res<&str, GateKind> {
+fn parse_kind(line: &[u8]) -> Res<&[u8], GateKind> {
     alt((
-        value(GateKind::Xor,  tag("XOR")),
-        value(GateKind::And,  tag("AND")),
-        value(GateKind::Inv,  tag("INV")),
+        value(GateKind::Xor, tag("XOR")),
+        value(GateKind::And, tag("AND")),
+        value(GateKind::Inv, tag("INV")),
     ))(line)
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -93,12 +89,13 @@ mod tests {
 
     #[test]
     fn test_parse_aes() {
-        parse_circuit(crate::circuits::AES_128);
+        let circuit = parse_circuit(crate::circuits::AES_128);
+        println!("Parsed circuit: {:?}", circuit);
     }
 
     #[test]
     fn test_parse_gate() {
-        let gate = parse_gate("2 1 33280 33282 3691 XOR");
+        let gate = parse_gate("2 1 33280 33282 3691 XOR".as_bytes());
         println!("Parsed gate: {:?}", gate);
     }
 }

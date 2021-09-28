@@ -1077,7 +1077,7 @@ where
 /// Wraps the innner parser in optional spaces.
 ///
 /// From nom::recepies
-pub fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
+fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where
