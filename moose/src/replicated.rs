@@ -1170,7 +1170,7 @@ impl RepDivOp {
             &setup,
             int_precision as usize,
             frac_precision as usize,
-            x,
+            &x.into(),
         );
 
         let a = rep.sub(sess, &rep_alpha, &rep.mul_setup(sess, &setup, &y_st, &w));
@@ -2334,7 +2334,7 @@ trait ApproximateReciprocal<S: Session, SetupT, T, O> {
         setup: &SetupT,
         int_precision: usize,
         frac_precision: usize,
-        x: T,
+        x: &T,
     ) -> O;
 }
 
@@ -2356,11 +2356,11 @@ where
         frac_precision: usize,
         x: &Symbolic<AbstractReplicatedRingTensor<R>>,
     ) -> Symbolic<AbstractReplicatedRingTensor<R>> {
-        let concrete_x = x.clone().try_into().ok().unwrap();
+        let concrete_x: &RepTen<R> = *x.try_into().ok().unwrap();
         let concrete_y = Self::approximate_reciprocal(
             self,
             sess,
-            setup,
+            setup.clone().try_into().ok().unwrap(),
             int_precision,
             frac_precision,
             concrete_x,
@@ -2371,7 +2371,7 @@ where
 
 // TODO(Dragos) What exactly should we do with this HostRingT generic to constrain it?
 impl<S: Session, SetupT, HostRingT: Placed<Placement = HostPlacement>>
-    ApproximateReciprocal<S, SetupT, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>
+    ApproximateReciprocal<S, SetupT, RepTen<HostRingT>, RepTen<HostRingT>>
     for ReplicatedPlacement
 where
     ReplicatedShape: KnownType<S>,
@@ -2399,6 +2399,9 @@ where
         st!(RepTen<HostRingT>),
     >,
     ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
+
+    st!(RepTen<HostRingT>): Into<RepTen<HostRingT>>,
+    RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
 {
     fn approximate_reciprocal(
         &self,
@@ -2406,14 +2409,14 @@ where
         setup: &SetupT,
         int_precision: usize,
         frac_precision: usize,
-        x: RepTen<HostRingT>,
-    ) -> st!(RepTen<HostRingT>) {
+        x: &RepTen<HostRingT>,
+    ) -> RepTen<HostRingT> {
         let rep = self;
         let total_precision = int_precision + frac_precision;
 
         let (upshifted, signed_topmost) = rep.norm(sess, setup, total_precision, x.clone());
 
-        let x_shape = rep.shape(sess, &x.into());
+        let x_shape = rep.shape(sess, &x.clone().into());
         // 2.9142 * 2^{total_precision}
         let alpha_int = HostRingT::from_fixed_encoding(2.9142, total_precision as u32);
         let alpha = rep.fill(sess, alpha_int, &x_shape);
@@ -2421,7 +2424,7 @@ where
         let w = rep.mul_setup(sess, setup, &d, &signed_topmost.into());
 
         // truncate result
-        rep.trunc_pr(sess, 2 * int_precision as u32, &w)
+        rep.trunc_pr(sess, 2 * int_precision as u32, &w).into()
     }
 }
 
@@ -3547,7 +3550,7 @@ mod tests {
         let expected_output = array![74i64];
 
         let x_shared = rep.share(&sess, &setup, &x);
-        let approximation = rep.approximate_reciprocal(&sess, &setup, 4, 8, x_shared);
+        let approximation = rep.approximate_reciprocal(&sess, &setup, 4, 8, &x_shared);
 
         let out = alice.reveal(&sess, &approximation).0;
         for (i, item) in out.iter().enumerate() {
