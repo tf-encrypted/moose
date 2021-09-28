@@ -837,6 +837,7 @@ operators![
     Shape,
     PrimDeriveSeed,
     PrimPrfKeyGen,
+    HostAesDecrypt,
     AtLeast2D,
     Slice,
     Ones,
@@ -1237,6 +1238,11 @@ pub struct PrimDeriveSeedOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct PrimPrfKeyGenOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostAesDecryptOp {
     pub sig: Signature,
 }
 

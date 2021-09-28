@@ -1822,6 +1822,24 @@ where
     }
 }
 
+kernel! {
+    HostAesDecryptOp,
+    [
+        (HostPlacement, (HostBitArray128, HostBitArray128) -> HostBitArray128 => [runtime] Self::kernel),
+    ]
+}
+
+impl HostAesDecryptOp {
+    fn kernel<S: Session>(
+        _sess: &S,
+        plc: &HostPlacement,
+        key: HostBitArray128,
+        c: HostBitArray128,
+    ) -> HostBitArray128 {
+        unimplemented!()
+    }
+}
+
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing64Tensor, RingFillOp);
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing128Tensor, RingFillOp);
 
