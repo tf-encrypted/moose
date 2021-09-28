@@ -1736,7 +1736,7 @@ impl Compile<Kernel> for FixedpointSubOp {
                     AbstractHostFixedTensor {
                         tensor: x.tensor - y.tensor,
                         fractional_precision: x.fractional_precision,
-                        integral_precision: x.integral_precision,
+                        integral_precision: u32::max(x.integral_precision, y.integral_precision),
                     }
                 })
             }
