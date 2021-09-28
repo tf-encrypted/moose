@@ -1469,7 +1469,7 @@ impl TryFrom<PyComputation> for Computation {
                                 Ty::Fixed128Tensor, // TODO: Derive from the output type
                                 map_type(&op.output_type)?,
                             ),
-                            precision: op.precision,
+                            fractional_precision: op.precision,
                         }
                         .into(),
                         name: op.name.clone(),

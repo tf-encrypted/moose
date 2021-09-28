@@ -1669,14 +1669,14 @@ impl Compile<Kernel> for FixedpointDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
             signature![(Ty::HostRing64Tensor) -> _] => {
-                let scaling_factor = u64::pow(2, self.precision);
+                let scaling_factor = u64::pow(2, self.fractional_precision);
                 closure_kernel!(HostRing64Tensor, |x| HostRing64Tensor::decode(
                     &x,
                     scaling_factor
                 ))
             }
             signature![(Ty::HostRing128Tensor) -> _] => {
-                let scaling_factor = u128::pow(2, self.precision);
+                let scaling_factor = u128::pow(2, self.fractional_precision);
                 closure_kernel!(HostRing128Tensor, |x| HostRing128Tensor::decode(
                     &x,
                     scaling_factor

@@ -634,9 +634,17 @@ fn fixed_point_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn fixed_point_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, precision) = attributes_single("precision", parse_int)(input)?;
+    let (input, fractional_precision) =
+        attributes_single("fractional_precision", parse_int)(input)?;
     let (input, sig) = operator_signature(1)(input)?;
-    Ok((input, FixedpointDecodeOp { sig, precision }.into()))
+    Ok((
+        input,
+        FixedpointDecodeOp {
+            sig,
+            fractional_precision,
+        }
+        .into(),
+    ))
 }
 
 /// Parses a Save operator.
@@ -1524,7 +1532,7 @@ impl_to_textual!(
 impl_to_textual!(
     FixedpointDecodeOp,
     "{op}{{precision={}}}: {}",
-    precision,
+    fractional_precision,
     sig
 );
 impl_to_textual!(FixedpointAddOp, "{op}: {}", sig);
