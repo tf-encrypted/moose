@@ -1,10 +1,5 @@
 build:
 	cargo build
-	python3 -m grpc_tools.protoc \
-			--proto_path=. \
-			--python_out=./pymoose/pymoose/ \
-			--grpc_python_out=./pymoose/pymoose/ \
-			protos/*.proto
 
 pydep:
 	pip install -r pymoose/requirements-dev.txt
