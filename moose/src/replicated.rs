@@ -1106,6 +1106,7 @@ impl RepDotOp {
     }
 }
 
+// TODO [Yann] Move to fixedpoint
 modelled!(PlacementDivSetup::div_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepDivOp);
 // modelled!(PlacementDivSetup::div_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepDivOp);
 
@@ -1151,9 +1152,8 @@ impl RepDivOp {
         ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), st!(RepTen<RingT>)>,
         ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
     {
-        let (player0, player1, player2) = rep.host_placements();
-
-        let int_precision = 27_u32; // TODO how to get the integral part of the fixed point encoding?
+        // TODO [Yann] extract precision from fixedPoint tensors once moved to fixedpoint.
+        let int_precision = 27_u32;
         let frac_precision = 20_u32;
         let k = int_precision + frac_precision;
         let theta = (k as f64 / 3.5_f64).log2().ceil() as u32;
@@ -1174,10 +1174,11 @@ impl RepDivOp {
         );
 
         let a = rep.sub(sess, &rep_alpha, &rep.mul_setup(sess, &setup, &y_st, &w));
-        let mut b = rep.mul_setup(sess, &setup, &x_st, &w);
-        let b = rep.trunc_pr(sess, 2 * frac_precision, &b); // TODO whart's the actual amount? the paper refers to integral and fractional
+        let b = rep.mul_setup(sess, &setup, &x_st, &w);
+        let b = rep.trunc_pr(sess, 2 * frac_precision, &b);
 
-        for i in 0..theta {
+        // TODO [Yann] fix to return tuple (a, b)
+        for _i in 0..theta {
             let b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
             let a = rep.mul_setup(sess, &setup, &a, &a);
             let b = rep.trunc_pr(sess, 2 * frac_precision, &b);
@@ -2139,8 +2140,6 @@ where
     ///
     /// `x` is a replicated bit tensor.
     fn prefix_or(&self, sess: &S, setup: &SetupT, x: Vec<RepBitT>) -> Vec<RepBitT> {
-        // OR(x, y) = (x xor y) xor (x and y)
-
         let v_len = x.len();
 
         let log_r = ((v_len as f64).log2().ceil()) as u32;
@@ -2160,7 +2159,6 @@ where
                 let y = (2_i32.pow(i) + j * 2_i32.pow(i + 1) - 1) as usize;
                 let k_bound = (2_i32.pow(i) + 1) as usize;
                 for k in 1..k_bound {
-                    // let mut res[i, y+k] = bitwise_or(x[i, y], x[i, y+k]);
                     if y + k < v_len {
                         res[y + k] = bitwise_or(&res[y], &res[y + k]);
                     }
@@ -2263,8 +2261,6 @@ where
         // (Dragos) TODO: optimize this in the future, we don't need all bits (only max_bits from the bit-decomposition)
         let x_bits = rep.bit_decompose(sess, setup, &abs_x);
 
-        // println!("abstract array: {:?}", player0.reveal(sess, &x_bits));
-
         let x_bits_vec: Vec<_> = (0..max_bits).map(|i| rep.index(sess, i, &x_bits)).collect();
 
         let top_most = rep.top_most(sess, setup, max_bits, x_bits_vec);
@@ -2340,100 +2336,6 @@ trait ApproximateReciprocal<S: Session, SetupT, T, O> {
         x: &T,
     ) -> O;
 }
-
-// impl<S: Session, R: Placed<Placement = HostPlacement>>
-//     ApproximateReciprocal<S, Symbolic<ReplicatedSetup>, Symbolic<RepTen<R>>, Symbolic<RepTen<R>>>
-//     for ReplicatedPlacement
-// where
-//     ReplicatedPlacement: ApproximateReciprocal<S, ReplicatedSetup, RepTen<R>, RepTen<R>>,
-
-//     Symbolic<RepTen<R>>: Clone,
-//     RepTen<R>: TryFrom<Symbolic<RepTen<R>>>,
-//     RepTen<R>: Into<Symbolic<RepTen<R>>>,
-//     AbstractReplicatedSetup<Symbolic<PrfKey>>: TryFrom<Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>,
-
-//     // AbstractReplicatedSetup<PrfKey>: TryFrom<Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>,
-// {
-//     fn approximate_reciprocal(
-//         &self,
-//         sess: &S,
-//         setup: &Symbolic<ReplicatedSetup>,
-//         int_precision: usize,
-//         frac_precision: usize,
-//         x: &Symbolic<AbstractReplicatedRingTensor<R>>,
-//     ) -> Symbolic<AbstractReplicatedRingTensor<R>> {
-//         let concrete_x: RepTen<R> = (*x).try_into().ok().unwrap();
-//         let concrete_setup = (*setup).try_into().ok().unwrap();
-//         let concrete_y = Self::approximate_reciprocal(
-//             self,
-//             sess,
-//             &concrete_setup,
-//             int_precision,
-//             frac_precision,
-//             &concrete_x,
-//         );
-//         concrete_y.into()
-//     }
-// }
-
-// // TODO(Dragos) What exactly should we do with this HostRingT generic to constrain it?
-// impl<S: Session, SetupT, HostRingT>
-//     ApproximateReciprocal<S, SetupT, RepTen<HostRingT>, RepTen<HostRingT>>
-//     for ReplicatedPlacement
-// where
-//     ReplicatedShape: KnownType<S>,
-//     RepTen<HostRingT>: Clone,
-
-//     RepTen<HostRingT>: CanonicalType,
-//     <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-
-//     RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
-//     st!(RepTen<HostRingT>): Into<RepTen<HostRingT>>,
-
-//     HostRingT: RingFromFixedPoint,
-//     ReplicatedPlacement: DivNorm<S, SetupT, HostRingT>,
-//     ReplicatedPlacement: PlacementShape<S, st!(RepTen<HostRingT>), cs!(ReplicatedShape)>,
-//     ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), st!(RepTen<HostRingT>)>,
-
-//     ReplicatedPlacement:
-//         PlacementSub<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
-//     ReplicatedPlacement: PlacementShl<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
-//     ReplicatedPlacement: PlacementMulSetup<
-//         S,
-//         SetupT,
-//         st!(RepTen<HostRingT>),
-//         st!(RepTen<HostRingT>),
-//         st!(RepTen<HostRingT>),
-//     >,
-//     ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
-
-//     st!(RepTen<HostRingT>): Into<RepTen<HostRingT>>,
-//     RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
-// {
-//     fn approximate_reciprocal(
-//         &self,
-//         sess: &S,
-//         setup: &SetupT,
-//         int_precision: usize,
-//         frac_precision: usize,
-//         x: &RepTen<HostRingT>,
-//     ) -> RepTen<HostRingT> {
-//         let rep = self;
-//         let total_precision = int_precision + frac_precision;
-
-//         let (upshifted, signed_topmost) = rep.norm(sess, setup, total_precision, x.clone());
-
-//         let x_shape = rep.shape(sess, &x.clone().into());
-//         // 2.9142 * 2^{total_precision}
-//         let alpha_int = HostRingT::from_fixed_encoding(2.9142, total_precision as u32);
-//         let alpha = rep.fill(sess, alpha_int, &x_shape);
-//         let d = with_context!(rep, sess, alpha - rep.shl(sess, 1, &upshifted.into()));
-//         let w = rep.mul_setup(sess, setup, &d, &signed_topmost.into());
-
-//         // truncate result
-//         rep.trunc_pr(sess, 2 * int_precision as u32, &w).into()
-//     }
-// }
 
 impl<S: Session, SetupT, HostRingT>
     ApproximateReciprocal<S, SetupT, RepTen<HostRingT>, st!(RepTen<HostRingT>)>
@@ -3619,7 +3521,5 @@ mod tests {
                 }
             }
         }
-
-        println!("output {:?}", out);
     }
 }
