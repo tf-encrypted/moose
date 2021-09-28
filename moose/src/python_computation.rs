@@ -1454,7 +1454,8 @@ impl TryFrom<PyComputation> for Computation {
                     fixed_EncodeOperation(op) => Ok(Operation {
                         kind: FixedpointEncodeOp {
                             sig: Signature::unary(Ty::Unknown, map_type(&op.output_type)?),
-                            precision: op.precision,
+                            fractional_precision: op.precision,
+                            integral_precision: 8, // just because
                         }
                         .into(),
                         name: op.name.clone(),

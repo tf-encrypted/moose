@@ -613,9 +613,21 @@ fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
 fn fixed_point_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, precision) = attributes_single("precision", parse_int)(input)?;
+    let (input, (fractional_precision, integral_precision)) = attributes!((
+        attributes_member("fractional_precision", parse_int),
+        attributes_member("integral_precision", parse_int)
+    ))(input)?;
+
     let (input, sig) = operator_signature(0)(input)?;
-    Ok((input, FixedpointEncodeOp { sig, precision }.into()))
+    Ok((
+        input,
+        FixedpointEncodeOp {
+            sig,
+            fractional_precision,
+            integral_precision,
+        }
+        .into(),
+    ))
 }
 
 /// Parses a FixedpointDecode operator.
@@ -1504,8 +1516,9 @@ impl_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
 impl_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
 impl_to_textual!(
     FixedpointEncodeOp,
-    "{op}{{precision={}}}: {}",
-    precision,
+    "{op}{{fractional_precision={}, integral_precision={}}}: {}",
+    fractional_precision,
+    integral_precision,
     sig
 );
 impl_to_textual!(

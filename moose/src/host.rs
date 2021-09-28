@@ -1725,7 +1725,8 @@ where
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostFixedTensor<HostRingT> {
     pub tensor: HostRingT,
-    pub precision: u32,
+    pub fractional_precision: u32,
+    pub integral_precision: u32,
 }
 
 moose_type!(HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>);
