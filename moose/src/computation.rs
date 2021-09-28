@@ -943,6 +943,7 @@ operators![
     RepDot,
     RepDiv,
     RepFixedpointMean,
+    RepFixedpointDiv,
     RepShl,
     RepSum,
     RepTruncPr,
@@ -1573,6 +1574,11 @@ pub struct RepFixedpointMeanOp {
     pub axis: Option<u32>,
     pub scaling_base: u64,
     pub scaling_exp: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepFixedpointDivOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

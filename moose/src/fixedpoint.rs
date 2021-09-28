@@ -548,6 +548,29 @@ impl FixedpointMulOp {
     }
 }
 
+modelled!(PlacementDiv::div, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, RepFixedpointDivOp);
+kernel! {
+    RepFixedpointDivOp,
+    [
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_kernel),
+    ]
+}
+
+impl RepFixedpointDivOp {
+    fn repfixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+        y: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> AbstractReplicatedFixedTensor<RepRingT>
+    where
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+        ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
+    {
+        unimplemented!()
+    }
+}
+
 modelled!(PlacementDot::dot, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDotOp);
 modelled!(PlacementDot::dot, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedpointDotOp);
 modelled!(PlacementDot::dot, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDotOp);
