@@ -40,6 +40,13 @@ macro_rules! derive_runtime_kernel {
         }
     };
 
+    (variadic, custom |$op:ident| $kf:expr, $self:ident) => {
+        {
+            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, _) -> _> = &|$op| $kf;
+            kf($self)
+        }
+    };
+
     (nullary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
         {
             $(
@@ -55,7 +62,7 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Ok(Box::new(move |sess, plc| {
+            crate::error::Result::<Box<dyn Fn(&_, &_) -> _>>::Ok(Box::new(move |sess, plc| {
                 $k(sess, plc, $($attr.clone()),+)
             }))
         }
@@ -99,7 +106,7 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Ok(Box::new(move |sess, plc, x0, x1| {
+            crate::error::Result::<Box<dyn Fn(&_, &_, _, _) -> _>>::Ok(Box::new(move |sess, plc, x0, x1| {
                 $k(sess, plc, $($attr.clone()),+, x0, x1)
             }))
         }
@@ -119,9 +126,34 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Box::new(move |sess, plc, x0, x1, x2| {
+            crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> _>>::Ok(Box::new(move |sess, plc, x0, x1, x2| {
                 $k(sess, plc, $($attr.clone()),+), x0, x1, x2
-            })
+            }))
+        }
+    };
+
+    (variadic, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
+        {
+            $(
+                let $attr = $self.$attr.clone();
+                    // The following block applies the optional Constant type restriction to the attribute and unwraps it
+                    $(
+                        let $attr = match $attr {
+                            Constant::$prim_ty(v) => v,
+                            _ => return Err(crate::error::Error::TypeMismatch{
+                                expected: stringify!($prim_ty).to_string(),
+                                found: $attr.ty(),
+                            })
+                        };
+                    )?
+                )+
+                {
+                    crate::error::Result::<Box<dyn Fn(&_, &_, Vec<_>) -> _>>::Ok(
+                        Box::new(move |sess, plc, xs| {
+                            $k(sess, plc, $($attr.clone()),+, &xs)
+                        })
+                    )
+                }
         }
     };
 
@@ -132,10 +164,13 @@ macro_rules! derive_runtime_kernel {
         crate::error::Result::<Box<dyn Fn(&_, &_, _) -> _>>::Ok(Box::new($k))
     };
     (binary, $k:expr, $self:ident) => {
-        Ok(Box::new($k))
+        crate::error::Result::<Box<dyn Fn(&_, &_, _, _) -> _>>::Ok(Box::new($k))
     };
     (ternary, $k:expr, $self:ident) => {
-        Ok(Box::new($k))
+        crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> _>>::Ok(Box::new($k))
+    };
+    (variadic, $k:expr, $self:ident) => {
+        Box::new($k)
     };
 }
 
@@ -156,7 +191,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, NullaryKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -198,7 +233,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, UnaryKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -243,7 +278,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, BinaryKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -297,7 +332,7 @@ macro_rules! concrete_dispatch_kernel {
                 use crate::kernels::{SyncSession, TernaryKernel};
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -330,6 +365,49 @@ macro_rules! concrete_dispatch_kernel {
             }
         }
     };
+
+    /*
+    Variadic
+    */
+
+    ($op:ty, [$( ($plc:ty, vec[$ts:ty] -> $u:ty), )+]) => {
+        impl crate::kernels::DispatchKernel<crate::kernels::SyncSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value>>>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature, Value};
+                use crate::kernels::{SyncSession, VariadicKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Variadic(VariadicSignature {
+                                args: <$ts as KnownType<SyncSession>>::TY,
+                                ret: <$u as KnownType<SyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into().unwrap();
+
+                            let k = <$op as VariadicKernel<SyncSession, $plc, $ts, $u>>::compile(self, &plc)?;
+
+                            Ok(Box::new(move |sess, operands: Vec<Value>| {
+                                let xs: Vec<$ts> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
+
+                                let y: $u = k(sess, &plc, xs);
+                                debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
+                                Ok(y.into())
+                            }))
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                }
+            }
+        }
+    };
 }
 
 macro_rules! symbolic_dispatch_kernel {
@@ -352,7 +430,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -400,7 +478,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -452,7 +530,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -507,7 +585,7 @@ macro_rules! symbolic_dispatch_kernel {
                 use crate::symbolic::SymbolicSession;
                 use std::convert::TryInto;
 
-                match (plc.ty(), self.sig) {
+                match (plc.ty(), self.sig.flatten()) {
                     $(
                         (
                             <$plc>::TY,
@@ -537,6 +615,56 @@ macro_rules! symbolic_dispatch_kernel {
                                 let x2: <$t2 as KnownType<SymbolicSession>>::Type = operands.get(2).unwrap().clone().try_into()?;
 
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0, x1, x2);
+                                Ok(y.into())
+                            }))
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                }
+            }
+        }
+    };
+
+    /*
+    Variadic
+    */
+
+    ($op:ty, [$( ($plc:ty, vec[$ts:ty] -> $u:ty), )+]) => {
+        impl crate::kernels::DispatchKernel<crate::symbolic::SymbolicSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            )-> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                Vec<crate::computation::SymbolicValue>
+            ) -> crate::error::Result<crate::computation::SymbolicValue>>> {
+                use crate::computation::{KnownPlacement, Signature, VariadicSignature, KnownType};
+                use crate::kernels::{VariadicKernel};
+                use crate::symbolic::SymbolicSession;
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Variadic(VariadicSignature {
+                                args: <$ts as KnownType<SymbolicSession>>::TY,
+                                ret: <$u as KnownType<SymbolicSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+
+                            let k = <$op as VariadicKernel<
+                                SymbolicSession,
+                                $plc,
+                                <$ts as KnownType<SymbolicSession>>::Type,
+                                <$u as KnownType<SymbolicSession>>::Type,
+                            >>::compile(self, &plc)?;
+
+                            Ok(Box::new(move |sess, operands| {
+                                let xs: Vec<<$ts as KnownType<SymbolicSession>>::Type> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
+
+                                let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, xs);
                                 Ok(y.into())
                             }))
                         }
@@ -815,8 +943,6 @@ macro_rules! kernel {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
 
-                let k = derive_runtime_kernel![binary, $($kp)+, self]?;
-
                 let op = self.clone();
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
@@ -824,6 +950,12 @@ macro_rules! kernel {
                     x0: <$t0 as KnownType<SymbolicSession>>::Type,
                     x1: <$t1 as KnownType<SymbolicSession>>::Type,
                 | {
+                    // TODO derive k outside box (using self instead of op)
+                    // Magic by Morten
+                    let op = &op;
+
+                    let k = derive_runtime_kernel![binary, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
+
                     let v0 = x0.clone().try_into();
                     let v1 = x1.clone().try_into();
 
@@ -834,7 +966,7 @@ macro_rules! kernel {
                         }
                         _ => match (x0, x1) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                                let op_name = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
+                                let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
                                 Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
                             }
                             _ => unimplemented!() // ok
@@ -1005,6 +1137,131 @@ macro_rules! kernel {
                         _ => unimplemented!()
                     }
                 })
+            }
+        }
+    };
+
+    /*
+    Variadic
+    */
+    ($op:ty, [$( ($plc:ty, vec[$ts:ty] -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
+        concrete_dispatch_kernel!($op, [$( ($plc, vec[$ts] -> $u), )+]);
+        symbolic_dispatch_kernel!($op, [$( ($plc, vec[$ts] -> $u), )+]);
+
+        $(
+            impl crate::kernels::VariadicKernel<
+                crate::kernels::SyncSession,
+                $plc,
+                $ts,
+                $u
+            > for $op
+            {
+                fn compile(
+                    &self,
+                    _plc: &$plc,
+                ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, &$plc, Vec<$ts>) -> $u>> {
+                    derive_runtime_kernel![variadic, $($kp)+, self]
+                }
+            }
+        )+
+
+        $(
+            kernel!(__variadic $flavour, $op, $plc, vec[$ts] -> $u => $($kp)+);
+        )+
+    };
+
+    (__variadic hybrid, $op:ty, $plc:ty, vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::VariadicKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc,
+                Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
+            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            {
+                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use std::convert::TryInto;
+
+                let op = self.clone();
+
+                Ok(Box::new(move |
+                    sess: &SymbolicSession,
+                    plc: &$plc,
+                    xs: Vec<<$ts as KnownType<SymbolicSession>>::Type>,
+                | {
+                    // TODO derive k outside box (using self instead of op)
+                    // Magic by Morten
+                    let op = &op;
+
+                    let k = derive_runtime_kernel![variadic, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
+
+                    // attempt to convert operands to match kernel
+                    let kernel_vals: Vec<_> = xs.iter().cloned().filter_map(|x| x.try_into().ok()).collect();
+                    if kernel_vals.len() == xs.len() {
+                        // success; we can apply kernel
+                        let y = k(sess, plc, kernel_vals);
+                        y.into()
+                    } else {
+                        // operands did not match kernel so record in graph instead
+                        let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
+                        if handles.len() == xs.len() {
+                            // success; we can record in graph
+                            let op_name = sess.add_operation(op, &handles, &plc.clone().into());
+                            return Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() });
+                        } else {
+                            // unexpected
+                            unimplemented!()
+                        }
+                    }
+                }))
+            }
+        }
+    };
+
+    (__variadic runtime, $op:ty, $plc:ty, vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::VariadicKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc,
+                Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>)
+                -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            {
+                use crate::computation::{KnownType};
+                use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+
+                let op = self.clone();
+                Ok(Box::new(move |
+                    sess: &SymbolicSession,
+                    plc: &$plc,
+                    xs: Vec<<$ts as KnownType<SymbolicSession>>::Type>
+                | {
+                    let res: Vec<&str> = xs.iter().filter_map(|x| {
+                        match x {
+                            Symbolic::Symbolic(h0) => {
+                                Some(&h0.op[..])
+                            }
+                            _ => None
+                        }
+                    }).collect();
+
+                    if  res.len() == xs.len() {
+                        let op_name = sess.add_operation(&op, &res, &plc.clone().into());
+                        return Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() });
+                    }
+
+                    unimplemented!()
+                }))
             }
         }
     };
@@ -1301,6 +1558,82 @@ macro_rules! modelled {
             }
         }
     };
+    /*
+    Variadic
+    */
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? vec[$ts:ty] -> $u:ty, $op:ident) => {
+        impl crate::kernels::VariadicKernelCheck<crate::kernels::SyncSession, $plc, $ts, $u> for $op {}
+
+        impl $t<
+            crate::kernels::SyncSession,
+            $ts,
+            $u
+        > for $plc {
+            fn $f(
+                &self,
+                sess: &crate::kernels::SyncSession,
+                $($($attr_id:$attr_ty),*,)?
+                xs: &[$ts]
+            ) -> $u {
+                use crate::computation::{KnownType, VariadicSignature};
+                use crate::kernels::{Session, SyncSession};
+                use std::convert::TryInto;
+
+                let sig = VariadicSignature {
+                    args: <$ts as KnownType<SyncSession>>::TY,
+                    ret: <$u as KnownType<SyncSession>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+                let vs: Vec<Value> = xs.iter().map(|x| x.clone().into()).collect();
+                sess.execute(op.into(), &self.into(), vs)
+                    .unwrap()
+                    .try_into()
+                    .unwrap()
+            }
+        }
+
+        impl crate::kernels::VariadicKernelCheck<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+        > for $op {}
+
+        impl $t<
+            crate::symbolic::SymbolicSession,
+            <$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $plc {
+            fn $f(
+                &self,
+                sess: &crate::symbolic::SymbolicSession,
+                $($($attr_id:$attr_ty),*,)?
+                xs: &[<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type]
+            ) -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type {
+                use crate::computation::{KnownType, VariadicSignature};
+                use crate::kernels::{Session};
+                use crate::symbolic::{SymbolicSession};
+                use std::convert::TryInto;
+
+                let sig = VariadicSignature {
+                    args: <$ts as KnownType<SymbolicSession>>::TY,
+                    ret: <$u as KnownType<SymbolicSession>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+                let vs: Vec<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
+                sess.execute(op.into(), &self.into(), vs)
+                    .unwrap()
+                    .try_into()
+                    .unwrap()
+            }
+        }
+    };
 }
 
 macro_rules! modelled_alias {
@@ -1574,6 +1907,43 @@ pub trait Ring {
     type BitLength: Const;
 }
 
+macro_rules! unmodelled {
+    /*
+    Nullary
+    */
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? () -> $u:ty, $op:ident) => {
+        impl crate::kernels::NullaryKernelCheck<crate::kernels::SyncSession, $plc, $u> for $op {}
+    };
+
+    /*
+    Unary
+    */
+    ($plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty) -> $u:ty, $op:ident) => {
+        impl crate::kernels::UnaryKernelCheck<crate::kernels::SyncSession, $plc, $t0, $u> for $op {}
+    };
+
+    /*
+    Binary
+    */
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
+        impl crate::kernels::BinaryKernelCheck<crate::kernels::SyncSession, $plc, $t0, $t1, $u>
+            for $op
+        {
+        }
+    };
+
+    /*
+    Ternary
+    */
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
+        impl
+            crate::kernels::TernaryKernelCheck<crate::kernels::SyncSession, $plc, $t0, $t1, $t2, $u>
+            for $op
+        {
+        }
+    };
+}
+
 pub mod additive;
 pub mod common;
 pub mod compilation;
@@ -1581,8 +1951,10 @@ pub mod computation;
 pub mod error;
 pub mod execution;
 pub mod fixedpoint;
+pub mod floatingpoint;
 pub mod host;
 pub mod kernels;
+pub mod logical;
 pub mod networking;
 pub mod prim;
 pub mod prng;

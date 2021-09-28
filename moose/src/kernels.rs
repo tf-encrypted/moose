@@ -3,11 +3,12 @@ use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
     SyncKernel,
 };
-use crate::fixedpoint::Fixed128Tensor;
+use crate::fixedpoint::Convert;
+use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{
     AbstractHostFixedTensor, AbstractHostRingTensor, HostBitTensor, HostFixed128Tensor,
     HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
-    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostTensor,
+    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
     HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, SliceInfo,
 };
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
@@ -100,7 +101,7 @@ impl Session for SyncSession {
             RepMsb(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepAbs(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -109,7 +110,6 @@ impl Session for SyncSession {
             RepSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepRevDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -149,6 +149,19 @@ impl Session for SyncSession {
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FloatingpointSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FloatingpointMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FloatingpointDiv(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FloatingpointDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FloatingpointAtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FloatingpointExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FloatingpointTranspose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FloatingpointInverse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FloatingpointSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostTranspose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostInverse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -158,6 +171,20 @@ impl Session for SyncSession {
             Send(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Receive(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostReshape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Slice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Ones(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            ExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Concat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Transpose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Dot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Inverse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Add(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Sub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Mul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Mean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Sum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -236,6 +263,11 @@ pub trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
     fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Y>>;
 }
 
+pub trait VariadicKernel<S: Session, P, XS, Y> {
+    #[allow(clippy::type_complexity)] // TODO
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Y>>;
+}
+
 pub(crate) trait NullaryKernelCheck<S: Session, P, Y>
 where
     Self: NullaryKernel<S, P, Y>,
@@ -257,6 +289,12 @@ where
 pub(crate) trait TernaryKernelCheck<S: Session, P, X0, X1, X2, Y>
 where
     Self: TernaryKernel<S, P, X0, X1, X2, Y>,
+{
+}
+
+pub(crate) trait VariadicKernelCheck<S: Session, P, XS, Y>
+where
+    Self: VariadicKernel<S, P, XS, Y>,
 {
 }
 
@@ -376,16 +414,12 @@ pub trait PlacementZeros<S: Session, ShapeT, O> {
     fn zeros(&self, sess: &S, shape: &ShapeT) -> O;
 }
 
-// TODO(Morten) get rid of scaling_base and scaling_base
 pub trait PlacementMean<S: Session, T, O> {
-    fn mean(&self, sess: &S, axis: Option<u32>, scaling_base: u64, scaling_base: u32, x: &T) -> O;
-}
-pub trait PlacementSqrt<S: Session, T, O> {
-    fn sqrt(&self, sess: &S, x: &T) -> O;
+    fn mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
 
-pub trait PlacementRingMean<S: Session, T, O> {
-    fn ring_mean(
+pub trait PlacementMeanAsFixedpoint<S: Session, T, O> {
+    fn mean_as_fixedpoint(
         &self,
         sess: &S,
         axis: Option<u32>,
@@ -393,6 +427,10 @@ pub trait PlacementRingMean<S: Session, T, O> {
         scaling_exp: u32,
         x: &T,
     ) -> O;
+}
+
+pub trait PlacementSqrt<S: Session, T, O> {
+    fn sqrt(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait PlacementSum<S: Session, T, O> {
@@ -587,10 +625,6 @@ pub trait PlacementFixedpointDecode<S: Session, T, O> {
     fn fixedpoint_decode(&self, sess: &S, precision: u32, x: &T) -> O;
 }
 
-pub trait PlacementStdMean<S: Session, T, O> {
-    fn std_mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
-}
-
 pub trait PlacementExpandDims<S: Session, T, O> {
     fn expand_dims(&self, sess: &S, axis: Vec<u32>, x: &T) -> O;
 }
@@ -599,8 +633,8 @@ pub trait PlacementSqueeze<S: Session, T, O> {
     fn squeeze(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
 
-pub trait PlacementConcatenate<S: Session, T1, T2, O> {
-    fn concatenate(&self, sess: &S, axis: u32, x: &T1, y: &T2) -> O;
+pub trait PlacementConcatenate<S: Session, TS, O> {
+    fn concatenate(&self, sess: &S, axis: u32, xs: &[TS]) -> O;
 }
 
 pub trait PlacementTranspose<S: Session, T, O> {
@@ -674,7 +708,6 @@ impl Compile<SyncKernel> for Operator {
             HostDot(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostMean(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostOnes(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostConcat(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostExpandDims(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostReshape(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostAtLeast2D(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -682,6 +715,7 @@ impl Compile<SyncKernel> for Operator {
             HostSum(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostTranspose(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostInverse(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostConcat(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingNeg(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -707,6 +741,33 @@ impl Compile<SyncKernel> for Operator {
             FixedpointDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointSub(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FloatingpointAdd(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointSub(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointMul(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointDiv(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointDot(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointAtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointOnes(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointConcat(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointTranspose(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointInverse(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointMean(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointSum(op) => unimplemented!("Not done yet: {:?}", op),
+            AtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
+            Slice(op) => unimplemented!("Not done yet: {:?}", op),
+            Ones(op) => unimplemented!("Not done yet: {:?}", op),
+            ExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
+            Concat(op) => unimplemented!("Not done yet: {:?}", op),
+            Transpose(op) => unimplemented!("Not done yet: {:?}", op),
+            Dot(op) => unimplemented!("Not done yet: {:?}", op),
+            Inverse(op) => unimplemented!("Not done yet: {:?}", op),
+            Add(op) => unimplemented!("Not done yet: {:?}", op),
+            Sub(op) => unimplemented!("Not done yet: {:?}", op),
+            Mul(op) => unimplemented!("Not done yet: {:?}", op),
+            Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Sum(op) => unimplemented!("Not done yet: {:?}", op),
+            Div(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO
             HostIndexAxis(_) => unimplemented!(),
             HostBitDec(_) => unimplemented!(),
@@ -720,10 +781,10 @@ impl Compile<SyncKernel> for Operator {
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepDiv(_)
-            | RepMean(_) | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_)
+            | RepFixedpointMean(_) | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_)
             | RepIndexAxis(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_)
-            | RepBitDec(_) | RepRevDim(_) | FixedpointMul(_) | FixedpointDot(_)
-            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) => {
+            | RepBitDec(_) | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_)
+            | FixedpointMean(_) | FixedpointSum(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -752,7 +813,6 @@ impl Compile<AsyncKernel> for Operator {
             HostDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostMean(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostOnes(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostConcat(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostExpandDims(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostReshape(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostAtLeast2D(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -760,6 +820,7 @@ impl Compile<AsyncKernel> for Operator {
             HostSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostTranspose(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostInverse(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostConcat(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingNeg(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -781,6 +842,20 @@ impl Compile<AsyncKernel> for Operator {
             BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimDeriveSeed(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimPrfKeyGen(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            AtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
+            Slice(op) => unimplemented!("Not done yet: {:?}", op),
+            Ones(op) => unimplemented!("Not done yet: {:?}", op),
+            ExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
+            Concat(op) => unimplemented!("Not done yet: {:?}", op),
+            Transpose(op) => unimplemented!("Not done yet: {:?}", op),
+            Dot(op) => unimplemented!("Not done yet: {:?}", op),
+            Inverse(op) => unimplemented!("Not done yet: {:?}", op),
+            Add(op) => unimplemented!("Not done yet: {:?}", op),
+            Sub(op) => unimplemented!("Not done yet: {:?}", op),
+            Mul(op) => unimplemented!("Not done yet: {:?}", op),
+            Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Sum(op) => unimplemented!("Not done yet: {:?}", op),
+            Div(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO implement below (needed until we switch to new framework for execution)
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
@@ -788,13 +863,26 @@ impl Compile<AsyncKernel> for Operator {
             | HostRevDim(_) | HostSqueeze(_) | HostDiag(_) | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
+            FloatingpointAdd(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointSub(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointMul(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointDiv(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointDot(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointAtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointOnes(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointConcat(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointTranspose(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointInverse(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointMean(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointSum(op) => unimplemented!("Not done yet: {:?}", op),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepDiv(_)
-            | RepMean(_) | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_)
+            | RepFixedpointMean(_) | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_)
             | RepIndexAxis(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_)
-            | RepBitDec(_) | RepRevDim(_) => {
+            | RepBitDec(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -823,6 +911,12 @@ macro_rules! signature {
             arg0: $t0,
             arg1: $t1,
             arg2: $t2,
+            ret: $ret,
+        })
+    };
+    (vec[$ts: pat] -> $ret: pat) => {
+        Signature::Variadic(VariadicSignature {
+            args: $ts,
             ret: $ret,
         })
     };
@@ -895,22 +989,6 @@ host_binary_kernel!(HostDivOp, |x, y| x / y);
 host_binary_kernel!(HostDotOp, |x, y| x.dot(y));
 host_unary_kernel!(HostTransposeOp, |x| x.transpose());
 
-modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostTransposeOp);
-
-kernel! {
-    HostTransposeOp, [
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-    ]
-}
-
-modelled!(PlacementInverse::inverse, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostInverseOp);
-
-kernel! {
-    HostInverseOp, [
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-    ]
-}
-
 impl Compile<Kernel> for HostInverseOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         // Using a fake owner for the old kernel
@@ -924,15 +1002,6 @@ impl Compile<Kernel> for HostInverseOp {
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
-}
-
-modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostMeanOp);
-
-kernel! {
-    HostMeanOp, [
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::rep_kernel),
-    ]
 }
 
 impl Compile<Kernel> for HostMeanOp {
@@ -962,16 +1031,6 @@ impl Compile<Kernel> for HostMeanOp {
     }
 }
 
-modelled!(PlacementSqrt::sqrt, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, HostSqrtOp);
-modelled!(PlacementSqrt::sqrt, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostSqrtOp);
-
-kernel! {
-    HostSqrtOp, [
-        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-    ]
-}
-
 impl Compile<Kernel> for HostOnesOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -998,48 +1057,32 @@ impl Compile<Kernel> for HostOnesOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostConcatOp);
-
-kernel! {
-    HostConcatOp, [
-        (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-    ]
-}
-
 impl Compile<Kernel> for HostConcatOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::host::concatenate;
         let axis = self.axis as usize;
         match self.sig {
-            signature![(_, _) -> Ty::HostFloat32Tensor] => {
+            signature![vec[_] -> Ty::HostFloat32Tensor] => {
                 closure_kernel!(vec[HostFloat32Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::HostFloat64Tensor] => {
+            signature![vec[_] -> Ty::HostFloat64Tensor] => {
                 closure_kernel!(vec[HostFloat64Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::HostInt32Tensor] => {
+            signature![vec[_]  -> Ty::HostInt32Tensor] => {
                 closure_kernel!(vec[HostInt32Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::HostInt64Tensor] => {
+            signature![vec[_]  -> Ty::HostInt64Tensor] => {
                 closure_kernel!(vec[HostInt64Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::HostUint32Tensor] => {
+            signature![vec[_] -> Ty::HostUint32Tensor] => {
                 closure_kernel!(vec[HostUint32Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::HostUint64Tensor] => {
+            signature![vec[_]  -> Ty::HostUint64Tensor] => {
                 closure_kernel!(vec[HostUint64Tensor], |xs| concatenate(axis, &xs))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
-}
-
-modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostExpandDimsOp);
-
-kernel! {
-    HostExpandDimsOp, [
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-    ]
 }
 
 impl Compile<Kernel> for HostExpandDimsOp {
@@ -1119,27 +1162,6 @@ impl Compile<Kernel> for HostReshapeOp {
     }
 }
 
-modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat32Tensor) -> HostFloat32Tensor, HostAtLeast2DOp);
-modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat64Tensor) -> HostFloat64Tensor, HostAtLeast2DOp);
-
-kernel! {
-    HostAtLeast2DOp, [
-        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[to_column_vector] Self::kernel),
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[to_column_vector] Self::kernel),
-    ]
-}
-
-impl HostAtLeast2DOp {
-    fn kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _to_column_vector: bool,
-        _x: HostTensor<T>,
-    ) -> HostTensor<T> {
-        unimplemented!()
-    }
-}
-
 impl Compile<Kernel> for HostAtLeast2DOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let tcv = self.to_column_vector;
@@ -1187,15 +1209,6 @@ impl Compile<Kernel> for HostSliceOp {
             Err(Error::UnimplementedOperator(format!("{:?}", self)))
         }
     }
-}
-
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostSumOp);
-
-kernel! {
-    HostSumOp, [
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::rep_kernel),
-    ]
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
@@ -1562,32 +1575,9 @@ impl Compile<Kernel> for BitAndOp {
     }
 }
 
-modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat64Tensor) -> HostRing128Tensor, RingFixedpointEncodeOp);
-modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat32Tensor) -> HostRing64Tensor, RingFixedpointEncodeOp);
-
-kernel! {
-    RingFixedpointEncodeOp, [
-        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::kernel),
-        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::kernel),
-    ]
-}
-
-impl RingFixedpointEncodeOp {
-    fn kernel<S: RuntimeSession, ST, TT>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _scaling_base: u64,
-        _scaling_exp: u32,
-        _x: HostTensor<ST>,
-    ) -> AbstractHostRingTensor<TT> {
-        unimplemented!()
-    }
-}
-
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingFixedpointEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        use crate::fixedpoint::Convert;
         match self.sig {
             signature![(Ty::HostFloat64Tensor) -> Ty::HostRing64Tensor] => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
@@ -1608,32 +1598,9 @@ impl Compile<Kernel> for RingFixedpointEncodeOp {
     }
 }
 
-modelled!(PlacementRingFixedpointDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostFloat64Tensor, RingFixedpointDecodeOp);
-modelled!(PlacementRingFixedpointDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostFloat32Tensor, RingFixedpointDecodeOp);
-
-kernel! {
-    RingFixedpointDecodeOp, [
-        (HostPlacement, (HostRing128Tensor) -> HostFloat64Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::kernel),
-        (HostPlacement, (HostRing64Tensor) -> HostFloat32Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::kernel),
-    ]
-}
-
-impl RingFixedpointDecodeOp {
-    fn kernel<S: RuntimeSession, ST, TT>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _scaling_base: u64,
-        _scaling_exp: u32,
-        _x: AbstractHostRingTensor<ST>,
-    ) -> HostTensor<TT> {
-        unimplemented!()
-    }
-}
-
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingFixedpointDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        use crate::fixedpoint::Convert;
         match self.sig {
             signature![(Ty::HostRing64Tensor) -> _] => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
@@ -1683,7 +1650,6 @@ impl Compile<Kernel> for RingFixedpointMeanOp {
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for FixedpointEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        use crate::fixedpoint::Convert;
         match self.sig {
             signature![(Ty::HostFloat64Tensor) -> Ty::HostRing64Tensor] => {
                 let scaling_factor = u64::pow(2, self.precision);
@@ -1707,7 +1673,6 @@ impl Compile<Kernel> for FixedpointEncodeOp {
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for FixedpointDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        use crate::fixedpoint::Convert;
         match self.sig {
             signature![(Ty::HostRing64Tensor) -> _] => {
                 let scaling_factor = u64::pow(2, self.precision);
@@ -1734,12 +1699,20 @@ impl Compile<Kernel> for FixedpointAddOp {
         match self.sig {
             signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
                 function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 + y.0)
+                    assert_eq!(x.precision, y.precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor + y.tensor,
+                        precision: x.precision,
+                    }
                 })
             }
             signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
                 function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 + y.0)
+                    assert_eq!(x.precision, y.precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor + y.tensor,
+                        precision: x.precision,
+                    }
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -1753,12 +1726,20 @@ impl Compile<Kernel> for FixedpointSubOp {
         match self.sig {
             signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
                 function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 - y.0)
+                    assert_eq!(x.precision, y.precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor - y.tensor,
+                        precision: x.precision,
+                    }
                 })
             }
             signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
                 function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 - y.0)
+                    assert_eq!(x.precision, y.precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor - y.tensor,
+                        precision: x.precision,
+                    }
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -1772,12 +1753,20 @@ impl Compile<Kernel> for FixedpointMulOp {
         match self.sig {
             signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
                 function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 * y.0)
+                    assert_eq!(x.precision, y.precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor * y.tensor,
+                        precision: x.precision + y.precision,
+                    }
                 })
             }
             signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
                 function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 * y.0)
+                    assert_eq!(x.precision, y.precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor * y.tensor,
+                        precision: x.precision + y.precision,
+                    }
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -1803,12 +1792,16 @@ macro_rules! constant_kernels {
         $(
             modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> $val, ConstantOp);
         )+
+        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
+        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
 
         kernel! {
             ConstantOp, [
                 $(
                     (HostPlacement, () -> $val => [runtime] attributes[value: $val] Self::kernel),
                 )+
+                (HostPlacement, () -> crate::logical::Tensor => [hybrid] attributes[value] Self::logical_kernel),
+                (HostPlacement, () -> Float64Tensor => [hybrid] attributes[value] Self::float_kernel),
             ]
         }
     };
@@ -1899,9 +1892,9 @@ impl Compile<SyncKernel> for SendOp {
         Ok(SyncKernel::Unary(Box::new(move |sess, v| {
             sess.networking
                 .send(&v, &receiver_id, &rendezvous_key, &sess.sid)?;
-            Ok(Value::Unit(Unit(HostPlacement {
+            Ok(Value::Unit(Box::new(Unit(HostPlacement {
                 owner: "TODO".into(), // Fake owner for the older kernels.
-            })))
+            }))))
         })))
     }
 }
@@ -1933,9 +1926,9 @@ impl Compile<AsyncKernel> for SendOp {
                 sess.networking
                     .send(&v, &receiver_id, &rendezvous_key, &sess.sid)
                     .await?;
-                map_send_result(sender.send(Value::Unit(Unit(HostPlacement {
+                map_send_result(sender.send(Value::Unit(Box::new(Unit(HostPlacement {
                     owner: "TODO".into(), // Fake owner for the older kernels.
-                }))))
+                })))))
             })
         })))
     }
@@ -2243,6 +2236,10 @@ for_all_values! {( $($value:ty),* ) => (
     )*
 )}
 
+modelled!(PlacementSave::save, HostPlacement, (String, crate::logical::Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Float32Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Float64Tensor) -> Unit, SaveOp);
+
 kernel! {
     SaveOp, [
         (HostPlacement, (String, Unit) -> Unit => [runtime] Self::kernel),
@@ -2265,6 +2262,9 @@ kernel! {
         (HostPlacement, (String, HostUint64Tensor) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (String, HostFixed64Tensor) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (String, HostFixed128Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (String, crate::logical::Tensor) -> Unit => [hybrid] Self::logical_kernel),
+        (HostPlacement, (String, Float32Tensor) -> Unit => [hybrid] Self::float_kernel),
+        (HostPlacement, (String, Float64Tensor) -> Unit => [hybrid] Self::float_kernel),
     ]
 }
 
@@ -2284,9 +2284,9 @@ impl Compile<SyncKernel> for SaveOp {
             let key = String::try_from(key)?;
             check_type(&val, expected_ty)?;
             sess.storage.save(&key, &sess.sid, &val)?;
-            Ok(Value::Unit(Unit(HostPlacement {
+            Ok(Value::Unit(Box::new(Unit(HostPlacement {
                 owner: "TODO".into(), // Fake owner for the old kernel
-            })))
+            }))))
         })))
     }
 }
@@ -2306,20 +2306,24 @@ impl Compile<AsyncKernel> for SaveOp {
                     let val = val.await.map_err(map_receive_error)?;
                     check_type(&val, expected_ty)?;
                     sess.storage.save(&key, &sess.sid, &val).await?;
-                    map_send_result(sender.send(Value::Unit(Unit(HostPlacement {
+                    map_send_result(sender.send(Value::Unit(Box::new(Unit(HostPlacement {
                         owner: "TODO".into(), // Fake owner for the old kernel
-                    }))))
+                    })))))
                 })
             },
         )))
     }
 }
 
-for_all_values! {( $($value:ty),* ) => (
-    $(
-        modelled!(PlacementLoad::load, HostPlacement, (String, String) -> $value, LoadOp);
-    )*
-)}
+// for_all_values! {( $($value:ty),* ) => (
+//     $(
+//         modelled!(PlacementLoad::load, HostPlacement, (String, String) -> $value, LoadOp);
+//     )*
+// )}
+
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Float64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> crate::logical::Tensor, LoadOp);
 
 kernel! {
     LoadOp, [
@@ -2343,6 +2347,8 @@ kernel! {
         (HostPlacement, (String, String) -> HostUint64Tensor => [runtime] Self::kernel),
         (HostPlacement, (String, String) -> HostFixed64Tensor => [runtime] Self::kernel),
         (HostPlacement, (String, String) -> HostFixed128Tensor => [runtime] Self::kernel),
+        (HostPlacement, (String, String) -> Float64Tensor => [hybrid] Self::float_kernel),
+        (HostPlacement, (String, String) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
     ]
 }
 

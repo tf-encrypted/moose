@@ -3,6 +3,7 @@ use crate::additive::{
 };
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
+use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{
     HostBitArray128, HostBitArray64, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
     HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor,
@@ -10,6 +11,7 @@ use crate::host::{
     HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::kernels::Session;
+use crate::logical::{Tensor, TensorDType};
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::{
     ReplicatedBitArray128, ReplicatedBitArray64, ReplicatedBitTensor, ReplicatedFixed128Tensor,
@@ -178,11 +180,11 @@ macro_rules! constants {
                         Constant::$val(x) => {constants!(@value(x.clone(), plc.clone().into()) $val $($t)?)},
                     )+
                     // TODO promote below to match other values
-                    Constant::Bit(x) => Value::Bit(x.clone()),
-                    Constant::Float32(x) => Value::Float32(x.clone()),
-                    Constant::Float64(x) => Value::Float64(x.clone()),
-                    Constant::Ring64(x) => Value::Ring64(x.clone()),
-                    Constant::Ring128(x) => Value::Ring128(x.clone()),
+                    Constant::Bit(x) => Value::Bit(Box::new(x.clone())),
+                    Constant::Float32(x) => Value::Float32(Box::new(x.clone())),
+                    Constant::Float64(x) => Value::Float64(Box::new(x.clone())),
+                    Constant::Ring64(x) => Value::Ring64(Box::new(x.clone())),
+                    Constant::Ring128(x) => Value::Ring128(Box::new(x.clone())),
                 }
             }
         }
@@ -199,8 +201,8 @@ macro_rules! constants {
     (@ty $val:ident $t:ident) => {Ty::$t};
     (@ty $val:ident) => {Ty::$val};
 
-    (@value($x:expr, $plc:expr) $val:ident $t:ident) => {Value::$t($t($x, $plc))};
-    (@value($x:expr, $plc:expr) $val:ident) => {Value::$val($x)};
+    (@value($x:expr, $plc:expr) $val:ident $t:ident) => {Value::$t(Box::new($t($x, $plc)))};
+    (@value($x:expr, $plc:expr) $val:ident) => {Value::$val(Box::new($x))};
 }
 
 // The lines with 2 identifiers are for linking to the "Placed" values - the types whose `Value` incarnation has a placement already.
@@ -249,12 +251,12 @@ impl From<u128> for Constant {
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
 macro_rules! values {
-    ($($val:ident,)+) => {
+    ($($val:ident$(($inner:ident::$default:ident))?,)+) => {
 
         #[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
         pub enum Ty {
             Unknown,
-            $($val,)+
+            $($val$(($inner))?,)+
             // TODO promote below to match other values
             Bit,
             Float32,
@@ -265,19 +267,19 @@ macro_rules! values {
 
         #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
         pub enum Value {
-            $($val($val),)+
+            $($val(Box<$val>),)+
             // TODO promote below to match other values
-            Bit(u8),
-            Float32(f32),
-            Float64(f64),
-            Ring64(u64),
-            Ring128(u128),
+            Bit(Box<u8>),
+            Float32(Box<f32>),
+            Float64(Box<f64>),
+            Ring64(Box<u64>),
+            Ring128(Box<u128>),
         }
 
         impl Value {
             pub fn ty(&self) -> Ty {
                 match self {
-                    $(Value::$val(_) => Ty::$val,)+
+                    $(Value::$val(_) => Ty::$val$(($inner::$default))?,)+
                     // TODO promote below to match other values
                     Value::Bit(_) => Ty::Bit,
                     Value::Float32(_) => Ty::Float32,
@@ -291,7 +293,7 @@ macro_rules! values {
         $(
         impl From<$val> for Value {
             fn from(x: $val) -> Self {
-                Value::$val(x)
+                Value::$val(Box::new(x))
             }
         }
         )+
@@ -299,7 +301,7 @@ macro_rules! values {
         $(
         impl From<&$val> for Value {
             fn from(x: &$val) -> Self {
-                Value::$val(x.clone())
+                Value::$val(Box::new(x.clone()))
             }
         }
         )+
@@ -309,7 +311,7 @@ macro_rules! values {
             type Error = Error;
             fn try_from(v: Value) -> Result<Self> {
                 match v {
-                    Value::$val(x) => Ok(x),
+                    Value::$val(x) => Ok(*x),
                     _ => Err(Error::TypeMismatch {
                         expected: stringify!($val).to_string(),
                         found: v.ty(),
@@ -337,19 +339,20 @@ macro_rules! values {
         $(
         impl KnownType<crate::kernels::SyncSession> for $val {
             type Type = $val;
-            const TY: Ty = Ty::$val;
+            const TY: Ty = Ty::$val$(($inner::$default))?;
         }
         )+
 
         #[derive(PartialEq, Clone, Debug)]
+        #[allow(clippy::large_enum_variant)]
         pub enum SymbolicValue {
-            $($val(<$val as SymbolicType>::Type),)+
+            $($val(Box<<$val as SymbolicType>::Type>),)+
         }
 
         impl SymbolicValue {
             pub fn ty(&self) -> Ty {
                 match self {
-                    $(SymbolicValue::$val(_) => Ty::$val,)+
+                    $(SymbolicValue::$val(_) => Ty::$val$(($inner::$default))?,)+
                     // TODO promote below to match other values
                     // SymbolicValue::Unit => Ty::Unit,
                     // SymbolicValue::Bit(_) => Ty::Bit,
@@ -364,7 +367,7 @@ macro_rules! values {
         $(
         impl From<<$val as SymbolicType>::Type> for SymbolicValue {
             fn from(x: <$val as SymbolicType>::Type) -> Self {
-                SymbolicValue::$val(x)
+                SymbolicValue::$val(Box::new(x))
             }
         }
         )+
@@ -374,7 +377,7 @@ macro_rules! values {
             type Error = Error;
             fn try_from(v: SymbolicValue) -> Result<Self> {
                 match v {
-                    SymbolicValue::$val(x) => Ok(x),
+                    SymbolicValue::$val(x) => Ok(*x),
                     _ => Err(Error::TypeMismatch {
                         expected: stringify!($val).to_string(),
                         found: v.ty(),
@@ -387,7 +390,7 @@ macro_rules! values {
         $(
         impl KnownType<crate::symbolic::SymbolicSession> for $val {
             type Type = <$val as SymbolicType>::Type;
-            const TY: Ty = Ty::$val;
+            const TY: Ty = Ty::$val$(($inner::$default))?;
         }
         )+
     };
@@ -399,6 +402,7 @@ values![
     Seed,
     PrfKey,
     String,
+    Tensor(TensorDType::Unknown),
     HostBitTensor,
     HostBitArray64,
     HostBitArray128,
@@ -418,6 +422,8 @@ values![
     HostUint64Tensor,
     Fixed64Tensor,
     Fixed128Tensor,
+    Float32Tensor,
+    Float64Tensor,
     ReplicatedRing64Tensor,
     ReplicatedRing128Tensor,
     ReplicatedBitTensor,
@@ -477,12 +483,22 @@ impl Placed for Unit {
     }
 }
 
+impl Ty {
+    pub fn flatten(&self) -> Ty {
+        match self {
+            Ty::Tensor(_) => Ty::Tensor(TensorDType::Unknown),
+            _ => *self,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub enum Signature {
     Nullary(NullarySignature),
     Unary(UnarySignature),
     Binary(BinarySignature),
     Ternary(TernarySignature),
+    Variadic(VariadicSignature),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
@@ -511,6 +527,12 @@ pub struct TernarySignature {
     pub ret: Ty,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
+pub struct VariadicSignature {
+    pub args: Ty,
+    pub ret: Ty,
+}
+
 impl From<NullarySignature> for Signature {
     fn from(s: NullarySignature) -> Signature {
         Signature::Nullary(s)
@@ -535,6 +557,12 @@ impl From<TernarySignature> for Signature {
     }
 }
 
+impl From<VariadicSignature> for Signature {
+    fn from(s: VariadicSignature) -> Signature {
+        Signature::Variadic(s)
+    }
+}
+
 impl Signature {
     pub fn nullary(ret: Ty) -> Signature {
         NullarySignature { ret }.into()
@@ -554,12 +582,17 @@ impl Signature {
         }
         .into()
     }
+    pub fn variadic(args: Ty, ret: Ty) -> Signature {
+        VariadicSignature { args, ret }.into()
+    }
+
     pub fn ret(&self) -> Ty {
         match self {
             Signature::Nullary(s) => s.ret,
             Signature::Unary(s) => s.ret,
             Signature::Binary(s) => s.ret,
             Signature::Ternary(s) => s.ret,
+            Signature::Variadic(s) => s.ret,
         }
     }
 
@@ -571,16 +604,35 @@ impl Signature {
             (Signature::Ternary(s), 0) => Ok(s.arg0),
             (Signature::Ternary(s), 1) => Ok(s.arg1),
             (Signature::Ternary(s), 2) => Ok(s.arg2),
+            (Signature::Variadic(s), _) => Ok(s.args),
             _ => Err(Error::OperandUnavailable),
         }
     }
 
-    pub fn arity(&self) -> usize {
+    pub fn arity(&self) -> Option<usize> {
         match self {
-            Signature::Nullary(_) => 0,
-            Signature::Unary(_) => 1,
-            Signature::Binary(_) => 2,
-            Signature::Ternary(_) => 3,
+            Signature::Nullary(_) => Some(0),
+            Signature::Unary(_) => Some(1),
+            Signature::Binary(_) => Some(2),
+            Signature::Ternary(_) => Some(3),
+            Signature::Variadic(_) => None,
+        }
+    }
+
+    pub fn flatten(&self) -> Self {
+        match self {
+            Signature::Nullary(s) => Signature::nullary(s.ret.flatten()),
+            Signature::Unary(s) => Signature::unary(s.arg0.flatten(), s.ret.flatten()),
+            Signature::Binary(s) => {
+                Signature::binary(s.arg0.flatten(), s.arg1.flatten(), s.ret.flatten())
+            }
+            Signature::Ternary(s) => Signature::ternary(
+                s.arg0.flatten(),
+                s.arg1.flatten(),
+                s.arg2.flatten(),
+                s.ret.flatten(),
+            ),
+            Signature::Variadic(s) => Signature::variadic(s.args.flatten(), s.ret.flatten()),
         }
     }
 
@@ -590,6 +642,8 @@ impl Signature {
             (Signature::Unary(s), Signature::Unary(o)) => s.merge(o),
             (Signature::Binary(s), Signature::Binary(o)) => s.merge(o),
             (Signature::Ternary(s), Signature::Ternary(o)) => s.merge(o),
+            (Signature::Variadic(s), o) => s.merge(o),
+
             (Signature::Nullary(s), o) => Err(anyhow::anyhow!(
                 "Can not merge {:?} with an incompatible signature {:?}",
                 s,
@@ -668,6 +722,56 @@ impl TernarySignature {
     }
 }
 
+impl VariadicSignature {
+    pub fn merge(&mut self, another: &Signature) -> anyhow::Result<()> {
+        match another {
+            Signature::Variadic(sig) => {
+                if let Some(new_type) = self.args.merge(&sig.args) {
+                    self.args = new_type;
+                }
+                if let Some(new_type) = self.ret.merge(&sig.ret) {
+                    self.ret = new_type;
+                }
+                Ok(())
+            }
+            Signature::Unary(sig) => {
+                if self.args == sig.arg0 {
+                    if let Some(new_type) = self.args.merge(&sig.arg0) {
+                        self.args = new_type;
+                    }
+                }
+
+                if let Some(new_type) = self.ret.merge(&sig.ret) {
+                    self.ret = new_type;
+                }
+                Ok(())
+            }
+            Signature::Binary(sig) => {
+                if self.args == sig.arg0 && self.args == sig.arg1 {
+                    if let Some(new_type) = self.args.merge(&sig.arg0) {
+                        self.args = new_type;
+                    }
+
+                    if let Some(new_type) = self.args.merge(&sig.arg1) {
+                        self.args = new_type;
+                    }
+                }
+
+                if let Some(new_type) = self.ret.merge(&sig.ret) {
+                    self.ret = new_type;
+                }
+
+                Ok(())
+            }
+            o => Err(anyhow::anyhow!(
+                "Can not merge {:?} with an incompatible signature {:?}",
+                self,
+                o
+            )),
+        }
+    }
+}
+
 impl Ty {
     /// Merge type information.
     ///
@@ -736,7 +840,21 @@ operators![
     Shape,
     PrimDeriveSeed,
     PrimPrfKeyGen,
-    // Host operations
+    AtLeast2D,
+    Slice,
+    Ones,
+    ExpandDims,
+    Concat,
+    Transpose,
+    Dot,
+    Inverse,
+    Add,
+    Sub,
+    Mul,
+    Mean,
+    Sum,
+    Div,
+    // Host operators
     HostAdd,
     HostSub,
     HostMul,
@@ -780,6 +898,7 @@ operators![
     BitSampleSeeded,
     BitXor,
     BitAnd,
+    // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
     FixedpointAdd,
@@ -789,7 +908,21 @@ operators![
     FixedpointTruncPr,
     FixedpointMean,
     FixedpointSum,
-    // Additive operations
+    // Floating-point operators
+    FloatingpointAdd,
+    FloatingpointSub,
+    FloatingpointMul,
+    FloatingpointDiv,
+    FloatingpointDot,
+    FloatingpointAtLeast2D,
+    FloatingpointOnes,
+    FloatingpointConcat,
+    FloatingpointExpandDims,
+    FloatingpointTranspose,
+    FloatingpointInverse,
+    FloatingpointMean,
+    FloatingpointSum,
+    // Additive operators
     AdtReveal,
     AdtFill,
     AdtAdd,
@@ -797,7 +930,7 @@ operators![
     AdtMul,
     AdtShl,
     AdtToRep,
-    // Replicated operations
+    // Replicated operators
     RepAbs,
     RepSetup,
     RepShare,
@@ -809,7 +942,7 @@ operators![
     RepMsb,
     RepDot,
     RepDiv,
-    RepMean,
+    RepFixedpointMean,
     RepShl,
     RepSum,
     RepTruncPr,
@@ -820,12 +953,13 @@ operators![
     RepSlice,
     RepBitDec,
     RepShlDim,
-    RepRevDim,
 ];
 
 pub trait HasShortName {
     fn short_name(&self) -> &str;
 }
+
+// Top (logical) level ops:
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct IdentityOp {
@@ -876,6 +1010,84 @@ pub struct SaveOp {
 pub struct ConstantOp {
     pub sig: Signature,
     pub value: Constant, // TODO Box<Constant> or Box inside Constant?
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct AtLeast2DOp {
+    pub sig: Signature,
+    pub to_column_vector: bool,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct SliceOp {
+    pub sig: Signature,
+    pub slice: SliceInfo,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct OnesOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct ExpandDimsOp {
+    pub sig: Signature,
+    pub axis: Vec<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct ConcatOp {
+    pub sig: Signature,
+    pub axis: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct TransposeOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct InverseOp {
+    pub sig: Signature,
+}
+
+// TODO(Morten) rename to LogicalAddOp?
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct AddOp {
+    pub sig: Signature,
+}
+
+// TODO(Morten) rename to LogicalSubOp?
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct SubOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct MulOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct DivOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct DotOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct MeanOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct SumOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -1180,12 +1392,80 @@ pub struct FixedpointTruncPrOp {
 pub struct FixedpointMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
-    pub scaling_base: u64,
-    pub scaling_exp: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointSumOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointAddOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointSubOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointMulOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointDivOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointDotOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointAtLeast2DOp {
+    pub sig: Signature,
+    pub to_column_vector: bool,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointOnesOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointConcatOp {
+    pub sig: Signature,
+    pub axis: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointExpandDimsOp {
+    pub sig: Signature,
+    pub axis: Vec<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointTransposeOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointInverseOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointMeanOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
@@ -1286,7 +1566,7 @@ pub struct RepDivOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepMeanOp {
+pub struct RepFixedpointMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
     pub scaling_base: u64,
@@ -1327,11 +1607,6 @@ pub struct RepShlDimOp {
     pub sig: Signature,
     pub amount: usize,
     pub bit_length: usize,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepRevDimOp {
-    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

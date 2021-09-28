@@ -15,6 +15,29 @@ pub enum Symbolic<T: Placed> {
     Concrete(T),
 }
 
+impl<T: Placed> Symbolic<T> {
+    pub fn is_symbolic(&self) -> bool {
+        match self {
+            Symbolic::Symbolic(_) => true,
+            Symbolic::Concrete(_) => false,
+        }
+    }
+
+    pub fn is_concrete(&self) -> bool {
+        match self {
+            Symbolic::Symbolic(_) => false,
+            Symbolic::Concrete(_) => true,
+        }
+    }
+
+    pub fn symbolic_handle(&self) -> Option<&SymbolicHandle<T::Placement>> {
+        match self {
+            Symbolic::Symbolic(h) => Some(h),
+            Symbolic::Concrete(_) => None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SymbolicHandle<P> {
     pub op: String,
@@ -183,7 +206,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepMul(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepDot(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepDiv(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepShl(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepMsb(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -195,7 +218,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepSlice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepBitDec(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepRevDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AdtAdd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AdtSub(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AdtShl(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -235,8 +257,35 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Identity(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostReshape(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            // the following operators are not supported by design (for now, at least)
-            Send(_) | Receive(_) => Err(Error::UnimplementedOperator(format!("{:?}", op))),
+            FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FloatingpointSub(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FloatingpointMul(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FloatingpointDiv(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FloatingpointDot(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FloatingpointAtLeast2D(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FloatingpointExpandDims(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FloatingpointTranspose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FloatingpointInverse(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FloatingpointSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Slice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Ones(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            ExpandDims(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Concat(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Transpose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Inverse(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Add(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Sub(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Mul(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Div(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Dot(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Mean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Sum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Send(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Receive(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
         }
     }
 }
