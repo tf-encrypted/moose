@@ -23,10 +23,6 @@ pub struct AbstractReplicatedRingTensor<HostRingT> {
 
 impl<HostRingT: Ring> Ring for AbstractReplicatedRingTensor<HostRingT> {
     type BitLength = HostRingT::BitLength;
-
-    fn one() -> Constant {
-        HostRingT::one()
-    }
 }
 
 moose_type!(ReplicatedRing64Tensor = AbstractReplicatedRingTensor<HostRing64Tensor>);
@@ -1344,19 +1340,19 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [hybrid] custom |op| {
                 let value: u64 = match op.value {
                     Constant::Ring64(v) => v,
-                    _ => unimplemented!()  // TODO: replace
+                    Constant::Ring128(v) => v as u64,
+                    _ => unimplemented!() // TODO: fill conversion routines for other rings we could support
                 };
-                assert!(value == 0 || value == 1);
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::ring64_kernel(sess, rep, value, rep_shape)
                 }))
             }),
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [hybrid] custom |op| {
                 let value: u128 = match op.value {
+                    Constant::Ring64(v) => v as u128,
                     Constant::Ring128(v) => v,
-                    _ => unimplemented!()  // TODO: replace
+                    _ => unimplemented!() // TODO: fill conversion routines for other rings we could support
                 };
-                assert!(value == 0 || value == 1);
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::ring128_kernel(sess, rep, value, rep_shape)
                 }))
@@ -1364,9 +1360,13 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => [hybrid] custom |op| {
                 let value: u8 = match op.value {
                     Constant::Bit(v) => v,
-                    _ => unimplemented!()    // TODO: replace
+                    Constant::Ring64(v) => v as u8,
+                    Constant::Ring128(v) => v as u8,
+                    _ => unimplemented!() // TODO: fill conversion routines for other rings we could support
                 };
-                assert!(value == 0 || value == 1);
+                if value != 0 && value != 1 {
+                    return Err(Error::InvalidArgument(format!("Could only support 0 and 1 for the bit tensor fill, got {}", value)));
+                }
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::bit_kernel(sess, rep, value, rep_shape)
                 }))
@@ -1729,7 +1729,7 @@ impl RepMsbOp {
         x: RepRingT,
     ) -> RepBitT
     where
-        RepRingT: Ring<BitLength=N>,
+        RepRingT: Ring<BitLength = N>,
         RepBits<N>: KnownType<S>,
         ReplicatedPlacement: PlacementBitDecSetup<S, SetupT, RepRingT, cs!(RepBits<N>)>,
         ReplicatedPlacement: PlacementIndex<S, cs!(RepBits<N>), RepBitT>,
@@ -1783,7 +1783,7 @@ impl RepAbsOp {
     {
         let msb_ring = rep.msb(sess, &setup, &x);
         let double = rep.shl(sess, 1, &msb_ring);
-        let ones = rep.fill(sess, RepT::one(), &rep.shape(sess, &msb_ring));
+        let ones = rep.fill(sess, Constant::Ring64(1), &rep.shape(sess, &msb_ring));
         let sign = rep.sub(sess, &ones, &double);
         rep.mul_setup(sess, &setup, &sign, &x)
     }

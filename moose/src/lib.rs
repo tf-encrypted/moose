@@ -2037,7 +2037,6 @@ impl Const for N128 {
 
 pub trait Ring {
     type BitLength: Const;
-    fn one() -> crate::computation::Constant;
 }
 
 macro_rules! unmodelled {
