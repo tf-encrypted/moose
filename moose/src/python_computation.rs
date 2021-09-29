@@ -818,8 +818,14 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
             // PyDType::int64 => Ok(Ty::HostInt64Tensor),
             // PyDType::uint32 => Ok(Ty::HostUint32Tensor),
             // PyDType::uint64 => Ok(Ty::HostUint64Tensor),
-            PyDType::fixed14_23 => Ok(Ty::Tensor(TensorDType::Fixed128 { precision: 23 })),
-            PyDType::fixed8_27 => Ok(Ty::Tensor(TensorDType::Fixed128 { precision: 27 })),
+            PyDType::fixed14_23 => Ok(Ty::Tensor(TensorDType::Fixed128 {
+                integral_precision: 14,
+                fractional_precision: 23,
+            })),
+            PyDType::fixed8_27 => Ok(Ty::Tensor(TensorDType::Fixed128 {
+                integral_precision: 8,
+                fractional_precision: 27,
+            })),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", py_type)),
         },
         PyValueType::std_UnknownType => Ok(Ty::Unknown),
@@ -1448,7 +1454,8 @@ impl TryFrom<PyComputation> for Computation {
                     fixed_EncodeOperation(op) => Ok(Operation {
                         kind: FixedpointEncodeOp {
                             sig: Signature::unary(Ty::Unknown, map_type(&op.output_type)?),
-                            precision: op.precision,
+                            fractional_precision: op.precision,
+                            integral_precision: 8, // just because
                         }
                         .into(),
                         name: op.name.clone(),
@@ -1462,7 +1469,7 @@ impl TryFrom<PyComputation> for Computation {
                                 Ty::Fixed128Tensor, // TODO: Derive from the output type
                                 map_type(&op.output_type)?,
                             ),
-                            precision: op.precision,
+                            fractional_precision: op.precision,
                         }
                         .into(),
                         name: op.name.clone(),
