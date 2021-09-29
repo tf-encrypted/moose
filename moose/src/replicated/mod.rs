@@ -255,27 +255,6 @@ kernel! {
     ]
 }
 
-impl RingFromFixedPoint for RepTen<Ring64Tensor> {
-    fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant {
-        let encoded_value = (fixed_point * ((1 << scaling_exp) as f64)) as u64;
-        Constant::Ring64(encoded_value)
-    }
-}
-
-// impl RingFromFixedPoint for Symbolic<RepTen<Ring64Tensor> {
-//     fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant {
-//         let encoded_value = (fixed_point * ((1 << scaling_exp) as f64)) as u64;
-//         Constant::Ring64(encoded_value)
-//     }
-// }
-
-impl RingFromFixedPoint for RepTen<Ring128Tensor> {
-    fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant {
-        let encoded_value = (fixed_point * ((1 << scaling_exp) as f64)) as u128;
-        Constant::Ring128(encoded_value)
-    }
-}
-
 impl RepSetupOp {
     fn kernel<S: Session, K: Clone>(
         sess: &S,
@@ -1143,54 +1122,47 @@ impl RepDotOp {
 }
 
 impl FixedpointDivOp {
-    fn rep_rep_kernel<S: Session, RepRingT, RingT, SetupT>(
+    fn rep_rep_kernel<S: Session, RepRingT, SetupT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
         y: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> st!(AbstractReplicatedFixedTensor<RepRingT>)
     where
-        RepTen<RingT>: Into<st!(RepTen<RingT>)>,
-        RepTen<RingT>: CanonicalType,
-        <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
-        st!(RepTen<RingT>): Clone,
-        RepTen<RingT>: Clone,
+        // RepRingT: CanonicalType,
+        AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
+        <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
+        // AbstractReplicatedFixedTensor<RepRingT>: Into<st!(AbstractReplicatedFixedTensor<RepRingT>)>,
+        ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
+        ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), RepRingT>,
+        ReplicatedPlacement: ApproximateReciprocal<S, SetupT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+
+        RepRingT: Clone,
 
         ReplicatedShape: KnownType<S>,
-
-        ReplicatedPlacement: PlacementMulSetup<
-            S,
-            SetupT,
-            st!(RepTen<RingT>),
-            st!(RepTen<RingT>),
-            st!(RepTen<RingT>),
-        >,
-        ReplicatedPlacement:
-            PlacementSub<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
-        ReplicatedPlacement:
-            PlacementAdd<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
-        ReplicatedPlacement: ApproximateReciprocal<S, SetupT, RepTen<RingT>, st!(RepTen<RingT>)>,
-        ReplicatedPlacement: PlacementShape<S, st!(RepTen<RingT>), cs!(ReplicatedShape)>,
-        ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), st!(RepTen<RingT>)>,
-        ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
     {
-        let setup = rep.gen_setup(&sess);
+        let setup = sess.replicated_setup(rep);
+
+        assert_eq!(x.integral_precision, y.integral_precision);
         assert_eq!(x.fractional_precision, y.fractional_precision);
-        // TODO [Yann] extract precision from fixedPoint tensors once moved to fixedpoint.
-        let int_precision = x.integral_precision; //27_u32;
-        let frac_precision = x._fractional_precision; //20_u32;
+        let int_precision = x.integral_precision;
+        let frac_precision = x.fractional_precision;
 
         let k = int_precision + frac_precision;
         let theta = (k as f64 / 3.5_f64).log2().ceil() as u32;
 
-        let x_st = x.tensor.clone().into();
-        let y_st = y.tensor.into();
+        let x_st = x.tensor.clone();
+        let y_st = y.tensor;
 
         let x_shape = rep.shape(sess, &x_st);
         let alpha = Constant::Float64(2.0);
         let rep_alpha = rep.fill_precision(sess, alpha, Some(2 * frac_precision), &x_shape);
 
-        let w: st!(RepTen<RingT>) = rep.approximate_reciprocal(
+        let w = rep.approximate_reciprocal(
             sess,
             &setup,
             int_precision as usize,
@@ -2378,8 +2350,7 @@ trait ApproximateReciprocal<S: Session, SetupT, T, O> {
     ) -> O;
 }
 
-impl<S: Session, SetupT, HostRingT>
-    ApproximateReciprocal<S, SetupT, RepTen<HostRingT>, st!(RepTen<HostRingT>)>
+impl<S: Session, SetupT, RepRingT> ApproximateReciprocal<S, SetupT, RepRingT, RepRingT>
     for ReplicatedPlacement
 where
     ReplicatedShape: KnownType<S>,
@@ -2389,18 +2360,11 @@ where
     RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
 
     ReplicatedPlacement: DivNorm<S, SetupT, HostRingT>,
-    ReplicatedPlacement: PlacementShape<S, st!(RepTen<HostRingT>), cs!(ReplicatedShape)>,
-    ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), st!(RepTen<HostRingT>)>,
-    ReplicatedPlacement:
-        PlacementSub<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
-    ReplicatedPlacement: PlacementShl<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
-    ReplicatedPlacement: PlacementMulSetup<
-        S,
-        SetupT,
-        st!(RepTen<HostRingT>),
-        st!(RepTen<HostRingT>),
-        st!(RepTen<HostRingT>),
-    >,
+    ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
+    ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), RepRingT>,
+    ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, st!(RepTen<HostRingT>)>,
     ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
 {
     fn approximate_reciprocal(
