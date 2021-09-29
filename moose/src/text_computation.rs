@@ -1299,6 +1299,7 @@ impl ToTextual for Operator {
             Div(op) => op.to_textual(),
             BitXor(op) => op.to_textual(),
             BitAnd(op) => op.to_textual(),
+            BitNeg(op) => unimplemented!(),
             BitFill(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
             HostAdd(op) => op.to_textual(),

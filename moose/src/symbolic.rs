@@ -181,6 +181,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             HostAesDecrypt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitXor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitAnd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            BitNeg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitExtract(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitSample(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

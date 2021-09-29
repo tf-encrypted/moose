@@ -895,6 +895,7 @@ operators![
     BitSampleSeeded,
     BitXor,
     BitAnd,
+    BitNeg,
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
