@@ -2388,6 +2388,8 @@ mod tests {
         let b = AbstractHostRingTensor::from_raw_plc(array![2u64, 3, 4], alice.clone());
         let c = AbstractHostRingTensor::from_raw_plc(array![5u64, 12, 13], alice.clone());
 
+        let expected = AbstractHostRingTensor::from_raw_plc(array![8u64, 17, 20], alice.clone());
+
         let inputs = vec![a, b, c];
 
         let sess = SyncSession::default();
@@ -2398,10 +2400,10 @@ mod tests {
             .map(|x| rep.share(&sess, &setup, &x))
             .collect();
 
-        //let sum = rep.sum(&sess, None, &x_shared);
-        //let opened_result = alice.reveal(&sess, &sum);
+        let sum = rep.tensorsum(&sess, None, &_shares);
+        let opened_result = alice.reveal(&sess, &sum);
 
-        //assert_eq!(6, opened_result.0[[]].0);
+        assert_eq!(expected, opened_result);
     }
 
     #[test]
