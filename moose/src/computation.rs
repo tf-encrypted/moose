@@ -107,7 +107,7 @@ impl TryFrom<&str> for SessionId {
     type Error = Error;
     fn try_from(s: &str) -> Result<SessionId> {
         let digest = generichash::hash(s.as_bytes(), Some(TAG_BYTES), None)
-            .expect(format!("failed to hash session ID: {}", s).as_ref());
+            .unwrap_or_else(|_| panic!("failed to hash session ID: {}", s)); // looks a little weird, but it's what clippy said to do
         let mut raw_hash = [0u8; TAG_BYTES];
         raw_hash.copy_from_slice(digest.as_ref());
         let sid = SessionId {
