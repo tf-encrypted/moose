@@ -1132,29 +1132,30 @@ impl RepFixedpointMeanOp {
     }
 }
 
-modelled!(PlacementTensorSum::tensorsum, ReplicatedPlacement, attributes[axis: Option<u32>] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepTensorSumOp);
+modelled!(PlacementTensorSum::tensorsum, ReplicatedPlacement, attributes[axis: Option<u32>] vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, RepTensorSumOp);
+modelled!(PlacementTensorSum::tensorsum, ReplicatedPlacement, attributes[axis: Option<u32>] vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, RepTensorSumOp);
 
 kernel! {
     RepTensorSumOp,
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] attributes[axis] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] attributes[axis] Self::kernel),
+        (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [runtime] attributes[axis] Self::kernel),
+        (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [runtime] attributes[axis] Self::kernel),
     ]
 }
 
 impl RepTensorSumOp {
-    fn kernel<S: Session, RingT>(
-        _sess: &S,
-        _rep: &ReplicatedPlacement,
-        _axis: Option<u32>,
-        xs: RepTen<RingT>,
-    ) -> RepTen<RingT>
+    fn kernel<S: Session, RepT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        axis: Option<u32>,
+        xs: &[RepT],
+    ) -> RepT
     where
-        HostPlacement: PlacementSum<S, RingT, RingT>,
-        ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
+        ReplicatedPlacement: PlacementPlace<S, RepT>,
+        ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
     {
         // TODO
-        xs
+        rep.add(sess, &xs[0], &xs[1])
     }
 }
 
@@ -2377,6 +2378,10 @@ mod tests {
 
     #[test]
     fn test_rep_tensor_sum() {
+        use crate::host::concatenate;
+        use ndarray::IxDynImpl;
+        use ndarray::ViewRepr;
+
         let alice = HostPlacement {
             owner: "alice".into(),
         };
@@ -2395,12 +2400,17 @@ mod tests {
         let sess = SyncSession::default();
         let setup = rep.gen_setup(&sess);
 
-        let _shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>> = inputs
+        //let concatenated = concatenate(0, &inputs);
+        let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>> = inputs
             .into_iter()
             .map(|x| rep.share(&sess, &setup, &x))
             .collect();
 
-        let sum = rep.tensorsum(&sess, None, &_shares);
+        //type T = AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>;
+        //let arr: Vec<ArrayBase<ViewRepr<&T>, Dim<IxDynImpl>>> = inputs.iter().map(|x| x.0.view()).collect();
+
+        //let c = ndarray::concatenate(Axis(0), &arr).expect("Failed to concatenate arrays with ndarray");
+        let sum = rep.tensorsum(&sess, None, &shares);
         let opened_result = alice.reveal(&sess, &sum);
 
         assert_eq!(expected, opened_result);

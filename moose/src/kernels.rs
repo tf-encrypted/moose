@@ -429,7 +429,7 @@ pub trait PlacementSqrt<S: Session, T, O> {
 }
 
 pub trait PlacementTensorSum<S: Session, T, O> {
-    fn tensorsum(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+    fn tensorsum(&self, sess: &S, axis: Option<u32>, x: &[T]) -> O;
 }
 
 pub trait PlacementSum<S: Session, T, O> {
