@@ -66,7 +66,12 @@ where
         }
     }
 
-    wires.into_iter().rev().take(128).map(|val| val.unwrap()).collect()
+    wires
+        .into_iter()
+        .rev()
+        .take(128)
+        .map(|val| val.unwrap())
+        .collect()
 }
 
 #[derive(Debug)]
@@ -165,15 +170,12 @@ fn parse_usize(line: &[u8]) -> Res<&[u8], usize> {
     Ok((line, res as usize))
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use crate::computation::{HostPlacement, ReplicatedPlacement, Role};
-    use crate::kernels::SyncSession;
     use crate::host::HostBitTensor;
+    use crate::kernels::SyncSession;
     use crate::replicated::ReplicatedBitTensor;
-    
 
     use super::*;
 
@@ -185,8 +187,8 @@ mod tests {
 
     #[test]
     fn test_aes_host() {
-        use aes::{Aes128, Block, NewBlockCipher};
         use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
+        use aes::{Aes128, Block, NewBlockCipher};
 
         let k: Vec<u8> = vec![1; 128];
         let m: Vec<u8> = vec![1; 128];
@@ -196,13 +198,13 @@ mod tests {
                 .chunks(8)
                 .map(|c| {
                     (c[0] << 7)
-                    + (c[1] << 6)
-                    + (c[2] << 5)
-                    + (c[3] << 4)
-                    + (c[4] << 3)
-                    + (c[5] << 2)
-                    + (c[6] << 1)
-                    + (c[7] << 0)
+                        + (c[1] << 6)
+                        + (c[2] << 5)
+                        + (c[3] << 4)
+                        + (c[4] << 3)
+                        + (c[5] << 2)
+                        + (c[6] << 1)
+                        + (c[7] << 0)
                 })
                 .collect();
 
@@ -210,13 +212,13 @@ mod tests {
                 .chunks(8)
                 .map(|c| {
                     (c[0] << 7)
-                    + (c[1] << 6)
-                    + (c[2] << 5)
-                    + (c[3] << 4)
-                    + (c[4] << 3)
-                    + (c[5] << 2)
-                    + (c[6] << 1)
-                    + (c[7] << 0)
+                        + (c[1] << 6)
+                        + (c[2] << 5)
+                        + (c[3] << 4)
+                        + (c[4] << 3)
+                        + (c[5] << 2)
+                        + (c[6] << 1)
+                        + (c[7] << 0)
                 })
                 .collect();
 
@@ -228,35 +230,40 @@ mod tests {
         };
 
         let actual_c = {
-            let host = HostPlacement { owner: Role::from("host") };
+            let host = HostPlacement {
+                owner: Role::from("host"),
+            };
 
-            let k: Vec<HostBitTensor> = k.iter().map(|b| HostBitTensor::from_slice_plc(&[*b], host.clone())).collect();
-            let m: Vec<HostBitTensor> = m.iter().map(|b| HostBitTensor::from_slice_plc(&[*b], host.clone())).collect();
+            let k: Vec<HostBitTensor> = k
+                .iter()
+                .map(|b| HostBitTensor::from_slice_plc(&[*b], host.clone()))
+                .collect();
+            let m: Vec<HostBitTensor> = m
+                .iter()
+                .map(|b| HostBitTensor::from_slice_plc(&[*b], host.clone()))
+                .collect();
 
             let sess = SyncSession::default();
 
-            let c_bits: Vec<u8> = aes(&sess, &host, k, m)
-                .iter()
-                .map(|t| t.0[0] & 1)
-                .collect();
+            let c_bits: Vec<u8> = aes(&sess, &host, k, m).iter().map(|t| t.0[0] & 1).collect();
 
             let c: Vec<u8> = c_bits
                 .chunks(8)
                 .map(|c| {
                     (c[0] << 7)
-                    + (c[1] << 6)
-                    + (c[2] << 5)
-                    + (c[3] << 4)
-                    + (c[4] << 3)
-                    + (c[5] << 2)
-                    + (c[6] << 1)
-                    + (c[7] << 0)
+                        + (c[1] << 6)
+                        + (c[2] << 5)
+                        + (c[3] << 4)
+                        + (c[4] << 3)
+                        + (c[5] << 2)
+                        + (c[6] << 1)
+                        + (c[7] << 0)
                 })
                 .collect();
 
             c
         };
-        
+
         assert_eq!(actual_c.as_slice(), expected_c.as_slice());
     }
 
@@ -344,7 +351,7 @@ mod tests {
 
     //         c
     //     };
-        
+
     //     assert_eq!(actual_c.as_slice(), expected_c.as_slice());
     // }
 }
