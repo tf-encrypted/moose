@@ -1263,6 +1263,8 @@ mod tests {
     rep_binary_func_test!(test_rep_dot64, dot<u64>, 2);
     rep_binary_func_test!(test_rep_dot128, dot<u128>, 2);
 
+    rep_binary_func_test!(test_rep_div64, div<u64>, 1);
+
     macro_rules! pairwise_same_length {
         ($func_name:ident, $tt: ident) => {
             fn $func_name() -> impl Strategy<Value = (ArrayD<$tt>, ArrayD<$tt>)> {
@@ -1463,5 +1465,24 @@ mod tests {
             let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
             test_rep_dot128(a, b, target);
         }
+
+    }
+    #[test]
+    fn test_fixed_rep_div64() {
+        let a = vec![1u64, 2];
+        let b = vec![3u64, 4];
+        let a = Array::from_shape_vec(IxDyn(&[a.len()]), a).unwrap();
+        let b = Array::from_shape_vec(IxDyn(&[b.len()]), b).unwrap();
+        let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
+        for i in 0..a.len() {
+            let af64 = f64::from(a[i] as f64);
+            let bf64 = f64::from(b[i] as f64);
+            let div_result = af64 / bf64;
+            let scaled = (2_i64.pow(27) as f64 * div_result) as u64;
+            let scaled_down = scaled >> 27 as u64;
+
+            target[i] = scaled_down;
+        }
+        test_rep_div64(a, b, target);
     }
 }
