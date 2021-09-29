@@ -1144,16 +1144,17 @@ kernel! {
 
 impl RepTensorSumOp {
     fn kernel<S: Session, RingT>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        axis: Option<u32>,
-        x: RepTen<RingT>,
+        _sess: &S,
+        _rep: &ReplicatedPlacement,
+        _axis: Option<u32>,
+        xs: RepTen<RingT>,
     ) -> RepTen<RingT>
     where
         HostPlacement: PlacementSum<S, RingT, RingT>,
         ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
     {
         // TODO
+        xs
     }
 }
 
