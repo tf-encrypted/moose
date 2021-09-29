@@ -57,7 +57,6 @@ where
             }
             Inv => {
                 let x_wire = *gate.input_wires.get(0).unwrap();
-
                 let x = wires.get(x_wire).unwrap().clone().unwrap();
 
                 let y = plc.neg(sess, &x);
@@ -67,7 +66,7 @@ where
         }
     }
 
-    wires.into_iter().rev().take(128).map(|val| val.unwrap()).collect() // TODO
+    wires.into_iter().rev().take(128).map(|val| val.unwrap()).collect()
 }
 
 #[derive(Debug)]
@@ -170,9 +169,11 @@ fn parse_usize(line: &[u8]) -> Res<&[u8], usize> {
 
 #[cfg(test)]
 mod tests {
-    use crate::computation::{HostPlacement, Role};
+    use crate::computation::{HostPlacement, ReplicatedPlacement, Role};
     use crate::kernels::SyncSession;
     use crate::host::HostBitTensor;
+    use crate::replicated::ReplicatedBitTensor;
+    
 
     use super::*;
 
@@ -183,19 +184,167 @@ mod tests {
     }
 
     #[test]
-    fn test_run_aes() {
-        let k: Vec<u8> = vec![0; 128];
-        let m: Vec<u8> = vec![0; 128];
+    fn test_aes_host() {
+        use aes::{Aes128, Block, NewBlockCipher};
+        use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
 
-        let plc = HostPlacement { owner: Role::from("alice") };
+        let k: Vec<u8> = vec![1; 128];
+        let m: Vec<u8> = vec![1; 128];
 
-        let k: Vec<HostBitTensor> = k.iter().map(|b| HostBitTensor::from_slice_plc(&[*b], plc.clone())).collect();
-        let m: Vec<HostBitTensor> = m.iter().map(|b| HostBitTensor::from_slice_plc(&[*b], plc.clone())).collect();
+        let expected_c = {
+            let k: Vec<u8> = k
+                .chunks(8)
+                .map(|c| {
+                    (c[0] << 7)
+                    + (c[1] << 6)
+                    + (c[2] << 5)
+                    + (c[3] << 4)
+                    + (c[4] << 3)
+                    + (c[5] << 2)
+                    + (c[6] << 1)
+                    + (c[7] << 0)
+                })
+                .collect();
 
-        let sess = SyncSession::default();
+            let m: Vec<u8> = m
+                .chunks(8)
+                .map(|c| {
+                    (c[0] << 7)
+                    + (c[1] << 6)
+                    + (c[2] << 5)
+                    + (c[3] << 4)
+                    + (c[4] << 3)
+                    + (c[5] << 2)
+                    + (c[6] << 1)
+                    + (c[7] << 0)
+                })
+                .collect();
 
-        let c = aes(&sess, &plc, k, m);
-        let c_bits: Vec<u8> = c.iter().map(|t| t.0[0] & 1).collect();
-        println!("{:?}", c_bits);
+            let mut block = Block::clone_from_slice(&m);
+            let key = GenericArray::from_slice(&k);
+            let cipher = Aes128::new(&key);
+            cipher.encrypt_block(&mut block);
+            block
+        };
+
+        let actual_c = {
+            let host = HostPlacement { owner: Role::from("host") };
+
+            let k: Vec<HostBitTensor> = k.iter().map(|b| HostBitTensor::from_slice_plc(&[*b], host.clone())).collect();
+            let m: Vec<HostBitTensor> = m.iter().map(|b| HostBitTensor::from_slice_plc(&[*b], host.clone())).collect();
+
+            let sess = SyncSession::default();
+
+            let c_bits: Vec<u8> = aes(&sess, &host, k, m)
+                .iter()
+                .map(|t| t.0[0] & 1)
+                .collect();
+
+            let c: Vec<u8> = c_bits
+                .chunks(8)
+                .map(|c| {
+                    (c[0] << 7)
+                    + (c[1] << 6)
+                    + (c[2] << 5)
+                    + (c[3] << 4)
+                    + (c[4] << 3)
+                    + (c[5] << 2)
+                    + (c[6] << 1)
+                    + (c[7] << 0)
+                })
+                .collect();
+
+            c
+        };
+        
+        assert_eq!(actual_c.as_slice(), expected_c.as_slice());
     }
+
+    // #[test]
+    // fn test_aes_replicated() {
+    //     use aes::{Aes128, Block, NewBlockCipher};
+    //     use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
+    //     use crate::kernels::{PlacementShareSetup, PlacementSetupGen, PlacementReveal};
+
+    //     let k: Vec<u8> = vec![1; 128];
+    //     let m: Vec<u8> = vec![1; 128];
+
+    //     let expected_c = {
+    //         let k: Vec<u8> = k
+    //             .chunks(8)
+    //             .map(|c| {
+    //                 (c[0] << 7)
+    //                 + (c[1] << 6)
+    //                 + (c[2] << 5)
+    //                 + (c[3] << 4)
+    //                 + (c[4] << 3)
+    //                 + (c[5] << 2)
+    //                 + (c[6] << 1)
+    //                 + (c[7] << 0)
+    //             })
+    //             .collect();
+
+    //         let m: Vec<u8> = m
+    //             .chunks(8)
+    //             .map(|c| {
+    //                 (c[0] << 7)
+    //                 + (c[1] << 6)
+    //                 + (c[2] << 5)
+    //                 + (c[3] << 4)
+    //                 + (c[4] << 3)
+    //                 + (c[5] << 2)
+    //                 + (c[6] << 1)
+    //                 + (c[7] << 0)
+    //             })
+    //             .collect();
+
+    //         let mut block = Block::clone_from_slice(&m);
+    //         let key = GenericArray::from_slice(&k);
+    //         let cipher = Aes128::new(&key);
+    //         cipher.encrypt_block(&mut block);
+    //         block
+    //     };
+
+    //     let actual_c = {
+    //         let host = HostPlacement { owner: Role::from("host") };
+    //         let rep = ReplicatedPlacement { owners: [Role::from("alice"), Role::from("bob"), Role::from("carole")] };
+
+    //         let sess = SyncSession::default();
+    //         let setup = rep.gen_setup(&sess);
+
+    //         let k: Vec<ReplicatedBitTensor> = k.iter().map(|b| {
+    //             rep.share(&sess, &setup, &HostBitTensor::from_slice_plc(&[*b], host.clone()))
+    //         }).collect();
+    //         let m: Vec<ReplicatedBitTensor> = m.iter().map(|b| {
+    //             rep.share(&sess, &setup, &HostBitTensor::from_slice_plc(&[*b], host.clone()))
+    //         }).collect();
+
+    //         // TODO impl Neg for replicated placements
+    //         let c_bits: Vec<u8> = aes(&sess, &rep, k, m)
+    //             .iter()
+    //             .map(|te| {
+    //                 let t = host.reveal(&sess, te);
+    //                 t.0[0] & 1
+    //             })
+    //             .collect();
+
+    //         let c: Vec<u8> = c_bits
+    //             .chunks(8)
+    //             .map(|c| {
+    //                 (c[0] << 7)
+    //                 + (c[1] << 6)
+    //                 + (c[2] << 5)
+    //                 + (c[3] << 4)
+    //                 + (c[4] << 3)
+    //                 + (c[5] << 2)
+    //                 + (c[6] << 1)
+    //                 + (c[7] << 0)
+    //             })
+    //             .collect();
+
+    //         c
+    //     };
+        
+    //     assert_eq!(actual_c.as_slice(), expected_c.as_slice());
+    // }
 }
