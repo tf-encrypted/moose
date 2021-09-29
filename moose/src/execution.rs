@@ -1,6 +1,7 @@
 #![allow(unused_macros)]
 
-use crate::compilation::deprecated_logical::deprecated_logical_lowering;
+use crate::compilation::compile_passes;
+use crate::compilation::Pass;
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::networking::{
@@ -8,7 +9,6 @@ use crate::networking::{
 };
 use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
 
-use crate::compilation::typing::update_types_one_hop;
 use derive_more::Display;
 use futures::future::{Map, Shared};
 use futures::prelude::*;
@@ -901,16 +901,13 @@ impl EagerExecutor {
             role_assignment,
             own_identity,
         };
-        let computation = update_types_one_hop(computation)
+        let computation = compile_passes(computation, &[Pass::Typing, Pass::DeprecatedLogical])
             .map_err(|e| {
-                Error::MalformedComputation(format!("Failed to perform typing pass: {}", e))
-            })?
-            .unwrap();
-        let computation = deprecated_logical_lowering(&computation)
-            .map_err(|e| {
-                Error::MalformedComputation(format!("Failed to perform deprecated lowering pass: {}", e))
-            })?
-            .unwrap();
+                Error::MalformedComputation(format!(
+                    "Failed to perform rust compiler passes: {}",
+                    e
+                ))
+            })?;
         let compiled_comp: CompiledSyncComputation = computation.compile_sync(&ctx)?;
         compiled_comp.apply(&session)
     }
@@ -1140,16 +1137,13 @@ impl AsyncExecutor {
             own_identity,
         };
 
-        let computation = update_types_one_hop(computation)
+        let computation = compile_passes(computation, &[Pass::Typing, Pass::DeprecatedLogical])
             .map_err(|e| {
-                Error::MalformedComputation(format!("Failed to perform typing pass: {}", e))
-            })?
-            .unwrap();
-        let computation = deprecated_logical_lowering(&computation)
-            .map_err(|e| {
-                Error::MalformedComputation(format!("Failed to perform deprecated lowering pass: {}", e))
-            })?
-            .unwrap();
+                Error::MalformedComputation(format!(
+                    "Failed to perform rust compiler passes: {}",
+                    e
+                ))
+            })?;
         let compiled_comp = computation.compile_async(&ctx)?;
 
         compiled_comp.apply(session)
