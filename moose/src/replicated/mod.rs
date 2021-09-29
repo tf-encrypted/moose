@@ -1132,7 +1132,7 @@ impl FixedpointDivOp {
         // RepRingT: CanonicalType,
         AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
         <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
-        // AbstractReplicatedFixedTensor<RepRingT>: Into<st!(AbstractReplicatedFixedTensor<RepRingT>)>,
+        AbstractReplicatedFixedTensor<RepRingT>: Into<st!(AbstractReplicatedFixedTensor<RepRingT>)>,
         ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
         ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), RepRingT>,
         ReplicatedPlacement: ApproximateReciprocal<S, SetupT, RepRingT, RepRingT>,
@@ -1141,6 +1141,7 @@ impl FixedpointDivOp {
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
 
+        S: crate::kernels::Session<ReplicatedSetup = SetupT>,
         RepRingT: Clone,
 
         ReplicatedShape: KnownType<S>,
@@ -1149,6 +1150,7 @@ impl FixedpointDivOp {
 
         assert_eq!(x.integral_precision, y.integral_precision);
         assert_eq!(x.fractional_precision, y.fractional_precision);
+
         let int_precision = x.integral_precision;
         let frac_precision = x.fractional_precision;
 
@@ -1164,14 +1166,14 @@ impl FixedpointDivOp {
 
         let w = rep.approximate_reciprocal(
             sess,
-            &setup,
+            setup,
             int_precision as usize,
             frac_precision as usize,
-            &x,
+            &x_st,
         );
 
-        let a = rep.sub(sess, &rep_alpha, &rep.mul_setup(sess, &setup, &y_st, &w));
-        let b = rep.mul_setup(sess, &setup, &x_st, &w);
+        let a = rep.sub(sess, &rep_alpha, &rep.mul_setup(sess, setup, &y_st, &w));
+        let b = rep.mul_setup(sess, setup, &x_st, &w);
         let b = rep.trunc_pr(sess, 2 * frac_precision, &b);
 
         // TODO [Yann] fix to return tuple (a, b)
@@ -1182,7 +1184,12 @@ impl FixedpointDivOp {
             let a = rep.trunc_pr(sess, 2 * frac_precision, &a);
         }
         let b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
-        rep.trunc_pr(sess, 2 * frac_precision, &b)
+        AbstractReplicatedFixedTensor {
+            tensor: rep.trunc_pr(sess, 2 * frac_precision, &b),
+            integral_precision: u32::max(x.integral_precision, y.integral_precision),
+            fractional_precision: x.fractional_precision,
+        }
+        .into()
     }
 }
 
@@ -2176,82 +2183,52 @@ where
     }
 }
 
-trait SignFromMsb<S: Session, HostRingT, RepRingT> {
-    fn sign_from_msb(&self, sess: &S, msb_ring: &RepTen<HostRingT>) -> RepRingT;
+trait SignFromMsb<S: Session, T, O> {
+    fn sign_from_msb(&self, sess: &S, msb_ring: &T) -> O;
 }
 
-impl<S: Session, HostRingT> SignFromMsb<S, HostRingT, st!(RepTen<HostRingT>)>
-    for ReplicatedPlacement
+impl<S: Session, RepRingT> SignFromMsb<S, RepRingT, RepRingT> for ReplicatedPlacement
 where
-    RepTen<HostRingT>: CanonicalType,
-    <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-    RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
-
     ReplicatedShape: KnownType<S>,
-    RepTen<HostRingT>: Clone,
 
-    HostRingT: Tensor<S>,
-    HostRingT::Scalar: Into<Constant>,
-    HostRingT::Scalar: From<u8>,
-
-    ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), st!(RepTen<HostRingT>)>,
-    ReplicatedPlacement: PlacementShape<S, st!(RepTen<HostRingT>), cs!(ReplicatedShape)>,
-    ReplicatedPlacement: PlacementShl<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
-    ReplicatedPlacement:
-        PlacementSub<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
+    ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), RepRingT>,
+    ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
+    ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
 {
-    fn sign_from_msb(&self, sess: &S, msb_ring: &RepTen<HostRingT>) -> st!(RepTen<HostRingT>) {
+    fn sign_from_msb(&self, sess: &S, msb_ring: &RepRingT) -> RepRingT {
         let rep = self;
-        let double = rep.shl(sess, 1, &msb_ring.clone().into());
-        let one_r = HostRingT::Scalar::from(1).into();
-        let ones = rep.fill_precision(
-            sess,
-            one_r,
-            None,
-            &rep.shape(sess, &msb_ring.clone().into()),
-        );
+        let double = rep.shl(sess, 1, msb_ring);
+
+        // TODO(Dragos) use ones() from Morten's PR
+        let one_value = Constant::Float64(1.0);
+
+        let x_shape = rep.shape(sess, msb_ring);
+        let ones = rep.fill_precision(sess, one_value, Some(0 as u32), &x_shape);
         rep.sub(sess, &ones, &double)
     }
 }
-trait DivNorm<S: Session, SetupT, HostRingT> {
-    fn norm(
-        &self,
-        sess: &S,
-        setup: &SetupT,
-        max_bits: usize,
-        x: RepTen<HostRingT>,
-    ) -> (RepTen<HostRingT>, RepTen<HostRingT>);
+trait DivNorm<S: Session, SetupT, T, O> {
+    fn norm(&self, sess: &S, setup: &SetupT, max_bits: usize, x: &T) -> (O, O);
 }
 
-impl<S: Session, SetupT, HostRingT, N> DivNorm<S, SetupT, HostRingT> for ReplicatedPlacement
+impl<S: Session, SetupT, RepRingT, N> DivNorm<S, SetupT, RepRingT, RepRingT> for ReplicatedPlacement
 where
-    RepTen<HostRingT>: Ring<BitLength = N>,
-    RepTen<HostRingT>: CanonicalType,
-    <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-
+    RepRingT: Ring<BitLength = N>,
     AbstractReplicatedBitArray<ReplicatedBitTensor, N>: KnownType<S>,
     ReplicatedBitTensor: KnownType<S>,
 
-    RepTen<HostRingT>: Clone,
-    RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
-    ReplicatedPlacement: PlacementMsb<S, SetupT, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
-    st!(RepTen<HostRingT>): TryInto<RepTen<HostRingT>>,
-    ReplicatedPlacement: SignFromMsb<S, HostRingT, st!(RepTen<HostRingT>)>,
+    ReplicatedPlacement: PlacementMsb<S, SetupT, RepRingT, RepRingT>,
+    ReplicatedPlacement: SignFromMsb<S, RepRingT, RepRingT>,
 
-    ReplicatedPlacement: PlacementMulSetup<
-        S,
-        SetupT,
-        st!(RepTen<HostRingT>),
-        st!(RepTen<HostRingT>),
-        st!(RepTen<HostRingT>),
-    >,
+    ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementBitDecSetup<
         S,
         SetupT,
-        st!(RepTen<HostRingT>),
+        RepRingT,
         cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
     >,
-    ReplicatedPlacement: TopMost<S, SetupT, cs!(ReplicatedBitTensor), st!(RepTen<HostRingT>)>,
+    ReplicatedPlacement: TopMost<S, SetupT, cs!(ReplicatedBitTensor), RepRingT>,
     ReplicatedPlacement: PlacementIndex<
         S,
         cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
@@ -2263,13 +2240,13 @@ where
         sess: &S,
         setup: &SetupT,
         max_bits: usize,
-        x: RepTen<HostRingT>,
-    ) -> (RepTen<HostRingT>, RepTen<HostRingT>) {
+        x: &RepRingT,
+    ) -> (RepRingT, RepRingT) {
         let rep = self;
 
-        let msb = rep.msb(sess, setup, &x.clone().into());
-        let sign = rep.sign_from_msb(sess, &msb.try_into().ok().unwrap());
-        let abs_x = rep.mul_setup(sess, setup, &sign, &x.clone().into());
+        let msb = rep.msb(sess, setup, x);
+        let sign = rep.sign_from_msb(sess, &msb);
+        let abs_x = rep.mul_setup(sess, setup, &sign, x);
 
         // (Dragos) TODO: optimize this in the future, we don't need all bits (only max_bits from the bit-decomposition)
         let x_bits = rep.bit_decompose(sess, setup, &abs_x);
@@ -2277,13 +2254,10 @@ where
         let x_bits_vec: Vec<_> = (0..max_bits).map(|i| rep.index(sess, i, &x_bits)).collect();
 
         let top_most = rep.top_most(sess, setup, max_bits, x_bits_vec);
-        let upshifted = rep.mul_setup(sess, setup, &x.clone().into(), &top_most);
+        let upshifted = rep.mul_setup(sess, setup, x, &top_most);
 
         let signed_topmost = rep.mul_setup(sess, setup, &sign, &top_most);
-        (
-            upshifted.try_into().ok().unwrap(),
-            signed_topmost.try_into().ok().unwrap(),
-        )
+        (upshifted, signed_topmost)
     }
 }
 
@@ -2354,18 +2328,14 @@ impl<S: Session, SetupT, RepRingT> ApproximateReciprocal<S, SetupT, RepRingT, Re
     for ReplicatedPlacement
 where
     ReplicatedShape: KnownType<S>,
-    RepTen<HostRingT>: CanonicalType,
-    <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-    RepTen<HostRingT>: Clone,
-    RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
 
-    ReplicatedPlacement: DivNorm<S, SetupT, HostRingT>,
+    ReplicatedPlacement: DivNorm<S, SetupT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
     ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), RepRingT>,
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, st!(RepTen<HostRingT>)>,
-    ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
+    ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
 {
     fn approximate_reciprocal(
         &self,
@@ -2373,19 +2343,19 @@ where
         setup: &SetupT,
         int_precision: usize,
         frac_precision: usize,
-        x: &RepTen<HostRingT>,
-    ) -> st!(RepTen<HostRingT>) {
+        x: &RepRingT,
+    ) -> RepRingT {
         let rep = self;
         let total_precision = int_precision + frac_precision;
 
-        let (upshifted, signed_topmost) = rep.norm(sess, setup, total_precision, x.clone());
+        let (upshifted, signed_topmost) = rep.norm(sess, setup, total_precision, x);
 
-        let x_shape = rep.shape(sess, &x.clone().into());
+        let x_shape = rep.shape(sess, &x);
         // 2.9142 * 2^{total_precision}
         let alpha = Constant::Float64(2.9142);
         let alpha = rep.fill_precision(sess, alpha, Some(total_precision as u32), &x_shape);
-        let d = with_context!(rep, sess, alpha - rep.shl(sess, 1, &upshifted.into()));
-        let w = rep.mul_setup(sess, setup, &d, &signed_topmost.into());
+        let d = with_context!(rep, sess, alpha - rep.shl(sess, 1, &upshifted));
+        let w = rep.mul_setup(sess, setup, &d, &signed_topmost);
 
         // truncate result
         rep.trunc_pr(sess, 2 * int_precision as u32, &w)
@@ -3462,7 +3432,7 @@ mod tests {
 
         let x_shared = rep.share(&sess, &setup, &x);
 
-        let (upshifted, topmost) = rep.norm(&sess, &setup, 12, x_shared);
+        let (upshifted, topmost) = rep.norm(&sess, &setup, 12, &x_shared);
 
         let topmost_target = AbstractHostRingTensor::from_raw_plc(array![4u64], alice.clone());
         let upshifted_target = AbstractHostRingTensor::from_raw_plc(array![3584], alice.clone());

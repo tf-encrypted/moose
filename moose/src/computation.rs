@@ -942,7 +942,6 @@ operators![
     RepMul,
     RepMsb,
     RepDot,
-    RepDiv,
     RepFixedpointMean,
     RepShl,
     RepSum,
@@ -1565,11 +1564,6 @@ pub struct RepMulOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepDotOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepDivOp {
     pub sig: Signature,
 }
 
