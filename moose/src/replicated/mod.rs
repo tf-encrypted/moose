@@ -1122,7 +1122,7 @@ impl RepDotOp {
 }
 
 impl FixedpointDivOp {
-    pub fn rep_rep_kernel<S: Session, RepRingT, SetupT>(
+    pub fn rep_rep_kernel<S: Session, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
@@ -1135,18 +1135,17 @@ impl FixedpointDivOp {
         AbstractReplicatedFixedTensor<RepRingT>: Into<st!(AbstractReplicatedFixedTensor<RepRingT>)>,
         ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
         ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), RepRingT>,
-        ReplicatedPlacement: ApproximateReciprocal<S, SetupT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: ApproximateReciprocal<S, S::ReplicatedSetup, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
 
-        S: crate::kernels::Session<ReplicatedSetup = SetupT>,
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         RepRingT: Clone,
-
         ReplicatedShape: KnownType<S>,
     {
-        let setup = sess.replicated_setup(rep);
+        let setup = rep.gen_setup(sess);
 
         assert_eq!(x.integral_precision, y.integral_precision);
         assert_eq!(x.fractional_precision, y.fractional_precision);
@@ -1166,24 +1165,24 @@ impl FixedpointDivOp {
 
         let w = rep.approximate_reciprocal(
             sess,
-            setup,
+            &setup,
             int_precision as usize,
             frac_precision as usize,
             &x_st,
         );
 
-        let a = rep.sub(sess, &rep_alpha, &rep.mul_setup(sess, setup, &y_st, &w));
-        let b = rep.mul_setup(sess, setup, &x_st, &w);
-        let b = rep.trunc_pr(sess, 2 * frac_precision, &b);
+        let mut a = rep.sub(sess, &rep_alpha, &rep.mul_setup(sess, &setup, &y_st, &w));
+        let mut b = rep.mul_setup(sess, &setup, &x_st, &w);
+        b = rep.trunc_pr(sess, 2 * frac_precision, &b);
 
         // TODO [Yann] fix to return tuple (a, b)
         for _i in 0..theta {
-            let b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
-            let a = rep.mul_setup(sess, &setup, &a, &a);
-            let b = rep.trunc_pr(sess, 2 * frac_precision, &b);
-            let a = rep.trunc_pr(sess, 2 * frac_precision, &a);
+            let x = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
+            let y = rep.mul_setup(sess, &setup, &a, &a);
+            b = rep.trunc_pr(sess, 2 * frac_precision, &y);
+            a = rep.trunc_pr(sess, 2 * frac_precision, &x);
         }
-        let b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
+        b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
         AbstractReplicatedFixedTensor {
             tensor: rep.trunc_pr(sess, 2 * frac_precision, &b),
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
