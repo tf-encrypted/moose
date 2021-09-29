@@ -24,6 +24,7 @@ use derive_more::Display;
 use macros::ShortName;
 use paste::paste;
 use serde::{Deserialize, Serialize};
+use sodiumoxide::crypto::generichash;
 use std::convert::TryFrom;
 
 pub const TAG_BYTES: usize = 128 / 8;
@@ -89,16 +90,29 @@ impl RendezvousKey {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct SessionId(pub(crate) [u8; TAG_BYTES]);
+//#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+//pub struct SessionId(pub(crate) [u8; TAG_BYTES]);
 // fields: logical (from coordinator)
 //         secure (generated from hash)
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct SessionId {
+    logical: String,
+    secure: [u8; TAG_BYTES],
+}
+
+//impl std::fmt::Display for SessionId {
+//    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//        for byte in self.0 {
+//            write!(f, "{:02X}", byte)?
+//        }
+//        Ok(())
+//    }
+//}
+
 impl std::fmt::Display for SessionId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        for byte in self.0 {
-            write!(f, "{:02X}", byte)?
-        }
+        write!(f, "{}", self.logical)?;
         Ok(())
     }
 }
@@ -106,28 +120,45 @@ impl std::fmt::Display for SessionId {
 impl TryFrom<&str> for SessionId {
     type Error = Error;
     fn try_from(s: &str) -> Result<SessionId> {
-        let s_bytes = s.as_bytes();
-        if s_bytes.len() > TAG_BYTES {
-            return Err(Error::Unexpected); // TODO more helpful error message
-        }
-        let mut raw: [u8; TAG_BYTES] = [0; TAG_BYTES];
-        for (idx, byte) in s_bytes.iter().enumerate() {
-            raw[idx] = *byte;
-        }
-        Ok(SessionId(raw))
+        let digest = generichash::hash(s.as_bytes(), Some(TAG_BYTES), None).unwrap();
+        let mut raw_hash = [0u8; TAG_BYTES];
+        raw_hash.copy_from_slice(digest.as_ref());
+        let sid = SessionId {
+            logical: s.to_string(),
+            secure: raw_hash, // TODO: set secure by hashing logical
+        };
+        Ok(sid)
     }
 }
 
+//impl TryFrom<&str> for SessionId {
+//    type Error = Error;
+//    fn try_from(s: &str) -> Result<SessionId> {
+//        let s_bytes = s.as_bytes();
+//        if s_bytes.len() > TAG_BYTES {
+//            return Err(Error::Unexpected); // TODO more helpful error message
+//        }
+//        let mut raw: [u8; TAG_BYTES] = [0; TAG_BYTES];
+//        for (idx, byte) in s_bytes.iter().enumerate() {
+//            raw[idx] = *byte;
+//        }
+//        Ok(SessionId(raw))
+//    }
+//}
+
 impl SessionId {
     pub fn as_bytes(&self) -> &[u8; TAG_BYTES] {
-        &self.0
+        &self.secure
     }
 
     pub fn random() -> Self {
         let mut raw = [0; TAG_BYTES];
         sodiumoxide::init().expect("failed to initialize sodiumoxide");
         sodiumoxide::randombytes::randombytes_into(&mut raw);
-        SessionId(raw)
+        SessionId {
+            logical: "<RANDOM>".to_string(),
+            secure: raw,
+        }
     }
 }
 
