@@ -102,7 +102,7 @@ impl Session for SyncSession {
             RepAbs(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepFixedpointDiv(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FixedpointDiv(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -135,6 +135,7 @@ impl Session for SyncSession {
             FixedpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FixedpointDiv(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -792,7 +793,7 @@ impl Compile<SyncKernel> for Operator {
             | RepFixedpointMean(_) | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_)
             | RepIndexAxis(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_)
             | RepBitDec(_) | RepRevDim(_) | FixedpointMul(_) | FixedpointDot(_)
-            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) | RepFixedpointDiv(_) => {
+            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) | FixedpointDiv(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -890,7 +891,7 @@ impl Compile<AsyncKernel> for Operator {
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepDiv(_)
             | RepFixedpointMean(_) | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_)
             | RepIndexAxis(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_)
-            | RepBitDec(_) | RepRevDim(_) | RepFixedpointDiv(_) => {
+            | RepBitDec(_) | RepRevDim(_) | FixedpointDiv(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }

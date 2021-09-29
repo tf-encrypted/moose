@@ -16,6 +16,9 @@ use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 use std::marker::PhantomData;
 
+pub mod division;
+pub use division::*;
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedRingTensor<HostRingT> {
     pub shares: [[HostRingT; 2]; 3],
@@ -250,6 +253,27 @@ kernel! {
     [
         (ReplicatedPlacement, () -> ReplicatedSetup => [hybrid] Self::kernel),
     ]
+}
+
+impl RingFromFixedPoint for RepTen<Ring64Tensor> {
+    fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant {
+        let encoded_value = (fixed_point * ((1 << scaling_exp) as f64)) as u64;
+        Constant::Ring64(encoded_value)
+    }
+}
+
+// impl RingFromFixedPoint for Symbolic<RepTen<Ring64Tensor> {
+//     fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant {
+//         let encoded_value = (fixed_point * ((1 << scaling_exp) as f64)) as u64;
+//         Constant::Ring64(encoded_value)
+//     }
+// }
+
+impl RingFromFixedPoint for RepTen<Ring128Tensor> {
+    fn from_fixed_encoding(fixed_point: f64, scaling_exp: u32) -> Constant {
+        let encoded_value = (fixed_point * ((1 << scaling_exp) as f64)) as u128;
+        Constant::Ring128(encoded_value)
+    }
 }
 
 impl RepSetupOp {
@@ -1118,26 +1142,13 @@ impl RepDotOp {
     }
 }
 
-// TODO [Yann] Move to fixedpoint
-modelled!(PlacementDivSetup::div_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepDivOp);
-// modelled!(PlacementDivSetup::div_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepDivOp);
-
-kernel! {
-    RepDivOp,
-    [
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
-        // (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
-    ]
-}
-
-impl RepDivOp {
-    fn rep_rep_kernel<S: Session, RingT, SetupT>(
+impl FixedpointDivOp {
+    fn rep_rep_kernel<S: Session, RepRingT, RingT, SetupT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        setup: SetupT,
-        x: RepTen<RingT>,
-        y: RepTen<RingT>,
-    ) -> st!(RepTen<RingT>)
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+        y: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> st!(AbstractReplicatedFixedTensor<RepRingT>)
     where
         RepTen<RingT>: Into<st!(RepTen<RingT>)>,
         RepTen<RingT>: CanonicalType,
@@ -1164,14 +1175,17 @@ impl RepDivOp {
         ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), st!(RepTen<RingT>)>,
         ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
     {
+        let setup = rep.gen_setup(&sess);
+        assert_eq!(x.fractional_precision, y.fractional_precision);
         // TODO [Yann] extract precision from fixedPoint tensors once moved to fixedpoint.
-        let int_precision = 27_u32;
-        let frac_precision = 20_u32;
+        let int_precision = x.integral_precision; //27_u32;
+        let frac_precision = x._fractional_precision; //20_u32;
+
         let k = int_precision + frac_precision;
         let theta = (k as f64 / 3.5_f64).log2().ceil() as u32;
 
-        let x_st = x.clone().into();
-        let y_st = y.into();
+        let x_st = x.tensor.clone().into();
+        let y_st = y.tensor.into();
 
         let x_shape = rep.shape(sess, &x_st);
         let alpha = RingT::from_fixed_encoding(2.0, 2_u32 * frac_precision);

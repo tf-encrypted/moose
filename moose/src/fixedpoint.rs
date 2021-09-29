@@ -549,70 +549,77 @@ impl FixedpointMulOp {
     }
 }
 
-modelled!(PlacementDiv::div, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, RepFixedpointDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedpointDivOp);
+modelled!(PlacementDiv::div, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDivOp);
+modelled!(PlacementDiv::div, ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedpointDivOp);
+// modelled!(PlacementDiv::div, HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor, FixedpointDivOp);
+// modelled!(PlacementDiv::div, HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor, FixedpointDivOp);
+modelled!(PlacementDiv::div, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointDivOp);
+// modelled!(PlacementDiv::div, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointDivOp);
+
 kernel! {
-    RepFixedpointDivOp,
+    FixedpointDivOp,
     [
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_kernel),
+        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
+        // (HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor => [hybrid] Self::hostfixed_kernel),
+        // (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::rep_rep_kernel),
+        // (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::repfixed_kernel),
     ]
 }
 
-impl RepFixedpointDivOp {
-    fn repfixed_kernel<S: Session, RepRingT>(
+impl FixedpointDivOp {
+    fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
         sess: &S,
-        rep: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> AbstractReplicatedFixedTensor<RepRingT>
+        plc: &HostPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> FixedTensor<HostFixedT, RepFixedT>
     where
-        // ReplicatedShape: KnownType<S>,
-        // AbstractReplicatedFixedTensor<RepRingT>: Clone,
-        // ReplicatedPlacement:
-        //     PlacementShape<S, AbstractReplicatedFixedTensor<RepRingT>, ReplicatedShape>,
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        // ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
-        // ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDiv<S, HostFixedT, HostFixedT, HostFixedT>,
     {
-        // assert_eq!(x.fractional_precision, y.fractional_precision);
+        let x = match x {
+            FixedTensor::Host(v) => v,
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let y = match y {
+            FixedTensor::Host(v) => v,
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
 
-        // let setup = rep.gen_setup(sess);
+        let z = plc.div(sess, &x, &y);
+        FixedTensor::Host(z)
+    }
 
-        // let int_precision = x.integral_precision;
-        // let frac_precision = x.fractional_precision;
-        // let k = int_precision + frac_precision;
-        // let theta = (k as f64 / 3.5_f64).log2().ceil() as u32;
+    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> FixedTensor<HostFixedT, RepFixedT>
+    where
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementDiv<S, RepFixedT, RepFixedT, RepFixedT>,
+    {
+        let setup = plc.gen_setup(sess);
 
-        // let x_st = x.clone().into();
-        // let y_st = y.into();
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let y = match y {
+            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Replicated(v) => v,
+        };
 
-        // let x_shape = rep.shape(sess, &x_st);
-        // // [TODO] Yann replace with constant implemented by Lex
-        // let alpha = RepRingT::from_fixed_encoding(2.0, 2_u32 * frac_precision);
-        // let rep_alpha = rep.fill(sess, alpha, &x_shape);
-
-        // let w: AbstractReplicatedFixedTensor<RepRingT> = rep.approximate_reciprocal(
-        //     sess,
-        //     &setup,
-        //     int_precision as usize,
-        //     frac_precision as usize,
-        //     &x,
-        // );
-
-        // let a = rep.sub(sess, &rep_alpha, &rep.mul_setup(sess, &setup, &y_st, &w));
-        // let b = rep.mul_setup(sess, &setup, &x_st, &w);
-        // let b = rep.trunc_pr(sess, 2 * frac_precision, &b);
-
-        // // TODO [Yann] fix to return tuple (a, b)
-        // for _i in 0..theta {
-        //     let b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
-        //     let a = rep.mul_setup(sess, &setup, &a, &a);
-        //     let b = rep.trunc_pr(sess, 2 * frac_precision, &b);
-        //     let a = rep.trunc_pr(sess, 2 * frac_precision, &a);
-        // }
-        // let b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
-        // rep.trunc_pr(sess, 2 * frac_precision, &b)
-        unimplemented!()
+        let z = plc.div(sess, &x, &y);
+        FixedTensor::Replicated(z)
     }
 }
 

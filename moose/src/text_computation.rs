@@ -1367,6 +1367,7 @@ impl ToTextual for Operator {
             FixedpointAdd(op) => op.to_textual(),
             FixedpointSub(op) => op.to_textual(),
             FixedpointMul(op) => op.to_textual(),
+            FixedpointDiv(op) => op.to_textual(),
             FixedpointDot(op) => op.to_textual(),
             FixedpointTruncPr(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
@@ -1414,7 +1415,6 @@ impl ToTextual for Operator {
             RepSlice(op) => op.to_textual(),
             RepShlDim(op) => op.to_textual(),
             RepRevDim(op) => op.to_textual(),
-            RepFixedpointDiv(op) => op.to_textual(),
         }
     }
 }
@@ -1726,7 +1726,7 @@ impl ToTextual for RepFixedpointMeanOp {
     }
 }
 
-impl_to_textual!(RepFixedpointDivOp, "{op}: {}", sig);
+impl_to_textual!(FixedpointDivOp, "{op}: {}", sig);
 
 impl ToTextual for RingSampleOp {
     fn to_textual(&self) -> String {
