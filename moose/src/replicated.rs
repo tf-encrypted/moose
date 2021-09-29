@@ -2219,12 +2219,13 @@ trait DivNorm<S: Session, SetupT, HostRingT> {
     ) -> (RepTen<HostRingT>, RepTen<HostRingT>);
 }
 
-impl<S: Session, SetupT, HostRingT> DivNorm<S, SetupT, HostRingT> for ReplicatedPlacement
+impl<S: Session, SetupT, HostRingT, N> DivNorm<S, SetupT, HostRingT> for ReplicatedPlacement
 where
+    RepTen<HostRingT>: Ring<BitLength = N>,
     RepTen<HostRingT>: CanonicalType,
     <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
 
-    AbstractReplicatedBitArray<ReplicatedBitTensor, N64>: KnownType<S>,
+    AbstractReplicatedBitArray<ReplicatedBitTensor, N>: KnownType<S>,
     ReplicatedBitTensor: KnownType<S>,
 
     RepTen<HostRingT>: Clone,
@@ -2244,12 +2245,12 @@ where
         S,
         SetupT,
         st!(RepTen<HostRingT>),
-        cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N64>),
+        cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
     >,
     ReplicatedPlacement: TopMost<S, SetupT, cs!(ReplicatedBitTensor), st!(RepTen<HostRingT>)>,
     ReplicatedPlacement: PlacementIndex<
         S,
-        cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N64>),
+        cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
         cs!(ReplicatedBitTensor),
     >,
 {
