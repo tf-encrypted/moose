@@ -906,7 +906,7 @@ impl EagerExecutor {
                 Error::MalformedComputation(format!("Failed to perform typing pass: {}", e))
             })?
             .unwrap();
-        let computation = deprecated_logical_lowering(computation)
+        let computation = deprecated_logical_lowering(&computation)
             .map_err(|e| {
                 Error::MalformedComputation(format!("Failed to perform deprecated lowering pass: {}", e))
             })?
@@ -1145,7 +1145,7 @@ impl AsyncExecutor {
                 Error::MalformedComputation(format!("Failed to perform typing pass: {}", e))
             })?
             .unwrap();
-        let computation = deprecated_logical_lowering(computation)
+        let computation = deprecated_logical_lowering(&computation)
             .map_err(|e| {
                 Error::MalformedComputation(format!("Failed to perform deprecated lowering pass: {}", e))
             })?
