@@ -133,7 +133,11 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractReplicatedFixedTensor<RepRingT>(pub RepRingT);
+pub struct AbstractReplicatedFixedTensor<RepRingT> {
+    pub tensor: RepRingT,
+    pub fractional_precision: u32,
+    pub integral_precision: u32,
+}
 
 moose_type!(ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>);
 moose_type!(ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>);
@@ -142,7 +146,7 @@ impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        self.0.placement()
+        self.tensor.placement()
     }
 }
 
@@ -275,7 +279,11 @@ impl RepShareOp {
     where
         ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostRingT, RepRingT>,
     {
-        AbstractReplicatedFixedTensor(plc.share(sess, &setup, &x.0))
+        AbstractReplicatedFixedTensor {
+            tensor: plc.share(sess, &setup, &x.tensor),
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        }
     }
 
     fn ring_kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
@@ -421,8 +429,12 @@ impl RepRevealOp {
     where
         HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
     {
-        let x = receiver.reveal(sess, &xe.0);
-        AbstractHostFixedTensor(x)
+        let x = receiver.reveal(sess, &xe.tensor);
+        AbstractHostFixedTensor {
+            tensor: x,
+            fractional_precision: xe.fractional_precision,
+            integral_precision: xe.integral_precision,
+        }
     }
 
     fn bit_array_kernel<S: Session, RepBitT, HostBitT, N>(
