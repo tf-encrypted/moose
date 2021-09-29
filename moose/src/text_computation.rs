@@ -1347,6 +1347,7 @@ impl ToTextual for Operator {
             RingAdd(op) => op.to_textual(),
             RingSub(op) => op.to_textual(),
             RingMul(op) => op.to_textual(),
+            RingDiv(op) => op.to_textual(),
             RingDot(op) => op.to_textual(),
             RingSum(op) => op.to_textual(),
             RingFixedpointEncode(op) => op.to_textual(),
@@ -1516,6 +1517,7 @@ impl_to_textual!(RingNegOp, "{op}: {}", sig);
 impl_to_textual!(RingAddOp, "{op}: {}", sig);
 impl_to_textual!(RingSubOp, "{op}: {}", sig);
 impl_to_textual!(RingMulOp, "{op}: {}", sig);
+impl_to_textual!(RingDivOp, "{op}: {}", sig);
 impl_to_textual!(RingDotOp, "{op}: {}", sig);
 impl_to_textual!(RingShlOp, "{op}{{amount={}}}: {}", amount, sig);
 impl_to_textual!(RingShrOp, "{op}{{amount={}}}: {}", amount, sig);

@@ -1122,7 +1122,7 @@ impl RepDotOp {
 }
 
 impl FixedpointDivOp {
-    fn rep_rep_kernel<S: Session, RepRingT, SetupT>(
+    pub fn rep_rep_kernel<S: Session, RepRingT, SetupT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
@@ -2140,7 +2140,7 @@ where
     }
 }
 
-trait PrefixOr<S: Session, SetupT, RepBitT> {
+pub trait PrefixOr<S: Session, SetupT, RepBitT> {
     fn prefix_or(&self, sess: &S, setup: &SetupT, x: Vec<RepBitT>) -> Vec<RepBitT>;
 }
 
@@ -2183,7 +2183,7 @@ where
     }
 }
 
-trait SignFromMsb<S: Session, T, O> {
+pub trait SignFromMsb<S: Session, T, O> {
     fn sign_from_msb(&self, sess: &S, msb_ring: &T) -> O;
 }
 
@@ -2208,7 +2208,7 @@ where
         rep.sub(sess, &ones, &double)
     }
 }
-trait DivNorm<S: Session, SetupT, T, O> {
+pub trait DivNorm<S: Session, SetupT, T, O> {
     fn norm(&self, sess: &S, setup: &SetupT, max_bits: usize, x: &T) -> (O, O);
 }
 
@@ -2261,7 +2261,7 @@ where
     }
 }
 
-trait TopMost<S: Session, SetupT, RepBitT, RepRingT> {
+pub trait TopMost<S: Session, SetupT, RepBitT, RepRingT> {
     fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: Vec<RepBitT>) -> RepRingT;
 }
 
@@ -2313,7 +2313,7 @@ where
     }
 }
 
-trait ApproximateReciprocal<S: Session, SetupT, T, O> {
+pub trait ApproximateReciprocal<S: Session, SetupT, T, O> {
     fn approximate_reciprocal(
         &self,
         sess: &S,
@@ -2965,46 +2965,46 @@ mod tests {
         test_rep_add128(x, y, z);
     }
 
-    // TODO (Yann) check if we should use rep_binary_func_test macro instead to test division.
-    macro_rules! rep_div_test {
-        ($func_name:ident, $tt: ident) => {
-            fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+    // // TODO (Yann) check if we should use rep_binary_func_test macro instead to test division.
+    // macro_rules! rep_div_test {
+    //     ($func_name:ident, $tt: ident) => {
+    //         fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
+    //             let alice = HostPlacement {
+    //                 owner: "alice".into(),
+    //             };
+    //             let rep = ReplicatedPlacement {
+    //                 owners: ["alice".into(), "bob".into(), "carole".into()],
+    //             };
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
-                let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
+    //             let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+    //             let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
 
-                let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
+    //             let sess = SyncSession::default();
+    //             let setup = rep.gen_setup(&sess);
 
-                let x_shared = rep.share(&sess, &setup, &x);
-                let y_shared = rep.share(&sess, &setup, &y);
+    //             let x_shared = rep.share(&sess, &setup, &x);
+    //             let y_shared = rep.share(&sess, &setup, &y);
 
-                let sum = rep.div_setup(&sess, &setup, &x_shared, &y_shared);
-                let opened_sum = alice.reveal(&sess, &sum);
-                assert_eq!(
-                    opened_sum,
-                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
-                );
-            }
-        };
-    }
+    //             let sum = rep.div_setup(&sess, &setup, &x_shared, &y_shared);
+    //             let opened_sum = alice.reveal(&sess, &sum);
+    //             assert_eq!(
+    //                 opened_sum,
+    //                 AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
+    //             );
+    //         }
+    //     };
+    // }
 
-    rep_div_test!(test_rep_div64, u64);
+    // rep_div_test!(test_rep_div64, u64);
 
-    #[rstest]
-    #[case(array![1_u64, 2, 3].into_dyn(),
-        array![1_u64, 2, 3].into_dyn(),
-        array![1_u64, 1, 1].into_dyn())
-    ]
-    fn test_rep_div_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u64>, #[case] z: ArrayD<u64>) {
-        test_rep_div64(x, y, z);
-    }
+    // #[rstest]
+    // #[case(array![1_u64, 2, 3].into_dyn(),
+    //     array![1_u64, 2, 3].into_dyn(),
+    //     array![1_u64, 1, 1].into_dyn())
+    // ]
+    // fn test_rep_div_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u64>, #[case] z: ArrayD<u64>) {
+    //     test_rep_div64(x, y, z);
+    // }
 
     macro_rules! rep_binary_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {
