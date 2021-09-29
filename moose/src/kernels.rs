@@ -79,6 +79,7 @@ impl Session for SyncSession {
             RingAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RingDiv(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -802,7 +803,7 @@ impl Compile<SyncKernel> for Operator {
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
             | RepRevDim(_) | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_)
-            | FixedpointMean(_) | FixedpointSum(_) | FixedpointDiv(_) => {
+            | FixedpointMean(_) | FixedpointSum(_) | FixedpointDiv(_) | RingDiv(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -900,7 +901,7 @@ impl Compile<AsyncKernel> for Operator {
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
-            | RepRevDim(_) | FixedpointDiv(_) => {
+            | RepRevDim(_) | FixedpointDiv(_) | RingDiv(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }

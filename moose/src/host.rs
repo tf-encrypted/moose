@@ -2056,6 +2056,33 @@ impl RingMulOp {
     }
 }
 
+modelled!(PlacementDiv::div, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingDivOp);
+
+kernel! {
+    RingDivOp,
+    [
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
+    ]
+}
+
+impl RingDivOp {
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: AbstractHostRingTensor<T>,
+        y: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: Mul<Wrapping<T>, Output = Wrapping<T>>,
+        Wrapping<T>: LinalgScalar,
+    {
+        AbstractHostRingTensor(x.0 / y.0, plc.clone())
+    }
+}
+
 modelled!(PlacementDot::dot, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingDotOp);
 modelled!(PlacementDot::dot, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingDotOp);
 
