@@ -612,7 +612,13 @@ pub trait PlacementRingFixedpointDecode<S: Session, T, O> {
 }
 
 pub trait PlacementFixedpointEncode<S: Session, T, O> {
-    fn fixedpoint_encode(&self, sess: &S, precision: u32, x: &T) -> O;
+    fn fixedpoint_encode(
+        &self,
+        sess: &S,
+        fractional_precision: u32,
+        integral_precision: u32,
+        x: &T,
+    ) -> O;
 }
 
 pub trait PlacementFixedpointDecode<S: Session, T, O> {
@@ -1640,14 +1646,14 @@ impl Compile<Kernel> for FixedpointEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
             signature![(Ty::HostFloat64Tensor) -> Ty::HostRing64Tensor] => {
-                let scaling_factor = u64::pow(2, self.precision);
+                let scaling_factor = u64::pow(2, self.fractional_precision);
                 closure_kernel!(HostFloat64Tensor, |x| HostRing64Tensor::encode(
                     &x,
                     scaling_factor
                 ))
             }
             signature![(Ty::HostFloat64Tensor) -> Ty::HostRing128Tensor] => {
-                let scaling_factor = u128::pow(2, self.precision);
+                let scaling_factor = u128::pow(2, self.fractional_precision);
                 closure_kernel!(HostFloat64Tensor, |x| HostRing128Tensor::encode(
                     &x,
                     scaling_factor
@@ -1663,14 +1669,14 @@ impl Compile<Kernel> for FixedpointDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
             signature![(Ty::HostRing64Tensor) -> _] => {
-                let scaling_factor = u64::pow(2, self.precision);
+                let scaling_factor = u64::pow(2, self.fractional_precision);
                 closure_kernel!(HostRing64Tensor, |x| HostRing64Tensor::decode(
                     &x,
                     scaling_factor
                 ))
             }
             signature![(Ty::HostRing128Tensor) -> _] => {
-                let scaling_factor = u128::pow(2, self.precision);
+                let scaling_factor = u128::pow(2, self.fractional_precision);
                 closure_kernel!(HostRing128Tensor, |x| HostRing128Tensor::decode(
                     &x,
                     scaling_factor
@@ -1687,12 +1693,22 @@ impl Compile<Kernel> for FixedpointAddOp {
         match self.sig {
             signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
                 function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 + y.0)
+                    assert_eq!(x.fractional_precision, y.fractional_precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor + y.tensor,
+                        fractional_precision: x.fractional_precision,
+                        integral_precision: u32::max(x.integral_precision, y.integral_precision),
+                    }
                 })
             }
             signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
                 function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 + y.0)
+                    assert_eq!(x.fractional_precision, y.fractional_precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor + y.tensor,
+                        fractional_precision: x.fractional_precision,
+                        integral_precision: u32::max(x.integral_precision, y.integral_precision),
+                    }
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -1706,12 +1722,22 @@ impl Compile<Kernel> for FixedpointSubOp {
         match self.sig {
             signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
                 function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 - y.0)
+                    assert_eq!(x.fractional_precision, y.fractional_precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor - y.tensor,
+                        fractional_precision: x.fractional_precision,
+                        integral_precision: u32::max(x.integral_precision, y.integral_precision),
+                    }
                 })
             }
             signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
                 function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 - y.0)
+                    assert_eq!(x.fractional_precision, y.fractional_precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor - y.tensor,
+                        fractional_precision: x.fractional_precision,
+                        integral_precision: u32::max(x.integral_precision, y.integral_precision),
+                    }
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -1725,12 +1751,22 @@ impl Compile<Kernel> for FixedpointMulOp {
         match self.sig {
             signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
                 function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 * y.0)
+                    assert_eq!(x.fractional_precision, y.fractional_precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor * y.tensor,
+                        fractional_precision: x.fractional_precision + y.fractional_precision,
+                        integral_precision: u32::max(x.integral_precision, y.integral_precision),
+                    }
                 })
             }
             signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
                 function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
-                    AbstractHostFixedTensor(x.0 * y.0)
+                    assert_eq!(x.fractional_precision, y.fractional_precision);
+                    AbstractHostFixedTensor {
+                        tensor: x.tensor * y.tensor,
+                        fractional_precision: x.fractional_precision + y.fractional_precision,
+                        integral_precision: u32::max(x.integral_precision, y.integral_precision),
+                    }
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
