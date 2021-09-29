@@ -1,5 +1,6 @@
 #![allow(unused_macros)]
 
+use crate::compilation::deprecated_logical::deprecated_logical_lowering;
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::networking::{
@@ -905,6 +906,11 @@ impl EagerExecutor {
                 Error::MalformedComputation(format!("Failed to perform typing pass: {}", e))
             })?
             .unwrap();
+        let computation = deprecated_logical_lowering(computation)
+            .map_err(|e| {
+                Error::MalformedComputation(format!("Failed to perform deprecated lowering pass: {}", e))
+            })?
+            .unwrap();
         let compiled_comp: CompiledSyncComputation = computation.compile_sync(&ctx)?;
         compiled_comp.apply(&session)
     }
@@ -1137,6 +1143,11 @@ impl AsyncExecutor {
         let computation = update_types_one_hop(computation)
             .map_err(|e| {
                 Error::MalformedComputation(format!("Failed to perform typing pass: {}", e))
+            })?
+            .unwrap();
+        let computation = deprecated_logical_lowering(computation)
+            .map_err(|e| {
+                Error::MalformedComputation(format!("Failed to perform deprecated lowering pass: {}", e))
             })?
             .unwrap();
         let compiled_comp = computation.compile_async(&ctx)?;
