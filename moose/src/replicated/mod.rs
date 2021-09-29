@@ -5,7 +5,7 @@ use crate::error::{Error, Result};
 use crate::host::{
     AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128, HostBitArray64, HostBitTensor,
     HostFixed128Tensor, HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
-    RingFromFixedPoint, SliceInfo,
+    SliceInfo,
 };
 use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
@@ -1158,7 +1158,6 @@ impl FixedpointDivOp {
 
         ReplicatedShape: KnownType<S>,
 
-        RingT: RingFromFixedPoint,
         ReplicatedPlacement: PlacementMulSetup<
             S,
             SetupT,
@@ -1172,7 +1171,7 @@ impl FixedpointDivOp {
             PlacementAdd<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
         ReplicatedPlacement: ApproximateReciprocal<S, SetupT, RepTen<RingT>, st!(RepTen<RingT>)>,
         ReplicatedPlacement: PlacementShape<S, st!(RepTen<RingT>), cs!(ReplicatedShape)>,
-        ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), st!(RepTen<RingT>)>,
+        ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), st!(RepTen<RingT>)>,
         ReplicatedPlacement: PlacementTruncPr<S, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
     {
         let setup = rep.gen_setup(&sess);
@@ -1188,8 +1187,8 @@ impl FixedpointDivOp {
         let y_st = y.tensor.into();
 
         let x_shape = rep.shape(sess, &x_st);
-        let alpha = RingT::from_fixed_encoding(2.0, 2_u32 * frac_precision);
-        let rep_alpha = rep.fill(sess, alpha, &x_shape);
+        let alpha = Constant::Float64(2.0);
+        let rep_alpha = rep.fill_precision(sess, alpha, Some(2 * frac_precision), &x_shape);
 
         let w: st!(RepTen<RingT>) = rep.approximate_reciprocal(
             sess,
@@ -1474,9 +1473,9 @@ impl AdtToRepOp {
     }
 }
 
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing64Tensor, RepFillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing128Tensor, RepFillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
+modelled!(PlacementFillPrecission::fill_precision, ReplicatedPlacement, attributes[value: Constant, precision: Option<u32>] (ReplicatedShape) -> ReplicatedRing64Tensor, RepFillOp);
+modelled!(PlacementFillPrecission::fill_precision, ReplicatedPlacement, attributes[value: Constant, precision: Option<u32>] (ReplicatedShape) -> ReplicatedRing128Tensor, RepFillOp);
+modelled!(PlacementFillPrecission::fill_precision, ReplicatedPlacement, attributes[value: Constant, precision: Option<u32>] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
 
 kernel! {
     RepFillOp,
@@ -1484,6 +1483,13 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [hybrid] custom |op| {
                 let value: u64 = match op.value {
                     Constant::Ring64(v) => v,
+                    Constant::Float64(v) => {
+                        if let Some(precision) = op.precision {
+                            (v * ((1u64 << precision) as f64)) as u64
+                        } else {
+                            unimplemented!("Missing precision to fill a Replicated Fixedpoint Tensor with a float value") // TODO: use invalid argument error from Morten's PR
+                        }
+                    },
                     _ => unimplemented!()  // TODO: replace
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
@@ -1493,6 +1499,13 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [hybrid] custom |op| {
                 let value: u128 = match op.value {
                     Constant::Ring128(v) => v,
+                    Constant::Float64(v) => {
+                        if let Some(precision) = op.precision {
+                            (v * ((1u128 << precision) as f64)) as u128
+                        } else {
+                            unimplemented!("Missing precision to fill a Replicated Fixedpoint Tensor with a float value") // TODO: use invalid argument error from Morten's PR
+                        }
+                    },
                     _ => unimplemented!()  // TODO: replace
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
@@ -2014,7 +2027,7 @@ impl RepAbsOp {
         RingT::Scalar: From<u8>,
 
         ReplicatedPlacement: PlacementMsb<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
-        ReplicatedPlacement: PlacementFill<S, ShapeT, st!(RepTen<RingT>)>,
+        ReplicatedPlacement: PlacementFillPrecission<S, ShapeT, st!(RepTen<RingT>)>,
         ReplicatedPlacement: PlacementShape<S, st!(RepTen<RingT>), ShapeT>,
         ReplicatedPlacement: PlacementMulSetup<
             S,
@@ -2032,7 +2045,7 @@ impl RepAbsOp {
         let double = rep.shl(sess, 1, &msb_ring);
 
         let one_r = RingT::Scalar::from(1).into();
-        let ones = rep.fill(sess, one_r, &rep.shape(sess, &msb_ring));
+        let ones = rep.fill_precision(sess, one_r, None, &rep.shape(sess, &msb_ring));
         let sign = rep.sub(sess, &ones, &double);
 
         rep.mul_setup(sess, &setup, &sign, &x.into())
@@ -2209,7 +2222,7 @@ where
     HostRingT::Scalar: Into<Constant>,
     HostRingT::Scalar: From<u8>,
 
-    ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), st!(RepTen<HostRingT>)>,
+    ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), st!(RepTen<HostRingT>)>,
     ReplicatedPlacement: PlacementShape<S, st!(RepTen<HostRingT>), cs!(ReplicatedShape)>,
     ReplicatedPlacement: PlacementShl<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
     ReplicatedPlacement:
@@ -2219,7 +2232,12 @@ where
         let rep = self;
         let double = rep.shl(sess, 1, &msb_ring.clone().into());
         let one_r = HostRingT::Scalar::from(1).into();
-        let ones = rep.fill(sess, one_r, &rep.shape(sess, &msb_ring.clone().into()));
+        let ones = rep.fill_precision(
+            sess,
+            one_r,
+            None,
+            &rep.shape(sess, &msb_ring.clone().into()),
+        );
         rep.sub(sess, &ones, &double)
     }
 }
@@ -2370,10 +2388,9 @@ where
     RepTen<HostRingT>: Clone,
     RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
 
-    HostRingT: RingFromFixedPoint,
     ReplicatedPlacement: DivNorm<S, SetupT, HostRingT>,
     ReplicatedPlacement: PlacementShape<S, st!(RepTen<HostRingT>), cs!(ReplicatedShape)>,
-    ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), st!(RepTen<HostRingT>)>,
+    ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), st!(RepTen<HostRingT>)>,
     ReplicatedPlacement:
         PlacementSub<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
     ReplicatedPlacement: PlacementShl<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
@@ -2401,8 +2418,8 @@ where
 
         let x_shape = rep.shape(sess, &x.clone().into());
         // 2.9142 * 2^{total_precision}
-        let alpha_int = HostRingT::from_fixed_encoding(2.9142, total_precision as u32);
-        let alpha = rep.fill(sess, alpha_int, &x_shape);
+        let alpha = Constant::Float64(2.9142);
+        let alpha = rep.fill_precision(sess, alpha, Some(total_precision as u32), &x_shape);
         let d = with_context!(rep, sess, alpha - rep.shl(sess, 1, &upshifted.into()));
         let w = rep.mul_setup(sess, setup, &d, &signed_topmost.into());
 

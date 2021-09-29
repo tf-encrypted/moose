@@ -1602,6 +1602,7 @@ pub struct RepToAdtOp {
 pub struct RepFillOp {
     pub sig: Signature,
     pub value: Constant,
+    pub precision: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
