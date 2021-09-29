@@ -1408,7 +1408,7 @@ impl TryFrom<PyComputation> for Computation {
                         kind: OutputOp {
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
+                                Ty::Unit,
                             ),
                         }
                         .into(),

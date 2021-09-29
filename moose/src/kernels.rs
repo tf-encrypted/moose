@@ -2181,6 +2181,10 @@ for_all_values! {( $($value:ty),* ) => (
         modelled!(PlacementOutput::output, HostPlacement, ($value) -> Unit, OutputOp);
     )*
 )}
+modelled!(PlacementOutput::output, HostPlacement, (crate::logical::Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Float32Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Float64Tensor) -> Unit, OutputOp);
+
 
 kernel! {
     OutputOp, [
@@ -2204,13 +2208,18 @@ kernel! {
         (HostPlacement, (HostUint64Tensor) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (HostFixed64Tensor) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (HostFixed128Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (crate::logical::Tensor) -> Unit => [hybrid] Self::logical_kernel),
+        (HostPlacement, (Float32Tensor) -> Unit => [hybrid] Self::float_kernel),
+        (HostPlacement, (Float64Tensor) -> Unit => [hybrid] Self::float_kernel),
     ]
 }
 
 impl OutputOp {
-    fn kernel<S: RuntimeSession, O>(_sess: &S, _plc: &HostPlacement, _x: O) -> Unit {
-        unimplemented!() // TODO: Save to the environment for the Sync and Async sessions to work.
-    }
+    fn kernel<S: RuntimeSession, I>(_sess: &S, plc: &HostPlacement, _x: I) -> Unit {
+        // TODO (lvorona) What should output do for real?
+        // sess.storage.save(&key, &sess.sid, &val)?;
+        Unit(plc.clone())
+}
 }
 
 impl Compile<SyncKernel> for OutputOp {

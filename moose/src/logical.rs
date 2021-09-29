@@ -1133,3 +1133,30 @@ impl ConstantOp {
         AbstractTensor::Float64(z)
     }
 }
+
+impl OutputOp {
+    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> cs!(Unit)
+    where
+        String: KnownType<S>,
+        Unit: KnownType<S>,
+        HostPlacement: PlacementOutput<S, Float32T, cs!(Unit)>,
+        HostPlacement: PlacementOutput<S, Float64T, cs!(Unit)>,
+    {
+        match x {
+            AbstractTensor::Fixed64(_x) => {
+                unimplemented!()
+                // plc.save(sess, &key, &x)
+            }
+            AbstractTensor::Fixed128(_x) => {
+                unimplemented!()
+                // plc.save(sess, &key, &x)
+            }
+            AbstractTensor::Float32(x) => plc.output(sess, &x),
+            AbstractTensor::Float64(x) => plc.output(sess, &x),
+        }
+    }
+}

@@ -488,3 +488,19 @@ impl ConstantOp {
         FloatTensor::Host(z)
     }
 }
+
+impl OutputOp {
+    pub fn float_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT>,
+    ) -> cs!(Unit)
+    where
+        String: KnownType<S>,
+        Unit: KnownType<S>,
+        HostPlacement: PlacementOutput<S, HostFloatT, cs!(Unit)>,
+    {
+        let FloatTensor::Host(x) = x;
+        plc.output(sess, &x)
+    }
+}

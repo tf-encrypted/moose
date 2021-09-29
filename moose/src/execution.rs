@@ -228,6 +228,34 @@ pub type AsyncReceiver = Shared<
 
 pub type AsyncTask = tokio::task::JoinHandle<Result<()>>;
 
+pub fn bridge_nullary(new_sess: Arc<crate::kernels::SyncSession>, op: Operator, plc: Arc<Placement>) -> NullaryAsyncKernel {
+    Box::new(move |_, sender| {
+        let new_sess = new_sess.clone();
+        let op = op.clone();
+        let plc = plc.clone();
+        tokio::spawn(async move {
+            use crate::kernels::Session;
+            let y = new_sess.execute(op, &plc, vec![])?;
+            map_send_result(sender.send(y))
+        })
+    })
+}
+
+pub fn bridge_unary(new_sess: Arc<crate::kernels::SyncSession>, op: Operator, plc: Arc<Placement>) -> UnaryAsyncKernel {
+    Box::new(move |_, v, sender| {
+        let new_sess = new_sess.clone();
+        let op = op.clone();
+        let plc = plc.clone();
+        tokio::spawn(async move {
+            use crate::kernels::Session;
+            let v: Value = v.await.map_err(map_receive_error)?;
+            let y = new_sess.execute(op, &plc, vec![v])?;
+            map_send_result(sender.send(y))
+        })
+    })
+}
+
+
 pub trait Compile<C> {
     fn compile(&self, ctx: &CompilationContext) -> Result<C>;
 }
@@ -539,67 +567,33 @@ impl Compile<CompiledSyncOperation> for Operation {
 
 impl Compile<CompiledAsyncOperation> for Operation {
     fn compile(&self, ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
-        let operator_kernel = Compile::<AsyncKernel>::compile(&self.kind, ctx)?;
-        match operator_kernel {
-            AsyncKernel::Nullary(k) => {
-                check_arity(&self.name, &self.inputs, 0)?;
+        let op = self.clone();
+        // TODO: Should those two should be inside the old session?
+        let new_sess = Arc::new(crate::kernels::SyncSession::default());
+        let host = Arc::new(Placement::Host(HostPlacement { owner: "localhost".into()}));
+
+        match self.kind.sig().arity() {
+            Some(0) => {
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |sess, _, sender| Ok(k(sess, sender))),
+                    kernel: Box::new(move |sess, _, sender| {
+                        let k = bridge_nullary(new_sess.clone(), op.kind.clone(), host.clone());
+                        Ok(k(sess, sender))
+                    }),
                 })
-            }
-            AsyncKernel::Unary(k) => {
-                check_arity(&self.name, &self.inputs, 1)?;
+            },
+            Some(1) => {
                 let x0_name = self.inputs[0].clone();
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
                     kernel: Box::new(move |sess, env, sender| {
                         let x0 = find_env(env, &x0_name)?;
+                        let k = bridge_unary(new_sess.clone(), op.kind.clone(), host.clone());
                         Ok(k(sess, x0, sender))
                     }),
                 })
-            }
-            AsyncKernel::Binary(k) => {
-                check_arity(&self.name, &self.inputs, 2)?;
-                let x0_name = self.inputs[0].clone();
-                let x1_name = self.inputs[1].clone();
-                Ok(CompiledAsyncOperation {
-                    name: self.name.clone(),
-                    kernel: Box::new(move |sess, env, sender| {
-                        let x0 = find_env(env, &x0_name)?;
-                        let x1 = find_env(env, &x1_name)?;
-                        Ok(k(sess, x0, x1, sender))
-                    }),
-                })
-            }
-            AsyncKernel::Ternary(k) => {
-                check_arity(&self.name, &self.inputs, 3)?;
-                let x0_name = self.inputs[0].clone();
-                let x1_name = self.inputs[1].clone();
-                let x2_name = self.inputs[2].clone();
-                Ok(CompiledAsyncOperation {
-                    name: self.name.clone(),
-                    kernel: Box::new(move |sess, env, sender| {
-                        let x0 = find_env(env, &x0_name)?;
-                        let x1 = find_env(env, &x1_name)?;
-                        let x2 = find_env(env, &x2_name)?;
-                        Ok(k(sess, x0, x1, x2, sender))
-                    }),
-                })
-            }
-            AsyncKernel::Variadic(k) => {
-                let inputs = self.inputs.clone();
-                Ok(CompiledAsyncOperation {
-                    name: self.name.clone(),
-                    kernel: Box::new(move |sess, env, sender| {
-                        let xs = inputs
-                            .iter()
-                            .map(|input| find_env(env, input))
-                            .collect::<Result<Vec<_>>>()?;
-                        Ok(k(sess, xs, sender))
-                    }),
-                })
-            }
+            },
+            _ => todo!()
         }
     }
 }

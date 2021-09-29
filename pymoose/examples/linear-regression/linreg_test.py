@@ -167,7 +167,7 @@ class LinearRegressionExample(parameterized.TestCase):
             comp_bin,
             [
                 "typing",
-                # "dump",
+                "dump",
                 # All of the symbolic passes. Currently combines functionality of
                 # [ReplicatedOpsPass, HostRingLoweringPass, ReplicatedLoweringPass]
                 "full",
@@ -204,6 +204,52 @@ class LinearRegressionExample(parameterized.TestCase):
         print(
             "Done: \n",
             runtime.read_value_from_storage("model-owner", "regression_weights"),
+        )
+
+    def _build_const_example(self):
+        x_owner = edsl.host_placement(name="x-owner")
+
+        @edsl.computation
+        def my_comp():
+            with x_owner:
+                # x = edsl.constant("hello")
+                x = edsl.constant(np.array([1, 2], dtype=np.float64))
+
+            return x
+
+        return my_comp, (x_owner)
+
+    def test_const_rust_compiler(self):
+        linear_comp, placements = self._build_const_example()
+        concrete_comp = edsl.trace(linear_comp)
+        comp_bin = utils.serialize_computation(concrete_comp)
+        # Compile in Rust
+        rust_compiled = elk_compiler.compile_computation(
+            comp_bin,
+            [
+                "typing",
+                "dump",
+                # All of the symbolic passes. Currently combines functionality of
+                # [ReplicatedOpsPass, HostRingLoweringPass, ReplicatedLoweringPass]
+                "full",
+                "prune",
+                "networking",
+                "typing",
+                # "dump",
+                # "print",
+            ],
+        )
+
+        executors_storage = {
+            "x-owner": {},
+        }
+        runtime = LocalMooseRuntime(storage_mapping=executors_storage)
+        _ = runtime.evaluate_compiled(
+            comp_bin=rust_compiled,
+            role_assignment={
+                "x-owner": "x-owner",
+            },
+            arguments={},
         )
 
     @pytest.mark.slow
