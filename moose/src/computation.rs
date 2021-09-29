@@ -1791,3 +1791,31 @@ pub struct Computation {
     // pub operators: Vec<Operator>,
     pub operations: Vec<Operation>,
 }
+
+mod tests {
+    #![allow(unused_imports)]
+    use super::*;
+
+    #[test]
+    fn test_session_id() {
+        let session_id_str = "01FGSQ37YDJSVJXSA6SSY7G4Y2";
+        let session_id = SessionId::try_from(session_id_str).unwrap();
+        let expected: [u8; 16] = [
+            155, 66, 92, 119, 188, 62, 148, 202, 13, 176, 137, 43, 64, 190, 251, 182,
+        ];
+        assert_eq!(session_id.logical, session_id_str);
+        assert_eq!(session_id.to_string(), session_id_str);
+        assert_eq!(session_id.secure, expected);
+        assert_eq!(*session_id.as_bytes(), expected);
+
+        let session_id_str = "hello world";
+        let session_id = SessionId::try_from(session_id_str).unwrap();
+        let expected: [u8; 16] = [
+            233, 168, 4, 178, 229, 39, 253, 54, 1, 210, 255, 192, 187, 2, 60, 214,
+        ];
+        assert_eq!(session_id.logical, session_id_str);
+        assert_eq!(session_id.to_string(), session_id_str);
+        assert_eq!(session_id.secure, expected);
+        assert_eq!(*session_id.as_bytes(), expected);
+    }
+}
