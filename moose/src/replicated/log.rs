@@ -1,9 +1,11 @@
 //use macros::with_context;
-use crate::computation::{CanonicalType, KnownType, RepEqualOp, RepIfElseOp, ReplicatedPlacement, Constant};
+use crate::computation::Placed;
+use crate::computation::{CanonicalType, Constant, KnownType, RepEqualOp, ReplicatedPlacement};
 use crate::kernels::*;
-use crate::replicated::{RepTen, ReplicatedRing64Tensor, ReplicatedRing128Tensor, ReplicatedBitTensor};
+use crate::replicated::{
+    RepTen, ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor,
+};
 use crate::{Const, Ring};
-use crate::computation::{Placed, HostPlacement};
 
 modelled!(PlacementEqual::equal, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, RepEqualOp);
 modelled!(PlacementEqual::equal, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, RepEqualOp);
@@ -17,99 +19,67 @@ kernel! {
 }
 
 impl RepEqualOp {
-    fn rep_kernel<S: Session, RingT, RingBitT, BitArrayT, ShapeT, N: Const>(
+    fn rep_kernel<S: Session, HostRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<RingT>,
-        y: RepTen<RingT>,
-    ) -> RingBitT
+        x: RepTen<HostRingT>,
+        y: RepTen<HostRingT>,
+    ) -> RepBitT
     where
-        RepTen<RingT>: Into<st!(RepTen<RingT>)>,
-        RepTen<RingT>: CanonicalType,
-        <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
+        RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
+        RepTen<HostRingT>: CanonicalType,
+        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
 
-        RingT: Ring<BitLength = N>,
+        HostRingT: Ring<BitLength = N>,
 
-        RingT: Tensor<S>,
-        RingT::Scalar: Into<Constant>,
-        RingT::Scalar: From<u8>,
+        HostRingT: Tensor<S>,
+        HostRingT::Scalar: Into<Constant>,
+        HostRingT::Scalar: From<u8>,
 
         ReplicatedPlacement:
-            PlacementBitDecSetup<S, S::ReplicatedSetup, st!(RepTen<RingT>), BitArrayT>,
+            PlacementBitDecSetup<S, S::ReplicatedSetup, st!(RepTen<HostRingT>), RepBitArrayT>,
         ReplicatedPlacement:
-            PlacementSub<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
-        ReplicatedPlacement:
-            PlacementXor<S, RingBitT, RingBitT, RingBitT>,
-        ReplicatedPlacement: PlacementFill<S, ShapeT, RingBitT>,
-            ReplicatedPlacement: PlacementShape<S, st!(RepTen<RingT>), ShapeT>,
-        ReplicatedPlacement: PlacementIndex<S, BitArrayT, RingBitT>,
-        ReplicatedPlacement: PlacementMulSetup<
-            S,
-            S::ReplicatedSetup,
-            RingBitT,
-            RingBitT,
-            RingBitT,
-        >,
-        ReplicatedPlacement: PlacementXor<S, RingBitT, RingBitT, RingBitT>,
-        BitArrayT: std::fmt::Debug,
-        RingBitT: std::fmt::Debug,
-        ShapeT: std::fmt::Debug,
+            PlacementSub<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
+        ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepBitT>,
+        ReplicatedPlacement: PlacementShape<S, st!(RepTen<HostRingT>), ShapeT>,
+        ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
+        ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        HostPlacement: PlacementReveal<S, RingBitT, RingBitT>,
     {
         let setup = rep.gen_setup(sess);
 
         let z = rep.sub(sess, &x.into(), &y.into());
-
         let bits = rep.bit_decompose(sess, &setup, &z);
 
-        let v: Vec<_> = (0..RingT::BitLength::VALUE).map(|i| rep.index(sess, i, &bits)).collect();
+        let v: Vec<_> = (0..HostRingT::BitLength::VALUE)
+            .map(|i| rep.index(sess, i, &bits))
+            .collect();
 
         let one_r: Constant = 1u8.into();
         let ones = rep.fill(sess, one_r, &rep.shape(sess, &z));
 
         let v_not: Vec<_> = v.iter().map(|vi| rep.xor(sess, &ones, vi)).collect();
 
-        let res = v_not.iter().fold(ones, |acc, y| rep.mul_setup(sess, &setup, &acc, &y));
-
-        let (alice, bob, carole) = rep.host_placements();
-
-        alice.reveal(sess, &res);
-
-        res
-
+        v_not
+            .iter()
+            .fold(ones, |acc, y| rep.mul_setup(sess, &setup, &acc, y))
     }
 }
 
-impl RepIfElseOp {
-    fn rep_kernel<S: Session, SetupT, RingT, RingBitT, BitArrayT, ShapeT, N: Const>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        setup: SetupT,
-        v: RingBitT,
-        x: RingT,
-        y: RingT,
-    ) {
-
-    }
-
-}
-
+#[cfg(test)]
 mod tests {
     use crate::computation::{HostPlacement, ReplicatedPlacement};
-    use crate::host::{FromRawPlc, HostBitTensor};
-    use ndarray::{array, IxDyn};
+    use crate::host::{AbstractHostRingTensor, HostBitTensor};
     use crate::kernels::*;
     use crate::replicated::ReplicatedBitTensor;
+    use ndarray::{array, IxDyn};
 
     #[test]
     fn test_equal() {
         let alice = HostPlacement {
             owner: "alice".into(),
-        };
-
-        let bob= HostPlacement {
-            owner: "bob".into(),
         };
 
         let rep = ReplicatedPlacement {
@@ -119,32 +89,26 @@ mod tests {
         let sess = SyncSession::default();
         let setup = rep.gen_setup(&sess);
 
-        //sess.replicated_keys.insert(rep, setup);
-
-        let scaling_base = 2;
-        let scaling_exp = 24;
-
-        let x = crate::host::HostFloat64Tensor::from_raw_plc(
-            array![5.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
+        let x = AbstractHostRingTensor::from_raw_plc(
+            array![1024u64, 5, 4].into_dimensionality::<IxDyn>().unwrap(),
             alice.clone(),
         );
-        let y= crate::host::HostFloat64Tensor::from_raw_plc(
-            array![4.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            bob.clone(),
+
+        let y = AbstractHostRingTensor::from_raw_plc(
+            array![1024u64, 4, 5].into_dimensionality::<IxDyn>().unwrap(),
+            alice.clone(),
         );
-        let x = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &x);
+
         let x_shared = rep.share(&sess, &setup, &x);
 
-        let y = bob.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &y);
         let y_shared = rep.share(&sess, &setup, &y);
 
         let res: ReplicatedBitTensor = rep.equal(&sess, &x_shared, &y_shared);
 
         let opened_result = alice.reveal(&sess, &res);
-        assert_eq!(opened_result, HostBitTensor::from_raw_plc(array![1].into_dimensionality::<IxDyn>().unwrap(), alice));
+        assert_eq!(
+            opened_result,
+            HostBitTensor::from_raw_plc(array![1, 0, 0].into_dimensionality::<IxDyn>().unwrap(), alice)
+        );
     }
 }
