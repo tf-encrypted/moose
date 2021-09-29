@@ -31,6 +31,9 @@ pub const TAG_BYTES: usize = 128 / 8;
 static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::DIGEST_MIN);
 static_assertions::const_assert!(TAG_BYTES <= sodiumoxide::crypto::generichash::DIGEST_MAX);
 
+// TODO: the displayed representation of the RendezvousKey does not match with
+// the input. Might need to do something similar to what we did with the
+// session id, and have a secure and a logical form of it?
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, Eq, Hash)]
 pub struct RendezvousKey(pub(crate) [u8; TAG_BYTES]);
 
