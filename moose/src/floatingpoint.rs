@@ -159,7 +159,7 @@ impl FloatingpointAddOp {
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT>,
         y: FloatTensor<HostFloatT>,
-    ) -> FloatTensor<HostFloatT>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostPlacement: PlacementAdd<S, HostFloatT, HostFloatT, HostFloatT>,
     {
@@ -167,7 +167,7 @@ impl FloatingpointAddOp {
         let FloatTensor::Host(y) = y;
 
         let z = plc.add(sess, &x, &y);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
@@ -188,7 +188,7 @@ impl FloatingpointSubOp {
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT>,
         y: FloatTensor<HostFloatT>,
-    ) -> FloatTensor<HostFloatT>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostPlacement: PlacementSub<S, HostFloatT, HostFloatT, HostFloatT>,
     {
@@ -196,7 +196,7 @@ impl FloatingpointSubOp {
         let FloatTensor::Host(y) = y;
 
         let z = plc.sub(sess, &x, &y);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
@@ -217,7 +217,7 @@ impl FloatingpointMulOp {
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT>,
         y: FloatTensor<HostFloatT>,
-    ) -> FloatTensor<HostFloatT>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostPlacement: PlacementMul<S, HostFloatT, HostFloatT, HostFloatT>,
     {
@@ -225,7 +225,7 @@ impl FloatingpointMulOp {
         let FloatTensor::Host(y) = y;
 
         let z = plc.mul(sess, &x, &y);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
@@ -246,7 +246,7 @@ impl FloatingpointDivOp {
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT>,
         y: FloatTensor<HostFloatT>,
-    ) -> FloatTensor<HostFloatT>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostPlacement: PlacementDiv<S, HostFloatT, HostFloatT, HostFloatT>,
     {
@@ -254,7 +254,7 @@ impl FloatingpointDivOp {
         let FloatTensor::Host(y) = y;
 
         let z = plc.div(sess, &x, &y);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
@@ -275,7 +275,7 @@ impl FloatingpointDotOp {
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT>,
         y: FloatTensor<HostFloatT>,
-    ) -> FloatTensor<HostFloatT>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostPlacement: PlacementDot<S, HostFloatT, HostFloatT, HostFloatT>,
     {
@@ -283,7 +283,7 @@ impl FloatingpointDotOp {
         let FloatTensor::Host(y) = y;
 
         let z = plc.dot(sess, &x, &y);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
@@ -429,7 +429,7 @@ impl LoadOp {
         plc: &HostPlacement,
         key: cs!(String),
         query: cs!(String),
-    ) -> FloatTensor<cs!(HostFloat64Tensor)>
+    ) -> Result<FloatTensor<cs!(HostFloat64Tensor)>>
     where
         String: KnownType<S>,
         HostFloat32Tensor: KnownType<S>,
@@ -437,7 +437,7 @@ impl LoadOp {
         HostPlacement: PlacementLoad<S, cs!(String), cs!(String), cs!(HostFloat64Tensor)>,
     {
         let z = plc.load(sess, &key, &query);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
@@ -447,14 +447,14 @@ impl SaveOp {
         plc: &HostPlacement,
         key: cs!(String),
         x: FloatTensor<HostFloatT>,
-    ) -> cs!(Unit)
+    ) -> Result<cs!(Unit)>
     where
         String: KnownType<S>,
         Unit: KnownType<S>,
         HostPlacement: PlacementSave<S, cs!(String), HostFloatT, cs!(Unit)>,
     {
         let FloatTensor::Host(x) = x;
-        plc.save(sess, &key, &x)
+        Ok(plc.save(sess, &key, &x))
     }
 }
 

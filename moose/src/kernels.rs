@@ -254,7 +254,7 @@ pub trait UnaryKernel<S: Session, P, X0, Y> {
 
 pub trait BinaryKernel<S: Session, P, X0, X1, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Y>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Result<Y>>>;
 }
 
 pub trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
@@ -1004,22 +1004,22 @@ impl Compile<Kernel> for HostMeanOp {
         let axis = self.axis.map(|x| x as usize);
         match self.sig {
             signature![(_) -> Ty::HostFloat32Tensor] => {
-                closure_kernel!(HostFloat32Tensor, |x| x.mean(axis))
+                closure_kernel!(HostFloat32Tensor, |x| x.mean(axis).unwrap())
             }
             signature![(_) -> Ty::HostFloat64Tensor] => {
-                closure_kernel!(HostFloat64Tensor, |x| x.mean(axis))
+                closure_kernel!(HostFloat64Tensor, |x| x.mean(axis).unwrap())
             }
             signature![(_) -> Ty::HostInt32Tensor] => {
-                closure_kernel!(HostInt32Tensor, |x| x.mean(axis))
+                closure_kernel!(HostInt32Tensor, |x| x.mean(axis).unwrap())
             }
             signature![(_) -> Ty::HostInt64Tensor] => {
-                closure_kernel!(HostInt64Tensor, |x| x.mean(axis))
+                closure_kernel!(HostInt64Tensor, |x| x.mean(axis).unwrap())
             }
             signature![(_) -> Ty::HostUint32Tensor] => {
-                closure_kernel!(HostUint32Tensor, |x| x.mean(axis))
+                closure_kernel!(HostUint32Tensor, |x| x.mean(axis).unwrap())
             }
             signature![(_) -> Ty::HostUint64Tensor] => {
-                closure_kernel!(HostUint64Tensor, |x| x.mean(axis))
+                closure_kernel!(HostUint64Tensor, |x| x.mean(axis).unwrap())
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1212,22 +1212,22 @@ impl Compile<Kernel> for HostSumOp {
         let axis = self.axis.map(|a| a as usize);
         match self.sig {
             signature![(_) -> Ty::HostFloat32Tensor] => {
-                closure_kernel!(HostFloat32Tensor, |x| x.sum(axis))
+                closure_kernel!(HostFloat32Tensor, |x| x.sum(axis).unwrap())
             }
             signature![(_) -> Ty::HostFloat64Tensor] => {
-                closure_kernel!(HostFloat64Tensor, |x| x.sum(axis))
+                closure_kernel!(HostFloat64Tensor, |x| x.sum(axis).unwrap())
             }
             signature![(_) -> Ty::HostInt32Tensor] => {
-                closure_kernel!(HostInt32Tensor, |x| x.sum(axis))
+                closure_kernel!(HostInt32Tensor, |x| x.sum(axis).unwrap())
             }
             signature![(_) -> Ty::HostInt64Tensor] => {
-                closure_kernel!(HostInt64Tensor, |x| x.sum(axis))
+                closure_kernel!(HostInt64Tensor, |x| x.sum(axis).unwrap())
             }
             signature![(_) -> Ty::HostUint32Tensor] => {
-                closure_kernel!(HostUint32Tensor, |x| x.sum(axis))
+                closure_kernel!(HostUint32Tensor, |x| x.sum(axis).unwrap())
             }
             signature![(_) -> Ty::HostUint64Tensor] => {
-                closure_kernel!(HostUint64Tensor, |x| x.sum(axis))
+                closure_kernel!(HostUint64Tensor, |x| x.sum(axis).unwrap())
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1311,10 +1311,12 @@ impl Compile<Kernel> for RingDotOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
             signature![(Ty::HostRing64Tensor, Ty::HostRing64Tensor) -> _] => {
-                function_kernel!(HostRing64Tensor, HostRing64Tensor, |x, y| x.dot(y))
+                function_kernel!(HostRing64Tensor, HostRing64Tensor, |x, y| x.dot(y).unwrap())
             }
             signature![(Ty::HostRing128Tensor, Ty::HostRing128Tensor) -> _] => {
-                function_kernel!(HostRing128Tensor, HostRing128Tensor, |x, y| x.dot(y))
+                function_kernel!(HostRing128Tensor, HostRing128Tensor, |x, y| x
+                    .dot(y)
+                    .unwrap())
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1327,10 +1329,10 @@ impl Compile<Kernel> for RingSumOp {
         let axis = self.axis.map(|a| a as usize);
         match self.sig {
             signature![(_) -> Ty::HostRing64Tensor] => {
-                closure_kernel!(HostRing64Tensor, |x| x.sum(axis))
+                closure_kernel!(HostRing64Tensor, |x| x.sum(axis).unwrap())
             }
             signature![(_) -> Ty::HostRing128Tensor] => {
-                closure_kernel!(HostRing128Tensor, |x| x.sum(axis))
+                closure_kernel!(HostRing128Tensor, |x| x.sum(axis).unwrap())
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1627,7 +1629,8 @@ impl Compile<Kernel> for RingFixedpointMeanOp {
                     x,
                     axis,
                     scaling_factor
-                ))
+                )
+                .unwrap())
             }
             signature![(_) -> Ty::HostRing128Tensor] => {
                 let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
@@ -1635,7 +1638,8 @@ impl Compile<Kernel> for RingFixedpointMeanOp {
                     x,
                     axis,
                     scaling_factor
-                ))
+                )
+                .unwrap())
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -2270,7 +2274,12 @@ kernel! {
 }
 
 impl SaveOp {
-    fn kernel<S: RuntimeSession, O>(_sess: &S, _plc: &HostPlacement, _key: String, _x: O) -> Unit {
+    fn kernel<S: RuntimeSession, O>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _key: String,
+        _x: O,
+    ) -> Result<Unit> {
         unimplemented!() // TODO: Save the value into storage for the Async and Sync sessions to work.
     }
 }
@@ -2359,7 +2368,7 @@ impl LoadOp {
         _plc: &HostPlacement,
         _key: String,
         _query: String,
-    ) -> O {
+    ) -> Result<O> {
         unimplemented!() // TODO: Implement loading from storage for the Async and Sync sessions to work.
     }
 }

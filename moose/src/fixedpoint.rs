@@ -1,7 +1,7 @@
 //! Support for fixed-point arithmetic
 
 use crate::computation::*;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::*;
 use crate::kernels::*;
@@ -85,30 +85,30 @@ where
         x: Self,
         axis: Option<usize>,
         scaling_factor: <AbstractHostRingTensor<T> as Convert<HostFloat64Tensor>>::Scale,
-    ) -> AbstractHostRingTensor<T> {
-        let mean_weight = Self::compute_mean_weight(&x, &axis);
+    ) -> Result<AbstractHostRingTensor<T>> {
+        let mean_weight = Self::compute_mean_weight(&x, &axis)?;
         let encoded_weight = AbstractHostRingTensor::<T>::encode(&mean_weight, scaling_factor);
-        let operand_sum = x.sum(axis);
-        operand_sum.mul(encoded_weight)
+        let operand_sum = x.sum(axis)?;
+        Ok(operand_sum.mul(encoded_weight))
     }
 
-    fn compute_mean_weight(x: &Self, axis: &Option<usize>) -> HostFloat64Tensor {
+    fn compute_mean_weight(x: &Self, axis: &Option<usize>) -> Result<HostFloat64Tensor> {
         let shape: &[usize] = x.0.shape();
         if let Some(ax) = axis {
             let dim_len = shape[*ax] as f64;
-            HostFloat64Tensor::from(
+            Ok(HostFloat64Tensor::from(
                 Array::from_elem([], 1.0 / dim_len)
                     .into_dimensionality::<IxDyn>()
-                    .unwrap(),
-            )
+                    .map_err(|e| Error::KernelError(e.to_string()))?,
+            ))
         } else {
             let dim_prod: usize = std::iter::Product::product(shape.iter());
             let prod_inv = 1.0 / dim_prod as f64;
-            HostFloat64Tensor::from(
+            Ok(HostFloat64Tensor::from(
                 Array::from_elem([], prod_inv)
                     .into_dimensionality::<IxDyn>()
-                    .unwrap(),
-            )
+                    .map_err(|e| Error::KernelError(e.to_string()))?,
+            ))
         }
     }
 }
@@ -245,7 +245,7 @@ impl FixedpointAddOp {
         plc: &HostPlacement,
         x: FixedTensor<HostFixedT, RepFixedT>,
         y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> FixedTensor<HostFixedT, RepFixedT>
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementAdd<S, HostFixedT, HostFixedT, HostFixedT>,
@@ -260,7 +260,7 @@ impl FixedpointAddOp {
         };
 
         let z = plc.add(sess, &x, &y);
-        FixedTensor::Host(z)
+        Ok(FixedTensor::Host(z))
     }
 
     fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
@@ -268,7 +268,7 @@ impl FixedpointAddOp {
         plc: &ReplicatedPlacement,
         x: FixedTensor<HostFixedT, RepFixedT>,
         y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> FixedTensor<HostFixedT, RepFixedT>
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
@@ -286,7 +286,7 @@ impl FixedpointAddOp {
         };
 
         let z = plc.add(sess, &x, &y);
-        FixedTensor::Replicated(z)
+        Ok(FixedTensor::Replicated(z))
     }
 
     fn hostfixed_kernel<S: Session, HostRingT>(
@@ -294,17 +294,17 @@ impl FixedpointAddOp {
         plc: &HostPlacement,
         x: AbstractHostFixedTensor<HostRingT>,
         y: AbstractHostFixedTensor<HostRingT>,
-    ) -> AbstractHostFixedTensor<HostRingT>
+    ) -> Result<AbstractHostFixedTensor<HostRingT>>
     where
         HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.add(sess, &x.tensor, &y.tensor);
-        AbstractHostFixedTensor {
+        Ok(AbstractHostFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
-        }
+        })
     }
 
     fn repfixed_kernel<S: Session, RepRingT>(
@@ -312,17 +312,17 @@ impl FixedpointAddOp {
         plc: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
         y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> AbstractReplicatedFixedTensor<RepRingT>
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.add(sess, &x.tensor, &y.tensor);
-        AbstractReplicatedFixedTensor {
+        Ok(AbstractReplicatedFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
-        }
+        })
     }
 }
 
@@ -355,7 +355,7 @@ impl FixedpointSubOp {
         plc: &HostPlacement,
         x: FixedTensor<HostFixedT, RepFixedT>,
         y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> FixedTensor<HostFixedT, RepFixedT>
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementSub<S, HostFixedT, HostFixedT, HostFixedT>,
@@ -370,7 +370,7 @@ impl FixedpointSubOp {
         };
 
         let z = plc.sub(sess, &x, &y);
-        FixedTensor::Host(z)
+        Ok(FixedTensor::Host(z))
     }
 
     fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
@@ -378,7 +378,7 @@ impl FixedpointSubOp {
         plc: &ReplicatedPlacement,
         x: FixedTensor<HostFixedT, RepFixedT>,
         y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> FixedTensor<HostFixedT, RepFixedT>
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
@@ -396,7 +396,7 @@ impl FixedpointSubOp {
         };
 
         let z = plc.sub(sess, &x, &y);
-        FixedTensor::Replicated(z)
+        Ok(FixedTensor::Replicated(z))
     }
 
     fn hostfixed_kernel<S: Session, HostRingT>(
@@ -404,17 +404,17 @@ impl FixedpointSubOp {
         plc: &HostPlacement,
         x: AbstractHostFixedTensor<HostRingT>,
         y: AbstractHostFixedTensor<HostRingT>,
-    ) -> AbstractHostFixedTensor<HostRingT>
+    ) -> Result<AbstractHostFixedTensor<HostRingT>>
     where
         HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.sub(sess, &x.tensor, &y.tensor);
-        AbstractHostFixedTensor {
+        Ok(AbstractHostFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
-        }
+        })
     }
 
     fn repfixed_kernel<S: Session, RepRingT>(
@@ -422,17 +422,17 @@ impl FixedpointSubOp {
         plc: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
         y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> AbstractReplicatedFixedTensor<RepRingT>
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.sub(sess, &x.tensor, &y.tensor);
-        AbstractReplicatedFixedTensor {
+        Ok(AbstractReplicatedFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
-        }
+        })
     }
 }
 
@@ -465,7 +465,7 @@ impl FixedpointMulOp {
         plc: &HostPlacement,
         x: FixedTensor<HostFixedT, RepFixedT>,
         y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> FixedTensor<HostFixedT, RepFixedT>
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementMul<S, HostFixedT, HostFixedT, HostFixedT>,
@@ -480,7 +480,7 @@ impl FixedpointMulOp {
         };
 
         let z = with_context!(plc, sess, x * y);
-        FixedTensor::Host(z)
+        Ok(FixedTensor::Host(z))
     }
 
     fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
@@ -488,7 +488,7 @@ impl FixedpointMulOp {
         plc: &ReplicatedPlacement,
         x: FixedTensor<HostFixedT, RepFixedT>,
         y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> FixedTensor<HostFixedT, RepFixedT>
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
@@ -506,7 +506,7 @@ impl FixedpointMulOp {
         };
 
         let z = with_context!(plc, sess, x * y);
-        FixedTensor::Replicated(z)
+        Ok(FixedTensor::Replicated(z))
     }
 
     fn hostfixed_kernel<S: Session, HostRingT>(
@@ -514,17 +514,17 @@ impl FixedpointMulOp {
         plc: &HostPlacement,
         x: AbstractHostFixedTensor<HostRingT>,
         y: AbstractHostFixedTensor<HostRingT>,
-    ) -> AbstractHostFixedTensor<HostRingT>
+    ) -> Result<AbstractHostFixedTensor<HostRingT>>
     where
         HostPlacement: PlacementMul<S, HostRingT, HostRingT, HostRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.mul(sess, &x.tensor, &y.tensor);
-        AbstractHostFixedTensor {
+        Ok(AbstractHostFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision + y.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
-        }
+        })
     }
 
     fn repfixed_kernel<S: Session, RepRingT>(
@@ -532,7 +532,7 @@ impl FixedpointMulOp {
         plc: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
         y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> AbstractReplicatedFixedTensor<RepRingT>
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
@@ -540,11 +540,11 @@ impl FixedpointMulOp {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let setup = plc.gen_setup(sess);
         let z = plc.mul_setup(sess, &setup, &x.tensor, &y.tensor);
-        AbstractReplicatedFixedTensor {
+        Ok(AbstractReplicatedFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision + y.fractional_precision,
             integral_precision: u32::max(x.fractional_precision, y.fractional_precision),
-        }
+        })
     }
 }
 
@@ -577,7 +577,7 @@ impl FixedpointDotOp {
         plc: &HostPlacement,
         x: FixedTensor<HostFixedT, RepFixedT>,
         y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> FixedTensor<HostFixedT, RepFixedT>
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementDot<S, HostFixedT, HostFixedT, HostFixedT>,
@@ -592,7 +592,7 @@ impl FixedpointDotOp {
         };
 
         let z = plc.dot(sess, &x_revealed, &y_revealed);
-        FixedTensor::Host(z)
+        Ok(FixedTensor::Host(z))
     }
 
     fn fixed_on_rep_kernel<S: Session, HostFixedT, RepFixedT>(
@@ -600,7 +600,7 @@ impl FixedpointDotOp {
         plc: &ReplicatedPlacement,
         x: FixedTensor<HostFixedT, RepFixedT>,
         y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> FixedTensor<HostFixedT, RepFixedT>
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
@@ -618,7 +618,7 @@ impl FixedpointDotOp {
         };
 
         let z = plc.dot(sess, &x_shared, &y_shared);
-        FixedTensor::Replicated(z)
+        Ok(FixedTensor::Replicated(z))
     }
 
     fn hostfixed_kernel<S: Session, HostRingT>(
@@ -626,17 +626,17 @@ impl FixedpointDotOp {
         plc: &HostPlacement,
         x: AbstractHostFixedTensor<HostRingT>,
         y: AbstractHostFixedTensor<HostRingT>,
-    ) -> AbstractHostFixedTensor<HostRingT>
+    ) -> Result<AbstractHostFixedTensor<HostRingT>>
     where
         HostPlacement: PlacementDot<S, HostRingT, HostRingT, HostRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.dot(sess, &x.tensor, &y.tensor);
-        AbstractHostFixedTensor {
+        Ok(AbstractHostFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision + y.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
-        }
+        })
     }
 
     fn repfixed_kernel<S: Session, RepRingT>(
@@ -644,7 +644,7 @@ impl FixedpointDotOp {
         plc: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
         y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> AbstractReplicatedFixedTensor<RepRingT>
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementDotSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
@@ -652,11 +652,11 @@ impl FixedpointDotOp {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let setup = plc.gen_setup(sess);
         let z = plc.dot_setup(sess, &setup, &x.tensor, &y.tensor);
-        AbstractReplicatedFixedTensor {
+        Ok(AbstractReplicatedFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision + y.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
-        }
+        })
     }
 }
 
@@ -1035,7 +1035,7 @@ mod tests {
         let encoding_factor = 2u64.pow(16);
         let decoding_factor = 2u64.pow(32);
         let x = HostRing64Tensor::encode(&x_backing, encoding_factor);
-        let out = HostRing64Tensor::fixedpoint_mean(x, Some(0), encoding_factor);
+        let out = HostRing64Tensor::fixedpoint_mean(x, Some(0), encoding_factor).unwrap();
         let dec = HostRing64Tensor::decode(&out, decoding_factor);
         assert_eq!(
             dec,
@@ -1053,7 +1053,7 @@ mod tests {
         let encoding_factor = 2u64.pow(16);
         let decoding_factor = 2u64.pow(32);
         let x = HostRing64Tensor::encode(&x_backing, encoding_factor);
-        let out = HostRing64Tensor::fixedpoint_mean(x, None, encoding_factor);
+        let out = HostRing64Tensor::fixedpoint_mean(x, None, encoding_factor).unwrap();
         let dec = HostRing64Tensor::decode(&out, decoding_factor);
         assert_eq!(
             dec.0.into_shape((1,)).unwrap(),
