@@ -96,6 +96,9 @@ impl Session for SyncSession {
             RepAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepAnd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepXor(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepTruncPr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepMsb(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -773,11 +776,11 @@ impl Compile<SyncKernel> for Operator {
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
-            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
-            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) => {
+            | RepAnd(_) | RepXor(_) | RepNeg(_) | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_)
+            | RepDot(_) | RepFixedpointMean(_) | RepShl(_) | RepSum(_) | RepTruncPr(_)
+            | RepToAdt(_) | RepIndexAxis(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_)
+            | RepSlice(_) | RepBitDec(_) | FixedpointMul(_) | FixedpointDot(_)
+            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -874,9 +877,10 @@ impl Compile<AsyncKernel> for Operator {
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
-            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_) => {
+            | RepAnd(_) | RepXor(_) | RepNeg(_) | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_)
+            | RepDot(_) | RepFixedpointMean(_) | RepShl(_) | RepSum(_) | RepTruncPr(_)
+            | RepToAdt(_) | RepIndexAxis(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_)
+            | RepSlice(_) | RepBitDec(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
