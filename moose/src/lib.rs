@@ -129,7 +129,6 @@ macro_rules! derive_runtime_kernel {
             crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> _>>::Ok(Box::new(move |sess, plc, x0, x1, x2| {
                 $k(sess, plc, $($attr.clone()),+), x0, x1, x2
             }))
-<<<<<<< HEAD
         }
     };
 
@@ -155,8 +154,6 @@ macro_rules! derive_runtime_kernel {
                         })
                     )
                 }
-=======
->>>>>>> 444848b (cherrypick fix from logical layer branch)
         }
     };
 
@@ -171,12 +168,9 @@ macro_rules! derive_runtime_kernel {
     };
     (ternary, $k:expr, $self:ident) => {
         crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> _>>::Ok(Box::new($k))
-<<<<<<< HEAD
     };
     (variadic, $k:expr, $self:ident) => {
-        Box::new($k)
-=======
->>>>>>> 444848b (cherrypick fix from logical layer branch)
+        crate::error::Result::<Box<dyn Fn(&_, &_, Vec<_>) -> _>>::Ok(Box::new($k))
     };
 }
 
