@@ -267,91 +267,109 @@ mod tests {
         assert_eq!(actual_c.as_slice(), expected_c.as_slice());
     }
 
-    // #[test]
-    // fn test_aes_replicated() {
-    //     use aes::{Aes128, Block, NewBlockCipher};
-    //     use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
-    //     use crate::kernels::{PlacementShareSetup, PlacementSetupGen, PlacementReveal};
+    #[test]
+    fn test_aes_replicated() {
+        use crate::kernels::{PlacementReveal, PlacementSetupGen, PlacementShareSetup};
+        use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
+        use aes::{Aes128, Block, NewBlockCipher};
 
-    //     let k: Vec<u8> = vec![1; 128];
-    //     let m: Vec<u8> = vec![1; 128];
+        let k: Vec<u8> = vec![0; 128];
+        let m: Vec<u8> = vec![0; 128];
 
-    //     let expected_c = {
-    //         let k: Vec<u8> = k
-    //             .chunks(8)
-    //             .map(|c| {
-    //                 (c[0] << 7)
-    //                 + (c[1] << 6)
-    //                 + (c[2] << 5)
-    //                 + (c[3] << 4)
-    //                 + (c[4] << 3)
-    //                 + (c[5] << 2)
-    //                 + (c[6] << 1)
-    //                 + (c[7] << 0)
-    //             })
-    //             .collect();
+        let expected_c = {
+            let k: Vec<u8> = k
+                .chunks(8)
+                .map(|c| {
+                    (c[0] << 7)
+                        + (c[1] << 6)
+                        + (c[2] << 5)
+                        + (c[3] << 4)
+                        + (c[4] << 3)
+                        + (c[5] << 2)
+                        + (c[6] << 1)
+                        + (c[7] << 0)
+                })
+                .collect();
 
-    //         let m: Vec<u8> = m
-    //             .chunks(8)
-    //             .map(|c| {
-    //                 (c[0] << 7)
-    //                 + (c[1] << 6)
-    //                 + (c[2] << 5)
-    //                 + (c[3] << 4)
-    //                 + (c[4] << 3)
-    //                 + (c[5] << 2)
-    //                 + (c[6] << 1)
-    //                 + (c[7] << 0)
-    //             })
-    //             .collect();
+            let m: Vec<u8> = m
+                .chunks(8)
+                .map(|c| {
+                    (c[0] << 7)
+                        + (c[1] << 6)
+                        + (c[2] << 5)
+                        + (c[3] << 4)
+                        + (c[4] << 3)
+                        + (c[5] << 2)
+                        + (c[6] << 1)
+                        + (c[7] << 0)
+                })
+                .collect();
 
-    //         let mut block = Block::clone_from_slice(&m);
-    //         let key = GenericArray::from_slice(&k);
-    //         let cipher = Aes128::new(&key);
-    //         cipher.encrypt_block(&mut block);
-    //         block
-    //     };
+            let mut block = Block::clone_from_slice(&m);
+            let key = GenericArray::from_slice(&k);
+            let cipher = Aes128::new(&key);
+            cipher.encrypt_block(&mut block);
+            block
+        };
 
-    //     let actual_c = {
-    //         let host = HostPlacement { owner: Role::from("host") };
-    //         let rep = ReplicatedPlacement { owners: [Role::from("alice"), Role::from("bob"), Role::from("carole")] };
+        let actual_c = {
+            let host = HostPlacement {
+                owner: Role::from("host"),
+            };
+            let rep = ReplicatedPlacement {
+                owners: [Role::from("alice"), Role::from("bob"), Role::from("carole")],
+            };
 
-    //         let sess = SyncSession::default();
-    //         let setup = rep.gen_setup(&sess);
+            let sess = SyncSession::default();
+            let setup = rep.gen_setup(&sess);
 
-    //         let k: Vec<ReplicatedBitTensor> = k.iter().map(|b| {
-    //             rep.share(&sess, &setup, &HostBitTensor::from_slice_plc(&[*b], host.clone()))
-    //         }).collect();
-    //         let m: Vec<ReplicatedBitTensor> = m.iter().map(|b| {
-    //             rep.share(&sess, &setup, &HostBitTensor::from_slice_plc(&[*b], host.clone()))
-    //         }).collect();
+            let k: Vec<ReplicatedBitTensor> = k
+                .iter()
+                .map(|b| {
+                    rep.share(
+                        &sess,
+                        &setup,
+                        &HostBitTensor::from_slice_plc(&[*b], host.clone()),
+                    )
+                })
+                .collect();
+            let m: Vec<ReplicatedBitTensor> = m
+                .iter()
+                .map(|b| {
+                    rep.share(
+                        &sess,
+                        &setup,
+                        &HostBitTensor::from_slice_plc(&[*b], host.clone()),
+                    )
+                })
+                .collect();
 
-    //         // TODO impl Neg for replicated placements
-    //         let c_bits: Vec<u8> = aes(&sess, &rep, k, m)
-    //             .iter()
-    //             .map(|te| {
-    //                 let t = host.reveal(&sess, te);
-    //                 t.0[0] & 1
-    //             })
-    //             .collect();
+            // TODO impl Neg for replicated placements
+            let c_bits: Vec<u8> = aes(&sess, &rep, k, m)
+                .iter()
+                .map(|te| {
+                    let t = host.reveal(&sess, te);
+                    t.0[0] & 1
+                })
+                .collect();
 
-    //         let c: Vec<u8> = c_bits
-    //             .chunks(8)
-    //             .map(|c| {
-    //                 (c[0] << 7)
-    //                 + (c[1] << 6)
-    //                 + (c[2] << 5)
-    //                 + (c[3] << 4)
-    //                 + (c[4] << 3)
-    //                 + (c[5] << 2)
-    //                 + (c[6] << 1)
-    //                 + (c[7] << 0)
-    //             })
-    //             .collect();
+            let c: Vec<u8> = c_bits
+                .chunks(8)
+                .map(|c| {
+                    (c[0] << 7)
+                        + (c[1] << 6)
+                        + (c[2] << 5)
+                        + (c[3] << 4)
+                        + (c[4] << 3)
+                        + (c[5] << 2)
+                        + (c[6] << 1)
+                        + (c[7] << 0)
+                })
+                .collect();
 
-    //         c
-    //     };
+            c
+        };
 
-    //     assert_eq!(actual_c.as_slice(), expected_c.as_slice());
-    // }
+        assert_eq!(actual_c.as_slice(), expected_c.as_slice());
+    }
 }
