@@ -1506,11 +1506,11 @@ mod tests {
 
     #[test]
     fn test_fixed_rep_div64() {
-        let a: Vec<u64> = vec![1.0, 2.0, 2.0, 2.0]
+        let a: Vec<u64> = vec![1.0, 2.0, 2.0]
             .iter()
             .map(|item| encode(*item))
             .collect();
-        let b: Vec<u64> = vec![3.0, 7.0, 1.41, 0.0]
+        let b: Vec<u64> = vec![3.0, 7.0, 1.41]
             .iter()
             .map(|item| encode(*item))
             .collect();
@@ -1529,6 +1529,5 @@ mod tests {
             target[i] = encode(div_result);
         }
         test_rep_div64(a, b, target);
-        assert!(false, true);
     }
 }

@@ -1164,11 +1164,7 @@ impl FixedpointDivOp {
             .log2()
             .ceil() as u32;
 
-        println!("theta@ {:?}", theta);
-
-        let (player0, player1, player2) = rep.host_placements();
-
-        let x_st = x.tensor.clone();
+        let x_st = x.tensor;
         let y_st = y.tensor;
 
         let x_shape = rep.shape(sess, &x_st);
@@ -1181,20 +1177,9 @@ impl FixedpointDivOp {
             &y_st,
         );
 
-        println!("nominator@ {:?}", player0.reveal(sess, &x_st));
-        println!("denominator@ {:?}", player0.reveal(sess, &y_st));
-
-        println!("upshifted@ {:?}", player0.reveal(sess, &w));
-        println!("reciprocal@ {:?}", player0.reveal(sess, &w));
-
         let alpha = Constant::Float64(1.0);
         let rep_alpha = rep.fill_precision(sess, alpha, Some(2 * frac_precision), &x_shape);
 
-        println!("alpha@ {:?}", player0.reveal(sess, &rep_alpha));
-        println!(
-            "denominator * appr @ {:?}",
-            player0.reveal(sess, &rep.mul_setup(sess, &setup, &y_st, &w))
-        );
         let mut a = with_context!(
             rep,
             sess,
@@ -1204,18 +1189,12 @@ impl FixedpointDivOp {
         let mut b = rep.mul_setup(sess, &setup, &x_st, &w);
         b = rep.trunc_pr(sess, frac_precision, &b);
 
-        println!("first iteration a@ {:?}", player0.reveal(sess, &a));
-        println!("first iteration b@ {:?}", player0.reveal(sess, &b));
-
         // TODO [Yann] fix to return tuple (a, b)
         for _i in 0..theta {
             let x = rep.mul_setup(sess, &setup, &a, &a);
             let y = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
             a = rep.trunc_pr(sess, 2 * frac_precision, &x);
             b = rep.trunc_pr(sess, 2 * frac_precision, &y);
-
-            println!("a@ {:?}", player0.reveal(sess, &a));
-            println!("b@ {:?}", player0.reveal(sess, &b));
         }
         b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
         AbstractReplicatedFixedTensor {
