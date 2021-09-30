@@ -449,7 +449,11 @@ impl RepRevealOp {
         Ok(AbstractHostBitArray(x, PhantomData))
     }
 
-    fn ring_kernel<S: Session, R: Clone>(sess: &S, receiver: &HostPlacement, xe: RepTen<R>) -> Result<R>
+    fn ring_kernel<S: Session, R: Clone>(
+        sess: &S,
+        receiver: &HostPlacement,
+        xe: RepTen<R>,
+    ) -> Result<R>
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<S, R, R, R>,

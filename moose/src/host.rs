@@ -416,12 +416,12 @@ impl SliceOp {
         plc: &HostPlacement,
         slice_info: SliceInfo,
         x: cs!(HostShape),
-    ) -> cs!(HostShape)
+    ) -> Result<cs!(HostShape)>
     where
         HostShape: KnownType<S>,
         HostPlacement: PlacementSlice<S, cs!(HostShape), cs!(HostShape)>,
     {
-        plc.slice(sess, slice_info, &x)
+        Ok(plc.slice(sess, slice_info, &x))
     }
 }
 
@@ -505,8 +505,10 @@ impl HostDiagOp {
         plc: &HostPlacement,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>> {
-        let diag = x.0.into_diag().into_dimensionality::<IxDyn>()
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let diag =
+            x.0.into_diag()
+                .into_dimensionality::<IxDyn>()
+                .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostTensor::<T>(diag, plc.clone()))
     }
 
@@ -515,8 +517,10 @@ impl HostDiagOp {
         plc: &HostPlacement,
         x: AbstractHostRingTensor<T>,
     ) -> Result<AbstractHostRingTensor<T>> {
-        let diag = x.0.into_diag().into_dimensionality::<IxDyn>()
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let diag =
+            x.0.into_diag()
+                .into_dimensionality::<IxDyn>()
+                .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor::<T>(diag, plc.clone()))
     }
 
@@ -525,8 +529,10 @@ impl HostDiagOp {
         plc: &HostPlacement,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let diag = x.0.into_diag().into_dimensionality::<IxDyn>()
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let diag =
+            x.0.into_diag()
+                .into_dimensionality::<IxDyn>()
+                .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostBitTensor(diag, plc.clone()))
     }
 }
@@ -863,14 +869,18 @@ impl HostMeanOp {
             Some(i) => {
                 let reduced: Option<ArrayD<T>> = x.0.mean_axis(Axis(i as usize));
                 if reduced.is_none() {
-                    return Err(Error::KernelError("HostMeanOp cannot reduce over an empty axis.".to_string()))
+                    return Err(Error::KernelError(
+                        "HostMeanOp cannot reduce over an empty axis.".to_string(),
+                    ));
                 };
                 Ok(HostTensor::place(plc, reduced.unwrap()))
             }
             None => {
                 let mean = x.0.mean();
                 if mean.is_none() {
-                    return Err(Error::KernelError("HostMeanOp cannot reduce over an empty tensor.".to_string()))
+                    return Err(Error::KernelError(
+                        "HostMeanOp cannot reduce over an empty tensor.".to_string(),
+                    ));
                 };
                 let out = Array::from_elem([], mean.unwrap())
                     .into_dimensionality::<IxDyn>()
@@ -878,23 +888,6 @@ impl HostMeanOp {
                 Ok(HostTensor::place(plc, out))
             }
         }
-    }
-
-    // TODO: Make it generic for any FixedTensor
-    pub fn rep_kernel<S: Session>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        axis: Option<u32>,
-        x: cs!(Fixed128Tensor),
-    ) -> Result<cs!(Fixed128Tensor)>
-    where
-        Fixed128Tensor: KnownType<S>,
-        ReplicatedPlacement: PlacementMean<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-        ReplicatedPlacement: PlacementTruncPr<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        // TODO: grab scaling base and exp from somewhere else
-        let mean = plc.mean(sess, axis, 2, 27, &x);
-        Ok(plc.trunc_pr(sess, 27, &mean))
     }
 }
 
@@ -1155,7 +1148,7 @@ impl RingFixedpointDecodeOp {
         let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
         let x_upshifted: ArrayD<i128> = x.0.mapv(|xi| xi.0 as i128);
         let x_converted = x_upshifted.mapv(|el| el as f64);
-        HostTensor(x_converted / scaling_factor as f64, plc.clone())
+        Ok(HostTensor(x_converted / scaling_factor as f64, plc.clone()))
     }
 }
 
@@ -1382,7 +1375,9 @@ impl BitFillOp {
         shape: HostShape,
     ) -> Result<HostBitTensor> {
         if !(value == 0 || value == 1) {
-            return Err(Error::KernelError("Cannot fill HostBitTensor with non-binary value.".to_string()))
+            return Err(Error::KernelError(
+                "Cannot fill HostBitTensor with non-binary value.".to_string(),
+            ));
         }
         assert!(value == 0 || value == 1);
         let raw_shape = shape.0 .0;
@@ -1410,8 +1405,8 @@ impl BitSampleOp {
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        let arr = Array::from_shape_vec(ix, values)
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let arr =
+            Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostBitTensor(arr, plc.clone()))
     }
 }
@@ -1671,7 +1666,10 @@ impl BitExtractOp {
         bit_idx: usize,
         x: HostRing64Tensor,
     ) -> Result<HostBitTensor> {
-        Ok(HostBitTensor((x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8), plc.clone()))
+        Ok(HostBitTensor(
+            (x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8),
+            plc.clone(),
+        ))
     }
     fn kernel128<S: RuntimeSession>(
         _sess: &S,
@@ -1679,7 +1677,10 @@ impl BitExtractOp {
         bit_idx: usize,
         x: HostRing128Tensor,
     ) -> Result<HostBitTensor> {
-        Ok(HostBitTensor((x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8), plc.clone()))
+        Ok(HostBitTensor(
+            (x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8),
+            plc.clone(),
+        ))
     }
 }
 
@@ -2172,8 +2173,8 @@ impl RingSampleOp {
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        let raw_array = Array::from_shape_vec(ix, values)
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let raw_array =
+            Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor(raw_array, plc.clone()))
     }
 
@@ -2186,8 +2187,8 @@ impl RingSampleOp {
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        let arr = Array::from_shape_vec(ix, values)
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let arr =
+            Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor(arr, plc.clone()))
     }
 
@@ -2202,8 +2203,8 @@ impl RingSampleOp {
             .map(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
             .collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        let arr = Array::from_shape_vec(ix, values)
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let arr =
+            Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor(arr, plc.clone()))
     }
 
@@ -2216,8 +2217,8 @@ impl RingSampleOp {
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        let arr = Array::from_shape_vec(ix, values)
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let arr =
+            Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor(arr, plc.clone()))
     }
 }

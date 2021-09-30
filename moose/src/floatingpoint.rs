@@ -75,14 +75,14 @@ impl FloatingpointMeanOp {
         plc: &HostPlacement,
         axis: Option<u32>,
         x: FloatTensor<HostFloatT>,
-    ) -> FloatTensor<HostFloatT>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostPlacement: PlacementMean<S, HostFloatT, HostFloatT>,
     {
         let FloatTensor::Host(x) = x;
 
         let z = plc.mean(sess, axis, &x);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
@@ -103,14 +103,14 @@ impl FloatingpointSumOp {
         plc: &HostPlacement,
         axis: Option<u32>,
         x: FloatTensor<HostFloatT>,
-    ) -> FloatTensor<HostFloatT>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostPlacement: PlacementSum<S, HostFloatT, HostFloatT>,
     {
         let FloatTensor::Host(x) = x;
 
         let z = plc.sum(sess, axis, &x);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
@@ -131,14 +131,14 @@ impl FloatingpointAtLeast2DOp {
         plc: &HostPlacement,
         to_column_vector: bool,
         x: FloatTensor<HostFloatT>,
-    ) -> FloatTensor<HostFloatT>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostPlacement: PlacementAtLeast2D<S, HostFloatT, HostFloatT>,
     {
         let FloatTensor::Host(x) = x;
 
         let z = plc.at_least_2d(sess, to_column_vector, &x);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
@@ -301,14 +301,14 @@ impl FloatingpointOnesOp {
         sess: &S,
         plc: &HostPlacement,
         shape: cs!(HostShape),
-    ) -> FloatTensor<cs!(HostFloat64Tensor)>
+    ) -> Result<FloatTensor<cs!(HostFloat64Tensor)>>
     where
         HostShape: KnownType<S>,
         HostFloat64Tensor: KnownType<S>,
         HostPlacement: PlacementOnes<S, cs!(HostShape), cs!(HostFloat64Tensor)>,
     {
         let z = plc.ones(sess, &shape);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
@@ -329,13 +329,13 @@ impl FloatingpointExpandDimsOp {
         plc: &HostPlacement,
         axis: Vec<u32>,
         x: FloatTensor<HostFloatT>,
-    ) -> FloatTensor<HostFloatT>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostPlacement: PlacementExpandDims<S, HostFloatT, HostFloatT>,
     {
         let FloatTensor::Host(x) = x;
         let z = plc.expand_dims(sess, axis, &x);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
@@ -388,13 +388,13 @@ impl FloatingpointTransposeOp {
         sess: &S,
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT>,
-    ) -> FloatTensor<HostFloatT>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostPlacement: PlacementTranspose<S, HostFloatT, HostFloatT>,
     {
         let FloatTensor::Host(x) = x;
         let z = plc.transpose(sess, &x);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
@@ -413,13 +413,13 @@ impl FloatingpointInverseOp {
         sess: &S,
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT>,
-    ) -> FloatTensor<HostFloatT>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostPlacement: PlacementInverse<S, HostFloatT, HostFloatT>,
     {
         let FloatTensor::Host(x) = x;
         let z = plc.inverse(sess, &x);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
@@ -463,13 +463,13 @@ impl ShapeOp {
         sess: &S,
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT>,
-    ) -> cs!(HostShape)
+    ) -> Result<cs!(HostShape)>
     where
         HostShape: KnownType<S>,
         HostPlacement: PlacementShape<S, HostFloatT, cs!(HostShape)>,
     {
         let FloatTensor::Host(x) = x;
-        plc.shape(sess, &x)
+        Ok(plc.shape(sess, &x))
     }
 }
 
@@ -478,13 +478,13 @@ impl ConstantOp {
         sess: &S,
         plc: &HostPlacement,
         value: Constant,
-    ) -> FloatTensor<cs!(HostFloat64Tensor)>
+    ) -> Result<FloatTensor<cs!(HostFloat64Tensor)>>
     where
         HostFloat32Tensor: KnownType<S>,
         HostFloat64Tensor: KnownType<S>,
         HostPlacement: PlacementConstant<S, cs!(HostFloat64Tensor)>,
     {
         let z = plc.constant(sess, value);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
