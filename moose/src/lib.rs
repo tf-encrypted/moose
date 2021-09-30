@@ -1786,7 +1786,7 @@ macro_rules! moose_type {
             ) -> crate::error::Result<Self> {
                 match v {
                     crate::symbolic::Symbolic::Concrete(x) => Ok(x),
-                    _ => Err(crate::error::Error::Unexpected), // TODO err message
+                    _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
                 }
             }
         }
@@ -1872,7 +1872,7 @@ macro_rules! moose_type {
             ) -> crate::error::Result<Self> {
                 match v {
                     crate::symbolic::Symbolic::Concrete(x) => Ok(x),
-                    _ => Err(crate::error::Error::Unexpected), // TODO err message
+                    _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
                 }
             }
         }
