@@ -20,6 +20,11 @@ where
     P: PlacementNeg<S, BitT, BitT>,
 {
     let circuit = Circuit::try_from(AES_128).unwrap();
+
+    // TODO(Morten)
+    // everything below is essentially circuit independent and should
+    // be moved into eg an `eval` function on `Circuit`
+
     let mut wires: Vec<Option<BitT>> = vec![None; circuit.num_wires];
 
     assert_eq!(k.len(), 128);
@@ -181,8 +186,7 @@ mod tests {
 
     #[test]
     fn test_parse_aes() {
-        let circuit = Circuit::try_from(AES_128).unwrap();
-        // println!("Parsed circuit: {:?}", circuit);
+        let _circuit = Circuit::try_from(AES_128).unwrap();
     }
 
     #[test]
