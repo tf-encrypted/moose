@@ -1490,14 +1490,15 @@ mod tests {
                 };
                 let expected_result = AbstractHostRingTensor::from_raw_plc(zs,alice.clone());
                 let expected_f64 = Convert::decode(&expected_result, 2_u64.pow(15));
-
-                println!("Result from division: {:?}", opened_product);
                 let result = Convert::decode(&opened_product.tensor, 2_u64.pow(15));
 
-                assert_eq!(
-                    result, expected_f64
-                );
+                let diff = result - expected_f64;
+                let diff_squared = diff.clone() * diff;
 
+                let error: f64 = (1_f64) / (2_u64.pow(15) as f64);
+                let _: Vec<_> = diff_squared.0.iter().map(|item| {
+                    assert!(*item < error);
+                }).collect();
             }
         };
     }

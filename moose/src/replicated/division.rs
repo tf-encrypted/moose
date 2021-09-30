@@ -18,6 +18,7 @@ impl FixedpointDivOp {
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+        RepRingT: Ring,
 
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         RepRingT: Clone,
@@ -36,9 +37,9 @@ impl FixedpointDivOp {
 
         let k = int_precision + frac_precision;
 
-        assert!(2 * k + 1 <= 64);
-        let constant_quotient: f64 = 17_f64.log2();
+        assert!(2 * k as usize <= RepRingT::BitLength::VALUE);
 
+        let constant_quotient: f64 = 17_f64.log2();
         let theta = (((frac_precision + 1) as f64) / constant_quotient)
             .log2()
             .ceil() as u32;
@@ -55,6 +56,7 @@ impl FixedpointDivOp {
             frac_precision as usize,
             &y_st,
         );
+        // max_bits(w) = k
 
         let alpha = Constant::Float64(1.0);
         let rep_alpha = rep.fill_precision(sess, alpha, Some(2 * frac_precision), &x_shape);
@@ -64,8 +66,11 @@ impl FixedpointDivOp {
             sess,
             rep_alpha - &rep.mul_setup(sess, &setup, &y_st, &w)
         );
+        // max_bits(a) = max(2f, k)
 
         let mut b = rep.mul_setup(sess, &setup, &x_st, &w);
+
+        // no need to truncate with 2f since w is already truncated
         b = rep.trunc_pr(sess, frac_precision, &b);
 
         // TODO [Yann] fix to return tuple (a, b)
@@ -76,8 +81,10 @@ impl FixedpointDivOp {
             b = rep.trunc_pr(sess, 2 * frac_precision, &y);
         }
         b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
+        b = rep.trunc_pr(sess, 2 * frac_precision, &b);
+
         AbstractReplicatedFixedTensor {
-            tensor: rep.trunc_pr(sess, 2 * frac_precision, &b),
+            tensor: b,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
             fractional_precision: x.fractional_precision,
         }
