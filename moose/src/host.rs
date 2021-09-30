@@ -374,6 +374,17 @@ impl ShapeOp {
         let raw_shape = RawShape(x.0.shape().into());
         HostShape(raw_shape, plc.clone())
     }
+
+    pub(crate) fn hostencfixed_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostEncFixed128Tensor,
+    ) -> HostShape
+    where
+        HostPlacement: PlacementShape<S, HostRing128Tensor, HostShape>,
+    {
+        plc.shape(sess, &x.tensor)
+    }
 }
 
 modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat32Tensor) -> HostFloat32Tensor, HostAtLeast2DOp);
@@ -1742,6 +1753,22 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct HostEncFixed128Tensor {
+    pub tensor: HostRing128Tensor, // TODO
+    pub precision: u32,
+}
+
+moose_type!(HostEncFixed128Tensor);
+
+impl Placed for HostEncFixed128Tensor {
+    type Placement = Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.tensor.placement()?.into())
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostFixedTensor<HostRingT> {
     pub tensor: HostRingT,
     pub precision: u32,
@@ -1838,27 +1865,6 @@ where
                 AbstractHostRingTensor(x.0, self.clone())
             }
         }
-    }
-}
-
-kernel! {
-    HostAesDecryptOp,
-    [
-        (HostPlacement, (HostBitArray128, HostBitArray128) -> HostBitArray128 => [runtime] Self::kernel),
-    ]
-}
-
-impl HostAesDecryptOp {
-    fn kernel<S: Session>(
-        sess: &S,
-        plc: &HostPlacement,
-        key: HostBitArray128,
-        c: HostBitArray128,
-    ) -> HostBitArray128 {
-        // use crate::circuits::bristol_fashion::aes;
-        // let m = aes(sess, plc, key, c);
-        // m
-        unimplemented!()
     }
 }
 

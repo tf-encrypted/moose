@@ -121,7 +121,7 @@ impl Session for SyncSession {
             AdtReveal(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostAesDecrypt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            AesDecrypt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Constant(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Input(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -311,6 +311,10 @@ pub trait PlacementShape<S: Session, T, ShapeT> {
 
 pub trait PlacementReshape<S: Session, T, ShapeT, O> {
     fn reshape(&self, sess: &S, x: &T, shape: &ShapeT) -> O;
+}
+
+pub trait PlacementDecrypt<S: Session, T, O> {
+    fn decrypt(&self, sess: &S, c: &T) -> O;
 }
 
 pub trait PlacementKeyGen<S: Session, KeyT> {
@@ -730,7 +734,7 @@ impl Compile<SyncKernel> for Operator {
             BitSampleSeeded(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
-            BitNeg(op) => unimplemented!(),
+            BitNeg(_) => unimplemented!(),
             PrimDeriveSeed(op) => Compile::<SyncKernel>::compile(op, ctx),
             PrimPrfKeyGen(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -765,7 +769,7 @@ impl Compile<SyncKernel> for Operator {
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO
-            HostAesDecrypt(_) => unimplemented!(),
+            AesDecrypt(_) => unimplemented!(),
             HostIndexAxis(_) => unimplemented!(),
             HostBitDec(_) => unimplemented!(),
             HostShlDim(_) => unimplemented!(),
@@ -836,7 +840,7 @@ impl Compile<AsyncKernel> for Operator {
             BitSampleSeeded(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            BitNeg(op) => unimplemented!(),
+            BitNeg(_) => unimplemented!(),
             PrimDeriveSeed(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimPrfKeyGen(op) => Compile::<AsyncKernel>::compile(op, ctx),
             AtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
@@ -854,7 +858,7 @@ impl Compile<AsyncKernel> for Operator {
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO implement below (needed until we switch to new framework for execution)
-            HostAesDecrypt(_) => unimplemented!(),
+            AesDecrypt(_) => unimplemented!(),
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
             | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostShlDim(_) | HostSqrt(_)

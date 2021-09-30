@@ -12,7 +12,6 @@ use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
 use std::num::Wrapping;
 use std::ops::Mul;
 

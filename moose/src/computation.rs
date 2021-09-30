@@ -4,7 +4,7 @@ use crate::additive::{
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::{
+use crate::host::{HostEncFixed128Tensor,
     HostBitArray128, HostBitArray64, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
     HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor,
     HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostUint16Tensor,
@@ -434,6 +434,7 @@ values![
     AdditiveRing64Tensor,
     AdditiveRing128Tensor,
     AdditiveShape,
+    HostEncFixed128Tensor,
 ];
 
 // A macros to define something common for all the possible values
@@ -837,7 +838,7 @@ operators![
     Shape,
     PrimDeriveSeed,
     PrimPrfKeyGen,
-    HostAesDecrypt,
+    AesDecrypt,
     AtLeast2D,
     Slice,
     Ones,
@@ -1246,7 +1247,7 @@ pub struct PrimPrfKeyGenOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct HostAesDecryptOp {
+pub struct AesDecryptOp {
     pub sig: Signature,
 }
 

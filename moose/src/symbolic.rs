@@ -178,7 +178,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RingFill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepFill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            HostAesDecrypt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            AesDecrypt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitXor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitAnd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitNeg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

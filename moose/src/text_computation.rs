@@ -1299,7 +1299,7 @@ impl ToTextual for Operator {
             Div(op) => op.to_textual(),
             BitXor(op) => op.to_textual(),
             BitAnd(op) => op.to_textual(),
-            BitNeg(op) => unimplemented!(),
+            BitNeg(_) => unimplemented!(),
             BitFill(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
             HostAdd(op) => op.to_textual(),
@@ -1342,7 +1342,7 @@ impl ToTextual for Operator {
             BitSampleSeeded(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
-            HostAesDecrypt(op) => unimplemented!(),
+            AesDecrypt(_) => unimplemented!(),
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
             FixedpointAdd(op) => op.to_textual(),
@@ -1789,6 +1789,7 @@ impl ToTextual for Ty {
             Ty::Fixed128Tensor => "Fixed128Tensor".to_string(),
             Ty::Float32Tensor => "Float32Tensor".to_string(),
             Ty::Float64Tensor => "Float64Tensor".to_string(),
+            Ty::HostEncFixed128Tensor => unimplemented!(),
         }
     }
 }
@@ -1845,6 +1846,7 @@ impl ToTextual for Value {
             | Value::AdditiveRing128Tensor(_) => {
                 unimplemented!("Unsupported Value variant: {:?}", self)
             }
+            Value::HostEncFixed128Tensor(_) => unimplemented!(),
         }
     }
 }
