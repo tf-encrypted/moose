@@ -1850,11 +1850,14 @@ kernel! {
 
 impl HostAesDecryptOp {
     fn kernel<S: Session>(
-        _sess: &S,
+        sess: &S,
         plc: &HostPlacement,
         key: HostBitArray128,
         c: HostBitArray128,
     ) -> HostBitArray128 {
+        // use crate::circuits::bristol_fashion::aes;
+        // let m = aes(sess, plc, key, c);
+        // m
         unimplemented!()
     }
 }
