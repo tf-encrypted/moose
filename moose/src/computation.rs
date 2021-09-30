@@ -109,13 +109,14 @@ impl std::fmt::Display for SessionId {
 impl TryFrom<&str> for SessionId {
     type Error = Error;
     fn try_from(s: &str) -> Result<SessionId> {
+        sodiumoxide::init().expect("failed to initialize sodiumoxide");
         let digest = generichash::hash(s.as_bytes(), Some(TAG_BYTES), None)
             .unwrap_or_else(|_| panic!("failed to hash session ID: {}", s)); // looks a little weird, but it's what clippy said to do
         let mut raw_hash = [0u8; TAG_BYTES];
         raw_hash.copy_from_slice(digest.as_ref());
         let sid = SessionId {
             logical: s.to_string(),
-            secure: raw_hash, // TODO: set secure by hashing logical
+            secure: raw_hash,
         };
         Ok(sid)
     }
@@ -130,8 +131,10 @@ impl SessionId {
         let mut raw = [0; TAG_BYTES];
         sodiumoxide::init().expect("failed to initialize sodiumoxide");
         sodiumoxide::randombytes::randombytes_into(&mut raw);
+        let hex_vec: Vec<String> = raw.iter().map(|byte| format!("{:02X}", byte)).collect();
+        let hex_string = hex_vec.join("");
         SessionId {
-            logical: "<RANDOM>".to_string(),
+            logical: hex_string,
             secure: raw,
         }
     }
