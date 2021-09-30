@@ -69,23 +69,6 @@ impl<N> CanonicalType
     type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
 }
 
-// impl SymbolicType for ReplicatedBitArray128 {
-//     type Type =
-//         Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N128>>;
-// }
-
-// impl CanonicalType for AbstractReplicatedBitArray<ReplicatedBitTensor, N128> {
-//     type Type = Self;
-// }
-
-// impl CanonicalType for AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N128> {
-//     type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N128>;
-// }
-
-// impl CanonicalType for <AbstractReplicatedBitArray<ReplicatedBitTensor, N128> as SymbolicType>::Type {
-//     type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N128>;
-// }
-
 impl<RepBitT: Placed, N> From<AbstractReplicatedBitArray<RepBitT, N>>
     for Symbolic<AbstractReplicatedBitArray<RepBitT, N>>
 where
@@ -1121,90 +1104,6 @@ impl RepDotOp {
     }
 }
 
-impl FixedpointDivOp {
-    pub fn rep_rep_kernel<S: Session, RepRingT, HostRingT>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> st!(AbstractReplicatedFixedTensor<RepRingT>)
-    where
-        AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
-        <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
-        AbstractReplicatedFixedTensor<RepRingT>: Into<st!(AbstractReplicatedFixedTensor<RepRingT>)>,
-        ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
-        ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), RepRingT>,
-        ReplicatedPlacement: ApproximateReciprocal<S, S::ReplicatedSetup, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
-
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        RepRingT: Clone,
-        ReplicatedShape: KnownType<S>,
-
-        HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
-        HostRingT: std::fmt::Debug,
-    {
-        let setup = rep.gen_setup(sess);
-
-        assert_eq!(x.integral_precision, y.integral_precision);
-        assert_eq!(x.fractional_precision, y.fractional_precision);
-
-        let int_precision = x.integral_precision;
-        let frac_precision = x.fractional_precision;
-
-        let k = int_precision + frac_precision;
-
-        assert!(2 * k + 1 <= 64);
-        let constant_quotient: f64 = 17_f64.log2();
-
-        let theta = (((frac_precision + 1) as f64) / constant_quotient)
-            .log2()
-            .ceil() as u32;
-
-        let x_st = x.tensor;
-        let y_st = y.tensor;
-
-        let x_shape = rep.shape(sess, &x_st);
-
-        let w = rep.approximate_reciprocal(
-            sess,
-            &setup,
-            int_precision as usize,
-            frac_precision as usize,
-            &y_st,
-        );
-
-        let alpha = Constant::Float64(1.0);
-        let rep_alpha = rep.fill_precision(sess, alpha, Some(2 * frac_precision), &x_shape);
-
-        let mut a = with_context!(
-            rep,
-            sess,
-            rep_alpha - &rep.mul_setup(sess, &setup, &y_st, &w)
-        );
-
-        let mut b = rep.mul_setup(sess, &setup, &x_st, &w);
-        b = rep.trunc_pr(sess, frac_precision, &b);
-
-        // TODO [Yann] fix to return tuple (a, b)
-        for _i in 0..theta {
-            let x = rep.mul_setup(sess, &setup, &a, &a);
-            let y = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
-            a = rep.trunc_pr(sess, 2 * frac_precision, &x);
-            b = rep.trunc_pr(sess, 2 * frac_precision, &y);
-        }
-        b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
-        AbstractReplicatedFixedTensor {
-            tensor: rep.trunc_pr(sess, 2 * frac_precision, &b),
-            integral_precision: u32::max(x.integral_precision, y.integral_precision),
-            fractional_precision: x.fractional_precision,
-        }
-        .into()
-    }
-}
 
 modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepFixedpointMeanOp);
 modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepFixedpointMeanOp);
@@ -2983,47 +2882,6 @@ mod tests {
     fn test_rep_add_128(#[case] x: ArrayD<u128>, #[case] y: ArrayD<u128>, #[case] z: ArrayD<u128>) {
         test_rep_add128(x, y, z);
     }
-
-    // // TODO (Yann) check if we should use rep_binary_func_test macro instead to test division.
-    // macro_rules! rep_div_test {
-    //     ($func_name:ident, $tt: ident) => {
-    //         fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
-    //             let alice = HostPlacement {
-    //                 owner: "alice".into(),
-    //             };
-    //             let rep = ReplicatedPlacement {
-    //                 owners: ["alice".into(), "bob".into(), "carole".into()],
-    //             };
-
-    //             let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
-    //             let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
-
-    //             let sess = SyncSession::default();
-    //             let setup = rep.gen_setup(&sess);
-
-    //             let x_shared = rep.share(&sess, &setup, &x);
-    //             let y_shared = rep.share(&sess, &setup, &y);
-
-    //             let sum = rep.div_setup(&sess, &setup, &x_shared, &y_shared);
-    //             let opened_sum = alice.reveal(&sess, &sum);
-    //             assert_eq!(
-    //                 opened_sum,
-    //                 AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
-    //             );
-    //         }
-    //     };
-    // }
-
-    // rep_div_test!(test_rep_div64, u64);
-
-    // #[rstest]
-    // #[case(array![1_u64, 2, 3].into_dyn(),
-    //     array![1_u64, 2, 3].into_dyn(),
-    //     array![1_u64, 1, 1].into_dyn())
-    // ]
-    // fn test_rep_div_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u64>, #[case] z: ArrayD<u64>) {
-    //     test_rep_div64(x, y, z);
-    // }
 
     macro_rules! rep_binary_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {
