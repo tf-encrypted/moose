@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Serialize, thiserror::Error)]
 pub enum Error {
     #[error("Unexpected error")]
-    Unexpected,
+    Unexpected(Option<String>),
 
     #[error("Kernel operand was unavailable")]
     OperandUnavailable,

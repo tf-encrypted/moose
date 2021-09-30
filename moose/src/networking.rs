@@ -53,11 +53,11 @@ impl SyncNetworking for LocalSyncNetworking {
         let key = format!("{}/{}", session_id, rendezvous_key);
         let mut store = self.store.write().map_err(|e| {
             tracing::error!("failed to get write lock: {:?}", e);
-            Error::Unexpected
+            Error::Unexpected(None)
         })?;
         if store.contains_key(&key) {
             tracing::error!("value has already been sent");
-            return Err(Error::Unexpected);
+            return Err(Error::Unexpected(None));
         }
         store.insert(key, val.clone());
         Ok(())
@@ -72,11 +72,11 @@ impl SyncNetworking for LocalSyncNetworking {
         let key = format!("{}/{}", session_id, rendezvous_key);
         let store = self.store.read().map_err(|e| {
             tracing::error!("failed to get read lock: {:?}", e);
-            Error::Unexpected
+            Error::Unexpected(None)
         })?;
         store.get(&key).cloned().ok_or_else(|| {
             tracing::error!("Key not found in store");
-            Error::Unexpected
+            Error::Unexpected(None)
         })
     }
 }
@@ -100,7 +100,7 @@ impl AsyncNetworking for LocalAsyncNetworking {
         let mut store = self.store.write().await;
         if store.contains_key(&key) {
             tracing::error!("value has already been sent");
-            return Err(Error::Unexpected);
+            return Err(Error::Unexpected(None));
         }
         store.insert(key, val.clone());
         Ok(())

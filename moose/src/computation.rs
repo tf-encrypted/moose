@@ -66,7 +66,7 @@ impl TryFrom<&str> for RendezvousKey {
     fn try_from(s: &str) -> Result<RendezvousKey> {
         let s_bytes = s.as_bytes();
         if s_bytes.len() > TAG_BYTES {
-            return Err(Error::Unexpected); // TODO more helpful error message
+            return Err(Error::Unexpected(None)); // TODO more helpful error message
         }
         let mut raw: [u8; TAG_BYTES] = [0; TAG_BYTES];
         for (idx, byte) in s_bytes.iter().enumerate() {
@@ -109,9 +109,18 @@ impl std::fmt::Display for SessionId {
 impl TryFrom<&str> for SessionId {
     type Error = Error;
     fn try_from(s: &str) -> Result<SessionId> {
-        sodiumoxide::init().expect("failed to initialize sodiumoxide");
-        let digest = generichash::hash(s.as_bytes(), Some(TAG_BYTES), None)
-            .unwrap_or_else(|_| panic!("failed to hash session ID: {}", s)); // looks a little weird, but it's what clippy said to do
+        sodiumoxide::init().map_err(|e| {
+            crate::error::Error::Unexpected(Some(format!(
+                "failed to initialize sodiumoxide: {:?}",
+                e
+            )))
+        })?;
+        let digest = generichash::hash(s.as_bytes(), Some(TAG_BYTES), None).map_err(|e| {
+            crate::error::Error::Unexpected(Some(format!(
+                "failed to hash session ID: {}: {:?}",
+                s, e
+            )))
+        })?;
         let mut raw_hash = [0u8; TAG_BYTES];
         raw_hash.copy_from_slice(digest.as_ref());
         let sid = SessionId {

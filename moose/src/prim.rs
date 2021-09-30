@@ -107,7 +107,7 @@ impl TryFrom<&[u8]> for SyncKey {
             }
             Ok(SyncKey(sync_key_bytes))
         } else {
-            Err(crate::error::Error::Unexpected) // TODO more helpful error message
+            Err(crate::error::Error::Unexpected(None)) // TODO more helpful error message
         }
     }
 }

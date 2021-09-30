@@ -74,7 +74,7 @@ where
     fn try_from(v: Symbolic<AbstractReplicatedBitArray<RepBitT, N>>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
+            _ => Err(Error::Unexpected(None)), // TODO err message
         }
     }
 }
