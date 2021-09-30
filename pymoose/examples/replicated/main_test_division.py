@@ -30,7 +30,7 @@ class ReplicatedExample(unittest.TestCase):
                 x = edsl.cast(x, dtype=FIXED)
 
             with bob:
-                y = edsl.constant(np.array([1, 1], dtype=np.float64))
+                y = edsl.constant(np.array([2, 2], dtype=np.float64))
                 y = edsl.cast(y, dtype=FIXED)
 
             with rep:
@@ -79,7 +79,7 @@ class ReplicatedExample(unittest.TestCase):
             arguments={},
         )
 
-        print("Done")
+        print("Done",  runtime.read_value_from_storage("dave", "res"))
 
 
 if __name__ == "__main__":

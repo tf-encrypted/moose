@@ -255,6 +255,7 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         passes: Vec<String>,
     ) -> PyResult<MooseComputation> {
         let computation = create_computation_graph_from_py_bytes(computation);
+        println!("Computation {:?}", computation);
         let passes = into_pass(&passes).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         let computation = compile_passes(&computation, &passes)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
