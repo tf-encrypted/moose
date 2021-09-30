@@ -12,7 +12,7 @@ use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor, Session};
 
 const AES_128: &[u8] = include_bytes!("aes_128.txt");
 
-pub fn aes<S: Session, P, BitT>(sess: &S, plc: &P, k: Vec<BitT>, m: Vec<BitT>) -> Vec<BitT>
+pub fn aes<S: Session, P, BitT>(sess: &S, plc: &P, key: Vec<BitT>, block: Vec<BitT>) -> Vec<BitT>
 where
     BitT: Clone,
     P: PlacementXor<S, BitT, BitT, BitT>,
@@ -27,13 +27,13 @@ where
 
     let mut wires: Vec<Option<BitT>> = vec![None; circuit.num_wires];
 
-    assert_eq!(k.len(), 128);
-    for (i, val) in k.into_iter().enumerate() {
+    assert_eq!(key.len(), 128);
+    for (i, val) in key.into_iter().enumerate() {
         *wires.get_mut(i).unwrap() = Some(val);
     }
 
-    assert_eq!(m.len(), 128);
-    for (i, val) in m.into_iter().enumerate() {
+    assert_eq!(block.len(), 128);
+    for (i, val) in block.into_iter().enumerate() {
         *wires.get_mut(i + 128).unwrap() = Some(val);
     }
 
@@ -208,7 +208,7 @@ mod tests {
                         + (c[4] << 3)
                         + (c[5] << 2)
                         + (c[6] << 1)
-                        + (c[7] << 0)
+                        + (c[7])
                 })
                 .collect();
 
@@ -222,13 +222,13 @@ mod tests {
                         + (c[4] << 3)
                         + (c[5] << 2)
                         + (c[6] << 1)
-                        + (c[7] << 0)
+                        + (c[7])
                 })
                 .collect();
 
             let mut block = Block::clone_from_slice(&m);
             let key = GenericArray::from_slice(&k);
-            let cipher = Aes128::new(&key);
+            let cipher = Aes128::new(key);
             cipher.encrypt_block(&mut block);
             block
         };
@@ -261,7 +261,7 @@ mod tests {
                         + (c[4] << 3)
                         + (c[5] << 2)
                         + (c[6] << 1)
-                        + (c[7] << 0)
+                        + (c[7])
                 })
                 .collect();
 
@@ -291,7 +291,7 @@ mod tests {
                         + (c[4] << 3)
                         + (c[5] << 2)
                         + (c[6] << 1)
-                        + (c[7] << 0)
+                        + (c[7])
                 })
                 .collect();
 
@@ -305,13 +305,13 @@ mod tests {
                         + (c[4] << 3)
                         + (c[5] << 2)
                         + (c[6] << 1)
-                        + (c[7] << 0)
+                        + (c[7])
                 })
                 .collect();
 
             let mut block = Block::clone_from_slice(&m);
             let key = GenericArray::from_slice(&k);
-            let cipher = Aes128::new(&key);
+            let cipher = Aes128::new(key);
             cipher.encrypt_block(&mut block);
             block
         };
@@ -367,7 +367,7 @@ mod tests {
                         + (c[4] << 3)
                         + (c[5] << 2)
                         + (c[6] << 1)
-                        + (c[7] << 0)
+                        + (c[7])
                 })
                 .collect();
 
