@@ -1129,7 +1129,6 @@ impl FixedpointDivOp {
         y: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> st!(AbstractReplicatedFixedTensor<RepRingT>)
     where
-        // RepRingT: CanonicalType,
         AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
         <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
         AbstractReplicatedFixedTensor<RepRingT>: Into<st!(AbstractReplicatedFixedTensor<RepRingT>)>,
@@ -1157,9 +1156,13 @@ impl FixedpointDivOp {
         let frac_precision = x.fractional_precision;
 
         let k = int_precision + frac_precision;
+
+        assert!(2 * k + 1 <= 64);
         let constant_quotient: f64 = 17_f64.log2();
 
-        let theta = (((frac_precision + 1) as f64) / constant_quotient).log2().ceil() as u32;
+        let theta = (((frac_precision + 1) as f64) / constant_quotient)
+            .log2()
+            .ceil() as u32;
 
         println!("theta@ {:?}", theta);
 
@@ -1184,12 +1187,19 @@ impl FixedpointDivOp {
         println!("upshifted@ {:?}", player0.reveal(sess, &w));
         println!("reciprocal@ {:?}", player0.reveal(sess, &w));
 
-        let alpha = Constant::Float64(2.0);
+        let alpha = Constant::Float64(1.0);
         let rep_alpha = rep.fill_precision(sess, alpha, Some(2 * frac_precision), &x_shape);
 
         println!("alpha@ {:?}", player0.reveal(sess, &rep_alpha));
-        println!("denominator * appr @ {:?}", player0.reveal(sess, &rep.mul_setup(sess, &setup, &y_st, &w)));
-        let mut a = with_context!(rep, sess, rep_alpha - &rep.mul_setup(sess, &setup, &y_st, &w));
+        println!(
+            "denominator * appr @ {:?}",
+            player0.reveal(sess, &rep.mul_setup(sess, &setup, &y_st, &w))
+        );
+        let mut a = with_context!(
+            rep,
+            sess,
+            rep_alpha - &rep.mul_setup(sess, &setup, &y_st, &w)
+        );
 
         let mut b = rep.mul_setup(sess, &setup, &x_st, &w);
         b = rep.trunc_pr(sess, frac_precision, &b);
@@ -1199,8 +1209,8 @@ impl FixedpointDivOp {
 
         // TODO [Yann] fix to return tuple (a, b)
         for _i in 0..theta {
-            let x = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
-            let y = rep.mul_setup(sess, &setup, &a, &a);
+            let x = rep.mul_setup(sess, &setup, &a, &a);
+            let y = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
             a = rep.trunc_pr(sess, 2 * frac_precision, &x);
             b = rep.trunc_pr(sess, 2 * frac_precision, &y);
 

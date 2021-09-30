@@ -1157,7 +1157,7 @@ mod tests {
     fn new_host_fixed_tensor<HostRingT>(x: HostRingT) -> AbstractHostFixedTensor<HostRingT> {
         AbstractHostFixedTensor {
             tensor: x,
-            fractional_precision: 20,
+            fractional_precision: 15,
             integral_precision: 8,
         }
     }
@@ -1489,10 +1489,10 @@ mod tests {
                     _ => panic!("Should not produce an unreplicated tensor on a replicated placement"),
                 };
                 let expected_result = AbstractHostRingTensor::from_raw_plc(zs,alice.clone());
-                let expected_f64 = Convert::decode(&expected_result, 2_u64.pow(20));
+                let expected_f64 = Convert::decode(&expected_result, 2_u64.pow(15));
 
                 println!("Result from division: {:?}", opened_product);
-                let result = Convert::decode(&opened_product.tensor, 2_u64.pow(20));
+                let result = Convert::decode(&opened_product.tensor, 2_u64.pow(15));
 
                 assert_eq!(
                     result, expected_f64
@@ -1506,23 +1506,29 @@ mod tests {
 
     #[test]
     fn test_fixed_rep_div64() {
-        let a: Vec<u64> = vec![1.0].iter().map(|item| encode(*item)).collect();
-        let b: Vec<u64> = vec![3.0].iter().map(|item| encode(*item)).collect();
+        let a: Vec<u64> = vec![1.0, 2.0, 2.0, 2.0]
+            .iter()
+            .map(|item| encode(*item))
+            .collect();
+        let b: Vec<u64> = vec![3.0, 7.0, 1.41, 0.0]
+            .iter()
+            .map(|item| encode(*item))
+            .collect();
 
         fn encode(item: f64) -> u64 {
-            (2_i64.pow(20) as f64 * item) as u64
+            (2_i64.pow(15) as f64 * item) as u64
         }
 
         let a = Array::from_shape_vec(IxDyn(&[a.len()]), a).unwrap();
         let b = Array::from_shape_vec(IxDyn(&[b.len()]), b).unwrap();
 
         let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
-
         // fixed(res) = (a/b) * 2^27
         for i in 0..a.len() {
-            let div_result =(a[i] as f64) / (b[i] as f64);
+            let div_result = (a[i] as f64) / (b[i] as f64);
             target[i] = encode(div_result);
         }
         test_rep_div64(a, b, target);
+        assert!(false, true);
     }
 }
