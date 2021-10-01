@@ -1731,8 +1731,8 @@ impl RepMsbOp {
     where
         RepRingT: Ring<BitLength = N>,
         RepBits<N>: KnownType<S>,
-        ReplicatedPlacement: PlacementBitDecSetup<S, SetupT, RepRingT, cs!(RepBits<N>)>,
-        ReplicatedPlacement: PlacementIndex<S, cs!(RepBits<N>), RepBitT>,
+        ReplicatedPlacement: PlacementBitDecSetup<S, SetupT, RepRingT, m!(RepBits<N>)>,
+        ReplicatedPlacement: PlacementIndex<S, m!(RepBits<N>), RepBitT>,
     {
         let bits = rep.bit_decompose(sess, &setup, &x);
         rep.index(sess, N::VALUE - 1, &bits)
@@ -1746,8 +1746,8 @@ impl RepMsbOp {
     ) -> RepRingT
     where
         ReplicatedBitTensor: KnownType<S>,
-        ReplicatedPlacement: PlacementMsb<S, SetupT, RepRingT, st!(ReplicatedBitTensor)>,
-        ReplicatedPlacement: PlacementRingInject<S, st!(ReplicatedBitTensor), RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, SetupT, RepRingT, m!(ReplicatedBitTensor)>,
+        ReplicatedPlacement: PlacementRingInject<S, m!(ReplicatedBitTensor), RepRingT>,
     {
         let x_bin = rep.msb(sess, &setup, &x);
         rep.ring_inject(sess, 0, &x_bin)
