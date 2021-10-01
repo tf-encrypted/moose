@@ -2,9 +2,9 @@ use crate::computation::*;
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::{HostEncFixed128Tensor, HostShape, HostFixed128Tensor};
-use crate::replicated::{ReplicatedFixed128Tensor};
+use crate::host::{HostEncFixed128Tensor, HostFixed128Tensor, HostShape};
 use crate::kernels::*;
+use crate::replicated::ReplicatedFixed128Tensor;
 use crate::symbolic::Symbolic;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -141,12 +141,21 @@ kernel! {
         (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::host_kernel),
         (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] Self::rep_kernel),
         (HostPlacement, (HostEncFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::host_fixed_kernel),
-        (ReplicatedPlacement, (HostEncFixed128Tensor) -> ReplicatedFixed128Tensor => [runtime] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (HostEncFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_fixed_kernel),
     ]
 }
 
 impl AesDecryptOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T, HostFixed128T, RepFixed128T>(
+    fn host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        EncFixed128T,
+        Float32T,
+        Float64T,
+        HostFixed128T,
+        RepFixed128T,
+    >(
         sess: &S,
         plc: &HostPlacement,
         c: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
@@ -164,7 +173,16 @@ impl AesDecryptOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T, HostFixed128T, RepFixed128T>(
+    fn rep_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        EncFixed128T,
+        Float32T,
+        Float64T,
+        HostFixed128T,
+        RepFixed128T,
+    >(
         sess: &S,
         plc: &ReplicatedPlacement,
         c: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
