@@ -14,12 +14,35 @@ macro_rules! st {
     };
 }
 
+/// Map a type to its canonical type
+///
+/// Using this macro requires adding the following trait bound:
+///   $t: CanonicalType
+///
+/// Examples:
+/// - c!(RepTen<HostBitTen>) -> RepTen<HostBiTTen>
+/// - c!(RepTen<Sym<HostBitTen>>) -> RepTen<HostBiTTen>
+/// - c!(Sym<RepTen<Sym<HostBitTen>>>) -> RepTen<HostBiTTen>
 macro_rules! c {
     ($t:ty) => {
         <$t as crate::computation::CanonicalType>::Type
     };
 }
 
+/// Map a _canonical_ type to its session-specific type
+///
+/// Using this macro required adding the following trait bound:
+///  $t: KnownType<S>
+///
+/// Note also that this is sometimes useful in conjection with `c!`:
+///   m!(c!(RepTen<HostRingT>))
+/// which then requires adding trait bounds:
+///   $t: CanonicalType
+///   <$t as CanonicalType>::Type: KnownType<S>
+///
+/// Examples:
+/// - m!(RepTen<HostBitTen>) in SyncSession -> RepTen<HostBitTen>
+/// - m!(RepTen<HostBitTen>) in SymbSession -> Sym<RepTen<Sym<HostBitTen>>>
 macro_rules! m {
     ($t:ty) => {
         <$t as KnownType<S>>::Type
@@ -688,7 +711,7 @@ macro_rules! symbolic_dispatch_kernel {
     };
 }
 
-/// Macros to define kernels for the Operators.
+/// Macros to define kernels for operators.
 ///
 /// Sample definition would be in this form:
 /// `
@@ -701,8 +724,14 @@ macro_rules! symbolic_dispatch_kernel {
 /// }
 /// `
 ///
-/// Kernel functions makred "runtime" are never used in symbolic contexts
-/// Kernel functions marked "hybrid" maybe be evaluated in symbolic contexts
+/// The following kernel flavours are supported. Note that the flavour only
+/// affects behaviour in symbolic sessions (and not in eg sync sessions)
+/// where it is used to determined whether the kernel function should be called
+/// or whether the operation should be added to the graph.
+/// - "runtime": never call the kernel function
+/// - "hybrid": use TryInto/Into to determine if kernel function should be called
+/// - "transparent": always call kernel function
+/// - "concrete": call kernel function on Symbolic::Concrete values
 macro_rules! kernel {
     /*
     Nullary
