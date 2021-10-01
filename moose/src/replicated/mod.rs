@@ -2224,87 +2224,71 @@ where
 }
 
 impl RingInjectOp {
-    pub(crate) fn rep_kernel<S: Session, ReplicatedRingT, ReplicatedBitT>(
+    pub(crate) fn rep_kernel<S: Session, RepT, ReplicatedBitT, BitT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         bit_idx: usize,
         x: ReplicatedBitT,
-    ) -> ReplicatedRingT
-where
-    //     AbstractReplicatedShape<ShapeT>: CanonicalType,
-    //     <AbstractReplicatedShape<ShapeT> as CanonicalType>::Type: KnownType<S>,
-
-    //     AdtTen<RingT>: CanonicalType,
-    //     <AdtTen<RingT> as CanonicalType>::Type: KnownType<S>,
-
-    //     AdtTen<BitT>: CanonicalType,
-    //     <AdtTen<BitT> as CanonicalType>::Type: KnownType<S>,
-
-        // RepTen<BitT>: CanonicalType,
-        // <RepTen<BitT> as CanonicalType>::Type: KnownType<S>,
-
-        // RepTen<RingT>: CanonicalType,
-        // <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
-
-    //     RepTen<BitT>: TryInto<st!(RepTen<BitT>)>,
-
-    //     HostPlacement:
-    //         PlacementShape<S, BitT, ShapeT>,
-
-    //     ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtTen<RingT>), st!(RepTen<RingT>)>,
-    //     AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtTen<RingT>, AdtTen<BitT>>,
-
-        // AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<BitT>), st!(AdtTen<BitT>)>,
-        // AdditivePlacement: PlacementAdd<S, st!(AdtTen<BitT>), st!(AdtTen<BitT>), st!(AdtTen<BitT>)>,
-        // AdditivePlacement: PlacementAdd<S, st!(AdtTen<RingT>), RingT, st!(AdtTen<RingT>)>,
-        // AdditivePlacement: PlacementMul<S, st!(AdtTen<RingT>), RingT, st!(AdtTen<RingT>)>,
-        // AdditivePlacement:
-        //     PlacementSub<S, st!(AdtTen<RingT>), st!(AdtTen<RingT>), st!(AdtTen<RingT>)>,
-        // AdditivePlacement: PlacementShl<S, st!(AdtTen<RingT>), st!(AdtTen<RingT>)>,
-        // HostPlacement: PlacementReveal<S, st!(AdtTen<BitT>), BitT>,
+    ) -> RepT
+    where
+        // ReplicatedPlacement: PlacementShape<S, ReplicatedBitT, AbstractReplicatedShape<ShapeT>>,
+        // ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<RingT>, RepTen<RingT>>,
+        // AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtTen<RingT>, AdtTen<BitT>>,
+        // AdditivePlacement: PlacementRepToAdt<S, ReplicatedBitT, AdtTen<BitT>>,
+        // AdditivePlacement: PlacementAdd<S, AdtTen<BitT>, AdtTen<BitT>, AdtTen<BitT>>,
+        // AdditivePlacement: PlacementAdd<S, AdtTen<RingT>, RingT, AdtTen<RingT>>,
+        // AdditivePlacement: PlacementMul<S, AdtTen<RingT>, RingT, AdtTen<RingT>>,
+        // AdditivePlacement: PlacementSub<S, AdtTen<RingT>, AdtTen<RingT>, AdtTen<RingT>>,
+        // AdditivePlacement: PlacementShl<S, AdtTen<RingT>, AdtTen<RingT>>,
+        // HostPlacement: PlacementReveal<S, AdtTen<BitT>, BitT>,
         // HostPlacement: PlacementRingInject<S, BitT, RingT>,
-
-        // AdtTen<RingT>: Into<st!(AdtTen<RingT>)>,
-        // AdtTen<BitT>: Into<st!(AdtTen<BitT>)>,
+        ReplicatedPlacement: PlacementShape<S, ReplicatedBitT, AbstractReplicatedShape<ShapeT>>,
+        ReplicatedPlacement: PlacementAdtToRep<S, RepT, RepT>,
+        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, RepT, BitT>,
+        AdditivePlacement: PlacementRepToAdt<S, ReplicatedBitT, BitT>,
+        AdditivePlacement: PlacementAdd<S, BitT, BitT, BitT>,
+        AdditivePlacement: PlacementAdd<S, RepT, RepT, RepT>,
+        AdditivePlacement: PlacementMul<S, RepT, RepT, RepT>,
+        AdditivePlacement: PlacementSub<S, RepT, RepT, RepT>,
+        AdditivePlacement: PlacementShl<S, RepT, RepT>,
+        HostPlacement: PlacementReveal<S, BitT, BitT>,
+        HostPlacement: PlacementRingInject<S, BitT, RepT>,
     {
-        unimplemented!()
-        // let (player0, player1, player2) = rep.host_placements();
+        let (player0, player1, player2) = rep.host_placements();
 
-        // let adt = AdditivePlacement {
-        //     owners: [player0.clone().owner, player1.owner],
-        // };
+        let adt = AdditivePlacement {
+            owners: [player0.clone().owner, player1.owner],
+        };
+        let provider = player2;
 
-        // let AbstractReplicatedRingTensor {
-        //     shares: [[x00, x10], [x11, x21], [x22, x02]],
-        // } = &x;
+        let x_shape = rep.shape(sess, &x);
+        let AbstractReplicatedShape {
+            shapes: [s0, _, s_provider],
+        } = x_shape;
+        // let ShapeT {
+        //     shapes: [s0, _, s_provider],
+        // } = x_shape;
 
-        // let provider = player2;
-        // let s_provider = provider.shape(sess, x22);
-        // let s0 = player0.shape(sess, x00);
+        // One could think to wrap this up into an additive shape for Hosts@(P0, P2)
+        // but the additive placement that generates a dabit is Hosts@(P0, P1)
+        // to avoid confusion the API corresponding gen_dabit takes two input shapes
+        // 1) s_provider - provider (dealer) shape
+        // 2) s_0 - shape that corresponds to the party expanding the seeds received from provider.
 
-        // // One could think to wrap this up into an additive shape for Hosts@(P0, P2)
-        // // but the additive placement that generates a dabit is Hosts@(P0, P1)
-        // // to avoid confusion the API corresponding gen_dabit takes two input shapes
-        // // 1) s_provider - provider (dealer) shape
-        // // 2) s_0 - shape that corresponds to the party expanding the seeds received from provider.
+        let (b_ring, b_bin) = adt.gen_dabit(sess, s_provider, s0, &provider);
 
-        // let (b_ring, b_bin): (AdtTen<RingT>, AdtTen<BitT>) = adt.gen_dabit(sess, s_provider, s0, &provider);
-        // let (b_ring, b_bin): (st!(AdtTen<RingT>), _) = (b_ring.into(), b_bin.into());
+        let x_adt = adt.rep_to_adt(sess, &x);
 
-        // rep.adt_to_rep(sess, &b_ring)
-        // let x_st: st!(RepTen<BitT>) = x.try_into().ok().unwrap();
-        // let x_adt = adt.rep_to_adt(sess, &x_st);
-
-        // let c = with_context!(adt, sess, x_adt + b_bin);
-        // let c_open = player0.reveal(sess, &c);
-        // let c_ring = player0.ring_inject(sess, 0, &c_open);
-        // let x_adt_ring = with_context!(
-        //     adt,
-        //     sess,
-        //     b_ring + c_ring - b_ring * c_ring - b_ring * c_ring
-        // );
-        // let shifted_x_adt = adt.shl(sess, bit_idx, &x_adt_ring);
-        // rep.adt_to_rep(sess, &shifted_x_adt)
+        let c = with_context!(adt, sess, x_adt + b_bin);
+        let c_open = player0.reveal(sess, &c);
+        let c_ring = player0.ring_inject(sess, 0, &c_open);
+        let x_adt_ring = with_context!(
+            adt,
+            sess,
+            b_ring + c_ring - b_ring * c_ring - b_ring * c_ring
+        );
+        let shifted_x_adt = adt.shl(sess, bit_idx, &x_adt_ring);
+        rep.adt_to_rep(sess, &shifted_x_adt)
     }
 }
 
