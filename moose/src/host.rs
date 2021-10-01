@@ -1747,7 +1747,7 @@ where
     fn try_from(v: Symbolic<AbstractHostBitArray<HostBitT, N>>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
-            _ => Err(crate::error::Error::Unexpected), // TODO err message
+            _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
         }
     }
 }
@@ -1771,7 +1771,8 @@ impl Placed for HostEncFixed128Tensor {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostFixedTensor<HostRingT> {
     pub tensor: HostRingT,
-    pub precision: u32,
+    pub fractional_precision: u32,
+    pub integral_precision: u32,
 }
 
 moose_type!(HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>);
