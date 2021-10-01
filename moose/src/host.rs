@@ -1789,7 +1789,7 @@ where
     fn try_from(v: Symbolic<AbstractHostBitArray<HostBitT, N>>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
-            _ => Err(crate::error::Error::Unexpected), // TODO err message
+            _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
         }
     }
 }

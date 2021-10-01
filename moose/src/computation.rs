@@ -24,12 +24,16 @@ use derive_more::Display;
 use macros::ShortName;
 use paste::paste;
 use serde::{Deserialize, Serialize};
+use sodiumoxide::crypto::generichash;
 use std::convert::TryFrom;
 
 pub const TAG_BYTES: usize = 128 / 8;
 static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::DIGEST_MIN);
 static_assertions::const_assert!(TAG_BYTES <= sodiumoxide::crypto::generichash::DIGEST_MAX);
 
+// TODO: the displayed representation of the RendezvousKey does not match with
+// the input. Might need to do something similar to what we did with the
+// session id, and have a secure and a logical form of it?
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, Eq, Hash)]
 pub struct RendezvousKey(pub(crate) [u8; TAG_BYTES]);
 
@@ -62,7 +66,7 @@ impl TryFrom<&str> for RendezvousKey {
     fn try_from(s: &str) -> Result<RendezvousKey> {
         let s_bytes = s.as_bytes();
         if s_bytes.len() > TAG_BYTES {
-            return Err(Error::Unexpected); // TODO more helpful error message
+            return Err(Error::Unexpected(None)); // TODO more helpful error message
         }
         let mut raw: [u8; TAG_BYTES] = [0; TAG_BYTES];
         for (idx, byte) in s_bytes.iter().enumerate() {
@@ -90,13 +94,14 @@ impl RendezvousKey {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct SessionId(pub(crate) [u8; TAG_BYTES]);
+pub struct SessionId {
+    logical: String,
+    secure: [u8; TAG_BYTES],
+}
 
 impl std::fmt::Display for SessionId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        for byte in self.0 {
-            write!(f, "{:02X}", byte)?
-        }
+        write!(f, "{}", self.logical)?;
         Ok(())
     }
 }
@@ -104,28 +109,43 @@ impl std::fmt::Display for SessionId {
 impl TryFrom<&str> for SessionId {
     type Error = Error;
     fn try_from(s: &str) -> Result<SessionId> {
-        let s_bytes = s.as_bytes();
-        if s_bytes.len() > TAG_BYTES {
-            return Err(Error::Unexpected); // TODO more helpful error message
-        }
-        let mut raw: [u8; TAG_BYTES] = [0; TAG_BYTES];
-        for (idx, byte) in s_bytes.iter().enumerate() {
-            raw[idx] = *byte;
-        }
-        Ok(SessionId(raw))
+        sodiumoxide::init().map_err(|e| {
+            crate::error::Error::Unexpected(Some(format!(
+                "failed to initialize sodiumoxide: {:?}",
+                e
+            )))
+        })?;
+        let digest = generichash::hash(s.as_bytes(), Some(TAG_BYTES), None).map_err(|e| {
+            crate::error::Error::Unexpected(Some(format!(
+                "failed to hash session ID: {}: {:?}",
+                s, e
+            )))
+        })?;
+        let mut raw_hash = [0u8; TAG_BYTES];
+        raw_hash.copy_from_slice(digest.as_ref());
+        let sid = SessionId {
+            logical: s.to_string(),
+            secure: raw_hash,
+        };
+        Ok(sid)
     }
 }
 
 impl SessionId {
     pub fn as_bytes(&self) -> &[u8; TAG_BYTES] {
-        &self.0
+        &self.secure
     }
 
     pub fn random() -> Self {
         let mut raw = [0; TAG_BYTES];
         sodiumoxide::init().expect("failed to initialize sodiumoxide");
         sodiumoxide::randombytes::randombytes_into(&mut raw);
-        SessionId(raw)
+        let hex_vec: Vec<String> = raw.iter().map(|byte| format!("{:02X}", byte)).collect();
+        let hex_string = hex_vec.join("");
+        SessionId {
+            logical: hex_string,
+            secure: raw,
+        }
     }
 }
 
@@ -1813,4 +1833,32 @@ pub struct Computation {
     // pub constants: Vec<Value>,
     // pub operators: Vec<Operator>,
     pub operations: Vec<Operation>,
+}
+
+mod tests {
+    #![allow(unused_imports)]
+    use super::*;
+
+    #[test]
+    fn test_session_id() {
+        let session_id_str = "01FGSQ37YDJSVJXSA6SSY7G4Y2";
+        let session_id = SessionId::try_from(session_id_str).unwrap();
+        let expected: [u8; 16] = [
+            155, 66, 92, 119, 188, 62, 148, 202, 13, 176, 137, 43, 64, 190, 251, 182,
+        ];
+        assert_eq!(session_id.logical, session_id_str);
+        assert_eq!(session_id.to_string(), session_id_str);
+        assert_eq!(session_id.secure, expected);
+        assert_eq!(*session_id.as_bytes(), expected);
+
+        let session_id_str = "hello world";
+        let session_id = SessionId::try_from(session_id_str).unwrap();
+        let expected: [u8; 16] = [
+            233, 168, 4, 178, 229, 39, 253, 54, 1, 210, 255, 192, 187, 2, 60, 214,
+        ];
+        assert_eq!(session_id.logical, session_id_str);
+        assert_eq!(session_id.to_string(), session_id_str);
+        assert_eq!(session_id.secure, expected);
+        assert_eq!(*session_id.as_bytes(), expected);
+    }
 }
