@@ -1180,7 +1180,7 @@ impl RepTruncPrOp {
         rep: &ReplicatedPlacement,
         amount: u32,
         xe: RepTen<RingT>,
-    ) -> st!(RepTen<RingT>, S)
+    ) -> m!(c!(RepTen<RingT>))
     where
         RingT: Clone,
         RepTen<RingT>: Into<st!(RepTen<RingT>)>,
