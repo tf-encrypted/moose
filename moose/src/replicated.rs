@@ -303,7 +303,7 @@ impl RepShareOp {
         HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
         ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
     {
-        let x_player = x.placement().unwrap();
+        let x_player = x.placement()?;
 
         let AbstractReplicatedSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
@@ -463,7 +463,7 @@ impl RepRevealOp {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &xe;
 
-        let (player0, player1, player2) = &xe.placement().unwrap().host_placements();
+        let (player0, player1, player2) = &xe.placement()?.host_placements();
 
         let res = match () {
             _ if receiver == player0 => {
@@ -553,9 +553,7 @@ impl RepAddOp {
         ReplicatedPlacement: PlacementPlace<S, RepTen<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
-        let x_plc = x
-            .placement()
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let x_plc = x.placement()?;
 
         let RepTen {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
@@ -611,9 +609,7 @@ impl RepAddOp {
         ReplicatedPlacement: PlacementPlace<S, RepTen<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
-        let y_plc = y
-            .placement()
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let y_plc = y.placement()?;
 
         let RepTen {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
@@ -725,9 +721,7 @@ impl RepSubOp {
         ReplicatedPlacement: PlacementPlace<S, RepTen<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
-        let x_plc = x
-            .placement()
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let x_plc = x.placement()?;
 
         let RepTen {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
@@ -783,9 +777,7 @@ impl RepSubOp {
         ReplicatedPlacement: PlacementPlace<S, RepTen<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
-        let y_plc = y
-            .placement()
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let y_plc = y.placement()?;
 
         let RepTen {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
@@ -1270,7 +1262,7 @@ impl AdtToRepOp {
     {
         let AdtTen { shares: [x0, x1] } = &x;
 
-        let adt = x.placement().unwrap();
+        let adt = x.placement()?;
         let (adt_player0, adt_player1) = adt.host_placements();
         let (rep_player0, rep_player1, rep_player2) = rep.host_placements();
         let (provider, provider_index, rep_others) = match () {

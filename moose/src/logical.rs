@@ -50,7 +50,8 @@ impl<Fixed64T, Fixed128T, Float32T, Float64T>
             AbstractTensor::Fixed128(_) => "Tensor(Fixed128)",
             AbstractTensor::Float32(_) => "Tensor(Float32)",
             AbstractTensor::Float64(_) => "Tensor(Float64)",
-        }.to_string()
+        }
+        .to_string()
     }
 }
 
@@ -167,7 +168,8 @@ impl AddOp {
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
                 "Missing host add op for {:?} and {:?}",
-                &x.ty_desc(), &y.ty_desc()
+                &x.ty_desc(),
+                &y.ty_desc()
             ))),
         }
     }
@@ -194,7 +196,8 @@ impl AddOp {
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
                 "Missing replicated add op for {:?} and {:?}",
-                &x.ty_desc(), &y.ty_desc()
+                &x.ty_desc(),
+                &y.ty_desc()
             ))),
         }
     }
@@ -243,7 +246,8 @@ impl SubOp {
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
                 "Missing host sub op for {:?} and {:?}",
-                &x.ty_desc(), &y.ty_desc()
+                &x.ty_desc(),
+                &y.ty_desc()
             ))),
         }
     }
@@ -270,7 +274,8 @@ impl SubOp {
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
                 "Missing replicated sub op for {:?} and {:?}",
-                &x.ty_desc(), &y.ty_desc()
+                &x.ty_desc(),
+                &y.ty_desc()
             ))),
         }
     }
@@ -335,7 +340,8 @@ impl MulOp {
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
                 "Missing host mul op for {:?} and {:?}",
-                &x.ty_desc(), &y.ty_desc()
+                &x.ty_desc(),
+                &y.ty_desc()
             ))),
         }
     }
@@ -379,7 +385,8 @@ impl MulOp {
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
                 "Missing replicated mul op for {:?} and {:?}",
-                &x.ty_desc(), &y.ty_desc()
+                &x.ty_desc(),
+                &y.ty_desc()
             ))),
         }
     }
@@ -434,7 +441,8 @@ impl DivOp {
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
                 "Missing host div op for {:?} and {:?}",
-                &x.ty_desc(), &y.ty_desc()
+                &x.ty_desc(),
+                &y.ty_desc()
             ))),
         }
     }
@@ -508,7 +516,8 @@ impl DotOp {
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
                 "Missing host dot op for {:?} and {:?}",
-                &x.ty_desc(), &y.ty_desc()
+                &x.ty_desc(),
+                &y.ty_desc()
             ))),
         }
     }
@@ -551,7 +560,8 @@ impl DotOp {
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
                 "Missing replicated dot op for {:?} and {:?}",
-                &x.ty_desc(), &y.ty_desc()
+                &x.ty_desc(),
+                &y.ty_desc()
             ))),
         }
     }
@@ -767,9 +777,10 @@ impl MeanOp {
             }
             // TODO(Morten) the fact that we are limited on replicated
             // placements  would be nice to know at (Moose) compile time
-            x => Err(Error::UnimplementedOperator(
-                format!("Replicated mean is unsupported for {:?}.", x.ty_desc())
-            )),
+            x => Err(Error::UnimplementedOperator(format!(
+                "Replicated mean is unsupported for {:?}.",
+                x.ty_desc()
+            ))),
         }
     }
 }
@@ -833,9 +844,10 @@ impl SumOp {
                 let z = plc.sum(sess, axis, &x);
                 Ok(AbstractTensor::Fixed128(z))
             }
-            x => Err(Error::UnimplementedOperator(
-                format!("Replicated sum is unsupported for {:?}.", x.ty_desc())
-            )),
+            x => Err(Error::UnimplementedOperator(format!(
+                "Replicated sum is unsupported for {:?}.",
+                x.ty_desc()
+            ))),
         }
     }
 }
@@ -999,7 +1011,9 @@ impl ConcatOp {
                 Ok(AbstractTensor::Float64(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
-            _ => Err(Error::UnimplementedOperator("ConcatOp missing an implementation.".to_string())),
+            _ => Err(Error::UnimplementedOperator(
+                "ConcatOp missing an implementation.".to_string(),
+            )),
         }
     }
 }

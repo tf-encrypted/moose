@@ -287,7 +287,7 @@ macro_rules! concrete_dispatch_kernel {
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into()?;
 
                                 let y: $u = k(sess, &plc, x0)?;
-                                debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
+                                debug_assert_eq!(y.placement()?, plc.clone().into());
                                 Ok(y.into())
                             }))
                         }
@@ -433,7 +433,7 @@ macro_rules! concrete_dispatch_kernel {
                                 let xs: Vec<$ts> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
 
                                 let y: $u = k(sess, &plc, xs)?;
-                                debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
+                                debug_assert_eq!(y.placement()?, plc.clone().into());
                                 Ok(y.into())
                             }))
                         }

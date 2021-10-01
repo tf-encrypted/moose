@@ -4,7 +4,7 @@ use crate::computation::{
     CanonicalType, Constant, HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement,
     ShapeOp,
 };
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};
 use crate::kernels::{
     PlacementAdd, PlacementDaBitProvider, PlacementDeriveSeed, PlacementFill, PlacementKeyGen,
@@ -254,7 +254,7 @@ impl AdtAddOp {
         AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
     {
         let (player0, player1) = adt.host_placements();
-        let y_plc = y.placement().unwrap();
+        let y_plc = y.placement()?;
 
         let AbstractAdditiveTensor { shares: [x0, x1] } = x;
 
@@ -278,7 +278,7 @@ impl AdtAddOp {
         AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
     {
         let (player0, player1) = adt.host_placements();
-        let x_plc = x.placement().unwrap();
+        let x_plc = x.placement()?;
 
         let AbstractAdditiveTensor { shares: [y0, y1] } = y;
 
@@ -345,9 +345,7 @@ impl AdtSubOp {
         AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<R>>,
     {
         let (player0, player1) = adt.host_placements();
-        let y_plc = y
-            .placement()
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let y_plc = y.placement()?;
 
         let AbstractAdditiveTensor { shares: [x0, x1] } = x;
 
@@ -372,9 +370,7 @@ impl AdtSubOp {
         AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<R>>,
     {
         let (player0, player1) = adt.host_placements();
-        let x_plc = x
-            .placement()
-            .map_err(|e| Error::KernelError(e.to_string()))?;
+        let x_plc = x.placement()?;
 
         let AbstractAdditiveTensor { shares: [y0, y1] } = y;
 
@@ -722,7 +718,7 @@ impl RepToAdtOp {
         AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
     {
         let (adt_player0, adt_player1) = adt.host_placements();
-        let (rep_player0, rep_player1, rep_player2) = x.placement().unwrap().host_placements();
+        let (rep_player0, rep_player1, rep_player2) = x.placement()?.host_placements();
 
         let AbstractReplicatedRingTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
