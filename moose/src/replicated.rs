@@ -1795,13 +1795,8 @@ impl RepAbsOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
-<<<<<<< HEAD
-        x: RepTen<RingT>,
-    ) -> Result<st!(RepTen<RingT>)>
-=======
         x: RepT,
-    ) -> RepT
->>>>>>> origin/main
+    ) -> Result<RepT>
     where
         RepT: Ring,
         ReplicatedPlacement: PlacementMsb<S, SetupT, RepT, RepT>,
