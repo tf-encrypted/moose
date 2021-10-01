@@ -90,12 +90,16 @@ mod tests {
         let setup = rep.gen_setup(&sess);
 
         let x = AbstractHostRingTensor::from_raw_plc(
-            array![1024u64, 5, 4].into_dimensionality::<IxDyn>().unwrap(),
+            array![1024u64, 5, 4]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
             alice.clone(),
         );
 
         let y = AbstractHostRingTensor::from_raw_plc(
-            array![1024u64, 4, 5].into_dimensionality::<IxDyn>().unwrap(),
+            array![1024u64, 4, 5]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
             alice.clone(),
         );
 
@@ -108,7 +112,10 @@ mod tests {
         let opened_result = alice.reveal(&sess, &res);
         assert_eq!(
             opened_result,
-            HostBitTensor::from_raw_plc(array![1, 0, 0].into_dimensionality::<IxDyn>().unwrap(), alice)
+            HostBitTensor::from_raw_plc(
+                array![1, 0, 0].into_dimensionality::<IxDyn>().unwrap(),
+                alice
+            )
         );
     }
 }
