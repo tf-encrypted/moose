@@ -95,7 +95,7 @@ impl AesDecryptOp {
         let c_decomposed = host.bit_decompose(sess, &c.tensor);
         let c_bits = (0..128).map(|i| host.index_axis(sess, 0, i, &c_decomposed));
 
-        // suboptimal sharing (could be public values but we don't have that yet)
+        // sharing bits (could be public values but we don't have that yet)
         let c_bits_shared: Vec<_> = c_bits.map(|b| rep.share(sess, &setup, &b)).collect();
 
         // run AES
