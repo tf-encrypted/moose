@@ -96,7 +96,7 @@ impl TryFrom<&[u8]> for Circuit {
         parse_circuit(bytes)
             .map_err(|e| {
                 println!("{:?}", e);
-                crate::error::Error::Unexpected
+                crate::error::Error::Unexpected(None)
             })
             .map(|res| res.1)
     }

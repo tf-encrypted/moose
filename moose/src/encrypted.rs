@@ -45,7 +45,8 @@ impl AesDecryptOp {
 
         Fixed128Tensor::Host(HostFixed128Tensor {
             tensor: m,
-            precision: c.precision,
+            fractional_precision: c.precision,
+            integral_precision: 0, // TODO
         })
     }
 }
@@ -112,7 +113,8 @@ impl AesDecryptOp {
         // wrap up as fixed-point tensor
         Fixed128Tensor::Replicated(ReplicatedFixed128Tensor {
             tensor: m,
-            precision: c.precision,
+            fractional_precision: c.precision,
+            integral_precision: 0, // TODO
         })
     }
 }

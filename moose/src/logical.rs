@@ -141,7 +141,7 @@ kernel! {
         (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::host_kernel),
         (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] Self::rep_kernel),
         (HostPlacement, (HostEncFixed128Tensor) -> Fixed128Tensor => [runtime] Self::host_fixed_kernel),
-        (ReplicatedPlacement, (HostEncFixed128Tensor) -> Fixed128Tensor => [transparent] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (HostEncFixed128Tensor) -> Fixed128Tensor => [runtime] Self::rep_fixed_kernel),
     ]
 }
 
