@@ -2224,35 +2224,27 @@ where
 }
 
 impl RingInjectOp {
-    pub(crate) fn rep_kernel<S: Session, RepT, ReplicatedBitT, BitT, ShapeT>(
+    pub(crate) fn rep_kernel<S: Session, RepRingT, AdtBitT, AdtRingT, BitT, RingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         bit_idx: usize,
-        x: ReplicatedBitT,
-    ) -> RepT
+        x: RepTen<BitT>,
+    ) -> RepRingT
     where
-        // ReplicatedPlacement: PlacementShape<S, ReplicatedBitT, AbstractReplicatedShape<ShapeT>>,
-        // ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<RingT>, RepTen<RingT>>,
-        // AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtTen<RingT>, AdtTen<BitT>>,
-        // AdditivePlacement: PlacementRepToAdt<S, ReplicatedBitT, AdtTen<BitT>>,
-        // AdditivePlacement: PlacementAdd<S, AdtTen<BitT>, AdtTen<BitT>, AdtTen<BitT>>,
-        // AdditivePlacement: PlacementAdd<S, AdtTen<RingT>, RingT, AdtTen<RingT>>,
-        // AdditivePlacement: PlacementMul<S, AdtTen<RingT>, RingT, AdtTen<RingT>>,
-        // AdditivePlacement: PlacementSub<S, AdtTen<RingT>, AdtTen<RingT>, AdtTen<RingT>>,
-        // AdditivePlacement: PlacementShl<S, AdtTen<RingT>, AdtTen<RingT>>,
-        // HostPlacement: PlacementReveal<S, AdtTen<BitT>, BitT>,
-        // HostPlacement: PlacementRingInject<S, BitT, RingT>,
-        ReplicatedPlacement: PlacementShape<S, ReplicatedBitT, AbstractReplicatedShape<ShapeT>>,
-        ReplicatedPlacement: PlacementAdtToRep<S, RepT, RepT>,
-        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, RepT, BitT>,
-        AdditivePlacement: PlacementRepToAdt<S, ReplicatedBitT, BitT>,
-        AdditivePlacement: PlacementAdd<S, BitT, BitT, BitT>,
-        AdditivePlacement: PlacementAdd<S, RepT, RepT, RepT>,
-        AdditivePlacement: PlacementMul<S, RepT, RepT, RepT>,
-        AdditivePlacement: PlacementSub<S, RepT, RepT, RepT>,
-        AdditivePlacement: PlacementShl<S, RepT, RepT>,
-        HostPlacement: PlacementReveal<S, BitT, BitT>,
-        HostPlacement: PlacementRingInject<S, BitT, RepT>,
+        RepTen<BitT>: KnownType<S>,
+        RepTen<BitT>: Into<m!(RepTen<BitT>)>,
+
+        HostPlacement: PlacementShape<S, BitT, ShapeT>,
+        ReplicatedPlacement: PlacementAdtToRep<S, AdtRingT, RepRingT>,
+        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtRingT, AdtBitT>,
+        AdditivePlacement: PlacementRepToAdt<S, m!(RepTen<BitT>), AdtBitT>,
+        AdditivePlacement: PlacementAdd<S, AdtBitT, AdtBitT, AdtBitT>,
+        AdditivePlacement: PlacementAdd<S, AdtRingT, RingT, AdtRingT>,
+        AdditivePlacement: PlacementMul<S, AdtRingT, RingT, AdtRingT>,
+        AdditivePlacement: PlacementSub<S, AdtRingT, AdtRingT, AdtRingT>,
+        AdditivePlacement: PlacementShl<S, AdtRingT, AdtRingT>,
+        HostPlacement: PlacementReveal<S, AdtBitT, BitT>,
+        HostPlacement: PlacementRingInject<S, BitT, RingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -2261,10 +2253,14 @@ impl RingInjectOp {
         };
         let provider = player2;
 
-        let x_shape = rep.shape(sess, &x);
-        let AbstractReplicatedShape {
-            shapes: [s0, _, s_provider],
-        } = x_shape;
+        let AbstractReplicatedRingTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let provider = player2;
+        let s_provider = provider.shape(sess, x22);
+        let s0 = player0.shape(sess, x00);
+
         // let ShapeT {
         //     shapes: [s0, _, s_provider],
         // } = x_shape;
@@ -2277,7 +2273,7 @@ impl RingInjectOp {
 
         let (b_ring, b_bin) = adt.gen_dabit(sess, s_provider, s0, &provider);
 
-        let x_adt = adt.rep_to_adt(sess, &x);
+        let x_adt = adt.rep_to_adt(sess, &x.into());
 
         let c = with_context!(adt, sess, x_adt + b_bin);
         let c_open = player0.reveal(sess, &c);
