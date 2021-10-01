@@ -43,7 +43,7 @@ impl SyncStorage for LocalSyncStorage {
     fn save(&self, key: &str, _session_id: &SessionId, val: &Value) -> Result<()> {
         let mut store = self.store.write().map_err(|e| {
             tracing::error!("failed to get write lock: {:?}", e);
-            Error::Unexpected
+            Error::Unexpected(None)
         })?;
         store.insert(key.to_string(), val.clone());
         Ok(())
@@ -64,7 +64,7 @@ impl SyncStorage for LocalSyncStorage {
         }?;
         let store = self.store.read().map_err(|e| {
             tracing::error!("failed to get read lock: {:?}", e);
-            Error::Unexpected
+            Error::Unexpected(None)
         })?;
         let item = store
             .get(key)

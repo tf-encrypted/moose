@@ -14,6 +14,41 @@ macro_rules! st {
     };
 }
 
+/// Map a type to its canonical type
+///
+/// Using this macro requires adding the following trait bound:
+///   $t: CanonicalType
+///
+/// Examples:
+/// - c!(RepTen<HostBitTen>) -> RepTen<HostBiTTen>
+/// - c!(RepTen<Sym<HostBitTen>>) -> RepTen<HostBiTTen>
+/// - c!(Sym<RepTen<Sym<HostBitTen>>>) -> RepTen<HostBiTTen>
+macro_rules! c {
+    ($t:ty) => {
+        <$t as crate::computation::CanonicalType>::Type
+    };
+}
+
+/// Map a _canonical_ type to its session-specific type
+///
+/// Using this macro required adding the following trait bound:
+///  $t: KnownType<S>
+///
+/// Note also that this is sometimes useful in conjection with `c!`:
+///   m!(c!(RepTen<HostRingT>))
+/// which then requires adding trait bounds:
+///   $t: CanonicalType
+///   <$t as CanonicalType>::Type: KnownType<S>
+///
+/// Examples:
+/// - m!(RepTen<HostBitTen>) in SyncSession -> RepTen<HostBitTen>
+/// - m!(RepTen<HostBitTen>) in SymbSession -> Sym<RepTen<Sym<HostBitTen>>>
+macro_rules! m {
+    ($t:ty) => {
+        <$t as KnownType<S>>::Type
+    };
+}
+
 macro_rules! derive_runtime_kernel {
     (nullary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
@@ -676,7 +711,7 @@ macro_rules! symbolic_dispatch_kernel {
     };
 }
 
-/// Macros to define kernels for the Operators.
+/// Macros to define kernels for operators.
 ///
 /// Sample definition would be in this form:
 /// `
@@ -689,9 +724,16 @@ macro_rules! symbolic_dispatch_kernel {
 /// }
 /// `
 ///
-/// Kernel functions makred "runtime" are never used in symbolic contexts
-/// Kernel functions marked "hybrid" maybe be evaluated in symbolic contexts
+/// The following kernel flavours are supported. Note that the flavour only
+/// affects behaviour in symbolic sessions (and not in eg sync sessions)
+/// where it is used to determined whether the kernel function should be called
+/// or whether the operation should be added to the graph.
+/// - "runtime": never call the kernel function
+/// - "hybrid": use TryInto/Into to determine if kernel function should be called
+/// - "transparent": always call kernel function
+/// - "concrete": call kernel function on Symbolic::Concrete values
 macro_rules! kernel {
+
     /*
     Nullary
     */
@@ -751,6 +793,23 @@ macro_rules! kernel {
                     let y = k(sess, plc)?;
                     Ok(y.into())
                 }))
+            }
+        }
+    };
+
+    (__nullary transparent, $op:ty, $plc:ty, () -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::NullaryKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc
+            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            {
+                derive_runtime_kernel![nullary, $($kp)+, self]
             }
         }
     };
@@ -861,6 +920,25 @@ macro_rules! kernel {
                         }
                     }
                 }))
+            }
+        }
+    };
+
+    (__unary transparent, $op:ty, $plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::UnaryKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc,
+                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            {
+                derive_runtime_kernel![unary, $($kp)+, self]
             }
         }
     };
@@ -988,6 +1066,75 @@ macro_rules! kernel {
         }
     };
 
+    (__binary concrete, $op:ty, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::BinaryKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc,
+                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            {
+                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use std::convert::TryInto;
+
+                let op = self.clone();
+                Ok(Box::new(move |
+                    sess: &SymbolicSession,
+                    plc: &$plc,
+                    x0: <$t0 as KnownType<SymbolicSession>>::Type,
+                    x1: <$t1 as KnownType<SymbolicSession>>::Type,
+                | {
+                    // TODO derive k outside box (using self instead of op)
+                    // Magic by Morten
+                    let op = &op;
+
+                    let k = derive_runtime_kernel![binary, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
+
+                    match (x0, x1) {
+                        (Symbolic::Concrete(v0), Symbolic::Concrete(v1)) => {
+                            let y = k(sess, plc, v0, v1);
+                            y
+                        }
+                        (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
+                            let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                        }
+                        _ => unimplemented!() // ok
+                    }
+                }))
+            }
+        }
+    };
+
+    (__binary transparent, $op:ty, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::BinaryKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc,
+                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            {
+                derive_runtime_kernel![binary, $($kp)+, self]
+            }
+        }
+    };
+
     (__binary runtime, $op:ty, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
@@ -1056,6 +1203,29 @@ macro_rules! kernel {
         $(
             kernel!(__ternary $flavour, $op, $plc, ($t0, $t1, $t2) -> $u => $($kp)+);
         )+
+    };
+
+    (__ternary transparent, $op:ty, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::TernaryKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$t2 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc,
+                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t2 as KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            {
+                derive_runtime_kernel![ternary, $($kp)+, self]
+            }
+        }
     };
 
     (__ternary hybrid, $op:ty, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
@@ -1155,6 +1325,7 @@ macro_rules! kernel {
     /*
     Variadic
     */
+
     ($op:ty, [$( ($plc:ty, vec[$ts:ty] -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
         concrete_dispatch_kernel!($op, [$( ($plc, vec[$ts] -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, vec[$ts] -> $u), )+]);
@@ -1179,6 +1350,25 @@ macro_rules! kernel {
         $(
             kernel!(__variadic $flavour, $op, $plc, vec[$ts] -> $u => $($kp)+);
         )+
+    };
+
+    (__variadic transparent, $op:ty, $plc:ty, vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::VariadicKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc,
+                Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
+            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            {
+                derive_runtime_kernel![variadic, $($kp)+, self]
+            }
+        }
     };
 
     (__variadic hybrid, $op:ty, $plc:ty, vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
@@ -1797,7 +1987,7 @@ macro_rules! moose_type {
             ) -> crate::error::Result<Self> {
                 match v {
                     crate::symbolic::Symbolic::Concrete(x) => Ok(x),
-                    _ => Err(crate::error::Error::Unexpected), // TODO err message
+                    _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
                 }
             }
         }
@@ -1883,7 +2073,7 @@ macro_rules! moose_type {
             ) -> crate::error::Result<Self> {
                 match v {
                     crate::symbolic::Symbolic::Concrete(x) => Ok(x),
-                    _ => Err(crate::error::Error::Unexpected), // TODO err message
+                    _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
                 }
             }
         }

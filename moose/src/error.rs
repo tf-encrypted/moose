@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Serialize, thiserror::Error)]
 pub enum Error {
     #[error("Unexpected error")]
-    Unexpected,
+    Unexpected(Option<String>),
 
     #[error("Kernel operand was unavailable")]
     OperandUnavailable,
@@ -23,6 +23,9 @@ pub enum Error {
 
     #[error("Missing argument '{0}'")]
     MissingArgument(String),
+
+    #[error("Invalid argument: {0}")]
+    InvalidArgument(String),
 
     #[error("Malformed computation: operand '{0}' not found")]
     MalformedEnvironment(String),
