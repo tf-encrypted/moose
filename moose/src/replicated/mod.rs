@@ -2224,27 +2224,42 @@ where
 }
 
 impl RingInjectOp {
-    pub(crate) fn rep_kernel<S: Session, RepRingT, AdtBitT, AdtRingT, BitT, RingT, ShapeT>(
+    pub(crate) fn rep_kernel<S: Session, HostBitT, HostRingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         bit_idx: usize,
-        x: RepTen<BitT>,
-    ) -> RepRingT
+        x: RepTen<HostBitT>,
+    ) -> m!(c!(RepTen<HostRingT>))
     where
-        RepTen<BitT>: KnownType<S>,
-        RepTen<BitT>: Into<m!(RepTen<BitT>)>,
+        RepTen<HostBitT>: CanonicalType,
+        <RepTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
+        RepTen<HostBitT>: Into<st!(RepTen<HostBitT>)>,
 
-        HostPlacement: PlacementShape<S, BitT, ShapeT>,
-        ReplicatedPlacement: PlacementAdtToRep<S, AdtRingT, RepRingT>,
-        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtRingT, AdtBitT>,
-        AdditivePlacement: PlacementRepToAdt<S, m!(RepTen<BitT>), AdtBitT>,
-        AdditivePlacement: PlacementAdd<S, AdtBitT, AdtBitT, AdtBitT>,
-        AdditivePlacement: PlacementAdd<S, AdtRingT, RingT, AdtRingT>,
-        AdditivePlacement: PlacementMul<S, AdtRingT, RingT, AdtRingT>,
-        AdditivePlacement: PlacementSub<S, AdtRingT, AdtRingT, AdtRingT>,
-        AdditivePlacement: PlacementShl<S, AdtRingT, AdtRingT>,
-        HostPlacement: PlacementReveal<S, AdtBitT, BitT>,
-        HostPlacement: PlacementRingInject<S, BitT, RingT>,
+        RepTen<HostRingT>: CanonicalType,
+        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+
+        AdtTen<HostBitT>: CanonicalType,
+        <AdtTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
+
+        AdtTen<HostRingT>: CanonicalType,
+        <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+
+        HostPlacement: PlacementShape<S, HostBitT, ShapeT>,
+        ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtTen<HostRingT>), st!(RepTen<HostRingT>)>,
+        AdditivePlacement:
+            PlacementDaBitProvider<S, ShapeT, st!(AdtTen<HostRingT>), st!(AdtTen<HostBitT>)>,
+        AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<HostBitT>), st!(AdtTen<HostBitT>)>,
+        AdditivePlacement:
+            PlacementAdd<S, st!(AdtTen<HostBitT>), st!(AdtTen<HostBitT>), st!(AdtTen<HostBitT>)>,
+        AdditivePlacement:
+            PlacementAdd<S, st!(AdtTen<HostRingT>), HostRingT, st!(AdtTen<HostRingT>)>,
+        AdditivePlacement:
+            PlacementMul<S, st!(AdtTen<HostRingT>), HostRingT, st!(AdtTen<HostRingT>)>,
+        AdditivePlacement:
+            PlacementSub<S, st!(AdtTen<HostRingT>), st!(AdtTen<HostRingT>), st!(AdtTen<HostRingT>)>,
+        AdditivePlacement: PlacementShl<S, st!(AdtTen<HostRingT>), st!(AdtTen<HostRingT>)>,
+        HostPlacement: PlacementReveal<S, st!(AdtTen<HostBitT>), HostBitT>,
+        HostPlacement: PlacementRingInject<S, HostBitT, HostRingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -2260,10 +2275,6 @@ impl RingInjectOp {
         let provider = player2;
         let s_provider = provider.shape(sess, x22);
         let s0 = player0.shape(sess, x00);
-
-        // let ShapeT {
-        //     shapes: [s0, _, s_provider],
-        // } = x_shape;
 
         // One could think to wrap this up into an additive shape for Hosts@(P0, P2)
         // but the additive placement that generates a dabit is Hosts@(P0, P1)
