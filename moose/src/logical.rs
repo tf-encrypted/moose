@@ -971,7 +971,7 @@ impl ConcatOp {
         plc: &HostPlacement,
         axis: u32,
         xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>],
-    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementConcatenate<S, Float32T, Float32T>,
         HostPlacement: PlacementConcatenate<S, Float64T, Float64T>,
@@ -1000,7 +1000,7 @@ impl ConcatOp {
                     })
                     .collect();
                 let result = plc.concatenate(sess, axis, &xs);
-                AbstractTensor::Float32(result)
+                Ok(AbstractTensor::Float32(result))
             }
             AbstractTensor::Float64(_) => {
                 let xs: Vec<Float64T> = xs
@@ -1015,9 +1015,12 @@ impl ConcatOp {
                     })
                     .collect();
                 let result = plc.concatenate(sess, axis, &xs);
-                AbstractTensor::Float64(result)
+                Ok(AbstractTensor::Float64(result))
             }
-            _ => unimplemented!("ConcatOp missing an implementation"), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(
+                "ConcatOp missing an implementation.".to_string(),
+            )),
         }
     }
 }

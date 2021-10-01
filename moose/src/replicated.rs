@@ -858,7 +858,7 @@ impl RepMulOp {
         setup: AbstractReplicatedSetup<KeyT>,
         x: RepTen<RingT>,
         y: RepTen<RingT>,
-    ) -> RepTen<RingT>
+    ) -> Result<RepTen<RingT>>
     where
         RingT: Clone,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
@@ -896,12 +896,12 @@ impl RepMulOp {
         let z1 = with_context!(player1, sess, { v1 + a1 });
         let z2 = with_context!(player2, sess, { v2 + a2 });
 
-        rep.place(
+        Ok(rep.place(
             sess,
             RepTen {
                 shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
             },
-        )
+        ))
     }
 
     fn ring_rep_kernel<S: Session, RingT, KeyT>(
@@ -910,7 +910,7 @@ impl RepMulOp {
         _setup: AbstractReplicatedSetup<KeyT>,
         x: RingT,
         y: RepTen<RingT>,
-    ) -> RepTen<RingT>
+    ) -> Result<RepTen<RingT>>
     where
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
     {
@@ -929,9 +929,9 @@ impl RepMulOp {
         let z22 = with_context!(player2, sess, x * y22);
         let z02 = with_context!(player2, sess, x * y02);
 
-        RepTen {
+        Ok(RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
-        }
+        })
     }
 
     fn rep_ring_kernel<S: Session, RingT, KeyT>(
@@ -940,7 +940,7 @@ impl RepMulOp {
         _setup: AbstractReplicatedSetup<KeyT>,
         x: RepTen<RingT>,
         y: RingT,
-    ) -> RepTen<RingT>
+    ) -> Result<RepTen<RingT>>
     where
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
     {
@@ -959,9 +959,9 @@ impl RepMulOp {
         let z22 = with_context!(player2, sess, x22 * y);
         let z02 = with_context!(player2, sess, x02 * y);
 
-        RepTen {
+        Ok(RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
-        }
+        })
     }
 }
 
@@ -991,7 +991,7 @@ impl RepDotOp {
         setup: AbstractReplicatedSetup<KeyT>,
         x: RepTen<RingT>,
         y: RepTen<RingT>,
-    ) -> RepTen<RingT>
+    ) -> Result<RepTen<RingT>>
     where
         RingT: Clone,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
@@ -1035,12 +1035,12 @@ impl RepDotOp {
         let z1 = with_context!(player1, sess, { v1 + a1 });
         let z2 = with_context!(player2, sess, { v2 + a2 });
 
-        rep.place(
+        Ok(rep.place(
             sess,
             RepTen {
                 shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
             },
-        )
+        ))
     }
 
     fn ring_rep_kernel<S: Session, RingT, KeyT>(
@@ -1049,7 +1049,7 @@ impl RepDotOp {
         _setup: AbstractReplicatedSetup<KeyT>,
         x: RingT,
         y: RepTen<RingT>,
-    ) -> RepTen<RingT>
+    ) -> Result<RepTen<RingT>>
     where
         HostPlacement: PlacementDot<S, RingT, RingT, RingT>,
     {
@@ -1068,9 +1068,9 @@ impl RepDotOp {
         let z22 = with_context!(player2, sess, dot(&x, y22));
         let z02 = with_context!(player2, sess, dot(&x, y02));
 
-        RepTen {
+        Ok(RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
-        }
+        })
     }
 
     fn rep_ring_kernel<S: Session, RingT, KeyT>(
@@ -1079,7 +1079,7 @@ impl RepDotOp {
         _setup: AbstractReplicatedSetup<KeyT>,
         x: RepTen<RingT>,
         y: RingT,
-    ) -> RepTen<RingT>
+    ) -> Result<RepTen<RingT>>
     where
         HostPlacement: PlacementDot<S, RingT, RingT, RingT>,
     {
@@ -1098,9 +1098,9 @@ impl RepDotOp {
         let z22 = with_context!(player2, sess, dot(x22, &y));
         let z02 = with_context!(player2, sess, dot(x02, &y));
 
-        RepTen {
+        Ok(RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
-        }
+        })
     }
 }
 

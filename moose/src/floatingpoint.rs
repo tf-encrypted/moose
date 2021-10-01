@@ -356,7 +356,7 @@ impl FloatingpointConcatOp {
         plc: &HostPlacement,
         axis: u32,
         xs: &[FloatTensor<HostFloatT>],
-    ) -> FloatTensor<HostFloatT>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostPlacement: PlacementConcatenate<S, HostFloatT, HostFloatT>,
         HostFloatT: Clone,
@@ -369,7 +369,7 @@ impl FloatingpointConcatOp {
             .collect();
 
         let z = plc.concatenate(sess, axis, &xs);
-        FloatTensor::Host(z)
+        Ok(FloatTensor::Host(z))
     }
 }
 
