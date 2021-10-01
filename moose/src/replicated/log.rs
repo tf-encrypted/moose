@@ -1,10 +1,9 @@
 //use macros::with_context;
 use crate::computation::Placed;
-use crate::computation::{CanonicalType, Constant, KnownType, RepEqualOp, ReplicatedPlacement};
+use crate::computation::{Constant, KnownType, RepEqualOp, ReplicatedPlacement};
+use crate::error::Result;
 use crate::kernels::*;
-use crate::replicated::{
-    RepTen, ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor,
-};
+use crate::replicated::{ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor};
 use crate::{Const, Ring};
 
 modelled!(PlacementEqual::equal, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, RepEqualOp);
@@ -13,8 +12,8 @@ modelled!(PlacementEqual::equal, ReplicatedPlacement, (ReplicatedRing128Tensor, 
 kernel! {
     RepEqualOp,
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
     ]
 }
 
@@ -22,27 +21,17 @@ impl RepEqualOp {
     fn rep_kernel<S: Session, HostRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<HostRingT>,
-        y: RepTen<HostRingT>,
-    ) -> RepBitT
+        x: HostRingT,
+        y: HostRingT,
+    ) -> Result<RepBitT>
     where
-        RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
-        RepTen<HostRingT>: CanonicalType,
-        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-
         HostRingT: Ring<BitLength = N>,
 
-        HostRingT: Tensor<S>,
-        HostRingT::Scalar: Into<Constant>,
-        HostRingT::Scalar: From<u8>,
-
-        ReplicatedPlacement:
-            PlacementBitDecSetup<S, S::ReplicatedSetup, st!(RepTen<HostRingT>), RepBitArrayT>,
-        ReplicatedPlacement:
-            PlacementSub<S, st!(RepTen<HostRingT>), st!(RepTen<HostRingT>), st!(RepTen<HostRingT>)>,
+        ReplicatedPlacement: PlacementBitDecSetup<S, S::ReplicatedSetup, HostRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepBitT>,
-        ReplicatedPlacement: PlacementShape<S, st!(RepTen<HostRingT>), ShapeT>,
+        ReplicatedPlacement: PlacementShape<S, HostRingT, ShapeT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
@@ -50,7 +39,7 @@ impl RepEqualOp {
     {
         let setup = rep.gen_setup(sess);
 
-        let z = rep.sub(sess, &x.into(), &y.into());
+        let z = rep.sub(sess, &x, &y);
         let bits = rep.bit_decompose(sess, &setup, &z);
 
         let v: Vec<_> = (0..HostRingT::BitLength::VALUE)
@@ -62,9 +51,11 @@ impl RepEqualOp {
 
         let v_not: Vec<_> = v.iter().map(|vi| rep.xor(sess, &ones, vi)).collect();
 
-        v_not
+        // TODO we can optimize this by having a binary multipler like
+        // we are doing with the binary adder in bit decompitision
+        Ok(v_not
             .iter()
-            .fold(ones, |acc, y| rep.mul_setup(sess, &setup, &acc, y))
+            .fold(ones, |acc, y| rep.mul_setup(sess, &setup, &acc, y)))
     }
 }
 

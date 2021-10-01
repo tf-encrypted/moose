@@ -31,7 +31,6 @@ pub trait Session {
 
     type ReplicatedSetup;
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup;
-    //fn add_replicated_setup(&self, plc: &ReplicatedPlacement, setup: &Self::ReplicatedSetup);
 }
 
 /// Trait for sessions that are intended for run-time use only.
