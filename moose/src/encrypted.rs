@@ -81,7 +81,7 @@ impl AesDecryptOp {
         let shape = AbstractReplicatedShape {
             shapes: [host_shape.clone(), host_shape.clone(), host_shape],
         }
-        .into();
+        .into(); // TODO use macro to call `into` here? or update modelled! to call into?
 
         // decompose into bits on host
         let c_decomposed = host.bit_decompose(sess, &c.tensor);
