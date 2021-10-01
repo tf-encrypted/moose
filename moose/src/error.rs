@@ -21,6 +21,9 @@ pub enum Error {
     #[error("Missing argument '{0}'")]
     MissingArgument(String),
 
+    #[error("Invalid argument: {0}")]
+    InvalidArgument(String),
+
     #[error("Malformed computation: operand '{0}' not found")]
     MalformedEnvironment(String),
 
