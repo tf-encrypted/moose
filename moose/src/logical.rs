@@ -1,9 +1,9 @@
 use crate::computation::*;
 use crate::error::Result;
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::HostEncFixed128Tensor;
-use crate::host::HostShape;
+use crate::host::{HostEncFixed128Tensor, HostShape, HostFixed128Tensor};
+use crate::replicated::{ReplicatedFixed128Tensor};
 use crate::kernels::*;
 use crate::symbolic::Symbolic;
 use derive_more::Display;
@@ -132,49 +132,51 @@ where
 
 modelled!(PlacementDecrypt::decrypt, HostPlacement, (Tensor) -> Tensor, AesDecryptOp);
 modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (Tensor) -> Tensor, AesDecryptOp);
-modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostEncFixed128Tensor) -> Fixed128Tensor, AesDecryptOp);
-modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (HostEncFixed128Tensor) -> Fixed128Tensor, AesDecryptOp);
+modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostEncFixed128Tensor) -> HostFixed128Tensor, AesDecryptOp);
+modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (HostEncFixed128Tensor) -> ReplicatedFixed128Tensor, AesDecryptOp);
 
 kernel! {
     AesDecryptOp,
     [
         (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::host_kernel),
         (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] Self::rep_kernel),
-        (HostPlacement, (HostEncFixed128Tensor) -> Fixed128Tensor => [runtime] Self::host_fixed_kernel),
-        (ReplicatedPlacement, (HostEncFixed128Tensor) -> Fixed128Tensor => [runtime] Self::rep_fixed_kernel),
+        (HostPlacement, (HostEncFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::host_fixed_kernel),
+        (ReplicatedPlacement, (HostEncFixed128Tensor) -> ReplicatedFixed128Tensor => [runtime] Self::rep_fixed_kernel),
     ]
 }
 
 impl AesDecryptOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T, HostFixed128T, RepFixed128T>(
         sess: &S,
         plc: &HostPlacement,
         c: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
     ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
     where
-        HostPlacement: PlacementDecrypt<S, EncFixed128T, Fixed128T>,
+        HostPlacement: PlacementDecrypt<S, EncFixed128T, HostFixed128T>,
+        Fixed128T: From<FixedTensor<HostFixed128T, RepFixed128T>>,
     {
         match c {
             AbstractTensor::EncFixed128(c) => {
                 let res = plc.decrypt(sess, &c);
-                AbstractTensor::Fixed128(res)
+                AbstractTensor::Fixed128(FixedTensor::Host(res).into())
             }
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T, HostFixed128T, RepFixed128T>(
         sess: &S,
         plc: &ReplicatedPlacement,
         c: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
     ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
     where
-        ReplicatedPlacement: PlacementDecrypt<S, EncFixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementDecrypt<S, EncFixed128T, RepFixed128T>,
+        Fixed128T: From<FixedTensor<HostFixed128T, RepFixed128T>>,
     {
         match c {
             AbstractTensor::EncFixed128(c) => {
                 let res = plc.decrypt(sess, &c);
-                AbstractTensor::Fixed128(res)
+                AbstractTensor::Fixed128(FixedTensor::Replicated(res).into())
             }
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }

@@ -1753,14 +1753,17 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct HostEncFixed128Tensor {
-    pub tensor: HostRing128Tensor, // TODO
+pub struct AbstractHostEncFixedTensor<HostRingT> {
+    pub tensor: HostRingT,
     pub precision: u32,
 }
 
-moose_type!(HostEncFixed128Tensor);
+moose_type!(HostEncFixed128Tensor = AbstractHostEncFixedTensor<HostRing128Tensor>);
 
-impl Placed for HostEncFixed128Tensor {
+impl<HostRingT: Placed> Placed for AbstractHostEncFixedTensor<HostRingT>
+where
+    <HostRingT as Placed>::Placement: Into<Placement>,
+{
     type Placement = Placement;
 
     fn placement(&self) -> Result<Self::Placement> {

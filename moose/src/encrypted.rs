@@ -1,24 +1,20 @@
 use crate::circuits::bristol_fashion::aes;
 use crate::computation::*;
-use crate::fixedpoint::Fixed128Tensor;
-use crate::host::{
-    HostBitTensor, HostEncFixed128Tensor, HostFixed128Tensor, HostRing128Tensor, HostShape,
-};
+use crate::fixedpoint::{Fixed128Tensor, FixedTensor};
+use crate::host::{AbstractHostEncFixedTensor, HostBitTensor, HostEncFixed128Tensor, HostFixed128Tensor, HostRing128Tensor, HostShape};
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitDec, PlacementFill, PlacementIndexAxis, PlacementNeg,
     PlacementRingInject, PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementXor,
     Session,
 };
-use crate::replicated::{
-    ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedRing128Tensor, ReplicatedShape,
-};
+use crate::replicated::{AbstractReplicatedFixedTensor, AbstractReplicatedRingTensor, AbstractReplicatedShape, ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedRing128Tensor, ReplicatedShape};
 
 impl AesDecryptOp {
     pub(crate) fn host_fixed_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
         c: HostEncFixed128Tensor,
-    ) -> Fixed128Tensor
+    ) -> HostFixed128Tensor
     where
         HostPlacement: PlacementBitDec<S, HostRing128Tensor, HostBitTensor>,
         HostPlacement: PlacementIndexAxis<S, HostBitTensor, HostBitTensor>,
@@ -43,43 +39,53 @@ impl AesDecryptOp {
             .map(|(i, b)| plc.ring_inject(sess, i, b))
             .fold(zero, |acc, x| plc.add(sess, &acc, &x));
 
-        Fixed128Tensor::Host(HostFixed128Tensor {
+        HostFixed128Tensor {
             tensor: m,
             fractional_precision: c.precision,
             integral_precision: 0, // TODO
-        })
+        }
     }
 }
 
 impl AesDecryptOp {
-    pub(crate) fn rep_fixed_kernel<S: Session>(
+    pub(crate) fn rep_fixed_kernel<S: Session, HostBitT, RepBitT, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        c: HostEncFixed128Tensor,
-    ) -> Fixed128Tensor
+        c: AbstractHostEncFixedTensor<HostRingT>,
+    ) -> AbstractReplicatedFixedTensor<m!(AbstractReplicatedRingTensor<HostRingT>)>
     where
-        HostEncFixed128Tensor: KnownType<S>,
+        AbstractHostEncFixedTensor<HostRingT>: KnownType<S>,
         Fixed128Tensor: KnownType<S>,
+        HostFixed128Tensor: KnownType<S>,
+        ReplicatedRing128Tensor: KnownType<S>,
+        ReplicatedFixed128Tensor: KnownType<S>,
+        RepBitT: Clone,
+        HostRingT: Placed,
+        HostRingT::Placement: Into<Placement>,
 
-        HostPlacement: PlacementBitDec<S, HostRing128Tensor, HostBitTensor>,
-        HostPlacement: PlacementIndexAxis<S, HostBitTensor, HostBitTensor>,
-        HostPlacement: PlacementShape<S, HostEncFixed128Tensor, HostShape>,
-        ReplicatedPlacement:
-            PlacementShareSetup<S, S::ReplicatedSetup, HostBitTensor, ReplicatedBitTensor>,
+        HostShape: KnownType<S>,
+        m!(HostShape): Clone,
+        ReplicatedShape: KnownType<S>,
+        AbstractReplicatedShape<m!(HostShape)>: Into<m!(ReplicatedShape)>,
+        AbstractReplicatedRingTensor<HostRingT>: KnownType<S>,
+        AbstractReplicatedFixedTensor<m!(ReplicatedRing128Tensor)>: Into<m!(ReplicatedFixed128Tensor)>,
+
+        HostPlacement: PlacementBitDec<S, HostRingT, HostBitT>,
+        HostPlacement: PlacementIndexAxis<S, HostBitT, HostBitT>,
+        HostPlacement: PlacementShape<S, AbstractHostEncFixedTensor<HostRingT>, m!(HostShape)>,
+        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostBitT, RepBitT>,
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementFill<S, ReplicatedShape, ReplicatedRing128Tensor>,
+        ReplicatedPlacement: PlacementFill<S, m!(ReplicatedShape), m!(AbstractReplicatedRingTensor<HostRingT>)>,
         ReplicatedPlacement: PlacementAdd<
             S,
-            ReplicatedRing128Tensor,
-            ReplicatedRing128Tensor,
-            ReplicatedRing128Tensor,
+            m!(AbstractReplicatedRingTensor<HostRingT>),
+            m!(AbstractReplicatedRingTensor<HostRingT>),
+            m!(AbstractReplicatedRingTensor<HostRingT>),
         >,
-        ReplicatedPlacement:
-            PlacementXor<S, ReplicatedBitTensor, ReplicatedBitTensor, ReplicatedBitTensor>,
-        ReplicatedPlacement:
-            PlacementAnd<S, ReplicatedBitTensor, ReplicatedBitTensor, ReplicatedBitTensor>,
-        ReplicatedPlacement: PlacementNeg<S, ReplicatedBitTensor, ReplicatedBitTensor>,
-        ReplicatedPlacement: PlacementRingInject<S, ReplicatedBitTensor, ReplicatedRing128Tensor>,
+        ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementAnd<S, RepBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementNeg<S, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementRingInject<S, RepBitT, m!(AbstractReplicatedRingTensor<HostRingT>)>,
     {
         let host = match c.placement() {
             Ok(Placement::Host(plc)) => plc,
@@ -87,20 +93,20 @@ impl AesDecryptOp {
         };
         let setup = rep.gen_setup(sess);
 
-        let host_shape = host.shape(sess, &c);
-        let shape = ReplicatedShape {
+        let host_shape: m!(HostShape) = host.shape(sess, &c);
+        let shape: m!(ReplicatedShape) = AbstractReplicatedShape {
             shapes: [host_shape.clone(), host_shape.clone(), host_shape],
-        };
+        }.into();
 
         // decompose into bits on host
         let c_decomposed = host.bit_decompose(sess, &c.tensor);
         let c_bits = (0..128).map(|i| host.index_axis(sess, 0, i, &c_decomposed));
 
         // sharing bits (could be public values but we don't have that yet)
-        let c_bits_shared: Vec<_> = c_bits.map(|b| rep.share(sess, &setup, &b)).collect();
+        let c_bits_shared: Vec<RepBitT> = c_bits.map(|b| rep.share(sess, &setup, &b)).collect();
 
         // run AES
-        let m_bits = aes(sess, rep, c_bits_shared.clone(), c_bits_shared);
+        let m_bits: Vec<RepBitT> = aes(sess, rep, c_bits_shared.clone(), c_bits_shared);
 
         // re-compose on rep
         let zero = rep.fill(sess, Constant::Ring128(0), &shape);
@@ -111,11 +117,11 @@ impl AesDecryptOp {
             .fold(zero, |acc, x| rep.add(sess, &acc, &x));
 
         // wrap up as fixed-point tensor
-        Fixed128Tensor::Replicated(ReplicatedFixed128Tensor {
+        AbstractReplicatedFixedTensor {
             tensor: m,
             fractional_precision: c.precision,
             integral_precision: 0, // TODO
-        })
+        }
     }
 }
 
