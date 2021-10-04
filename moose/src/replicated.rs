@@ -1147,15 +1147,16 @@ impl RepTensorSumOp {
     fn kernel<S: Session, RepT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        axis: Option<u32>,
+        _axis: Option<u32>,
         xs: &[RepT],
     ) -> RepT
     where
         ReplicatedPlacement: PlacementPlace<S, RepT>,
         ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
+        RepT: std::clone::Clone,
     {
-        // TODO
-        rep.add(sess, &xs[0], &xs[1])
+        let sum = xs.iter().cloned().reduce(|a, b| rep.add(sess, &a, &b)).unwrap();
+        sum
     }
 }
 
