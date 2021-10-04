@@ -1153,15 +1153,15 @@ impl RepTensorSumOp {
     fn kernel<S: Session, RepT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        axis: Option<u32>,
+        _axis: Option<u32>,
         xs: &[RepT],
     ) -> RepT
     where
         ReplicatedPlacement: PlacementPlace<S, RepT>,
         ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
+        RepT: std::clone::Clone,
     {
-        // TODO
-        rep.add(sess, &xs[0], &xs[1])
+        xs.iter().cloned().reduce(|a, b| rep.add(sess, &a, &b)).unwrap()
     }
 }
 
@@ -2327,10 +2327,6 @@ mod tests {
 
     #[test]
     fn test_rep_tensor_sum() {
-        use crate::host::concatenate;
-        use ndarray::IxDynImpl;
-        use ndarray::ViewRepr;
-
         let alice = HostPlacement {
             owner: "alice".into(),
         };
@@ -2349,16 +2345,11 @@ mod tests {
         let sess = SyncSession::default();
         let setup = rep.gen_setup(&sess);
 
-        //let concatenated = concatenate(0, &inputs);
         let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>> = inputs
             .into_iter()
             .map(|x| rep.share(&sess, &setup, &x))
             .collect();
 
-        //type T = AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>;
-        //let arr: Vec<ArrayBase<ViewRepr<&T>, Dim<IxDynImpl>>> = inputs.iter().map(|x| x.0.view()).collect();
-
-        //let c = ndarray::concatenate(Axis(0), &arr).expect("Failed to concatenate arrays with ndarray");
         let sum = rep.tensorsum(&sess, None, &shares);
         let opened_result = alice.reveal(&sess, &sum);
 
