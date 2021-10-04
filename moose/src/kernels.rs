@@ -2165,46 +2165,46 @@ impl Compile<AsyncKernel> for InputOp {
 
 for_all_values! {( $($value:ty),* ) => (
     $(
-        modelled!(PlacementOutput::output, HostPlacement, ($value) -> Unit, OutputOp);
+        modelled!(PlacementOutput::output, HostPlacement, ($value) -> $value, OutputOp);
     )*
 )}
-modelled!(PlacementOutput::output, HostPlacement, (crate::logical::Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Float32Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Float64Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Float32Tensor) -> Float32Tensor, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Float64Tensor) -> Float64Tensor, OutputOp);
 
 kernel! {
     OutputOp, [
         (HostPlacement, (Unit) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostShape) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (Seed) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (PrfKey) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostBitTensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostRing64Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostFloat32Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostFloat64Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostInt8Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostInt16Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostInt32Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostInt64Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostUint8Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostUint16Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostUint32Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostUint64Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostFixed64Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostFixed128Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (crate::logical::Tensor) -> Unit => [hybrid] Self::logical_kernel),
-        (HostPlacement, (Float32Tensor) -> Unit => [hybrid] Self::float_kernel),
-        (HostPlacement, (Float64Tensor) -> Unit => [hybrid] Self::float_kernel),
+        (HostPlacement, (HostShape) -> HostShape => [runtime] Self::kernel),
+        (HostPlacement, (Seed) -> Seed => [runtime] Self::kernel),
+        (HostPlacement, (PrfKey) -> PrfKey => [runtime] Self::kernel),
+        (HostPlacement, (String) -> String => [runtime] Self::kernel),
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostUint8Tensor) -> HostUint8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostUint16Tensor) -> HostUint16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::kernel),
+        (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] Self::float_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] Self::float_kernel),
     ]
 }
 
 impl OutputOp {
-    fn kernel<S: RuntimeSession, O>(_sess: &S, plc: &HostPlacement, _x: O) -> Result<Unit> {
-        // TODO (lvorona) What should output do for real?
-        // sess.storage.save(&key, &sess.sid, &val)?;
-        Ok(Unit(plc.clone()))
+    fn kernel<S: RuntimeSession, O>(_sess: &S, _plc: &HostPlacement, x: O) -> Result<O> {
+        // Output is not doing anything now, it is just a marker on the graph.
+        // But it has to return a value because that's how we collect outputs in the old framework
+        Ok(x)
     }
 }
 

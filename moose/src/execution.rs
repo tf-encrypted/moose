@@ -229,18 +229,17 @@ pub type AsyncReceiver = Shared<
 
 pub type AsyncTask = tokio::task::JoinHandle<Result<()>>;
 
+/// A bridge beetween the old and new framework.
+///
+/// We could implement those on the Operators themselves, but having it a separate struct will make it easier to delete once we are done.
 struct Bridge;
 
 impl Bridge {
-    pub fn nullary(
-        new_sess: Arc<crate::kernels::SyncSession>,
-        op: Operator,
-        plc: Arc<Placement>,
-    ) -> NullaryAsyncKernel {
-        Box::new(move |_, sender| {
-            let new_sess = new_sess.clone();
+    pub fn nullary(op: Operator) -> NullaryAsyncKernel {
+        Box::new(move |sess, sender| {
+            let new_sess = sess.new_sess.clone();
             let op = op.clone();
-            let plc = plc.clone();
+            let plc = sess.host.clone();
             tokio::spawn(async move {
                 use crate::kernels::Session;
                 let y = new_sess.execute(op, &plc, vec![])?;
@@ -249,19 +248,46 @@ impl Bridge {
         })
     }
 
-    pub fn unary(
-        new_sess: Arc<crate::kernels::SyncSession>,
-        op: Operator,
-        plc: Arc<Placement>,
-    ) -> UnaryAsyncKernel {
-        Box::new(move |_, v, sender| {
-            let new_sess = new_sess.clone();
+    pub fn unary(op: Operator) -> UnaryAsyncKernel {
+        Box::new(move |sess, v, sender| {
+            let new_sess = sess.new_sess.clone();
             let op = op.clone();
-            let plc = plc.clone();
+            let plc = sess.host.clone();
             tokio::spawn(async move {
                 use crate::kernels::Session;
                 let v: Value = v.await.map_err(map_receive_error)?;
                 let y = new_sess.execute(op, &plc, vec![v])?;
+                map_send_result(sender.send(y))
+            })
+        })
+    }
+
+    pub fn binary(op: Operator) -> BinaryAsyncKernel {
+        Box::new(move |sess, v0, v1, sender| {
+            let new_sess = sess.new_sess.clone();
+            let op = op.clone();
+            let plc = sess.host.clone();
+            tokio::spawn(async move {
+                use crate::kernels::Session;
+                let v0: Value = v0.await.map_err(map_receive_error)?;
+                let v1: Value = v1.await.map_err(map_receive_error)?;
+                let y = new_sess.execute(op, &plc, vec![v0, v1])?;
+                map_send_result(sender.send(y))
+            })
+        })
+    }
+
+    pub fn ternary(op: Operator) -> TernaryAsyncKernel {
+        Box::new(move |sess, v0, v1, v2, sender| {
+            let new_sess = sess.new_sess.clone();
+            let op = op.clone();
+            let plc = sess.host.clone();
+            tokio::spawn(async move {
+                use crate::kernels::Session;
+                let v0: Value = v0.await.map_err(map_receive_error)?;
+                let v1: Value = v1.await.map_err(map_receive_error)?;
+                let v2: Value = v2.await.map_err(map_receive_error)?;
+                let y = new_sess.execute(op, &plc, vec![v0, v1, v2])?;
                 map_send_result(sender.send(y))
             })
         })
@@ -578,34 +604,64 @@ impl Compile<CompiledSyncOperation> for Operation {
 }
 
 impl Compile<CompiledAsyncOperation> for Operation {
-    fn compile(&self, ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
         let op = self.clone();
 
         match self.kind.sig().arity() {
-            Some(0) => Ok(CompiledAsyncOperation {
-                name: self.name.clone(),
-                kernel: Box::new(move |sess, _, sender| {
-                    let k =
-                        Bridge::nullary(sess.new_sess.clone(), op.kind.clone(), sess.host.clone());
-                    Ok(k(sess, sender))
-                }),
-            }),
+            Some(0) => {
+                check_arity(&self.name, &self.inputs, 0)?;
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, _, sender| {
+                        let k = Bridge::nullary(op.kind.clone());
+                        Ok(k(sess, sender))
+                    }),
+                })
+            }
             Some(1) => {
+                check_arity(&self.name, &self.inputs, 1)?;
                 let x0_name = self.inputs[0].clone();
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
                     kernel: Box::new(move |sess, env, sender| {
                         let x0 = find_env(env, &x0_name)?;
-                        let k = Bridge::unary(
-                            sess.new_sess.clone(),
-                            op.kind.clone(),
-                            sess.host.clone(),
-                        );
+                        let k = Bridge::unary(op.kind.clone());
                         Ok(k(sess, x0, sender))
                     }),
                 })
             }
-            _ => todo!(),
+            Some(2) => {
+                check_arity(&self.name, &self.inputs, 2)?;
+                let x0_name = self.inputs[0].clone();
+                let x1_name = self.inputs[1].clone();
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, env, sender| {
+                        let x0 = find_env(env, &x0_name)?;
+                        let x1 = find_env(env, &x1_name)?;
+                        let k = Bridge::binary(op.kind.clone());
+                        Ok(k(sess, x0, x1, sender))
+                    }),
+                })
+            }
+            Some(3) => {
+                check_arity(&self.name, &self.inputs, 3)?;
+                let x0_name = self.inputs[0].clone();
+                let x1_name = self.inputs[1].clone();
+                let x2_name = self.inputs[2].clone();
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, env, sender| {
+                        let x0 = find_env(env, &x0_name)?;
+                        let x1 = find_env(env, &x1_name)?;
+                        let x2 = find_env(env, &x2_name)?;
+                        let k = Bridge::ternary(op.kind.clone());
+                        Ok(k(sess, x0, x1, x2, sender))
+                    }),
+                })
+            }
+            None => todo!(),
+            _ => unimplemented!("No support for the bridge of an unexpected arity"),
         }
     }
 }
@@ -2347,6 +2403,10 @@ mod tests {
             arguments: hashmap!(),
             networking: Arc::clone(&networking),
             storage: Arc::clone(&exec_storage),
+            new_sess: Arc::new(crate::kernels::SyncSession::default()),
+            host: Arc::new(Placement::Host(HostPlacement {
+                owner: "localhost".into(),
+            })),
         };
 
         let computation: Computation = source.try_into().unwrap();
@@ -2366,6 +2426,10 @@ mod tests {
             arguments: hashmap!(),
             networking: Arc::clone(&networking),
             storage: Arc::clone(&exec_storage),
+            new_sess: Arc::new(crate::kernels::SyncSession::default()),
+            host: Arc::new(Placement::Host(HostPlacement {
+                owner: "localhost".into(),
+            })),
         };
 
         let expected =

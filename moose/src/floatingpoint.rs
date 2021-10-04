@@ -494,13 +494,12 @@ impl OutputOp {
         sess: &S,
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT>,
-    ) -> Result<cs!(Unit)>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         String: KnownType<S>,
-        Unit: KnownType<S>,
-        HostPlacement: PlacementOutput<S, HostFloatT, cs!(Unit)>,
+        HostPlacement: PlacementOutput<S, HostFloatT, HostFloatT>,
     {
         let FloatTensor::Host(x) = x;
-        Ok(plc.output(sess, &x))
+        Ok(FloatTensor::Host(plc.output(sess, &x)))
     }
 }

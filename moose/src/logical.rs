@@ -1218,12 +1218,11 @@ impl OutputOp {
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-    ) -> Result<cs!(Unit)>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         String: KnownType<S>,
-        Unit: KnownType<S>,
-        HostPlacement: PlacementOutput<S, Float32T, cs!(Unit)>,
-        HostPlacement: PlacementOutput<S, Float64T, cs!(Unit)>,
+        HostPlacement: PlacementOutput<S, Float32T, Float32T>,
+        HostPlacement: PlacementOutput<S, Float64T, Float64T>,
     {
         match x {
             AbstractTensor::Fixed64(_x) => Err(Error::UnimplementedOperator(
@@ -1232,8 +1231,8 @@ impl OutputOp {
             AbstractTensor::Fixed128(_x) => Err(Error::UnimplementedOperator(
                 "OutputOp missing a Fixed128 implementation.".to_string(),
             )),
-            AbstractTensor::Float32(x) => Ok(plc.output(sess, &x)),
-            AbstractTensor::Float64(x) => Ok(plc.output(sess, &x)),
+            AbstractTensor::Float32(x) => Ok(AbstractTensor::Float32(plc.output(sess, &x))),
+            AbstractTensor::Float64(x) => Ok(AbstractTensor::Float64(plc.output(sess, &x))),
         }
     }
 }
