@@ -1163,7 +1163,7 @@ impl RepTensorSumOp {
         // 1 + 2, 3 + 4, 5 + 6, 7 + 8
         //   3   +  7,    11   +  15
         //      10     +      26
-        //            37
+        //            36
         let sum = xs
             .iter()
             .cloned()
