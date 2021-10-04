@@ -1150,11 +1150,7 @@ kernel! {
 }
 
 impl RepTensorSumOp {
-    fn kernel<S: Session, RepT>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        xs: &[RepT],
-    ) -> Result<RepT>
+    fn kernel<S: Session, RepT>(sess: &S, rep: &ReplicatedPlacement, xs: &[RepT]) -> Result<RepT>
     where
         ReplicatedPlacement: PlacementPlace<S, RepT>,
         ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
@@ -1168,7 +1164,8 @@ impl RepTensorSumOp {
         //   3   +  7,    11   +  15
         //      10     +      26
         //            37
-        let sum = xs.iter()
+        let sum = xs
+            .iter()
             .cloned()
             .reduce(|a, b| rep.add(sess, &a, &b))
             .unwrap();
@@ -2367,7 +2364,7 @@ mod tests {
             .map(|x| rep.share(&sess, &setup, &x))
             .collect();
 
-        let sum = rep.tensorsum(&sess, None, &shares);
+        let sum = rep.tensorsum(&sess, &shares);
         let opened_result = alice.reveal(&sess, &sum);
 
         assert_eq!(expected, opened_result);
