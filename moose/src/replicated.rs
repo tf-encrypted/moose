@@ -1168,7 +1168,9 @@ impl RepAddNOp {
             .iter()
             .cloned()
             .reduce(|a, b| rep.add(sess, &a, &b))
-            .unwrap();
+            .ok_or_else(|| {
+                Error::InvalidArgument("cannot reduce on empty array of tensors".to_string())
+            })?;
         Ok(sum)
     }
 }
@@ -2334,7 +2336,7 @@ mod tests {
     use rstest::rstest;
 
     #[test]
-    fn test_rep_tensor_sum() {
+    fn test_rep_add_n() {
         let alice = HostPlacement {
             owner: "alice".into(),
         };
