@@ -848,7 +848,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Shape" => Ok((i, Ty::HostShape)),
         "Seed" => Ok((i, Ty::Seed)),
         "PrfKey" => Ok((i, Ty::PrfKey)),
-        "String" => Ok((i, Ty::String)),
+        "String" => Ok((i, Ty::HostString)),
         "BitTensor" => Ok((i, Ty::HostBitTensor)),
         "BitArray64" => Ok((i, Ty::HostBitArray64)),
         "BitArray128" => Ok((i, Ty::HostBitArray128)),
@@ -1760,7 +1760,7 @@ impl ToTextual for Ty {
     fn to_textual(&self) -> String {
         match self {
             Ty::Unit => "Unit".to_string(),
-            Ty::String => "String".to_string(),
+            Ty::HostString => "String".to_string(),
             Ty::Float32 => "Float32".to_string(),
             Ty::Float64 => "Float64".to_string(),
             Ty::Ring64 => "Ring64".to_string(),
@@ -1826,7 +1826,7 @@ impl ToTextual for Value {
             Value::HostRing128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
             Value::Float32(x) => format!("Float32({})", x),
             Value::Float64(x) => format!("Float64({})", x),
-            Value::String(x) => format!("String({})", x.to_textual()),
+            Value::HostString(x) => format!("String({})", x.0.to_textual()),
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
             Value::HostShape(x) => format!("HostShape({:?})", x.0),

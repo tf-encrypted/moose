@@ -1286,7 +1286,7 @@ impl AsyncTestRuntime {
                 // Creating independent new framework's sync sessions for the bridge
                 new_sess: Arc::new(crate::kernels::SyncSession::default()),
                 host: Arc::new(Placement::Host(HostPlacement {
-                    owner: "localhost".into(),
+                    owner: own_identity.0.clone().into(),
                 })),
             };
             let (moose_session_handle, outputs) = executor
@@ -1373,7 +1373,9 @@ impl AsyncTestRuntime {
 mod tests {
     use super::*;
     use crate::compilation::networking::NetworkingPass;
-    use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostShape, RawShape};
+    use crate::host::{
+        HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostShape, HostString, RawShape,
+    };
     use crate::host::{HostRing128Tensor, HostRing64Tensor};
     use crate::prim::{RawPrfKey, RawSeed, Seed, SyncKey};
     use itertools::Itertools;
@@ -1568,9 +1570,12 @@ mod tests {
         output = Output: (Unit) -> Unit (save) @Host(alice)
         "#;
         let source = source_template.replace("TensorType", &data_type_str);
-        let arguments: HashMap<String, Value> = hashmap!("x_uri".to_string()=> Value::from("input_data".to_string()),
-            "x_query".to_string() => Value::from("".to_string()),
-            "saved_uri".to_string() => Value::from("saved_data".to_string()));
+        let plc = HostPlacement {
+            owner: "alice".into(),
+        };
+        let arguments: HashMap<String, Value> = hashmap!("x_uri".to_string()=> HostString("input_data".to_string(), plc.clone()).into(),
+            "x_query".to_string() => HostString("".to_string(), plc.clone()).into(),
+            "saved_uri".to_string() => HostString("saved_data".to_string(), plc.clone()).into());
 
         let saved_data = match run_async {
             true => {
@@ -2026,21 +2031,27 @@ mod tests {
             run_async,
         )?;
 
-        let comp_result: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result = outputs
+            .get("output")
+            .ok_or(anyhow::anyhow!("Expected result missing"))?;
 
         if unwrap_flag {
-            let shaped_result = comp_result.reshape(HostShape(
-                RawShape(vec![1]),
-                HostPlacement {
-                    owner: "alice".into(),
-                },
-            ));
-            assert_eq!(
-                expected_result,
-                Value::Float32(Box::new(shaped_result.0[0]))
-            );
+            if let Value::HostFloat32Tensor(x) = comp_result {
+                let shaped_result = x.clone().reshape(HostShape(
+                    RawShape(vec![1]),
+                    HostPlacement {
+                        owner: "alice".into(),
+                    },
+                ));
+                assert_eq!(
+                    expected_result,
+                    Value::Float32(Box::new(shaped_result.0[0]))
+                );
+            } else {
+                panic!("Value of incorrect type {:?}", comp_result);
+            }
         } else {
-            assert_eq!(expected_result, comp_result.into());
+            assert_eq!(&expected_result, comp_result);
         }
         Ok(())
     }

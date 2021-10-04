@@ -2,7 +2,7 @@ use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::HostShape;
+use crate::host::{HostShape, HostString};
 use crate::kernels::*;
 use crate::symbolic::Symbolic;
 use derive_more::Display;
@@ -1107,8 +1107,8 @@ impl LoadOp {
     pub fn logical_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
-        key: cs!(String),
-        query: cs!(String),
+        key: cs!(HostString),
+        query: cs!(HostString),
     ) -> Result<
         AbstractTensor<
             cs!(Fixed64Tensor),
@@ -1118,12 +1118,12 @@ impl LoadOp {
         >,
     >
     where
-        String: KnownType<S>,
+        HostString: KnownType<S>,
         Fixed64Tensor: KnownType<S>,
         Fixed128Tensor: KnownType<S>,
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
-        HostPlacement: PlacementLoad<S, cs!(String), cs!(String), cs!(Float64Tensor)>,
+        HostPlacement: PlacementLoad<S, cs!(HostString), cs!(HostString), cs!(Float64Tensor)>,
     {
         let z = plc.load(sess, &key, &query);
         Ok(AbstractTensor::Float64(z))
@@ -1134,16 +1134,16 @@ impl SaveOp {
     pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
-        key: cs!(String),
+        key: cs!(HostString),
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> Result<cs!(Unit)>
     where
-        String: KnownType<S>,
+        HostString: KnownType<S>,
         Unit: KnownType<S>,
-        // HostPlacement: PlacementSave<S, cs!(String), Fixed64T, cs!(Unit)>,
-        // HostPlacement: PlacementSave<S, cs!(String), Fixed128T, cs!(Unit)>,
-        HostPlacement: PlacementSave<S, cs!(String), Float32T, cs!(Unit)>,
-        HostPlacement: PlacementSave<S, cs!(String), Float64T, cs!(Unit)>,
+        // HostPlacement: PlacementSave<S, cs!(HostString), Fixed64T, cs!(Unit)>,
+        // HostPlacement: PlacementSave<S, cs!(HostString), Fixed128T, cs!(Unit)>,
+        HostPlacement: PlacementSave<S, cs!(HostString), Float32T, cs!(Unit)>,
+        HostPlacement: PlacementSave<S, cs!(HostString), Float64T, cs!(Unit)>,
     {
         match x {
             AbstractTensor::Fixed64(_x) => {
@@ -1220,7 +1220,7 @@ impl OutputOp {
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
-        String: KnownType<S>,
+        HostString: KnownType<S>,
         HostPlacement: PlacementOutput<S, Float32T, Float32T>,
         HostPlacement: PlacementOutput<S, Float64T, Float64T>,
     {

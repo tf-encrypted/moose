@@ -212,7 +212,6 @@ class LinearRegressionExample(parameterized.TestCase):
         @edsl.computation
         def my_comp():
             with x_owner:
-                # x = edsl.constant("hello")
                 x = edsl.constant(np.array([1, 2], dtype=np.float64))
 
             return x

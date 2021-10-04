@@ -810,7 +810,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::prim_SeedType => Ok(Ty::Seed),
         PyValueType::std_ShapeType => Ok(Ty::HostShape),
         PyValueType::std_UnitType => Ok(Ty::Unit),
-        PyValueType::std_StringType => Ok(Ty::String),
+        PyValueType::std_StringType => Ok(Ty::HostString),
         PyValueType::std_TensorType { dtype } => match dtype {
             PyDType::float32 => Ok(Ty::Tensor(TensorDType::Float32)),
             PyDType::float64 => Ok(Ty::Tensor(TensorDType::Float64)),
@@ -1419,7 +1419,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SaveOperation(op) => Ok(Operation {
                         kind: SaveOp {
-                            sig: Signature::binary(Ty::String, Ty::Unknown, Ty::Unit),
+                            sig: Signature::binary(Ty::HostString, Ty::Unknown, Ty::Unit),
                         }
                         .into(),
                         name: op.name.clone(),
@@ -1430,8 +1430,8 @@ impl TryFrom<PyComputation> for Computation {
                     std_LoadOperation(op) => Ok(Operation {
                         kind: LoadOp {
                             sig: Signature::binary(
-                                Ty::String,
-                                Ty::String,
+                                Ty::HostString,
+                                Ty::HostString,
                                 map_type(&op.output_type)?,
                             ),
                         }

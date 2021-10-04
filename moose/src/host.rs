@@ -22,23 +22,16 @@ use std::num::Wrapping;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 use std::ops::{BitAnd, BitXor, Neg, Shl, Shr};
 
-moose_type!(String);
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct HostString(pub String, pub HostPlacement);
 
-impl Placed for String {
-    type Placement = Placement;
+moose_type!(HostString);
+
+impl Placed for HostString {
+    type Placement = HostPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        // TODO we need a wrapper for strings that contains placement info
-        unimplemented!()
-    }
-}
-
-impl<S: Session> PlacementPlace<S, String> for HostPlacement {
-    fn place(&self, _sess: &S, x: String) -> String {
-        match x.placement() {
-            Ok(Placement::Host(place)) if &place == self => x,
-            _ => unimplemented!("Not yet able to place strings"), // TODO: Err
-        }
+        Ok(self.1.clone())
     }
 }
 
@@ -1190,7 +1183,7 @@ where
         HostTensor::<T>(
             v,
             HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernels
+                owner: "TODO10".into(), // Fake owner for the old kernels
             },
         )
     }
@@ -1267,7 +1260,7 @@ impl<T> From<Vec<T>> for HostTensor<T> {
         HostTensor(
             Array::from(v).into_dyn(),
             HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernel
+                owner: "TODO11".into(), // Fake owner for the old kernel
             },
         )
     }
@@ -1280,7 +1273,7 @@ impl<T> From<Array1<T>> for HostTensor<T> {
         HostTensor(
             v.into_dyn(),
             HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernel
+                owner: "TODO12".into(), // Fake owner for the old kernel
             },
         )
     }
@@ -1293,7 +1286,7 @@ impl<T> From<Array2<T>> for HostTensor<T> {
         HostTensor(
             v.into_dyn(),
             HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernel
+                owner: "TODO13".into(), // Fake owner for the old kernel
             },
         )
     }
@@ -1311,7 +1304,7 @@ where
     HostTensor::<T>(
         c,
         HostPlacement {
-            owner: "TODO".into(),
+            owner: "TODO14".into(),
         },
     )
 }
@@ -1347,6 +1340,12 @@ impl<S: Session> PlacementPlace<S, HostBitTensor> for HostPlacement {
                 HostBitTensor(x.0, self.clone())
             }
         }
+    }
+}
+
+impl HostBitTensor {
+    pub fn place(plc: &HostPlacement, x: ArrayD<u8>) -> HostBitTensor {
+        HostBitTensor(x, plc.clone())
     }
 }
 
@@ -1547,7 +1546,7 @@ impl HostBitTensor {
         HostBitTensor(
             Array::from_shape_vec(ix, values).unwrap(),
             HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
+                owner: "TODO15".into(), // Fake owner for the older kernels.
             },
         )
     }
@@ -1566,7 +1565,7 @@ impl HostBitTensor {
         HostBitTensor(
             Array::from_shape_vec(ix, values).unwrap(),
             HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
+                owner: "TODO16".into(), // Fake owner for the older kernels.
             },
         )
     }
@@ -1588,7 +1587,7 @@ impl HostBitTensor {
         HostBitTensor(
             ArrayD::from_elem(shape.0.as_ref(), el & 1),
             HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
+                owner: "TODO17".into(), // Fake owner for the older kernels.
             },
         )
     }
@@ -1627,7 +1626,7 @@ impl From<ArrayD<u8>> for HostBitTensor {
         HostBitTensor(
             wrapped,
             HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
+                owner: "TODO18".into(), // Fake owner for the older kernels.
             },
         )
     }
@@ -1641,7 +1640,7 @@ impl From<Vec<u8>> for HostBitTensor {
         HostBitTensor(
             Array::from_shape_vec(ix, v).unwrap(),
             HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
+                owner: "TODO19".into(), // Fake owner for the older kernels.
             },
         )
     }
@@ -1656,7 +1655,7 @@ impl From<&[u8]> for HostBitTensor {
         HostBitTensor(
             Array::from_shape_vec(ix, v_wrapped).unwrap(),
             HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
+                owner: "TODO20".into(), // Fake owner for the older kernels.
             },
         )
     }
@@ -1892,6 +1891,12 @@ where
                 AbstractHostRingTensor(x.0, self.clone())
             }
         }
+    }
+}
+
+impl<T> AbstractHostRingTensor<T> {
+    pub fn place(plc: &HostPlacement, x: ArrayD<Wrapping<T>>) -> AbstractHostRingTensor<T> {
+        AbstractHostRingTensor::<T>(x, plc.clone())
     }
 }
 
@@ -2494,7 +2499,7 @@ where
         AbstractHostRingTensor(
             ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)),
             HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
+                owner: Role::from("TODO21"), // Fake owner for the old kernels
             },
         )
     }
@@ -2517,7 +2522,7 @@ where
         AbstractHostRingTensor(
             wrapped,
             HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
+                owner: Role::from("TODO22"), // Fake owner for the old kernels
             },
         )
     }
@@ -2531,7 +2536,7 @@ impl From<ArrayD<i64>> for AbstractHostRingTensor<u64> {
         AbstractHostRingTensor(
             ring_rep,
             HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
+                owner: Role::from("TODO23"), // Fake owner for the old kernels
             },
         )
     }
@@ -2545,7 +2550,7 @@ impl From<ArrayD<i128>> for AbstractHostRingTensor<u128> {
         AbstractHostRingTensor(
             ring_rep,
             HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
+                owner: Role::from("TODO24"), // Fake owner for the old kernels
             },
         )
     }
@@ -2557,7 +2562,7 @@ impl<T> AbstractHostRingTensor<T> {
         AbstractHostRingTensor(
             a,
             HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
+                owner: Role::from("TODO25"), // Fake owner for the old kernels
             },
         )
     }
@@ -2574,7 +2579,7 @@ where
         AbstractHostRingTensor(
             ring_rep,
             HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
+                owner: Role::from("TODO26"), // Fake owner for the old kernels
             },
         )
     }
@@ -2602,7 +2607,7 @@ impl<T> From<Vec<T>> for AbstractHostRingTensor<T> {
         AbstractHostRingTensor(
             Array::from_shape_vec(ix, v_wrapped).unwrap(),
             HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
+                owner: Role::from("TODO27"), // Fake owner for the old kernels
             },
         )
     }
@@ -2620,7 +2625,7 @@ where
         AbstractHostRingTensor(
             Array::from_shape_vec(ix, v_wrapped).unwrap(),
             HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
+                owner: Role::from("TODO28"), // Fake owner for the old kernels
             },
         )
     }

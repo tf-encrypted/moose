@@ -7,7 +7,7 @@ use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{
     HostBitArray128, HostBitArray64, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
     HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor,
-    HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostUint16Tensor,
+    HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostString, HostUint16Tensor,
     HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::kernels::Session;
@@ -194,7 +194,9 @@ macro_rules! constants {
             pub fn place(&self, plc: &HostPlacement) -> Value {
                 match self {
                     $(
-                        Constant::$val(x) => {constants!(@value(x.clone(), plc.clone().into()) $val $($t)?)},
+                        Constant::$val(x) => {
+                            constants!(@value(x.clone(), plc) $val $(as $t)?)
+                        },
                     )+
                     // TODO promote below to match other values
                     Constant::Bit(x) => Value::Bit(Box::new(x.clone())),
@@ -218,8 +220,8 @@ macro_rules! constants {
     (@ty $val:ident $t:ident) => {Ty::$t};
     (@ty $val:ident) => {Ty::$val};
 
-    (@value($x:expr, $plc:expr) $val:ident $t:ident) => {Value::$t(Box::new($t($x, $plc)))};
-    (@value($x:expr, $plc:expr) $val:ident) => {Value::$val(Box::new($x))};
+    (@value($x:expr, $plc:expr) $val:ident as $t:ident) => {Value::$t(Box::new($t($x, $plc.clone().into())))};
+    (@value($x:expr, $plc:expr) $val:ident) => {Value::$val(Box::new($val::place($plc, $x.0)))};
 }
 
 // The lines with 2 identifiers are for linking to the "Placed" values - the types whose `Value` incarnation has a placement already.
@@ -228,7 +230,7 @@ constants![
     RawShape HostShape,
     RawSeed Seed,
     RawPrfKey PrfKey,
-    String,
+    String HostString,
     HostBitTensor,
     HostRing64Tensor,
     HostRing128Tensor,
@@ -418,7 +420,7 @@ values![
     HostShape,
     Seed,
     PrfKey,
-    String,
+    HostString,
     Tensor(TensorDType::Unknown),
     HostBitTensor,
     HostBitArray64,
@@ -461,7 +463,7 @@ values![
 macro_rules! for_all_values {( $($rules:tt)* ) => (
     macro_rules! __emit__ { $($rules)* }
     __emit__! {
-        String,
+        HostString,
         Unit,
         HostShape,
         Seed,

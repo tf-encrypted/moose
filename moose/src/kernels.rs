@@ -8,7 +8,7 @@ use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{
     AbstractHostFixedTensor, AbstractHostRingTensor, HostBitTensor, HostFixed128Tensor,
     HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
-    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
+    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostString,
     HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, SliceInfo,
 };
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
@@ -1224,7 +1224,7 @@ impl Compile<Kernel> for PrimDeriveSeedOp {
         closure_kernel!(PrfKey, |key| Seed(
             RawSeed::from_prf(&key.0, &sync_key),
             HostPlacement {
-                owner: "TODO".into() // Fake owner for the older kernels.
+                owner: "TODO1".into() // Fake owner for the older kernels.
             }
         ))
     }
@@ -1237,7 +1237,7 @@ impl Compile<Kernel> for PrimPrfKeyGenOp {
         function_kernel!(|| PrfKey(
             RawPrfKey::generate(),
             HostPlacement {
-                owner: "TODO".into() // Fake owner for the older kernels.
+                owner: "TODO4".into() // Fake owner for the older kernels.
             }
         ))
     }
@@ -1768,7 +1768,7 @@ impl Compile<Kernel> for ConstantOp {
         let value = self.value.clone();
         Ok(Kernel::NullaryClosure(Arc::new(move || {
             Ok(value.place(&HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
+                owner: "TODO5".into(), // Fake owner for the older kernels.
             }))
         })))
     }
@@ -1779,6 +1779,7 @@ macro_rules! constant_kernels {
         $(
             modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> $val, ConstantOp);
         )+
+        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostString, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
 
@@ -1787,6 +1788,7 @@ macro_rules! constant_kernels {
                 $(
                     (HostPlacement, () -> $val => [runtime] attributes[value: $val] Self::kernel),
                 )+
+                (HostPlacement, () -> HostString => [runtime] attributes[value] Self::string_kernel),
                 (HostPlacement, () -> crate::logical::Tensor => [hybrid] attributes[value] Self::logical_kernel),
                 (HostPlacement, () -> Float64Tensor => [hybrid] attributes[value] Self::float_kernel),
             ]
@@ -1795,7 +1797,6 @@ macro_rules! constant_kernels {
 }
 
 constant_kernels![
-    String,
     HostFloat32Tensor,
     HostFloat64Tensor,
     HostInt8Tensor,
@@ -1815,6 +1816,20 @@ impl ConstantOp {
     {
         Ok(plc.place(sess, value))
     }
+
+    fn string_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        value: Constant,
+    ) -> Result<HostString> {
+        match value {
+            Constant::String(x) => Ok(HostString(x.clone(), plc.clone())),
+            _ => Err(crate::error::Error::TypeMismatch {
+                expected: "String".to_string(),
+                found: value.ty(),
+            }),
+        }
+    }
 }
 
 for_all_values! {( $($value:ty),* ) => (
@@ -1825,7 +1840,7 @@ for_all_values! {( $($value:ty),* ) => (
 
 kernel! {
     SendOp, [
-        (HostPlacement, (String) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostString) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
         (HostPlacement, (Unit) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
         (HostPlacement, (HostShape) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
         (HostPlacement, (Seed) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
@@ -1880,7 +1895,7 @@ impl Compile<SyncKernel> for SendOp {
             sess.networking
                 .send(&v, &receiver_id, &rendezvous_key, &sess.sid)?;
             Ok(Value::Unit(Box::new(Unit(HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
+                owner: "TODO6".into(), // Fake owner for the older kernels.
             }))))
         })))
     }
@@ -1914,7 +1929,7 @@ impl Compile<AsyncKernel> for SendOp {
                     .send(&v, &receiver_id, &rendezvous_key, &sess.sid)
                     .await?;
                 map_send_result(sender.send(Value::Unit(Box::new(Unit(HostPlacement {
-                    owner: "TODO".into(), // Fake owner for the older kernels.
+                    owner: "TODO7".into(), // Fake owner for the older kernels.
                 })))))
             })
         })))
@@ -1929,7 +1944,7 @@ for_all_values! {( $($value:ty),* ) => (
 
 kernel! {
     ReceiveOp, [
-        (HostPlacement, () -> String => [runtime] attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostString => [runtime] attributes[rendezvous_key, sender] Self::kernel),
         (HostPlacement, () -> Unit => [runtime] attributes[rendezvous_key, sender] Self::kernel),
         (HostPlacement, () -> HostShape => [runtime] attributes[rendezvous_key, sender] Self::kernel),
         (HostPlacement, () -> Seed => [runtime] attributes[rendezvous_key, sender] Self::kernel),
@@ -2031,7 +2046,7 @@ for_all_values! {( $($value:ty),* ) => (
 
 kernel! {
     IdentityOp, [
-        (HostPlacement, (String) -> String => [runtime] Self::kernel),
+        (HostPlacement, (HostString) -> HostString => [runtime] Self::kernel),
         (HostPlacement, (Unit) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (HostShape) -> HostShape => [runtime] Self::kernel),
         (HostPlacement, (Seed) -> Seed => [runtime] Self::kernel),
@@ -2094,7 +2109,7 @@ for_all_values! {( $($value:ty),* ) => (
 
 kernel! {
     InputOp, [
-        (HostPlacement, () -> String => [runtime] attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostString => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Unit => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostShape => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Seed => [runtime] attributes[arg_name] Self::kernel),
@@ -2178,7 +2193,7 @@ kernel! {
         (HostPlacement, (HostShape) -> HostShape => [runtime] Self::kernel),
         (HostPlacement, (Seed) -> Seed => [runtime] Self::kernel),
         (HostPlacement, (PrfKey) -> PrfKey => [runtime] Self::kernel),
-        (HostPlacement, (String) -> String => [runtime] Self::kernel),
+        (HostPlacement, (HostString) -> HostString => [runtime] Self::kernel),
         (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::kernel),
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
@@ -2227,39 +2242,39 @@ impl Compile<AsyncKernel> for OutputOp {
 
 for_all_values! {( $($value:ty),* ) => (
     $(
-        modelled!(PlacementSave::save, HostPlacement, (String, $value) -> Unit, SaveOp);
+        modelled!(PlacementSave::save, HostPlacement, (HostString, $value) -> Unit, SaveOp);
     )*
 )}
 
-modelled!(PlacementSave::save, HostPlacement, (String, crate::logical::Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Float32Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Float64Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (HostString, crate::logical::Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (HostString, Float32Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (HostString, Float64Tensor) -> Unit, SaveOp);
 
 kernel! {
     SaveOp, [
-        (HostPlacement, (String, Unit) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostShape) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, Seed) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, PrfKey) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostBitTensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostRing64Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostRing128Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostFloat32Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostFloat64Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostInt8Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostInt16Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostInt32Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostInt64Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostUint8Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostUint16Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostUint32Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostUint64Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostFixed64Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostFixed128Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, crate::logical::Tensor) -> Unit => [hybrid] Self::logical_kernel),
-        (HostPlacement, (String, Float32Tensor) -> Unit => [hybrid] Self::float_kernel),
-        (HostPlacement, (String, Float64Tensor) -> Unit => [hybrid] Self::float_kernel),
+        (HostPlacement, (HostString, Unit) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostShape) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, Seed) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, PrfKey) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostBitTensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostRing64Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostRing128Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostFloat32Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostFloat64Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostInt8Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostInt16Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostInt32Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostInt64Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostUint8Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostUint16Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostUint32Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostUint64Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostFixed64Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostFixed128Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, crate::logical::Tensor) -> Unit => [hybrid] Self::logical_kernel),
+        (HostPlacement, (HostString, Float32Tensor) -> Unit => [hybrid] Self::float_kernel),
+        (HostPlacement, (HostString, Float64Tensor) -> Unit => [hybrid] Self::float_kernel),
     ]
 }
 
@@ -2267,7 +2282,7 @@ impl SaveOp {
     fn kernel<S: RuntimeSession, O>(
         _sess: &S,
         _plc: &HostPlacement,
-        _key: String,
+        _key: HostString,
         _x: O,
     ) -> Result<Unit> {
         unimplemented!() // TODO: Save the value into storage for the Async and Sync sessions to work.
@@ -2281,11 +2296,11 @@ impl Compile<SyncKernel> for SaveOp {
         let expected_ty = self.sig.arg(1)?;
 
         Ok(SyncKernel::Binary(Box::new(move |sess, key, val| {
-            let key = String::try_from(key)?;
+            let key = HostString::try_from(key)?;
             check_type(&val, expected_ty)?;
-            sess.storage.save(&key, &sess.sid, &val)?;
+            sess.storage.save(&key.0, &sess.sid, &val)?;
             Ok(Value::Unit(Box::new(Unit(HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernel
+                owner: "TODO8".into(), // Fake owner for the old kernel
             }))))
         })))
     }
@@ -2302,12 +2317,12 @@ impl Compile<AsyncKernel> for SaveOp {
                 let sess = Arc::clone(sess);
 
                 tokio::spawn(async move {
-                    let key = String::try_from(key.await.map_err(map_receive_error)?)?;
+                    let key = HostString::try_from(key.await.map_err(map_receive_error)?)?;
                     let val = val.await.map_err(map_receive_error)?;
                     check_type(&val, expected_ty)?;
-                    sess.storage.save(&key, &sess.sid, &val).await?;
+                    sess.storage.save(&key.0, &sess.sid, &val).await?;
                     map_send_result(sender.send(Value::Unit(Box::new(Unit(HostPlacement {
-                        owner: "TODO".into(), // Fake owner for the old kernel
+                        owner: "TODO9".into(), // Fake owner for the old kernel
                     })))))
                 })
             },
@@ -2317,38 +2332,38 @@ impl Compile<AsyncKernel> for SaveOp {
 
 // for_all_values! {( $($value:ty),* ) => (
 //     $(
-//         modelled!(PlacementLoad::load, HostPlacement, (String, String) -> $value, LoadOp);
+//         modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> $value, LoadOp);
 //     )*
 // )}
 
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Float64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> crate::logical::Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> HostFloat64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> Float64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> crate::logical::Tensor, LoadOp);
 
 kernel! {
     LoadOp, [
-        (HostPlacement, (String, String) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostShape => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> Seed => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> PrfKey => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> String => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostBitTensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostRing64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostRing128Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostFloat32Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostFloat64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostInt8Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostInt16Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostInt32Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostInt64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostUint8Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostUint16Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostUint32Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostUint64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostFixed64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostFixed128Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> Float64Tensor => [hybrid] Self::float_kernel),
-        (HostPlacement, (String, String) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
+        (HostPlacement, (HostString, HostString) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostShape => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> Seed => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> PrfKey => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostString => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostBitTensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostRing64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostRing128Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostFloat32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostInt8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostInt16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostInt32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostInt64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostUint8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostUint16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostUint32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostUint64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostFixed64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostFixed128Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> Float64Tensor => [hybrid] Self::float_kernel),
+        (HostPlacement, (HostString, HostString) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
     ]
 }
 
@@ -2356,8 +2371,8 @@ impl LoadOp {
     fn kernel<S: RuntimeSession, O>(
         _sess: &S,
         _plc: &HostPlacement,
-        _key: String,
-        _query: String,
+        _key: HostString,
+        _query: HostString,
     ) -> Result<O> {
         unimplemented!() // TODO: Implement loading from storage for the Async and Sync sessions to work.
     }
@@ -2368,11 +2383,11 @@ impl Compile<SyncKernel> for LoadOp {
         let expected_ty = self.sig.ret();
 
         Ok(SyncKernel::Binary(Box::new(move |sess, key, query| {
-            let key = String::try_from(key)?;
-            let _query = String::try_from(query)?;
+            let key = HostString::try_from(key)?;
+            let query = HostString::try_from(query)?;
             let val = sess
                 .storage
-                .load(&key, &sess.sid, Some(expected_ty), &_query)?;
+                .load(&key.0, &sess.sid, Some(expected_ty), &query.0)?;
             check_type(&val, expected_ty)?;
             Ok(val)
         })))
@@ -2388,11 +2403,11 @@ impl Compile<AsyncKernel> for LoadOp {
                 let sess = Arc::clone(sess);
 
                 tokio::spawn(async move {
-                    let key = String::try_from(key.await.map_err(map_receive_error)?)?;
-                    let _query = String::try_from(query.await.map_err(map_receive_error)?)?;
+                    let key = HostString::try_from(key.await.map_err(map_receive_error)?)?;
+                    let query = HostString::try_from(query.await.map_err(map_receive_error)?)?;
                     let val = sess
                         .storage
-                        .load(&key, &sess.sid, Some(expected_ty), &_query)
+                        .load(&key.0, &sess.sid, Some(expected_ty), &query.0)
                         .await?;
                     check_type(&val, expected_ty)?;
                     map_send_result(sender.send(val))
