@@ -102,7 +102,7 @@ impl Session for SyncSession {
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepTensorSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepAddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIndex(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -429,8 +429,8 @@ pub trait PlacementSqrt<S: Session, T, O> {
     fn sqrt(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementTensorSum<S: Session, T, O> {
-    fn tensorsum(&self, sess: &S, x: &[T]) -> O;
+pub trait PlacementAddN<S: Session, T, O> {
+    fn add_n(&self, sess: &S, x: &[T]) -> O;
 }
 
 pub trait PlacementSum<S: Session, T, O> {
@@ -785,7 +785,7 @@ impl Compile<SyncKernel> for Operator {
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) | RepTensorSum(_) => {
+            | FixedpointSum(_) | RepAddN(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -882,8 +882,7 @@ impl Compile<AsyncKernel> for Operator {
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
-            | RepTensorSum(_) => {
+            | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_) | RepAddN(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }

@@ -1138,18 +1138,18 @@ impl RepFixedpointMeanOp {
     }
 }
 
-modelled!(PlacementTensorSum::tensorsum, ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, RepTensorSumOp);
-modelled!(PlacementTensorSum::tensorsum, ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, RepTensorSumOp);
+modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, RepAddNOp);
+modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, RepAddNOp);
 
 kernel! {
-    RepTensorSumOp,
+    RepAddNOp,
     [
         (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [runtime] Self::kernel),
         (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [runtime] Self::kernel),
     ]
 }
 
-impl RepTensorSumOp {
+impl RepAddNOp {
     fn kernel<S: Session, RepT>(sess: &S, rep: &ReplicatedPlacement, xs: &[RepT]) -> Result<RepT>
     where
         ReplicatedPlacement: PlacementPlace<S, RepT>,
@@ -2364,7 +2364,7 @@ mod tests {
             .map(|x| rep.share(&sess, &setup, &x))
             .collect();
 
-        let sum = rep.tensorsum(&sess, &shares);
+        let sum = rep.add_n(&sess, &shares);
         let opened_result = alice.reveal(&sess, &sum);
 
         assert_eq!(expected, opened_result);
