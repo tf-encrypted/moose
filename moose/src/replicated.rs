@@ -1144,8 +1144,8 @@ modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing128Tensor
 kernel! {
     RepAddNOp,
     [
-        (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [runtime] Self::kernel),
-        (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [runtime] Self::kernel),
+        (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [transparent] Self::kernel),
+        (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [transparent] Self::kernel),
     ]
 }
 
