@@ -27,6 +27,7 @@ impl FixedpointDivOp {
         HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
         HostRingT: std::fmt::Debug,
     {
+        #![allow(clippy::many_single_char_names)]
         let setup = rep.gen_setup(sess);
 
         assert_eq!(x.integral_precision, y.integral_precision);
@@ -44,10 +45,7 @@ impl FixedpointDivOp {
             .log2()
             .ceil() as u32;
 
-        let (player0, player1, player2) = rep.host_placements();
-
         let x_st = x.tensor;
-        println!("tensor {:?}", player0.reveal(sess, &x_st));
         let y_st = y.tensor;
 
         let x_shape = rep.shape(sess, &x_st);

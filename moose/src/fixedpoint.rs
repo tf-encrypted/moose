@@ -7,7 +7,6 @@ use crate::host::*;
 use crate::kernels::*;
 use crate::replicated::{
     AbstractReplicatedFixedTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
-    ReplicatedShape,
 };
 use macros::with_context;
 use ndarray::prelude::*;

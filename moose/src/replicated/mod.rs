@@ -3,9 +3,9 @@ use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRin
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::{
-    AbstractHostBitArray, AbstractHostFixedTensor, FromRawPlc, HostBitArray128, HostBitArray64,
-    HostBitTensor, HostFixed128Tensor, HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor,
-    HostShape, SliceInfo,
+    AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128, HostBitArray64, HostBitTensor,
+    HostFixed128Tensor, HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
+    SliceInfo,
 };
 use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
@@ -2043,7 +2043,7 @@ where
             )
         };
 
-        let mut res = x.clone();
+        let mut res = x;
         for i in 0..log_r {
             for j in 0..(2_i32.pow(log_r) / 2_i32.pow(i + 1)) {
                 let y = (2_i32.pow(i) + j * 2_i32.pow(i + 1) - 1) as usize;
@@ -2080,7 +2080,7 @@ where
         let one_value = Constant::Float64(1.0);
 
         let x_shape = rep.shape(sess, msb_ring);
-        let ones = rep.fill_precision(sess, one_value, Some(0 as u32), &x_shape);
+        let ones = rep.fill_precision(sess, one_value, Some(0_u32), &x_shape);
         rep.sub(sess, &ones, &double)
     }
 }
@@ -2270,7 +2270,6 @@ impl RingInjectOp {
 
         AdtTen<HostRingT>: CanonicalType,
         <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-        // AdtTen<HostRingT>: Into<st!(AdtTen<HostRingT>)>,
         HostPlacement: PlacementShape<S, HostBitT, ShapeT>,
         ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtTen<HostRingT>), st!(RepTen<HostRingT>)>,
         AdditivePlacement: PlacementFill<S, ShapeT, st!(AdtTen<HostRingT>)>,
@@ -2293,12 +2292,12 @@ impl RingInjectOp {
         let (player0, player1, player2) = rep.host_placements();
 
         let adt = AdditivePlacement {
-            owners: [player0.clone().owner, player1.clone().owner],
+            owners: [player0.clone().owner, player1.owner],
         };
-        let provider = player2.clone();
+        let provider = player2;
 
         let AbstractReplicatedRingTensor {
-            shares: [[x00, x10], [x11, x21], [x22, x02]],
+            shares: [[x00, _x10], [_x11, _x21], [x22, _x02]],
         } = &x;
 
         let s_provider = provider.shape(sess, x22);
