@@ -229,39 +229,43 @@ pub type AsyncReceiver = Shared<
 
 pub type AsyncTask = tokio::task::JoinHandle<Result<()>>;
 
-pub fn bridge_nullary(
-    new_sess: Arc<crate::kernels::SyncSession>,
-    op: Operator,
-    plc: Arc<Placement>,
-) -> NullaryAsyncKernel {
-    Box::new(move |_, sender| {
-        let new_sess = new_sess.clone();
-        let op = op.clone();
-        let plc = plc.clone();
-        tokio::spawn(async move {
-            use crate::kernels::Session;
-            let y = new_sess.execute(op, &plc, vec![])?;
-            map_send_result(sender.send(y))
-        })
-    })
-}
+struct Bridge;
 
-pub fn bridge_unary(
-    new_sess: Arc<crate::kernels::SyncSession>,
-    op: Operator,
-    plc: Arc<Placement>,
-) -> UnaryAsyncKernel {
-    Box::new(move |_, v, sender| {
-        let new_sess = new_sess.clone();
-        let op = op.clone();
-        let plc = plc.clone();
-        tokio::spawn(async move {
-            use crate::kernels::Session;
-            let v: Value = v.await.map_err(map_receive_error)?;
-            let y = new_sess.execute(op, &plc, vec![v])?;
-            map_send_result(sender.send(y))
+impl Bridge {
+    pub fn nullary(
+        new_sess: Arc<crate::kernels::SyncSession>,
+        op: Operator,
+        plc: Arc<Placement>,
+    ) -> NullaryAsyncKernel {
+        Box::new(move |_, sender| {
+            let new_sess = new_sess.clone();
+            let op = op.clone();
+            let plc = plc.clone();
+            tokio::spawn(async move {
+                use crate::kernels::Session;
+                let y = new_sess.execute(op, &plc, vec![])?;
+                map_send_result(sender.send(y))
+            })
         })
-    })
+    }
+
+    pub fn unary(
+        new_sess: Arc<crate::kernels::SyncSession>,
+        op: Operator,
+        plc: Arc<Placement>,
+    ) -> UnaryAsyncKernel {
+        Box::new(move |_, v, sender| {
+            let new_sess = new_sess.clone();
+            let op = op.clone();
+            let plc = plc.clone();
+            tokio::spawn(async move {
+                use crate::kernels::Session;
+                let v: Value = v.await.map_err(map_receive_error)?;
+                let y = new_sess.execute(op, &plc, vec![v])?;
+                map_send_result(sender.send(y))
+            })
+        })
+    }
 }
 
 pub trait Compile<C> {
@@ -576,17 +580,13 @@ impl Compile<CompiledSyncOperation> for Operation {
 impl Compile<CompiledAsyncOperation> for Operation {
     fn compile(&self, ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
         let op = self.clone();
-        // TODO: Should those two should be inside the old session?
-        let new_sess = Arc::new(crate::kernels::SyncSession::default());
-        let host = Arc::new(Placement::Host(HostPlacement {
-            owner: "localhost".into(),
-        }));
 
         match self.kind.sig().arity() {
             Some(0) => Ok(CompiledAsyncOperation {
                 name: self.name.clone(),
                 kernel: Box::new(move |sess, _, sender| {
-                    let k = bridge_nullary(new_sess.clone(), op.kind.clone(), host.clone());
+                    let k =
+                        Bridge::nullary(sess.new_sess.clone(), op.kind.clone(), sess.host.clone());
                     Ok(k(sess, sender))
                 }),
             }),
@@ -596,7 +596,11 @@ impl Compile<CompiledAsyncOperation> for Operation {
                     name: self.name.clone(),
                     kernel: Box::new(move |sess, env, sender| {
                         let x0 = find_env(env, &x0_name)?;
-                        let k = bridge_unary(new_sess.clone(), op.kind.clone(), host.clone());
+                        let k = Bridge::unary(
+                            sess.new_sess.clone(),
+                            op.kind.clone(),
+                            sess.host.clone(),
+                        );
                         Ok(k(sess, x0, sender))
                     }),
                 })
@@ -997,6 +1001,9 @@ pub struct AsyncSession {
     pub arguments: HashMap<String, Value>,
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
     pub storage: Arc<dyn Send + Sync + AsyncStorage>,
+    // Two fields to support the new framework
+    pub new_sess: Arc<crate::kernels::SyncSession>,
+    pub host: Arc<Placement>,
 }
 
 pub type RoleAssignment = HashMap<Role, Identity>;
@@ -1220,6 +1227,11 @@ impl AsyncTestRuntime {
                 arguments: arguments.clone(),
                 networking: Arc::clone(&self.networking),
                 storage: Arc::clone(&self.runtime_storage[own_identity]),
+                // Creating independent new framework's sync sessions for the bridge
+                new_sess: Arc::new(crate::kernels::SyncSession::default()),
+                host: Arc::new(Placement::Host(HostPlacement {
+                    owner: "localhost".into(),
+                })),
             };
             let (moose_session_handle, outputs) = executor
                 .run_computation(
