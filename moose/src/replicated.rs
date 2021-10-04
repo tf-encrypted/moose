@@ -1155,7 +1155,10 @@ impl RepTensorSumOp {
         ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
         RepT: std::clone::Clone,
     {
-        xs.iter().cloned().reduce(|a, b| rep.add(sess, &a, &b)).unwrap()
+        xs.iter()
+            .cloned()
+            .reduce(|a, b| rep.add(sess, &a, &b))
+            .unwrap()
     }
 }
 
