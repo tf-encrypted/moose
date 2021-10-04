@@ -1155,6 +1155,14 @@ impl RepTensorSumOp {
         ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
         RepT: std::clone::Clone,
     {
+        // TODO: This can be done more efficiently if computed in parallel as
+        // a tree
+        // Example:
+        // [1, 2, 3, 4, 5, 6, 7, 8]
+        // 1 + 2, 3 + 4, 5 + 6, 7 + 8
+        //   3   +  7,    11   +  15
+        //      10     +      26
+        //            37
         xs.iter()
             .cloned()
             .reduce(|a, b| rep.add(sess, &a, &b))
