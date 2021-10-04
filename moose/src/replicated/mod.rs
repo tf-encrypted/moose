@@ -3,9 +3,9 @@ use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRin
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::{
-    AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128, HostBitArray64, HostBitTensor,
-    HostFixed128Tensor, HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
-    SliceInfo,
+    AbstractHostBitArray, AbstractHostFixedTensor, FromRawPlc, HostBitArray128, HostBitArray64,
+    HostBitTensor, HostFixed128Tensor, HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor,
+    HostShape, SliceInfo,
 };
 use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
@@ -1813,8 +1813,8 @@ kernel! {
     [
         (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::bit_kernel),
         (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::bit_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::ring_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::ring_kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::ring64_kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::ring128_kernel),
     ]
 }
 
@@ -1835,16 +1835,37 @@ impl RepMsbOp {
         rep.index(sess, N::VALUE - 1, &bits)
     }
 
-    fn ring_kernel<S: Session, SetupT, RepRingT>(
+    fn ring64_kernel<S: Session, SetupT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
-        x: RepRingT,
-    ) -> RepRingT
+        x: m!(ReplicatedRing64Tensor),
+    ) -> m!(c!(ReplicatedRing64Tensor))
     where
         ReplicatedBitTensor: KnownType<S>,
-        ReplicatedPlacement: PlacementMsb<S, SetupT, RepRingT, m!(ReplicatedBitTensor)>,
-        ReplicatedPlacement: PlacementRingInject<S, m!(ReplicatedBitTensor), RepRingT>,
+        ReplicatedRing64Tensor: KnownType<S>,
+        ReplicatedPlacement:
+            PlacementMsb<S, SetupT, m!(ReplicatedRing64Tensor), m!(ReplicatedBitTensor)>,
+        ReplicatedPlacement:
+            PlacementRingInject<S, m!(ReplicatedBitTensor), m!(ReplicatedRing64Tensor)>,
+    {
+        let x_bin = rep.msb(sess, &setup, &x);
+        rep.ring_inject(sess, 0, &x_bin)
+    }
+
+    fn ring128_kernel<S: Session, SetupT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        setup: SetupT,
+        x: m!(ReplicatedRing128Tensor),
+    ) -> m!(c!(ReplicatedRing128Tensor))
+    where
+        ReplicatedBitTensor: KnownType<S>,
+        ReplicatedRing128Tensor: KnownType<S>,
+        ReplicatedPlacement:
+            PlacementMsb<S, SetupT, m!(ReplicatedRing128Tensor), m!(ReplicatedBitTensor)>,
+        ReplicatedPlacement:
+            PlacementRingInject<S, m!(ReplicatedBitTensor), m!(ReplicatedRing128Tensor)>,
     {
         let x_bin = rep.msb(sess, &setup, &x);
         rep.ring_inject(sess, 0, &x_bin)
@@ -2229,23 +2250,31 @@ impl RingInjectOp {
         rep: &ReplicatedPlacement,
         bit_idx: usize,
         x: RepTen<HostBitT>,
-    ) -> m!(c!(RepTen<HostRingT>))
+    ) -> RepTen<HostRingT>
     where
+        HostRingT: Clone,
+        RepTen<HostRingT>: Clone,
+        RepTen<HostRingT>: CanonicalType,
+        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+
+        RepTen<HostRingT>: TryInto<st!(RepTen<HostRingT>)>,
+        RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
+        st!(RepTen<HostRingT>): TryInto<RepTen<HostRingT>>,
+
         RepTen<HostBitT>: CanonicalType,
         <RepTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
         RepTen<HostBitT>: Into<st!(RepTen<HostBitT>)>,
-
-        RepTen<HostRingT>: CanonicalType,
-        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
 
         AdtTen<HostBitT>: CanonicalType,
         <AdtTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
 
         AdtTen<HostRingT>: CanonicalType,
         <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-
+        // AdtTen<HostRingT>: Into<st!(AdtTen<HostRingT>)>,
         HostPlacement: PlacementShape<S, HostBitT, ShapeT>,
         ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtTen<HostRingT>), st!(RepTen<HostRingT>)>,
+        AdditivePlacement: PlacementFill<S, ShapeT, st!(AdtTen<HostRingT>)>,
+        HostPlacement: PlacementFill<S, ShapeT, HostRingT>,
         AdditivePlacement:
             PlacementDaBitProvider<S, ShapeT, st!(AdtTen<HostRingT>), st!(AdtTen<HostBitT>)>,
         AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<HostBitT>), st!(AdtTen<HostBitT>)>,
@@ -2264,15 +2293,14 @@ impl RingInjectOp {
         let (player0, player1, player2) = rep.host_placements();
 
         let adt = AdditivePlacement {
-            owners: [player0.clone().owner, player1.owner],
+            owners: [player0.clone().owner, player1.clone().owner],
         };
-        let provider = player2;
+        let provider = player2.clone();
 
         let AbstractReplicatedRingTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let provider = player2;
         let s_provider = provider.shape(sess, x22);
         let s0 = player0.shape(sess, x00);
 
@@ -2296,6 +2324,9 @@ impl RingInjectOp {
         );
         let shifted_x_adt = adt.shl(sess, bit_idx, &x_adt_ring);
         rep.adt_to_rep(sess, &shifted_x_adt)
+            .try_into()
+            .ok()
+            .unwrap()
     }
 }
 
