@@ -597,10 +597,10 @@ impl HostShlDimOp {
 
         let concatenated: Vec<_> = (0..bit_length)
             .map(|i| {
-                if i < bit_length - amount {
-                    x.0.index_axis(axis, i + amount)
-                } else {
+                if i < amount {
                     zero_view.clone()
+                } else {
+                    x.0.index_axis(axis, i - amount)
                 }
             })
             .collect();

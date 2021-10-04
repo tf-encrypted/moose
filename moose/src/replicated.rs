@@ -1893,7 +1893,7 @@ where
             // Note that the original algorithm had G_a and P_b, but we can have
             // G_a and P_a instead because the 1s in P_a do not matter in the final result
             // since they are cancelled out by the zeros in G_a
-            let p_and_g = rep.and_setup(sess, &setup, &p1, &g1);
+            let p_and_g = rep.and_setup(sess, &setup, &p, &g1);
 
             // update `g = g xor p1 and g1`
             g = rep.xor(sess, &g, &p_and_g);
@@ -2921,15 +2921,72 @@ mod tests {
     fn test_rep_bit_dec_fail() {
         let xs = array![1073741823].into_dyn();
         let zs = array![
-            [1_u8],[1],[1],[1],[1],[1],[1],[1],
-            [1],[1],[1],[1],[1],[1],[1],[1],
-            [1],[1],[1],[1],[1],[1],[1],[1],
-            [1],[1],[1],[1],[1],[1],[0],[0],
-            [0],[0],[0],[0],[0],[0],[0],[0],
-            [0],[0],[0],[0],[0],[0],[0],[0],
-            [0],[0],[0],[0],[0],[0],[0],[0],
-            [0],[0],[0],[0],[0],[0],[0],[0],
-        ].into_dyn();
+            [1_u8],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+        ]
+        .into_dyn();
 
         let alice = HostPlacement {
             owner: "alice".into(),
