@@ -1406,10 +1406,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_OutputOperation(op) => Ok(Operation {
                         kind: OutputOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                Ty::Unit,
-                            ),
+                            sig: Signature::unary(map_type(&op.output_type)?, Ty::Unit),
                         }
                         .into(),
                         name: op.name.clone(),

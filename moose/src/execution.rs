@@ -229,7 +229,11 @@ pub type AsyncReceiver = Shared<
 
 pub type AsyncTask = tokio::task::JoinHandle<Result<()>>;
 
-pub fn bridge_nullary(new_sess: Arc<crate::kernels::SyncSession>, op: Operator, plc: Arc<Placement>) -> NullaryAsyncKernel {
+pub fn bridge_nullary(
+    new_sess: Arc<crate::kernels::SyncSession>,
+    op: Operator,
+    plc: Arc<Placement>,
+) -> NullaryAsyncKernel {
     Box::new(move |_, sender| {
         let new_sess = new_sess.clone();
         let op = op.clone();
@@ -242,7 +246,11 @@ pub fn bridge_nullary(new_sess: Arc<crate::kernels::SyncSession>, op: Operator, 
     })
 }
 
-pub fn bridge_unary(new_sess: Arc<crate::kernels::SyncSession>, op: Operator, plc: Arc<Placement>) -> UnaryAsyncKernel {
+pub fn bridge_unary(
+    new_sess: Arc<crate::kernels::SyncSession>,
+    op: Operator,
+    plc: Arc<Placement>,
+) -> UnaryAsyncKernel {
     Box::new(move |_, v, sender| {
         let new_sess = new_sess.clone();
         let op = op.clone();
@@ -255,7 +263,6 @@ pub fn bridge_unary(new_sess: Arc<crate::kernels::SyncSession>, op: Operator, pl
         })
     })
 }
-
 
 pub trait Compile<C> {
     fn compile(&self, ctx: &CompilationContext) -> Result<C>;
@@ -571,18 +578,18 @@ impl Compile<CompiledAsyncOperation> for Operation {
         let op = self.clone();
         // TODO: Should those two should be inside the old session?
         let new_sess = Arc::new(crate::kernels::SyncSession::default());
-        let host = Arc::new(Placement::Host(HostPlacement { owner: "localhost".into()}));
+        let host = Arc::new(Placement::Host(HostPlacement {
+            owner: "localhost".into(),
+        }));
 
         match self.kind.sig().arity() {
-            Some(0) => {
-                Ok(CompiledAsyncOperation {
-                    name: self.name.clone(),
-                    kernel: Box::new(move |sess, _, sender| {
-                        let k = bridge_nullary(new_sess.clone(), op.kind.clone(), host.clone());
-                        Ok(k(sess, sender))
-                    }),
-                })
-            },
+            Some(0) => Ok(CompiledAsyncOperation {
+                name: self.name.clone(),
+                kernel: Box::new(move |sess, _, sender| {
+                    let k = bridge_nullary(new_sess.clone(), op.kind.clone(), host.clone());
+                    Ok(k(sess, sender))
+                }),
+            }),
             Some(1) => {
                 let x0_name = self.inputs[0].clone();
                 Ok(CompiledAsyncOperation {
@@ -593,8 +600,8 @@ impl Compile<CompiledAsyncOperation> for Operation {
                         Ok(k(sess, x0, sender))
                     }),
                 })
-            },
-            _ => todo!()
+            }
+            _ => todo!(),
         }
     }
 }

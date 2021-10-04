@@ -2172,7 +2172,6 @@ modelled!(PlacementOutput::output, HostPlacement, (crate::logical::Tensor) -> Un
 modelled!(PlacementOutput::output, HostPlacement, (Float32Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (Float64Tensor) -> Unit, OutputOp);
 
-
 kernel! {
     OutputOp, [
         (HostPlacement, (Unit) -> Unit => [runtime] Self::kernel),
@@ -2202,11 +2201,11 @@ kernel! {
 }
 
 impl OutputOp {
-    fn kernel<S: RuntimeSession, O>(_sess: &S, _plc: &HostPlacement, _x: O) -> Result<Unit> {
+    fn kernel<S: RuntimeSession, O>(_sess: &S, plc: &HostPlacement, _x: O) -> Result<Unit> {
         // TODO (lvorona) What should output do for real?
         // sess.storage.save(&key, &sess.sid, &val)?;
-        Unit(plc.clone())
-}
+        Ok(Unit(plc.clone()))
+    }
 }
 
 impl Compile<SyncKernel> for OutputOp {
