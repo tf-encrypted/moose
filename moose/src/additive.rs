@@ -860,14 +860,6 @@ where
     RingT: Clone,
     Seed: KnownType<S>,
     PrfKey: KnownType<S>,
-    // AbstractAdditiveTensor<RingT>: CanonicalType,
-    // <AbstractAdditiveTensor<RingT> as CanonicalType>::Type: KnownType<S>,
-
-    // AbstractAdditiveTensor<BitT>: CanonicalType,
-    // <AbstractAdditiveTensor<BitT> as CanonicalType>::Type: KnownType<S>,
-
-    // AbstractAdditiveTensor<RingT>: Into<st!(AbstractAdditiveTensor<RingT>)>,
-    // AbstractAdditiveTensor<BitT>: Into<st!(AbstractAdditiveTensor<BitT>)>,
     HostPlacement: PlacementKeyGen<S, cs!(PrfKey)>,
     HostPlacement: PlacementDeriveSeed<S, cs!(PrfKey), cs!(Seed)>,
     HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, cs!(Seed), BitT>,
@@ -877,8 +869,6 @@ where
     HostPlacement: PlacementRingInject<S, BitT, RingT>,
     AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
     AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<BitT>>,
-    // st!(AbstractAdditiveTensor<RingT>): TryInto<AbstractAdditiveTensor<RingT>>,
-    // st!(AbstractAdditiveTensor<BitT>): TryInto<AbstractAdditiveTensor<BitT>>,
 {
     fn gen_dabit(
         &self,
@@ -921,8 +911,6 @@ where
             ),
             adt.place(sess, AbstractAdditiveTensor { shares: [b20, b21] }),
         )
-
-        // unimplemented!()
     }
 }
 
