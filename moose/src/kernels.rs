@@ -1780,6 +1780,7 @@ macro_rules! constant_kernels {
             modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> $val, ConstantOp);
         )+
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostString, ConstantOp);
+        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> PrfKey, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
 
@@ -1788,7 +1789,8 @@ macro_rules! constant_kernels {
                 $(
                     (HostPlacement, () -> $val => [runtime] attributes[value: $val] Self::kernel),
                 )+
-                (HostPlacement, () -> HostString => [runtime] attributes[value] Self::string_kernel),
+                (HostPlacement, () -> HostString => [runtime] attributes[value: String] Self::string_kernel),
+                (HostPlacement, () -> PrfKey => [runtime] attributes[value: RawPrfKey] Self::prf_key_kernel),
                 (HostPlacement, () -> crate::logical::Tensor => [hybrid] attributes[value] Self::logical_kernel),
                 (HostPlacement, () -> Float64Tensor => [hybrid] attributes[value] Self::float_kernel),
             ]
@@ -1820,15 +1822,17 @@ impl ConstantOp {
     fn string_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        value: Constant,
+        value: String,
     ) -> Result<HostString> {
-        match value {
-            Constant::String(x) => Ok(HostString(x.clone(), plc.clone())),
-            _ => Err(crate::error::Error::TypeMismatch {
-                expected: "String".to_string(),
-                found: value.ty(),
-            }),
-        }
+        Ok(HostString(value.clone(), plc.clone()))
+    }
+
+    fn prf_key_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        value: RawPrfKey,
+    ) -> Result<PrfKey> {
+        Ok(PrfKey(value.clone(), plc.clone()))
     }
 }
 

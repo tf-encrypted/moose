@@ -35,6 +35,19 @@ impl Placed for HostString {
     }
 }
 
+impl<S: Session> PlacementPlace<S, HostString> for HostPlacement {
+    fn place(&self, _sess: &S, string: HostString) -> HostString {
+        match string.placement() {
+            Ok(place) if self == &place => string,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                HostString(string.0, self.clone())
+            }
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RawShape(pub Vec<usize>);
 
