@@ -1241,7 +1241,6 @@ mod tests {
                     opened_product.tensor,
                     AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
                 );
-                println!("Result from division: {:?}", opened_product);
                 let expected_precision = match x {
                     FixedTensor::Host(x) => x.fractional_precision * $factor,
                     _ => unreachable!(),

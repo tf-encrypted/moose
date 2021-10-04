@@ -2229,9 +2229,6 @@ where
 
         let (upshifted, signed_topmost) = rep.norm(sess, setup, total_precision, x);
 
-        // let (player0, player1, player2) = rep.host_placements();
-        // println!("upshifted@ {:?}, signed_topmost@ {:?}", player0.reveal(sess, &upshifted), player0.reveal(sess, &signed_topmost));
-
         let x_shape = rep.shape(sess, &x);
         // 2.9142 * 2^{total_precision}
         let alpha = Constant::Float64(2.9142);

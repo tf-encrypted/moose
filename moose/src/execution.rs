@@ -288,7 +288,6 @@ pub fn map_receive_error<T>(_: T) -> Error {
 
 impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
     fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
-        println!("REACHED HEREEEE");
         let kernel: Kernel = self.compile(ctx)?;
         match kernel {
             Kernel::NullaryClosure(k) => {
