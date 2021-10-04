@@ -1161,7 +1161,18 @@ impl RepTensorSumOp {
         ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
         RepT: std::clone::Clone,
     {
-        xs.iter().cloned().reduce(|a, b| rep.add(sess, &a, &b)).unwrap()
+        // TODO: This can be done more efficiently if computed in parallel as
+        // a tree
+        // Example:
+        // [1, 2, 3, 4, 5, 6, 7, 8]
+        // 1 + 2, 3 + 4, 5 + 6, 7 + 8
+        //   3   +  7,    11   +  15
+        //      10     +      26
+        //            37
+        xs.iter()
+            .cloned()
+            .reduce(|a, b| rep.add(sess, &a, &b))
+            .unwrap()
     }
 }
 
@@ -2330,13 +2341,19 @@ mod tests {
         let alice = HostPlacement {
             owner: "alice".into(),
         };
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
+        let carole = HostPlacement {
+            owner: "carole".into(),
+        };
         let rep = ReplicatedPlacement {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
         let a = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
-        let b = AbstractHostRingTensor::from_raw_plc(array![2u64, 3, 4], alice.clone());
-        let c = AbstractHostRingTensor::from_raw_plc(array![5u64, 12, 13], alice.clone());
+        let b = AbstractHostRingTensor::from_raw_plc(array![2u64, 3, 4], bob);
+        let c = AbstractHostRingTensor::from_raw_plc(array![5u64, 12, 13], carole);
 
         let expected = AbstractHostRingTensor::from_raw_plc(array![8u64, 17, 20], alice.clone());
 
