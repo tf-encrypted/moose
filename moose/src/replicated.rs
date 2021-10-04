@@ -2392,13 +2392,19 @@ mod tests {
         let alice = HostPlacement {
             owner: "alice".into(),
         };
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
+        let carole = HostPlacement {
+            owner: "carole".into(),
+        };
         let rep = ReplicatedPlacement {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
         let a = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
-        let b = AbstractHostRingTensor::from_raw_plc(array![2u64, 3, 4], alice.clone());
-        let c = AbstractHostRingTensor::from_raw_plc(array![5u64, 12, 13], alice.clone());
+        let b = AbstractHostRingTensor::from_raw_plc(array![2u64, 3, 4], bob.clone());
+        let c = AbstractHostRingTensor::from_raw_plc(array![5u64, 12, 13], carole.clone());
 
         let expected = AbstractHostRingTensor::from_raw_plc(array![8u64, 17, 20], alice.clone());
 
