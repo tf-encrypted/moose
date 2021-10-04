@@ -79,4 +79,5 @@ fn main() {
 
     let exec = TestExecutor::default();
     let outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
+    println!("Outputs: {:?}", outputs);
 }
