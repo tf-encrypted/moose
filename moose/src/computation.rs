@@ -1583,7 +1583,6 @@ pub struct RepFixedpointMeanOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepTensorSumOp {
     pub sig: Signature,
-    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

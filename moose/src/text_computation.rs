@@ -1622,9 +1622,9 @@ op_with_axis_to_textual!(HostMeanOp);
 op_with_axis_to_textual!(HostSumOp);
 op_with_axis_to_textual!(RingSumOp);
 op_with_axis_to_textual!(RepSumOp);
-op_with_axis_to_textual!(RepTensorSumOp);
 op_with_axis_to_textual!(FixedpointSumOp);
 
+impl_to_textual!(RepTensorSumOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointAddOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointSubOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointMulOp, "{op}: {}", sig);

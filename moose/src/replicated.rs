@@ -1138,14 +1138,14 @@ impl RepFixedpointMeanOp {
     }
 }
 
-modelled!(PlacementTensorSum::tensorsum, ReplicatedPlacement, attributes[axis: Option<u32>] vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, RepTensorSumOp);
-modelled!(PlacementTensorSum::tensorsum, ReplicatedPlacement, attributes[axis: Option<u32>] vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, RepTensorSumOp);
+modelled!(PlacementTensorSum::tensorsum, ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, RepTensorSumOp);
+modelled!(PlacementTensorSum::tensorsum, ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, RepTensorSumOp);
 
 kernel! {
     RepTensorSumOp,
     [
-        (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [runtime] attributes[axis] Self::kernel),
-        (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [runtime] attributes[axis] Self::kernel),
+        (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [runtime] Self::kernel),
+        (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [runtime] Self::kernel),
     ]
 }
 
@@ -1153,9 +1153,8 @@ impl RepTensorSumOp {
     fn kernel<S: Session, RepT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        _axis: Option<u32>,
         xs: &[RepT],
-    ) -> RepT
+    ) -> Result<RepT>
     where
         ReplicatedPlacement: PlacementPlace<S, RepT>,
         ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
@@ -1169,10 +1168,11 @@ impl RepTensorSumOp {
         //   3   +  7,    11   +  15
         //      10     +      26
         //            37
-        xs.iter()
+        let sum = xs.iter()
             .cloned()
             .reduce(|a, b| rep.add(sess, &a, &b))
-            .unwrap()
+            .unwrap();
+        Ok(sum)
     }
 }
 
