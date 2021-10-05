@@ -3066,5 +3066,4 @@ mod tests {
     fn test_rep_bit_dec_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u8>) {
         test_rep_bit_dec64(x, y);
     }
-
 }

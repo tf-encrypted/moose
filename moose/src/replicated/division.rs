@@ -1,7 +1,7 @@
 use super::*;
 
 impl FixedpointDivOp {
-    pub fn rep_rep_kernel<S: Session, RepRingT, HostRingT>(
+    pub fn rep_rep_kernel<S: Session, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
@@ -11,6 +11,8 @@ impl FixedpointDivOp {
         AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
         <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
         AbstractReplicatedFixedTensor<RepRingT>: Into<st!(AbstractReplicatedFixedTensor<RepRingT>)>,
+        ReplicatedShape: KnownType<S>,
+        RepRingT: Ring,
         ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
         ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), RepRingT>,
         ReplicatedPlacement: ApproximateReciprocal<S, S::ReplicatedSetup, RepRingT, RepRingT>,
@@ -18,14 +20,7 @@ impl FixedpointDivOp {
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
-        RepRingT: Ring,
-
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        RepRingT: Clone,
-        ReplicatedShape: KnownType<S>,
-
-        HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
-        HostRingT: std::fmt::Debug,
     {
         #![allow(clippy::many_single_char_names)]
         let setup = rep.gen_setup(sess);
@@ -101,7 +96,6 @@ impl<S: Session, SetupT, RepBitT> PrefixOr<S, SetupT, RepBitT> for ReplicatedPla
 where
     ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
-    RepBitT: Clone,
 {
     /// Prefix Or protocol
     ///
@@ -188,7 +182,6 @@ where
         cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
         cs!(ReplicatedBitTensor),
     >,
-    RepRingT: Clone,
 {
     fn norm(
         &self,
@@ -205,7 +198,6 @@ where
 
         // (Dragos) TODO: optimize this in the future, we don't need all bits (only max_bits from the bit-decomposition)
         let x_bits = rep.bit_decompose(sess, setup, &abs_x);
-
         let x_bits_vec: Vec<_> = (0..max_bits).map(|i| rep.index(sess, i, &x_bits)).collect();
 
         let top_most = rep.top_most(sess, setup, max_bits, x_bits_vec);
@@ -224,12 +216,10 @@ impl<S: Session, SetupT, RepBitT, RepRingT> TopMost<S, SetupT, RepBitT, RepRingT
     for ReplicatedPlacement
 where
     ReplicatedBitTensor: KnownType<S>,
-    ReplicatedPlacement: PrefixOr<S, SetupT, RepBitT>,
+    HostBitTensor: KnownType<S>,
     RepBitT: Clone,
     RepRingT: Clone,
-
-    HostBitTensor: KnownType<S>,
-
+    ReplicatedPlacement: PrefixOr<S, SetupT, RepBitT>,
     ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
@@ -291,8 +281,6 @@ where
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
-
-    ReplicatedRing64Tensor: KnownType<S>,
 {
     fn approximate_reciprocal(
         &self,
