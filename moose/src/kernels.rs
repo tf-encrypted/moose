@@ -412,7 +412,7 @@ pub trait PlacementFill<S: Session, ShapeT, O> {
     fn fill(&self, sess: &S, value: Constant, shape: &ShapeT) -> O;
 }
 
-pub trait PlacementFillPrecission<S: Session, ShapeT, O> {
+pub trait PlacementFillPrecision<S: Session, ShapeT, O> {
     fn fill_precision(
         &self,
         sess: &S,

@@ -1365,9 +1365,9 @@ impl AdtToRepOp {
     }
 }
 
-modelled!(PlacementFillPrecission::fill_precision, ReplicatedPlacement, attributes[value: Constant, precision: Option<u32>] (ReplicatedShape) -> ReplicatedRing64Tensor, RepFillOp);
-modelled!(PlacementFillPrecission::fill_precision, ReplicatedPlacement, attributes[value: Constant, precision: Option<u32>] (ReplicatedShape) -> ReplicatedRing128Tensor, RepFillOp);
-modelled!(PlacementFillPrecission::fill_precision, ReplicatedPlacement, attributes[value: Constant, precision: Option<u32>] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
+modelled!(PlacementFillPrecision::fill_precision, ReplicatedPlacement, attributes[value: Constant, precision: Option<u32>] (ReplicatedShape) -> ReplicatedRing64Tensor, RepFillOp);
+modelled!(PlacementFillPrecision::fill_precision, ReplicatedPlacement, attributes[value: Constant, precision: Option<u32>] (ReplicatedShape) -> ReplicatedRing128Tensor, RepFillOp);
+modelled!(PlacementFillPrecision::fill_precision, ReplicatedPlacement, attributes[value: Constant, precision: Option<u32>] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
 
 kernel! {
     RepFillOp,
@@ -1898,7 +1898,7 @@ impl RepAbsOp {
     where
         RepT: Ring,
         ReplicatedPlacement: PlacementMsb<S, SetupT, RepT, RepT>,
-        ReplicatedPlacement: PlacementFillPrecission<S, ShapeT, RepT>,
+        ReplicatedPlacement: PlacementFillPrecision<S, ShapeT, RepT>,
         ReplicatedPlacement: PlacementShape<S, RepT, ShapeT>,
         ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepT, RepT, RepT>,
         ReplicatedPlacement: PlacementShl<S, RepT, RepT>,
@@ -2029,12 +2029,9 @@ impl RingInjectOp {
         x: RepTen<HostBitT>,
     ) -> Result<RepTen<HostRingT>>
     where
-        HostRingT: Clone,
-        RepTen<HostRingT>: Clone,
         RepTen<HostRingT>: CanonicalType,
         <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
 
-        RepTen<HostRingT>: TryInto<st!(RepTen<HostRingT>)>,
         RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
         st!(RepTen<HostRingT>): TryInto<RepTen<HostRingT>>,
 
@@ -2047,6 +2044,7 @@ impl RingInjectOp {
 
         AdtTen<HostRingT>: CanonicalType,
         <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+
         HostPlacement: PlacementShape<S, HostBitT, ShapeT>,
         ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtTen<HostRingT>), st!(RepTen<HostRingT>)>,
         AdditivePlacement: PlacementFill<S, ShapeT, st!(AdtTen<HostRingT>)>,
@@ -2099,7 +2097,6 @@ impl RingInjectOp {
             b_ring + c_ring - b_ring * c_ring - b_ring * c_ring
         );
         let shifted_x_adt = adt.shl(sess, bit_idx, &x_adt_ring);
-        // rep.adt_to_rep(sess, &shifted_x_adt).try_into().ok().unwrap()
 
         Ok(rep
             .adt_to_rep(sess, &shifted_x_adt)

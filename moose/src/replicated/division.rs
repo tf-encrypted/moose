@@ -14,7 +14,7 @@ impl FixedpointDivOp {
         ReplicatedShape: KnownType<S>,
         RepRingT: Ring,
         ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
-        ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), RepRingT>,
+        ReplicatedPlacement: PlacementFillPrecision<S, cs!(ReplicatedShape), RepRingT>,
         ReplicatedPlacement: ApproximateReciprocal<S, S::ReplicatedSetup, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
@@ -138,7 +138,7 @@ impl<S: Session, RepRingT> SignFromMsb<S, RepRingT, RepRingT> for ReplicatedPlac
 where
     ReplicatedShape: KnownType<S>,
 
-    ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), RepRingT>,
+    ReplicatedPlacement: PlacementFillPrecision<S, cs!(ReplicatedShape), RepRingT>,
     ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
@@ -276,7 +276,7 @@ where
 
     ReplicatedPlacement: DivNorm<S, SetupT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
-    ReplicatedPlacement: PlacementFillPrecission<S, cs!(ReplicatedShape), RepRingT>,
+    ReplicatedPlacement: PlacementFillPrecision<S, cs!(ReplicatedShape), RepRingT>,
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
