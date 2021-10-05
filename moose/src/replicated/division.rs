@@ -93,7 +93,6 @@ impl FixedpointDivOp {
     }
 }
 
-
 pub trait PrefixOr<S: Session, SetupT, RepBitT> {
     fn prefix_or(&self, sess: &S, setup: &SetupT, x: Vec<RepBitT>) -> Vec<RepBitT>;
 }
