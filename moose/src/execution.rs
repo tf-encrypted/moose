@@ -1439,7 +1439,7 @@ mod tests {
             })
             .join("\n");
         definition.push_str(&body);
-        definition.push_str("\nz = Output: (Ring64Tensor) -> Unit (x0) @Host(alice)");
+        definition.push_str("\nz = Output: (Ring64Tensor) -> Ring64Tensor (x0) @Host(alice)");
 
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
