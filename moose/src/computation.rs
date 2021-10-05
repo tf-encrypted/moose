@@ -1183,6 +1183,7 @@ pub struct HostSumOp {
     pub axis: Option<u32>,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct HostAddNOp {
     pub sig: Signature,
 }

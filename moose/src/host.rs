@@ -963,10 +963,8 @@ impl HostAddNOp {
     fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         rep: &HostPlacement,
-        x: &[HostTensor<T>],
-    ) -> Result<HostTensor<T>>
-    where
-        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+        x: &[AbstractHostRingTensor<T>],
+    ) -> Result<AbstractHostRingTensor<T>>
     {
         unimplemented!()
     }
