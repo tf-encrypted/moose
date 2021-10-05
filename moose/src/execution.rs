@@ -1379,7 +1379,7 @@ mod tests {
         HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostShape, HostString, RawShape,
     };
     use crate::host::{HostRing128Tensor, HostRing64Tensor};
-    use crate::prim::{RawPrfKey, RawSeed, Seed, SyncKey};
+    use crate::prim::{RawSeed, Seed};
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;
@@ -1394,8 +1394,11 @@ mod tests {
     ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
         match run_async {
             false => {
-                let executor = TestExecutor::default();
-                let outputs = executor.run_computation(&computation, arguments)?;
+                // TODO: Need to pass on role assignment and arguments
+                let executor = crate::kernels::TestSyncExecutor::default();
+                let session =
+                    crate::kernels::SyncSession::new(SessionId::try_from("foobar").unwrap());
+                let outputs = executor.run_computation(&computation, &session)?;
                 Ok(outputs)
             }
             true => {
