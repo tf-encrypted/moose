@@ -12,6 +12,7 @@ from pymoose.testing import LocalMooseRuntime
 
 FIXED = edsl.fixed(14, 23)
 
+
 class ReplicatedExample(unittest.TestCase):
     def test_replicated_example(self):
 
@@ -19,7 +20,6 @@ class ReplicatedExample(unittest.TestCase):
         bob = edsl.host_placement(name="bob")
         carole = edsl.host_placement(name="carole")
         dave = edsl.host_placement(name="dave")
-        eric = edsl.host_placement(name="eric")
         rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
         @edsl.computation
@@ -79,7 +79,7 @@ class ReplicatedExample(unittest.TestCase):
             arguments={},
         )
 
-        print("Done",  runtime.read_value_from_storage("dave", "res"))
+        print("Done", runtime.read_value_from_storage("dave", "res"))
 
 
 if __name__ == "__main__":
