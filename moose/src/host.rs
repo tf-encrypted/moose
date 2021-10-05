@@ -963,7 +963,7 @@ impl HostAddNOp {
     fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         rep: &HostPlacement,
-        x: HostTensor<T>,
+        x: &[HostTensor<T>],
     ) -> Result<HostTensor<T>>
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
