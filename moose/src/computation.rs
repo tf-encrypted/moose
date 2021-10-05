@@ -901,7 +901,6 @@ operators![
     RingSub,
     RingNeg,
     RingMul,
-    RingDiv,
     RingDot,
     RingSum,
     RingFixedpointMean,
@@ -1289,11 +1288,6 @@ pub struct RingNegOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingMulOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RingDivOp {
     pub sig: Signature,
 }
 

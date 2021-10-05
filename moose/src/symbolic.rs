@@ -188,7 +188,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RingAdd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingSub(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingMul(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RingDiv(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingDot(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingNeg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

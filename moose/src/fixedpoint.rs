@@ -621,22 +621,22 @@ impl FixedpointDivOp {
         FixedTensor::Replicated(z)
     }
 
-    fn hostfixed_kernel<S: Session, HostRingT>(
+    fn hostfixed_kernel<S: Session, HostRingT, HostFloatT, HostFixedT>(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractHostFixedTensor<HostRingT>,
         y: AbstractHostFixedTensor<HostRingT>,
-    ) -> AbstractHostFixedTensor<HostRingT>
+    ) -> HostFixedT
     where
-        HostPlacement: PlacementDiv<S, HostRingT, HostRingT, HostRingT>,
+        HostPlacement: PlacementRingFixedpointDecode<S, HostRingT, HostFloatT>,
+        HostPlacement: PlacementFixedpointEncode<S, HostFloatT, HostFixedT>,
+        HostPlacement: PlacementDiv<S, HostFloatT, HostFloatT, HostFloatT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
-        let z = plc.div(sess, &x.tensor, &y.tensor);
-        AbstractHostFixedTensor {
-            tensor: z,
-            fractional_precision: x.fractional_precision,
-            integral_precision: u32::max(x.integral_precision, y.integral_precision),
-        }
+        let x_decode = plc.fixedpoint_ring_decode(sess, 2, x.fractional_precision, &x.tensor);
+        let y_decode = plc.fixedpoint_ring_decode(sess, 2, y.fractional_precision, &y.tensor);
+        let z = plc.div(sess, &x_decode, &y_decode);
+        plc.fixedpoint_encode(sess, x.fractional_precision, x.integral_precision, &z)
     }
 }
 
