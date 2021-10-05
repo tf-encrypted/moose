@@ -887,6 +887,7 @@ operators![
     HostReshape,
     HostSqueeze,
     HostSum,
+    HostAddN,
     HostOnes,
     HostConcat,
     HostTranspose,
@@ -1180,6 +1181,10 @@ pub struct HostReshapeOp {
 pub struct HostSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
+}
+
+pub struct HostAddNOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

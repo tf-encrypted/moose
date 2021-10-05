@@ -950,6 +950,28 @@ impl HostSumOp {
     }
 }
 
+modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor, HostAddNOp);
+
+kernel! {
+    HostAddNOp,
+    [
+        (HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor => [runtime] Self::kernel),
+    ]
+}
+
+impl HostAddNOp {
+    fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        sess: &S,
+        rep: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        unimplemented!()
+    }
+}
+
 modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostFloat32Tensor) -> HostFloat32Tensor, HostExpandDimsOp);
 modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostExpandDimsOp);
 
