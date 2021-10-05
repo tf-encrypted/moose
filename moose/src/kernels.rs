@@ -42,12 +42,14 @@ pub trait Session {
 /// session id under which execution is happening.
 pub trait RuntimeSession: Session {
     fn session_id(&self) -> &SessionId;
+    fn find_argument(&self, key: &str) -> Option<Value>;
 }
 
 /// Session object for synchronous/eager execution (in new framework).
 pub struct SyncSession {
     session_id: SessionId,
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
+    arguments: HashMap<String, Value>,
 }
 
 impl Default for SyncSession {
@@ -55,15 +57,17 @@ impl Default for SyncSession {
         SyncSession {
             session_id: SessionId::random(), // TODO sync session is only used in tests currently, but it should get the session if from then env still.
             replicated_keys: Default::default(),
+            arguments: Default::default(),
         }
     }
 }
 
 impl SyncSession {
-    pub fn new(sid: SessionId) -> Self {
+    pub fn new(sid: SessionId, arguments: HashMap<String, Value>) -> Self {
         SyncSession {
             session_id: sid,
             replicated_keys: Default::default(),
+            arguments,
         }
     }
 }
@@ -206,6 +210,10 @@ impl RuntimeSession for SyncSession {
     fn session_id(&self) -> &SessionId {
         &self.session_id
     }
+
+    fn find_argument(&self, key: &str) -> Option<Value> {
+        self.arguments.get(key).cloned()
+    }
 }
 
 /// Session object for asynchronous execution (in new framework).
@@ -236,6 +244,11 @@ impl Session for AsyncSession {
 impl RuntimeSession for AsyncSession {
     fn session_id(&self) -> &SessionId {
         &self.session_id
+    }
+
+    fn find_argument(&self, _key: &str) -> Option<Value> {
+        todo!("Please implement find_argument for the new AsyncSession")
+        // self.arguments.get(key)
     }
 }
 
@@ -2154,8 +2167,16 @@ kernel! {
 }
 
 impl InputOp {
-    fn kernel<S: RuntimeSession, O>(_sess: &S, _plc: &HostPlacement, _arg_name: String) -> O {
-        unimplemented!() // TODO: Read the value from the environment for the Async and Sync sessions to work.
+    fn kernel<S: RuntimeSession, O: TryFrom<Value, Error = Error>>(
+        sess: &S,
+        _plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<O> {
+        use std::convert::TryInto;
+        let value = sess
+            .find_argument(&arg_name)
+            .ok_or(Error::MissingArgument(arg_name.clone()))?;
+        Ok(value.try_into()?)
     }
 }
 

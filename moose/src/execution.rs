@@ -1286,6 +1286,7 @@ impl AsyncTestRuntime {
                 // Creating independent new framework's sync sessions for the bridge
                 new_sess: Arc::new(crate::kernels::SyncSession::new(
                     SessionId::try_from("foobar").unwrap(),
+                    arguments.clone(),
                 )),
                 host: Arc::new(Placement::Host(HostPlacement {
                     owner: own_identity.0.clone().into(),
@@ -1394,10 +1395,12 @@ mod tests {
     ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
         match run_async {
             false => {
-                // TODO: Need to pass on role assignment and arguments
+                // TODO: Need to pass on role assignment
                 let executor = crate::kernels::TestSyncExecutor::default();
-                let session =
-                    crate::kernels::SyncSession::new(SessionId::try_from("foobar").unwrap());
+                let session = crate::kernels::SyncSession::new(
+                    SessionId::try_from("foobar").unwrap(),
+                    arguments,
+                );
                 let outputs = executor.run_computation(&computation, &session)?;
                 Ok(outputs)
             }
@@ -2418,6 +2421,7 @@ mod tests {
             storage: Arc::clone(&exec_storage),
             new_sess: Arc::new(crate::kernels::SyncSession::new(
                 SessionId::try_from("foobar").unwrap(),
+                hashmap!(),
             )),
             host: Arc::new(Placement::Host(HostPlacement {
                 owner: "localhost".into(),
@@ -2443,6 +2447,7 @@ mod tests {
             storage: Arc::clone(&exec_storage),
             new_sess: Arc::new(crate::kernels::SyncSession::new(
                 SessionId::try_from("foobar").unwrap(),
+                hashmap!(),
             )),
             host: Arc::new(Placement::Host(HostPlacement {
                 owner: "localhost".into(),
