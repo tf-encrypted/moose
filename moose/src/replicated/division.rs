@@ -318,3 +318,96 @@ where
         rep.trunc_pr(sess, 2 * int_precision as u32, &w)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::host::AbstractHostRingTensor;
+    use crate::kernels::SyncSession;
+    use ndarray::array;
+
+    #[test]
+    fn test_norm() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let x_shared = rep.share(&sess, &setup, &x);
+
+        let (upshifted, topmost) = rep.norm(&sess, &setup, 12, &x_shared);
+
+        let topmost_target = AbstractHostRingTensor::from_raw_plc(array![4u64], alice.clone());
+        let upshifted_target = AbstractHostRingTensor::from_raw_plc(array![3584], alice.clone());
+
+        assert_eq!(topmost_target, alice.reveal(&sess, &topmost));
+        assert_eq!(upshifted_target, alice.reveal(&sess, &upshifted));
+    }
+
+    #[test]
+    fn test_binary_adder() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x = AbstractHostRingTensor::from_raw_plc(array![3884509700957842751u64], alice.clone());
+        let y =
+            AbstractHostRingTensor::from_raw_plc(array![13611438098135434720u64], alice.clone());
+        let expected_output = x.clone() + y.clone();
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let x_bit = alice.bit_decompose(&sess, &x);
+        let y_bit = alice.bit_decompose(&sess, &y);
+        let expected_output_bit: HostBitTensor = alice.bit_decompose(&sess, &expected_output);
+
+        let x_shared = rep.share(&sess, &setup, &x_bit);
+        let y_shared = rep.share(&sess, &setup, &y_bit);
+        let binary_adder = rep.binary_adder(&sess, setup, x_shared, y_shared, 64);
+        let binary_adder_clear = alice.reveal(&sess, &binary_adder);
+
+        assert_eq!(expected_output_bit, binary_adder_clear);
+    }
+
+    #[test]
+    fn test_approximate_reciprocal() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        // 3.5 * 2^8
+        let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let expected_output = array![74i64];
+
+        let x_shared = rep.share(&sess, &setup, &x);
+        let approximation = rep.approximate_reciprocal(&sess, &setup, 4, 8, &x_shared);
+
+        let out = alice.reveal(&sess, &approximation).0;
+        for (i, item) in out.iter().enumerate() {
+            match item {
+                std::num::Wrapping(x) => {
+                    let d = (*x as i64) - expected_output[i];
+                    assert!(d * d <= 1);
+                }
+            }
+        }
+    }
+}
