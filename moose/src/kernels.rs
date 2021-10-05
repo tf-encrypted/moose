@@ -9,7 +9,7 @@ use crate::host::{
     AbstractHostFixedTensor, AbstractHostRingTensor, HostBitTensor, HostFixed128Tensor,
     HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
     HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostString,
-    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, SliceInfo,
+    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::ReplicatedSetup;
@@ -1789,7 +1789,9 @@ macro_rules! constant_kernels {
             modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> $val, ConstantOp);
         )+
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostString, ConstantOp);
+        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostShape, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> PrfKey, ConstantOp);
+        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Seed, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
 
@@ -1799,7 +1801,9 @@ macro_rules! constant_kernels {
                     (HostPlacement, () -> $val => [runtime] attributes[value: $val] Self::kernel),
                 )+
                 (HostPlacement, () -> HostString => [runtime] attributes[value: String] Self::string_kernel),
+                (HostPlacement, () -> HostShape => [runtime] attributes[value: RawShape] Self::shape_kernel),
                 (HostPlacement, () -> PrfKey => [runtime] attributes[value: RawPrfKey] Self::prf_key_kernel),
+                (HostPlacement, () -> Seed => [runtime] attributes[value: RawSeed] Self::seed_kernel),
                 (HostPlacement, () -> crate::logical::Tensor => [hybrid] attributes[value] Self::logical_kernel),
                 (HostPlacement, () -> Float64Tensor => [hybrid] attributes[value] Self::float_kernel),
             ]
@@ -1820,28 +1824,31 @@ constant_kernels![
     HostUint64Tensor
 ];
 
+macro_rules! wrapping_constant_kernel {
+    ($name:ident for $wrapping:tt($inner:ty)) => {
+        impl ConstantOp {
+            fn $name<S: RuntimeSession>(
+                _sess: &S,
+                plc: &HostPlacement,
+                value: $inner,
+            ) -> Result<$wrapping> {
+                Ok($wrapping(value.clone(), plc.clone()))
+            }
+        }
+    };
+}
+
+wrapping_constant_kernel!(string_kernel for HostString(String));
+wrapping_constant_kernel!(shape_kernel for HostShape(RawShape));
+wrapping_constant_kernel!(prf_key_kernel for PrfKey(RawPrfKey));
+wrapping_constant_kernel!(seed_kernel for Seed(RawSeed));
+
 impl ConstantOp {
     fn kernel<S: RuntimeSession, T: Placed>(sess: &S, plc: &HostPlacement, value: T) -> Result<T>
     where
         HostPlacement: PlacementPlace<S, T>,
     {
         Ok(plc.place(sess, value))
-    }
-
-    fn string_kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        value: String,
-    ) -> Result<HostString> {
-        Ok(HostString(value.clone(), plc.clone()))
-    }
-
-    fn prf_key_kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        value: RawPrfKey,
-    ) -> Result<PrfKey> {
-        Ok(PrfKey(value.clone(), plc.clone()))
     }
 }
 
