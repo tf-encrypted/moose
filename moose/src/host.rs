@@ -964,8 +964,7 @@ impl HostAddNOp {
         sess: &S,
         rep: &HostPlacement,
         x: &[AbstractHostRingTensor<T>],
-    ) -> Result<AbstractHostRingTensor<T>>
-    {
+    ) -> Result<AbstractHostRingTensor<T>> {
         unimplemented!()
     }
 }
@@ -3354,6 +3353,28 @@ mod tests {
         let exp = HostRing64Tensor::from(exp_backing);
         let out = x.sum(None).unwrap();
         assert_eq!(out, exp)
+    }
+
+    #[test]
+    fn ring_add_n() {
+        let x_backing: ArrayD<i64> = array![[1, 4], [9, 16], [25, 36]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y_backing: ArrayD<i64> = array![[1, 3], [6, 10], [15, 21]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let z_backing: ArrayD<i64> = array![[1, 36], [1225, 41616], [1413721, 48024900]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let x = HostRing64Tensor::from(x_backing);
+        let y = HostRing64Tensor::from(y_backing);
+        let z = HostRing64Tensor::from(z_backing);
+        let expected_backing: ArrayD<u64> = array![[3, 43], [1240, 41642], [1413761, 48024957]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let expected = HostRing64Tensor::from(expected_backing);
+        //let out = x.sum(None).unwrap();
+        //assert_eq!(out, exp)
     }
 
     #[test]
