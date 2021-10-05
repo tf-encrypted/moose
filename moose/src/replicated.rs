@@ -2350,9 +2350,10 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
+        // 64 bit
         let a = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
-        let b = AbstractHostRingTensor::from_raw_plc(array![2u64, 3, 4], bob);
-        let c = AbstractHostRingTensor::from_raw_plc(array![5u64, 12, 13], carole);
+        let b = AbstractHostRingTensor::from_raw_plc(array![2u64, 3, 4], bob.clone());
+        let c = AbstractHostRingTensor::from_raw_plc(array![5u64, 12, 13], carole.clone());
 
         let expected = AbstractHostRingTensor::from_raw_plc(array![8u64, 17, 20], alice.clone());
 
@@ -2362,6 +2363,28 @@ mod tests {
         let setup = rep.gen_setup(&sess);
 
         let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>> = inputs
+            .into_iter()
+            .map(|x| rep.share(&sess, &setup, &x))
+            .collect();
+
+        let sum = rep.add_n(&sess, &shares);
+        let opened_result = alice.reveal(&sess, &sum);
+
+        assert_eq!(expected, opened_result);
+
+        // 128 bit
+        let a = AbstractHostRingTensor::from_raw_plc(array![[1u128, 2, 3], [2u128, 3, 4]], alice.clone());
+        let b = AbstractHostRingTensor::from_raw_plc(array![[2u128, 3, 4], [2u128, 3, 4]], bob);
+        let c = AbstractHostRingTensor::from_raw_plc(array![[5u128, 12, 13], [1u128, 2, 3]], carole);
+
+        let expected = AbstractHostRingTensor::from_raw_plc(array![[8u128, 17, 20], [5, 8, 11]], alice.clone());
+
+        let inputs = vec![a, b, c];
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u128>>> = inputs
             .into_iter()
             .map(|x| rep.share(&sess, &setup, &x))
             .collect();
