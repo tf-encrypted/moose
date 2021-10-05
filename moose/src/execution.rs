@@ -1284,7 +1284,9 @@ impl AsyncTestRuntime {
                 networking: Arc::clone(&self.networking),
                 storage: Arc::clone(&self.runtime_storage[own_identity]),
                 // Creating independent new framework's sync sessions for the bridge
-                new_sess: Arc::new(crate::kernels::SyncSession::default()),
+                new_sess: Arc::new(crate::kernels::SyncSession::new(
+                    SessionId::try_from("foobar").unwrap(),
+                )),
                 host: Arc::new(Placement::Host(HostPlacement {
                     owner: own_identity.0.clone().into(),
                 })),
@@ -1478,10 +1480,7 @@ mod tests {
         let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
             seed.0,
-            RawSeed::from_prf(
-                &RawPrfKey([0; 16]),
-                &SyncKey::try_from(vec![1, 2, 3]).unwrap()
-            )
+            RawSeed([224, 87, 133, 2, 90, 170, 32, 253, 25, 80, 93, 74, 122, 196, 50, 1])
         );
         Ok(())
     }
@@ -2414,7 +2413,9 @@ mod tests {
             arguments: hashmap!(),
             networking: Arc::clone(&networking),
             storage: Arc::clone(&exec_storage),
-            new_sess: Arc::new(crate::kernels::SyncSession::default()),
+            new_sess: Arc::new(crate::kernels::SyncSession::new(
+                SessionId::try_from("foobar").unwrap(),
+            )),
             host: Arc::new(Placement::Host(HostPlacement {
                 owner: "localhost".into(),
             })),
@@ -2437,7 +2438,9 @@ mod tests {
             arguments: hashmap!(),
             networking: Arc::clone(&networking),
             storage: Arc::clone(&exec_storage),
-            new_sess: Arc::new(crate::kernels::SyncSession::default()),
+            new_sess: Arc::new(crate::kernels::SyncSession::new(
+                SessionId::try_from("foobar").unwrap(),
+            )),
             host: Arc::new(Placement::Host(HostPlacement {
                 owner: "localhost".into(),
             })),

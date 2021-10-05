@@ -59,6 +59,15 @@ impl Default for SyncSession {
     }
 }
 
+impl SyncSession {
+    pub fn new(sid: SessionId) -> Self {
+        SyncSession {
+            session_id: sid,
+            replicated_keys: Default::default(),
+        }
+    }
+}
+
 impl Session for SyncSession {
     type Value = Value;
 
