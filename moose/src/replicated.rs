@@ -2373,11 +2373,18 @@ mod tests {
         assert_eq!(expected, opened_result);
 
         // 128 bit
-        let a = AbstractHostRingTensor::from_raw_plc(array![[1u128, 2, 3], [2u128, 3, 4]], alice.clone());
+        let a = AbstractHostRingTensor::from_raw_plc(
+            array![[1u128, 2, 3], [2u128, 3, 4]],
+            alice.clone(),
+        );
         let b = AbstractHostRingTensor::from_raw_plc(array![[2u128, 3, 4], [2u128, 3, 4]], bob);
-        let c = AbstractHostRingTensor::from_raw_plc(array![[5u128, 12, 13], [1u128, 2, 3]], carole);
+        let c =
+            AbstractHostRingTensor::from_raw_plc(array![[5u128, 12, 13], [1u128, 2, 3]], carole);
 
-        let expected = AbstractHostRingTensor::from_raw_plc(array![[8u128, 17, 20], [5, 8, 11]], alice.clone());
+        let expected = AbstractHostRingTensor::from_raw_plc(
+            array![[8u128, 17, 20], [5, 8, 11]],
+            alice.clone(),
+        );
 
         let inputs = vec![a, b, c];
 
