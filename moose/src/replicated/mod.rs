@@ -2229,7 +2229,7 @@ where
 
         let (upshifted, signed_topmost) = rep.norm(sess, setup, total_precision, x);
 
-        let x_shape = rep.shape(sess, &x);
+        let x_shape = rep.shape(sess, x);
         // 2.9142 * 2^{total_precision}
         let alpha = Constant::Float64(2.9142);
         let alpha = rep.fill_precision(sess, alpha, Some(total_precision as u32), &x_shape);
