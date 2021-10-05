@@ -6,7 +6,7 @@ impl FixedpointDivOp {
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
         y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> st!(AbstractReplicatedFixedTensor<RepRingT>)
+    ) -> Result<st!(AbstractReplicatedFixedTensor<RepRingT>)>
     where
         AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
         <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
@@ -84,11 +84,11 @@ impl FixedpointDivOp {
         b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
         b = rep.trunc_pr(sess, 2 * frac_precision, &b);
 
-        AbstractReplicatedFixedTensor {
+        Ok(AbstractReplicatedFixedTensor {
             tensor: b,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
             fractional_precision: x.fractional_precision,
         }
-        .into()
+        .into())
     }
 }
