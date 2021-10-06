@@ -1465,18 +1465,21 @@ mod tests {
 
     }
     macro_rules! rep_div_func_test {
-        ($func_name:ident, $test_func: ident<$tt: ty>, $factor: expr) => {
-            fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $precision: expr) => {
+            fn $func_name(xs: ArrayD<f64>, ys: ArrayD<f64>) {
                 let alice = HostPlacement {
                     owner: "alice".into(),
                 };
                 let rep = ReplicatedPlacement {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
-                // this actually doesn't do any encoding
-                let x = FixedTensor::Host(new_host_fixed_tensor(AbstractHostRingTensor::from_raw_plc(xs, alice.clone())));
-                let y = FixedTensor::Host(new_host_fixed_tensor(AbstractHostRingTensor::from_raw_plc(ys, alice.clone())));
 
+                let encode = |item: &f64| (2_i64.pow($precision) as f64 * item) as $tt;
+
+                let xs = xs.clone().map(encode);
+                let ys = ys.clone().map(encode);
+                let x = FixedTensor::Host(new_host_fixed_tensor(AbstractHostRingTensor::from_raw_plc(xs.clone(), alice.clone())));
+                let y = FixedTensor::Host(new_host_fixed_tensor(AbstractHostRingTensor::from_raw_plc(ys.clone(), alice.clone())));
 
                 let sess = SyncSession::default();
 
@@ -1485,14 +1488,19 @@ mod tests {
                     FixedTensor::Replicated(r) => alice.reveal(&sess, &r),
                     _ => panic!("Should not produce an unreplicated tensor on a replicated placement"),
                 };
-                let expected_result = AbstractHostRingTensor::from_raw_plc(zs,alice.clone());
-                let expected_f64 = Convert::decode(&expected_result, (2 as $tt).pow(15));
-                let result = Convert::decode(&opened_product.tensor, (2 as $tt).pow(15));
 
+                let mut expected_result = Array::from_shape_vec(IxDyn(&[xs.clone().len()]), vec![0 as $tt; xs.clone().len()]).unwrap();
+                for i in 0..xs.len() {
+                    let div_result = (xs[i] as f64) / (ys[i] as f64);
+                    expected_result[i] = encode(&div_result);
+                }
+                let expected_result = AbstractHostRingTensor::from_raw_plc(expected_result,alice.clone());
+                let expected_f64 = Convert::decode(&expected_result, (2 as $tt).pow($precision));
+                let result = Convert::decode(&opened_product.tensor, (2 as $tt).pow($precision));
                 let diff = result - expected_f64;
                 let diff_squared = diff.clone() * diff;
 
-                let error: f64 = (1_f64) / ((2 as $tt).pow(15) as f64);
+                let error: f64 = (1_f64) / ((2 as $tt).pow($precision) as f64);
                 let _: Vec<_> = diff_squared.0.iter().map(|item| {
                     assert!(*item < error);
                 }).collect();
@@ -1500,61 +1508,26 @@ mod tests {
         };
     }
 
-    rep_div_func_test!(test_rep_div64, div<u64>, 1);
-    rep_div_func_test!(test_rep_div128, div<u128>, 1);
-
     #[test]
     fn test_fixed_rep_div64() {
-        let a: Vec<u64> = vec![1.0, 2.0, 2.0]
-            .iter()
-            .map(|item| encode(*item))
-            .collect();
-        let b: Vec<u64> = vec![3.0, 7.0, 1.41]
-            .iter()
-            .map(|item| encode(*item))
-            .collect();
-
-        fn encode(item: f64) -> u64 {
-            (2_i64.pow(15) as f64 * item) as u64
-        }
-
+        let a: Vec<f64> = vec![1.0, 2.0, 2.0];
+        let b: Vec<f64> = vec![3.0, 7.0, 1.41];
         let a = Array::from_shape_vec(IxDyn(&[a.len()]), a).unwrap();
         let b = Array::from_shape_vec(IxDyn(&[b.len()]), b).unwrap();
 
-        let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
-        // fixed(res) = (a/b) * 2^27
-        for i in 0..a.len() {
-            let div_result = (a[i] as f64) / (b[i] as f64);
-            target[i] = encode(div_result);
-        }
-        test_rep_div64(a, b, target);
+        rep_div_func_test!(test_rep_div64, div<u64>, 15);
+        test_rep_div64(a, b);
     }
 
     #[test]
     fn test_fixed_rep_div128() {
-        let a: Vec<u128> = vec![1.0, 2.0, 2.0]
-            .iter()
-            .map(|item| encode(*item))
-            .collect();
-        let b: Vec<u128> = vec![3.0, 7.0, 1.41]
-            .iter()
-            .map(|item| encode(*item))
-            .collect();
-
-        fn encode(item: f64) -> u128 {
-            (2_u128.pow(15) as f64 * item) as u128
-        }
-
+        let a: Vec<f64> = vec![1.0, 2.0, 2.0];
+        let b: Vec<f64> = vec![3.0, 7.0, 1.41];
         let a = Array::from_shape_vec(IxDyn(&[a.len()]), a).unwrap();
         let b = Array::from_shape_vec(IxDyn(&[b.len()]), b).unwrap();
 
-        let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u128; a.len()]).unwrap();
-        // fixed(res) = (a/b) * 2^27
-        for i in 0..a.len() {
-            let div_result: f64 = (a[i] as f64) / (b[i] as f64);
-            target[i] = encode(div_result);
-        }
-        test_rep_div128(a, b, target);
+        rep_div_func_test!(test_rep_div128, div<u128>, 15);
+        test_rep_div128(a, b);
     }
 
     #[test]
