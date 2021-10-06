@@ -1059,6 +1059,8 @@ impl FixedpointMeanOp {
 mod tests {
     use super::*;
     use crate::kernels::SyncSession;
+    use crate::replicated::AbstractReplicatedRingTensor;
+    use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
     use proptest::prelude::*;
 
     #[test]
@@ -1530,6 +1532,105 @@ mod tests {
         test_rep_div128(a, b);
     }
 
+    macro_rules! new_symbolic_replicated_tensor {
+        ($func_name:ident, $tt: ty) => {
+            fn $func_name(
+                name: &str,
+                rep: &ReplicatedPlacement,
+            ) -> Symbolic<AbstractReplicatedRingTensor<Symbolic<AbstractHostRingTensor<$tt>>>> {
+                let (alice, bob, carole) = rep.host_placements();
+                let symbolic_replicated = Symbolic::Concrete(AbstractReplicatedRingTensor {
+                    shares: [
+                        [
+                            Symbolic::Symbolic(SymbolicHandle {
+                                op: format!("{}{}", name, &"00"),
+                                plc: alice.clone(),
+                            }),
+                            Symbolic::Symbolic(SymbolicHandle {
+                                op: format!("{}{}", name, &"01"),
+                                plc: alice.clone(),
+                            }),
+                        ],
+                        [
+                            Symbolic::Symbolic(SymbolicHandle {
+                                op: format!("{}{}", name, &"10"),
+                                plc: bob.clone(),
+                            }),
+                            Symbolic::Symbolic(SymbolicHandle {
+                                op: format!("{}{}", name, &"11"),
+                                plc: bob.clone(),
+                            }),
+                        ],
+                        [
+                            Symbolic::Symbolic(SymbolicHandle {
+                                op: format!("{}{}", name, &"20"),
+                                plc: carole.clone(),
+                            }),
+                            Symbolic::Symbolic(SymbolicHandle {
+                                op: format!("{}{}", name, &"21"),
+                                plc: carole.clone(),
+                            }),
+                        ],
+                    ],
+                });
+                symbolic_replicated
+            }
+        };
+    }
+
+    new_symbolic_replicated_tensor!(new_symbolic_replicated_tensor64, u64);
+    new_symbolic_replicated_tensor!(new_symbolic_replicated_tensor128, u128);
+
+    macro_rules! test_symbolic_div {
+        ($func_name:ident, $new_symbolic_rep: ident) => {
+            fn $func_name(i_precision: u32, f_precision: u32) {
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                    fractional_precision: f_precision,
+                    integral_precision: i_precision,
+                    tensor: $new_symbolic_rep(&"x", &rep),
+                });
+
+                let y = Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                    fractional_precision: f_precision,
+                    integral_precision: i_precision,
+                    tensor: $new_symbolic_rep(&"y", &rep),
+                });
+
+            let sess = SymbolicSession::default();
+            let _ = rep.gen_setup(&sess);
+
+            let result = rep.div(&sess, &x, &y);
+            match result {
+                Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                    tensor: _,
+                    fractional_precision,
+                    integral_precision,
+                }) => {
+                    assert_eq!(fractional_precision, f_precision);
+                    assert_eq!(integral_precision, i_precision);
+                }
+                _ => {
+                    panic!("Expected a concrete result from the symbolic division on a concrete value")
+                }
+            }
+            }
+        }
+    }
+
+    test_symbolic_div!(test_symbolic_div64, new_symbolic_replicated_tensor64);
+    test_symbolic_div!(test_symbolic_div128, new_symbolic_replicated_tensor128);
+
     #[test]
-    fn test_symbolic_div() {}
+    fn test_symbolic_div_64() {
+        test_symbolic_div64(10, 20);
+    }
+
+    #[test]
+    fn test_symbolic_div_128() {
+        test_symbolic_div128(10, 50);
+    }
 }
