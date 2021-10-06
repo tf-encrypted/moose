@@ -510,10 +510,12 @@ where
     }
 }
 
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostFloat32Tensor, HostOnesOp);
 modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostFloat64Tensor, HostOnesOp);
 
 kernel! {
     HostOnesOp, [
+        (HostPlacement, (HostShape) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostShape) -> HostFloat64Tensor => [runtime] Self::kernel),
     ]
 }
@@ -1289,7 +1291,7 @@ impl Compile<Kernel> for PrimDeriveSeedOp {
         closure_kernel!(PrfKey, |key| Seed(
             RawSeed::from_prf(&key.0, &sync_key),
             HostPlacement {
-                owner: "TODO1".into() // Fake owner for the older kernels.
+                owner: "TODO".into() // Fake owner for the older kernels.
             }
         ))
     }
@@ -1302,7 +1304,7 @@ impl Compile<Kernel> for PrimPrfKeyGenOp {
         function_kernel!(|| PrfKey(
             RawPrfKey::generate(),
             HostPlacement {
-                owner: "TODO4".into() // Fake owner for the older kernels.
+                owner: "TODO".into() // Fake owner for the older kernels.
             }
         ))
     }
@@ -1833,7 +1835,7 @@ impl Compile<Kernel> for ConstantOp {
         let value = self.value.clone();
         Ok(Kernel::NullaryClosure(Arc::new(move || {
             Ok(value.place(&HostPlacement {
-                owner: "TODO5".into(), // Fake owner for the older kernels.
+                owner: "TODO".into(), // Fake owner for the older kernels.
             }))
         })))
     }
@@ -1973,7 +1975,7 @@ impl Compile<SyncKernel> for SendOp {
             sess.networking
                 .send(&v, &receiver_id, &rendezvous_key, &sess.sid)?;
             Ok(Value::Unit(Box::new(Unit(HostPlacement {
-                owner: "TODO6".into(), // Fake owner for the older kernels.
+                owner: "TODO".into(), // Fake owner for the older kernels.
             }))))
         })))
     }
@@ -2007,7 +2009,7 @@ impl Compile<AsyncKernel> for SendOp {
                     .send(&v, &receiver_id, &rendezvous_key, &sess.sid)
                     .await?;
                 map_send_result(sender.send(Value::Unit(Box::new(Unit(HostPlacement {
-                    owner: "TODO7".into(), // Fake owner for the older kernels.
+                    owner: "TODO".into(), // Fake owner for the older kernels.
                 })))))
             })
         })))
@@ -2391,7 +2393,7 @@ impl Compile<SyncKernel> for SaveOp {
             check_type(&val, expected_ty)?;
             sess.storage.save(&key.0, &sess.sid, &val)?;
             Ok(Value::Unit(Box::new(Unit(HostPlacement {
-                owner: "TODO8".into(), // Fake owner for the old kernel
+                owner: "TODO".into(), // Fake owner for the old kernel
             }))))
         })))
     }
@@ -2413,7 +2415,7 @@ impl Compile<AsyncKernel> for SaveOp {
                     check_type(&val, expected_ty)?;
                     sess.storage.save(&key.0, &sess.sid, &val).await?;
                     map_send_result(sender.send(Value::Unit(Box::new(Unit(HostPlacement {
-                        owner: "TODO9".into(), // Fake owner for the old kernel
+                        owner: "TODO".into(), // Fake owner for the old kernel
                     })))))
                 })
             },
