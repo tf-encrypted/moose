@@ -65,7 +65,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> &'py PyArrayDyn<u64> {
         let x_ring = dynarray_to_ring64(&x);
         let y_ring = dynarray_to_ring64(&y);
-        let res = x_ring.dot(y_ring);
+        let res = x_ring.dot(y_ring).unwrap();
         let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
     }
@@ -88,7 +88,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         axis: Option<usize>,
     ) -> &'py PyArrayDyn<u64> {
         let x_ring = dynarray_to_ring64(&x);
-        let res = x_ring.sum(axis);
+        let res = x_ring.sum(axis).unwrap();
         let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
     }
@@ -286,7 +286,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         precision: u32,
     ) -> &'py PyArrayDyn<u64> {
         let x_ring = dynarray_to_ring64(&x);
-        let y = HostRing64Tensor::fixedpoint_mean(x_ring, axis, 2u64.pow(precision));
+        let y = HostRing64Tensor::fixedpoint_mean(x_ring, axis, 2u64.pow(precision)).unwrap();
         ring64_to_array(y).to_pyarray(py)
     }
 
