@@ -394,13 +394,14 @@ kernel! {
 }
 
 impl HostAtLeast2DOp {
-    fn hostfloat_kernel<S: RuntimeSession, T>(
+    fn hostfloat_kernel<S: RuntimeSession, T: LinalgScalar>(
         _sess: &S,
         _plc: &HostPlacement,
-        _to_column_vector: bool,
-        _x: HostTensor<T>,
+        to_column_vector: bool,
+        x: HostTensor<T>,
     ) -> Result<HostTensor<T>> {
-        unimplemented!()
+        let y = x.atleast_2d(to_column_vector);
+        Ok(y)
     }
 }
 
