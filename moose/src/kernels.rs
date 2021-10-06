@@ -250,14 +250,11 @@ impl RuntimeSession for SyncSession {
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity> {
         self.role_assignments
             .get(role)
-            .ok_or(Error::Networking(format!(
-                "Missing role assignemnt for {}",
-                role
-            )))
+            .ok_or_else(|| Error::Networking(format!("Missing role assignemnt for {}", role)))
     }
 
     fn storage_load(&self, key: &str, query: &str, type_hint: Option<Ty>) -> Result<Value> {
-        let future = self.storage.load(key, &self.session_id, type_hint, &query);
+        let future = self.storage.load(key, &self.session_id, type_hint, query);
         let handle = tokio::runtime::Handle::current();
         let _guard = handle.enter();
         let val = futures::executor::block_on(future)?;
@@ -2335,8 +2332,8 @@ impl InputOp {
         use std::convert::TryInto;
         let value = sess
             .find_argument(&arg_name)
-            .ok_or(Error::MissingArgument(arg_name.clone()))?;
-        Ok(value.try_into()?)
+            .ok_or_else(|| Error::MissingArgument(arg_name.clone()))?;
+        value.try_into()
     }
 }
 
@@ -2586,7 +2583,7 @@ impl LoadOp {
     {
         use std::convert::TryInto;
         let value = sess.storage_load(&key.0, &query.0, Some(<O as KnownType<S>>::TY))?;
-        Ok(value.try_into()?)
+        value.try_into()
     }
 }
 

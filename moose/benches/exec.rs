@@ -640,6 +640,16 @@ fn execute(c: &mut Criterion) {
                 arguments: hashmap! {},
                 networking: Arc::new(DummyNetworking(unit.clone())),
                 storage: Arc::new(moose::storage::LocalAsyncStorage::default()),
+                new_sess: Arc::new(moose::kernels::SyncSession::new(
+                    SessionId::try_from("12345").unwrap(),
+                    hashmap!(),
+                    hashmap!(),
+                    Arc::new(DummyNetworking(unit.clone())),
+                    Arc::new(moose::storage::LocalAsyncStorage::default()),
+                )),
+                host: Arc::new(moose::computation::Placement::Host(HostPlacement {
+                    owner: "localhost".into(),
+                })),
             };
 
             b.iter(|| {

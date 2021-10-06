@@ -1434,7 +1434,7 @@ mod tests {
                     arguments,
                     hashmap!(),
                     Arc::new(LocalAsyncNetworking::default()),
-                    Arc::new(LocalAsyncStorage::from_hashmap(hashmap!())),
+                    Arc::new(LocalAsyncStorage::default()),
                 );
                 let outputs = executor.run_computation(&computation, &session)?;
                 Ok(outputs)
@@ -1615,7 +1615,7 @@ mod tests {
         };
         let arguments: HashMap<String, Value> = hashmap!("x_uri".to_string()=> HostString("input_data".to_string(), plc.clone()).into(),
             "x_query".to_string() => HostString("".to_string(), plc.clone()).into(),
-            "saved_uri".to_string() => HostString("saved_data".to_string(), plc.clone()).into());
+            "saved_uri".to_string() => HostString("saved_data".to_string(), plc).into());
 
         let saved_data = match run_async {
             true => {
@@ -2089,7 +2089,7 @@ mod tests {
 
         let comp_result = outputs
             .get("output")
-            .ok_or(anyhow::anyhow!("Expected result missing"))?;
+            .ok_or_else(|| anyhow::anyhow!("Expected result missing"))?;
 
         if unwrap_flag {
             if let Value::HostFloat32Tensor(x) = comp_result {
@@ -2455,7 +2455,7 @@ mod tests {
         let identity = Identity::from("alice");
 
         let exec_storage: Arc<dyn Send + Sync + AsyncStorage> =
-            Arc::new(LocalAsyncStorage::from_hashmap(HashMap::new()));
+            Arc::new(LocalAsyncStorage::default());
 
         let valid_role_assignments: HashMap<Role, Identity> =
             hashmap!(Role::from("alice") => identity.clone());
@@ -2475,7 +2475,7 @@ mod tests {
                 hashmap!(),
                 valid_role_assignments.clone(),
                 Arc::clone(&networking),
-                Arc::new(LocalAsyncStorage::from_hashmap(hashmap!())),
+                Arc::new(LocalAsyncStorage::default()),
             )),
             host: Arc::new(Placement::Host(HostPlacement {
                 owner: "localhost".into(),
@@ -2504,7 +2504,7 @@ mod tests {
                 hashmap!(),
                 valid_role_assignments.clone(),
                 Arc::clone(&networking),
-                Arc::new(LocalAsyncStorage::from_hashmap(hashmap!())),
+                Arc::new(LocalAsyncStorage::default()),
             )),
             host: Arc::new(Placement::Host(HostPlacement {
                 owner: "localhost".into(),
