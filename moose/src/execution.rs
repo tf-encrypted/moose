@@ -1407,7 +1407,8 @@ mod tests {
     use super::*;
     use crate::compilation::networking::NetworkingPass;
     use crate::host::{
-        HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostShape, HostString, RawShape,
+        HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostShape, HostString, HostTensor,
+        RawShape,
     };
     use crate::host::{HostRing128Tensor, HostRing64Tensor};
     use crate::prim::{RawSeed, Seed};
@@ -1812,10 +1813,13 @@ mod tests {
             run_async,
         )?;
 
-        let expected_output = HostFloat32Tensor::from(
+        let expected_output = HostTensor::<f32>(
             array![[0.6, -0.40000004], [-0.40000004, 0.6]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
+            HostPlacement {
+                owner: "alice".into(),
+            },
         );
         let x_inv: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_output, x_inv);
@@ -1856,10 +1860,13 @@ mod tests {
                 let r: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
-                    HostFloat32Tensor::from(
+                    HostTensor::<f32>(
                         array![[1.0, 1.0], [1.0, 1.0]]
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
+                        HostPlacement {
+                            owner: "alice".into()
+                        },
                     )
                 );
                 Ok(())
@@ -1868,10 +1875,13 @@ mod tests {
                 let r: HostFloat64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
-                    HostFloat64Tensor::from(
+                    HostTensor::<f64>(
                         array![[1.0, 1.0], [1.0, 1.0]]
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
+                        HostPlacement {
+                            owner: "alice".into()
+                        },
                     )
                 );
                 Ok(())
@@ -1880,10 +1890,13 @@ mod tests {
                 let r: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
-                    HostInt64Tensor::from(
+                    HostTensor::<i64>(
                         array![[1, 1], [1, 1]]
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
+                        HostPlacement {
+                            owner: "alice".into()
+                        },
                     )
                 );
                 Ok(())

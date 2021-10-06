@@ -512,11 +512,19 @@ where
 
 modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostFloat32Tensor, HostOnesOp);
 modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostFloat64Tensor, HostOnesOp);
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostInt8Tensor, HostOnesOp);
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostInt16Tensor, HostOnesOp);
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostInt32Tensor, HostOnesOp);
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostInt64Tensor, HostOnesOp);
 
 kernel! {
     HostOnesOp, [
         (HostPlacement, (HostShape) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostShape) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostShape) -> HostInt8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostShape) -> HostInt16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostShape) -> HostInt32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostShape) -> HostInt64Tensor => [runtime] Self::kernel),
     ]
 }
 
