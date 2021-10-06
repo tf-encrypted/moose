@@ -2116,7 +2116,7 @@ for_all_values! {( $($value:ty),* ) => (
 kernel! {
     ReceiveOp, [
         (HostPlacement, () -> HostString => [runtime] attributes[rendezvous_key, sender] Self::kernel),
-        (HostPlacement, () -> Unit => [runtime] attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> Unit => [runtime] attributes[rendezvous_key, sender] Self::missing_kernel),
         (HostPlacement, () -> HostShape => [runtime] attributes[rendezvous_key, sender] Self::kernel),
         (HostPlacement, () -> Seed => [runtime] attributes[rendezvous_key, sender] Self::kernel),
         (HostPlacement, () -> PrfKey => [runtime] attributes[rendezvous_key, sender] Self::kernel),
@@ -2133,8 +2133,8 @@ kernel! {
         (HostPlacement, () -> HostUint16Tensor => [runtime] attributes[rendezvous_key, sender] Self::kernel),
         (HostPlacement, () -> HostUint32Tensor => [runtime] attributes[rendezvous_key, sender] Self::kernel),
         (HostPlacement, () -> HostUint64Tensor => [runtime] attributes[rendezvous_key, sender] Self::kernel),
-        (HostPlacement, () -> HostFixed64Tensor => [runtime] attributes[rendezvous_key, sender] Self::kernel),
-        (HostPlacement, () -> HostFixed128Tensor => [runtime] attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostFixed64Tensor => [runtime] attributes[rendezvous_key, sender] Self::missing_kernel),
+        (HostPlacement, () -> HostFixed128Tensor => [runtime] attributes[rendezvous_key, sender] Self::missing_kernel),
 
     ]
 }
@@ -2142,16 +2142,33 @@ kernel! {
 impl ReceiveOp {
     fn kernel<S: RuntimeSession, T>(
         sess: &S,
-        _plc: &HostPlacement,
+        plc: &HostPlacement,
         rendezvous_key: RendezvousKey,
         sender: Role,
     ) -> Result<T>
     where
         T: TryFrom<Value, Error = Error>,
+        T: std::fmt::Debug,
+        HostPlacement: PlacementPlace<S, T>,
     {
         use std::convert::TryInto;
         let value = sess.networking_receive(&sender, &rendezvous_key)?;
-        Ok(value.try_into()?)
+        Ok(plc.place(sess, value.try_into()?))
+    }
+
+    fn missing_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _rendezvous_key: RendezvousKey,
+        _sender: Role,
+    ) -> Result<T>
+    where
+        T: KnownType<S>,
+    {
+        Err(Error::Compilation(format!(
+            "missing HostPlacement: PlacementPlace trait implementation for '{}'",
+            &<T as KnownType<S>>::TY
+        )))
     }
 }
 

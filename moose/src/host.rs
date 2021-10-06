@@ -268,12 +268,20 @@ impl HostAddOp {
 
 modelled!(PlacementSub::sub, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostSubOp);
 modelled!(PlacementSub::sub, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (HostInt8Tensor, HostInt8Tensor) -> HostInt8Tensor, HostSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (HostInt16Tensor, HostInt16Tensor) -> HostInt16Tensor, HostSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor, HostSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor, HostSubOp);
 
 kernel! {
     HostSubOp,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt8Tensor, HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt16Tensor, HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::kernel),
     ]
 }
 
@@ -326,12 +334,20 @@ impl HostMulOp {
 
 modelled!(PlacementDiv::div, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostDivOp);
 modelled!(PlacementDiv::div, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostInt8Tensor, HostInt8Tensor) -> HostInt8Tensor, HostDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostInt16Tensor, HostInt16Tensor) -> HostInt16Tensor, HostDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor, HostDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor, HostDivOp);
 
 kernel! {
     HostDivOp,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt8Tensor, HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt16Tensor, HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::kernel),
     ]
 }
 

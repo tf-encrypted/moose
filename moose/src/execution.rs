@@ -1786,11 +1786,15 @@ mod tests {
             )?,
         };
 
-        let expected_output = Value::from(HostFloat32Tensor::from(
+        let expected_output: Value = HostTensor::<f32>(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
-        ));
+            HostPlacement {
+                owner: "alice".into(),
+            },
+        )
+        .into();
         assert_eq!(outputs["output"], expected_output);
         Ok(())
     }
