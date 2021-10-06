@@ -128,7 +128,7 @@ impl Session for SyncSession {
             HostMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqrt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostAddN(op) => unimplemented!("Not done yet: {:?}", op),
+            HostAddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
