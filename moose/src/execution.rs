@@ -1287,6 +1287,7 @@ impl AsyncTestRuntime {
                 new_sess: Arc::new(crate::kernels::SyncSession::new(
                     SessionId::try_from("foobar").unwrap(),
                     arguments.clone(),
+                    Arc::clone(&self.runtime_storage[own_identity]),
                 )),
                 host: Arc::new(Placement::Host(HostPlacement {
                     owner: own_identity.0.clone().into(),
@@ -1400,6 +1401,7 @@ mod tests {
                 let session = crate::kernels::SyncSession::new(
                     SessionId::try_from("foobar").unwrap(),
                     arguments,
+                    Arc::new(LocalAsyncStorage::from_hashmap(hashmap!())),
                 );
                 let outputs = executor.run_computation(&computation, &session)?;
                 Ok(outputs)
@@ -2422,6 +2424,7 @@ mod tests {
             new_sess: Arc::new(crate::kernels::SyncSession::new(
                 SessionId::try_from("foobar").unwrap(),
                 hashmap!(),
+                Arc::new(LocalAsyncStorage::from_hashmap(hashmap!())),
             )),
             host: Arc::new(Placement::Host(HostPlacement {
                 owner: "localhost".into(),
@@ -2448,6 +2451,7 @@ mod tests {
             new_sess: Arc::new(crate::kernels::SyncSession::new(
                 SessionId::try_from("foobar").unwrap(),
                 hashmap!(),
+                Arc::new(LocalAsyncStorage::from_hashmap(hashmap!())),
             )),
             host: Arc::new(Placement::Host(HostPlacement {
                 owner: "localhost".into(),

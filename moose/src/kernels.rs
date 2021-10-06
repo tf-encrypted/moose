@@ -1,3 +1,5 @@
+use maplit::hashmap;
+
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
@@ -13,6 +15,7 @@ use crate::host::{
 };
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::ReplicatedSetup;
+use crate::storage::{AsyncStorage, LocalAsyncStorage};
 use crate::{closure_kernel, function_kernel};
 use crate::{computation::*, for_all_values};
 use std::collections::HashMap;
@@ -43,6 +46,8 @@ pub trait Session {
 pub trait RuntimeSession: Session {
     fn session_id(&self) -> &SessionId;
     fn find_argument(&self, key: &str) -> Option<Value>;
+    fn storage_load(&self, key: &str, query: &str, type_hint: Option<Ty>) -> Result<Value>;
+    fn storage_save(&self, key: &str, val: &Value) -> Result<()>;
 }
 
 /// Session object for synchronous/eager execution (in new framework).
@@ -50,24 +55,39 @@ pub struct SyncSession {
     session_id: SessionId,
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
     arguments: HashMap<String, Value>,
+    // pub networking: SyncNetworkingImpl,
+    pub storage: Arc<dyn Send + Sync + AsyncStorage>,
 }
 
 impl Default for SyncSession {
+    /// Default session should only be used in tests.
+    ///
+    /// Use function new() for the real sessions instead.
     fn default() -> Self {
         SyncSession {
-            session_id: SessionId::random(), // TODO sync session is only used in tests currently, but it should get the session if from then env still.
+            session_id: SessionId::random(),
             replicated_keys: Default::default(),
             arguments: Default::default(),
+            // networking: Networking::Sync(Rc::new(DummyNetworking(Value::Unit(Box::new(Unit(HostPlacement {
+            //     owner: "localhost".into(),
+            // })))))),
+            storage: Arc::new(LocalAsyncStorage::from_hashmap(hashmap!())),
         }
     }
 }
 
 impl SyncSession {
-    pub fn new(sid: SessionId, arguments: HashMap<String, Value>) -> Self {
+    pub fn new(
+        sid: SessionId,
+        arguments: HashMap<String, Value>,
+        storage: Arc<dyn Send + Sync + AsyncStorage>,
+    ) -> Self {
         SyncSession {
             session_id: sid,
             replicated_keys: Default::default(),
             arguments,
+            // networking,
+            storage,
         }
     }
 }
@@ -214,6 +234,21 @@ impl RuntimeSession for SyncSession {
     fn find_argument(&self, key: &str) -> Option<Value> {
         self.arguments.get(key).cloned()
     }
+
+    fn storage_load(&self, key: &str, query: &str, type_hint: Option<Ty>) -> Result<Value> {
+        let future = self.storage.load(key, &self.session_id, type_hint, &query);
+        let handle = tokio::runtime::Handle::current();
+        let _guard = handle.enter();
+        let val = futures::executor::block_on(future)?;
+        Ok(val)
+    }
+
+    fn storage_save(&self, key: &str, val: &Value) -> Result<()> {
+        let future = self.storage.save(key, &self.session_id, val);
+        let handle = tokio::runtime::Handle::current();
+        let _guard = handle.enter();
+        futures::executor::block_on(future)
+    }
 }
 
 /// Session object for asynchronous execution (in new framework).
@@ -249,6 +284,14 @@ impl RuntimeSession for AsyncSession {
     fn find_argument(&self, _key: &str) -> Option<Value> {
         todo!("Please implement find_argument for the new AsyncSession")
         // self.arguments.get(key)
+    }
+
+    fn storage_load(&self, _key: &str, _query: &str, _type_hint: Option<Ty>) -> Result<Value> {
+        todo!("Please implement storage_load for the new AsyncSession")
+    }
+
+    fn storage_save(&self, _key: &str, _val: &Value) -> Result<()> {
+        todo!("Please implement storage_save for the new AsyncSession")
     }
 }
 
@@ -2321,12 +2364,17 @@ kernel! {
 
 impl SaveOp {
     fn kernel<S: RuntimeSession, O>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _key: HostString,
-        _x: O,
-    ) -> Result<Unit> {
-        unimplemented!() // TODO: Save the value into storage for the Async and Sync sessions to work.
+        sess: &S,
+        plc: &HostPlacement,
+        key: HostString,
+        x: O,
+    ) -> Result<Unit>
+    where
+        Value: From<O>,
+    {
+        let x: Value = x.into();
+        sess.storage_save(&key.0, &x)?;
+        Ok(Unit(plc.clone()))
     }
 }
 
@@ -2410,12 +2458,18 @@ kernel! {
 
 impl LoadOp {
     fn kernel<S: RuntimeSession, O>(
-        _sess: &S,
+        sess: &S,
         _plc: &HostPlacement,
-        _key: HostString,
-        _query: HostString,
-    ) -> Result<O> {
-        unimplemented!() // TODO: Implement loading from storage for the Async and Sync sessions to work.
+        key: HostString,
+        query: HostString,
+    ) -> Result<O>
+    where
+        O: KnownType<S>,
+        O: TryFrom<Value, Error = Error>,
+    {
+        use std::convert::TryInto;
+        let value = sess.storage_load(&key.0, &query.0, Some(<O as KnownType<S>>::TY))?;
+        Ok(value.try_into()?)
     }
 }
 
