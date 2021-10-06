@@ -292,6 +292,22 @@ impl Bridge {
             })
         })
     }
+
+    pub fn variadic(op: Operator) -> VariadicAsyncKernel {
+        Box::new(move |sess, xs, sender| {
+            let new_sess = sess.new_sess.clone();
+            let op = op.clone();
+            let plc = sess.host.clone();
+            tokio::spawn(async move {
+                use crate::kernels::Session;
+                let xs: Vec<Value> = futures::future::try_join_all(xs)
+                    .await
+                    .map_err(map_receive_error)?;
+                let y = new_sess.execute(op, &plc, xs)?;
+                map_send_result(sender.send(y))
+            })
+        })
+    }
 }
 
 pub trait Compile<C> {
@@ -660,7 +676,20 @@ impl Compile<CompiledAsyncOperation> for Operation {
                     }),
                 })
             }
-            None => todo!(),
+            None => {
+                let inputs = self.inputs.clone();
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, env, sender| {
+                        let xs = inputs
+                            .iter()
+                            .map(|input| find_env(env, input))
+                            .collect::<Result<Vec<_>>>()?;
+                        let k = Bridge::variadic(op.kind.clone());
+                        Ok(k(sess, xs, sender))
+                    }),
+                })
+            }
             _ => unimplemented!("No support for the bridge of an unexpected arity"),
         }
     }
