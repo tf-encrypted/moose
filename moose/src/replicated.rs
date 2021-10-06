@@ -3000,7 +3000,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(xs, bob.clone());
+        let x = AbstractHostRingTensor::from_raw_plc(xs, bob);
 
         let sess = SyncSession::default();
         let setup = rep.gen_setup(&sess);
