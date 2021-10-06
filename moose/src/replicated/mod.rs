@@ -2923,7 +2923,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rep_bit_dec_fail() {
+    fn test_bit_dec_different_plc() {
         let xs = array![1073741823].into_dyn();
         let zs = array![
             [1_u8],
