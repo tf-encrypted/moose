@@ -1868,6 +1868,8 @@ macro_rules! constant_kernels {
 }
 
 constant_kernels![
+    HostRing64Tensor,
+    HostRing128Tensor,
     HostFloat32Tensor,
     HostFloat64Tensor,
     HostInt8Tensor,
