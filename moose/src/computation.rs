@@ -970,6 +970,7 @@ operators![
     RepSlice,
     RepBitDec,
     RepShlDim,
+    RepEqual,
 ];
 
 pub trait HasShortName {
@@ -1653,6 +1654,15 @@ pub struct RepSliceOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepBitDecOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepEqualOp {
+    pub sig: Signature,
+}
+
+pub struct RepIfElseOp {
     pub sig: Signature,
 }
 
