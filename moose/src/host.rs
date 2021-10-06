@@ -21,6 +21,8 @@ use std::marker::PhantomData;
 use std::num::Wrapping;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 use std::ops::{BitAnd, BitXor, Neg, Shl, Shr};
+use ndarray::OwnedRepr;
+use ndarray::IxDynImpl;
 
 moose_type!(String);
 
@@ -962,10 +964,36 @@ kernel! {
 impl HostAddNOp {
     fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
-        rep: &HostPlacement,
-        x: &[AbstractHostRingTensor<T>],
-    ) -> Result<AbstractHostRingTensor<T>> {
-        unimplemented!()
+        plc: &HostPlacement,
+        xs: &[AbstractHostRingTensor<T>],
+    ) -> Result<AbstractHostRingTensor<T>>
+    where
+        T: std::fmt::Debug,
+        T: Clone,
+        //T: std::ops::Add<Output = ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>>,
+    {
+        use ndarray::ViewRepr;
+
+        let tmp = xs[0].clone();
+        println!("x = {:?}", xs);
+        let c = xs[0].0.clone();
+        println!("c = {:?}", c);
+        println!("c + c = {:?}", c + c);
+        //let sum = xs[0].0 + xs[1].0;
+        //let mut arr = Vec::new();
+        //for x in xs.iter() {
+        //    arr.push(x.0.view());
+        //}
+        //let arr: Vec<ArrayBase<ViewRepr<&T>, Dim<IxDynImpl>>> =
+        //    xs.iter().map(|x| x.0.view()).collect();
+        //let sum = arr
+        //    .iter()
+        //    .reduce(|a, b| a + b)
+        //    .ok_or_else(|| {
+        //        Error::InvalidArgument("cannot reduce on empty array of tensors".to_string())
+        //    })?;
+        //let sum = arr[0] + arr[1];
+        Ok(tmp)
     }
 }
 
@@ -3357,6 +3385,10 @@ mod tests {
 
     #[test]
     fn ring_add_n() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let sess = SyncSession::default();
         let x_backing: ArrayD<i64> = array![[1, 4], [9, 16], [25, 36]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
@@ -3373,8 +3405,8 @@ mod tests {
             .into_dimensionality::<IxDyn>()
             .unwrap();
         let expected = HostRing64Tensor::from(expected_backing);
-        //let out = x.sum(None).unwrap();
-        //assert_eq!(out, exp)
+        let out = alice.add_n(&sess, &[x, y, z]);
+        assert_eq!(out, expected)
     }
 
     #[test]
