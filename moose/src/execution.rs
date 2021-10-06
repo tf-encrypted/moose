@@ -1316,6 +1316,8 @@ impl AsyncTestRuntime {
                 new_sess: Arc::new(crate::kernels::SyncSession::new(
                     SessionId::try_from("foobar").unwrap(),
                     arguments.clone(),
+                    valid_role_assignments.clone(),
+                    Arc::clone(&self.networking),
                     Arc::clone(&self.runtime_storage[own_identity]),
                 )),
                 host: Arc::new(Placement::Host(HostPlacement {
@@ -1426,11 +1428,12 @@ mod tests {
     ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
         match run_async {
             false => {
-                // TODO: Need to pass on role assignment
                 let executor = crate::kernels::TestSyncExecutor::default();
                 let session = crate::kernels::SyncSession::new(
                     SessionId::try_from("foobar").unwrap(),
                     arguments,
+                    hashmap!(),
+                    Arc::new(LocalAsyncNetworking::default()),
                     Arc::new(LocalAsyncStorage::from_hashmap(hashmap!())),
                 );
                 let outputs = executor.run_computation(&computation, &session)?;
@@ -1765,7 +1768,7 @@ mod tests {
 
         let outputs = match run_async {
             true => {
-                let computation = NetworkingPass::pass(&computation).unwrap().unwrap();
+                let computation = compile_passes(&computation, &[Pass::Networking])?;
                 _run_computation_test(
                     computation,
                     storage_mapping,
@@ -2466,6 +2469,8 @@ mod tests {
             new_sess: Arc::new(crate::kernels::SyncSession::new(
                 SessionId::try_from("foobar").unwrap(),
                 hashmap!(),
+                valid_role_assignments.clone(),
+                Arc::clone(&networking),
                 Arc::new(LocalAsyncStorage::from_hashmap(hashmap!())),
             )),
             host: Arc::new(Placement::Host(HostPlacement {
@@ -2493,6 +2498,8 @@ mod tests {
             new_sess: Arc::new(crate::kernels::SyncSession::new(
                 SessionId::try_from("foobar").unwrap(),
                 hashmap!(),
+                valid_role_assignments.clone(),
+                Arc::clone(&networking),
                 Arc::new(LocalAsyncStorage::from_hashmap(hashmap!())),
             )),
             host: Arc::new(Placement::Host(HostPlacement {
