@@ -1600,23 +1600,23 @@ mod tests {
                     tensor: $new_symbolic_rep(&"y", &rep),
                 });
 
-            let sess = SymbolicSession::default();
-            let _ = rep.gen_setup(&sess);
+                let sess = SymbolicSession::default();
+                let _ = rep.gen_setup(&sess);
 
-            let result = rep.div(&sess, &x, &y);
-            match result {
-                Symbolic::Concrete(AbstractReplicatedFixedTensor {
-                    tensor: _,
-                    fractional_precision,
-                    integral_precision,
-                }) => {
-                    assert_eq!(fractional_precision, f_precision);
-                    assert_eq!(integral_precision, i_precision);
+                let result = rep.div(&sess, &x, &y);
+                match result {
+                    Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                        tensor: _,
+                        fractional_precision,
+                        integral_precision,
+                    }) => {
+                        assert_eq!(fractional_precision, f_precision);
+                        assert_eq!(integral_precision, i_precision);
+                    }
+                    _ => {
+                        panic!("Expected a concrete result from the symbolic division on a concrete value")
+                    }
                 }
-                _ => {
-                    panic!("Expected a concrete result from the symbolic division on a concrete value")
-                }
-            }
             }
         }
     }
