@@ -21,8 +21,6 @@ use std::marker::PhantomData;
 use std::num::Wrapping;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 use std::ops::{BitAnd, BitXor, Neg, Shl, Shr};
-use ndarray::OwnedRepr;
-use ndarray::IxDynImpl;
 
 moose_type!(String);
 
@@ -970,6 +968,8 @@ impl HostAddNOp {
     where
         T: std::fmt::Debug,
         T: Clone,
+        Wrapping<T>: Clone,
+        Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
         //T: std::ops::Add<Output = ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>>,
     {
         use ndarray::ViewRepr;
@@ -977,8 +977,13 @@ impl HostAddNOp {
         let tmp = xs[0].clone();
         println!("x = {:?}", xs);
         let c = xs[0].0.clone();
-        println!("c = {:?}", c);
-        println!("c + c = {:?}", c + c);
+        //println!("c = {:?}", c);
+        println!("c + c = {:?}", c.clone() + c.clone());
+        let mut acc = xs[0].0.clone();
+        for tensor in xs[1..].iter() {
+            acc = tensor.0.clone() + acc;
+        }
+        println!("sum = {:?}", acc);
         //let sum = xs[0].0 + xs[1].0;
         //let mut arr = Vec::new();
         //for x in xs.iter() {
