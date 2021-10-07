@@ -2168,7 +2168,7 @@ impl ReceiveOp {
     where
         T: KnownType<S>,
     {
-        Err(Error::Compilation(format!(
+        Err(Error::KernelError(format!(
             "missing HostPlacement: PlacementPlace trait implementation for '{}'",
             &<T as KnownType<S>>::TY
         )))
@@ -2351,7 +2351,7 @@ impl InputOp {
     where
         O: KnownType<S>,
     {
-        Err(Error::Compilation(format!(
+        Err(Error::KernelError(format!(
             "missing HostPlacement: PlacementPlace trait implementation for '{}'",
             &<O as KnownType<S>>::TY
         )))
@@ -2566,7 +2566,7 @@ modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> crate:
 
 kernel! {
     LoadOp, [
-        (HostPlacement, (HostString, HostString) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> Unit => [runtime] Self::missing_kernel),
         (HostPlacement, (HostString, HostString) -> HostShape => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostString) -> Seed => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostString) -> PrfKey => [runtime] Self::kernel),
@@ -2584,8 +2584,8 @@ kernel! {
         (HostPlacement, (HostString, HostString) -> HostUint16Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostString) -> HostUint32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostString) -> HostUint64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostString, HostString) -> HostFixed64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostString, HostString) -> HostFixed128Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostFixed64Tensor => [runtime] Self::missing_kernel),
+        (HostPlacement, (HostString, HostString) -> HostFixed128Tensor => [runtime] Self::missing_kernel),
         (HostPlacement, (HostString, HostString) -> Float64Tensor => [hybrid] Self::float_kernel),
         (HostPlacement, (HostString, HostString) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
     ]
@@ -2594,17 +2594,34 @@ kernel! {
 impl LoadOp {
     fn kernel<S: RuntimeSession, O>(
         sess: &S,
-        _plc: &HostPlacement,
+        plc: &HostPlacement,
         key: HostString,
         query: HostString,
     ) -> Result<O>
     where
         O: KnownType<S>,
         O: TryFrom<Value, Error = Error>,
+        HostPlacement: PlacementPlace<S, O>,
     {
         use std::convert::TryInto;
         let value = sess.storage_load(&key.0, &query.0, Some(<O as KnownType<S>>::TY))?;
-        value.try_into()
+        let value = plc.place(sess, value.try_into()?);
+        Ok(value)
+    }
+
+    fn missing_kernel<S: RuntimeSession, O>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _key: HostString,
+        _query: HostString,
+    ) -> Result<O>
+    where
+        O: KnownType<S>,
+    {
+        Err(Error::KernelError(format!(
+            "missing HostPlacement: PlacementPlace trait implementation for '{}'",
+            &<O as KnownType<S>>::TY
+        )))
     }
 }
 

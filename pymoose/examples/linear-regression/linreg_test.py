@@ -167,7 +167,7 @@ class LinearRegressionExample(parameterized.TestCase):
             comp_bin,
             [
                 "typing",
-                "dump",
+                # "dump",
                 # All of the symbolic passes. Currently combines functionality of
                 # [ReplicatedOpsPass, HostRingLoweringPass, ReplicatedLoweringPass]
                 "full",
@@ -205,69 +205,6 @@ class LinearRegressionExample(parameterized.TestCase):
             "Done: \n",
             runtime.read_value_from_storage("model-owner", "regression_weights"),
         )
-
-    def _build_const_example(self):
-        x_owner = edsl.host_placement(name="x-owner")
-        y_owner = edsl.host_placement(name="y-owner")
-        model_owner = edsl.host_placement(name="model-owner")
-        replicated_plc = edsl.replicated_placement(
-            players=[x_owner, y_owner, model_owner], name="replicated-plc"
-        )
-
-        @edsl.computation
-        def my_comp():
-            with x_owner:
-                x = edsl.constant(np.array([1, 2], dtype=np.float64))
-                x = edsl.cast(x, dtype=edsl.fixed(8, 27))
-            with y_owner:
-                y = edsl.constant(np.array([1, 2], dtype=np.float64))
-                y = edsl.cast(y, dtype=edsl.fixed(8, 27))
-            with replicated_plc:
-                z = edsl.add(x, y)
-            with model_owner:
-                res = edsl.cast(z, dtype=edsl.float64)
-
-            return res
-
-        return my_comp, (x_owner)
-
-    def test_const_rust_compiler(self):
-        linear_comp, placements = self._build_const_example()
-        concrete_comp = edsl.trace(linear_comp)
-        comp_bin = utils.serialize_computation(concrete_comp)
-        # Compile in Rust
-        rust_compiled = elk_compiler.compile_computation(
-            comp_bin,
-            [
-                "typing",
-                "dump",
-                # All of the symbolic passes. Currently combines functionality of
-                # [ReplicatedOpsPass, HostRingLoweringPass, ReplicatedLoweringPass]
-                "full",
-                "prune",
-                "networking",
-                "typing",
-                # "dump",
-                # "print",
-            ],
-        )
-
-        executors_storage = {
-            "x-owner": {},
-            "y-owner": {},
-            "model-owner": {},
-        }
-        runtime = LocalMooseRuntime(storage_mapping=executors_storage)
-        result = runtime.evaluate_compiled(
-            comp_bin=rust_compiled,
-            role_assignment={
-                "x-owner": "x-owner",
-                "y-owner": "y-owner",
-                "model-owner": "model-owner",
-            },
-            arguments={},
-        )
-        print("Done", result)
 
     @pytest.mark.slow
     def test_linear_regression_mape(self):
