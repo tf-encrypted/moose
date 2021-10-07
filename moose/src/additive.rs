@@ -6,19 +6,11 @@ use crate::computation::{
 };
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};
+use crate::kernels::*;
+use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::replicated::{
     AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor,
     ReplicatedRing64Tensor,
-};
-use crate::{
-    kernels::{
-        PlacementAdd, PlacementDaBitProvider, PlacementDeriveSeed, PlacementFill, PlacementKeyGen,
-        PlacementMul, PlacementNeg, PlacementOnes, PlacementPlace, PlacementRepToAdt,
-        PlacementReveal, PlacementRingInject, PlacementSampleUniform, PlacementSampleUniformSeeded,
-        PlacementShape, PlacementShl, PlacementShr, PlacementSub, PlacementTruncPrProvider,
-        Session,
-    },
-    prim::{PrfKey, Seed, SyncKey},
 };
 use crate::{Const, Ring};
 use macros::with_context;
@@ -920,7 +912,6 @@ mod tests {
     use crate::{
         computation::{Operation, Operator, Placement, RingAddOp},
         host::AbstractHostRingTensor,
-        kernels::SyncSession,
         symbolic::{Symbolic, SymbolicHandle, SymbolicSession},
     };
     use ndarray::array;
