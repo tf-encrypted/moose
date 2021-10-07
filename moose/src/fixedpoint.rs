@@ -1163,6 +1163,18 @@ mod tests {
         }
     }
 
+    fn new_host_fixed_tensor_with_precision<HostRingT>(
+        x: HostRingT,
+        integral_precision: u32,
+        fractional_precision: u32,
+    ) -> AbstractHostFixedTensor<HostRingT> {
+        AbstractHostFixedTensor {
+            tensor: x,
+            integral_precision: 8,
+            fractional_precision: 15,
+        }
+    }
+
     macro_rules! host_binary_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>, $factor: expr) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
@@ -1467,7 +1479,7 @@ mod tests {
 
     }
     macro_rules! rep_div_func_test {
-        ($func_name:ident, $test_func: ident<$tt: ty>, $precision: expr) => {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $i_precision: expr, $f_precision: expr) => {
             fn $func_name(xs: ArrayD<f64>, ys: ArrayD<f64>) {
                 let alice = HostPlacement {
                     owner: "alice".into(),
@@ -1476,19 +1488,23 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let encode = |item: &f64| (2_i64.pow($precision) as f64 * item) as $tt;
+                let encode = |item: &f64| (2_i64.pow($f_precision) as f64 * item) as $tt;
 
                 let xs = xs.clone().map(encode);
                 let ys = ys.clone().map(encode);
-                let x = FixedTensor::Host(new_host_fixed_tensor(AbstractHostRingTensor::from_raw_plc(xs.clone(), alice.clone())));
-                let y = FixedTensor::Host(new_host_fixed_tensor(AbstractHostRingTensor::from_raw_plc(ys.clone(), alice.clone())));
+                let x = FixedTensor::Host(new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(xs.clone(), alice.clone()), $i_precision, $f_precision)
+                );
+                let y = FixedTensor::Host(new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(ys.clone(), alice.clone()), $i_precision, $f_precision)
+                );
 
                 let sess = SyncSession::default();
 
                 let sum = rep.$test_func(&sess, &x, &y);
                 let opened_product = match sum {
                     FixedTensor::Replicated(r) => alice.reveal(&sess, &r),
-                    _ => panic!("Should not produce an unreplicated tensor on a replicated placement"),
+                    _ => panic!("Should not produce an non-replicated tensor on a replicated placement"),
                 };
 
                 let mut expected_result = Array::from_shape_vec(IxDyn(&[xs.clone().len()]), vec![0 as $tt; xs.clone().len()]).unwrap();
@@ -1497,12 +1513,12 @@ mod tests {
                     expected_result[i] = encode(&div_result);
                 }
                 let expected_result = AbstractHostRingTensor::from_raw_plc(expected_result,alice.clone());
-                let expected_f64 = Convert::decode(&expected_result, (2 as $tt).pow($precision));
-                let result = Convert::decode(&opened_product.tensor, (2 as $tt).pow($precision));
+                let expected_f64 = Convert::decode(&expected_result, (2 as $tt).pow($f_precision));
+                let result = Convert::decode(&opened_product.tensor, (2 as $tt).pow($f_precision));
                 let diff = result - expected_f64;
                 let diff_squared = diff.clone() * diff;
 
-                let error: f64 = (1_f64) / ((2 as $tt).pow($precision) as f64);
+                let error: f64 = (1_f64) / ((2 as $tt).pow($f_precision) as f64);
                 let _: Vec<_> = diff_squared.0.iter().map(|item| {
                     assert!(*item < error);
                 }).collect();
@@ -1517,7 +1533,7 @@ mod tests {
         let a = Array::from_shape_vec(IxDyn(&[a.len()]), a).unwrap();
         let b = Array::from_shape_vec(IxDyn(&[b.len()]), b).unwrap();
 
-        rep_div_func_test!(test_rep_div64, div<u64>, 15);
+        rep_div_func_test!(test_rep_div64, div<u64>, 10, 15);
         test_rep_div64(a, b);
     }
 
@@ -1528,7 +1544,7 @@ mod tests {
         let a = Array::from_shape_vec(IxDyn(&[a.len()]), a).unwrap();
         let b = Array::from_shape_vec(IxDyn(&[b.len()]), b).unwrap();
 
-        rep_div_func_test!(test_rep_div128, div<u128>, 15);
+        rep_div_func_test!(test_rep_div128, div<u128>, 10, 15);
         test_rep_div128(a, b);
     }
 
