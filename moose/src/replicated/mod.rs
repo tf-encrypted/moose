@@ -1150,11 +1150,16 @@ kernel! {
 }
 
 impl RepAddNOp {
-    fn kernel<S: Session, RepT>(sess: &S, rep: &ReplicatedPlacement, xs: &[RepT]) -> Result<RepT>
-    where
-        ReplicatedPlacement: PlacementPlace<S, RepT>,
-        ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
-        RepT: std::clone::Clone,
+    fn kernel<S: Session, R>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        xs: &[RepTen<R>],
+    ) -> Result<RepTen<R>>
+//where
+        //HostPlacement: PlacementAdd<S, R, R, R>,
+        //ReplicatedPlacement: PlacementPlace<S, RepT>,
+        //ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
+        //RepT: std::clone::Clone,
     {
         // TODO: This can be done more efficiently if computed in parallel as
         // a tree
@@ -1164,14 +1169,46 @@ impl RepAddNOp {
         //   3   +  7,    11   +  15
         //      10     +      26
         //            36
-        let sum = xs
-            .iter()
-            .cloned()
-            .reduce(|a, b| rep.add(sess, &a, &b))
-            .ok_or_else(|| {
-                Error::InvalidArgument("cannot reduce on empty array of tensors".to_string())
-            })?;
-        Ok(sum)
+        //let sum = xs
+        //    .iter()
+        //    .cloned()
+        //    .reduce(|a, b| rep.add(sess, &a, &b))
+        //    .ok_or_else(|| {
+        //        Error::InvalidArgument("cannot reduce on empty array of tensors".to_string())
+        //    })?;
+        //Ok(sum)
+
+        let (player0, player1, player2) = rep.host_placements();
+
+        let z00s = Vec::new();
+        let z10s = Vec::new();
+        let z11s = Vec::new();
+        let z21s = Vec::new();
+        let z22s = Vec::new();
+        let z02s = Vec::new();
+        for x in xs.iter() {
+            let RepTen {
+                shares: [[x00, x10], [x11, x21], [x22, x02]],
+            } = &x;
+
+            z00s.push(x00);
+            z10s.push(x10);
+            z11s.push(x11);
+            z21s.push(x21);
+            z22s.push(x22);
+            z02s.push(x02);
+        }
+
+        let z00 = player0.add_n(sess, &z00s);
+        let z10 = player0.add_n(sess, &z10s);
+        let z11 = player1.add_n(sess, &z11s);
+        let z21 = player1.add_n(sess, &z21s);
+        let z22 = player2.add_n(sess, &z22s);
+        let z02 = player2.add_n(sess, &z02s);
+
+        Ok(RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        })
     }
 }
 
