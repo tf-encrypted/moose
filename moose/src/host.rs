@@ -972,18 +972,10 @@ impl HostAddNOp {
         Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
         //T: std::ops::Add<Output = ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>>,
     {
-        use ndarray::ViewRepr;
-
-        let tmp = xs[0].clone();
-        println!("x = {:?}", xs);
-        let c = xs[0].0.clone();
-        //println!("c = {:?}", c);
-        println!("c + c = {:?}", c.clone() + c.clone());
         let mut acc = xs[0].0.clone();
         for tensor in xs[1..].iter() {
             acc = tensor.0.clone() + acc;
         }
-        println!("sum = {:?}", acc);
         //let sum = xs[0].0 + xs[1].0;
         //let mut arr = Vec::new();
         //for x in xs.iter() {
@@ -3386,6 +3378,7 @@ mod tests {
             .unwrap();
         let exp = HostRing64Tensor::from(exp_backing);
         let out = x.sum(None).unwrap();
+        println!("out: {:?} exp: {:?}", out, exp);
         assert_eq!(out, exp)
     }
 
@@ -3410,9 +3403,9 @@ mod tests {
         let expected_backing: ArrayD<u64> = array![[3, 43], [1240, 41642], [1413761, 48024957]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let expected = HostRing64Tensor::from(expected_backing);
+        let expected = HostRing64Tensor::from_raw_plc(expected_backing, alice.clone());
         let out = alice.add_n(&sess, &[x, y, z]);
-        assert_eq!(out, expected)
+        assert_eq!(out, expected);
     }
 
     #[test]
