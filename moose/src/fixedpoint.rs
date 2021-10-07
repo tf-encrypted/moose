@@ -1170,8 +1170,8 @@ mod tests {
     ) -> AbstractHostFixedTensor<HostRingT> {
         AbstractHostFixedTensor {
             tensor: x,
-            integral_precision: 8,
-            fractional_precision: 15,
+            integral_precision,
+            fractional_precision,
         }
     }
 
@@ -1478,7 +1478,7 @@ mod tests {
         }
 
     }
-    macro_rules! rep_div_func_test {
+    macro_rules! rep_div_func_concrete_test {
         ($func_name:ident, $test_func: ident<$tt: ty>, $i_precision: expr, $f_precision: expr) => {
             fn $func_name(xs: ArrayD<f64>, ys: ArrayD<f64>) {
                 let alice = HostPlacement {
@@ -1533,7 +1533,7 @@ mod tests {
         let a = Array::from_shape_vec(IxDyn(&[a.len()]), a).unwrap();
         let b = Array::from_shape_vec(IxDyn(&[b.len()]), b).unwrap();
 
-        rep_div_func_test!(test_rep_div64, div<u64>, 10, 15);
+        rep_div_func_concrete_test!(test_rep_div64, div<u64>, 10, 15);
         test_rep_div64(a, b);
     }
 
@@ -1544,7 +1544,7 @@ mod tests {
         let a = Array::from_shape_vec(IxDyn(&[a.len()]), a).unwrap();
         let b = Array::from_shape_vec(IxDyn(&[b.len()]), b).unwrap();
 
-        rep_div_func_test!(test_rep_div128, div<u128>, 10, 15);
+        rep_div_func_concrete_test!(test_rep_div128, div<u128>, 10, 15);
         test_rep_div128(a, b);
     }
 
@@ -1597,7 +1597,7 @@ mod tests {
     new_symbolic_replicated_tensor!(new_symbolic_replicated_tensor64, u64);
     new_symbolic_replicated_tensor!(new_symbolic_replicated_tensor128, u128);
 
-    macro_rules! test_symbolic_div {
+    macro_rules! rep_div_symbolic_test {
         ($func_name:ident, $new_symbolic_rep: ident) => {
             fn $func_name(i_precision: u32, f_precision: u32) {
                 let rep = ReplicatedPlacement {
@@ -1637,16 +1637,16 @@ mod tests {
         }
     }
 
-    test_symbolic_div!(test_symbolic_div64, new_symbolic_replicated_tensor64);
-    test_symbolic_div!(test_symbolic_div128, new_symbolic_replicated_tensor128);
+    rep_div_symbolic_test!(rep_div_symbolic_test64, new_symbolic_replicated_tensor64);
+    rep_div_symbolic_test!(rep_div_symbolic_test128, new_symbolic_replicated_tensor128);
 
     #[test]
-    fn test_symbolic_div_64() {
-        test_symbolic_div64(10, 20);
+    fn test_fixed_rep_symbolic_div64() {
+        rep_div_symbolic_test64(10, 20);
     }
 
     #[test]
-    fn test_symbolic_div_128() {
-        test_symbolic_div128(10, 50);
+    fn test_fixed_rep_symbolic_div128() {
+        rep_div_symbolic_test128(10, 50);
     }
 }
