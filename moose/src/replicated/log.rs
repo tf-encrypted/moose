@@ -165,7 +165,7 @@ mod tests {
             array![1024u64, 4, 5]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
-            bob.clone(),
+            bob,
         );
 
         let x_shared = rep.share(&sess, &setup, &x);
