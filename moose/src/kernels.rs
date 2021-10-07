@@ -228,6 +228,7 @@ impl Session for SyncSession {
             Mean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -570,6 +571,10 @@ pub trait PlacementSqrt<S: Session, T, O> {
 
 pub trait PlacementSum<S: Session, T, O> {
     fn sum(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+}
+
+pub trait PlacementEqual<S: Session, T, U, O> {
+    fn equal(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -929,8 +934,8 @@ impl Compile<SyncKernel> for Operator {
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
-            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) => {
+            | RepEqual(_) | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_)
+            | FixedpointMean(_) | FixedpointSum(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -1027,7 +1032,8 @@ impl Compile<AsyncKernel> for Operator {
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_) => {
+            | RepEqual(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_)
+            | RepBitDec(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
