@@ -2306,7 +2306,7 @@ for_all_values! {( $($value:ty),* ) => (
 kernel! {
     InputOp, [
         (HostPlacement, () -> HostString => [runtime] attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Unit => [runtime] attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Unit => [runtime] attributes[arg_name] Self::missing_kernel),
         (HostPlacement, () -> HostShape => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Seed => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> PrfKey => [runtime] attributes[arg_name] Self::kernel),
@@ -2323,23 +2323,38 @@ kernel! {
         (HostPlacement, () -> HostUint16Tensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostUint32Tensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostUint64Tensor => [runtime] attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> HostFixed64Tensor => [runtime] attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> HostFixed128Tensor => [runtime] attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostFixed64Tensor => [runtime] attributes[arg_name] Self::missing_kernel),
+        (HostPlacement, () -> HostFixed128Tensor => [runtime] attributes[arg_name] Self::missing_kernel),
 
     ]
 }
 
 impl InputOp {
-    fn kernel<S: RuntimeSession, O: TryFrom<Value, Error = Error>>(
-        sess: &S,
-        _plc: &HostPlacement,
-        arg_name: String,
-    ) -> Result<O> {
+    fn kernel<S: RuntimeSession, O>(sess: &S, plc: &HostPlacement, arg_name: String) -> Result<O>
+    where
+        O: TryFrom<Value, Error = Error>,
+        HostPlacement: PlacementPlace<S, O>,
+    {
         use std::convert::TryInto;
         let value = sess
             .find_argument(&arg_name)
             .ok_or_else(|| Error::MissingArgument(arg_name.clone()))?;
-        value.try_into()
+        let value = plc.place(sess, value.try_into()?);
+        Ok(value)
+    }
+
+    fn missing_kernel<S: RuntimeSession, O>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _arg_name: String,
+    ) -> Result<O>
+    where
+        O: KnownType<S>,
+    {
+        Err(Error::Compilation(format!(
+            "missing HostPlacement: PlacementPlace trait implementation for '{}'",
+            &<O as KnownType<S>>::TY
+        )))
     }
 }
 
