@@ -73,6 +73,7 @@ impl Session for SyncSession {
             BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitXor(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitAnd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            BitNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitExtract(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingSample(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -98,6 +99,7 @@ impl Session for SyncSession {
             RepDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepTruncPr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepMsb(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepAbs(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -785,7 +787,7 @@ impl Compile<SyncKernel> for Operator {
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
             | RepEqual(_) | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_)
-            | FixedpointMean(_) | FixedpointSum(_) => {
+            | FixedpointMean(_) | FixedpointSum(_) | BitNeg(_) | RepNeg(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -882,8 +884,8 @@ impl Compile<AsyncKernel> for Operator {
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | RepEqual(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_)
-            | RepBitDec(_) => {
+            | RepEqual(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | BitNeg(_)
+            | RepNeg(_) | RepBitDec(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
