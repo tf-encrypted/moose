@@ -3063,4 +3063,101 @@ mod tests {
     fn test_rep_bit_dec_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u8>) {
         test_rep_bit_dec64(x, y);
     }
+
+    #[test]
+    fn test_bit_dec_different_plc() {
+        let xs = array![1073741823].into_dyn();
+        let zs = array![
+            [1_u8],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [1],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+            [0],
+        ]
+        .into_dyn();
+
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
+
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x = AbstractHostRingTensor::from_raw_plc(xs, bob);
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let x_shared = rep.share(&sess, &setup, &x);
+
+        let result: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
+        let opened_result = alice.reveal(&sess, &result);
+        assert_eq!(opened_result, AbstractHostBitArray::from_raw_plc(zs, alice));
+    }
 }
+
+pub mod log;
