@@ -36,9 +36,7 @@ impl FixedpointDivOp {
         assert!(2 * k as usize <= RepRingT::BitLength::VALUE);
 
         let constant_quotient: f64 = 17_f64.log2();
-        let theta = (((frac_precision + 1) as f64) / constant_quotient)
-            .log2()
-            .ceil() as u32;
+        let theta = ((k as f64) / constant_quotient).log2().ceil() as u32;
 
         let x_st = x.tensor;
         let y_st = y.tensor;
