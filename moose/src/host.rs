@@ -3433,14 +3433,14 @@ mod tests {
         let y_backing: ArrayD<u128> = array![[42, 21, 64], [32, 16, 8], [4, 2, 1]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let z_backing: ArrayD<u128> = array![[338, 169, 138], [69, 48, 24], [12, 6, 3]]
+        let z_backing: ArrayD<u128> = array![[256, 128, 64], [32, 16, 8], [4, 2, 1]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
         let w = HostRing128Tensor::from(w_backing);
         let x = HostRing128Tensor::from(x_backing);
         let y = HostRing128Tensor::from(y_backing);
         let z = HostRing128Tensor::from(z_backing);
-        let expected_backing: ArrayD<u128> = array![[426, 213, 222], [111, 96, 48], [24, 12, 6]]
+        let expected_backing: ArrayD<u128> = array![[344, 172, 148], [74, 64, 32], [16, 8, 4]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
         let expected = HostRing128Tensor::from_raw_plc(expected_backing, alice.clone());
