@@ -951,17 +951,19 @@ impl HostSumOp {
 }
 
 modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor, HostAddNOp);
+modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor, HostAddNOp);
 
 kernel! {
     HostAddNOp,
     [
         (HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor => [runtime] Self::kernel),
+        (HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor => [runtime] Self::kernel),
     ]
 }
 
 impl HostAddNOp {
     fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         xs: &[AbstractHostRingTensor<T>],
     ) -> Result<AbstractHostRingTensor<T>>
@@ -972,10 +974,21 @@ impl HostAddNOp {
         Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
         //T: std::ops::Add<Output = ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>>,
     {
-        let mut acc = xs[0].0.clone();
+        let mut sum = xs[0].0.clone();
         for tensor in xs[1..].iter() {
-            acc = tensor.0.clone() + acc;
+            // For some reason sum += tensor.0 does not work
+            //            error[E0368]: binary assignment operation `+=` cannot be applied to type `ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>`
+            //   --> moose/src/host.rs:981:13
+            //    |
+            //981 |             sum += tensor.0.clone();
+            //    |             ---^^^^^^^^^^^^^^^^^^^^
+            //    |             |
+            //    |             cannot use `+=` on type `ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>`
+            //    |
+            //    = note: the trait `std::ops::AddAssign` is not implemented for `ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>`
+            sum = sum + tensor.0.clone();
         }
+
         //let sum = xs[0].0 + xs[1].0;
         //let mut arr = Vec::new();
         //for x in xs.iter() {
@@ -991,7 +1004,7 @@ impl HostAddNOp {
         //    })?;
         //let sum = arr[0] + arr[1];
         //Ok(tmp)
-        Ok(AbstractHostRingTensor(acc, plc.clone()))
+        Ok(AbstractHostRingTensor(sum, plc.clone()))
     }
 }
 
@@ -3388,13 +3401,16 @@ mod tests {
             owner: "alice".into(),
         };
         let sess = SyncSession::default();
-        let x_backing: ArrayD<i64> = array![[1, 4], [9, 16], [25, 36]]
+
+        // 64 bit
+        // I'll buy you a beer if you tell me what all of these sequences are ;)
+        let x_backing: ArrayD<u64> = array![[1, 4], [9, 16], [25, 36]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let y_backing: ArrayD<i64> = array![[1, 3], [6, 10], [15, 21]]
+        let y_backing: ArrayD<u64> = array![[1, 3], [6, 10], [15, 21]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let z_backing: ArrayD<i64> = array![[1, 36], [1225, 41616], [1413721, 48024900]]
+        let z_backing: ArrayD<u64> = array![[1, 36], [1225, 41616], [1413721, 48024900]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
         let x = HostRing64Tensor::from(x_backing);
@@ -3405,6 +3421,30 @@ mod tests {
             .unwrap();
         let expected = HostRing64Tensor::from_raw_plc(expected_backing, alice.clone());
         let out = alice.add_n(&sess, &[x, y, z]);
+        assert_eq!(out, expected);
+
+        // 128 bit
+        let w_backing: ArrayD<u128> = array![[6, 3, 10], [5, 16, 8], [4, 2, 1]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let x_backing: ArrayD<u128> = array![[40, 20, 10], [5, 16, 8], [4, 2, 1]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y_backing: ArrayD<u128> = array![[42, 21, 64], [32, 16, 8], [4, 2, 1]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let z_backing: ArrayD<u128> = array![[338, 169, 138], [69, 48, 24], [12, 6, 3]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let w = HostRing128Tensor::from(w_backing);
+        let x = HostRing128Tensor::from(x_backing);
+        let y = HostRing128Tensor::from(y_backing);
+        let z = HostRing128Tensor::from(z_backing);
+        let expected_backing: ArrayD<u128> = array![[426, 213, 222], [111, 96, 48], [24, 12, 6]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let expected = HostRing128Tensor::from_raw_plc(expected_backing, alice.clone());
+        let out = alice.add_n(&sess, &[w, x, y, z]);
         assert_eq!(out, expected);
     }
 
