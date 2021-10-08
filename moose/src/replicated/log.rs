@@ -1,5 +1,5 @@
 use crate::computation::{
-    KnownType, Placed, RepEqualOp, RepIfElseOp, RepNegOp, ReplicatedPlacement, HostPlacement,
+    HostPlacement, KnownType, Placed, RepEqualOp, RepIfElseOp, RepNegOp, ReplicatedPlacement,
 };
 use crate::error::Result;
 use crate::kernels::*;
