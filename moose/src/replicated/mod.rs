@@ -822,32 +822,31 @@ impl RepSubOp {
     }
 }
 
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepMulOp);
 
 kernel! {
     RepMulOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_rep_kernel),
+        (ReplicatedPlacement, (HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
     ]
 }
 
 impl RepMulOp {
-    fn rep_rep_kernel<S: Session, RingT, KeyT, ShapeT>(
+    fn rep_rep_kernel<S: Session, RingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        setup: KeyT,
         x: RepTen<RingT>,
         y: RepTen<RingT>,
     ) -> Result<RepTen<RingT>>
@@ -856,9 +855,12 @@ impl RepMulOp {
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
-        ReplicatedPlacement: ZeroShareGen<S, KeyT, ShapeT, RingT>,
+        ReplicatedPlacement: ZeroShareGen<S, S::ReplicatedSetup, ShapeT, RingT>,
         ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
     {
+        let setup  = rep.gen_setup(&sess);
+
         let (player0, player1, player2) = rep.host_placements();
 
         let RepTen {
@@ -896,10 +898,9 @@ impl RepMulOp {
         ))
     }
 
-    fn ring_rep_kernel<S: Session, RingT, KeyT>(
+    fn ring_rep_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        _setup: AbstractReplicatedSetup<KeyT>,
         x: RingT,
         y: RepTen<RingT>,
     ) -> Result<RepTen<RingT>>
@@ -926,10 +927,9 @@ impl RepMulOp {
         })
     }
 
-    fn rep_ring_kernel<S: Session, RingT, KeyT>(
+    fn rep_ring_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        _setup: AbstractReplicatedSetup<KeyT>,
         x: RepTen<RingT>,
         y: RingT,
     ) -> Result<RepTen<RingT>>
@@ -1794,7 +1794,7 @@ impl RepAbsOp {
         ReplicatedPlacement: PlacementMsb<S, SetupT, RepT, RepT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepT>,
         ReplicatedPlacement: PlacementShape<S, RepT, ShapeT>,
-        ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepT, RepT, RepT>,
+        ReplicatedPlacement: PlacementMul<S, RepT, RepT, RepT>,
         ReplicatedPlacement: PlacementShl<S, RepT, RepT>,
         ReplicatedPlacement: PlacementSub<S, RepT, RepT, RepT>,
     {
@@ -1802,7 +1802,7 @@ impl RepAbsOp {
         let double = rep.shl(sess, 1, &msb_ring);
         let ones = rep.fill(sess, Constant::Ring64(1), &rep.shape(sess, &msb_ring));
         let sign = rep.sub(sess, &ones, &double);
-        Ok(rep.mul_setup(sess, &setup, &sign, &x))
+        Ok(rep.mul(sess, &sign, &x))
     }
 }
 
@@ -1830,7 +1830,7 @@ impl ShapeOp {
 }
 
 modelled_alias!(PlacementXor::xor, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementAdd::add); // add = xor in Z2
-modelled_alias!(PlacementAndSetup::and_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementMulSetup::mul_setup); // sub = xor in Z2
+modelled_alias!(PlacementAnd::and, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementMul::mul); // sub = xor in Z2
 
 trait BinaryAdder<S: Session, SetupT, RepBitT> {
     fn binary_adder(
@@ -1847,7 +1847,7 @@ trait BinaryAdder<S: Session, SetupT, RepBitT> {
 impl<S: Session, SetupT, RepBitT> BinaryAdder<S, SetupT, RepBitT> for ReplicatedPlacement
 where
     RepBitT: Clone,
-    ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementAnd<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementShlDim<S, RepBitT, RepBitT>,
 {
@@ -1876,7 +1876,7 @@ where
         // Note the first level is computed as P0 = x ^ y, G0 = x & y;
 
         // Perform `g = x * y` for every tensor
-        let mut g = rep.and_setup(sess, &setup, &x, &y);
+        let mut g = rep.and(sess, &x, &y);
 
         // Perform `p_store = x + y` (just a helper to avoid compute xor() twice)
         let p_store = rep.xor(sess, &x, &y);
@@ -1898,13 +1898,13 @@ where
             // Note that the original algorithm had G_a and P_b, but we can have
             // G_a and P_a instead because the 1s in P_a do not matter in the final result
             // since they are cancelled out by the zeros in G_a
-            let p_and_g = rep.and_setup(sess, &setup, &p, &g1);
+            let p_and_g = rep.and(sess, &p, &g1);
 
             // update `g = g xor p1 and g1`
             g = rep.xor(sess, &g, &p_and_g);
 
             // update `p = p * p1`
-            p = rep.and_setup(sess, &setup, &p, &p1);
+            p = rep.and(sess, &p, &p1);
         }
 
         // c is a copy of g with the first tensor (corresponding to the first bit) zeroed out
@@ -2512,7 +2512,7 @@ mod tests {
         test_rep_add128(x, y, z);
     }
 
-    macro_rules! rep_binary_func_test {
+    macro_rules! rep_binary_func_with_setup_test {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
                 let alice = HostPlacement {
@@ -2541,10 +2541,39 @@ mod tests {
         };
     }
 
-    rep_binary_func_test!(test_rep_mul64, mul_setup<u64>);
-    rep_binary_func_test!(test_rep_mul128, mul_setup<u128>);
-    rep_binary_func_test!(test_rep_dot64, dot_setup<u64>);
-    rep_binary_func_test!(test_rep_dot128, dot_setup<u128>);
+    macro_rules! rep_binary_func_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>) => {
+            fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+                let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &x);
+                let y_shared = rep.share(&sess, &setup, &y);
+
+                let sum = rep.$test_func(&sess, &x_shared, &y_shared);
+                let opened_product = alice.reveal(&sess, &sum);
+                assert_eq!(
+                    opened_product,
+                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
+                );
+            }
+        };
+    }
+
+    rep_binary_func_test!(test_rep_mul64, mul<u64>);
+    rep_binary_func_test!(test_rep_mul128, mul<u128>);
+    rep_binary_func_with_setup_test!(test_rep_dot64, dot_setup<u64>);
+    rep_binary_func_with_setup_test!(test_rep_dot128, dot_setup<u128>);
 
     macro_rules! pairwise_same_length {
         ($func_name:ident, $tt: ident) => {

@@ -34,7 +34,7 @@ impl RepEqualOp {
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepBitT>,
         ReplicatedPlacement: PlacementShape<S, HostRingT, ShapeT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
-        ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementMul<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
     {
@@ -55,7 +55,7 @@ impl RepEqualOp {
         // we are doing with the binary adder in bit decompitision
         Ok(v_not
             .iter()
-            .fold(ones, |acc, y| rep.mul_setup(sess, &setup, &acc, y)))
+            .fold(ones, |acc, y| rep.mul(sess, &acc, y)))
     }
 }
 
