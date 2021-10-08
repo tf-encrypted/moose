@@ -175,13 +175,11 @@ impl RepInt2FLOp {
         // bit decompose and reverse
         let a_bits = rep.bit_decompose(sess, &setup, &a);
 
-        let v: Vec<_> = (0..HostRingT::BitLength::VALUE)
+        let mut v: Vec<_> = (0..HostRingT::BitLength::VALUE)
             .map(|i| rep.index(sess, i, &a_bits))
             .collect();
 
         v.reverse();
-
-
 
         Ok(a)
     }
