@@ -1155,8 +1155,9 @@ impl RepAddNOp {
         rep: &ReplicatedPlacement,
         xs: &[RepTen<R>],
     ) -> Result<RepTen<R>>
-//where
-        //HostPlacement: PlacementAdd<S, R, R, R>,
+where
+        HostPlacement: PlacementAddN<S, R, R>,
+        R: Clone,
         //ReplicatedPlacement: PlacementPlace<S, RepT>,
         //ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
         //RepT: std::clone::Clone,
@@ -1180,23 +1181,23 @@ impl RepAddNOp {
 
         let (player0, player1, player2) = rep.host_placements();
 
-        let z00s = Vec::new();
-        let z10s = Vec::new();
-        let z11s = Vec::new();
-        let z21s = Vec::new();
-        let z22s = Vec::new();
-        let z02s = Vec::new();
+        let mut z00s: Vec<R> = Vec::new();
+        let mut z10s: Vec<R> = Vec::new();
+        let mut z11s: Vec<R> = Vec::new();
+        let mut z21s: Vec<R> = Vec::new();
+        let mut z22s: Vec<R> = Vec::new();
+        let mut z02s: Vec<R> = Vec::new();
         for x in xs.iter() {
             let RepTen {
                 shares: [[x00, x10], [x11, x21], [x22, x02]],
             } = &x;
 
-            z00s.push(x00);
-            z10s.push(x10);
-            z11s.push(x11);
-            z21s.push(x21);
-            z22s.push(x22);
-            z02s.push(x02);
+            z00s.push((*x00).clone());
+            z10s.push((*x10).clone());
+            z11s.push((*x11).clone());
+            z21s.push((*x21).clone());
+            z22s.push((*x22).clone());
+            z02s.push((*x02).clone());
         }
 
         let z00 = player0.add_n(sess, &z00s);
