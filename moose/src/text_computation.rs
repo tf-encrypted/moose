@@ -1319,6 +1319,7 @@ impl ToTextual for Operator {
             Div(op) => op.to_textual(),
             BitXor(op) => op.to_textual(),
             BitAnd(op) => op.to_textual(),
+            BitNeg(op) => op.to_textual(),
             BitFill(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
             HostAdd(op) => op.to_textual(),
@@ -1394,6 +1395,7 @@ impl ToTextual for Operator {
             RepAdd(op) => op.to_textual(),
             RepSub(op) => op.to_textual(),
             RepMul(op) => op.to_textual(),
+            RepNeg(op) => op.to_textual(),
             RepTruncPr(op) => op.to_textual(),
             AdtReveal(op) => op.to_textual(),
             AdtFill(op) => op.to_textual(),
@@ -1522,6 +1524,7 @@ impl_to_textual!(RingInjectOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
 impl_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(BitXorOp, "{op}: {}", sig);
 impl_to_textual!(BitAndOp, "{op}: {}", sig);
+impl_to_textual!(BitNegOp, "{op}: {}", sig);
 impl_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
 impl_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
 impl_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
@@ -1581,6 +1584,7 @@ impl_to_textual!(AdtToRepOp, "{op}: {}", sig);
 impl_to_textual!(RepAbsOp, "{op}: {}", sig);
 impl_to_textual!(RepFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(RepMsbOp, "{op}: {}", sig);
+impl_to_textual!(RepNegOp, "{op}: {}", sig);
 impl_to_textual!(RepShlOp, "{op}: {}", sig);
 impl_to_textual!(RepToAdtOp, "{op}: {}", sig);
 impl_to_textual!(

@@ -1543,6 +1543,25 @@ impl BitXorOp {
     }
 }
 
+modelled!(PlacementNeg::neg, HostPlacement, (HostBitTensor) -> HostBitTensor, BitNegOp);
+
+kernel! {
+    BitNegOp,
+    [
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::kernel),
+    ]
+}
+
+impl BitNegOp {
+    fn kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostBitTensor,
+    ) -> Result<HostBitTensor> {
+        Ok(HostBitTensor(!x.0, plc.clone()))
+    }
+}
+
 modelled!(PlacementAnd::and, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor, BitAndOp);
 modelled!(PlacementAnd::and, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, BitAndOp);
 modelled!(PlacementAnd::and, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, BitAndOp);
