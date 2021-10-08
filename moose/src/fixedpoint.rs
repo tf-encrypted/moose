@@ -490,18 +490,17 @@ impl FixedpointMulOp {
         y: FixedTensor<HostFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementMul<S, RepFixedT, RepFixedT, RepFixedT>,
     {
-        let setup = plc.gen_setup(sess);
+        let setup = sess.replicated_setup(plc);
 
         let x = match x {
-            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Host(v) => plc.share(sess, setup, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
-            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Host(v) => plc.share(sess, setup, &v),
             FixedTensor::Replicated(v) => v,
         };
 

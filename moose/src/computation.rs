@@ -904,7 +904,6 @@ operators![
     HostInverse,
     HostAtLeast2D,
     HostShlDim,
-    HostRevDim,
     RingAdd,
     RingSub,
     RingNeg,
@@ -981,7 +980,6 @@ operators![
     RepSlice,
     RepBitDec,
     RepShlDim,
-    RepRevDim,
     RepEqual,
 ];
 

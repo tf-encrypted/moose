@@ -621,72 +621,6 @@ impl HostShlDimOp {
     }
 }
 
-modelled!(PlacementRevDim::rev_dim, HostPlacement, (HostBitTensor) -> HostBitTensor, HostRevDimOp);
-modelled!(PlacementRevDim::rev_dim, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostRevDimOp);
-
-kernel! {
-    HostRevDimOp,
-    [
-        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::bit_kernel),
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring_kernel),
-    ]
-}
-
-impl HostRevDimOp {
-    fn ring_kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        plc: &HostPlacement,
-        x: AbstractHostRingTensor<T>,
-    ) -> Result<AbstractHostRingTensor<T>>
-    where
-        T: Clone,
-    {
-        let result = x.0.slice_each_axis(
-            |ndarray::AxisDescription {
-                 axis,
-                 len,
-                 stride: _,
-             }| {
-                if axis.0 == 0 {
-                    Slice {
-                        start: 0,
-                        step: -1,
-                        end: None,
-                    }
-                } else {
-                    Slice::from(0..len)
-                }
-            },
-        );
-        Ok(AbstractHostRingTensor(result.to_owned(), plc.clone()))
-    }
-
-    fn bit_kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        x: HostBitTensor,
-    ) -> Result<HostBitTensor> {
-        let result = x.0.slice_each_axis(
-            |ndarray::AxisDescription {
-                 axis,
-                 len,
-                 stride: _,
-             }| {
-                if axis.0 == 0 {
-                    Slice {
-                        start: 0,
-                        step: -1,
-                        end: None,
-                    }
-                } else {
-                    Slice::from(0..len)
-                }
-            },
-        );
-        Ok(HostBitTensor(result.to_owned(), plc.clone()))
-    }
-}
-
 modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostBitDecOp);
 modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostBitDecOp);
 modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing64Tensor) -> HostBitTensor, HostBitDecOp);
@@ -3463,26 +3397,5 @@ mod tests {
         let x_back1_bits: HostBitTensor = alice.bit_decompose(&sess, &x_host);
 
         assert_eq!(x_back1_bits.0, y_target);
-    }
-
-    #[test]
-    fn test_rev_dim() {
-        let x_backing: ArrayD<u64> = array![[1, 2, 3, 4], [5, 6, 7, 8]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
-        let sess = SyncSession::default();
-        let x_rev = alice.rev_dim(&sess, &x);
-
-        let target_backing: ArrayD<u64> = array![[5, 6, 7, 8], [1, 2, 3, 4]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let target = HostRing64Tensor::from_raw_plc(target_backing, alice);
-
-        assert_eq!(x_rev, target);
     }
 }

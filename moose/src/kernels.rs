@@ -109,7 +109,6 @@ impl Session for SyncSession {
             RepSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepRevDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -166,7 +165,6 @@ impl Session for SyncSession {
             HostTranspose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostInverse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostRevDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Identity(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Cast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Send(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -684,10 +682,6 @@ pub trait PlacementShlDim<S: Session, T, O> {
     fn shl_dim(&self, sess: &S, amount: usize, ring_size: usize, x: &T) -> O;
 }
 
-pub trait PlacementRevDim<S: Session, T, O> {
-    fn rev_dim(&self, sess: &S, x: &T) -> O;
-}
-
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
     if v.ty() == expected {
         Ok(())
@@ -785,7 +779,6 @@ impl Compile<SyncKernel> for Operator {
             HostIndexAxis(_) => unimplemented!(),
             HostBitDec(_) => unimplemented!(),
             HostShlDim(_) => unimplemented!(),
-            HostRevDim(_) => unimplemented!(),
             HostSqrt(_) => unimplemented!(),
             HostDiag(_) => unimplemented!(),
             HostSqueeze(_) => unimplemented!(),
@@ -796,8 +789,8 @@ impl Compile<SyncKernel> for Operator {
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
-            | RepRevDim(_) | RepEqual(_) | FixedpointMul(_) | FixedpointDot(_)
-            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) | FixedpointDiv(_) => {
+            | RepEqual(_) | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_)
+            | FixedpointMean(_) | FixedpointSum(_) | FixedpointDiv(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -873,7 +866,7 @@ impl Compile<AsyncKernel> for Operator {
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
             | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostShlDim(_) | HostSqrt(_)
-            | HostRevDim(_) | HostSqueeze(_) | HostDiag(_) | Cast(_) => {
+            | HostSqueeze(_) | HostDiag(_) | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             FloatingpointAdd(op) => unimplemented!("Not done yet: {:?}", op),
@@ -895,7 +888,7 @@ impl Compile<AsyncKernel> for Operator {
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
-            | RepEqual(_) | RepRevDim(_) | FixedpointDiv(_) => {
+            | RepEqual(_) | FixedpointDiv(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
