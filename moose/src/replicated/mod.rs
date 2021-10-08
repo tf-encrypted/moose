@@ -2086,9 +2086,6 @@ impl RepBitDecOp {
         ReplicatedPlacement: PlacementIndexAxis<S, RepBitT, RepBitT>,
 
         HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
-
-        HostRingT: std::fmt::Debug,
-        HostBitT: std::fmt::Debug,
     {
         let (player0, player1, player2) = rep.host_placements();
         let RepTen {
