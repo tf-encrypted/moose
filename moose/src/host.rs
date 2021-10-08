@@ -968,43 +968,35 @@ impl HostAddNOp {
         xs: &[AbstractHostRingTensor<T>],
     ) -> Result<AbstractHostRingTensor<T>>
     where
-        T: std::fmt::Debug,
         T: Clone,
         Wrapping<T>: Clone,
         Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
-        //T: std::ops::Add<Output = ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>>,
     {
+        // This for loop looks pretty ugly to me...
         let mut sum = xs[0].0.clone();
         for tensor in xs[1..].iter() {
-            // For some reason sum += tensor.0 does not work
-            //            error[E0368]: binary assignment operation `+=` cannot be applied to type `ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>`
-            //   --> moose/src/host.rs:981:13
-            //    |
-            //981 |             sum += tensor.0.clone();
-            //    |             ---^^^^^^^^^^^^^^^^^^^^
-            //    |             |
-            //    |             cannot use `+=` on type `ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>`
-            //    |
-            //    = note: the trait `std::ops::AddAssign` is not implemented for `ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>`
             sum = sum + tensor.0.clone();
         }
+        Ok(AbstractHostRingTensor(sum, plc.clone()))
 
-        //let sum = xs[0].0 + xs[1].0;
-        //let mut arr = Vec::new();
-        //for x in xs.iter() {
-        //    arr.push(x.0.view());
-        //}
-        //let arr: Vec<ArrayBase<ViewRepr<&T>, Dim<IxDynImpl>>> =
-        //    xs.iter().map(|x| x.0.view()).collect();
+        // TODO: I would like to do something like this, but I get compiler errors
         //let sum = arr
         //    .iter()
         //    .reduce(|a, b| a + b)
         //    .ok_or_else(|| {
         //        Error::InvalidArgument("cannot reduce on empty array of tensors".to_string())
         //    })?;
-        //let sum = arr[0] + arr[1];
-        //Ok(tmp)
-        Ok(AbstractHostRingTensor(sum, plc.clone()))
+
+        // For some reason sum += tensor.0 does not work
+        //            error[E0368]: binary assignment operation `+=` cannot be applied to type `ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>`
+        //   --> moose/src/host.rs:981:13
+        //    |
+        //981 |             sum += tensor.0.clone();
+        //    |             ---^^^^^^^^^^^^^^^^^^^^
+        //    |             |
+        //    |             cannot use `+=` on type `ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>`
+        //    |
+        //    = note: the trait `std::ops::AddAssign` is not implemented for `ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>`
     }
 }
 
