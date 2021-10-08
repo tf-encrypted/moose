@@ -980,9 +980,9 @@ impl HostAddNOp {
         Ok(AbstractHostRingTensor(sum, plc.clone()))
 
         // TODO: I would like to do something like this, but I get compiler errors
-        //let sum = arr
+        //let sum = xs
         //    .iter()
-        //    .reduce(|a, b| a + b)
+        //    .reduce(|a, b| a.0 + b.0)
         //    .ok_or_else(|| {
         //        Error::InvalidArgument("cannot reduce on empty array of tensors".to_string())
         //    })?;
