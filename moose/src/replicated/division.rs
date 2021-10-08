@@ -401,4 +401,35 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_prefix_or() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x = AbstractHostRingTensor::from_raw_plc(array![1024u64], alice.clone());
+        let y_target: Vec<u8> = vec![
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1,
+        ];
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let x_shared = rep.share(&sess, &setup, &x);
+        let x_bits: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
+        let x_bits_vec: Vec<ReplicatedBitTensor> =
+            (0..64).map(|i| rep.index(&sess, i, &x_bits)).collect();
+        let out = rep.prefix_or(&sess, &setup, x_bits_vec);
+
+        for i in 0..64 {
+            let b = alice.reveal(&sess, &out[i]);
+            assert_eq!(b.0[0], y_target[i]);
+        }
+    }
 }
