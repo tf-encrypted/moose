@@ -1155,30 +1155,10 @@ impl RepAddNOp {
         rep: &ReplicatedPlacement,
         xs: &[RepTen<R>],
     ) -> Result<RepTen<R>>
-where
+    where
         HostPlacement: PlacementAddN<S, R, R>,
         R: Clone,
-        //ReplicatedPlacement: PlacementPlace<S, RepT>,
-        //ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
-        //RepT: std::clone::Clone,
     {
-        // TODO: This can be done more efficiently if computed in parallel as
-        // a tree
-        // Example:
-        // [1, 2, 3, 4, 5, 6, 7, 8]
-        // 1 + 2, 3 + 4, 5 + 6, 7 + 8
-        //   3   +  7,    11   +  15
-        //      10     +      26
-        //            36
-        //let sum = xs
-        //    .iter()
-        //    .cloned()
-        //    .reduce(|a, b| rep.add(sess, &a, &b))
-        //    .ok_or_else(|| {
-        //        Error::InvalidArgument("cannot reduce on empty array of tensors".to_string())
-        //    })?;
-        //Ok(sum)
-
         let (player0, player1, player2) = rep.host_placements();
 
         let mut z00s: Vec<R> = Vec::new();
