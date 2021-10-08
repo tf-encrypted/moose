@@ -463,7 +463,7 @@ impl DivOp {
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
-                "Missing replicated mul div for {:?} and {:?}",
+                "Missing replicated div for {:?} and {:?}",
                 &x.ty_desc(),
                 &y.ty_desc()
             ))),

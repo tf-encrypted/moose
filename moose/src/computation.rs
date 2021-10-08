@@ -162,6 +162,12 @@ pub trait KnownType<S: Session> {
     const TY: Ty;
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct Fixed {
+    pub value: f64,
+    pub precision: usize,
+}
+
 // Constants are trivial values. They are what can live on the nodes of the computation graph.
 // Constant can not be a Unit, an Unknown or a complex structure such as ReplicatedTensor.
 macro_rules! constants {
@@ -176,7 +182,7 @@ macro_rules! constants {
             Float64(f64),
             Ring64(u64),
             Ring128(u128),
-            Fixed((f64, usize)),
+            Fixed(Fixed),
         }
 
         impl Constant {
@@ -267,9 +273,12 @@ impl From<u128> for Constant {
         Constant::Ring128(x)
     }
 }
-impl From<(f64, usize)> for Constant {
-    fn from(x: (f64, usize)) -> Self {
-        Constant::Fixed(x)
+impl From<Fixed> for Constant {
+    fn from(x: Fixed) -> Self {
+        Constant::Fixed(Fixed {
+            value: x.value,
+            precision: x.precision,
+        })
     }
 }
 
@@ -300,7 +309,7 @@ macro_rules! values {
             Float64(Box<f64>),
             Ring64(Box<u64>),
             Ring128(Box<u128>),
-            Fixed(Box<(f64, usize)>),
+            Fixed(Box<Fixed>),
         }
 
         impl Value {
@@ -1235,11 +1244,6 @@ pub struct HostShlDimOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct HostRevDimOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct HostBitDecOp {
     pub sig: Signature,
 }
@@ -1629,11 +1633,6 @@ pub struct RepFillOp {
 pub struct RepShlOp {
     pub sig: Signature,
     pub amount: usize,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepRevDimOp {
-    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

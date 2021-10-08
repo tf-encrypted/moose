@@ -1377,8 +1377,10 @@ kernel! {
                     Constant::Bit(v) => v as u64,
                     Constant::Ring64(v) => v,
                     Constant::Float64(v) => v as u64,
-                    Constant::Fixed((v, precision)) => {
-                        (v * ((1u64 << precision) as f64)) as u64
+                    Constant::Fixed(Fixed{
+                        value, precision
+                    }) => {
+                        (value * ((1u64 << precision) as f64)) as u64
                     },
                     _ => return Err(Error::UnimplementedOperator(
                     "RepFill64 cannot convert from this type".to_string())),
@@ -1393,8 +1395,8 @@ kernel! {
                     Constant::Ring64(v) => v as u128,
                     Constant::Ring128(v) => v,
                     Constant::Float64(v) => v as u128,
-                    Constant::Fixed((v, precision)) => {
-                            (v * ((1u128 << precision) as f64)) as u128
+                    Constant::Fixed(Fixed{value, precision}) => {
+                            (value * ((1u128 << precision) as f64)) as u128
                     },
                     _ => return Err(Error::UnimplementedOperator(
                         "RepFill128 cannot convert from this type".to_string())),

@@ -12,6 +12,7 @@ use crate::replicated::{
     AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor,
     ReplicatedRing64Tensor,
 };
+use crate::symbolic::Symbolic;
 use crate::{Const, Ring};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
@@ -575,8 +576,7 @@ where
     }
 }
 
-use crate::symbolic::Symbolic;
-
+// TODO(Dragos) merge the two implementations in a single one.
 impl<S: Session, R: Placed<Placement = HostPlacement>>
     PlacementTruncPrProvider<
         S,
@@ -598,8 +598,11 @@ where
         provider: &HostPlacement,
         x: &Symbolic<AbstractAdditiveTensor<R>>,
     ) -> Symbolic<AbstractAdditiveTensor<R>> {
-        let concrete_x = x.clone().try_into().ok().unwrap();
-        let concrete_y = Self::trunc_pr(self, sess, amount, provider, &concrete_x);
+        let concrete_x = match x {
+            Symbolic::Concrete(x) => x,
+            Symbolic::Symbolic(_) => unimplemented!(),
+        };
+        let concrete_y = Self::trunc_pr(self, sess, amount, provider, concrete_x);
         concrete_y.into()
     }
 }

@@ -15,6 +15,7 @@ use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::ReplicatedSetup;
 use crate::{closure_kernel, function_kernel};
 use crate::{computation::*, for_all_values};
+use maplit::hashmap;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
@@ -55,6 +56,21 @@ impl Default for SyncSession {
         SyncSession {
             session_id: SessionId::random(), // TODO sync session is only used in tests currently, but it should get the session if from then env still.
             replicated_keys: Default::default(),
+        }
+    }
+}
+
+pub trait FromReplicated {
+    fn from_replicated(plc: &ReplicatedPlacement) -> Self;
+}
+
+impl FromReplicated for SyncSession {
+    fn from_replicated(plc: &ReplicatedPlacement) -> Self {
+        let sess = SyncSession::default();
+        let setup = plc.gen_setup(&sess);
+        SyncSession {
+            session_id: SessionId::random(),
+            replicated_keys: hashmap!(plc.clone() => setup),
         }
     }
 }
