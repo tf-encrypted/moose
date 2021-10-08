@@ -847,7 +847,7 @@ impl RepMulOp {
     fn rep_rep_kernel<S: Session, RingT, KeyT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        setup: AbstractReplicatedSetup<KeyT>,
+        setup: KeyT,
         x: RepTen<RingT>,
         y: RepTen<RingT>,
     ) -> Result<RepTen<RingT>>
@@ -980,7 +980,7 @@ impl RepDotOp {
     fn rep_rep_kernel<S: Session, KeyT, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        setup: AbstractReplicatedSetup<KeyT>,
+        setup: KeyT,
         x: RepTen<RingT>,
         y: RepTen<RingT>,
     ) -> Result<RepTen<RingT>>
@@ -2043,11 +2043,11 @@ trait ReplicatedSeedsGen<S: Session, KeyT, SeedT> {
     fn gen_seeds(
         &self,
         ctx: &S,
-        setup: &AbstractReplicatedSetup<KeyT>,
+        setup: &KeyT,
     ) -> AbstractReplicatedSeeds<SeedT>;
 }
 
-impl<S: Session> ReplicatedSeedsGen<S, cs!(PrfKey), cs!(Seed)> for ReplicatedPlacement
+impl<S: Session> ReplicatedSeedsGen<S, AbstractReplicatedSetup<cs!(PrfKey)>, cs!(Seed)> for ReplicatedPlacement
 where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
@@ -2095,7 +2095,7 @@ trait ZeroShareGen<S: Session, KeyT, ShapeT, RingT> {
     fn gen_zero_share(
         &self,
         sess: &S,
-        setup: &AbstractReplicatedSetup<KeyT>,
+        setup: &KeyT,
         shape: &AbstractReplicatedShape<ShapeT>,
     ) -> AbstractReplicatedZeroShare<RingT>;
 }
@@ -2112,7 +2112,7 @@ where
     fn gen_zero_share(
         &self,
         sess: &S,
-        setup: &AbstractReplicatedSetup<KeyT>,
+        setup: &KeyT,
         shape: &AbstractReplicatedShape<ShapeT>,
     ) -> AbstractReplicatedZeroShare<RingT> {
         let (player0, player1, player2) = self.host_placements();
