@@ -1430,7 +1430,7 @@ macro_rules! impl_to_textual {
     };
 }
 
-impl_to_textual!(ConstantOp, "{op}{{value = {}}}", value);
+impl_to_textual!(ConstantOp, "{op}{{value = {}}}: {}", value, sig);
 impl_to_textual!(IdentityOp, "{op}: {}", sig);
 impl_to_textual!(CastOp, "{op}: {}", sig);
 impl_to_textual!(LoadOp, "{op}: {}", sig);
