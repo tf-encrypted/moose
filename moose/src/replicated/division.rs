@@ -14,7 +14,7 @@ impl FixedpointDivOp {
         ReplicatedShape: KnownType<S>,
         RepRingT: Ring,
         ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
-        ReplicatedPlacement: PlacementFillPrecision<S, cs!(ReplicatedShape), RepRingT>,
+        ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
         ReplicatedPlacement: ApproximateReciprocal<S, S::ReplicatedSetup, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
@@ -52,8 +52,8 @@ impl FixedpointDivOp {
         );
         // max_bits(w) = k
 
-        let alpha = Constant::Float64(1.0);
-        let rep_alpha = rep.fill_precision(sess, alpha, Some(2 * frac_precision), &x_shape);
+        let alpha = Constant::Fixed((1.0, 2 * frac_precision as usize));
+        let rep_alpha = rep.fill(sess, alpha, &x_shape);
 
         let mut a = with_context!(
             rep,
@@ -136,7 +136,7 @@ impl<S: Session, RepRingT> SignFromMsb<S, RepRingT, RepRingT> for ReplicatedPlac
 where
     ReplicatedShape: KnownType<S>,
 
-    ReplicatedPlacement: PlacementFillPrecision<S, cs!(ReplicatedShape), RepRingT>,
+    ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
     ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
@@ -145,11 +145,10 @@ where
         let rep = self;
         let double = rep.shl(sess, 1, msb_ring);
 
-        // TODO(Dragos) use ones() from Morten's PR
-        let one_value = Constant::Float64(1.0);
+        let one_value: Constant = 1u8.into();
 
         let x_shape = rep.shape(sess, msb_ring);
-        let ones = rep.fill_precision(sess, one_value, Some(0_u32), &x_shape);
+        let ones = rep.fill(sess, one_value, &x_shape);
         rep.sub(sess, &ones, &double)
     }
 }
@@ -274,7 +273,7 @@ where
 
     ReplicatedPlacement: DivNorm<S, SetupT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
-    ReplicatedPlacement: PlacementFillPrecision<S, cs!(ReplicatedShape), RepRingT>,
+    ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
@@ -295,8 +294,8 @@ where
 
         let x_shape = rep.shape(sess, x);
         // 2.9142 * 2^{total_precision}
-        let alpha = Constant::Float64(2.9142);
-        let alpha = rep.fill_precision(sess, alpha, Some(total_precision as u32), &x_shape);
+        let alpha = Constant::Fixed((2.9142, total_precision));
+        let alpha = rep.fill(sess, alpha, &x_shape);
         let d = with_context!(rep, sess, alpha - rep.shl(sess, 1, &upshifted));
         let w = rep.mul_setup(sess, setup, &d, &signed_topmost);
 

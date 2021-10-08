@@ -1365,24 +1365,23 @@ impl AdtToRepOp {
     }
 }
 
-modelled!(PlacementFillPrecision::fill_precision, ReplicatedPlacement, attributes[value: Constant, precision: Option<u32>] (ReplicatedShape) -> ReplicatedRing64Tensor, RepFillOp);
-modelled!(PlacementFillPrecision::fill_precision, ReplicatedPlacement, attributes[value: Constant, precision: Option<u32>] (ReplicatedShape) -> ReplicatedRing128Tensor, RepFillOp);
-modelled!(PlacementFillPrecision::fill_precision, ReplicatedPlacement, attributes[value: Constant, precision: Option<u32>] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing64Tensor, RepFillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing128Tensor, RepFillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
 
 kernel! {
     RepFillOp,
     [
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [hybrid] custom |op| {
                 let value: u64 = match op.value {
+                    Constant::Bit(v) => v as u64,
                     Constant::Ring64(v) => v,
-                    Constant::Float64(v) => {
-                        if let Some(precision) = op.precision {
-                            (v * ((1u64 << precision) as f64)) as u64
-                        } else {
-                            unimplemented!("Missing precision to fill a Replicated Fixedpoint Tensor with a float value") // TODO: use invalid argument error from Morten's PR
-                        }
+                    Constant::Float64(v) => v as u64,
+                    Constant::Fixed((v, precision)) => {
+                        (v * ((1u64 << precision) as f64)) as u64
                     },
-                    _ => unimplemented!()  // TODO: replace
+                    _ => return Err(Error::UnimplementedOperator(
+                    "RepFill64 cannot convert from this type".to_string())),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::ring64_kernel(sess, rep, value, rep_shape)
@@ -1390,16 +1389,15 @@ kernel! {
             }),
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [hybrid] custom |op| {
                 let value: u128 = match op.value {
+                    Constant::Bit(v) => v as u128,
                     Constant::Ring64(v) => v as u128,
                     Constant::Ring128(v) => v,
-                    Constant::Float64(v) => {
-                        if let Some(precision) = op.precision {
+                    Constant::Float64(v) => v as u128,
+                    Constant::Fixed((v, precision)) => {
                             (v * ((1u128 << precision) as f64)) as u128
-                        } else {
-                            unimplemented!("Missing precision to fill a Replicated Fixedpoint Tensor with a float value") // TODO: use invalid argument error from Morten's PR
-                        }
                     },
-                    _ => unimplemented!()  // TODO: replace
+                    _ => return Err(Error::UnimplementedOperator(
+                        "RepFill128 cannot convert from this type".to_string())),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::ring128_kernel(sess, rep, value, rep_shape)
@@ -1410,7 +1408,8 @@ kernel! {
                     Constant::Bit(v) => v,
                     Constant::Ring64(v) => v as u8,
                     Constant::Ring128(v) => v as u8,
-                    _ => unimplemented!() // TODO: fill conversion routines for other rings we could support
+                    _ => return Err(Error::UnimplementedOperator(
+                        "RepFillBit cannot convert from this type".to_string())),
                 };
                 if value != 0 && value != 1 {
                     return Err(Error::InvalidArgument(format!("Could only support 0 and 1 for the bit tensor fill, got {}", value)));
@@ -1898,7 +1897,7 @@ impl RepAbsOp {
     where
         RepT: Ring,
         ReplicatedPlacement: PlacementMsb<S, SetupT, RepT, RepT>,
-        ReplicatedPlacement: PlacementFillPrecision<S, ShapeT, RepT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepT>,
         ReplicatedPlacement: PlacementShape<S, RepT, ShapeT>,
         ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepT, RepT, RepT>,
         ReplicatedPlacement: PlacementShl<S, RepT, RepT>,
@@ -1906,7 +1905,7 @@ impl RepAbsOp {
     {
         let msb_ring = rep.msb(sess, &setup, &x);
         let double = rep.shl(sess, 1, &msb_ring);
-        let ones = rep.fill_precision(sess, Constant::Ring64(1), None, &rep.shape(sess, &msb_ring));
+        let ones = rep.fill(sess, Constant::Ring64(1), &rep.shape(sess, &msb_ring));
         let sign = rep.sub(sess, &ones, &double);
         Ok(rep.mul_setup(sess, &setup, &sign, &x))
     }

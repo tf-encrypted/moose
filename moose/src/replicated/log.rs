@@ -30,7 +30,7 @@ impl RepEqualOp {
         ReplicatedPlacement: PlacementBitDecSetup<S, S::ReplicatedSetup, HostRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
-        ReplicatedPlacement: PlacementFillPrecision<S, ShapeT, RepBitT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepBitT>,
         ReplicatedPlacement: PlacementShape<S, HostRingT, ShapeT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepBitT, RepBitT, RepBitT>,
@@ -47,7 +47,7 @@ impl RepEqualOp {
             .collect();
 
         let one_r: Constant = 1u8.into();
-        let ones = rep.fill_precision(sess, one_r, None, &rep.shape(sess, &z));
+        let ones = rep.fill(sess, one_r, &rep.shape(sess, &z));
 
         let v_not: Vec<_> = v.iter().map(|vi| rep.xor(sess, &ones, vi)).collect();
 

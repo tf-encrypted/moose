@@ -176,9 +176,7 @@ macro_rules! constants {
             Float64(f64),
             Ring64(u64),
             Ring128(u128),
-            // Int64(u64),
-            // Int128(u128),
-            // Fixed64(2.983453),
+            Fixed((f64, usize)),
         }
 
         impl Constant {
@@ -191,6 +189,7 @@ macro_rules! constants {
                     Constant::Float64(_) => Ty::Float64,
                     Constant::Ring64(_) => Ty::Ring64,
                     Constant::Ring128(_) => Ty::Ring128,
+                    Constant::Fixed(_) => Ty::Fixed,
                 }
             }
 
@@ -205,6 +204,7 @@ macro_rules! constants {
                     Constant::Float64(x) => Value::Float64(Box::new(x.clone())),
                     Constant::Ring64(x) => Value::Ring64(Box::new(x.clone())),
                     Constant::Ring128(x) => Value::Ring128(Box::new(x.clone())),
+                    Constant::Fixed(x) => Value::Fixed(Box::new(x.clone())),
                 }
             }
         }
@@ -267,6 +267,11 @@ impl From<u128> for Constant {
         Constant::Ring128(x)
     }
 }
+impl From<(f64, usize)> for Constant {
+    fn from(x: (f64, usize)) -> Self {
+        Constant::Fixed(x)
+    }
+}
 
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
@@ -283,6 +288,7 @@ macro_rules! values {
             Float64,
             Ring64,
             Ring128,
+            Fixed,
         }
 
         #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -294,6 +300,7 @@ macro_rules! values {
             Float64(Box<f64>),
             Ring64(Box<u64>),
             Ring128(Box<u128>),
+            Fixed(Box<(f64, usize)>),
         }
 
         impl Value {
@@ -306,6 +313,7 @@ macro_rules! values {
                     Value::Float64(_) => Ty::Float64,
                     Value::Ring64(_) => Ty::Ring64,
                     Value::Ring128(_) => Ty::Ring128,
+                    Value::Fixed(_) => Ty::Fixed,
                 }
             }
         }
@@ -1617,7 +1625,6 @@ pub struct RepToAdtOp {
 pub struct RepFillOp {
     pub sig: Signature,
     pub value: Constant,
-    pub precision: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
