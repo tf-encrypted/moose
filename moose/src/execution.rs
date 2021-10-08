@@ -620,7 +620,18 @@ impl Compile<CompiledSyncOperation> for Operation {
 }
 
 impl Compile<CompiledAsyncOperation> for Operation {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
+    fn compile(&self, ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
+        if let Operator::Receive(ref op) = self.kind {
+            let operator_kernel = Compile::<AsyncKernel>::compile(op, ctx)?;
+            if let AsyncKernel::Nullary(k) = operator_kernel {
+                check_arity(&self.name, &self.inputs, 0)?;
+                return Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, _, sender| Ok(k(sess, sender))),
+                });
+            }
+        }
+
         let op = self.clone();
 
         match self.kind.sig().arity() {
