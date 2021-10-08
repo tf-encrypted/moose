@@ -1172,12 +1172,12 @@ impl RepAddNOp {
                 shares: [[x00, x10], [x11, x21], [x22, x02]],
             } = &x;
 
-            z00s.push((*x00).clone());
-            z10s.push((*x10).clone());
-            z11s.push((*x11).clone());
-            z21s.push((*x21).clone());
-            z22s.push((*x22).clone());
-            z02s.push((*x02).clone());
+            z00s.push(x00.clone());
+            z10s.push(x10.clone());
+            z11s.push(x11.clone());
+            z21s.push(x21.clone());
+            z22s.push(x22.clone());
+            z02s.push(x02.clone());
         }
 
         let z00 = player0.add_n(sess, &z00s);
