@@ -1466,7 +1466,7 @@ modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostS
 kernel! {
     BitFillOp,
     [
-        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] attributes[value: Bit] Self::kernel),
+        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] attributes[value] Self::kernel),
     ]
 }
 
@@ -1474,9 +1474,25 @@ impl BitFillOp {
     fn kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        value: u8,
+        value: Constant,
         shape: HostShape,
     ) -> Result<HostBitTensor> {
+        use std::convert::TryInto;
+        let value: u8 = match value {
+            Constant::Bit(v) => v,
+            Constant::Ring64(v) => v.try_into().map_err(|_| {
+                Error::KernelError("Cannot fill HostBitTensor with non-binary value.".to_string())
+            })?,
+            Constant::Ring128(v) => v.try_into().map_err(|_| {
+                Error::KernelError("Cannot fill HostBitTensor with non-binary value.".to_string())
+            })?,
+            _ => {
+                return Err(Error::TypeMismatch {
+                    expected: "Bit".to_string(),
+                    found: value.ty(),
+                })
+            }
+        };
         if !(value == 0 || value == 1) {
             return Err(Error::KernelError(
                 "Cannot fill HostBitTensor with non-binary value.".to_string(),
