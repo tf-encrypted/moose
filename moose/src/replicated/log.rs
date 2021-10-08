@@ -129,6 +129,54 @@ impl RepNegOp {
     }
 }
 
+impl RepInt2FLOp {
+    fn rep_kernel<S: Session, HostRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        a: HostRingT,
+    ) -> Result<HostRingT>
+    where
+        HostRingT: Ring<BitLength = N>,
+        ReplicatedPlacement: PlacementMsb<S, S::ReplicatedSetup, HostRingT, HostRingT>,
+        ReplicatedPlacement: PlacementEqual<S, HostRingT, HostRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, HostRingT>,
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+        ReplicatedPlacement: PlacementShape<S, HostRingT, ShapeT>,
+        ReplicatedPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
+        ReplicatedPlacement:
+            PlacementMulSetup<S, S::ReplicatedSetup, HostRingT, HostRingT, HostRingT>,
+        ReplicatedPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
+        ReplicatedPlacement: PlacementNeg<S, HostRingT, HostRingT>,
+        ReplicatedPlacement: PlacementBitDecSetup<S, S::ReplicatedSetup, HostRingT, RepBitArrayT>,
+    {
+        let setup = rep.gen_setup(sess);
+
+        // less than
+        let msb = rep.msb(sess, &setup, &a);
+        let ones = rep.fill(sess, 1u8.into(), &rep.shape(sess, &a));
+
+        let s = rep.sub(sess, &ones, &msb);
+
+        // if else [s] * (-a) + (1 - [s]) * [a]
+        let a_neg = rep.neg(sess, &a);
+
+        let s_a_neg = rep.mul_setup(sess, &setup, &s, &a_neg);
+
+        let ones_minus_s = rep.sub(sess, &ones, &s);
+        let ones_s_a = rep.mul_setup(sess, &setup, &ones_minus_s, &a);
+
+        let a = rep.add(sess, &s_a_neg, &ones_s_a);
+
+        // equal
+        let zeros = rep.fill(sess, 0u8.into(), &rep.shape(sess, &a));
+        let z = rep.equal(sess, &a, &zeros);
+
+        let a_bits = rep.bit_decompose(sess, &setup, &a);
+
+        Ok(a)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::computation::{HostPlacement, ReplicatedPlacement};
