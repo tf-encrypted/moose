@@ -1,4 +1,4 @@
-use crate::computation::{HostPlacement, KnownType, RepEqualOp, ReplicatedPlacement};
+use crate::computation::{HostPlacement, KnownType, RepEqualOp, RepInt2FLOp, ReplicatedPlacement};
 use crate::computation::{Placed, RepNegOp};
 use crate::error::Result;
 use crate::kernels::*;
@@ -148,6 +148,7 @@ impl RepInt2FLOp {
         ReplicatedPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
         ReplicatedPlacement: PlacementNeg<S, HostRingT, HostRingT>,
         ReplicatedPlacement: PlacementBitDecSetup<S, S::ReplicatedSetup, HostRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
     {
         let setup = rep.gen_setup(sess);
 
@@ -171,7 +172,16 @@ impl RepInt2FLOp {
         let zeros = rep.fill(sess, 0u8.into(), &rep.shape(sess, &a));
         let z = rep.equal(sess, &a, &zeros);
 
+        // bit decompose and reverse
         let a_bits = rep.bit_decompose(sess, &setup, &a);
+
+        let v: Vec<_> = (0..HostRingT::BitLength::VALUE)
+            .map(|i| rep.index(sess, i, &a_bits))
+            .collect();
+
+        v.reverse();
+
+
 
         Ok(a)
     }
