@@ -2243,7 +2243,7 @@ for_all_values! {( $($value:ty),* ) => (
 kernel! {
     IdentityOp, [
         (HostPlacement, (HostString) -> HostString => [runtime] Self::kernel),
-        (HostPlacement, (Unit) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (Unit) -> Unit => [runtime] Self::missing_kernel),
         (HostPlacement, (HostShape) -> HostShape => [runtime] Self::kernel),
         (HostPlacement, (Seed) -> Seed => [runtime] Self::kernel),
         (HostPlacement, (PrfKey) -> PrfKey => [runtime] Self::kernel),
@@ -2260,15 +2260,29 @@ kernel! {
         (HostPlacement, (HostUint16Tensor) -> HostUint16Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [runtime] Self::missing_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::missing_kernel),
 
     ]
 }
 
 impl IdentityOp {
-    fn kernel<S: RuntimeSession, T>(_sess: &S, _plc: &HostPlacement, x: T) -> Result<T> {
-        Ok(x)
+    fn kernel<S: RuntimeSession, T>(sess: &S, plc: &HostPlacement, x: T) -> Result<T>
+    where
+        HostPlacement: PlacementPlace<S, T>,
+    {
+        let value = plc.place(sess, x);
+        Ok(value)
+    }
+
+    fn missing_kernel<S: RuntimeSession, T>(_sess: &S, _plc: &HostPlacement, _x: T) -> Result<T>
+    where
+        T: KnownType<S>,
+    {
+        Err(Error::KernelError(format!(
+            "missing HostPlacement: PlacementPlace trait implementation for '{}'",
+            &<T as KnownType<S>>::TY
+        )))
     }
 }
 
