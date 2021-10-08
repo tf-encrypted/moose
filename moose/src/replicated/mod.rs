@@ -3018,4 +3018,5 @@ mod tests {
     }
 }
 
+pub mod control_flow;
 pub mod log;
