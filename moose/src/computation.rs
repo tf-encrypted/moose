@@ -934,6 +934,7 @@ operators![
     BitSampleSeeded,
     BitXor,
     BitAnd,
+    BitNeg,
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
@@ -978,6 +979,7 @@ operators![
     RepMul,
     RepMsb,
     RepDot,
+    RepNeg,
     RepFixedpointMean,
     RepShl,
     RepSum,
@@ -1676,7 +1678,13 @@ pub struct RepEqualOp {
     pub sig: Signature,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepIfElseOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepNegOp {
     pub sig: Signature,
 }
 
