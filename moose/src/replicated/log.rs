@@ -133,9 +133,9 @@ impl RepNegOp {
 #[cfg(test)]
 mod tests {
     use crate::computation::{HostPlacement, ReplicatedPlacement};
-    use crate::host::{AbstractHostRingTensor, FromRawPlc, HostBitTensor};
+    use crate::host::{AbstractHostRingTensor, HostBitTensor};
     use crate::kernels::*;
-    use crate::replicated::{AbstractReplicatedRingTensor, ReplicatedBitTensor};
+    use crate::replicated::ReplicatedBitTensor;
     use ndarray::{array, IxDyn};
 
     #[test]

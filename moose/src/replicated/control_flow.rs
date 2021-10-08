@@ -43,7 +43,14 @@ impl RepIfElseOp {
     }
 }
 
+#[cfg(test)]
 mod tests {
+    use crate::computation::{HostPlacement, ReplicatedPlacement};
+    use crate::host::FromRawPlc;
+    use crate::kernels::*;
+    use crate::replicated::AbstractReplicatedRingTensor;
+    use ndarray::{array, IxDyn};
+
     #[test]
     fn test_if_else() {
         let alice = HostPlacement {
