@@ -962,41 +962,24 @@ kernel! {
 }
 
 impl HostAddNOp {
-    fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+    fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         xs: &[AbstractHostRingTensor<T>],
     ) -> Result<AbstractHostRingTensor<T>>
     where
-        T: Clone,
-        Wrapping<T>: Clone,
+        T: Clone + LinalgScalar,
         Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
     {
-        // This for loop looks pretty ugly to me...
-        let mut sum = xs[0].0.clone();
-        for tensor in xs[1..].iter() {
-            sum = sum + tensor.0.clone();
+        if xs.len() == 0 {
+            Err(Error::InvalidArgument("cannot reduce on empty array of tensors".to_string()))
+        } else {
+            let base = xs[0].0.clone();
+            let sum = xs[1..]
+                .iter()
+                .fold(base, |acc, item| acc + &item.0);
+            Ok(AbstractHostRingTensor(sum, plc.clone()))
         }
-        Ok(AbstractHostRingTensor(sum, plc.clone()))
-
-        // TODO: I would like to do something like this, but I get compiler errors
-        //let sum = xs
-        //    .iter()
-        //    .reduce(|a, b| a.0 + b.0)
-        //    .ok_or_else(|| {
-        //        Error::InvalidArgument("cannot reduce on empty array of tensors".to_string())
-        //    })?;
-
-        // For some reason sum += tensor.0 does not work
-        //            error[E0368]: binary assignment operation `+=` cannot be applied to type `ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>`
-        //   --> moose/src/host.rs:981:13
-        //    |
-        //981 |             sum += tensor.0.clone();
-        //    |             ---^^^^^^^^^^^^^^^^^^^^
-        //    |             |
-        //    |             cannot use `+=` on type `ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>`
-        //    |
-        //    = note: the trait `std::ops::AddAssign` is not implemented for `ndarray::ArrayBase<OwnedRepr<std::num::Wrapping<T>>, ndarray::Dim<IxDynImpl>>`
     }
 }
 
