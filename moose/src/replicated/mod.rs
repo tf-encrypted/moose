@@ -1377,7 +1377,7 @@ kernel! {
                     Constant::Bit(v) => v as u64,
                     Constant::Ring64(v) => v,
                     Constant::Float64(v) => v as u64,
-                    Constant::Fixed(Fixed{
+                    Constant::Fixed(FixedpointConstant {
                         value, precision
                     }) => {
                         (value * ((1u64 << precision) as f64)) as u64
@@ -1395,7 +1395,7 @@ kernel! {
                     Constant::Ring64(v) => v as u128,
                     Constant::Ring128(v) => v,
                     Constant::Float64(v) => v as u128,
-                    Constant::Fixed(Fixed{value, precision}) => {
+                    Constant::Fixed(FixedpointConstant{value, precision}) => {
                             (value * ((1u128 << precision) as f64)) as u128
                     },
                     _ => return Err(Error::UnimplementedOperator(

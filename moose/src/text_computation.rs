@@ -1898,7 +1898,7 @@ impl ToTextual for Constant {
             Constant::String(x) => format!("String({})", x.to_textual()),
             Constant::Ring64(x) => format!("Ring64({})", x),
             Constant::Ring128(x) => format!("Ring128({})", x),
-            Constant::Fixed(Fixed { value, precision }) => {
+            Constant::Fixed(FixedpointConstant { value, precision }) => {
                 format!("Fixed({}, {})", value, precision)
             }
             Constant::RawShape(RawShape(x)) => format!("Shape({:?})", x),
@@ -1961,7 +1961,7 @@ impl ToTextual for RendezvousKey {
     }
 }
 
-impl ToTextual for Fixed {
+impl ToTextual for FixedpointConstant {
     fn to_textual(&self) -> String {
         format!("value: {:?} precision: {:?}", self.value, self.precision)
     }

@@ -163,7 +163,7 @@ pub trait KnownType<S: Session> {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct Fixed {
+pub struct FixedpointConstant {
     pub value: f64,
     pub precision: usize,
 }
@@ -182,7 +182,7 @@ macro_rules! constants {
             Float64(f64),
             Ring64(u64),
             Ring128(u128),
-            Fixed(Fixed),
+            Fixed(FixedpointConstant),
         }
 
         impl Constant {
@@ -273,9 +273,9 @@ impl From<u128> for Constant {
         Constant::Ring128(x)
     }
 }
-impl From<Fixed> for Constant {
-    fn from(x: Fixed) -> Self {
-        Constant::Fixed(Fixed {
+impl From<FixedpointConstant> for Constant {
+    fn from(x: FixedpointConstant) -> Self {
+        Constant::Fixed(FixedpointConstant {
             value: x.value,
             precision: x.precision,
         })
@@ -309,7 +309,7 @@ macro_rules! values {
             Float64(Box<f64>),
             Ring64(Box<u64>),
             Ring128(Box<u128>),
-            Fixed(Box<Fixed>),
+            Fixed(Box<FixedpointConstant>),
         }
 
         impl Value {
