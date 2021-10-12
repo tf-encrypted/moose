@@ -972,12 +972,12 @@ impl HostAddNOp {
         Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
     {
         if xs.len() == 0 {
-            Err(Error::InvalidArgument("cannot reduce on empty array of tensors".to_string()))
+            Err(Error::InvalidArgument(
+                "cannot reduce on empty array of tensors".to_string(),
+            ))
         } else {
             let base = xs[0].0.clone();
-            let sum = xs[1..]
-                .iter()
-                .fold(base, |acc, item| acc + &item.0);
+            let sum = xs[1..].iter().fold(base, |acc, item| acc + &item.0);
             Ok(AbstractHostRingTensor(sum, plc.clone()))
         }
     }
