@@ -1192,6 +1192,28 @@ impl RepSumOp {
     }
 }
 
+modelled!(PlacementSqrt::sqrt, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepSqrtOp);
+modelled!(PlacementSqrt::sqrt, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepSqrtOp);
+
+kernel! {
+    RepSqrtOp,
+    [
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::kernel),
+    ]
+}
+
+impl RepSqrtOp {
+    fn kernel<S: Session, RingT>(
+        _sess: &S,
+        _rep: &ReplicatedPlacement,
+        _x: RepTen<RingT>,
+    ) -> Result<RepTen<RingT>>
+    {
+        unimplemented!("TODO");
+    }
+}
+
 // TODO(Morten) should we rename this as a shift?
 modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: u32] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepTruncPrOp);
 modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: u32] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepTruncPrOp);
