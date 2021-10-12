@@ -913,6 +913,7 @@ operators![
     HostInverse,
     HostAtLeast2D,
     HostShlDim,
+    HostSign,
     RingAdd,
     RingSub,
     RingNeg,
@@ -1146,6 +1147,11 @@ pub struct HostMulOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct HostDivOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostSignOp {
     pub sig: Signature,
 }
 

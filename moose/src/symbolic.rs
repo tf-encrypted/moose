@@ -95,6 +95,7 @@ pub struct SymbolicSession {
     pub ops: Arc<RwLock<Vec<Operation>>>, // TODO use HashMap so we can do some consistency checks on the fly?
     pub replicated_keys:
         HashMap<ReplicatedPlacement, Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>,
+    // TODO(Dragos) Change this to <ReplicatedSetup as KnownType<Self>>::Type
 }
 
 impl Default for SymbolicSession {
@@ -112,9 +113,8 @@ impl FromReplicated for SymbolicSession {
         let sess = SymbolicSession::default();
         let setup = plc.gen_setup(&sess);
         SymbolicSession {
-            strategy: Box::new(DefaultSymbolicStrategy),
-            ops: Default::default(),
             replicated_keys: hashmap!(plc.clone() => setup),
+            ..Default::default()
         }
     }
 }
@@ -254,6 +254,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             HostMul(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostDiv(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostDot(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            HostSign(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostConcat(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

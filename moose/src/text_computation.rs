@@ -1343,6 +1343,7 @@ impl ToTextual for Operator {
             HostSum(op) => op.to_textual(),
             HostTranspose(op) => op.to_textual(),
             HostInverse(op) => op.to_textual(),
+            HostSign(op) => op.to_textual(),
             RingNeg(op) => op.to_textual(),
             RingAdd(op) => op.to_textual(),
             RingSub(op) => op.to_textual(),
@@ -1511,6 +1512,7 @@ impl_to_textual!(HostBitDecOp, "{op}: {}", sig);
 impl_to_textual!(HostInverseOp, "{op}: {}", sig);
 impl_to_textual!(HostSqrtOp, "{op}: {}", sig);
 impl_to_textual!(HostSqueezeOp, "{op}: {}", sig);
+impl_to_textual!(HostSignOp, "{op}: {}", sig);
 impl_to_textual!(ShapeOp, "{op}: {}", sig);
 impl_to_textual!(RingNegOp, "{op}: {}", sig);
 impl_to_textual!(RingAddOp, "{op}: {}", sig);

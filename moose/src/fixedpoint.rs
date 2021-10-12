@@ -621,22 +621,37 @@ impl FixedpointDivOp {
         Ok(FixedTensor::Replicated(z))
     }
 
-    fn hostfixed_kernel<S: Session, HostRingT, HostFloatT, HostFixedT>(
+    fn hostfixed_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractHostFixedTensor<HostRingT>,
         y: AbstractHostFixedTensor<HostRingT>,
-    ) -> Result<HostFixedT>
+    ) -> Result<AbstractHostFixedTensor<HostRingT>>
     where
-        HostPlacement: PlacementRingFixedpointDecode<S, HostRingT, HostFloatT>,
-        HostPlacement: PlacementFixedpointEncode<S, HostFloatT, HostFixedT>,
-        HostPlacement: PlacementDiv<S, HostFloatT, HostFloatT, HostFloatT>,
+        HostPlacement: PlacementDiv<S, HostRingT, HostRingT, HostRingT>,
+        HostPlacement: PlacementShl<S, HostRingT, HostRingT>,
+        HostPlacement: PlacementSign<S, HostRingT, HostRingT>,
+        HostPlacement: PlacementMul<S, HostRingT, HostRingT, HostRingT>,
     {
+        // Fx(x) / Fx(y) = ((x*2^f)*2^f)/ (y*2^f)
         assert_eq!(x.fractional_precision, y.fractional_precision);
-        let x_decode = plc.fixedpoint_ring_decode(sess, 2, x.fractional_precision, &x.tensor);
-        let y_decode = plc.fixedpoint_ring_decode(sess, 2, y.fractional_precision, &y.tensor);
-        let z = plc.div(sess, &x_decode, &y_decode);
-        Ok(plc.fixedpoint_encode(sess, x.fractional_precision, x.integral_precision, &z))
+
+        let sgn_x = plc.sign(sess, &x.tensor);
+        let sgn_y = plc.sign(sess, &y.tensor);
+
+        let abs_x = plc.mul(sess, &x.tensor, &sgn_x);
+        let abs_y = plc.mul(sess, &y.tensor, &sgn_y);
+
+        let x_upshifted = plc.shl(sess, x.fractional_precision as usize, &abs_x);
+
+        let abs_z: HostRingT = plc.div(sess, &x_upshifted, &abs_y);
+        let sgn_z = plc.mul(sess, &sgn_x, &sgn_y);
+
+        Ok(AbstractHostFixedTensor {
+            tensor: plc.mul(sess, &abs_z, &sgn_z),
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
     }
 }
 
@@ -1175,6 +1190,53 @@ mod tests {
         }
     }
 
+    macro_rules! host_binary_approx_func_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $factor: expr, $error: expr) => {
+            fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<f64>,
+                integral_precision: u32, fractional_precision: u32
+            ) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let one_r: $tt = 1;
+
+                let encode = |item: &$tt| (Wrapping(one_r << fractional_precision) * Wrapping(*item)).0;
+                let xs = xs.clone().map(encode);
+                let ys = ys.clone().map(encode);
+
+                let x = FixedTensor::Host(new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(xs.clone(), alice.clone()), integral_precision, fractional_precision)
+                );
+                let y = FixedTensor::Host(new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(ys.clone(), alice.clone()), integral_precision, fractional_precision)
+                );
+
+                let sess = SyncSession::default();
+
+                let sum = alice.$test_func(&sess, &x, &y);
+                let opened_product = match sum {
+                    FixedTensor::Host(r) => r,
+                    _ => panic!("Should not produce a replicated tensor on a host placement"),
+                };
+                let r64 = Convert::decode(&opened_product.tensor, one_r << (opened_product.fractional_precision));
+                let distance = squared_distance(&r64, &zs);
+
+                let _: Vec<_> = distance.iter().enumerate().map(|(i, d)| {
+                    assert!(*d < $error, "failed at index {:?} when dividing {:?} / {:?}, result is {:?}, should have been {:?}", i, xs[i], ys[i], r64.0[i], zs[i]);
+                }).collect();
+
+                let expected_precision = match x {
+                    FixedTensor::Host(x) => x.fractional_precision * $factor,
+                    _ => unreachable!(),
+                };
+                assert_eq!(opened_product.fractional_precision, expected_precision);
+            }
+        };
+    }
+
+    host_binary_approx_func_test!(test_host_div64, div<u64>, 1, 0.00000001);
+    host_binary_approx_func_test!(test_host_div128, div<u128>, 1, 0.00000001);
+
     macro_rules! host_binary_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>, $factor: expr) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
@@ -1299,6 +1361,43 @@ mod tests {
     pairwise_same_length!(pairwise_same_length64, u64);
     pairwise_same_length!(pairwise_same_length128, u128);
 
+    macro_rules! pairwise_bounded_same_length {
+        ($func_name:ident, $tt: ident) => {
+            fn $func_name(bit_room: usize) -> impl Strategy<Value = (ArrayD<$tt>, ArrayD<$tt>)> {
+                (1usize..25)
+                    .prop_flat_map(move |length: usize| {
+                        let foo1 = bit_room;
+                        let foo2 = bit_room;
+                        (
+                            proptest::collection::vec(
+                                any::<$tt>().prop_map(move |x| x >> foo1),
+                                length,
+                            ),
+                            proptest::collection::vec(
+                                any::<$tt>().prop_map(move |x| {
+                                    let y = x >> foo2;
+                                    if y == 0 {
+                                        1
+                                    } else {
+                                        y
+                                    }
+                                }),
+                                length,
+                            ),
+                        )
+                    })
+                    .prop_map(|(x, y)| {
+                        let a = Array::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
+                        let b = Array::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
+                        (a, b)
+                    })
+                    .boxed()
+            }
+        };
+    }
+
+    pairwise_bounded_same_length!(pairwise_bounded_same_length64, i64);
+
     #[test]
     fn test_fixed_rep_mul64() {
         let a = vec![1u64, 2];
@@ -1395,6 +1494,33 @@ mod tests {
             test_host_dot128(a, b, target);
         }
 
+
+        #[test]
+        fn test_fuzzy_host_div64((a,b) in pairwise_bounded_same_length64(2 * 15))
+        {
+            let fractional_precision = 15;
+            let integral_precision = 49;
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0f64; a.len()]).unwrap();
+            for i in 0..a.len() {
+                let d = (a[i] as f64) / (b[i] as f64);
+                target[i] = d;
+            }
+            test_host_div64(a.map(|x| *x as u64), b.map(|x| *x as u64), target, integral_precision, fractional_precision);
+        }
+
+        #[test]
+        fn test_fuzzy_host_div128((a,b) in pairwise_bounded_same_length64(2 * 15))
+        {
+            let fractional_precision = 15;
+            let integral_precision = 49;
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0f64; a.len()]).unwrap();
+            for i in 0..a.len() {
+                let d = (a[i] as f64) / (b[i] as f64);
+                target[i] = d;
+            }
+            test_host_div128(a.map(|x| *x as u128), b.map(|x| *x as u128), target, integral_precision, fractional_precision);
+        }
+
         #[test]
         fn test_fuzzy_rep_add64((a,b) in pairwise_same_length64())
         {
@@ -1478,6 +1604,15 @@ mod tests {
         }
 
     }
+
+    fn squared_distance(x: &HostFloat64Tensor, target: &ArrayD<f64>) -> ArrayD<f64> {
+        assert_eq!(x.shape().0 .0, target.shape());
+        let x = x.0.clone();
+        let y = target.clone();
+        let diff = (x.clone() - y.clone()) * (x - y);
+        diff
+    }
+
     macro_rules! rep_div_func_concrete_test {
         ($func_name:ident, $test_func: ident<$tt: ty>, $i_precision: expr, $f_precision: expr) => {
             fn $func_name(xs: ArrayD<f64>, ys: ArrayD<f64>) {

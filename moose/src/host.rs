@@ -304,12 +304,16 @@ impl HostMulOp {
 
 modelled!(PlacementDiv::div, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostDivOp);
 modelled!(PlacementDiv::div, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, HostDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, HostDivOp);
 
 kernel! {
     HostDivOp,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring_kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring_kernel),
     ]
 }
 
@@ -324,6 +328,19 @@ impl HostDivOp {
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         Ok(plc.place(sess, x / y))
+    }
+
+    fn ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: AbstractHostRingTensor<T>,
+        y: AbstractHostRingTensor<T>,
+    ) -> Result<AbstractHostRingTensor<T>>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: Div<Wrapping<T>, Output = Wrapping<T>>,
+    {
+        Ok(AbstractHostRingTensor(x.0 / y.0, plc.clone()))
     }
 }
 
@@ -1177,6 +1194,50 @@ impl RingFixedpointDecodeOp {
         let x_upshifted: ArrayD<i128> = x.0.mapv(|xi| xi.0 as i128);
         let x_converted = x_upshifted.mapv(|el| el as f64);
         Ok(HostTensor(x_converted / scaling_factor as f64, plc.clone()))
+    }
+}
+
+modelled!(PlacementSign::sign, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostSignOp);
+modelled!(PlacementSign::sign, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostSignOp);
+
+kernel! {
+    HostSignOp, [
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
+    ]
+}
+
+impl HostSignOp {
+    fn ring64_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing64Tensor,
+    ) -> Result<HostRing64Tensor> {
+        let sign = x.0.mapv(|Wrapping(item)| {
+            let s = item as i64;
+            if s < 0 {
+                Wrapping(-1_i64 as u64)
+            } else {
+                Wrapping(1_u64)
+            }
+        });
+        Ok(AbstractHostRingTensor::<u64>(sign, plc.clone()))
+    }
+
+    fn ring128_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing128Tensor,
+    ) -> Result<HostRing128Tensor> {
+        let sign = x.0.mapv(|Wrapping(item)| {
+            let s = item as i128;
+            if s < 0 {
+                Wrapping(-1_i128 as u128)
+            } else {
+                Wrapping(1_u128)
+            }
+        });
+        Ok(AbstractHostRingTensor::<u128>(sign, plc.clone()))
     }
 }
 

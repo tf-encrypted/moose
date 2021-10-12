@@ -167,6 +167,7 @@ impl Session for SyncSession {
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            HostSign(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -592,6 +593,10 @@ pub trait PlacementMsb<S: Session, SetupT, T, O> {
     fn msb(&self, sess: &S, setup: &SetupT, x: &T) -> O;
 }
 
+pub trait PlacementSign<S: Session, T, O> {
+    fn sign(&self, sess: &S, x: &T) -> O;
+}
+
 pub trait PlacementPlace<S: Session, T> {
     fn place(&self, sess: &S, x: T) -> T;
 }
@@ -808,7 +813,8 @@ impl Compile<SyncKernel> for Operator {
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
             | RepEqual(_) | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_)
-            | FixedpointMean(_) | FixedpointSum(_) | BitNeg(_) | RepNeg(_) | FixedpointDiv(_) => {
+            | FixedpointMean(_) | FixedpointSum(_) | BitNeg(_) | RepNeg(_) | FixedpointDiv(_)
+            | HostSign(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -906,7 +912,7 @@ impl Compile<AsyncKernel> for Operator {
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepEqual(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | BitNeg(_)
-            | RepNeg(_) | RepBitDec(_) | FixedpointDiv(_) => {
+            | RepNeg(_) | RepBitDec(_) | FixedpointDiv(_) | HostSign(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
