@@ -17,7 +17,6 @@ use std::convert::{TryFrom, TryInto};
 use std::marker::PhantomData;
 
 pub mod division;
-pub use division::*;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedRingTensor<HostRingT> {

@@ -1,7 +1,7 @@
 use super::*;
 
 impl FixedpointDivOp {
-    pub fn rep_rep_kernel<S: Session, RepRingT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
@@ -88,7 +88,7 @@ impl FixedpointDivOp {
     }
 }
 
-pub trait PrefixOr<S: Session, SetupT, RepBitT> {
+pub(crate) trait PrefixOr<S: Session, SetupT, RepBitT> {
     fn prefix_or(&self, sess: &S, setup: &SetupT, x: Vec<RepBitT>) -> Vec<RepBitT>;
 }
 
@@ -130,7 +130,7 @@ where
     }
 }
 
-pub trait SignFromMsb<S: Session, T, O> {
+pub(crate) trait SignFromMsb<S: Session, T, O> {
     fn sign_from_msb(&self, sess: &S, msb_ring: &T) -> O;
 }
 
@@ -155,7 +155,7 @@ where
     }
 }
 
-pub trait DivNorm<S: Session, SetupT, T, O> {
+pub(crate) trait DivNorm<S: Session, SetupT, T, O> {
     fn norm(&self, sess: &S, setup: &SetupT, max_bits: usize, x: &T) -> (O, O);
 }
 
@@ -195,7 +195,9 @@ where
         let sign = rep.sign_from_msb(sess, &msb);
         let abs_x = rep.mul_setup(sess, setup, &sign, x);
 
-        // (Dragos) TODO: optimize this in the future, we don't need all bits (only max_bits from the bit-decomposition)
+        // Although we don't need all bits (only max_bits from the bit-decomposition)
+        // this is going to be optimized when using the rust compiler since the extra operations
+        // will be pruned away.
         let x_bits = rep.bit_decompose(sess, setup, &abs_x);
         let x_bits_vec: Vec<_> = (0..max_bits).map(|i| rep.index(sess, i, &x_bits)).collect();
 
@@ -207,7 +209,7 @@ where
     }
 }
 
-pub trait TopMost<S: Session, SetupT, RepBitT, RepRingT> {
+pub(crate) trait TopMost<S: Session, SetupT, RepBitT, RepRingT> {
     fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: Vec<RepBitT>) -> RepRingT;
 }
 
@@ -257,7 +259,7 @@ where
     }
 }
 
-pub trait ApproximateReciprocal<S: Session, SetupT, T, O> {
+pub(crate) trait ApproximateReciprocal<S: Session, SetupT, T, O> {
     fn approximate_reciprocal(
         &self,
         sess: &S,
