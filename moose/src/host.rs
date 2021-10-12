@@ -988,7 +988,7 @@ impl HostAddNOp {
         T: Clone + LinalgScalar,
         Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
     {
-        if xs.len() == 0 {
+        if xs.is_empty() {
             Err(Error::InvalidArgument(
                 "cannot reduce on empty array of tensors".to_string(),
             ))
