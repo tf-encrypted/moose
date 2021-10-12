@@ -162,6 +162,12 @@ pub trait KnownType<S: Session> {
     const TY: Ty;
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct FixedpointConstant {
+    pub value: f64,
+    pub precision: usize,
+}
+
 // Constants are trivial values. They are what can live on the nodes of the computation graph.
 // Constant can not be a Unit, an Unknown or a complex structure such as ReplicatedTensor.
 macro_rules! constants {
@@ -176,6 +182,7 @@ macro_rules! constants {
             Float64(f64),
             Ring64(u64),
             Ring128(u128),
+            Fixed(FixedpointConstant),
         }
 
         impl Constant {
@@ -188,6 +195,7 @@ macro_rules! constants {
                     Constant::Float64(_) => Ty::Float64,
                     Constant::Ring64(_) => Ty::Ring64,
                     Constant::Ring128(_) => Ty::Ring128,
+                    Constant::Fixed(_) => Ty::Fixed,
                 }
             }
 
@@ -204,6 +212,7 @@ macro_rules! constants {
                     Constant::Float64(x) => Value::Float64(Box::new(x.clone())),
                     Constant::Ring64(x) => Value::Ring64(Box::new(x.clone())),
                     Constant::Ring128(x) => Value::Ring128(Box::new(x.clone())),
+                    Constant::Fixed(x) => Value::Fixed(Box::new(x.clone())),
                 }
             }
         }
@@ -266,6 +275,14 @@ impl From<u128> for Constant {
         Constant::Ring128(x)
     }
 }
+impl From<FixedpointConstant> for Constant {
+    fn from(x: FixedpointConstant) -> Self {
+        Constant::Fixed(FixedpointConstant {
+            value: x.value,
+            precision: x.precision,
+        })
+    }
+}
 
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
@@ -282,6 +299,7 @@ macro_rules! values {
             Float64,
             Ring64,
             Ring128,
+            Fixed,
         }
 
         #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -293,6 +311,7 @@ macro_rules! values {
             Float64(Box<f64>),
             Ring64(Box<u64>),
             Ring128(Box<u128>),
+            Fixed(Box<FixedpointConstant>),
         }
 
         impl Value {
@@ -305,6 +324,7 @@ macro_rules! values {
                     Value::Float64(_) => Ty::Float64,
                     Value::Ring64(_) => Ty::Ring64,
                     Value::Ring128(_) => Ty::Ring128,
+                    Value::Fixed(_) => Ty::Fixed,
                 }
             }
         }
@@ -895,6 +915,7 @@ operators![
     HostInverse,
     HostAtLeast2D,
     HostShlDim,
+    Sign,
     RingAdd,
     RingSub,
     RingNeg,
@@ -916,12 +937,14 @@ operators![
     BitSampleSeeded,
     BitXor,
     BitAnd,
+    BitNeg,
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
     FixedpointAdd,
     FixedpointSub,
     FixedpointMul,
+    FixedpointDiv,
     FixedpointDot,
     FixedpointTruncPr,
     FixedpointMean,
@@ -959,6 +982,7 @@ operators![
     RepMul,
     RepMsb,
     RepDot,
+    RepNeg,
     RepFixedpointMean,
     RepShl,
     RepSum,
@@ -971,6 +995,7 @@ operators![
     RepBitDec,
     RepShlDim,
     RepEqual,
+    RepIfElse,
 ];
 
 pub trait HasShortName {
@@ -1125,6 +1150,11 @@ pub struct HostMulOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct HostDivOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct SignOp {
     pub sig: Signature,
 }
 
@@ -1392,6 +1422,11 @@ pub struct FixedpointMulOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointDivOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointDotOp {
     pub sig: Signature,
 }
@@ -1652,7 +1687,13 @@ pub struct RepEqualOp {
     pub sig: Signature,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepIfElseOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepNegOp {
     pub sig: Signature,
 }
 
