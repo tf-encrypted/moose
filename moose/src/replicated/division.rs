@@ -70,7 +70,6 @@ impl FixedpointDivOp {
         // no need to truncate with 2f since w is already truncated
         b = rep.trunc_pr(sess, frac_precision, &b);
 
-        // TODO [Yann] fix to return tuple (a, b)
         for _i in 0..theta {
             let x = rep.mul_setup(sess, &setup, &a, &a);
             let y = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
