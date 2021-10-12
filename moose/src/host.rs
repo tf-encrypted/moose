@@ -3385,7 +3385,6 @@ mod tests {
             .unwrap();
         let exp = HostRing64Tensor::from(exp_backing);
         let out = x.sum(None).unwrap();
-        println!("out: {:?} exp: {:?}", out, exp);
         assert_eq!(out, exp)
     }
 

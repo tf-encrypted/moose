@@ -1150,23 +1150,23 @@ kernel! {
 }
 
 impl RepAddNOp {
-    fn kernel<S: Session, R>(
+    fn kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        xs: &[RepTen<R>],
-    ) -> Result<RepTen<R>>
+        xs: &[RepTen<HostRingT>],
+    ) -> Result<RepTen<HostRingT>>
     where
-        HostPlacement: PlacementAddN<S, R, R>,
-        R: Clone,
+        HostPlacement: PlacementAddN<S, HostRingT, HostRingT>,
+        HostRingT: Clone,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let mut z00s: Vec<R> = Vec::new();
-        let mut z10s: Vec<R> = Vec::new();
-        let mut z11s: Vec<R> = Vec::new();
-        let mut z21s: Vec<R> = Vec::new();
-        let mut z22s: Vec<R> = Vec::new();
-        let mut z02s: Vec<R> = Vec::new();
+        let mut z00s: Vec<HostRingT> = Vec::new();
+        let mut z10s: Vec<HostRingT> = Vec::new();
+        let mut z11s: Vec<HostRingT> = Vec::new();
+        let mut z21s: Vec<HostRingT> = Vec::new();
+        let mut z22s: Vec<HostRingT> = Vec::new();
+        let mut z02s: Vec<HostRingT> = Vec::new();
         for x in xs.iter() {
             let RepTen {
                 shares: [[x00, x10], [x11, x21], [x22, x02]],
