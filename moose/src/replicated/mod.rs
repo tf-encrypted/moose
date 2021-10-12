@@ -2086,6 +2086,45 @@ impl RepBitDecOp {
     }
 }
 
+modelled!(PlacementBitCompose::bit_compose, ReplicatedPlacement, (ReplicatedBitArray64) -> ReplicatedRing64Tensor, RepBitComposeOp);
+modelled!(PlacementBitCompose::bit_compose, ReplicatedPlacement, (ReplicatedBitArray128) -> ReplicatedRing128Tensor, RepBitComposeOp);
+
+kernel! {
+    RepBitComposeOp,
+    [
+        (ReplicatedPlacement, (ReplicatedBitArray64) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitArray128) -> ReplicatedRing128Tensor => [transparent] Self::rep_kernel),
+    ]
+}
+
+impl RepBitComposeOp {
+    fn rep_kernel<S: Session, ShapeT, RepRingT, RepBitArrayT, RepBitT, N: Const>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepBitArrayT,
+    ) -> Result<RepRingT>
+    where
+        RepRingT: Ring<BitLength = N>,
+
+        ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+        ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementShape<S, RepBitT, ShapeT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
+    {
+        let v: Vec<_> = (0..RepRingT::BitLength::VALUE)
+            .map(|i| rep.index(sess, i, &x))
+            .collect();
+
+        let zeros = rep.fill(sess, 0u64.into(), &rep.shape(sess, &v[0]));
+
+        Ok(v.iter().enumerate().fold(zeros, |x, (i, y)| {
+            rep.add(sess, &x, &rep.ring_inject(sess, i, y))
+        }))
+    }
+}
+
 struct AbstractReplicatedSeeds<T> {
     seeds: [[T; 2]; 3],
 }
@@ -2971,6 +3010,41 @@ mod tests {
     )]
     fn test_rep_bit_dec_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u8>) {
         test_rep_bit_dec64(x, y);
+    }
+
+    fn test_rep_bit_compose64(xs: ArrayD<u64>) {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let expected = xs.clone();
+
+        let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let x_shared = rep.share(&sess, &setup, &x);
+
+        let decomposed: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
+
+        let composed = rep.bit_compose(&sess, &decomposed);
+
+        let opened_result = alice.reveal(&sess, &composed);
+
+        assert_eq!(
+            opened_result,
+            AbstractHostRingTensor::from_raw_plc(expected, alice)
+        );
+    }
+
+    #[rstest]
+    #[case(array![1073741823, 0, 6].into_dyn())]
+    fn test_rep_bit_compose_64(#[case] x: ArrayD<u64>) {
+        test_rep_bit_compose64(x);
     }
 
     #[test]
