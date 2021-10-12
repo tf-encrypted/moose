@@ -7,6 +7,8 @@ use crate::replicated::{
 };
 use crate::{Const, Ring};
 
+use super::division::PrefixOr;
+
 modelled!(PlacementEqual::equal, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, RepEqualOp);
 modelled!(PlacementEqual::equal, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, RepEqualOp);
 
@@ -149,6 +151,7 @@ impl RepInt2FLOp {
         ReplicatedPlacement: PlacementNeg<S, HostRingT, HostRingT>,
         ReplicatedPlacement: PlacementBitDecSetup<S, S::ReplicatedSetup, HostRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
+        ReplicatedPlacement: PrefixOr<S, S::ReplicatedSetup, RepBitT>,
     {
         let setup = rep.gen_setup(sess);
 
@@ -175,11 +178,12 @@ impl RepInt2FLOp {
         // bit decompose and reverse
         let a_bits = rep.bit_decompose(sess, &setup, &a);
 
-        let mut v: Vec<_> = (0..HostRingT::BitLength::VALUE)
+        let mut a_vec: Vec<_> = (0..HostRingT::BitLength::VALUE)
             .map(|i| rep.index(sess, i, &a_bits))
             .collect();
 
-        v.reverse();
+        a_vec.reverse();
+        let b = rep.prefix_or(sess, &setup, a_vec);
 
         Ok(a)
     }

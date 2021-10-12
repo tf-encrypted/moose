@@ -1685,6 +1685,11 @@ pub struct RepEqualOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepInt2FLOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepIfElseOp {
     pub sig: Signature,
 }
