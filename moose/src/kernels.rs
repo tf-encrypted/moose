@@ -15,7 +15,6 @@ use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::ReplicatedSetup;
 use crate::{closure_kernel, function_kernel};
 use crate::{computation::*, for_all_values};
-use maplit::hashmap;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
