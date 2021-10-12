@@ -1764,8 +1764,8 @@ kernel! {
     [
         (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::bit_kernel),
         (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::bit_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::ring64_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::ring128_kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::ring_kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::ring_kernel),
     ]
 }
 
@@ -1786,37 +1786,16 @@ impl RepMsbOp {
         Ok(rep.index(sess, N::VALUE - 1, &bits))
     }
 
-    fn ring64_kernel<S: Session, SetupT>(
+    fn ring_kernel<S: Session, SetupT, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
-        x: m!(ReplicatedRing64Tensor),
-    ) -> Result<m!(c!(ReplicatedRing64Tensor))>
+        x: RepRingT,
+    ) -> Result<RepRingT>
     where
         ReplicatedBitTensor: KnownType<S>,
-        ReplicatedRing64Tensor: KnownType<S>,
-        ReplicatedPlacement:
-            PlacementMsb<S, SetupT, m!(ReplicatedRing64Tensor), m!(ReplicatedBitTensor)>,
-        ReplicatedPlacement:
-            PlacementRingInject<S, m!(ReplicatedBitTensor), m!(ReplicatedRing64Tensor)>,
-    {
-        let x_bin = rep.msb(sess, &setup, &x);
-        Ok(rep.ring_inject(sess, 0, &x_bin))
-    }
-
-    fn ring128_kernel<S: Session, SetupT>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        setup: SetupT,
-        x: m!(ReplicatedRing128Tensor),
-    ) -> Result<m!(c!(ReplicatedRing128Tensor))>
-    where
-        ReplicatedBitTensor: KnownType<S>,
-        ReplicatedRing128Tensor: KnownType<S>,
-        ReplicatedPlacement:
-            PlacementMsb<S, SetupT, m!(ReplicatedRing128Tensor), m!(ReplicatedBitTensor)>,
-        ReplicatedPlacement:
-            PlacementRingInject<S, m!(ReplicatedBitTensor), m!(ReplicatedRing128Tensor)>,
+        ReplicatedPlacement: PlacementMsb<S, SetupT, RepRingT, m!(ReplicatedBitTensor)>,
+        ReplicatedPlacement: PlacementRingInject<S, m!(ReplicatedBitTensor), RepRingT>,
     {
         let x_bin = rep.msb(sess, &setup, &x);
         Ok(rep.ring_inject(sess, 0, &x_bin))
