@@ -993,6 +993,7 @@ operators![
     RepBitDec,
     RepShlDim,
     RepEqual,
+    RepIfElse,
 ];
 
 pub trait HasShortName {

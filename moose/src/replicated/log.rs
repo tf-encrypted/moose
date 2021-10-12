@@ -1,5 +1,6 @@
-use crate::computation::{HostPlacement, KnownType, RepEqualOp, ReplicatedPlacement};
-use crate::computation::{Placed, RepNegOp};
+use crate::computation::{
+    HostPlacement, KnownType, Placed, RepEqualOp, RepNegOp, ReplicatedPlacement,
+};
 use crate::error::Result;
 use crate::kernels::*;
 use crate::replicated::{
@@ -19,20 +20,20 @@ kernel! {
 }
 
 impl RepEqualOp {
-    fn rep_kernel<S: Session, HostRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
+    fn rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: HostRingT,
-        y: HostRingT,
+        x: RepRingT,
+        y: RepRingT,
     ) -> Result<RepBitT>
     where
-        HostRingT: Ring<BitLength = N>,
+        RepRingT: Ring<BitLength = N>,
 
-        ReplicatedPlacement: PlacementBitDecSetup<S, S::ReplicatedSetup, HostRingT, RepBitArrayT>,
-        ReplicatedPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
+        ReplicatedPlacement: PlacementBitDecSetup<S, S::ReplicatedSetup, RepRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepBitT>,
-        ReplicatedPlacement: PlacementShape<S, HostRingT, ShapeT>,
+        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
@@ -43,7 +44,7 @@ impl RepEqualOp {
         let z = rep.sub(sess, &x, &y);
         let bits = rep.bit_decompose(sess, &setup, &z);
 
-        let v: Vec<_> = (0..HostRingT::BitLength::VALUE)
+        let v: Vec<_> = (0..RepRingT::BitLength::VALUE)
             .map(|i| rep.index(sess, i, &bits))
             .collect();
 
@@ -132,7 +133,7 @@ impl RepNegOp {
 #[cfg(test)]
 mod tests {
     use crate::computation::{HostPlacement, ReplicatedPlacement};
-    use crate::host::{AbstractHostRingTensor, FromRawPlc, HostBitTensor};
+    use crate::host::{AbstractHostRingTensor, HostBitTensor};
     use crate::kernels::*;
     use crate::replicated::ReplicatedBitTensor;
     use ndarray::{array, IxDyn};
@@ -179,48 +180,6 @@ mod tests {
             opened_result,
             HostBitTensor::from_raw_plc(
                 array![1, 0, 0].into_dimensionality::<IxDyn>().unwrap(),
-                alice
-            )
-        );
-    }
-
-    #[test]
-    fn test_neg() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
-
-        let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
-
-        let scaling_base = 2;
-        let scaling_exp = 24;
-
-        let x = crate::host::HostFloat64Tensor::from_raw_plc(
-            array![-1.0, 2.0, -3.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            alice.clone(),
-        );
-        let x = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &x);
-        let x_shared = rep.share(&sess, &setup, &x);
-
-        let res = rep.neg(&sess, &x_shared);
-
-        let opened_result = alice.reveal(&sess, &res);
-        let decoded_result =
-            alice.fixedpoint_ring_decode(&sess, scaling_base, scaling_exp, &opened_result);
-
-        assert_eq!(
-            decoded_result,
-            crate::host::HostFloat64Tensor::from_raw_plc(
-                array![1.0, -2.0, 3.0]
-                    .into_dimensionality::<IxDyn>()
-                    .unwrap(),
                 alice
             )
         );
