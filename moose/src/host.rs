@@ -3395,6 +3395,18 @@ mod tests {
         };
         let sess = SyncSession::default();
 
+        // only 1 tensor
+        let x_backing: ArrayD<u64> = array![[1, 4], [9, 16], [25, 36]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let x = HostRing64Tensor::from(x_backing);
+        let expected_backing: ArrayD<u64> = array![[1, 4], [9, 16], [25, 36]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let expected = HostRing64Tensor::from_raw_plc(expected_backing, alice.clone());
+        let out = alice.add_n(&sess, &[x]);
+        assert_eq!(out, expected);
+
         // 64 bit
         // I'll buy you a beer if you tell me what all of these sequences are ;)
         let x_backing: ArrayD<u64> = array![[1, 4], [9, 16], [25, 36]]
