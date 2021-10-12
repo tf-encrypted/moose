@@ -1197,17 +1197,17 @@ impl RingFixedpointDecodeOp {
     }
 }
 
-modelled!(PlacementSign::sign, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostSignOp);
-modelled!(PlacementSign::sign, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostSignOp);
+modelled!(PlacementSign::sign, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, SignOp);
+modelled!(PlacementSign::sign, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, SignOp);
 
 kernel! {
-    HostSignOp, [
+    SignOp, [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
     ]
 }
 
-impl HostSignOp {
+impl SignOp {
     fn ring64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,

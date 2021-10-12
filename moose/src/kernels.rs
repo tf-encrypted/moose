@@ -167,7 +167,7 @@ impl Session for SyncSession {
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostSign(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Sign(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -814,7 +814,7 @@ impl Compile<SyncKernel> for Operator {
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
             | RepEqual(_) | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_)
             | FixedpointMean(_) | FixedpointSum(_) | BitNeg(_) | RepNeg(_) | FixedpointDiv(_)
-            | HostSign(_) => {
+            | Sign(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -912,7 +912,7 @@ impl Compile<AsyncKernel> for Operator {
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepEqual(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | BitNeg(_)
-            | RepNeg(_) | RepBitDec(_) | FixedpointDiv(_) | HostSign(_) => {
+            | RepNeg(_) | RepBitDec(_) | FixedpointDiv(_) | Sign(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }

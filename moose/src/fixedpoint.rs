@@ -1609,8 +1609,7 @@ mod tests {
         assert_eq!(x.shape().0 .0, target.shape());
         let x = x.0.clone();
         let y = target.clone();
-        let diff = (x.clone() - y.clone()) * (x - y);
-        diff
+        (x.clone() - y.clone()) * (x - y)
     }
 
     macro_rules! rep_div_func_concrete_test {
@@ -1642,21 +1641,19 @@ mod tests {
                     _ => panic!("Should not produce an non-replicated tensor on a replicated placement"),
                 };
 
-                let mut expected_result = Array::from_shape_vec(IxDyn(&[xs.clone().len()]), vec![0 as $tt; xs.clone().len()]).unwrap();
+                let mut expected_result = Array::from_shape_vec(IxDyn(&[xs.clone().len()]), vec![0 as f64; xs.clone().len()]).unwrap();
                 for i in 0..xs.len() {
-                    let div_result = (xs[i] as f64) / (ys[i] as f64);
-                    expected_result[i] = encode(&div_result);
+                    expected_result[i] = (xs[i] as f64) / (ys[i] as f64);
                 }
-                let expected_result = AbstractHostRingTensor::from_raw_plc(expected_result,alice.clone());
-                let expected_f64 = Convert::decode(&expected_result, (2 as $tt).pow($f_precision));
                 let result = Convert::decode(&opened_product.tensor, (2 as $tt).pow($f_precision));
-                let diff = result - expected_f64;
-                let diff_squared = diff.clone() * diff;
-
+                let distance = squared_distance(&result, &expected_result);
                 let error: f64 = (1_f64) / ((2 as $tt).pow($f_precision) as f64);
-                let _: Vec<_> = diff_squared.0.iter().map(|item| {
-                    assert!(*item < error);
+
+                let _: Vec<_> = distance.iter().enumerate().map(|(i, d)| {
+                    assert!(*d < error, "failed at index {:?} when dividing {:?} / {:?}, result is {:?}, should have been {:?}", i, xs[i], ys[i], result.0[i], expected_result[i]);
                 }).collect();
+
+
             }
         };
     }

@@ -254,7 +254,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             HostMul(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostDiv(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostDot(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            HostSign(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Sign(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostConcat(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
