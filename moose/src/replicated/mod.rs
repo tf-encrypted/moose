@@ -1947,7 +1947,7 @@ where
 }
 
 impl RingInjectOp {
-    pub(crate) fn rep_kernel<S: Session, HostBitT, HostRingT, ShapeT>(
+    pub(crate) fn rep_kernel<S: Session, HostBitT, HostRingT, ShapeT, AdtRingT, AdtBitT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         bit_idx: usize,
@@ -1960,33 +1960,20 @@ impl RingInjectOp {
         RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
         st!(RepTen<HostRingT>): TryInto<RepTen<HostRingT>>,
 
-        RepTen<HostBitT>: CanonicalType,
-        <RepTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
-        RepTen<HostBitT>: Into<st!(RepTen<HostBitT>)>,
-
-        AdtTen<HostBitT>: CanonicalType,
-        <AdtTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
-
-        AdtTen<HostRingT>: CanonicalType,
-        <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+        RepTen<HostBitT>: Into<RepBitT>,
 
         HostPlacement: PlacementShape<S, HostBitT, ShapeT>,
-        ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtTen<HostRingT>), st!(RepTen<HostRingT>)>,
-        AdditivePlacement: PlacementFill<S, ShapeT, st!(AdtTen<HostRingT>)>,
+        ReplicatedPlacement: PlacementAdtToRep<S, AdtRingT, st!(RepTen<HostRingT>)>,
+        AdditivePlacement: PlacementFill<S, ShapeT, AdtRingT>,
         HostPlacement: PlacementFill<S, ShapeT, HostRingT>,
-        AdditivePlacement:
-            PlacementDaBitProvider<S, ShapeT, st!(AdtTen<HostRingT>), st!(AdtTen<HostBitT>)>,
-        AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<HostBitT>), st!(AdtTen<HostBitT>)>,
-        AdditivePlacement:
-            PlacementAdd<S, st!(AdtTen<HostBitT>), st!(AdtTen<HostBitT>), st!(AdtTen<HostBitT>)>,
-        AdditivePlacement:
-            PlacementAdd<S, st!(AdtTen<HostRingT>), HostRingT, st!(AdtTen<HostRingT>)>,
-        AdditivePlacement:
-            PlacementMul<S, st!(AdtTen<HostRingT>), HostRingT, st!(AdtTen<HostRingT>)>,
-        AdditivePlacement:
-            PlacementSub<S, st!(AdtTen<HostRingT>), st!(AdtTen<HostRingT>), st!(AdtTen<HostRingT>)>,
-        AdditivePlacement: PlacementShl<S, st!(AdtTen<HostRingT>), st!(AdtTen<HostRingT>)>,
-        HostPlacement: PlacementReveal<S, st!(AdtTen<HostBitT>), HostBitT>,
+        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtRingT, AdtBitT>,
+        AdditivePlacement: PlacementRepToAdt<S, RepBitT, AdtBitT>,
+        AdditivePlacement: PlacementAdd<S, AdtBitT, AdtBitT, AdtBitT>,
+        AdditivePlacement: PlacementAdd<S, AdtRingT, HostRingT, AdtRingT>,
+        AdditivePlacement: PlacementMul<S, AdtRingT, HostRingT, AdtRingT>,
+        AdditivePlacement: PlacementSub<S, AdtRingT, AdtRingT, AdtRingT>,
+        AdditivePlacement: PlacementShl<S, AdtRingT, AdtRingT>,
+        HostPlacement: PlacementReveal<S, AdtBitT, HostBitT>,
         HostPlacement: PlacementRingInject<S, HostBitT, HostRingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
