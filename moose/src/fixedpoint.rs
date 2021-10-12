@@ -1306,7 +1306,7 @@ mod tests {
                 let x = FixedTensor::Host(new_host_fixed_tensor(AbstractHostRingTensor::from_raw_plc(xs, alice.clone())));
                 let y = FixedTensor::Host(new_host_fixed_tensor(AbstractHostRingTensor::from_raw_plc(ys, alice.clone())));
 
-                let sess = SyncSession::from_replicated(&rep);
+                let sess = SyncSession::default();
 
                 let sum = rep.$test_func(&sess, &x, &y);
                 let opened_product = match sum {

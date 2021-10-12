@@ -3,10 +3,9 @@ use crate::computation::{
     SymbolicValue,
 };
 use crate::error::{Error, Result};
-use crate::kernels::{DispatchKernel, FromReplicated, PlacementPlace, PlacementSetupGen, Session};
+use crate::kernels::{DispatchKernel, PlacementPlace, Session};
 use crate::prim::PrfKey;
 use crate::replicated::AbstractReplicatedSetup;
-use maplit::hashmap;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -104,17 +103,6 @@ impl Default for SymbolicSession {
             strategy: Box::new(DefaultSymbolicStrategy),
             ops: Default::default(),
             replicated_keys: Default::default(),
-        }
-    }
-}
-
-impl FromReplicated for SymbolicSession {
-    fn from_replicated(plc: &ReplicatedPlacement) -> Self {
-        let sess = SymbolicSession::default();
-        let setup = plc.gen_setup(&sess);
-        SymbolicSession {
-            replicated_keys: hashmap!(plc.clone() => setup),
-            ..Default::default()
         }
     }
 }
