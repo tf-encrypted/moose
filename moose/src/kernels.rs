@@ -60,21 +60,6 @@ impl Default for SyncSession {
     }
 }
 
-pub trait FromReplicated {
-    fn from_replicated(plc: &ReplicatedPlacement) -> Self;
-}
-
-impl FromReplicated for SyncSession {
-    fn from_replicated(plc: &ReplicatedPlacement) -> Self {
-        let sess = SyncSession::default();
-        let setup = plc.gen_setup(&sess);
-        SyncSession {
-            session_id: SessionId::random(),
-            replicated_keys: hashmap!(plc.clone() => setup),
-        }
-    }
-}
-
 impl Session for SyncSession {
     type Value = Value;
 
