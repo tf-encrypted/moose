@@ -4,4 +4,3 @@
 **/*.egg-info/
 **/*.pyc
 **/*.cpython*
-.hypothesis/
