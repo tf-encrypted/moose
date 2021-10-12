@@ -1145,7 +1145,6 @@ impl AsyncExecutor {
                 ))
             })?;
         let compiled_comp = computation.compile_async(&ctx)?;
-
         compiled_comp.apply(session)
     }
 }
