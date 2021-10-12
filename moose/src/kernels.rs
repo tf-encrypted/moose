@@ -134,6 +134,7 @@ impl Session for SyncSession {
             FixedpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FixedpointDiv(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -150,6 +151,7 @@ impl Session for SyncSession {
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Sign(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -392,6 +394,10 @@ pub trait PlacementDotSetup<S: Session, SetupT, T, U, O> {
     fn dot_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
 
+pub trait PlacementDivSetup<S: Session, SetupT, T, U, O> {
+    fn div_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
+}
+
 pub trait PlacementShare<S: Session, T, O> {
     fn share(&self, sess: &S, x: &T) -> O;
 }
@@ -569,6 +575,10 @@ pub trait PlacementAbs<S: Session, SetupT, T, O> {
 
 pub trait PlacementMsb<S: Session, SetupT, T, O> {
     fn msb(&self, sess: &S, setup: &SetupT, x: &T) -> O;
+}
+
+pub trait PlacementSign<S: Session, T, O> {
+    fn sign(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait PlacementPlace<S: Session, T> {
@@ -787,7 +797,8 @@ impl Compile<SyncKernel> for Operator {
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
             | RepEqual(_) | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_)
-            | FixedpointMean(_) | FixedpointSum(_) | BitNeg(_) | RepNeg(_) => {
+            | FixedpointMean(_) | FixedpointSum(_) | BitNeg(_) | RepNeg(_) | FixedpointDiv(_)
+            | Sign(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -885,7 +896,7 @@ impl Compile<AsyncKernel> for Operator {
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepEqual(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | BitNeg(_)
-            | RepNeg(_) | RepBitDec(_) => {
+            | RepNeg(_) | RepBitDec(_) | FixedpointDiv(_) | Sign(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
