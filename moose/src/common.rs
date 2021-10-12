@@ -39,9 +39,9 @@ kernel! {
         (HostPlacement, (HostBitTensor) -> HostShape => [runtime] Self::bit_kernel),
         (HostPlacement, (HostFloat32Tensor) -> HostShape => [runtime] Self::host_kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostShape => [runtime] Self::host_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => [runtime] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedShape => [runtime] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedShape => [runtime] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => [hybrid] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedShape => [hybrid] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedShape => [hybrid] Self::rep_kernel),
         (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveShape => [runtime] Self::adt_kernel),
         (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveShape => [runtime] Self::adt_kernel),
     ]
@@ -89,7 +89,7 @@ kernel! {
     [
         (HostPlacement, (HostBitTensor) -> HostRing64Tensor => [runtime] attributes[bit_idx] Self::host_kernel),
         (HostPlacement, (HostBitTensor) -> HostRing128Tensor => [runtime] attributes[bit_idx] Self::host_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing64Tensor => [runtime] attributes[bit_idx] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing128Tensor => [runtime] attributes[bit_idx] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing64Tensor => [hybrid] attributes[bit_idx] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing128Tensor => [hybrid] attributes[bit_idx] Self::rep_kernel),
     ]
 }

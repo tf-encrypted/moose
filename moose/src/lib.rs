@@ -1,16 +1,16 @@
 // Returns the context-specific type for the given basic type.
 macro_rules! cs {
-    ($t:ty) => {
-        <$t as KnownType<S>>::Type
+    ($canonical_type:ty) => {
+        <$canonical_type as KnownType<S>>::Type
     };
 }
 
 macro_rules! st {
-    ($t:ty) => {
-        <<$t as crate::computation::CanonicalType>::Type as KnownType<S>>::Type
+    ($partially_canonical_type:ty) => {
+        <<$partially_canonical_type as crate::computation::CanonicalType>::Type as KnownType<S>>::Type
     };
-    ($t:ty, $s:ty) => {
-        <<$t as crate::computation::CanonicalType>::Type as KnownType<$s>>::Type
+    ($partially_canonical_type:ty, $s:ty) => {
+        <<$partially_canonical_type as crate::computation::CanonicalType>::Type as KnownType<$s>>::Type
     };
 }
 

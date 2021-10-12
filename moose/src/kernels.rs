@@ -136,6 +136,7 @@ impl Session for SyncSession {
             FixedpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FixedpointDiv(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -152,6 +153,7 @@ impl Session for SyncSession {
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Sign(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -188,6 +190,7 @@ impl Session for SyncSession {
             Sum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepIfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -394,6 +397,10 @@ pub trait PlacementDotSetup<S: Session, SetupT, T, U, O> {
     fn dot_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
 
+pub trait PlacementDivSetup<S: Session, SetupT, T, U, O> {
+    fn div_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
+}
+
 pub trait PlacementShare<S: Session, T, O> {
     fn share(&self, sess: &S, x: &T) -> O;
 }
@@ -443,6 +450,10 @@ pub trait PlacementSum<S: Session, T, O> {
 
 pub trait PlacementEqual<S: Session, T, U, O> {
     fn equal(&self, sess: &S, x: &T, y: &U) -> O;
+}
+
+pub trait PlacementIfElse<S: Session, T, U, V, O> {
+    fn if_else(&self, sess: &S, s: &T, x: &U, y: &V) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -575,6 +586,10 @@ pub trait PlacementAbs<S: Session, SetupT, T, O> {
 
 pub trait PlacementMsb<S: Session, SetupT, T, O> {
     fn msb(&self, sess: &S, setup: &SetupT, x: &T) -> O;
+}
+
+pub trait PlacementSign<S: Session, T, O> {
+    fn sign(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait PlacementPlace<S: Session, T> {
@@ -793,8 +808,9 @@ impl Compile<SyncKernel> for Operator {
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
-            | RepEqual(_) | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_)
-            | FixedpointMean(_) | FixedpointSum(_) | BitNeg(_) | RepNeg(_) | RepAddN(_) => {
+            | RepEqual(_) | RepIfElse(_) | FixedpointMul(_) | FixedpointDot(_)
+            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) | BitNeg(_)
+            | RepNeg(_) | FixedpointDiv(_) | Sign(_) | RepAddN(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -892,8 +908,9 @@ impl Compile<AsyncKernel> for Operator {
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | RepEqual(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | BitNeg(_)
-            | RepNeg(_) | RepBitDec(_) | RepAddN(_) => {
+            | RepEqual(_) | RepIfElse(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_)
+            | RepSlice(_) | BitNeg(_) | RepNeg(_) | RepBitDec(_) | FixedpointDiv(_) | Sign(_)
+            | RepAddN(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }

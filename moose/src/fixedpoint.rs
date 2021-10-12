@@ -548,6 +548,113 @@ impl FixedpointMulOp {
     }
 }
 
+modelled!(PlacementDiv::div, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedpointDivOp);
+modelled!(PlacementDiv::div, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDivOp);
+modelled!(PlacementDiv::div, ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedpointDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor, FixedpointDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor, FixedpointDivOp);
+modelled!(PlacementDiv::div, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointDivOp);
+modelled!(PlacementDiv::div, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointDivOp);
+
+kernel! {
+    FixedpointDivOp,
+    [
+        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
+        (HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor => [hybrid] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_rep_kernel),
+    ]
+}
+
+impl FixedpointDivOp {
+    fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDiv<S, HostFixedT, HostFixedT, HostFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => v,
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let y = match y {
+            FixedTensor::Host(v) => v,
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+
+        let z = plc.div(sess, &x, &y);
+        Ok(FixedTensor::Host(z))
+    }
+
+    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementDiv<S, RepFixedT, RepFixedT, RepFixedT>,
+    {
+        let setup = plc.gen_setup(sess);
+
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let y = match y {
+            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+
+        let z = plc.div(sess, &x, &y);
+        Ok(FixedTensor::Replicated(z))
+    }
+
+    fn hostfixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractHostFixedTensor<HostRingT>,
+        y: AbstractHostFixedTensor<HostRingT>,
+    ) -> Result<AbstractHostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementDiv<S, HostRingT, HostRingT, HostRingT>,
+        HostPlacement: PlacementShl<S, HostRingT, HostRingT>,
+        HostPlacement: PlacementSign<S, HostRingT, HostRingT>,
+        HostPlacement: PlacementMul<S, HostRingT, HostRingT, HostRingT>,
+    {
+        // Fx(x) / Fx(y) = ((x*2^f)*2^f)/ (y*2^f)
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+
+        let sgn_x = plc.sign(sess, &x.tensor);
+        let sgn_y = plc.sign(sess, &y.tensor);
+
+        let abs_x = plc.mul(sess, &x.tensor, &sgn_x);
+        let abs_y = plc.mul(sess, &y.tensor, &sgn_y);
+
+        let x_upshifted = plc.shl(sess, x.fractional_precision as usize, &abs_x);
+
+        let abs_z: HostRingT = plc.div(sess, &x_upshifted, &abs_y);
+        let sgn_z = plc.mul(sess, &sgn_x, &sgn_y);
+
+        Ok(AbstractHostFixedTensor {
+            tensor: plc.mul(sess, &abs_z, &sgn_z),
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+}
+
 modelled!(PlacementDot::dot, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDotOp);
 modelled!(PlacementDot::dot, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedpointDotOp);
 modelled!(PlacementDot::dot, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDotOp);
@@ -967,6 +1074,8 @@ impl FixedpointMeanOp {
 mod tests {
     use super::*;
     use crate::kernels::SyncSession;
+    use crate::replicated::AbstractReplicatedRingTensor;
+    use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
     use proptest::prelude::*;
 
     #[test]
@@ -1064,10 +1173,69 @@ mod tests {
     fn new_host_fixed_tensor<HostRingT>(x: HostRingT) -> AbstractHostFixedTensor<HostRingT> {
         AbstractHostFixedTensor {
             tensor: x,
-            fractional_precision: 27,
+            fractional_precision: 15,
             integral_precision: 8,
         }
     }
+
+    fn new_host_fixed_tensor_with_precision<HostRingT>(
+        x: HostRingT,
+        integral_precision: u32,
+        fractional_precision: u32,
+    ) -> AbstractHostFixedTensor<HostRingT> {
+        AbstractHostFixedTensor {
+            tensor: x,
+            integral_precision,
+            fractional_precision,
+        }
+    }
+
+    macro_rules! host_binary_approx_func_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $factor: expr, $error: expr) => {
+            fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<f64>,
+                integral_precision: u32, fractional_precision: u32
+            ) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let one_r: $tt = 1;
+
+                let encode = |item: &$tt| (Wrapping(one_r << fractional_precision) * Wrapping(*item)).0;
+                let xs = xs.clone().map(encode);
+                let ys = ys.clone().map(encode);
+
+                let x = FixedTensor::Host(new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(xs.clone(), alice.clone()), integral_precision, fractional_precision)
+                );
+                let y = FixedTensor::Host(new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(ys.clone(), alice.clone()), integral_precision, fractional_precision)
+                );
+
+                let sess = SyncSession::default();
+
+                let sum = alice.$test_func(&sess, &x, &y);
+                let opened_product = match sum {
+                    FixedTensor::Host(r) => r,
+                    _ => panic!("Should not produce a replicated tensor on a host placement"),
+                };
+                let r64 = Convert::decode(&opened_product.tensor, one_r << (opened_product.fractional_precision));
+                let distance = squared_distance(&r64, &zs);
+
+                let _: Vec<_> = distance.iter().enumerate().map(|(i, d)| {
+                    assert!(*d < $error, "failed at index {:?} when dividing {:?} / {:?}, result is {:?}, should have been {:?}", i, xs[i], ys[i], r64.0[i], zs[i]);
+                }).collect();
+
+                let expected_precision = match x {
+                    FixedTensor::Host(x) => x.fractional_precision * $factor,
+                    _ => unreachable!(),
+                };
+                assert_eq!(opened_product.fractional_precision, expected_precision);
+            }
+        };
+    }
+
+    host_binary_approx_func_test!(test_host_div64, div<u64>, 1, 0.00000001);
+    host_binary_approx_func_test!(test_host_div128, div<u128>, 1, 0.00000001);
 
     macro_rules! host_binary_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>, $factor: expr) => {
@@ -1193,6 +1361,43 @@ mod tests {
     pairwise_same_length!(pairwise_same_length64, u64);
     pairwise_same_length!(pairwise_same_length128, u128);
 
+    macro_rules! pairwise_bounded_same_length {
+        ($func_name:ident, $tt: ident) => {
+            fn $func_name(bit_room: usize) -> impl Strategy<Value = (ArrayD<$tt>, ArrayD<$tt>)> {
+                (1usize..25)
+                    .prop_flat_map(move |length: usize| {
+                        let foo1 = bit_room;
+                        let foo2 = bit_room;
+                        (
+                            proptest::collection::vec(
+                                any::<$tt>().prop_map(move |x| x >> foo1),
+                                length,
+                            ),
+                            proptest::collection::vec(
+                                any::<$tt>().prop_map(move |x| {
+                                    let y = x >> foo2;
+                                    if y == 0 {
+                                        1
+                                    } else {
+                                        y
+                                    }
+                                }),
+                                length,
+                            ),
+                        )
+                    })
+                    .prop_map(|(x, y)| {
+                        let a = Array::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
+                        let b = Array::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
+                        (a, b)
+                    })
+                    .boxed()
+            }
+        };
+    }
+
+    pairwise_bounded_same_length!(pairwise_bounded_same_length64, i64);
+
     #[test]
     fn test_fixed_rep_mul64() {
         let a = vec![1u64, 2];
@@ -1289,6 +1494,33 @@ mod tests {
             test_host_dot128(a, b, target);
         }
 
+
+        #[test]
+        fn test_fuzzy_host_div64((a,b) in pairwise_bounded_same_length64(2 * 15))
+        {
+            let fractional_precision = 15;
+            let integral_precision = 49;
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0f64; a.len()]).unwrap();
+            for i in 0..a.len() {
+                let d = (a[i] as f64) / (b[i] as f64);
+                target[i] = d;
+            }
+            test_host_div64(a.map(|x| *x as u64), b.map(|x| *x as u64), target, integral_precision, fractional_precision);
+        }
+
+        #[test]
+        fn test_fuzzy_host_div128((a,b) in pairwise_bounded_same_length64(2 * 15))
+        {
+            let fractional_precision = 15;
+            let integral_precision = 49;
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0f64; a.len()]).unwrap();
+            for i in 0..a.len() {
+                let d = (a[i] as f64) / (b[i] as f64);
+                target[i] = d;
+            }
+            test_host_div128(a.map(|x| *x as u128), b.map(|x| *x as u128), target, integral_precision, fractional_precision);
+        }
+
         #[test]
         fn test_fuzzy_rep_add64((a,b) in pairwise_same_length64())
         {
@@ -1370,5 +1602,183 @@ mod tests {
             let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
             test_rep_dot128(a, b, target);
         }
+
+    }
+
+    fn squared_distance(x: &HostFloat64Tensor, target: &ArrayD<f64>) -> ArrayD<f64> {
+        assert_eq!(x.shape().0 .0, target.shape());
+        let x = x.0.clone();
+        let y = target.clone();
+        (x.clone() - y.clone()) * (x - y)
+    }
+
+    macro_rules! rep_div_func_concrete_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $i_precision: expr, $f_precision: expr) => {
+            fn $func_name(xs: ArrayD<f64>, ys: ArrayD<f64>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let encode = |item: &f64| (2_i64.pow($f_precision) as f64 * item) as $tt;
+
+                let xs = xs.clone().map(encode);
+                let ys = ys.clone().map(encode);
+                let x = FixedTensor::Host(new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(xs.clone(), alice.clone()), $i_precision, $f_precision)
+                );
+                let y = FixedTensor::Host(new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(ys.clone(), alice.clone()), $i_precision, $f_precision)
+                );
+
+                let sess = SyncSession::default();
+
+                let sum = rep.$test_func(&sess, &x, &y);
+                let opened_product = match sum {
+                    FixedTensor::Replicated(r) => alice.reveal(&sess, &r),
+                    _ => panic!("Should not produce an non-replicated tensor on a replicated placement"),
+                };
+
+                let mut expected_result = Array::from_shape_vec(IxDyn(&[xs.clone().len()]), vec![0 as f64; xs.clone().len()]).unwrap();
+                for i in 0..xs.len() {
+                    expected_result[i] = (xs[i] as f64) / (ys[i] as f64);
+                }
+                let result = Convert::decode(&opened_product.tensor, (2 as $tt).pow($f_precision));
+                let distance = squared_distance(&result, &expected_result);
+                let error: f64 = (1_f64) / ((2 as $tt).pow($f_precision) as f64);
+
+                let _: Vec<_> = distance.iter().enumerate().map(|(i, d)| {
+                    assert!(*d < error, "failed at index {:?} when dividing {:?} / {:?}, result is {:?}, should have been {:?}", i, xs[i], ys[i], result.0[i], expected_result[i]);
+                }).collect();
+
+
+            }
+        };
+    }
+
+    #[test]
+    fn test_fixed_rep_div64() {
+        let a: Vec<f64> = vec![1.0, 2.0, 2.0];
+        let b: Vec<f64> = vec![3.0, 7.0, 1.41];
+        let a = Array::from_shape_vec(IxDyn(&[a.len()]), a).unwrap();
+        let b = Array::from_shape_vec(IxDyn(&[b.len()]), b).unwrap();
+
+        rep_div_func_concrete_test!(test_rep_div64, div<u64>, 10, 15);
+        test_rep_div64(a, b);
+    }
+
+    #[test]
+    fn test_fixed_rep_div128() {
+        let a: Vec<f64> = vec![1.0, 2.0, 2.0];
+        let b: Vec<f64> = vec![3.0, 7.0, 1.41];
+        let a = Array::from_shape_vec(IxDyn(&[a.len()]), a).unwrap();
+        let b = Array::from_shape_vec(IxDyn(&[b.len()]), b).unwrap();
+
+        rep_div_func_concrete_test!(test_rep_div128, div<u128>, 10, 15);
+        test_rep_div128(a, b);
+    }
+
+    macro_rules! new_symbolic_replicated_tensor {
+        ($func_name:ident, $tt: ty) => {
+            fn $func_name(
+                name: &str,
+                rep: &ReplicatedPlacement,
+            ) -> Symbolic<AbstractReplicatedRingTensor<Symbolic<AbstractHostRingTensor<$tt>>>> {
+                let (alice, bob, carole) = rep.host_placements();
+                let symbolic_replicated = Symbolic::Concrete(AbstractReplicatedRingTensor {
+                    shares: [
+                        [
+                            Symbolic::Symbolic(SymbolicHandle {
+                                op: format!("{}{}", name, &"00"),
+                                plc: alice.clone(),
+                            }),
+                            Symbolic::Symbolic(SymbolicHandle {
+                                op: format!("{}{}", name, &"01"),
+                                plc: alice.clone(),
+                            }),
+                        ],
+                        [
+                            Symbolic::Symbolic(SymbolicHandle {
+                                op: format!("{}{}", name, &"10"),
+                                plc: bob.clone(),
+                            }),
+                            Symbolic::Symbolic(SymbolicHandle {
+                                op: format!("{}{}", name, &"11"),
+                                plc: bob.clone(),
+                            }),
+                        ],
+                        [
+                            Symbolic::Symbolic(SymbolicHandle {
+                                op: format!("{}{}", name, &"20"),
+                                plc: carole.clone(),
+                            }),
+                            Symbolic::Symbolic(SymbolicHandle {
+                                op: format!("{}{}", name, &"21"),
+                                plc: carole.clone(),
+                            }),
+                        ],
+                    ],
+                });
+                symbolic_replicated
+            }
+        };
+    }
+
+    new_symbolic_replicated_tensor!(new_symbolic_replicated_tensor64, u64);
+    new_symbolic_replicated_tensor!(new_symbolic_replicated_tensor128, u128);
+
+    macro_rules! rep_div_symbolic_test {
+        ($func_name:ident, $new_symbolic_rep: ident) => {
+            fn $func_name(i_precision: u32, f_precision: u32) {
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                    fractional_precision: f_precision,
+                    integral_precision: i_precision,
+                    tensor: $new_symbolic_rep(&"x", &rep),
+                });
+
+                let y = Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                    fractional_precision: f_precision,
+                    integral_precision: i_precision,
+                    tensor: $new_symbolic_rep(&"y", &rep),
+                });
+
+                let sess = SymbolicSession::default();
+                let _ = rep.gen_setup(&sess);
+
+                let result = rep.div(&sess, &x, &y);
+                match result {
+                    Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                        tensor: _,
+                        fractional_precision,
+                        integral_precision,
+                    }) => {
+                        assert_eq!(fractional_precision, f_precision);
+                        assert_eq!(integral_precision, i_precision);
+                    }
+                    _ => {
+                        panic!("Expected a concrete result from the symbolic division on a concrete value")
+                    }
+                }
+            }
+        }
+    }
+
+    rep_div_symbolic_test!(rep_div_symbolic_test64, new_symbolic_replicated_tensor64);
+    rep_div_symbolic_test!(rep_div_symbolic_test128, new_symbolic_replicated_tensor128);
+
+    #[test]
+    fn test_fixed_rep_symbolic_div64() {
+        rep_div_symbolic_test64(10, 20);
+    }
+
+    #[test]
+    fn test_fixed_rep_symbolic_div128() {
+        rep_div_symbolic_test128(10, 50);
     }
 }

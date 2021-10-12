@@ -6,17 +6,13 @@ use crate::computation::{
 };
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};
-use crate::kernels::{
-    PlacementAdd, PlacementDaBitProvider, PlacementDeriveSeed, PlacementFill, PlacementKeyGen,
-    PlacementMul, PlacementNeg, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
-    PlacementRingInject, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShape,
-    PlacementShl, PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
-};
+use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::replicated::{
     AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor,
     ReplicatedRing64Tensor,
 };
+use crate::symbolic::Symbolic;
 use crate::{Const, Ring};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
@@ -580,6 +576,37 @@ where
     }
 }
 
+// TODO(Dragos) merge the two implementations in a single one.
+impl<S: Session, R: Placed<Placement = HostPlacement>>
+    PlacementTruncPrProvider<
+        S,
+        Symbolic<AbstractAdditiveTensor<R>>,
+        Symbolic<AbstractAdditiveTensor<R>>,
+    > for AdditivePlacement
+where
+    AdditivePlacement:
+        PlacementTruncPrProvider<S, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
+
+    Symbolic<AbstractAdditiveTensor<R>>: Clone,
+    AbstractAdditiveTensor<R>: TryFrom<Symbolic<AbstractAdditiveTensor<R>>>,
+    AbstractAdditiveTensor<R>: Into<Symbolic<AbstractAdditiveTensor<R>>>,
+{
+    fn trunc_pr(
+        &self,
+        sess: &S,
+        amount: usize,
+        provider: &HostPlacement,
+        x: &Symbolic<AbstractAdditiveTensor<R>>,
+    ) -> Symbolic<AbstractAdditiveTensor<R>> {
+        let concrete_x = match x {
+            Symbolic::Concrete(x) => x,
+            Symbolic::Symbolic(_) => unimplemented!(),
+        };
+        let concrete_y = Self::trunc_pr(self, sess, amount, provider, concrete_x);
+        concrete_y.into()
+    }
+}
+
 impl<S: Session, R>
     PlacementTruncPrProvider<S, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>
     for AdditivePlacement
@@ -711,11 +738,15 @@ impl RepToAdtOp {
         sess: &S,
         adt: &AdditivePlacement,
         x: AbstractReplicatedRingTensor<RingT>,
-    ) -> Result<AbstractAdditiveTensor<RingT>>
+    ) -> Result<st!(AbstractAdditiveTensor<RingT>)>
     where
+        AbstractAdditiveTensor<RingT>: CanonicalType,
+        <AbstractAdditiveTensor<RingT> as CanonicalType>::Type: KnownType<S>,
+        AbstractAdditiveTensor<RingT>: Into<st!(AbstractAdditiveTensor<RingT>)>,
+
         AbstractReplicatedRingTensor<RingT>: Placed<Placement = ReplicatedPlacement>,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
-        AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
+        AdditivePlacement: PlacementPlace<S, st!(AbstractAdditiveTensor<RingT>)>,
     {
         let (adt_player0, adt_player1) = adt.host_placements();
         let (rep_player0, rep_player1, rep_player2) = x.placement()?.host_placements();
@@ -773,7 +804,47 @@ impl RepToAdtOp {
                 [y0, y1]
             }
         };
-        Ok(adt.place(sess, AbstractAdditiveTensor { shares }))
+        Ok(adt.place(sess, AbstractAdditiveTensor { shares }.into()))
+    }
+}
+
+impl<
+        S: Session,
+        ShapeT,
+        RingT: Placed<Placement = HostPlacement>,
+        BitT: Placed<Placement = HostPlacement>,
+    >
+    PlacementDaBitProvider<
+        S,
+        ShapeT,
+        Symbolic<AbstractAdditiveTensor<RingT>>,
+        Symbolic<AbstractAdditiveTensor<BitT>>,
+    > for AdditivePlacement
+where
+    AdditivePlacement: PlacementDaBitProvider<
+        S,
+        ShapeT,
+        AbstractAdditiveTensor<RingT>,
+        AbstractAdditiveTensor<BitT>,
+    >,
+    Symbolic<AbstractAdditiveTensor<RingT>>: Clone,
+    Symbolic<AbstractAdditiveTensor<BitT>>: Clone,
+
+    AbstractAdditiveTensor<RingT>: Into<Symbolic<AbstractAdditiveTensor<RingT>>>,
+    AbstractAdditiveTensor<BitT>: Into<Symbolic<AbstractAdditiveTensor<BitT>>>,
+{
+    fn gen_dabit(
+        &self,
+        sess: &S,
+        shape_provider: ShapeT,
+        shape_a: ShapeT,
+        provider: &HostPlacement,
+    ) -> (
+        Symbolic<AbstractAdditiveTensor<RingT>>,
+        Symbolic<AbstractAdditiveTensor<BitT>>,
+    ) {
+        let (a, b) = Self::gen_dabit(self, sess, shape_provider, shape_a, provider);
+        (a.into(), b.into())
     }
 }
 
@@ -844,7 +915,6 @@ mod tests {
     use crate::{
         computation::{Operation, Operator, Placement, RingAddOp},
         host::AbstractHostRingTensor,
-        kernels::SyncSession,
         symbolic::{Symbolic, SymbolicHandle, SymbolicSession},
     };
     use ndarray::array;

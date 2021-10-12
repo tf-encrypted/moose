@@ -1344,6 +1344,7 @@ impl ToTextual for Operator {
             HostAddN(op) => op.to_textual(),
             HostTranspose(op) => op.to_textual(),
             HostInverse(op) => op.to_textual(),
+            Sign(op) => op.to_textual(),
             RingNeg(op) => op.to_textual(),
             RingAdd(op) => op.to_textual(),
             RingSub(op) => op.to_textual(),
@@ -1368,6 +1369,7 @@ impl ToTextual for Operator {
             FixedpointAdd(op) => op.to_textual(),
             FixedpointSub(op) => op.to_textual(),
             FixedpointMul(op) => op.to_textual(),
+            FixedpointDiv(op) => op.to_textual(),
             FixedpointDot(op) => op.to_textual(),
             FixedpointTruncPr(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
@@ -1416,6 +1418,7 @@ impl ToTextual for Operator {
             RepSlice(op) => op.to_textual(),
             RepShlDim(op) => op.to_textual(),
             RepEqual(op) => op.to_textual(),
+            RepIfElse(op) => op.to_textual(),
         }
     }
 }
@@ -1512,6 +1515,7 @@ impl_to_textual!(HostBitDecOp, "{op}: {}", sig);
 impl_to_textual!(HostInverseOp, "{op}: {}", sig);
 impl_to_textual!(HostSqrtOp, "{op}: {}", sig);
 impl_to_textual!(HostSqueezeOp, "{op}: {}", sig);
+impl_to_textual!(SignOp, "{op}: {}", sig);
 impl_to_textual!(ShapeOp, "{op}: {}", sig);
 impl_to_textual!(RingNegOp, "{op}: {}", sig);
 impl_to_textual!(RingAddOp, "{op}: {}", sig);
@@ -1598,6 +1602,7 @@ impl_to_textual!(RepIndexOp, "{op}{{index={}}}: {}", index, sig);
 impl_to_textual!(RepDiagOp, "{op}: {}", sig);
 impl_to_textual!(RepBitDecOp, "{op}: {}", sig);
 impl_to_textual!(RepEqualOp, "{op}: {}", sig);
+impl_to_textual!(RepIfElseOp, "{op}: {}", sig);
 impl_to_textual!(RepSliceOp, "{op}{{slice}}: {} {}", sig, slice);
 impl_to_textual!(RepShlDimOp, "{op}: {} {} {}", sig, amount, bit_length);
 
@@ -1729,6 +1734,8 @@ impl ToTextual for RepFixedpointMeanOp {
     }
 }
 
+impl_to_textual!(FixedpointDivOp, "{op}: {}", sig);
+
 impl ToTextual for RingSampleOp {
     fn to_textual(&self) -> String {
         match self {
@@ -1775,6 +1782,7 @@ impl ToTextual for Ty {
             Ty::Float64 => "Float64".to_string(),
             Ty::Ring64 => "Ring64".to_string(),
             Ty::Ring128 => "Ring128".to_string(),
+            Ty::Fixed => "Fixed".to_string(),
             Ty::Tensor(i) => format!("Tensor({})", i), // TODO (lvorona) Come up with a textual format here
             Ty::HostRing64Tensor => "Ring64Tensor".to_string(),
             Ty::HostRing128Tensor => "Ring128Tensor".to_string(),
@@ -1836,6 +1844,7 @@ impl ToTextual for Value {
             Value::HostRing128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
             Value::Float32(x) => format!("Float32({})", x),
             Value::Float64(x) => format!("Float64({})", x),
+            Value::Fixed(x) => format!("Fixed({})", x.to_textual()),
             Value::String(x) => format!("String({})", x.to_textual()),
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
@@ -1895,6 +1904,9 @@ impl ToTextual for Constant {
             Constant::String(x) => format!("String({})", x.to_textual()),
             Constant::Ring64(x) => format!("Ring64({})", x),
             Constant::Ring128(x) => format!("Ring128({})", x),
+            Constant::Fixed(FixedpointConstant { value, precision }) => {
+                format!("Fixed({}, {})", value, precision)
+            }
             Constant::RawShape(RawShape(x)) => format!("Shape({:?})", x),
             Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
@@ -1952,6 +1964,12 @@ impl ToTextual for SyncKey {
 impl ToTextual for RendezvousKey {
     fn to_textual(&self) -> String {
         self.as_bytes().to_textual()
+    }
+}
+
+impl ToTextual for FixedpointConstant {
+    fn to_textual(&self) -> String {
+        format!("value: {:?} precision: {:?}", self.value, self.precision)
     }
 }
 

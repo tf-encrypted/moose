@@ -16,6 +16,8 @@ use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 use std::marker::PhantomData;
 
+pub mod division;
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedRingTensor<HostRingT> {
     pub shares: [[HostRingT; 2]; 3],
@@ -34,6 +36,8 @@ pub struct AbstractReplicatedBitArray<RepBitTensorT, N>(RepBitTensorT, PhantomDa
 
 pub type ReplicatedBitArray64 = AbstractReplicatedBitArray<ReplicatedBitTensor, N64>;
 
+pub type ReplicatedBitArray128 = AbstractReplicatedBitArray<ReplicatedBitTensor, N128>;
+
 // TODO implement using moose_type macro
 impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTensorT, N> {
     type Placement = RepBitTensorT::Placement;
@@ -43,16 +47,25 @@ impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTenso
     }
 }
 
-impl SymbolicType for ReplicatedBitArray64 {
+impl<N> SymbolicType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
     type Type =
-        Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N64>>;
+        Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>>;
 }
 
-pub type ReplicatedBitArray128 = AbstractReplicatedBitArray<ReplicatedBitTensor, N128>;
+impl<N> CanonicalType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
+    type Type = Self;
+}
 
-impl SymbolicType for ReplicatedBitArray128 {
-    type Type =
-        Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N128>>;
+impl<N> CanonicalType
+    for AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>
+{
+    type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
+}
+
+impl<N> CanonicalType
+    for Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>>
+{
+    type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
 }
 
 impl<RepBitT: Placed, N> From<AbstractReplicatedBitArray<RepBitT, N>>
@@ -1247,29 +1260,28 @@ kernel! {
 }
 
 impl RepTruncPrOp {
-    fn kernel<S: Session, RingT>(
+    fn kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         amount: u32,
-        xe: RepTen<RingT>,
-    ) -> Result<m!(c!(RepTen<RingT>))>
+        xe: RepTen<HostRingT>,
+    ) -> Result<m!(c!(RepTen<HostRingT>))>
     where
-        RingT: Clone,
-        RepTen<RingT>: Into<st!(RepTen<RingT>)>,
-        st!(AdtTen<RingT>): TryInto<AdtTen<RingT>>,
-        AdtTen<RingT>: Into<st!(AdtTen<RingT>)>,
-        st!(AdtTen<RingT>): TryInto<AdtTen<RingT>>,
+        RepTen<HostRingT>: Clone,
 
-        AdtTen<RingT>: CanonicalType,
-        <AdtTen<RingT> as CanonicalType>::Type: KnownType<S>,
-        RepTen<RingT>: CanonicalType,
-        <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
+        RepTen<HostRingT>: CanonicalType,
+        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
 
-        AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<RingT>), st!(AdtTen<RingT>)>,
+        AdtTen<HostRingT>: CanonicalType,
+        <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
 
-        AdditivePlacement: PlacementTruncPrProvider<S, AdtTen<RingT>, AdtTen<RingT>>,
+        RepTen<HostRingT>: TryInto<st!(RepTen<HostRingT>)>,
+        RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
 
-        ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtTen<RingT>), st!(RepTen<RingT>)>,
+        AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<HostRingT>), st!(AdtTen<HostRingT>)>,
+        AdditivePlacement:
+            PlacementTruncPrProvider<S, st!(AdtTen<HostRingT>), st!(AdtTen<HostRingT>)>,
+        ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtTen<HostRingT>), st!(RepTen<HostRingT>)>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -1278,9 +1290,9 @@ impl RepTruncPrOp {
         };
         let provider = player2;
 
-        let x_adt = adt.rep_to_adt(sess, &xe.into()).try_into().ok().unwrap();
+        let x_adt = adt.rep_to_adt(sess, &xe.into());
         let y_adt = adt.trunc_pr(sess, amount as usize, &provider, &x_adt);
-        Ok(rep.adt_to_rep(sess, &y_adt.into()))
+        Ok(rep.adt_to_rep(sess, &y_adt))
     }
 }
 
@@ -1300,11 +1312,16 @@ impl AdtToRepOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AdtTen<RingT>,
-    ) -> Result<RepTen<RingT>>
+    ) -> Result<st!(RepTen<RingT>)>
     where
         RingT: Placed<Placement = HostPlacement> + Clone,
         AdtTen<RingT>: CanonicalType,
         <AdtTen<RingT> as CanonicalType>::Type: KnownType<S>,
+
+        RepTen<RingT>: CanonicalType,
+        <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
+        RepTen<RingT>: Into<st!(RepTen<RingT>)>,
+
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementKeyGen<S, KeyT>,
         HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, RingT>,
@@ -1313,7 +1330,7 @@ impl AdtToRepOp {
             PlacementSub<S, st!(AdtTen<RingT>, S), st!(AdtTen<RingT>, S), st!(AdtTen<RingT>, S)>,
         AdtTen<RingT>: Into<st!(AdtTen<RingT>, S)>,
         HostPlacement: PlacementReveal<S, st!(AdtTen<RingT>, S), RingT>,
-        ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
+        ReplicatedPlacement: PlacementPlace<S, st!(RepTen<RingT>)>,
     {
         let AdtTen { shares: [x0, x1] } = &x;
 
@@ -1398,7 +1415,7 @@ impl AdtToRepOp {
                 }
             }
         };
-        Ok(rep.place(sess, RepTen { shares }))
+        Ok(rep.place(sess, RepTen { shares }.into()))
     }
 }
 
@@ -1411,9 +1428,16 @@ kernel! {
     [
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [hybrid] custom |op| {
                 let value: u64 = match op.value {
+                    Constant::Bit(v) => v as u64,
                     Constant::Ring64(v) => v,
-                    Constant::Ring128(v) => v as u64,
-                    _ => unimplemented!() // TODO: fill conversion routines for other rings we could support
+                    Constant::Float64(v) => v as u64,
+                    Constant::Fixed(FixedpointConstant {
+                        value, precision
+                    }) => {
+                        (value * ((1u64 << precision) as f64)) as u64
+                    },
+                    _ => return Err(Error::UnimplementedOperator(
+                    "RepFill64 cannot convert from this type".to_string())),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::ring64_kernel(sess, rep, value, rep_shape)
@@ -1421,9 +1445,15 @@ kernel! {
             }),
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [hybrid] custom |op| {
                 let value: u128 = match op.value {
+                    Constant::Bit(v) => v as u128,
                     Constant::Ring64(v) => v as u128,
                     Constant::Ring128(v) => v,
-                    _ => unimplemented!() // TODO: fill conversion routines for other rings we could support
+                    Constant::Float64(v) => v as u128,
+                    Constant::Fixed(FixedpointConstant{value, precision}) => {
+                            (value * ((1u128 << precision) as f64)) as u128
+                    },
+                    _ => return Err(Error::UnimplementedOperator(
+                        "RepFill128 cannot convert from this type".to_string())),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::ring128_kernel(sess, rep, value, rep_shape)
@@ -1434,7 +1464,8 @@ kernel! {
                     Constant::Bit(v) => v,
                     Constant::Ring64(v) => v as u8,
                     Constant::Ring128(v) => v as u8,
-                    _ => unimplemented!() // TODO: fill conversion routines for other rings we could support
+                    _ => return Err(Error::UnimplementedOperator(
+                        "RepFillBit cannot convert from this type".to_string())),
                 };
                 if value != 0 && value != 1 {
                     return Err(Error::InvalidArgument(format!("Could only support 0 and 1 for the bit tensor fill, got {}", value)));
@@ -1971,24 +2002,34 @@ where
 }
 
 impl RingInjectOp {
-    pub(crate) fn rep_kernel<S: Session, RingT, ReplicatedBitT, BitT, ShapeT>(
+    pub(crate) fn rep_kernel<S: Session, HostBitT, HostRingT, ShapeT, AdtRingT, AdtBitT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         bit_idx: usize,
-        x: ReplicatedBitT,
-    ) -> Result<RepTen<RingT>>
+        x: RepTen<HostBitT>,
+    ) -> Result<RepTen<HostRingT>>
     where
-        ReplicatedPlacement: PlacementShape<S, ReplicatedBitT, AbstractReplicatedShape<ShapeT>>,
-        ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<RingT>, RepTen<RingT>>,
-        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtTen<RingT>, AdtTen<BitT>>,
-        AdditivePlacement: PlacementRepToAdt<S, ReplicatedBitT, AdtTen<BitT>>,
-        AdditivePlacement: PlacementAdd<S, AdtTen<BitT>, AdtTen<BitT>, AdtTen<BitT>>,
-        AdditivePlacement: PlacementAdd<S, AdtTen<RingT>, RingT, AdtTen<RingT>>,
-        AdditivePlacement: PlacementMul<S, AdtTen<RingT>, RingT, AdtTen<RingT>>,
-        AdditivePlacement: PlacementSub<S, AdtTen<RingT>, AdtTen<RingT>, AdtTen<RingT>>,
-        AdditivePlacement: PlacementShl<S, AdtTen<RingT>, AdtTen<RingT>>,
-        HostPlacement: PlacementReveal<S, AdtTen<BitT>, BitT>,
-        HostPlacement: PlacementRingInject<S, BitT, RingT>,
+        RepTen<HostRingT>: CanonicalType,
+        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+
+        RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
+        st!(RepTen<HostRingT>): TryInto<RepTen<HostRingT>>,
+
+        RepTen<HostBitT>: Into<RepBitT>,
+
+        HostPlacement: PlacementShape<S, HostBitT, ShapeT>,
+        ReplicatedPlacement: PlacementAdtToRep<S, AdtRingT, st!(RepTen<HostRingT>)>,
+        AdditivePlacement: PlacementFill<S, ShapeT, AdtRingT>,
+        HostPlacement: PlacementFill<S, ShapeT, HostRingT>,
+        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtRingT, AdtBitT>,
+        AdditivePlacement: PlacementRepToAdt<S, RepBitT, AdtBitT>,
+        AdditivePlacement: PlacementAdd<S, AdtBitT, AdtBitT, AdtBitT>,
+        AdditivePlacement: PlacementAdd<S, AdtRingT, HostRingT, AdtRingT>,
+        AdditivePlacement: PlacementMul<S, AdtRingT, HostRingT, AdtRingT>,
+        AdditivePlacement: PlacementSub<S, AdtRingT, AdtRingT, AdtRingT>,
+        AdditivePlacement: PlacementShl<S, AdtRingT, AdtRingT>,
+        HostPlacement: PlacementReveal<S, AdtBitT, HostBitT>,
+        HostPlacement: PlacementRingInject<S, HostBitT, HostRingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -1997,20 +2038,22 @@ impl RingInjectOp {
         };
         let provider = player2;
 
-        let x_shape = rep.shape(sess, &x);
-        let AbstractReplicatedShape {
-            shapes: [s0, _, s_provider],
-        } = x_shape;
+        let AbstractReplicatedRingTensor {
+            shares: [[x00, _x10], [_x11, _x21], [x22, _x02]],
+        } = &x;
+
+        let s_provider = provider.shape(sess, x22);
+        let s0 = player0.shape(sess, x00);
+
         // One could think to wrap this up into an additive shape for Hosts@(P0, P2)
         // but the additive placement that generates a dabit is Hosts@(P0, P1)
         // to avoid confusion the API corresponding gen_dabit takes two input shapes
         // 1) s_provider - provider (dealer) shape
         // 2) s_0 - shape that corresponds to the party expanding the seeds received from provider.
 
-        let (b_ring, b_bin): (AdtTen<RingT>, AdtTen<BitT>) =
-            adt.gen_dabit(sess, s_provider, s0, &provider);
+        let (b_ring, b_bin) = adt.gen_dabit(sess, s_provider, s0, &provider);
 
-        let x_adt = adt.rep_to_adt(sess, &x);
+        let x_adt = adt.rep_to_adt(sess, &x.into());
 
         let c = with_context!(adt, sess, x_adt + b_bin);
         let c_open = player0.reveal(sess, &c);
@@ -2021,7 +2064,12 @@ impl RingInjectOp {
             b_ring + c_ring - b_ring * c_ring - b_ring * c_ring
         );
         let shifted_x_adt = adt.shl(sess, bit_idx, &x_adt_ring);
-        Ok(rep.adt_to_rep(sess, &shifted_x_adt))
+
+        Ok(rep
+            .adt_to_rep(sess, &shifted_x_adt)
+            .try_into()
+            .ok()
+            .unwrap())
     }
 }
 
@@ -2058,6 +2106,8 @@ impl RepBitDecOp {
         ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostBitT, RepBitT>,
         ReplicatedPlacement: BinaryAdder<S, SetupT, RepBitT>,
         ReplicatedPlacement: PlacementIndexAxis<S, RepBitT, RepBitT>,
+
+        HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let RepTen {
@@ -2073,6 +2123,7 @@ impl RepBitDecOp {
 
         // transform x2 into boolean sharing
         let x2_on_1 = player1.bit_decompose(sess, x21);
+
         let x2_on_2 = player2.bit_decompose(sess, x22);
 
         let rep_bsl = rep.share(sess, &setup, &bsl);
@@ -3140,4 +3191,5 @@ mod tests {
     }
 }
 
+pub mod control_flow;
 pub mod log;
