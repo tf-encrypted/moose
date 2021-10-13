@@ -1341,6 +1341,7 @@ impl ToTextual for Operator {
             HostIndexAxis(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
             HostSum(op) => op.to_textual(),
+            HostAddN(op) => op.to_textual(),
             HostTranspose(op) => op.to_textual(),
             HostInverse(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
@@ -1392,6 +1393,7 @@ impl ToTextual for Operator {
             RepDot(op) => op.to_textual(),
             RepFixedpointMean(op) => op.to_textual(),
             RepSum(op) => op.to_textual(),
+            RepAddN(op) => op.to_textual(),
             RepAdd(op) => op.to_textual(),
             RepSub(op) => op.to_textual(),
             RepMul(op) => op.to_textual(),
@@ -1636,6 +1638,8 @@ op_with_axis_to_textual!(RingSumOp);
 op_with_axis_to_textual!(RepSumOp);
 op_with_axis_to_textual!(FixedpointSumOp);
 
+impl_to_textual!(RepAddNOp, "{op}: {}", sig);
+impl_to_textual!(HostAddNOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointAddOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointSubOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointMulOp, "{op}: {}", sig);

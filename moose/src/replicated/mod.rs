@@ -1151,6 +1151,61 @@ impl RepFixedpointMeanOp {
     }
 }
 
+modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, RepAddNOp);
+modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, RepAddNOp);
+
+kernel! {
+    RepAddNOp,
+    [
+        (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [hybrid] Self::kernel),
+        (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [hybrid] Self::kernel),
+    ]
+}
+
+impl RepAddNOp {
+    fn kernel<S: Session, HostRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        xs: &[RepTen<HostRingT>],
+    ) -> Result<RepTen<HostRingT>>
+    where
+        HostPlacement: PlacementAddN<S, HostRingT, HostRingT>,
+        HostRingT: Clone,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let mut z00s: Vec<HostRingT> = Vec::new();
+        let mut z10s: Vec<HostRingT> = Vec::new();
+        let mut z11s: Vec<HostRingT> = Vec::new();
+        let mut z21s: Vec<HostRingT> = Vec::new();
+        let mut z22s: Vec<HostRingT> = Vec::new();
+        let mut z02s: Vec<HostRingT> = Vec::new();
+        for x in xs.iter() {
+            let RepTen {
+                shares: [[x00, x10], [x11, x21], [x22, x02]],
+            } = &x;
+
+            z00s.push(x00.clone());
+            z10s.push(x10.clone());
+            z11s.push(x11.clone());
+            z21s.push(x21.clone());
+            z22s.push(x22.clone());
+            z02s.push(x02.clone());
+        }
+
+        let z00 = player0.add_n(sess, &z00s);
+        let z10 = player0.add_n(sess, &z10s);
+        let z11 = player1.add_n(sess, &z11s);
+        let z21 = player1.add_n(sess, &z21s);
+        let z22 = player2.add_n(sess, &z22s);
+        let z02 = player2.add_n(sess, &z02s);
+
+        Ok(RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        })
+    }
+}
+
 modelled!(PlacementSum::sum, ReplicatedPlacement, attributes[axis: Option<u32>] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepSumOp);
 modelled!(PlacementSum::sum, ReplicatedPlacement, attributes[axis: Option<u32>] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepSumOp);
 
@@ -2387,6 +2442,73 @@ mod tests {
 
     use ndarray::prelude::*;
     use rstest::rstest;
+
+    #[test]
+    fn test_rep_add_n() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
+        let carole = HostPlacement {
+            owner: "carole".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        // 64 bit
+        let a = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
+        let b = AbstractHostRingTensor::from_raw_plc(array![2u64, 3, 4], bob.clone());
+        let c = AbstractHostRingTensor::from_raw_plc(array![5u64, 12, 13], carole.clone());
+
+        let expected = AbstractHostRingTensor::from_raw_plc(array![8u64, 17, 20], alice.clone());
+
+        let inputs = vec![a, b, c];
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>> = inputs
+            .into_iter()
+            .map(|x| rep.share(&sess, &setup, &x))
+            .collect();
+
+        let sum = rep.add_n(&sess, &shares);
+        let opened_result = alice.reveal(&sess, &sum);
+
+        assert_eq!(expected, opened_result);
+
+        // 128 bit
+        let a = AbstractHostRingTensor::from_raw_plc(
+            array![[1u128, 2, 3], [2u128, 3, 4]],
+            alice.clone(),
+        );
+        let b = AbstractHostRingTensor::from_raw_plc(array![[2u128, 3, 4], [2u128, 3, 4]], bob);
+        let c =
+            AbstractHostRingTensor::from_raw_plc(array![[5u128, 12, 13], [1u128, 2, 3]], carole);
+
+        let expected = AbstractHostRingTensor::from_raw_plc(
+            array![[8u128, 17, 20], [5, 8, 11]],
+            alice.clone(),
+        );
+
+        let inputs = vec![a, b, c];
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u128>>> = inputs
+            .into_iter()
+            .map(|x| rep.share(&sess, &setup, &x))
+            .collect();
+
+        let sum = rep.add_n(&sess, &shares);
+        let opened_result = alice.reveal(&sess, &sum);
+
+        assert_eq!(expected, opened_result);
+    }
 
     #[test]
     fn test_rep_sum() {

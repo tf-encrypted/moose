@@ -205,7 +205,11 @@ macro_rules! derive_runtime_kernel {
         crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> _>>::Ok(Box::new($k))
     };
     (variadic, $k:expr, $self:ident) => {
-        crate::error::Result::<Box<dyn Fn(&_, &_, Vec<_>) -> _>>::Ok(Box::new($k))
+        crate::error::Result::<Box<dyn Fn(&_, &_, Vec<_>) -> _>>::Ok(
+            Box::new(move |sess, plc, xs| {
+                $k(sess, plc, &xs)
+            })
+        )
     };
 }
 

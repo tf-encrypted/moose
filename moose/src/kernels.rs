@@ -104,6 +104,7 @@ impl Session for SyncSession {
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepAddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIndex(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -130,6 +131,7 @@ impl Session for SyncSession {
             HostMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqrt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            HostAddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -441,6 +443,10 @@ pub trait PlacementMeanAsFixedpoint<S: Session, T, O> {
 
 pub trait PlacementSqrt<S: Session, T, O> {
     fn sqrt(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementAddN<S: Session, T, O> {
+    fn add_n(&self, sess: &S, x: &[T]) -> O;
 }
 
 pub trait PlacementSum<S: Session, T, O> {
@@ -765,6 +771,7 @@ impl Compile<SyncKernel> for Operator {
             FixedpointDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointSub(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostAddN(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointAdd(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointSub(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointMul(op) => unimplemented!("Not done yet: {:?}", op),
@@ -806,9 +813,9 @@ impl Compile<SyncKernel> for Operator {
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
-            | RepBitCompose(_) | RepEqual(_) | RepIfElse(_) | FixedpointMul(_)
-            | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_)
-            | BitNeg(_) | RepNeg(_) | FixedpointDiv(_) | Sign(_) => {
+            | RepEqual(_) | RepIfElse(_) | FixedpointMul(_) | FixedpointDot(_)
+            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) | BitNeg(_)
+            | RepNeg(_) | FixedpointDiv(_) | Sign(_) | RepAddN(_) | RepBitCompose(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -866,6 +873,7 @@ impl Compile<AsyncKernel> for Operator {
             BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimDeriveSeed(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimPrfKeyGen(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostAddN(op) => unimplemented!("Not done yet: {:?}", op),
             AtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
             Slice(op) => unimplemented!("Not done yet: {:?}", op),
             Ones(op) => unimplemented!("Not done yet: {:?}", op),
@@ -906,8 +914,8 @@ impl Compile<AsyncKernel> for Operator {
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepEqual(_) | RepIfElse(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_)
-            | RepSlice(_) | BitNeg(_) | RepNeg(_) | RepBitDec(_) | RepBitCompose(_)
-            | FixedpointDiv(_) | Sign(_) => {
+            | RepSlice(_) | BitNeg(_) | RepNeg(_) | RepBitDec(_) | FixedpointDiv(_) | Sign(_)
+            | RepAddN(_) | RepBitCompose(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
