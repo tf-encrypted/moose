@@ -3012,33 +3012,46 @@ mod tests {
         test_rep_bit_dec64(x, y);
     }
 
-    fn test_rep_bit_compose64(xs: ArrayD<u64>) {
-        let alice = HostPlacement {
-            owner: "alice".into(),
+    macro_rules! rep_bit_compose_test {
+        ($func_name:ident, $tt:ty) => {
+            fn $func_name(xs: ArrayD<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let expected = xs.clone();
+
+                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &x);
+
+                let decomposed = rep.bit_decompose(&sess, &setup, &x_shared);
+
+                let composed = rep.bit_compose(&sess, &decomposed);
+
+                let opened_result = alice.reveal(&sess, &composed);
+
+                assert_eq!(
+                    opened_result,
+                    AbstractHostRingTensor::from_raw_plc(expected, alice)
+                );
+            }
         };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+    }
 
-        let expected = xs.clone();
+    rep_bit_compose_test!(test_rep_bit_compose64, u64);
+    rep_bit_compose_test!(test_rep_bit_compose128, u128);
 
-        let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
-
-        let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
-
-        let x_shared = rep.share(&sess, &setup, &x);
-
-        let decomposed: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
-
-        let composed = rep.bit_compose(&sess, &decomposed);
-
-        let opened_result = alice.reveal(&sess, &composed);
-
-        assert_eq!(
-            opened_result,
-            AbstractHostRingTensor::from_raw_plc(expected, alice)
-        );
+    #[rstest]
+    #[case(array![1073741823i128 as u128, 0, 6].into_dyn())]
+    fn test_rep_bit_compose_128(#[case] xs: ArrayD<u128>) {
+        test_rep_bit_compose128(xs);
     }
 
     #[rstest]
