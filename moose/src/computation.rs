@@ -993,6 +993,7 @@ operators![
     RepDiag,
     RepSlice,
     RepBitDec,
+    RepBitCompose,
     RepShlDim,
     RepEqual,
     RepIfElse,
@@ -1689,6 +1690,11 @@ pub struct RepSliceOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepBitDecOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepBitComposeOp {
     pub sig: Signature,
 }
 

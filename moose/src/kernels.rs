@@ -111,6 +111,7 @@ impl Session for SyncSession {
             RepDiag(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepBitCompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -383,6 +384,10 @@ pub trait PlacementBitDec<S: Session, T, O> {
 
 pub trait PlacementBitDecSetup<S: Session, SetupT, T, O> {
     fn bit_decompose(&self, sess: &S, setup: &SetupT, x: &T) -> O;
+}
+
+pub trait PlacementBitCompose<S: Session, T, O> {
+    fn bit_compose(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait PlacementRingInject<S: Session, T, O> {
@@ -810,7 +815,7 @@ impl Compile<SyncKernel> for Operator {
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
             | RepEqual(_) | RepIfElse(_) | FixedpointMul(_) | FixedpointDot(_)
             | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) | BitNeg(_)
-            | RepNeg(_) | FixedpointDiv(_) | Sign(_) | RepAddN(_) => {
+            | RepNeg(_) | FixedpointDiv(_) | Sign(_) | RepAddN(_) | RepBitCompose(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -910,7 +915,7 @@ impl Compile<AsyncKernel> for Operator {
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepEqual(_) | RepIfElse(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_)
             | RepSlice(_) | BitNeg(_) | RepNeg(_) | RepBitDec(_) | FixedpointDiv(_) | Sign(_)
-            | RepAddN(_) => {
+            | RepAddN(_) | RepBitCompose(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
