@@ -1657,6 +1657,11 @@ pub struct RepAddNOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepSqrtOp {
+    pub sig: Signature
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
