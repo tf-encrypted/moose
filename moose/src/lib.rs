@@ -334,11 +334,11 @@ macro_rules! concrete_dispatch_kernel {
 
                             Ok(Box::new(move |sess, operands: Vec<AsyncValue>| {
                                 assert_eq!(operands.len(), 1);
-                                let operands = operands.clone();
 
                                 let y = tokio::spawn(async move {
                                     // TODO: Error handling
-                                    let x0: $t0 = (*operands.get(0).unwrap()).await.try_into().unwrap();
+                                    let operands = futures::future::join_all(operands).await;
+                                    let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
                                     let y: $u = k(sess, &plc, x0).unwrap();
                                     // TODO: assert on y placement
                                     let v: Value = y.into();
