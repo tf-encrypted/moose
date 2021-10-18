@@ -308,6 +308,54 @@ macro_rules! concrete_dispatch_kernel {
                 }
             }
         }
+
+        impl crate::kernels::DispatchKernel<crate::kernels::AsyncSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::AsyncSession, Vec<crate::computation::AsyncValue>) -> crate::error::Result<crate::computation::AsyncValue>>>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, Value, AsyncValue};
+                use crate::kernels::{AsyncSession, UnaryKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Unary(UnarySignature {
+                                arg0: <$t0 as KnownType<AsyncSession>>::TY,
+                                ret: <$u as KnownType<AsyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+
+                            let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(self, &plc)?;
+
+                            Ok(Box::new(move |sess, operands: Vec<AsyncValue>| {
+                                assert_eq!(operands.len(), 1);
+                                let operands = operands.clone();
+
+                                let y = tokio::spawn(async move {
+                                    // TODO: Error handling
+                                    let x0: $t0 = (*operands.get(0).unwrap()).await.try_into().unwrap();
+                                    let y: $u = k(sess, &plc, x0).unwrap();
+                                    // TODO: assert on y placement
+                                    let v: Value = y.into();
+                                    v
+                                    // todo!()
+                                });
+
+                                use futures::future::FutureExt;
+                                let future = y.map(|x| x.unwrap()); // TODO: Make AsyncValue to store Result?
+                                Ok(Box::new(future))
+                            }))
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                }
+            }
+        }
     };
 
     /*
@@ -896,6 +944,26 @@ macro_rules! kernel {
 
         $(
             kernel!(__unary $flavour, $op, $plc, ($t0) -> $u => $($kp)+);
+        )+
+
+        $(
+            impl crate::kernels::UnaryKernel<
+                crate::kernels::AsyncSession,
+                $plc,
+                $t0,
+                $u
+            > for $op
+            {
+                fn compile(
+                    &self,
+                    _plc: &$plc,
+                ) -> crate::error::Result<
+                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, $t0) -> crate::error::Result<$u>>
+                > {
+                    // derive_runtime_kernel![unary, $($kp)+, self]
+                    todo!()
+                }
+            }
         )+
     };
 

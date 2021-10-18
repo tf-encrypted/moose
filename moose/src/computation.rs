@@ -432,6 +432,14 @@ macro_rules! values {
             const TY: Ty = Ty::$val$(($inner::$default))?;
         }
         )+
+
+        $(
+            impl KnownType<crate::kernels::AsyncSession> for $val {
+                type Type = $val;
+                const TY: Ty = Ty::$val$(($inner::$default))?;
+            }
+        )+
+    
     };
 }
 
@@ -521,6 +529,8 @@ impl Placed for Unit {
         Ok(self.0.clone())
     }
 }
+
+pub type AsyncValue = Box<dyn futures::Future<Output = Value> + Send + Unpin + Sync>; // Send and Sync at one place? This looks wrong (TODO)
 
 impl Ty {
     pub fn flatten(&self) -> Ty {
