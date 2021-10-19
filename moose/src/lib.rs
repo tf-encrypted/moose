@@ -340,10 +340,9 @@ macro_rules! concrete_dispatch_kernel {
                                     let operands = futures::future::join_all(operands).await;
                                     let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
                                     let y: $u = k(sess, &plc, x0).unwrap();
-                                    // TODO: assert on y placement
+                                    // // TODO: assert on y placement
                                     let v: Value = y.into();
                                     v
-                                    // todo!()
                                 });
 
                                 use futures::future::FutureExt;
