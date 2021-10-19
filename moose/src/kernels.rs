@@ -425,7 +425,7 @@ pub trait DispatchKernel<S: Session> {
     fn compile(
         &self,
         plc: &Placement,
-    ) -> Result<Box<dyn Fn(&S, Vec<S::Value>) -> Result<S::Value>>>;
+    ) -> Result<Box<dyn Fn(&S, Vec<S::Value>) -> Result<S::Value> + Send>>;
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
@@ -434,27 +434,27 @@ pub trait DispatchKernel<S: Session> {
 
 pub trait NullaryKernel<S: Session, P, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P) -> Result<Y>>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P) -> Result<Y> + Send>>;
 }
 
 pub trait UnaryKernel<S: Session, P, X0, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0) -> Result<Y>>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send>>;
 }
 
 pub trait BinaryKernel<S: Session, P, X0, X1, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Result<Y>>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send>>;
 }
 
 pub trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y>>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send>>;
 }
 
 pub trait VariadicKernel<S: Session, P, XS, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y>>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send>>;
 }
 
 pub(crate) trait NullaryKernelCheck<S: Session, P, Y>

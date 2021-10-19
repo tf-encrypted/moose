@@ -52,32 +52,32 @@ macro_rules! m {
 macro_rules! derive_runtime_kernel {
     (nullary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_,) -> _>> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_,) -> _ + Send>> = &|$op| $kf;
             kf($self)
         }
     };
     (unary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_, _) -> _>> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_, _) -> _ + Send>> = &|$op| $kf;
             kf($self)
         }
     };
     (binary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_, _, _) -> _>> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_, _, _) -> _ + Send>> = &|$op| $kf;
             kf($self)
         }
     };
     (ternary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_, _, _, _) -> _>> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_, _, _, _) -> _ + Send>> = &|$op| $kf;
             kf($self)
         }
     };
 
     (variadic, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, Vec<_>) -> _> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, Vec<_>) -> _ + Send> = &|$op| $kf;
             kf($self)
         }
     };
@@ -97,7 +97,7 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            crate::error::Result::<Box<dyn Fn(&_, &_) -> _>>::Ok(Box::new(move |sess, plc| {
+            crate::error::Result::<Box<dyn Fn(&_, &_) -> _ + Send>>::Ok(Box::new(move |sess, plc| {
                 $k(sess, plc, $($attr.clone()),+)
             }))
         }
@@ -118,7 +118,7 @@ macro_rules! derive_runtime_kernel {
                 )?
             )+
             {
-                crate::error::Result::<Box<dyn Fn(&_, &_, _) -> _>>::Ok(
+                crate::error::Result::<Box<dyn Fn(&_, &_, _) -> _ + Send>>::Ok(
                     Box::new(move |sess, plc, x0| {
                         $k(sess, plc, $($attr.clone()),+, x0)
                     })
@@ -141,7 +141,7 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            crate::error::Result::<Box<dyn Fn(&_, &_, _, _) -> _>>::Ok(Box::new(move |sess, plc, x0, x1| {
+            crate::error::Result::<Box<dyn Fn(&_, &_, _, _) -> _ + Send>>::Ok(Box::new(move |sess, plc, x0, x1| {
                 $k(sess, plc, $($attr.clone()),+, x0, x1)
             }))
         }
@@ -161,7 +161,7 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> crate::error::Result<_>>>::Ok(Box::new(move |sess, plc, x0, x1, x2| {
+            crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> crate::error::Result<_> + Send>>::Ok(Box::new(move |sess, plc, x0, x1, x2| {
                 $k(sess, plc, $($attr.clone()),+), x0, x1, x2
             }))
         }
@@ -183,7 +183,7 @@ macro_rules! derive_runtime_kernel {
                     )?
                 )+
                 {
-                    crate::error::Result::<Box<dyn Fn(&_, &_, Vec<_>) -> _>>::Ok(
+                    crate::error::Result::<Box<dyn Fn(&_, &_, Vec<_>) -> _ + Send>>::Ok(
                         Box::new(move |sess, plc, xs| {
                             $k(sess, plc, $($attr.clone()),+, &xs)
                         })
@@ -193,19 +193,19 @@ macro_rules! derive_runtime_kernel {
     };
 
     (nullary, $k:expr, $self:ident) => {
-        crate::error::Result::<Box<dyn Fn(&_, &_,) -> _>>::Ok(Box::new($k))
+        crate::error::Result::<Box<dyn Fn(&_, &_,) -> _ + Send>>::Ok(Box::new($k))
     };
     (unary, $k:expr, $self:ident) => {
-        crate::error::Result::<Box<dyn Fn(&_, &_, _) -> _>>::Ok(Box::new($k))
+        crate::error::Result::<Box<dyn Fn(&_, &_, _) -> _ + Send>>::Ok(Box::new($k))
     };
     (binary, $k:expr, $self:ident) => {
-        crate::error::Result::<Box<dyn Fn(&_, &_, _, _) -> _>>::Ok(Box::new($k))
+        crate::error::Result::<Box<dyn Fn(&_, &_, _, _) -> _ + Send>>::Ok(Box::new($k))
     };
     (ternary, $k:expr, $self:ident) => {
-        crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> _>>::Ok(Box::new($k))
+        crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> _ + Send>>::Ok(Box::new($k))
     };
     (variadic, $k:expr, $self:ident) => {
-        crate::error::Result::<Box<dyn Fn(&_, &_, Vec<_>) -> _>>::Ok(
+        crate::error::Result::<Box<dyn Fn(&_, &_, Vec<_>) -> _ + Send>>::Ok(
             Box::new(move |sess, plc, xs| {
                 $k(sess, plc, &xs)
             })
@@ -224,7 +224,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value>>>
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value> + Send>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
                 use crate::kernels::{SyncSession, NullaryKernel};
@@ -270,7 +270,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value>>>
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value> + Send>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, Value};
                 use crate::kernels::{SyncSession, UnaryKernel};
@@ -313,7 +313,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::AsyncSession, Vec<crate::computation::AsyncValue>) -> crate::error::Result<crate::computation::AsyncValue>>>
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::AsyncSession, Vec<crate::computation::AsyncValue>) -> crate::error::Result<crate::computation::AsyncValue> + Send>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, Value, AsyncValue};
                 use crate::kernels::{AsyncSession, UnaryKernel};
@@ -367,7 +367,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value>>>
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value> + Send>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
                 use crate::kernels::{SyncSession, BinaryKernel};
@@ -425,7 +425,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value>>>
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value> + Send>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature};
                 use crate::kernels::{SyncSession, TernaryKernel};
@@ -478,7 +478,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value>>>
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value> + Send>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature, Value};
                 use crate::kernels::{SyncSession, VariadicKernel};
@@ -532,7 +532,7 @@ macro_rules! symbolic_dispatch_kernel {
             ) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 Vec<crate::computation::SymbolicValue>
-            ) -> crate::error::Result<crate::computation::SymbolicValue>>> {
+            ) -> crate::error::Result<crate::computation::SymbolicValue> + Send>> {
                 use crate::computation::{KnownPlacement, Signature, NullarySignature, KnownType};
                 use crate::kernels::{NullaryKernel};
                 use crate::symbolic::SymbolicSession;
@@ -580,7 +580,7 @@ macro_rules! symbolic_dispatch_kernel {
             ) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 Vec<crate::computation::SymbolicValue>
-            ) -> crate::error::Result<crate::computation::SymbolicValue>>> {
+            ) -> crate::error::Result<crate::computation::SymbolicValue> + Send>> {
                 use crate::computation::{KnownPlacement, Signature, UnarySignature, KnownType};
                 use crate::kernels::{UnaryKernel};
                 use crate::symbolic::SymbolicSession;
@@ -632,7 +632,7 @@ macro_rules! symbolic_dispatch_kernel {
             ) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 Vec<crate::computation::SymbolicValue>
-            ) -> crate::error::Result<crate::computation::SymbolicValue>>> {
+            ) -> crate::error::Result<crate::computation::SymbolicValue> + Send>> {
                 use crate::computation::{KnownPlacement, Signature, BinarySignature, KnownType};
                 use crate::kernels::{BinaryKernel};
                 use crate::symbolic::SymbolicSession;
@@ -687,7 +687,7 @@ macro_rules! symbolic_dispatch_kernel {
             ) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 Vec<crate::computation::SymbolicValue>
-            ) -> crate::error::Result<crate::computation::SymbolicValue>>> {
+            ) -> crate::error::Result<crate::computation::SymbolicValue> + Send>> {
                 use crate::computation::{KnownPlacement, Signature, TernarySignature, KnownType};
                 use crate::kernels::{TernaryKernel};
                 use crate::symbolic::SymbolicSession;
@@ -745,7 +745,7 @@ macro_rules! symbolic_dispatch_kernel {
             )-> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 Vec<crate::computation::SymbolicValue>
-            ) -> crate::error::Result<crate::computation::SymbolicValue>>> {
+            ) -> crate::error::Result<crate::computation::SymbolicValue> + Send>> {
                 use crate::computation::{KnownPlacement, Signature, VariadicSignature, KnownType};
                 use crate::kernels::{VariadicKernel};
                 use crate::symbolic::SymbolicSession;
@@ -829,7 +829,7 @@ macro_rules! kernel {
                     &crate::kernels::SyncSession,
                     &$plc)
                     -> crate::error::Result<
-                        <$u as crate::computation::KnownType<crate::kernels::SyncSession>>::Type>>
+                        <$u as crate::computation::KnownType<crate::kernels::SyncSession>>::Type> + Send>
                     >
                 {
                     derive_runtime_kernel![nullary, $($kp)+, self]
@@ -853,7 +853,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc
             ) -> crate::error::Result<
-                <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+                <$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::SymbolicSession;
 
@@ -880,7 +880,7 @@ macro_rules! kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 derive_runtime_kernel![nullary, $($kp)+, self]
             }
@@ -899,7 +899,7 @@ macro_rules! kernel {
                 &$plc)
                 -> crate::error::Result<
                     <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
-                >
+                > + Send
             >> {
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
@@ -935,7 +935,7 @@ macro_rules! kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0) -> crate::error::Result<$u>>
+                    Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0) -> crate::error::Result<$u> + Send>
                 > {
                     derive_runtime_kernel![unary, $($kp)+, self]
                 }
@@ -958,7 +958,7 @@ macro_rules! kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, $t0) -> crate::error::Result<$u>>
+                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, $t0) -> crate::error::Result<$u> + Send>
                 > {
                     // derive_runtime_kernel![unary, $($kp)+, self]
                     todo!()
@@ -979,7 +979,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -1029,7 +1029,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 derive_runtime_kernel![unary, $($kp)+, self]
             }
@@ -1050,7 +1050,7 @@ macro_rules! kernel {
                 <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type)
                 -> crate::error::Result<
                     <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
-                >>>
+                > + Send>>
             {
                 use crate::computation::{KnownType};
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
@@ -1094,7 +1094,7 @@ macro_rules! kernel {
                     &self,
                     _plc: &$plc
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1) -> crate::error::Result<$u>>
+                    Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1) -> crate::error::Result<$u> + Send>
                 > {
                     derive_runtime_kernel![binary, $($kp)+, self]
                 }
@@ -1120,7 +1120,7 @@ macro_rules! kernel {
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -1173,7 +1173,7 @@ macro_rules! kernel {
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -1221,7 +1221,7 @@ macro_rules! kernel {
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 derive_runtime_kernel![binary, $($kp)+, self]
             }
@@ -1242,7 +1242,7 @@ macro_rules! kernel {
                 &$plc,
                 <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::computation::{KnownType};
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
@@ -1288,7 +1288,7 @@ macro_rules! kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<Box<
-                    dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1, $t2) -> crate::error::Result<$u>
+                    dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1, $t2) -> crate::error::Result<$u> + Send
                 >> {
                     derive_runtime_kernel![ternary, $($kp)+, self]
                 }
@@ -1316,7 +1316,7 @@ macro_rules! kernel {
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t2 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 derive_runtime_kernel![ternary, $($kp)+, self]
             }
@@ -1339,7 +1339,7 @@ macro_rules! kernel {
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t2 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -1393,7 +1393,7 @@ macro_rules! kernel {
                 <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t2 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
             ) -> crate::error::Result<
-                <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>
+                <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>
             > {
                 use crate::computation::{KnownType};
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
@@ -1438,7 +1438,7 @@ macro_rules! kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<Box<
-                    dyn Fn(&crate::kernels::SyncSession, &$plc, Vec<$ts>) -> crate::error::Result<$u>
+                    dyn Fn(&crate::kernels::SyncSession, &$plc, Vec<$ts>) -> crate::error::Result<$u> + Send
                 >> {
                     derive_runtime_kernel![variadic, $($kp)+, self]
                 }
@@ -1462,7 +1462,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 derive_runtime_kernel![variadic, $($kp)+, self]
             }
@@ -1481,7 +1481,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -1535,7 +1535,7 @@ macro_rules! kernel {
                 &$plc,
                 Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
             ) -> crate::error::Result<
-                <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>
+                <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>
             > {
                 use crate::computation::{KnownType};
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
