@@ -1341,6 +1341,7 @@ impl ToTextual for Operator {
             HostIndexAxis(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
             HostSum(op) => op.to_textual(),
+            HostAddN(op) => op.to_textual(),
             HostTranspose(op) => op.to_textual(),
             HostInverse(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
@@ -1392,6 +1393,7 @@ impl ToTextual for Operator {
             RepDot(op) => op.to_textual(),
             RepFixedpointMean(op) => op.to_textual(),
             RepSum(op) => op.to_textual(),
+            RepAddN(op) => op.to_textual(),
             RepAdd(op) => op.to_textual(),
             RepSub(op) => op.to_textual(),
             RepMul(op) => op.to_textual(),
@@ -1408,14 +1410,17 @@ impl ToTextual for Operator {
             RepFill(op) => op.to_textual(),
             RepMsb(op) => op.to_textual(),
             RepShl(op) => op.to_textual(),
+            RepShr(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
             RepIndexAxis(op) => op.to_textual(),
             RepIndex(op) => op.to_textual(),
             RepDiag(op) => op.to_textual(),
             RepBitDec(op) => op.to_textual(),
+            RepBitCompose(op) => op.to_textual(),
             RepSlice(op) => op.to_textual(),
             RepShlDim(op) => op.to_textual(),
             RepEqual(op) => op.to_textual(),
+            RepIfElse(op) => op.to_textual(),
         }
     }
 }
@@ -1587,6 +1592,7 @@ impl_to_textual!(RepFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(RepMsbOp, "{op}: {}", sig);
 impl_to_textual!(RepNegOp, "{op}: {}", sig);
 impl_to_textual!(RepShlOp, "{op}: {}", sig);
+impl_to_textual!(RepShrOp, "{op}: {}", sig);
 impl_to_textual!(RepToAdtOp, "{op}: {}", sig);
 impl_to_textual!(
     RepIndexAxisOp,
@@ -1598,7 +1604,9 @@ impl_to_textual!(
 impl_to_textual!(RepIndexOp, "{op}{{index={}}}: {}", index, sig);
 impl_to_textual!(RepDiagOp, "{op}: {}", sig);
 impl_to_textual!(RepBitDecOp, "{op}: {}", sig);
+impl_to_textual!(RepBitComposeOp, "{op}: {}", sig);
 impl_to_textual!(RepEqualOp, "{op}: {}", sig);
+impl_to_textual!(RepIfElseOp, "{op}: {}", sig);
 impl_to_textual!(RepSliceOp, "{op}{{slice}}: {} {}", sig, slice);
 impl_to_textual!(RepShlDimOp, "{op}: {} {} {}", sig, amount, bit_length);
 
@@ -1632,6 +1640,8 @@ op_with_axis_to_textual!(RingSumOp);
 op_with_axis_to_textual!(RepSumOp);
 op_with_axis_to_textual!(FixedpointSumOp);
 
+impl_to_textual!(RepAddNOp, "{op}: {}", sig);
+impl_to_textual!(HostAddNOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointAddOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointSubOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointMulOp, "{op}: {}", sig);

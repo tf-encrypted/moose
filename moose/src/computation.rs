@@ -907,6 +907,7 @@ operators![
     HostReshape,
     HostSqueeze,
     HostSum,
+    HostAddN,
     HostOnes,
     HostConcat,
     HostTranspose,
@@ -983,7 +984,9 @@ operators![
     RepNeg,
     RepFixedpointMean,
     RepShl,
+    RepShr,
     RepSum,
+    RepAddN,
     RepTruncPr,
     RepToAdt,
     RepIndexAxis,
@@ -991,8 +994,10 @@ operators![
     RepDiag,
     RepSlice,
     RepBitDec,
+    RepBitCompose,
     RepShlDim,
     RepEqual,
+    RepIfElse,
 ];
 
 pub trait HasShortName {
@@ -1209,6 +1214,11 @@ pub struct HostReshapeOp {
 pub struct HostSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostAddNOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -1615,6 +1625,11 @@ pub struct RepFixedpointMeanOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepAddNOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -1639,6 +1654,12 @@ pub struct RepFillOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepShlOp {
+    pub sig: Signature,
+    pub amount: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepShrOp {
     pub sig: Signature,
     pub amount: usize,
 }
@@ -1676,6 +1697,11 @@ pub struct RepSliceOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepBitDecOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepBitComposeOp {
     pub sig: Signature,
 }
 

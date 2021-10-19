@@ -1,5 +1,6 @@
-use crate::computation::{HostPlacement, KnownType, RepEqualOp, RepInt2FLOp, ReplicatedPlacement};
-use crate::computation::{Placed, RepNegOp};
+use crate::computation::{
+    HostPlacement, KnownType, Placed, RepEqualOp, RepNegOp, RepInt2FLOp, ReplicatedPlacement,
+};
 use crate::error::Result;
 use crate::kernels::*;
 use crate::replicated::{
@@ -21,20 +22,20 @@ kernel! {
 }
 
 impl RepEqualOp {
-    fn rep_kernel<S: Session, HostRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
+    fn rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: HostRingT,
-        y: HostRingT,
+        x: RepRingT,
+        y: RepRingT,
     ) -> Result<RepBitT>
     where
-        HostRingT: Ring<BitLength = N>,
+        RepRingT: Ring<BitLength = N>,
 
-        ReplicatedPlacement: PlacementBitDecSetup<S, S::ReplicatedSetup, HostRingT, RepBitArrayT>,
-        ReplicatedPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
+        ReplicatedPlacement: PlacementBitDecSetup<S, S::ReplicatedSetup, RepRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepBitT>,
-        ReplicatedPlacement: PlacementShape<S, HostRingT, ShapeT>,
+        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
@@ -45,7 +46,7 @@ impl RepEqualOp {
         let z = rep.sub(sess, &x, &y);
         let bits = rep.bit_decompose(sess, &setup, &z);
 
-        let v: Vec<_> = (0..HostRingT::BitLength::VALUE)
+        let v: Vec<_> = (0..RepRingT::BitLength::VALUE)
             .map(|i| rep.index(sess, i, &bits))
             .collect();
 
@@ -142,6 +143,7 @@ impl RepInt2FLOp {
         ReplicatedPlacement: PlacementMsb<S, S::ReplicatedSetup, HostRingT, HostRingT>,
         ReplicatedPlacement: PlacementEqual<S, HostRingT, HostRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, HostRingT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepBitT>,
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementShape<S, HostRingT, ShapeT>,
         ReplicatedPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
@@ -152,7 +154,15 @@ impl RepInt2FLOp {
         ReplicatedPlacement: PlacementBitDecSetup<S, S::ReplicatedSetup, HostRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
         ReplicatedPlacement: PrefixOr<S, S::ReplicatedSetup, RepBitT>,
+        ReplicatedPlacement: PlacementIfElse<S, HostRingT, HostRingT, HostRingT, HostRingT>,
+        ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementRingInject<S, RepBitT, HostRingT>,
+        ReplicatedPlacement: PlacementShr<S, HostRingT, HostRingT>,
     {
+        let l = 16;
+        let gamma = l + 31;
+        let lam = gamma - 1;
+
         let setup = rep.gen_setup(sess);
 
         // less than
@@ -161,15 +171,8 @@ impl RepInt2FLOp {
 
         let s = rep.sub(sess, &ones, &msb);
 
-        // if else [s] * (-a) + (1 - [s]) * [a]
         let a_neg = rep.neg(sess, &a);
-
-        let s_a_neg = rep.mul_setup(sess, &setup, &s, &a_neg);
-
-        let ones_minus_s = rep.sub(sess, &ones, &s);
-        let ones_s_a = rep.mul_setup(sess, &setup, &ones_minus_s, &a);
-
-        let a = rep.add(sess, &s_a_neg, &ones_s_a);
+        let a = rep.if_else(sess, &s, &a_neg, &a);
 
         // equal
         let zeros = rep.fill(sess, 0u8.into(), &rep.shape(sess, &a));
@@ -182,8 +185,21 @@ impl RepInt2FLOp {
             .map(|i| rep.index(sess, i, &a_bits))
             .collect();
 
+        let ones_bits: RepBitT = rep.fill(sess, 1u8.into(), &rep.shape(sess, &a));
+
         a_vec.reverse();
         let b = rep.prefix_or(sess, &setup, a_vec);
+        let b_xor: Vec<RepBitT> = b.iter().map(|x| rep.xor(sess, &ones_bits, x)).collect();
+
+        // TODO compose directly here for now, how to turn a vector of bit tensors to an array?
+        let t_composed = b_xor.iter().enumerate().fold(zeros, |x, (i, y)| {
+            rep.add(sess, &x, &rep.ring_inject(sess, i, y))
+        });
+
+        let t = rep.add(sess, &ones, &t_composed);
+        let t = rep.mul_setup(sess, &setup, &a, &t);
+
+        let v = rep.shr(sess, gamma - 1 -1, &t);
 
         Ok(a)
     }
@@ -192,7 +208,7 @@ impl RepInt2FLOp {
 #[cfg(test)]
 mod tests {
     use crate::computation::{HostPlacement, ReplicatedPlacement};
-    use crate::host::{AbstractHostRingTensor, FromRawPlc, HostBitTensor};
+    use crate::host::{AbstractHostRingTensor, HostBitTensor};
     use crate::kernels::*;
     use crate::replicated::ReplicatedBitTensor;
     use ndarray::{array, IxDyn};
@@ -239,48 +255,6 @@ mod tests {
             opened_result,
             HostBitTensor::from_raw_plc(
                 array![1, 0, 0].into_dimensionality::<IxDyn>().unwrap(),
-                alice
-            )
-        );
-    }
-
-    #[test]
-    fn test_neg() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
-
-        let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
-
-        let scaling_base = 2;
-        let scaling_exp = 24;
-
-        let x = crate::host::HostFloat64Tensor::from_raw_plc(
-            array![-1.0, 2.0, -3.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            alice.clone(),
-        );
-        let x = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &x);
-        let x_shared = rep.share(&sess, &setup, &x);
-
-        let res = rep.neg(&sess, &x_shared);
-
-        let opened_result = alice.reveal(&sess, &res);
-        let decoded_result =
-            alice.fixedpoint_ring_decode(&sess, scaling_base, scaling_exp, &opened_result);
-
-        assert_eq!(
-            decoded_result,
-            crate::host::HostFloat64Tensor::from_raw_plc(
-                array![1.0, -2.0, 3.0]
-                    .into_dimensionality::<IxDyn>()
-                    .unwrap(),
                 alice
             )
         );
