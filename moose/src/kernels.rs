@@ -1843,7 +1843,9 @@ constant_kernels![
     HostUint8Tensor,
     HostUint16Tensor,
     HostUint32Tensor,
-    HostUint64Tensor
+    HostUint64Tensor,
+    HostRing64Tensor,
+    HostRing128Tensor
 ];
 
 impl ConstantOp {

@@ -1965,21 +1965,12 @@ pub trait FromRawPlc<P, T> {
     fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> Self;
 }
 
-impl<P> FromRawPlc<P, u64> for HostRing64Tensor
+impl<P, T> FromRawPlc<P, T> for AbstractHostRingTensor<T>
 where
     P: Into<HostPlacement>,
+    T: Clone,
 {
-    fn from_raw_plc(raw_tensor: ArrayD<u64>, plc: P) -> HostRing64Tensor {
-        let tensor = raw_tensor.mapv(Wrapping).into_dyn();
-        AbstractHostRingTensor(tensor, plc.into())
-    }
-}
-
-impl<P> FromRawPlc<P, u128> for HostRing128Tensor
-where
-    P: Into<HostPlacement>,
-{
-    fn from_raw_plc(raw_tensor: ArrayD<u128>, plc: P) -> HostRing128Tensor {
+    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> AbstractHostRingTensor<T> {
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
         AbstractHostRingTensor(tensor, plc.into())
     }
