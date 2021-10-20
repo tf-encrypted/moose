@@ -88,31 +88,34 @@ impl FixedpointDivOp {
     }
 }
 
-pub(crate) trait PrefixOr<S: Session, SetupT, RepBitT> {
-    fn prefix_or(&self, sess: &S, setup: &SetupT, x: Vec<RepBitT>) -> Vec<RepBitT>;
+pub(crate) trait PrefixOp<S: Session, SetupT, RepBitT> {
+    fn prefix_op(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: Vec<RepBitT>,
+        op: fn(&ReplicatedPlacement, &S, &SetupT, &RepBitT, &RepBitT) -> RepBitT,
+    ) -> Vec<RepBitT>;
 }
 
-impl<S: Session, SetupT, RepBitT> PrefixOr<S, SetupT, RepBitT> for ReplicatedPlacement
+impl<S: Session, SetupT, RepBitT> PrefixOp<S, SetupT, RepBitT> for ReplicatedPlacement
 where
     ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
 {
-    /// Prefix Or protocol
+    /// Prefix Op protocol
     ///
     /// `x` is a replicated bit tensor.
-    fn prefix_or(&self, sess: &S, setup: &SetupT, x: Vec<RepBitT>) -> Vec<RepBitT> {
+    fn prefix_op(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: Vec<RepBitT>,
+        op: fn(&ReplicatedPlacement, &S, &SetupT, &RepBitT, &RepBitT) -> RepBitT,
+    ) -> Vec<RepBitT> {
         let v_len = x.len();
 
         let log_r = ((v_len as f64).log2().ceil()) as u32;
-        let rep = self;
-
-        let bitwise_or = |x: &RepBitT, y: &RepBitT| -> RepBitT {
-            rep.xor(
-                sess,
-                &rep.xor(sess, x, y),
-                &rep.and_setup(sess, setup, x, y),
-            )
-        };
 
         let mut res = x;
         for i in 0..log_r {
@@ -121,7 +124,9 @@ where
                 let k_bound = (2_i32.pow(i) + 1) as usize;
                 for k in 1..k_bound {
                     if y + k < v_len {
-                        res[y + k] = bitwise_or(&res[y], &res[y + k]);
+                        let a: &RepBitT = &res[y];
+                        let b: &RepBitT = &res[y + k];
+                        res[y + k] = op(&self, sess, setup, a, b);
                     }
                 }
             }
@@ -220,18 +225,29 @@ where
     HostBitTensor: KnownType<S>,
     RepBitT: Clone,
     RepRingT: Clone,
-    ReplicatedPlacement: PrefixOr<S, SetupT, RepBitT>,
+    ReplicatedPlacement: PrefixOp<S, SetupT, RepBitT>,
     ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
 {
     fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: Vec<RepBitT>) -> RepRingT {
         assert_eq!(max_bits, x.len());
 
-        let rep = self;
+        let rep = self.clone();
         let x_rev: Vec<_> = (0..max_bits).map(|i| x[max_bits - i - 1].clone()).collect();
-        let y = rep.prefix_or(sess, setup, x_rev);
+
+        // let bitwise_or = |sess: &S, x: &RepBitT, y: &RepBitT| -> RepBitT {
+        //     rep.xor(
+        //         sess,
+        //         &rep.xor(sess, x, y),
+        //         &rep.and_setup(sess, setup, x, y),
+        //     )
+        // };
+
+        let y = rep.prefix_op(sess, setup, x_rev, bitwise_or);
 
         let mut y_vec: Vec<_> = y
             .iter()
@@ -257,6 +273,25 @@ where
         }
         res
     }
+}
+
+fn bitwise_or<S, SetupT, RepBitT>(
+    rep: &ReplicatedPlacement,
+    sess: &S,
+    setup: &SetupT,
+    x: &RepBitT,
+    y: &RepBitT,
+) -> RepBitT
+where
+    S: Session,
+    ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
+{
+    rep.xor(
+        sess,
+        &rep.xor(sess, x, y),
+        &rep.and_setup(sess, setup, x, y),
+    )
 }
 
 pub(crate) trait ApproximateReciprocal<S: Session, SetupT, T, O> {
@@ -426,7 +461,8 @@ mod tests {
         let x_bits: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
         let x_bits_vec: Vec<ReplicatedBitTensor> =
             (0..64).map(|i| rep.index(&sess, i, &x_bits)).collect();
-        let out = rep.prefix_or(&sess, &setup, x_bits_vec);
+
+        let out = rep.prefix_op(&sess, &setup, x_bits_vec, bitwise_or);
 
         for i in 0..64 {
             let b = alice.reveal(&sess, &out[i]);
