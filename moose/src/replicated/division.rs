@@ -98,11 +98,7 @@ pub(crate) trait PrefixOp<S: Session, SetupT, RepBitT> {
     ) -> Vec<RepBitT>;
 }
 
-impl<S: Session, SetupT, RepBitT> PrefixOp<S, SetupT, RepBitT> for ReplicatedPlacement
-where
-    ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
-    ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
-{
+impl<S: Session, SetupT, RepBitT> PrefixOp<S, SetupT, RepBitT> for ReplicatedPlacement {
     /// Prefix Op protocol
     ///
     /// `x` is a replicated bit tensor.
@@ -111,7 +107,7 @@ where
         sess: &S,
         setup: &SetupT,
         x: Vec<RepBitT>,
-        op: fn(&ReplicatedPlacement, &S, &SetupT, &RepBitT, &RepBitT) -> RepBitT,
+        op: fn(&Self, &S, &SetupT, &RepBitT, &RepBitT) -> RepBitT,
     ) -> Vec<RepBitT> {
         let v_len = x.len();
 
@@ -134,6 +130,83 @@ where
         res
     }
 }
+
+impl ReplicatedPlacement {
+    fn prefix_or<S: Session, SetupT, RepBitT>(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: Vec<RepBitT>,
+    ) -> Vec<RepBitT>
+    where
+        ReplicatedPlacement: PrefixOp<S, SetupT, RepBitT>,
+        ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
+    {
+        let bitwise_or = |rep: &ReplicatedPlacement,
+                          sess: &S,
+                          setup: &SetupT,
+                          x: &RepBitT,
+                          y: &RepBitT|
+         -> RepBitT {
+            rep.xor(
+                sess,
+                &rep.xor(sess, x, y),
+                &rep.and_setup(sess, setup, x, y),
+            )
+        };
+
+        self.prefix_op(sess, setup, x, bitwise_or)
+    }
+
+    fn prefix_and<S: Session, SetupT, RepBitT>(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: Vec<RepBitT>,
+    ) -> Vec<RepBitT>
+    where
+        ReplicatedPlacement: PrefixOp<S, SetupT, RepBitT>,
+        ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
+    {
+        let bitwise_and = |rep: &ReplicatedPlacement,
+                           sess: &S,
+                           setup: &SetupT,
+                           x: &RepBitT,
+                           y: &RepBitT|
+         -> RepBitT { rep.and_setup(sess, setup, x, y) };
+
+        self.prefix_op(sess, setup, x, bitwise_and)
+    }
+
+    //     fn prefix_mul<S: Session, SetupT, RepBitT>(
+    //         &self,
+    //         sess: &S,
+    //         setup: &SetupT,
+    //         x: Vec<RepBitT>,
+    //     ) -> Vec<RepBitT>
+    //     where
+    //         ReplicatedPlacement: PrefixOp<S, SetupT, RepBitT>,
+    //         ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
+    //         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
+    //     {
+    //         let bitwise_mul = |rep: &ReplicatedPlacement,
+    //                            sess: &S,
+    //                            setup: &SetupT,
+    //                            x: &RepBitT,
+    //                            y: &RepBitT|
+    //          -> RepBitT { rep.and_setup(sess, setup, x, y) };
+
+    //         self.prefix_op(sess, setup, x, bitwise_mul)
+    //     }
+}
+
+//     fn prefix_and(&self, ..) -> ..{
+//         let bitwise_and = ...;
+//         self.prefix_op(..., bitwise_and)
+//     }
+// }
 
 pub(crate) trait SignFromMsb<S: Session, T, O> {
     fn sign_from_msb(&self, sess: &S, msb_ring: &T) -> O;
@@ -239,15 +312,7 @@ where
         let rep = self.clone();
         let x_rev: Vec<_> = (0..max_bits).map(|i| x[max_bits - i - 1].clone()).collect();
 
-        // let bitwise_or = |sess: &S, x: &RepBitT, y: &RepBitT| -> RepBitT {
-        //     rep.xor(
-        //         sess,
-        //         &rep.xor(sess, x, y),
-        //         &rep.and_setup(sess, setup, x, y),
-        //     )
-        // };
-
-        let y = rep.prefix_op(sess, setup, x_rev, bitwise_or);
+        let y = rep.prefix_or(sess, setup, x);
 
         let mut y_vec: Vec<_> = y
             .iter()
@@ -273,25 +338,6 @@ where
         }
         res
     }
-}
-
-fn bitwise_or<S, SetupT, RepBitT>(
-    rep: &ReplicatedPlacement,
-    sess: &S,
-    setup: &SetupT,
-    x: &RepBitT,
-    y: &RepBitT,
-) -> RepBitT
-where
-    S: Session,
-    ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
-    ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
-{
-    rep.xor(
-        sess,
-        &rep.xor(sess, x, y),
-        &rep.and_setup(sess, setup, x, y),
-    )
 }
 
 pub(crate) trait ApproximateReciprocal<S: Session, SetupT, T, O> {
@@ -462,7 +508,7 @@ mod tests {
         let x_bits_vec: Vec<ReplicatedBitTensor> =
             (0..64).map(|i| rep.index(&sess, i, &x_bits)).collect();
 
-        let out = rep.prefix_op(&sess, &setup, x_bits_vec, bitwise_or);
+        let out = rep.prefix_or(&sess, &setup, x_bits_vec);
 
         for i in 0..64 {
             let b = alice.reveal(&sess, &out[i]);
