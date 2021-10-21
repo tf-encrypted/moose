@@ -543,7 +543,7 @@ impl FixedpointMulOp {
         Ok(AbstractReplicatedFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision + y.fractional_precision,
-            integral_precision: u32::max(x.fractional_precision, y.fractional_precision),
+            integral_precision: u32::max(x.integral_precision, y.integral_precision),
         })
     }
 }
