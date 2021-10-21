@@ -439,7 +439,7 @@ macro_rules! values {
                 const TY: Ty = Ty::$val$(($inner::$default))?;
             }
         )+
-    
+
     };
 }
 
@@ -550,7 +550,8 @@ pub fn new_async_value() -> (crate::execution::AsyncSender, AsyncValue) {
     }
 
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    let shared_receiver: crate::execution::AsyncReceiver = receiver.map(remove_err as fn(_) -> _).shared();
+    let shared_receiver: crate::execution::AsyncReceiver =
+        receiver.map(remove_err as fn(_) -> _).shared();
     (sender, shared_receiver)
 }
 

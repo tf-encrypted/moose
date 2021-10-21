@@ -337,16 +337,24 @@ macro_rules! concrete_dispatch_kernel {
                                 assert_eq!(operands.len(), 1);
                                 let sess = sess.clone();
                                 let plc = plc.clone();
-                                let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(&op, &plc).unwrap();
+                                let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(&op, &plc)?;
                                 let (sender, result) = crate::computation::new_async_value(); // This creates a channel
-                                let _task = tokio::spawn(async move {
-                                    // TODO: Error handling
+                                let op = op.clone(); // Needed for the error message for KernelError
+                                let _task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
                                     let operands = futures::future::join_all(operands).await;
-                                    let x0: $t0 = operands.get(0).unwrap().clone().unwrap().try_into().unwrap();
-                                    let y: $u = k(&sess, &plc, x0).unwrap();
-                                    // TODO: assert on y placement
-                                    sender.send(y.into()).unwrap();
-                                    // todo!()
+                                    let x0: $t0 = operands
+                                            .get(0)
+                                            .ok_or_else(|| crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0)))?
+                                            .clone()
+                                            .map_err(crate::execution::map_receive_error)?
+                                            .try_into()?;
+                                    let y: $u = k(&sess, &plc, x0)?;
+                                    if y.placement()? == plc.clone().into() {
+                                        crate::execution::map_send_result(sender.send(y.into()))?;
+                                        Ok(())
+                                    } else {
+                                        Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                    }
                                 });
 
                                 Ok(result)
