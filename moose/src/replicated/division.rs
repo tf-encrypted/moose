@@ -475,99 +475,71 @@ mod tests {
         }
     }
 
+    use ndarray::prelude::*;
+
+    macro_rules! rep_prefix_func_test {
+        ($func_name:ident, $test_func: ident) => {
+            fn $func_name(x: ArrayD<u64>, y_target: Vec<u8>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = AbstractHostRingTensor::from_raw_plc(x, alice.clone());
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &x);
+                let x_bits: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
+                let x_bits_vec: Vec<ReplicatedBitTensor> =
+                    (0..64).map(|i| rep.index(&sess, i, &x_bits)).collect();
+
+                let out = rep.$test_func(&sess, &setup, x_bits_vec);
+
+                for i in 0..64 {
+                    let b = alice.reveal(&sess, &out[i]);
+                    assert_eq!(b.0[0], y_target[i]);
+                }
+            }
+        };
+    }
+
+    rep_prefix_func_test!(test_rep_prefix_or, prefix_or);
+    rep_prefix_func_test!(test_rep_prefix_and, prefix_and);
+    rep_prefix_func_test!(test_rep_prefix_mul, prefix_mul);
+
     #[test]
     fn test_prefix_or() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
-
-        let x = AbstractHostRingTensor::from_raw_plc(array![1024u64], alice.clone());
-        let y_target: Vec<u8> = vec![
+        let x = array![1024u64].into_dyn();
+        let y_target = vec![
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
             1, 1, 1, 1, 1, 1,
         ];
-
-        let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
-
-        let x_shared = rep.share(&sess, &setup, &x);
-        let x_bits: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
-        let x_bits_vec: Vec<ReplicatedBitTensor> =
-            (0..64).map(|i| rep.index(&sess, i, &x_bits)).collect();
-
-        let out = rep.prefix_or(&sess, &setup, x_bits_vec);
-
-        for i in 0..64 {
-            let b = alice.reveal(&sess, &out[i]);
-            assert_eq!(b.0[0], y_target[i]);
-        }
+        test_rep_prefix_or(x, y_target);
     }
 
     #[test]
     fn test_prefix_and() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
-
-        let x = AbstractHostRingTensor::from_raw_plc(array![7u64], alice.clone());
-        let y_target: Vec<u8> = vec![
+        let x = array![7u64].into_dyn();
+        let y_target = vec![
             1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0,
         ];
-
-        let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
-
-        let x_shared = rep.share(&sess, &setup, &x);
-        let x_bits: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
-        let x_bits_vec: Vec<ReplicatedBitTensor> =
-            (0..64).map(|i| rep.index(&sess, i, &x_bits)).collect();
-
-        let out = rep.prefix_and(&sess, &setup, x_bits_vec);
-
-        for i in 0..64 {
-            let b = alice.reveal(&sess, &out[i]);
-            assert_eq!(b.0[0], y_target[i]);
-        }
+        test_rep_prefix_and(x, y_target);
     }
 
     #[test]
     fn test_prefix_mul() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
-
-        let x = AbstractHostRingTensor::from_raw_plc(array![7u64], alice.clone());
-        let y_target: Vec<u8> = vec![
+        let x = array![7u64].into_dyn();
+        let y_target = vec![
             1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0,
         ];
-
-        let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
-
-        let x_shared = rep.share(&sess, &setup, &x);
-        let x_bits: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
-        let x_bits_vec: Vec<ReplicatedBitTensor> =
-            (0..64).map(|i| rep.index(&sess, i, &x_bits)).collect();
-
-        let out = rep.prefix_mul(&sess, &setup, x_bits_vec);
-
-        for i in 0..64 {
-            let b = alice.reveal(&sess, &out[i]);
-            assert_eq!(b.0[0], y_target[i]);
-        }
+        test_rep_prefix_mul(x, y_target);
     }
 }
