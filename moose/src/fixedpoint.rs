@@ -1103,6 +1103,84 @@ impl ReplicatedPlacement {
     }
 }
 
+modelled!(PlacementSqrt::sqrt, ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor, FixedpointSqrtOp);
+modelled!(PlacementSqrt::sqrt, ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor, FixedpointSqrtOp);
+modelled!(PlacementSqrt::sqrt, HostPlacement, (Fixed64Tensor) -> Fixed64Tensor, FixedpointSqrtOp);
+modelled!(PlacementSqrt::sqrt, HostPlacement, (Fixed128Tensor) -> Fixed128Tensor, FixedpointSqrtOp);
+
+kernel!{
+    FixedpointSqrtOp,
+    [
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [transparent] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [transparent] Self::fixed_host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [transparent] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [transparent] Self::fixed_rep_kernel),
+    ]
+}
+
+
+impl FixedpointSqrtOp {
+    fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementSqrt<S, HostFixedT, HostFixedT>,
+    {
+        unimplemented!("TODO: FixedpointSqrt not yet implemented for HostPlacement.");
+        // TODO
+        // let x_revealed = match x {
+        //     FixedTensor::Host(x) => x,
+        //     FixedTensor::Replicated(x) => plc.reveal(sess, &x),
+        // };
+        //
+        // let result = plc.sqrt(sess, &x_revealed);
+        // Ok(FixedTensor::Host(result))
+    }
+
+    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementSqrt<S, RepFixedT, RepFixedT>,
+    {
+        let x_shared = match x {
+            FixedTensor::Host(x) => {
+                let setup = plc.gen_setup(sess);
+                plc.share(sess, &setup, &x)
+            }
+            FixedTensor::Replicated(x) => x,
+        };
+
+        let result = plc.sqrt(sess, &x_shared);
+        Ok(FixedTensor::Replicated(result))
+    }
+
+    fn repfixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementSqrt<S, RepRingT, RepRingT>,
+    {
+        let k = &x.integral_precision + &x.fractional_precision;
+        let f = &x.fractional_precision;
+        let y = plc.sqrt_as_fixedpoint(sess, &x.tensor, k as usize, f.clone() as usize);
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: y,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

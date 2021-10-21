@@ -954,6 +954,7 @@ operators![
     FixedpointTruncPr,
     FixedpointMean,
     FixedpointSum,
+    FixedpointSqrt,
     // Floating-point operators
     FloatingpointAdd,
     FloatingpointSub,
@@ -991,6 +992,7 @@ operators![
     RepXor,
     RepNeg,
     RepFixedpointMean,
+    RepFixedpointSqrt,
     RepShl,
     RepSum,
     RepAddN,
@@ -1469,6 +1471,11 @@ pub struct FixedpointSumOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointSqrtOp {
+    pub sig: Signature
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FloatingpointAddOp {
     pub sig: Signature,
 }
@@ -1659,6 +1666,13 @@ pub struct RepAddNOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepSqrtOp {
     pub sig: Signature
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepFixedpointSqrtOp {
+    pub sig: Signature,
+    pub total_precision: usize,
+    pub fractional_precision: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

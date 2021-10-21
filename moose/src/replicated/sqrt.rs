@@ -1,40 +1,87 @@
-use ndarray::ArrayD;
+use std::cmp::max;
+use std::convert::TryInto;
 
-use crate::computation::{ReplicatedPlacement, RepSqrtOp};
-use crate::error::Result;
-use crate::kernels::*;
-use crate::replicated::ReplicatedShape;
+use ndarray::Array1;
 
-pub trait SimplifiedNormSq<S: Session, SetupT, BitT, RepT, N> {
-    fn simp_norm_sq(&self, sess: &S, setup: &SetupT, x: RepT) -> (BitT, RepT);
+use crate::computation::{CanonicalType, HostPlacement, KnownType, RepFixedpointSqrtOp, ReplicatedPlacement};
+use crate::error::{Error, Result};
+use crate::host::{AbstractHostRingTensor, HostRing64Tensor, FromRawPlc};
+use crate::{Const, Ring, kernels::*};
+use crate::replicated::{ReplicatedRing64Tensor, ReplicatedShape};
+
+use super::AbstractReplicatedRingTensor;
+
+pub trait SimplifiedNormSq<S: Session, SetupT, RepBitT, HostRingT> {
+    fn simp_norm_sq_64(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: AbstractReplicatedRingTensor<HostRingT>,
+        total_precision: usize,
+        fractional_precision: usize
+    ) -> (RepBitT, AbstractReplicatedRingTensor<HostRingT>);
+    // TODO
+    // fn simp_norm_sq_128(&self, sess: &S, setup: &SetupT, x: AbstractReplicatedRingTensor<HostRingT>) -> (RepBitT, AbstractReplicatedRingTensor<HostRingT>);
 }
 
-impl<S: Session, SetupT, RepBitT, RepRingT, N> SimplifiedNormSq<S, SetupT, RepBitT, RepRingT, N> for ReplicatedPlacement
+impl<S: Session, SetupT, RepBitT, HostRingT, N: Const> SimplifiedNormSq<S, SetupT, RepBitT, HostRingT> for ReplicatedPlacement
+where
+    HostRingT: Clone + Ring<BitLength = N> + Tensor<S> + From<HostRing64Tensor>,
+    <HostRingT as Tensor<S>>::Scalar: From<usize>,
+    AbstractReplicatedRingTensor<HostRingT>: CanonicalType,
+    <AbstractReplicatedRingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
+    st!(AbstractReplicatedRingTensor<HostRingT>): TryInto<AbstractReplicatedRingTensor<HostRingT>>,
+    AbstractReplicatedRingTensor<HostRingT>: Clone + Into<st!(AbstractReplicatedRingTensor<HostRingT>)>,
+    HostPlacement: PlacementPlace<S, HostRingT>,
+    ReplicatedPlacement:
+        PlacementMsb<S, SetupT, AbstractReplicatedRingTensor<HostRingT>, AbstractReplicatedRingTensor<HostRingT>>,
+    ReplicatedPlacement:
+        PlacementSum<S, AbstractReplicatedRingTensor<HostRingT>, AbstractReplicatedRingTensor<HostRingT>>,
+    ReplicatedPlacement: PlacementAdd<S, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement:PlacementAdd<
+        S,
+        AbstractReplicatedRingTensor<HostRingT>,
+        AbstractReplicatedRingTensor<HostRingT>,
+        AbstractReplicatedRingTensor<HostRingT>
+    >,
+    ReplicatedPlacement: PlacementDotSetup<S, SetupT, AbstractReplicatedRingTensor<HostRingT>, HostRingT, AbstractReplicatedRingTensor<HostRingT>>,
+    ReplicatedPlacement: PlacementShape<S, AbstractReplicatedRingTensor<HostRingT>, ReplicatedShape>,
+    ReplicatedPlacement: PlacementZeros<S, ReplicatedShape, RepBitT>,
 {
-    fn simp_norm_sq(&self, sess: &S, rep: &ReplicatedPlacement, setup: &SetupT, x: RepRingT) -> (RepBitT, RepRingT) 
-    where 
-        ReplicatedPlacement: PlacementMsb<S, SetupT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementSum<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementShape<S, RepRingT, ReplicatedShape>,
-        ReplicatedPlacement: PlacementZeros<S, ReplicatedShape, RepRingT>
+    fn simp_norm_sq_64(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: &AbstractReplicatedRingTensor<HostRingT>,
+        total_precision: usize,
+        fractional_precision: usize,
+    ) -> (RepBitT, AbstractReplicatedRingTensor<HostRingT>)
     {
-        let z = rep.msb(sess, setup, &x);
-        let bits_axis = Some(-1u32);
+        let bit_length = HostRingT::BitLength::VALUE;
+        let rep = self;
+        // TODO op that gives masked bitdec msb
+        let z = rep.msb(sess, setup, x);
+        // TODO write helper to determine last axis of n-dim tensor
+        let bits_axis = Some(-1i32);
         // TODO choose this host placement randomly?
         let (p0, _, _) = rep.host_placements();
-        let raw_index_vec = ArrayD::<RingT::Scalar>::from_vec(1..N);
-        let index_vec = RingT::from_raw_plc(raw_index_vec, p0);
-        let m = rep.dot(sess, &z, &index_vec);
+        let parity_indices = (1u64..bit_length as u64).collect();
+        let raw_index_vec = Array1::from_vec(parity_indices);
+        let index_vec = AbstractHostRingTensor::from_raw_plc(raw_index_vec, p0);
+        // TODO add Constant kernels for HostRingTensor<R>
+        // let v = p0.constant(sess, index_vec.into());
+        let v = p0.place(sess, index_vec.into());
+        let m = rep.dot_setup(sess, setup, &z, &v);
         let m_shape = rep.shape(sess, &m);
         let m_odd = rep.zeros(sess, &m_shape);
-        let zs: Vec<_> = (0..N - 1).map(|i| rep.index_axis(sess, -1usize, i, &z)).collect();
-        for zi in zs.iter() {
+        let zs: Vec<_> = (0u64..bit_length as u64 - 1).map(|i| rep.index_axis(sess, 1, i.try_into().unwrap(), &z)).collect();
+        for (i, zi) in zs.iter().enumerate() {
             if i % 2 == 0 {
                 m_odd = rep.add(sess, &m_odd, &zi);
             }
         }
-        let ws: Vec<_> = (1..N / 2).map(|i| rep.add(sess, &zs[2*i - 1], &zs[2i])).collect();
-        let w_shl = (1..N / 2 - 1).map(|i| rep.shl(sess, i, &ws[i - 1])).collect();
+        let ws: Vec<_> = (1..bit_length / 2).map(|i| rep.add(sess, &zs[2*i - 1], &zs[2*i])).collect();
+        let w_shl = (1..bit_length / 2 - 1).map(|i| rep.shl(sess, i, &ws[i - 1])).collect();
         // TODO replace with variadic add_n operation for replicated tensors
         let mut ring_res = rep.shl(sess, 0, &w_shl[0]);
         for wi in w_shl.iter().skip(1) {
@@ -44,12 +91,32 @@ impl<S: Session, SetupT, RepBitT, RepRingT, N> SimplifiedNormSq<S, SetupT, RepBi
     }
 }
 
-impl RepSqrtOp {
-    fn rep_kernel<S: Session, RepRingT, RepBitT>(
+modelled!(PlacementSqrtAsFixedpoint::sqrt_as_fixedpoint, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepFixedpointSqrtOp);
+// modelled!(PlacementSqrt::sqrt, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepFixedpointSqrtOp);
+
+kernel!{
+    RepFixedpointSqrtOp,
+    [
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel_64),
+    ]
+}
+
+impl RepFixedpointSqrtOp {
+    fn rep_kernel_64<S: Session, HostRingT, RepRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepRingT
-    ) -> Result<RepRingT> {
+        total_precision: usize,
+        fractional_precision: usize,
+        x: AbstractReplicatedRingTensor<HostRingT>,
+    ) -> Result<AbstractReplicatedRingTensor<HostRingT>>
+    where
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+        ReplicatedPlacement: SimplifiedNormSq<S, S::ReplicatedSetup, RepBitT, RepRingT>,
+    {
+        let theta = (total_precision as f64).log2().ceil() as usize;
+        theta = max(theta, 6);
+        let setup = plc.setup_gen();
+        let (m_odd, w) = rep.simp_norm_sq_64(sess, setup, x, total_precision, fractional_precision);
         unimplemented!("")
     }
 }

@@ -493,12 +493,22 @@ pub trait PlacementMeanAsFixedpoint<S: Session, T, O> {
     ) -> O;
 }
 
+pub trait PlacementAddN<S: Session, T, O> {
+    fn add_n(&self, sess: &S, x: &[T]) -> O;
+}
+
 pub trait PlacementSqrt<S: Session, T, O> {
     fn sqrt(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementAddN<S: Session, T, O> {
-    fn add_n(&self, sess: &S, x: &[T]) -> O;
+pub trait PlacementSqrtAsFixedpoint<S: Session, T, O> {
+    fn sqrt_as_fixedpoint(
+        &self,
+        sess: &S,
+        total_precision: usize,
+        fractional_precision: usize,
+        x: &T,
+    ) -> O;
 }
 
 pub trait PlacementSum<S: Session, T, O> {
