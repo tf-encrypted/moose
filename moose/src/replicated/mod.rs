@@ -2073,43 +2073,60 @@ impl RingInjectOp {
     }
 }
 
-modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitArray64, RepBitDecOp);
-modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitArray128, RepBitDecOp);
-
-kernel! {
-    RepBitDecOp,
-    [
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitArray64 => [hybrid] Self::ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitArray128 => [hybrid] Self::ring_kernel),
-    ]
+impl<
+        S: Session,
+        HostRingT: Placed<Placement = HostPlacement>,
+        HostBitT: Placed<Placement = HostPlacement>,
+    >
+    PlacementSplit<
+        S,
+        Symbolic<RepTen<HostRingT>>,
+        Symbolic<RepTen<HostBitT>>,
+        Symbolic<RepTen<HostBitT>>,
+    > for ReplicatedPlacement
+where
+    ReplicatedPlacement: PlacementSplit<S, RepTen<HostRingT>, RepTen<HostBitT>, RepTen<HostBitT>>,
+    Symbolic<RepTen<HostRingT>>: TryInto<RepTen<HostRingT>>,
+    RepTen<HostRingT>: Into<Symbolic<RepTen<HostRingT>>>,
+    RepTen<HostBitT>: Into<Symbolic<RepTen<HostBitT>>>,
+{
+    fn split(
+        &self,
+        sess: &S,
+        x: &Symbolic<RepTen<HostRingT>>,
+    ) -> (Symbolic<RepTen<HostBitT>>, Symbolic<RepTen<HostBitT>>) {
+        let concrete_x = match x {
+            Symbolic::Concrete(x) => x,
+            Symbolic::Symbolic(_) => unimplemented!(),
+        };
+        let (a, b) = Self::split(self, sess, &concrete_x);
+        (a.into(), b.into())
+    }
 }
 
-impl RepBitDecOp {
-    fn ring_kernel<S: Session, SetupT, ShapeT, HostRingT, HostBitT, RepBitT, N: Const>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        setup: SetupT,
-        x: RepTen<HostRingT>,
-    ) -> Result<AbstractReplicatedBitArray<RepBitT, N>>
-    where
-        HostRingT: Ring<BitLength = N>,
+impl<S: Session, HostRingT, HostBitT>
+    PlacementSplit<S, RepTen<HostRingT>, RepTen<HostBitT>, RepTen<HostBitT>> for ReplicatedPlacement
+where
+    HostShape: KnownType<S>,
+    HostBitT: Clone,
 
-        RepBitT: From<RepTen<HostBitT>>,
-        RepBitT: Clone,
+    HostPlacement: PlacementFill<S, cs!(HostShape), HostBitT>,
+    HostPlacement: PlacementShape<S, HostRingT, cs!(HostShape)>,
+    HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
 
-        HostBitT: Clone,
+    RepTen<HostBitT>: CanonicalType,
+    <RepTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
+    st!(RepTen<HostBitT>): TryInto<RepTen<HostBitT>>,
 
-        HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
-        HostPlacement: PlacementBitDec<S, HostRingT, HostBitT>,
-        HostPlacement: PlacementShape<S, HostRingT, ShapeT>,
-        HostPlacement: PlacementFill<S, ShapeT, HostBitT>,
-        ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostBitT, RepBitT>,
-        ReplicatedPlacement: BinaryAdder<S, SetupT, RepBitT>,
-        ReplicatedPlacement: PlacementIndexAxis<S, RepBitT, RepBitT>,
+    ReplicatedPlacement:
+        PlacementShareSetup<S, S::ReplicatedSetup, HostBitT, st!(RepTen<HostBitT>)>,
+    HostPlacement: PlacementBitDec<S, HostRingT, HostBitT>,
+    ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+{
+    fn split(&self, sess: &S, x: &RepTen<HostRingT>) -> (RepTen<HostBitT>, RepTen<HostBitT>) {
+        let setup = self.gen_setup(sess);
+        let (player0, player1, player2) = self.host_placements();
 
-        HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
-    {
-        let (player0, player1, player2) = rep.host_placements();
         let RepTen {
             shares: [[x00, x10], [x11, x21], [x22, _x02]],
         } = &x;
@@ -2123,21 +2140,53 @@ impl RepBitDecOp {
 
         // transform x2 into boolean sharing
         let x2_on_1 = player1.bit_decompose(sess, x21);
-
         let x2_on_2 = player2.bit_decompose(sess, x22);
 
-        let rep_bsl = rep.share(sess, &setup, &bsl);
+        let rep_bsl = self.share(sess, &setup, &bsl);
         let rep_bsr = RepTen {
             shares: [
                 [p0_zero.clone(), p0_zero],
                 [p1_zero, x2_on_1],
                 [x2_on_2, p2_zero],
             ],
-        }
-        .into();
+        };
 
-        let res = rep.binary_adder(sess, setup, rep_bsl, rep_bsr, HostRingT::BitLength::VALUE);
-        Ok(AbstractReplicatedBitArray(res, PhantomData))
+        (rep_bsl.try_into().ok().unwrap(), rep_bsr)
+    }
+}
+
+modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitArray64, RepBitDecOp);
+modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitArray128, RepBitDecOp);
+
+kernel! {
+    RepBitDecOp,
+    [
+        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitArray64 => [transparent] Self::ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitArray128 => [transparent] Self::ring_kernel),
+    ]
+}
+
+impl RepBitDecOp {
+    fn ring_kernel<S: Session, SetupT, RepRingT, RepBitT, N: Const>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        setup: SetupT,
+        x: RepRingT,
+    ) -> Result<m!(c!(AbstractReplicatedBitArray<RepBitT, N>))>
+    where
+        RepRingT: Ring<BitLength = N>,
+        ReplicatedPlacement: PlacementSplit<S, RepRingT, RepBitT, RepBitT>,
+        ReplicatedPlacement: BinaryAdder<S, SetupT, RepBitT>,
+
+        AbstractReplicatedBitArray<RepBitT, N>: CanonicalType,
+        <AbstractReplicatedBitArray<RepBitT, N> as CanonicalType>::Type: KnownType<S>,
+
+        AbstractReplicatedBitArray<RepBitT, N>:
+            Into<m!(c!(AbstractReplicatedBitArray<RepBitT, N>))>,
+    {
+        let (x0, x1) = rep.split(sess, &x);
+        let res = rep.binary_adder(sess, setup, x0, x1, RepRingT::BitLength::VALUE);
+        Ok(AbstractReplicatedBitArray(res, PhantomData).into())
     }
 }
 

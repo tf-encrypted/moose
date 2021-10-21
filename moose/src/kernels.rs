@@ -386,6 +386,10 @@ pub trait PlacementBitDecSetup<S: Session, SetupT, T, O> {
     fn bit_decompose(&self, sess: &S, setup: &SetupT, x: &T) -> O;
 }
 
+pub trait PlacementSplit<S: Session, T, O1, O2> {
+    fn split(&self, sess: &S, x: &T) -> (O1, O2);
+}
+
 pub trait PlacementBitCompose<S: Session, T, O> {
     fn bit_compose(&self, sess: &S, x: &T) -> O;
 }
