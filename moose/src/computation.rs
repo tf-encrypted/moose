@@ -530,7 +530,29 @@ impl Placed for Unit {
     }
 }
 
-pub type AsyncValue = Box<dyn futures::Future<Output = Value> + Send + Unpin + Sync>; // Send and Sync at one place? This looks wrong (TODO)
+// see futures::future::BoxFuture. We are adding a Sync trait to it. Though it feels wrong.
+// pub type SyncBoxFuture<'a, T> = core::pin::Pin<Box<dyn futures::Future<Output = T> + Send + Sync + 'a>>;
+// pub type AsyncValue = SyncBoxFuture<'static, Value>;
+// pub type AsyncValue = tokio::task::JoinHandle<Value>;
+
+pub type AsyncValue = crate::execution::AsyncReceiver;
+// pub struct AsyncValue {
+//     pub sender: crate::execution::AsyncSender,
+//     pub receiver: crate::execution::AsyncReceiver,
+//     // maybe name from the sender's op_name?
+// }
+
+pub fn new_async_value() -> (crate::execution::AsyncSender, AsyncValue) {
+    // TODO(Morten) make second attempt at inlining
+    use futures::FutureExt;
+    fn remove_err<T, E>(r: std::result::Result<T, E>) -> std::result::Result<T, ()> {
+        r.map_err(|_| ())
+    }
+
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    let shared_receiver: crate::execution::AsyncReceiver = receiver.map(remove_err as fn(_) -> _).shared();
+    (sender, shared_receiver)
+}
 
 impl Ty {
     pub fn flatten(&self) -> Ty {

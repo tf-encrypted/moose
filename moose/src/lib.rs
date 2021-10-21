@@ -315,7 +315,7 @@ macro_rules! concrete_dispatch_kernel {
                 plc: &crate::computation::Placement
             ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::AsyncSession, Vec<crate::computation::AsyncValue>) -> crate::error::Result<crate::computation::AsyncValue> + Send>>
             {
-                use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, Value, AsyncValue};
+                use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, AsyncValue};
                 use crate::kernels::{AsyncSession, UnaryKernel};
                 use std::convert::TryInto;
 
@@ -329,25 +329,27 @@ macro_rules! concrete_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into()?;
-
-                            let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(self, &plc)?;
+                            // TODO: Do we want to be deriving the kernel inside? Probably not...
+                            let op = self.clone();
+                            // let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(self, &plc)?;
 
                             Ok(Box::new(move |sess, operands: Vec<AsyncValue>| {
                                 assert_eq!(operands.len(), 1);
-
-                                let y = tokio::spawn(async move {
+                                let sess = sess.clone();
+                                let plc = plc.clone();
+                                let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(&op, &plc).unwrap();
+                                let (sender, result) = crate::computation::new_async_value(); // This creates a channel
+                                let _task = tokio::spawn(async move {
                                     // TODO: Error handling
                                     let operands = futures::future::join_all(operands).await;
-                                    let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
-                                    let y: $u = k(sess, &plc, x0).unwrap();
-                                    // // TODO: assert on y placement
-                                    let v: Value = y.into();
-                                    v
+                                    let x0: $t0 = operands.get(0).unwrap().clone().unwrap().try_into().unwrap();
+                                    let y: $u = k(&sess, &plc, x0).unwrap();
+                                    // TODO: assert on y placement
+                                    sender.send(y.into()).unwrap();
+                                    // todo!()
                                 });
 
-                                use futures::future::FutureExt;
-                                let future = y.map(|x| x.unwrap()); // TODO: Make AsyncValue to store Result?
-                                Ok(Box::new(future))
+                                Ok(result)
                             }))
                         }
                     )+

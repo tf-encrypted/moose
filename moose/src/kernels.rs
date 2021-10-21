@@ -243,6 +243,7 @@ impl RuntimeSession for SyncSession {
 }
 
 /// Session object for asynchronous execution (in new framework).
+#[derive(Clone)]
 pub struct AsyncSession {
     pub session_id: SessionId,
     pub arguments: HashMap<String, Value>,
