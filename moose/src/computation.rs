@@ -984,6 +984,8 @@ operators![
     RepNeg,
     RepFixedpointMean,
     RepShl,
+    RepShrRaw,
+    RepShr,
     RepSum,
     RepAddN,
     RepTruncPr,
@@ -1656,6 +1658,20 @@ pub struct RepShlOp {
     pub sig: Signature,
     pub amount: usize,
 }
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepShrRawOp {
+    pub sig: Signature,
+    pub amount: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepShrOp {
+    pub sig: Signature,
+    pub amount: usize,
+}
+
+
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepShlDimOp {

@@ -1581,6 +1581,87 @@ impl RepFillOp {
     }
 }
 
+modelled!(PlacementShr::shr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepShrOp);
+modelled!(PlacementShr::shr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepShrOp);
+
+kernel! {
+    RepShrOp,
+    [
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] attributes[amount] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] attributes[amount] Self::kernel),
+    ]
+}
+
+impl RepShrOp {
+    fn kernel<S: Session, RepRingT, RepBitT, N: Const>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        amount: usize,
+        x: RepRingT,
+    ) -> Result<RepRingT>
+    where
+        RepRingT: Ring<BitLength = N>,
+        ReplicatedPlacement: PlacementShrRaw<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementSplit<S, RepRingT, RepBitT, RepBitT>,
+        ReplicatedPlacement: BinaryAdder<S, S::ReplicatedSetup, RepBitT>,
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+    {
+
+        let setup = rep.gen_setup(sess);
+        let (x0, x1) = rep.split(sess, &x);
+        let bits = rep.binary_adder(sess, setup, x0, x1, RepRingT::BitLength::VALUE);
+
+        Ok(RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        })
+    }
+}
+
+
+
+
+
+modelled!(PlacementShrRaw::shr_raw, ReplicatedPlacement, attributes[amount: usize] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepShrRawOp);
+modelled!(PlacementShrRaw::shr_raw, ReplicatedPlacement, attributes[amount: usize] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepShrRawOp);
+
+kernel! {
+    RepShrRawOp,
+    [
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] attributes[amount] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] attributes[amount] Self::kernel),
+    ]
+}
+
+/// Note that this should only be called in conjunction with split()
+impl RepShrRawOp {
+    fn kernel<S: Session, RingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        amount: usize,
+        x: RepTen<RingT>,
+    ) -> Result<RepTen<RingT>>
+    where
+        HostPlacement: PlacementShr<S, RingT, RingT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+        let AbstractReplicatedRingTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+        let z00 = player0.shr(sess, amount, x00);
+        let z10 = player0.shr(sess, amount, x10);
+
+        let z11 = player1.shr(sess, amount, x11);
+        let z21 = player1.shr(sess, amount, x21);
+
+        let z22 = player2.shr(sess, amount, x22);
+        let z02 = player2.shr(sess, amount, x02);
+
+        Ok(RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        })
+    }
+}
+
 modelled!(PlacementShl::shl, ReplicatedPlacement, attributes[amount: usize] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepShlOp);
 modelled!(PlacementShl::shl, ReplicatedPlacement, attributes[amount: usize] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepShlOp);
 
@@ -2086,7 +2167,6 @@ impl<
     > for ReplicatedPlacement
 where
     ReplicatedPlacement: PlacementSplit<S, RepTen<HostRingT>, RepTen<HostBitT>, RepTen<HostBitT>>,
-    Symbolic<RepTen<HostRingT>>: TryInto<RepTen<HostRingT>>,
     RepTen<HostRingT>: Into<Symbolic<RepTen<HostRingT>>>,
     RepTen<HostBitT>: Into<Symbolic<RepTen<HostBitT>>>,
 {
