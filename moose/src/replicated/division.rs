@@ -514,4 +514,40 @@ mod tests {
         ];
         test_rep_prefix_mul(x, y_target);
     }
+
+    #[test]
+    fn test_prefix_fixed() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+        let x = vec![array![1u64], array![2u64], array![3u64], array![4u64]];
+        let y_target = vec![1, 1, 1, 1];
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let mut x_fixed_vec: Vec<AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>> =
+            Vec::new();
+
+        for el in x {
+            let x_ring = AbstractHostRingTensor::from_raw_plc(el, alice.clone());
+            let x_shared: ReplicatedRing64Tensor = rep.share(&sess, &setup, &x_ring);
+            let x_fixed_shared = AbstractReplicatedFixedTensor {
+                tensor: x_shared,
+                fractional_precision: 16,
+                integral_precision: 32,
+            };
+            x_fixed_vec.push(x_fixed_shared);
+        }
+
+        // let out = rep.prefix_mul(&sess, &setup, x_fixed_vec);
+
+        // for i in 0..4 {
+        //     let b = alice.reveal(&sess, &out[i]);
+        //     assert_eq!(b.0[0], y_target[i]);
+        // }
+    }
 }
