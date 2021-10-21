@@ -530,17 +530,7 @@ impl Placed for Unit {
     }
 }
 
-// see futures::future::BoxFuture. We are adding a Sync trait to it. Though it feels wrong.
-// pub type SyncBoxFuture<'a, T> = core::pin::Pin<Box<dyn futures::Future<Output = T> + Send + Sync + 'a>>;
-// pub type AsyncValue = SyncBoxFuture<'static, Value>;
-// pub type AsyncValue = tokio::task::JoinHandle<Value>;
-
 pub type AsyncValue = crate::execution::AsyncReceiver;
-// pub struct AsyncValue {
-//     pub sender: crate::execution::AsyncSender,
-//     pub receiver: crate::execution::AsyncReceiver,
-//     // maybe name from the sender's op_name?
-// }
 
 pub fn new_async_value() -> (crate::execution::AsyncSender, AsyncValue) {
     // TODO(Morten) make second attempt at inlining
