@@ -106,7 +106,6 @@ impl Session for SyncSession {
             RepSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepAddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepShr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIndex(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepDiag(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -812,7 +811,7 @@ impl Compile<SyncKernel> for Operator {
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
-            | RepShl(_) | RepShr(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
             | RepEqual(_) | RepIfElse(_) | FixedpointMul(_) | FixedpointDot(_)
             | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) | BitNeg(_)
@@ -913,7 +912,7 @@ impl Compile<AsyncKernel> for Operator {
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
-            | RepShl(_) | RepShr(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | RepEqual(_) | RepIfElse(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_)
             | RepSlice(_) | BitNeg(_) | RepNeg(_) | RepBitDec(_) | FixedpointDiv(_) | Sign(_)
             | RepAddN(_) | RepBitCompose(_) => {

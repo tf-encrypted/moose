@@ -1410,7 +1410,6 @@ impl ToTextual for Operator {
             RepFill(op) => op.to_textual(),
             RepMsb(op) => op.to_textual(),
             RepShl(op) => op.to_textual(),
-            RepShr(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
             RepIndexAxis(op) => op.to_textual(),
             RepIndex(op) => op.to_textual(),

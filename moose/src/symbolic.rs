@@ -211,7 +211,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepAddN(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepShl(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepShr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepMsb(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepAbs(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

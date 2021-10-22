@@ -984,7 +984,6 @@ operators![
     RepNeg,
     RepFixedpointMean,
     RepShl,
-    RepShr,
     RepSum,
     RepAddN,
     RepTruncPr,

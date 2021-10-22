@@ -157,7 +157,6 @@ impl RepInt2FLOp {
         ReplicatedPlacement: PlacementIfElse<S, HostRingT, HostRingT, HostRingT, HostRingT>,
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, HostRingT>,
-        ReplicatedPlacement: PlacementShr<S, HostRingT, HostRingT>,
     {
         let l = 16;
         let gamma = l + 31;
@@ -198,8 +197,6 @@ impl RepInt2FLOp {
 
         let t = rep.add(sess, &ones, &t_composed);
         let t = rep.mul_setup(sess, &setup, &a, &t);
-
-        let v = rep.shr(sess, gamma - 1 -1, &t);
 
         Ok(a)
     }
