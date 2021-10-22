@@ -154,50 +154,32 @@ impl ReplicatedPlacement {
         self.prefix_op(sess, setup, x, elementwise_and)
     }
 
-    fn prefix_mul<S: Session, SetupT, RepT>(
+    fn prefix_mul_fixed<S: Session, SetupT, RepRingT>(
         &self,
         sess: &S,
         setup: &SetupT,
-        x: Vec<RepT>,
-    ) -> Vec<RepT>
-    where
-        ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepT, RepT, RepT>,
-    {
-        let elementwise_mul =
-            |rep: &ReplicatedPlacement, sess: &S, setup: &SetupT, x: &RepT, y: &RepT| -> RepT {
-                rep.mul_setup(sess, setup, x, y)
-            };
-
-        self.prefix_op(sess, setup, x, elementwise_mul)
-    }
-
-    fn prefix_mul_fixed<S: Session, SetupT, RepT>(
-        &self,
-        sess: &S,
-        setup: &SetupT,
-        x: Vec<AbstractReplicatedFixedTensor<RepT>>,
-    ) -> Vec<RepT>
+        x: Vec<AbstractReplicatedFixedTensor<RepRingT>>,
+    ) -> Vec<AbstractReplicatedFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementMul<
             S,
-            AbstractReplicatedFixedTensor<RepT>,
-            AbstractReplicatedFixedTensor<RepT>,
-            AbstractReplicatedFixedTensor<RepT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
         >,
         ReplicatedPlacement: PlacementTruncPr<
             S,
-            AbstractReplicatedFixedTensor<RepT>,
-            AbstractReplicatedFixedTensor<RepT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
         >,
     {
         let elementwise_mul = |rep: &ReplicatedPlacement,
                                sess: &S,
-                               setup: &SetupT,
-                               x: &AbstractReplicatedFixedTensor<RepT>,
-                               y: &AbstractReplicatedFixedTensor<RepT>|
-         -> AbstractReplicatedFixedTensor<RepT> {
-            let precision = x.fractional_precision;
-            rep.trunc_pr(sess, precision, &rep.mul(sess, x, y))
+                               _setup: &SetupT,
+                               x: &AbstractReplicatedFixedTensor<RepRingT>,
+                               y: &AbstractReplicatedFixedTensor<RepRingT>|
+         -> AbstractReplicatedFixedTensor<RepRingT> {
+            rep.trunc_pr(sess, x.fractional_precision, &rep.mul(sess, x, y))
         };
 
         self.prefix_op(sess, setup, x, elementwise_mul)
@@ -481,7 +463,7 @@ mod tests {
 
     use ndarray::prelude::*;
 
-    macro_rules! rep_prefix_func_test {
+    macro_rules! rep_prefix_op_bit_test {
         ($func_name:ident, $test_func: ident) => {
             fn $func_name(x: ArrayD<u64>, y_target: Vec<u8>) {
                 let alice = HostPlacement {
@@ -502,17 +484,16 @@ mod tests {
 
                 let out = rep.$test_func(&sess, &setup, x_bits_vec);
 
-                for i in 0..64 {
-                    let b = alice.reveal(&sess, &out[i]);
+                for (i, el) in out.iter().enumerate() {
+                    let b = alice.reveal(&sess, el);
                     assert_eq!(b.0[0], y_target[i]);
                 }
             }
         };
     }
 
-    rep_prefix_func_test!(test_rep_prefix_or, prefix_or);
-    rep_prefix_func_test!(test_rep_prefix_and, prefix_and);
-    // rep_prefix_func_test!(test_rep_prefix_mul, prefix_mul);
+    rep_prefix_op_bit_test!(test_rep_prefix_or, prefix_or);
+    rep_prefix_op_bit_test!(test_rep_prefix_and, prefix_and);
 
     #[test]
     fn test_prefix_or() {
@@ -536,52 +517,73 @@ mod tests {
         test_rep_prefix_and(x, y_target);
     }
 
-    // #[test]
-    // fn test_prefix_mul() {
-    //     let x = array![7u64].into_dyn();
-    //     let y_target = vec![
-    //         1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    //         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    //         0, 0, 0, 0, 0, 0,
-    //     ];
-    //     test_rep_prefix_mul(x, y_target);
-    // }
+    macro_rules! rep_prefix_op_fixed_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>) => {
+            fn $func_name(x: Vec<ArrayD<$tt>>, y_target: Vec<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let mut x_fixed_vec: Vec<
+                    AbstractReplicatedFixedTensor<
+                        AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>>,
+                    >,
+                > = Vec::new();
+
+                for el in x {
+                    let x_ring = AbstractHostRingTensor::from_raw_plc(el, alice.clone());
+                    let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
+                        rep.share(&sess, &setup, &x_ring);
+                    let x_fixed_shared = AbstractReplicatedFixedTensor {
+                        tensor: x_shared,
+                        fractional_precision: 15,
+                        integral_precision: 8,
+                    };
+                    x_fixed_vec.push(x_fixed_shared);
+                }
+
+                let out = rep.prefix_mul_fixed(&sess, &setup, x_fixed_vec);
+
+                for (i, el) in out.iter().enumerate() {
+                    let el_reveal = alice.reveal(&sess, el);
+                    assert_eq!(el_reveal.tensor.0.as_slice().unwrap()[0].0, y_target[i]);
+                }
+            }
+        };
+    }
+
+    rep_prefix_op_fixed_test!(test_rep_prefix_mul_fixed64, prefix_mul_fixed<u64>);
+    rep_prefix_op_fixed_test!(test_rep_prefix_mul_fixed128, prefix_mul_fixed<u128>);
 
     #[test]
-    fn test_prefix_fixed() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
-        let x = vec![array![1u64], array![2u64], array![3u64], array![4u64]];
-        let y_target = vec![1, 1, 1, 1];
+    fn test_rep_prefix_mul_fixed_64() {
+        let x = vec![
+            array![1u64].into_dyn(),
+            array![2u64].into_dyn(),
+            array![3u64].into_dyn(),
+            array![4u64].into_dyn(),
+        ];
+        let y_target = vec![1u64, 2, 6, 24];
 
-        let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        test_rep_prefix_mul_fixed64(x, y_target);
+    }
 
-        let mut x_fixed_vec: Vec<AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>> =
-            Vec::new();
+    #[test]
+    fn test_rep_prefix_mul_fixed_128() {
+        let x = vec![
+            array![1u128].into_dyn(),
+            array![2u128].into_dyn(),
+            array![3u128].into_dyn(),
+            array![4u128].into_dyn(),
+        ];
+        let y_target = vec![1u128, 2, 6, 24];
 
-        for el in x {
-            let x_ring = AbstractHostRingTensor::from_raw_plc(el, alice.clone());
-            let x_shared: ReplicatedRing64Tensor = rep.share(&sess, &setup, &x_ring);
-            let x_fixed_shared = AbstractReplicatedFixedTensor {
-                tensor: x_shared,
-                fractional_precision: 16,
-                integral_precision: 32,
-            };
-            x_fixed_vec.push(x_fixed_shared);
-        }
-
-        let out = rep.prefix_mul(&sess, &setup, x_fixed_vec);
-
-        for i in 0..4 {
-            let b = alice.reveal(&sess, &out[i]);
-            let yo = b.tensor.0.as_slice().unwrap();
-            println!("{:?}", yo);
-            // assert_eq!(b.tensor.0.as_slice().unwrap(), y_target[i]);
-        }
+        test_rep_prefix_mul_fixed128(x, y_target);
     }
 }
