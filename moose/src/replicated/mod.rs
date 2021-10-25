@@ -2307,7 +2307,7 @@ impl ReplicatedPlacement {
                 let k_bound = (2_i32.pow(i) + 1) as usize;
                 for k in 1..k_bound {
                     if y + k < v_len {
-                        res[y + k] = op(&self, sess, setup, &res[y], &res[y + k]);
+                        res[y + k] = op(self, sess, setup, &res[y], &res[y + k]);
                     }
                 }
             }
