@@ -398,7 +398,7 @@ impl Session for AsyncSession {
         kernel(self, operands)
     }
 
-    type ReplicatedSetup = Box<dyn futures::Future<Output = ReplicatedSetup>>;
+    type ReplicatedSetup = ReplicatedSetup;
     fn replicated_setup(&self, _plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
         unimplemented!()
     }
