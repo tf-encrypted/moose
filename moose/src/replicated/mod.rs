@@ -2315,7 +2315,7 @@ impl ReplicatedPlacement {
         res
     }
 
-    fn prefix_or<S: Session, SetupT, RepT>(
+    pub fn prefix_or<S: Session, SetupT, RepT>(
         &self,
         sess: &S,
         setup: &SetupT,
@@ -2337,7 +2337,7 @@ impl ReplicatedPlacement {
         self.prefix_op(sess, setup, x, elementwise_or)
     }
 
-    fn prefix_and<S: Session, SetupT, RepT>(
+    pub fn prefix_and<S: Session, SetupT, RepT>(
         &self,
         sess: &S,
         setup: &SetupT,
@@ -2354,7 +2354,7 @@ impl ReplicatedPlacement {
         self.prefix_op(sess, setup, x, elementwise_and)
     }
 
-    fn prefix_mul_fixed<S: Session, SetupT, RepRingT>(
+    pub fn prefix_mul_fixed<S: Session, SetupT, RepRingT>(
         &self,
         sess: &S,
         setup: &SetupT,
@@ -3374,8 +3374,6 @@ mod tests {
         let opened_result = alice.reveal(&sess, &result);
         assert_eq!(opened_result, AbstractHostBitArray::from_raw_plc(zs, alice));
     }
-
-    use ndarray::prelude::*;
 
     macro_rules! rep_prefix_op_bit_test {
         ($func_name:ident, $test_func: ident) => {
