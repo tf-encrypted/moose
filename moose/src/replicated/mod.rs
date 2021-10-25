@@ -2389,6 +2389,7 @@ impl ReplicatedPlacement {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fixedpoint::Convert;
     use crate::host::AbstractHostRingTensor;
     use crate::host::FromRawPlc;
     use crate::kernels::{
@@ -3430,7 +3431,7 @@ mod tests {
     }
 
     macro_rules! rep_prefix_op_fixed_test {
-        ($func_name:ident, $test_func: ident<$tt: ty>) => {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $f_precision: expr) => {
             fn $func_name(x: Vec<ArrayD<$tt>>, y_target: Vec<$tt>) {
                 let alice = HostPlacement {
                     owner: "alice".into(),
@@ -3442,6 +3443,8 @@ mod tests {
                 let sess = SyncSession::default();
                 let setup = rep.gen_setup(&sess);
 
+                let encode = |item: &$tt| (2_i64.pow($f_precision) as $tt * item) as $tt;
+
                 let mut x_fixed_vec: Vec<
                     AbstractReplicatedFixedTensor<
                         AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>>,
@@ -3449,29 +3452,32 @@ mod tests {
                 > = Vec::new();
 
                 for el in x {
-                    let x_ring = AbstractHostRingTensor::from_raw_plc(el, alice.clone());
+                    let x_encode = el.map(encode);
+                    let x_ring = AbstractHostRingTensor::from_raw_plc(x_encode, alice.clone());
                     let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
                         rep.share(&sess, &setup, &x_ring);
                     let x_fixed_shared = AbstractReplicatedFixedTensor {
                         tensor: x_shared,
-                        fractional_precision: 15,
+                        fractional_precision: $f_precision,
                         integral_precision: 8,
                     };
                     x_fixed_vec.push(x_fixed_shared);
                 }
 
-                let out = rep.prefix_mul_fixed(&sess, &setup, x_fixed_vec);
+                let outputs = rep.prefix_mul_fixed(&sess, &setup, x_fixed_vec);
 
-                for (i, el) in out.iter().enumerate() {
-                    let el_reveal = alice.reveal(&sess, el);
-                    assert_eq!(el_reveal.tensor.0.as_slice().unwrap()[0].0, y_target[i]);
+                for (i, output) in outputs.iter().enumerate() {
+                    let output_reveal = alice.reveal(&sess, output);
+                    let result =
+                        Convert::decode(&output_reveal.tensor, (2 as $tt).pow($f_precision));
+                    assert_eq!(result.0.as_slice().unwrap()[0] as $tt, y_target[i]);
                 }
             }
         };
     }
 
-    rep_prefix_op_fixed_test!(test_rep_prefix_mul_fixed64, prefix_mul_fixed<u64>);
-    rep_prefix_op_fixed_test!(test_rep_prefix_mul_fixed128, prefix_mul_fixed<u128>);
+    rep_prefix_op_fixed_test!(test_rep_prefix_mul_fixed64, prefix_mul_fixed<u64>, 15);
+    rep_prefix_op_fixed_test!(test_rep_prefix_mul_fixed128, prefix_mul_fixed<u128>, 15);
 
     #[test]
     fn test_rep_prefix_mul_fixed_64() {
@@ -3481,7 +3487,7 @@ mod tests {
             array![3u64].into_dyn(),
             array![4u64].into_dyn(),
         ];
-        let y_target = vec![1u64, 2, 6, 24];
+        let y_target = vec![1, 2, 6, 24];
 
         test_rep_prefix_mul_fixed64(x, y_target);
     }
