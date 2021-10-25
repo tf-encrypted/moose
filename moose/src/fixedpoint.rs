@@ -1070,6 +1070,17 @@ impl FixedpointMeanOp {
     }
 }
 
+modelled!(PlacementPow2::pow2, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, Pow2Op);
+modelled!(PlacementPow2::pow2, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, Pow2Op);
+
+kernel! {
+    Pow2Op,
+    [
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_rep_kernel),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

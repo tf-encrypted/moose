@@ -17,6 +17,7 @@ use std::convert::{TryFrom, TryInto};
 use std::marker::PhantomData;
 
 pub mod division;
+pub mod exp;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedRingTensor<HostRingT> {
@@ -1581,46 +1582,6 @@ impl RepFillOp {
     }
 }
 
-modelled!(PlacementShr::shr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepShrOp);
-modelled!(PlacementShr::shr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepShrOp);
-
-kernel! {
-    RepShrOp,
-    [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] attributes[amount] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] attributes[amount] Self::kernel),
-    ]
-}
-
-impl RepShrOp {
-    fn kernel<S: Session, RepRingT, RepBitT, N: Const>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        amount: usize,
-        x: RepRingT,
-    ) -> Result<RepRingT>
-    where
-        RepRingT: Ring<BitLength = N>,
-        ReplicatedPlacement: PlacementShrRaw<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementSplit<S, RepRingT, RepBitT, RepBitT>,
-        ReplicatedPlacement: BinaryAdder<S, S::ReplicatedSetup, RepBitT>,
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-    {
-
-        let setup = rep.gen_setup(sess);
-        let (x0, x1) = rep.split(sess, &x);
-        let bits = rep.binary_adder(sess, setup, x0, x1, RepRingT::BitLength::VALUE);
-
-        Ok(RepTen {
-            shares: [[z00, z10], [z11, z21], [z22, z02]],
-        })
-    }
-}
-
-
-
-
-
 modelled!(PlacementShrRaw::shr_raw, ReplicatedPlacement, attributes[amount: usize] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepShrRawOp);
 modelled!(PlacementShrRaw::shr_raw, ReplicatedPlacement, attributes[amount: usize] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepShrRawOp);
 
@@ -1999,13 +1960,13 @@ impl ShapeOp {
 modelled_alias!(PlacementXor::xor, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementAdd::add); // add = xor in Z2
 modelled_alias!(PlacementAndSetup::and_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementMulSetup::mul_setup); // sub = xor in Z2
 
-trait BinaryAdder<S: Session, SetupT, RepBitT> {
+pub(crate) trait BinaryAdder<S: Session, SetupT, RepBitT> {
     fn binary_adder(
         &self,
         sess: &S,
         setup: SetupT,
-        x: RepBitT,
-        y: RepBitT,
+        x: &RepBitT,
+        y: &RepBitT,
         ring_size: usize,
     ) -> RepBitT;
 }
@@ -2022,8 +1983,8 @@ where
         &self,
         sess: &S,
         setup: SetupT,
-        x: RepBitT,
-        y: RepBitT,
+        x: &RepBitT,
+        y: &RepBitT,
         ring_size: usize,
     ) -> RepBitT {
         #![allow(clippy::many_single_char_names)]
@@ -2043,10 +2004,10 @@ where
         // Note the first level is computed as P0 = x ^ y, G0 = x & y;
 
         // Perform `g = x * y` for every tensor
-        let mut g = rep.and_setup(sess, &setup, &x, &y);
+        let mut g = rep.and_setup(sess, &setup, x, y);
 
         // Perform `p_store = x + y` (just a helper to avoid compute xor() twice)
-        let p_store = rep.xor(sess, &x, &y);
+        let p_store = rep.xor(sess, x, y);
         let mut p = p_store.clone();
 
         // (Dragos) Note that in the future we might want to delete shl_dim op and replace it with
@@ -2191,7 +2152,7 @@ where
     HostBitT: Clone,
 
     HostPlacement: PlacementFill<S, cs!(HostShape), HostBitT>,
-    HostPlacement: PlacementShape<S, HostRingT, cs!(HostShape)>,
+    HostPlacement: PlacementShape<S, HostBitT, cs!(HostShape)>,
     HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
 
     RepTen<HostBitT>: CanonicalType,
@@ -2208,12 +2169,8 @@ where
         let (player0, player1, player2) = self.host_placements();
 
         let RepTen {
-            shares: [[x00, x10], [x11, x21], [x22, _x02]],
+            shares: [[x00, x10], [_x11, x21], [x22, _x02]],
         } = &x;
-
-        let p0_zero = player0.fill(sess, 0_u8.into(), &player0.shape(sess, x00));
-        let p1_zero = player1.fill(sess, 0_u8.into(), &player1.shape(sess, x11));
-        let p2_zero = player2.fill(sess, 0_u8.into(), &player2.shape(sess, x22));
 
         let left = with_context!(player0, sess, x00 + x10);
         let bsl = player0.bit_decompose(sess, &left);
@@ -2221,6 +2178,10 @@ where
         // transform x2 into boolean sharing
         let x2_on_1 = player1.bit_decompose(sess, x21);
         let x2_on_2 = player2.bit_decompose(sess, x22);
+
+        let p0_zero = player0.fill(sess, 0_u8.into(), &player0.shape(sess, &bsl));
+        let p1_zero = player1.fill(sess, 0_u8.into(), &player1.shape(sess, &x2_on_1));
+        let p2_zero = player2.fill(sess, 0_u8.into(), &player2.shape(sess, &x2_on_2));
 
         let rep_bsl = self.share(sess, &setup, &bsl);
         let rep_bsr = RepTen {
@@ -2265,7 +2226,7 @@ impl RepBitDecOp {
             Into<m!(c!(AbstractReplicatedBitArray<RepBitT, N>))>,
     {
         let (x0, x1) = rep.split(sess, &x);
-        let res = rep.binary_adder(sess, setup, x0, x1, RepRingT::BitLength::VALUE);
+        let res = rep.binary_adder(sess, setup, &x0, &x1, RepRingT::BitLength::VALUE);
         Ok(AbstractReplicatedBitArray(res, PhantomData).into())
     }
 }

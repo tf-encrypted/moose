@@ -107,7 +107,6 @@ impl Session for SyncSession {
             RepAddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShrRaw(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepShr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIndex(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepDiag(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -194,6 +193,7 @@ impl Session for SyncSession {
             Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Pow2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -363,6 +363,7 @@ pub trait PlacementShl<S: Session, T, O> {
 pub trait PlacementShr<S: Session, T, O> {
     fn shr(&self, sess: &S, amount: usize, x: &T) -> O;
 }
+
 pub trait PlacementShrRaw<S: Session, T, O> {
     fn shr_raw(&self, sess: &S, amount: usize, x: &T) -> O;
 }
@@ -468,6 +469,10 @@ pub trait PlacementEqual<S: Session, T, U, O> {
 
 pub trait PlacementIfElse<S: Session, T, U, V, O> {
     fn if_else(&self, sess: &S, s: &T, x: &U, y: &V) -> O;
+}
+
+pub trait PlacementPow2<S: Session, T, O> {
+    fn pow2(&self, sess: &S, x: &T) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -820,11 +825,11 @@ impl Compile<SyncKernel> for Operator {
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
-            | RepShl(_) | RepShrRaw(_) | RepShr(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_)
+            | RepShl(_) | RepShrRaw(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_)
             | RepIndexAxis(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_)
             | RepBitDec(_) | RepEqual(_) | RepIfElse(_) | FixedpointMul(_) | FixedpointDot(_)
             | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) | BitNeg(_)
-            | RepNeg(_) | FixedpointDiv(_) | Sign(_) | RepAddN(_) | RepBitCompose(_) => {
+            | RepNeg(_) | FixedpointDiv(_) | Sign(_) | RepAddN(_) | RepBitCompose(_) | Pow2(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -921,10 +926,10 @@ impl Compile<AsyncKernel> for Operator {
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
-            | RepShl(_) | RepShrRaw(_) | RepShr(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_)
+            | RepShl(_) | RepShrRaw(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_)
             | RepIndexAxis(_) | RepEqual(_) | RepIfElse(_) | RepIndex(_) | RepDiag(_)
             | RepShlDim(_) | RepSlice(_) | BitNeg(_) | RepNeg(_) | RepBitDec(_)
-            | FixedpointDiv(_) | Sign(_) | RepAddN(_) | RepBitCompose(_) => {
+            | FixedpointDiv(_) | Sign(_) | RepAddN(_) | RepBitCompose(_) | Pow2(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
