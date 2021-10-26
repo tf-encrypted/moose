@@ -186,6 +186,15 @@ impl<S: Session, T> PlacementPlace<S, HostTensor<T>> for HostPlacement {
     }
 }
 
+impl<S: Session> PlacementPlace<S, Unit> for HostPlacement {
+    fn place(&self, _sess: &S, x: Unit) -> Unit {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => Unit(self.clone()),
+        }
+    }
+}
+
 modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostRing64Tensor, RingFixedpointMeanOp);
 modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostRing128Tensor, RingFixedpointMeanOp);
 

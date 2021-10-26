@@ -1,5 +1,3 @@
-use maplit::hashmap;
-
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Identity, Kernel,
@@ -13,10 +11,10 @@ use crate::host::{
     HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostString,
     HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
 };
-use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
+use crate::networking::AsyncNetworking;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::ReplicatedSetup;
-use crate::storage::{AsyncStorage, LocalAsyncStorage};
+use crate::storage::AsyncStorage;
 use crate::{closure_kernel, function_kernel};
 use crate::{computation::*, for_all_values};
 use std::collections::HashMap;
@@ -48,15 +46,6 @@ pub trait RuntimeSession: Session {
     fn session_id(&self) -> &SessionId;
     fn find_argument(&self, key: &str) -> Option<Value>;
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity>;
-    fn storage_load(&self, key: &str, query: &str, type_hint: Option<Ty>) -> Result<Value>;
-    fn storage_save(&self, key: &str, val: &Value) -> Result<()>;
-    fn networking_receive(&self, sender: &Role, rendezvous_key: &RendezvousKey) -> Result<Value>;
-    fn networking_send(
-        &self,
-        val: &Value,
-        receiver: &Role,
-        rendezvous_key: &RendezvousKey,
-    ) -> Result<()>;
 }
 
 /// Session object for synchronous/eager execution (in new framework).
@@ -65,8 +54,8 @@ pub struct SyncSession {
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
     arguments: HashMap<String, Value>,
     role_assignments: HashMap<Role, Identity>,
-    networking: Arc<dyn Send + Sync + AsyncNetworking>,
-    storage: Arc<dyn Send + Sync + AsyncStorage>,
+    // networking: Arc<dyn Send + Sync + AsyncNetworking>,
+    // storage: Arc<dyn Send + Sync + AsyncStorage>,
 }
 
 impl Default for SyncSession {
@@ -79,8 +68,8 @@ impl Default for SyncSession {
             replicated_keys: Default::default(),
             arguments: Default::default(),
             role_assignments: Default::default(),
-            networking: Arc::new(LocalAsyncNetworking::default()),
-            storage: Arc::new(LocalAsyncStorage::from_hashmap(hashmap!())),
+            // networking: Arc::new(LocalAsyncNetworking::default()),
+            // storage: Arc::new(LocalAsyncStorage::from_hashmap(hashmap!())),
         }
     }
 }
@@ -90,16 +79,16 @@ impl SyncSession {
         sid: SessionId,
         arguments: HashMap<String, Value>,
         role_assignments: HashMap<Role, Identity>,
-        networking: Arc<dyn Send + Sync + AsyncNetworking>,
-        storage: Arc<dyn Send + Sync + AsyncStorage>,
+        _networking: Arc<dyn Send + Sync + AsyncNetworking>,
+        _storage: Arc<dyn Send + Sync + AsyncStorage>,
     ) -> Self {
         SyncSession {
             session_id: sid,
             replicated_keys: Default::default(),
             arguments,
             role_assignments,
-            networking,
-            storage,
+            // networking,
+            // storage,
         }
     }
 }
@@ -261,51 +250,6 @@ impl RuntimeSession for SyncSession {
             .get(role)
             .ok_or_else(|| Error::Networking(format!("Missing role assignemnt for {}", role)))
     }
-
-    fn storage_load(&self, key: &str, query: &str, type_hint: Option<Ty>) -> Result<Value> {
-        let future = self.storage.load(key, &self.session_id, type_hint, query);
-        let handle = tokio::runtime::Handle::current();
-        let _guard = handle.enter();
-        let val = futures::executor::block_on(future)?;
-        Ok(val)
-    }
-
-    fn storage_save(&self, key: &str, val: &Value) -> Result<()> {
-        let future = self.storage.save(key, &self.session_id, val);
-        let handle = tokio::runtime::Handle::current();
-        let _guard = handle.enter();
-        futures::executor::block_on(future)
-    }
-
-    fn networking_receive(
-        &self,
-        sender_role: &Role,
-        rendezvous_key: &RendezvousKey,
-    ) -> Result<Value> {
-        let sender = self.find_role_assignment(sender_role)?;
-        let future = self
-            .networking
-            .receive(sender, rendezvous_key, &self.session_id);
-        let handle = tokio::runtime::Handle::current();
-        let _guard = handle.enter();
-        let val = futures::executor::block_on(future)?;
-        Ok(val)
-    }
-
-    fn networking_send(
-        &self,
-        value: &Value,
-        receiver_role: &Role,
-        rendezvous_key: &RendezvousKey,
-    ) -> Result<()> {
-        let receiver = self.find_role_assignment(receiver_role)?;
-        let future = self
-            .networking
-            .send(value, receiver, rendezvous_key, &self.session_id);
-        let handle = tokio::runtime::Handle::current();
-        let _guard = handle.enter();
-        futures::executor::block_on(future)
-    }
 }
 
 /// Session object for asynchronous execution (in new framework).
@@ -344,35 +288,6 @@ impl RuntimeSession for AsyncSession {
     }
 
     fn find_role_assignment(&self, _role: &Role) -> Result<&Identity> {
-        Err(Error::Networking(
-            "new AsyncSession networking is not implemented yet".to_string(),
-        ))
-    }
-
-    fn storage_load(&self, _key: &str, _query: &str, _type_hint: Option<Ty>) -> Result<Value> {
-        Err(Error::Storage(
-            "new AsyncSession storage is not implemented yet".to_string(),
-        ))
-    }
-
-    fn storage_save(&self, _key: &str, _val: &Value) -> Result<()> {
-        Err(Error::Storage(
-            "new AsyncSession storage is not implemented yet".to_string(),
-        ))
-    }
-
-    fn networking_receive(&self, _sender: &Role, _rendezvous_key: &RendezvousKey) -> Result<Value> {
-        Err(Error::Networking(
-            "new AsyncSession networking is not implemented yet".to_string(),
-        ))
-    }
-
-    fn networking_send(
-        &self,
-        _val: &Value,
-        _receiver: &Role,
-        _rendezvous_key: &RendezvousKey,
-    ) -> Result<()> {
         Err(Error::Networking(
             "new AsyncSession networking is not implemented yet".to_string(),
         ))
@@ -2066,18 +1981,19 @@ kernel! {
 
 impl SendOp {
     fn kernel<S: RuntimeSession, T>(
-        sess: &S,
-        plc: &HostPlacement,
-        rendezvous_key: RendezvousKey,
-        receiver: Role,
-        x: T,
+        _sess: &S,
+        _plc: &HostPlacement,
+        _rendezvous_key: RendezvousKey,
+        _receiver: Role,
+        _x: T,
     ) -> Result<Unit>
     where
         Value: From<T>,
     {
-        let x: Value = x.into();
-        sess.networking_send(&x, &receiver, &rendezvous_key)?;
-        Ok(Unit(plc.clone()))
+        // let x: Value = x.into();
+        // sess.networking.send(&x, &receiver, &rendezvous_key)?;
+        // Ok(Unit(plc.clone()))
+        todo!()
     }
 }
 
@@ -2176,19 +2092,20 @@ kernel! {
 
 impl ReceiveOp {
     fn kernel<S: RuntimeSession, T>(
-        sess: &S,
-        plc: &HostPlacement,
-        rendezvous_key: RendezvousKey,
-        sender: Role,
+        _sess: &S,
+        _plc: &HostPlacement,
+        _rendezvous_key: RendezvousKey,
+        _sender: Role,
     ) -> Result<T>
     where
         T: TryFrom<Value, Error = Error>,
         T: std::fmt::Debug,
         HostPlacement: PlacementPlace<S, T>,
     {
-        use std::convert::TryInto;
-        let value = sess.networking_receive(&sender, &rendezvous_key)?;
-        Ok(plc.place(sess, value.try_into()?))
+        // use std::convert::TryInto;
+        // let value = sess.networking.receive(&sender, &rendezvous_key)?;
+        // Ok(plc.place(sess, value.try_into()?))
+        todo!()
     }
 
     fn missing_kernel<S: RuntimeSession, T>(
@@ -2472,8 +2389,8 @@ kernel! {
         (HostPlacement, (HostUint16Tensor) -> HostUint16Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [runtime] Self::non_placing_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::non_placing_kernel),
         (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
         (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] Self::float_kernel),
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] Self::float_kernel),
@@ -2481,7 +2398,21 @@ kernel! {
 }
 
 impl OutputOp {
-    fn kernel<S: RuntimeSession, O>(_sess: &S, _plc: &HostPlacement, x: O) -> Result<O> {
+    fn kernel<S: RuntimeSession, O>(sess: &S, plc: &HostPlacement, x: O) -> Result<O>
+    where
+        HostPlacement: PlacementPlace<S, O>,
+    {
+        // Output is not doing anything now, it is just a marker on the graph.
+        // But it has to return a value because that's how we collect outputs in the old framework
+        let x = plc.place(sess, x);
+        Ok(x)
+    }
+
+    fn non_placing_kernel<S: RuntimeSession, O>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        x: O,
+    ) -> Result<O> {
         // Output is not doing anything now, it is just a marker on the graph.
         // But it has to return a value because that's how we collect outputs in the old framework
         Ok(x)
@@ -2545,17 +2476,18 @@ kernel! {
 
 impl SaveOp {
     fn kernel<S: RuntimeSession, O>(
-        sess: &S,
-        plc: &HostPlacement,
-        key: HostString,
-        x: O,
+        _sess: &S,
+        _plc: &HostPlacement,
+        _key: HostString,
+        _x: O,
     ) -> Result<Unit>
     where
         Value: From<O>,
     {
-        let x: Value = x.into();
-        sess.storage_save(&key.0, &x)?;
-        Ok(Unit(plc.clone()))
+        // let x: Value = x.into();
+        // sess.storage.save(&key.0, &x)?;
+        // Ok(Unit(plc.clone()))
+        todo!()
     }
 }
 
@@ -2639,20 +2571,21 @@ kernel! {
 
 impl LoadOp {
     fn kernel<S: RuntimeSession, O>(
-        sess: &S,
-        plc: &HostPlacement,
-        key: HostString,
-        query: HostString,
+        _sess: &S,
+        _plc: &HostPlacement,
+        _key: HostString,
+        _query: HostString,
     ) -> Result<O>
     where
         O: KnownType<S>,
         O: TryFrom<Value, Error = Error>,
         HostPlacement: PlacementPlace<S, O>,
     {
-        use std::convert::TryInto;
-        let value = sess.storage_load(&key.0, &query.0, Some(<O as KnownType<S>>::TY))?;
-        let value = plc.place(sess, value.try_into()?);
-        Ok(value)
+        // use std::convert::TryInto;
+        // let value = sess.storage.load(&key.0, &query.0, Some(<O as KnownType<S>>::TY))?;
+        // let value = plc.place(sess, value.try_into()?);
+        // Ok(value)
+        todo!()
     }
 
     fn missing_kernel<S: RuntimeSession, O>(

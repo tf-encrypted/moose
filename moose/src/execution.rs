@@ -698,7 +698,11 @@ impl Operation {
 
     fn bridge_compile(&self, ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
         match self.kind {
-            Operator::Receive(_) | Operator::Send(_) => return self.older_compile(ctx),
+            // This kinds of operators should not be using the brdiged Sync kernels. Instead, they should be using the old kernels,
+            // because there is where the Sync/Async storage and networking is done right at the moment.
+            Operator::Receive(_) | Operator::Send(_) | Operator::Load(_) | Operator::Save(_) => {
+                return self.older_compile(ctx)
+            }
             _ => {}
         };
 
