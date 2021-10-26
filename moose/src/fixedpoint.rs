@@ -1103,6 +1103,63 @@ impl ReplicatedPlacement {
     }
 }
 
+impl ReplicatedPlacement {
+    pub fn p_eval<S: Session, SetupT, RepRingT>(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+        coeffs: Vec<AbstractReplicatedFixedTensor<RepRingT>>,
+    ) -> AbstractReplicatedFixedTensor<RepRingT>
+    where
+        AbstractReplicatedFixedTensor<RepRingT>: Clone,
+        ReplicatedPlacement: PlacementMul<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
+        ReplicatedPlacement: PlacementTruncPr<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
+        ReplicatedPlacement: PlacementAddN<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
+    {
+        let degree = coeffs.len() - 1;
+        let mut x_n: Vec<AbstractReplicatedFixedTensor<RepRingT>> = Vec::new();
+
+        for _ in 0..degree {
+            x_n.push(x.clone());
+        }
+
+        let x_pre_mul = self.prefix_mul_fixed(sess, setup, x_n);
+
+        // TODO [Yann] this multiplication should be public/private instead
+        let mut x_mul_coeffs: Vec<RepRingT> = Vec::new();
+        for i in 0..x_pre_mul.len() {
+            x_mul_coeffs.push(
+                self.trunc_pr(
+                    sess,
+                    x.fractional_precision,
+                    &self.mul(sess, &coeffs[i + 1], &x_pre_mul[i]),
+                )
+                .tensor,
+            );
+        }
+
+        let x_mul_coeffs_added = self.add_n(sess, &x_mul_coeffs);
+        let result = self.add(sess, &x_mul_coeffs_added, &coeffs[0].tensor);
+
+        AbstractReplicatedFixedTensor {
+            tensor: result,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1888,5 +1945,60 @@ mod tests {
         let y_target = vec![1u128, 2, 6, 24];
 
         test_rep_prefix_mul_fixed128(x, y_target);
+    }
+
+    #[test]
+    fn test_p_eval() {
+        let x = array![1f64, 2., 3., 4.].into_dyn();
+        let coeffs = vec![1f64, 2., 3.];
+        let targets = vec![6f64, 17., 34., 57.];
+
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let encode = |item: &f64| (2_i64.pow(15) as f64 * item) as u64;
+        let x_encoded = x.map(encode);
+        let x_ring = AbstractHostRingTensor::from_raw_plc(x_encoded, alice.clone());
+        let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>> =
+            rep.share(&sess, &setup, &x_ring);
+        let x_fixed_shared = AbstractReplicatedFixedTensor {
+            tensor: x_shared,
+            fractional_precision: 15,
+            integral_precision: 8,
+        };
+
+        let mut coeffs_fixed_shared: Vec<
+            AbstractReplicatedFixedTensor<
+                AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>,
+            >,
+        > = Vec::new();
+
+        for coeff in coeffs {
+            let coeff_encode = array![coeff].map(encode);
+            let coeff_ring = AbstractHostRingTensor::from_raw_plc(coeff_encode, alice.clone());
+            let coeff_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>> =
+                rep.share(&sess, &setup, &coeff_ring);
+            let coeff_fixed_shared = AbstractReplicatedFixedTensor {
+                tensor: coeff_shared,
+                fractional_precision: 15,
+                integral_precision: 8,
+            };
+            coeffs_fixed_shared.push(coeff_fixed_shared);
+        }
+
+        let output = rep.p_eval(&sess, &setup, x_fixed_shared, coeffs_fixed_shared);
+        let output_reveal = alice.reveal(&sess, &output);
+        let result = Convert::decode(&output_reveal.tensor, (2 as u64).pow(15));
+
+        for i in 0..targets.len() {
+            assert_eq!(result.0[i], targets[i]);
+        }
     }
 }

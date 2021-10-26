@@ -2355,19 +2355,6 @@ impl ReplicatedPlacement {
     }
 }
 
-// Polynomial evaluation
-impl ReplicatedPlacement {
-    fn p_eval<S: Session, SetupT, RepT>(
-        &self,
-        sess: S,
-        setup: SetupT,
-        x: RepT,
-        coefs: Vec<f64>,
-    ) -> RepT {
-        let dregree = coefs.len();
-        x
-    }
-}
 #[cfg(test)]
 mod tests {
     use super::*;
