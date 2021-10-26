@@ -1840,19 +1840,16 @@ mod tests {
 
                 let encode = |item: &$tt| (2_i64.pow($f_precision) as $tt * item) as $tt;
 
-                let mut x_fixed_vec: Vec<
-                    AbstractReplicatedFixedTensor<
-                        AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>>,
-                    >,
-                > = Vec::new();
-
-                for el in x {
-                    let x_encode = el.map(encode);
-                    let x_ring = AbstractHostRingTensor::from_raw_plc(x_encode, alice.clone());
-                    let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
-                        rep.share(&sess, &setup, &x_ring);
-                    x_fixed_vec.push(new_replicated_fixed_tensor(x_shared));
-                }
+                let x_fixed_vec = x
+                    .into_iter()
+                    .map(|x| {
+                        let x_encode = x.map(encode);
+                        let x_ring = AbstractHostRingTensor::from_raw_plc(x_encode, alice.clone());
+                        let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
+                            rep.share(&sess, &setup, &x_ring);
+                        new_replicated_fixed_tensor(x_shared)
+                    })
+                    .collect();
 
                 let outputs = rep.prefix_mul_fixed(&sess, &setup, x_fixed_vec);
 
