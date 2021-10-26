@@ -1128,26 +1128,26 @@ impl ReplicatedPlacement {
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
     {
         let degree = coeffs.len() - 1;
-        let mut x_n: Vec<AbstractReplicatedFixedTensor<RepRingT>> = Vec::new();
 
-        for _ in 0..degree {
-            x_n.push(x.clone());
-        }
+        let x_n: Vec<AbstractReplicatedFixedTensor<RepRingT>> =
+            (0..degree).into_iter().map(|_| x.clone()).collect();
 
         let x_pre_mul = self.prefix_mul_fixed(sess, setup, x_n);
 
-        // TODO [Yann] this multiplication should be public/private instead
-        let mut x_mul_coeffs: Vec<RepRingT> = Vec::new();
-        for i in 0..x_pre_mul.len() {
-            x_mul_coeffs.push(
+        // TODO [Yann] - this multiplication should be public/private instead
+        // If x_pre_mul could be concatenated in one tensor, we could use a single
+        // multiplication instead of doing a for loop.
+        let x_mul_coeffs: Vec<RepRingT> = (0..x_pre_mul.len())
+            .into_iter()
+            .map(|i| {
                 self.trunc_pr(
                     sess,
                     x.fractional_precision,
                     &self.mul(sess, &coeffs[i + 1], &x_pre_mul[i]),
                 )
-                .tensor,
-            );
-        }
+                .tensor
+            })
+            .collect();
 
         let x_mul_coeffs_added = self.add_n(sess, &x_mul_coeffs);
         let result = self.add(sess, &x_mul_coeffs_added, &coeffs[0].tensor);
@@ -1973,30 +1973,22 @@ mod tests {
         let x_ring = AbstractHostRingTensor::from_raw_plc(x_encoded, alice.clone());
         let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>> =
             rep.share(&sess, &setup, &x_ring);
-        let x_fixed_shared = AbstractReplicatedFixedTensor {
-            tensor: x_shared,
-            fractional_precision: 15,
-            integral_precision: 8,
-        };
+        let x_fixed_shared = new_replicated_fixed_tensor(x_shared);
 
-        let mut coeffs_fixed_shared: Vec<
+        let coeffs_fixed_shared: Vec<
             AbstractReplicatedFixedTensor<
                 AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>,
             >,
-        > = Vec::new();
-
-        for coeff in coeffs {
-            let coeff_encode = array![coeff].map(encode);
-            let coeff_ring = AbstractHostRingTensor::from_raw_plc(coeff_encode, alice.clone());
-            let coeff_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>> =
-                rep.share(&sess, &setup, &coeff_ring);
-            let coeff_fixed_shared = AbstractReplicatedFixedTensor {
-                tensor: coeff_shared,
-                fractional_precision: 15,
-                integral_precision: 8,
-            };
-            coeffs_fixed_shared.push(coeff_fixed_shared);
-        }
+        > = coeffs
+            .into_iter()
+            .map(|coeff| {
+                let coeff_encode = array![coeff].map(encode);
+                let coeff_ring = AbstractHostRingTensor::from_raw_plc(coeff_encode, alice.clone());
+                let coeff_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>> =
+                    rep.share(&sess, &setup, &coeff_ring);
+                new_replicated_fixed_tensor(coeff_shared)
+            })
+            .collect();
 
         let output = rep.p_eval(&sess, &setup, x_fixed_shared, coeffs_fixed_shared);
         let output_reveal = alice.reveal(&sess, &output);
