@@ -1519,8 +1519,6 @@ mod tests {
                     SessionId::try_from("foobar").unwrap(),
                     arguments,
                     hashmap!(),
-                    Arc::new(LocalAsyncNetworking::default()),
-                    Arc::new(LocalAsyncStorage::default()),
                 );
                 let outputs = executor.run_computation(&computation, &session)?;
                 Ok(outputs)
@@ -2560,8 +2558,6 @@ mod tests {
                 SessionId::try_from("foobar").unwrap(),
                 hashmap!(),
                 valid_role_assignments.clone(),
-                Arc::clone(&networking),
-                Arc::new(LocalAsyncStorage::default()),
             )),
             host: Arc::new(Placement::Host(HostPlacement {
                 owner: "localhost".into(),
@@ -2590,8 +2586,6 @@ mod tests {
                 SessionId::try_from("foobar").unwrap(),
                 hashmap!(),
                 valid_role_assignments.clone(),
-                Arc::clone(&networking),
-                Arc::new(LocalAsyncStorage::default()),
             )),
             host: Arc::new(Placement::Host(HostPlacement {
                 owner: "localhost".into(),
