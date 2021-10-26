@@ -909,6 +909,7 @@ operators![
     HostReshape,
     HostSqueeze,
     HostSum,
+    HostAddN,
     HostOnes,
     HostConcat,
     HostTranspose,
@@ -986,6 +987,7 @@ operators![
     RepFixedpointMean,
     RepShl,
     RepSum,
+    RepAddN,
     RepTruncPr,
     RepToAdt,
     RepIndexAxis,
@@ -993,6 +995,7 @@ operators![
     RepDiag,
     RepSlice,
     RepBitDec,
+    RepBitCompose,
     RepShlDim,
     RepEqual,
     RepIfElse,
@@ -1212,6 +1215,11 @@ pub struct HostReshapeOp {
 pub struct HostSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostAddNOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -1618,6 +1626,11 @@ pub struct RepFixedpointMeanOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepAddNOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -1679,6 +1692,11 @@ pub struct RepSliceOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepBitDecOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepBitComposeOp {
     pub sig: Signature,
 }
 
