@@ -647,8 +647,6 @@ fn execute(c: &mut Criterion) {
                     SessionId::try_from("12345").unwrap(),
                     hashmap!(),
                     hashmap!(),
-                    Arc::new(DummyNetworking(unit.clone())),
-                    Arc::new(moose::storage::LocalAsyncStorage::default()),
                 )),
                 host: Arc::new(moose::computation::Placement::Host(HostPlacement {
                     owner: "localhost".into(),
