@@ -27,7 +27,7 @@ impl Pow2Op {
     {
         let integral_precision = x.integral_precision as usize;
         let fractional_precision = x.fractional_precision as usize;
-        let k = fractional_precision + integral_precision;
+        let _k = fractional_precision + integral_precision;
 
         let setup = rep.gen_setup(sess);
 
@@ -59,7 +59,7 @@ impl Pow2Op {
 }
 
 pub(crate) trait Pow2FromBits<S: Session, RepRingT> {
-    fn pow2_from_bits(&self, sess: &S, x: &Vec<RepRingT>) -> RepRingT;
+    fn pow2_from_bits(&self, sess: &S, x: &[RepRingT]) -> RepRingT;
 }
 
 impl<S: Session, RepRingT> Pow2FromBits<S, RepRingT> for ReplicatedPlacement
@@ -74,7 +74,7 @@ where
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
 {
-    fn pow2_from_bits(&self, sess: &S, x: &Vec<RepRingT>) -> RepRingT {
+    fn pow2_from_bits(&self, sess: &S, x: &[RepRingT]) -> RepRingT {
         #![allow(clippy::many_single_char_names)]
         let rep = self;
 

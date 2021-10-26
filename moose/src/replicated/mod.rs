@@ -2140,7 +2140,7 @@ where
             Symbolic::Concrete(x) => x,
             Symbolic::Symbolic(_) => unimplemented!(),
         };
-        let (a, b) = Self::split(self, sess, &concrete_x);
+        let (a, b) = Self::split(self, sess, concrete_x);
         (a.into(), b.into())
     }
 }
