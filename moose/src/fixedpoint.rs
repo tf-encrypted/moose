@@ -1280,6 +1280,16 @@ mod tests {
         }
     }
 
+    fn new_replicated_fixed_tensor<RepRingT>(
+        x: RepRingT,
+    ) -> AbstractReplicatedFixedTensor<RepRingT> {
+        AbstractReplicatedFixedTensor {
+            tensor: x,
+            fractional_precision: 15,
+            integral_precision: 8,
+        }
+    }
+
     macro_rules! host_binary_approx_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>, $factor: expr, $error: expr) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<f64>,
@@ -1898,12 +1908,7 @@ mod tests {
                     let x_ring = AbstractHostRingTensor::from_raw_plc(x_encode, alice.clone());
                     let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
                         rep.share(&sess, &setup, &x_ring);
-                    let x_fixed_shared = AbstractReplicatedFixedTensor {
-                        tensor: x_shared,
-                        fractional_precision: $f_precision,
-                        integral_precision: 8,
-                    };
-                    x_fixed_vec.push(x_fixed_shared);
+                    x_fixed_vec.push(new_replicated_fixed_tensor(x_shared));
                 }
 
                 let outputs = rep.prefix_mul_fixed(&sess, &setup, x_fixed_vec);
