@@ -11,10 +11,8 @@ use crate::host::{
     HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostString,
     HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
 };
-use crate::networking::AsyncNetworking;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::ReplicatedSetup;
-use crate::storage::AsyncStorage;
 use crate::{closure_kernel, function_kernel};
 use crate::{computation::*, for_all_values};
 use std::collections::HashMap;
@@ -54,8 +52,6 @@ pub struct SyncSession {
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
     arguments: HashMap<String, Value>,
     role_assignments: HashMap<Role, Identity>,
-    // networking: Arc<dyn Send + Sync + AsyncNetworking>,
-    // storage: Arc<dyn Send + Sync + AsyncStorage>,
 }
 
 impl Default for SyncSession {
@@ -68,8 +64,6 @@ impl Default for SyncSession {
             replicated_keys: Default::default(),
             arguments: Default::default(),
             role_assignments: Default::default(),
-            // networking: Arc::new(LocalAsyncNetworking::default()),
-            // storage: Arc::new(LocalAsyncStorage::from_hashmap(hashmap!())),
         }
     }
 }
@@ -79,16 +73,12 @@ impl SyncSession {
         sid: SessionId,
         arguments: HashMap<String, Value>,
         role_assignments: HashMap<Role, Identity>,
-        _networking: Arc<dyn Send + Sync + AsyncNetworking>,
-        _storage: Arc<dyn Send + Sync + AsyncStorage>,
     ) -> Self {
         SyncSession {
             session_id: sid,
             replicated_keys: Default::default(),
             arguments,
             role_assignments,
-            // networking,
-            // storage,
         }
     }
 }

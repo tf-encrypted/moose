@@ -1404,8 +1404,6 @@ impl AsyncTestRuntime {
                     SessionId::try_from("foobar").unwrap(),
                     arguments.clone(),
                     valid_role_assignments.clone(),
-                    Arc::clone(&self.networking),
-                    Arc::clone(&self.runtime_storage[own_identity]),
                 )),
                 host: Arc::new(Placement::Host(HostPlacement {
                     owner: own_identity.0.clone().into(),
