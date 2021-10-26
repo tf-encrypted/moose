@@ -480,6 +480,7 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
 pub struct CompilationContext<'s> {
     pub role_assignment: &'s HashMap<Role, Identity>,
     pub own_identity: &'s Identity,
+    pub use_sync_bridge: bool,
 }
 
 pub type SyncArgs = HashMap<String, Value>;
@@ -621,6 +622,81 @@ impl Compile<CompiledSyncOperation> for Operation {
 
 impl Compile<CompiledAsyncOperation> for Operation {
     fn compile(&self, ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
+        if ctx.use_sync_bridge {
+            self.bridge_compile(ctx)
+        } else {
+            self.older_compile(ctx)
+        }
+    }
+}
+
+impl Operation {
+    fn older_compile(&self, ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
+        let operator_kernel = Compile::<AsyncKernel>::compile(&self.kind, ctx)?;
+        match operator_kernel {
+            AsyncKernel::Nullary(k) => {
+                check_arity(&self.name, &self.inputs, 0)?;
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, _, sender| Ok(k(sess, sender))),
+                })
+            }
+            AsyncKernel::Unary(k) => {
+                check_arity(&self.name, &self.inputs, 1)?;
+                let x0_name = self.inputs[0].clone();
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, env, sender| {
+                        let x0 = find_env(env, &x0_name)?;
+                        Ok(k(sess, x0, sender))
+                    }),
+                })
+            }
+            AsyncKernel::Binary(k) => {
+                check_arity(&self.name, &self.inputs, 2)?;
+                let x0_name = self.inputs[0].clone();
+                let x1_name = self.inputs[1].clone();
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, env, sender| {
+                        let x0 = find_env(env, &x0_name)?;
+                        let x1 = find_env(env, &x1_name)?;
+                        Ok(k(sess, x0, x1, sender))
+                    }),
+                })
+            }
+            AsyncKernel::Ternary(k) => {
+                check_arity(&self.name, &self.inputs, 3)?;
+                let x0_name = self.inputs[0].clone();
+                let x1_name = self.inputs[1].clone();
+                let x2_name = self.inputs[2].clone();
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, env, sender| {
+                        let x0 = find_env(env, &x0_name)?;
+                        let x1 = find_env(env, &x1_name)?;
+                        let x2 = find_env(env, &x2_name)?;
+                        Ok(k(sess, x0, x1, x2, sender))
+                    }),
+                })
+            }
+            AsyncKernel::Variadic(k) => {
+                let inputs = self.inputs.clone();
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, env, sender| {
+                        let xs = inputs
+                            .iter()
+                            .map(|input| find_env(env, input))
+                            .collect::<Result<Vec<_>>>()?;
+                        Ok(k(sess, xs, sender))
+                    }),
+                })
+            }
+        }
+    }
+
+    fn bridge_compile(&self, ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
         if let Operator::Receive(ref op) = self.kind {
             let operator_kernel = Compile::<AsyncKernel>::compile(op, ctx)?;
             if let AsyncKernel::Nullary(k) = operator_kernel {
@@ -1001,6 +1077,7 @@ impl EagerExecutor {
         let ctx = CompilationContext {
             role_assignment,
             own_identity,
+            use_sync_bridge: false, // Sync Session should never use the bridge
         };
         let computation = compile_passes(computation, &[Pass::Typing, Pass::DeprecatedLogical])
             .map_err(|e| {
@@ -1231,6 +1308,7 @@ impl AsyncExecutor {
         role_assignment: &RoleAssignment,
         own_identity: &Identity,
         session: AsyncSession,
+        use_sync_bridge: bool,
     ) -> Result<(AsyncSessionHandle, HashMap<String, AsyncReceiver>)> {
         if !self.session_ids.insert(session.sid.clone()) {
             return Err(Error::SessionAlreadyExists(format!("{}", session.sid)));
@@ -1239,6 +1317,7 @@ impl AsyncExecutor {
         let ctx = CompilationContext {
             role_assignment,
             own_identity,
+            use_sync_bridge,
         };
 
         let computation = compile_passes(computation, &[Pass::Typing, Pass::DeprecatedLogical])
@@ -1340,6 +1419,7 @@ impl AsyncTestRuntime {
                     &valid_role_assignments,
                     own_identity,
                     moose_session,
+                    true, // Let's test with the new framework
                 )
                 .unwrap();
 
