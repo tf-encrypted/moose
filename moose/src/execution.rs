@@ -697,16 +697,10 @@ impl Operation {
     }
 
     fn bridge_compile(&self, ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
-        if let Operator::Receive(ref op) = self.kind {
-            let operator_kernel = Compile::<AsyncKernel>::compile(op, ctx)?;
-            if let AsyncKernel::Nullary(k) = operator_kernel {
-                check_arity(&self.name, &self.inputs, 0)?;
-                return Ok(CompiledAsyncOperation {
-                    name: self.name.clone(),
-                    kernel: Box::new(move |sess, _, sender| Ok(k(sess, sender))),
-                });
-            }
-        }
+        match self.kind {
+            Operator::Receive(_) | Operator::Send(_) => return self.older_compile(ctx),
+            _ => {}
+        };
 
         let op = self.clone();
 

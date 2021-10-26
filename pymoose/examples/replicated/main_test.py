@@ -33,12 +33,11 @@ class ReplicatedExample(unittest.TestCase):
             with rep:
                 z1 = edsl.mul(x, y)
                 z2 = edsl.dot(x, y)
-                # c = edsl.abs(z2)
+                c = edsl.abs(z2)
 
             with dave:
                 z1 = edsl.cast(z1, dtype=edsl.float64)
-                # c = edsl.cast(c, dtype=edsl.float64)
-                c = edsl.cast(z2, dtype=edsl.float64)
+                c = edsl.cast(c, dtype=edsl.float64)
                 v = edsl.add(z1, z1)
                 res_dave = edsl.save("res", v)
                 abs_dave = edsl.save("abs", c)
