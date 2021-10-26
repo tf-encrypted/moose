@@ -2135,6 +2135,11 @@ impl Const for N128 {
     const VALUE: usize = 128;
 }
 
+enum RingElementTy {
+    N64,
+    N128,
+}
+
 pub trait Ring {
     type BitLength: Const;
 }

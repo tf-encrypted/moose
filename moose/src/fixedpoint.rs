@@ -1107,6 +1107,10 @@ modelled!(PlacementSqrt::sqrt, ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Te
 modelled!(PlacementSqrt::sqrt, ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor, FixedpointSqrtOp);
 modelled!(PlacementSqrt::sqrt, HostPlacement, (Fixed64Tensor) -> Fixed64Tensor, FixedpointSqrtOp);
 modelled!(PlacementSqrt::sqrt, HostPlacement, (Fixed128Tensor) -> Fixed128Tensor, FixedpointSqrtOp);
+modelled!(PlacementSqrt::sqrt, HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor, FixedpointSqrtOp);
+modelled!(PlacementSqrt::sqrt, HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor, FixedpointSqrtOp);
+modelled!(PlacementSqrt::sqrt, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointSqrtOp);
+modelled!(PlacementSqrt::sqrt, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointSqrtOp);
 
 kernel!{
     FixedpointSqrtOp,
@@ -1115,6 +1119,10 @@ kernel!{
         (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [transparent] Self::fixed_host_kernel),
         (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [transparent] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [transparent] Self::fixed_rep_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [transparent] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [transparent] Self::hostfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::repfixed_kernel),
     ]
 }
 
@@ -1129,15 +1137,15 @@ impl FixedpointSqrtOp {
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementSqrt<S, HostFixedT, HostFixedT>,
     {
-        unimplemented!("TODO: FixedpointSqrt not yet implemented for HostPlacement.");
+        // unimplemented!("TODO: FixedpointSqrt not yet implemented for HostPlacement.");
         // TODO
-        // let x_revealed = match x {
-        //     FixedTensor::Host(x) => x,
-        //     FixedTensor::Replicated(x) => plc.reveal(sess, &x),
-        // };
-        //
-        // let result = plc.sqrt(sess, &x_revealed);
-        // Ok(FixedTensor::Host(result))
+        let x_revealed = match x {
+            FixedTensor::Host(x) => x,
+            FixedTensor::Replicated(x) => plc.reveal(sess, &x),
+        };
+        
+        let result = plc.sqrt(sess, &x_revealed);
+        Ok(FixedTensor::Host(result))
     }
 
     fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
@@ -1162,17 +1170,45 @@ impl FixedpointSqrtOp {
         Ok(FixedTensor::Replicated(result))
     }
 
+    fn hostfixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractHostFixedTensor<HostRingT>,
+    ) -> Result<AbstractReplicatedFixedTensor<HostRingT>>
+    where
+        ReplicatedPlacement: PlacementSqrtAsFixedpoint<S, HostRingT, HostRingT>,
+    {
+        let k = &x.integral_precision + &x.fractional_precision;
+        let f = &x.fractional_precision;
+        let y = plc.sqrt_as_fixedpoint(
+            sess,
+            k as usize,
+            f.clone() as usize,
+            &x.tensor,
+        );
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: y,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+
     fn repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
-        ReplicatedPlacement: PlacementSqrt<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementSqrtAsFixedpoint<S, RepRingT, RepRingT>,
     {
         let k = &x.integral_precision + &x.fractional_precision;
         let f = &x.fractional_precision;
-        let y = plc.sqrt_as_fixedpoint(sess, &x.tensor, k as usize, f.clone() as usize);
+        let y = plc.sqrt_as_fixedpoint(
+            sess,
+            k as usize,
+            f.clone() as usize,
+            &x.tensor,
+        );
         Ok(AbstractReplicatedFixedTensor {
             tensor: y,
             fractional_precision: x.fractional_precision,
