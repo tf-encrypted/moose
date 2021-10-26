@@ -2581,6 +2581,7 @@ mod tests {
                 &valid_role_assignments,
                 &own_identity,
                 moose_session,
+                true,
             )
             .unwrap();
 
@@ -2609,6 +2610,7 @@ mod tests {
             &valid_role_assignments,
             &own_identity,
             moose_session,
+            true,
         );
 
         if let Err(e) = res {
