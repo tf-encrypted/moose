@@ -1734,11 +1734,6 @@ pub struct RepIfElseOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepNegOp {
-    pub sig: Signature,
-}
-
 pub trait KnownPlacement {
     const TY: PlacementTy;
 

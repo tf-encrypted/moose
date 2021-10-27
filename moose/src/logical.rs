@@ -174,7 +174,7 @@ impl AesDecryptOp {
         sess: &S,
         plc: &HostPlacement,
         c: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementDecrypt<S, EncFixed128T, HostFixed128T>,
         Fixed128T: From<FixedTensor<HostFixed128T, RepFixed128T>>,
@@ -182,7 +182,7 @@ impl AesDecryptOp {
         match c {
             AbstractTensor::EncFixed128(c) => {
                 let res = plc.decrypt(sess, &c);
-                AbstractTensor::Fixed128(FixedTensor::Host(res).into())
+                Ok(AbstractTensor::Fixed128(FixedTensor::Host(res).into()))
             }
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
@@ -201,7 +201,7 @@ impl AesDecryptOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         c: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementDecrypt<S, EncFixed128T, RepFixed128T>,
         Fixed128T: From<FixedTensor<HostFixed128T, RepFixed128T>>,
@@ -209,7 +209,7 @@ impl AesDecryptOp {
         match c {
             AbstractTensor::EncFixed128(c) => {
                 let res = plc.decrypt(sess, &c);
-                AbstractTensor::Fixed128(FixedTensor::Replicated(res).into())
+                Ok(AbstractTensor::Fixed128(FixedTensor::Replicated(res).into()))
             }
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
@@ -1359,11 +1359,11 @@ impl ConstantOp {
 }
 
 impl OutputOp {
-    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         HostString: KnownType<S>,
         HostPlacement: PlacementOutput<S, Float32T, Float32T>,
@@ -1375,6 +1375,9 @@ impl OutputOp {
             )),
             AbstractTensor::Fixed128(_x) => Err(Error::UnimplementedOperator(
                 "OutputOp missing a Fixed128 implementation.".to_string(),
+            )),
+            AbstractTensor::EncFixed128(_x) => Err(Error::UnimplementedOperator(
+                "OutputOp missing a EncFixed128 implementation.".to_string(),
             )),
             AbstractTensor::Float32(x) => Ok(AbstractTensor::Float32(plc.output(sess, &x))),
             AbstractTensor::Float64(x) => Ok(AbstractTensor::Float64(plc.output(sess, &x))),

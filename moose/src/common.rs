@@ -44,9 +44,6 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => [runtime] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedShape => [runtime] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedShape => [runtime] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => [hybrid] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedShape => [hybrid] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedShape => [hybrid] Self::rep_kernel),
         (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveShape => [runtime] Self::adt_kernel),
         (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveShape => [runtime] Self::adt_kernel),
     ]

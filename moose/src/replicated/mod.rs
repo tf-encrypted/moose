@@ -516,7 +516,7 @@ impl RepAndOp {
         rep: &ReplicatedPlacement,
         x: cs!(ReplicatedBitTensor),
         y: cs!(ReplicatedBitTensor),
-    ) -> cs!(ReplicatedBitTensor)
+    ) -> Result<cs!(ReplicatedBitTensor)>
     where
         ReplicatedBitTensor: KnownType<S>,
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
@@ -530,7 +530,7 @@ impl RepAndOp {
     {
         // and = mul in Z2
         let setup = rep.gen_setup(sess);
-        rep.mul_setup(sess, &setup, &x, &y)
+        Ok(rep.mul_setup(sess, &setup, &x, &y))
     }
 }
 
@@ -550,7 +550,7 @@ impl RepXorOp {
         rep: &ReplicatedPlacement,
         x: cs!(ReplicatedBitTensor),
         y: cs!(ReplicatedBitTensor),
-    ) -> cs!(ReplicatedBitTensor)
+    ) -> Result<cs!(ReplicatedBitTensor)>
     where
         ReplicatedBitTensor: KnownType<S>,
         ReplicatedPlacement: PlacementAdd<
@@ -561,25 +561,29 @@ impl RepXorOp {
         >,
     {
         // add = xor in Z2
-        rep.add(sess, &x, &y)
+        Ok(rep.add(sess, &x, &y))
     }
 }
 
 modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor, RepNegOp);
+modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepNegOp);
+modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepNegOp);
 
 kernel! {
     RepNegOp,
     [
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [runtime] Self::rep_bit_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [runtime] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor ) ->ReplicatedRing128Tensor  => [runtime] Self::rep_rep_kernel),
     ]
 }
 
 impl RepNegOp {
-    fn rep_rep_kernel<S: Session, HostBitT>(
+    fn rep_bit_kernel<S: Session, HostBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepTen<HostBitT>,
-    ) -> RepTen<HostBitT>
+    ) -> Result<RepTen<HostBitT>>
     where
         HostPlacement: PlacementNeg<S, HostBitT, HostBitT>,
     {
@@ -599,9 +603,35 @@ impl RepNegOp {
         let y22 = x22;
         let y02 = player2.neg(sess, &x02);
 
-        RepTen {
+        Ok(RepTen {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
-        }
+        })
+    }
+
+    fn rep_rep_kernel<S: Session, HostRepT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepTen<HostRepT>,
+    ) -> Result<RepTen<HostRepT>>
+    where
+        HostPlacement: PlacementNeg<S, HostRepT, HostRepT>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = x;
+
+        let y00 = player0.neg(sess, &x00);
+        let y10 = player0.neg(sess, &x10);
+        let y11 = player1.neg(sess, &x11);
+        let y21 = player1.neg(sess, &x21);
+        let y22 = player2.neg(sess, &x22);
+        let y02 = player2.neg(sess, &x02);
+
+        Ok(RepTen {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        })
     }
 }
 
