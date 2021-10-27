@@ -247,8 +247,8 @@ impl RuntimeSession for SyncSession {
 pub struct AsyncSession {
     pub session_id: SessionId,
     pub arguments: HashMap<String, Value>,
-    pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
-    pub storage: Arc<dyn Send + Sync + AsyncStorage>,
+    // pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
+    // pub storage: Arc<dyn Send + Sync + AsyncStorage>,
     pub host: Arc<Placement>,
     // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
 }
