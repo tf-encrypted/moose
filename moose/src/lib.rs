@@ -1,16 +1,16 @@
 // Returns the context-specific type for the given basic type.
 macro_rules! cs {
-    ($t:ty) => {
-        <$t as KnownType<S>>::Type
+    ($canonical_type:ty) => {
+        <$canonical_type as KnownType<S>>::Type
     };
 }
 
 macro_rules! st {
-    ($t:ty) => {
-        <<$t as crate::computation::CanonicalType>::Type as KnownType<S>>::Type
+    ($partially_canonical_type:ty) => {
+        <<$partially_canonical_type as crate::computation::CanonicalType>::Type as KnownType<S>>::Type
     };
-    ($t:ty, $s:ty) => {
-        <<$t as crate::computation::CanonicalType>::Type as KnownType<$s>>::Type
+    ($partially_canonical_type:ty, $s:ty) => {
+        <<$partially_canonical_type as crate::computation::CanonicalType>::Type as KnownType<$s>>::Type
     };
 }
 
@@ -70,14 +70,14 @@ macro_rules! derive_runtime_kernel {
     };
     (ternary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, _, _, _) -> _> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_, _, _, _) -> _>> = &|$op| $kf;
             kf($self)
         }
     };
 
     (variadic, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, _) -> _> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, Vec<_>) -> _> = &|$op| $kf;
             kf($self)
         }
     };
@@ -161,7 +161,7 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> _>>::Ok(Box::new(move |sess, plc, x0, x1, x2| {
+            crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> crate::error::Result<_>>>::Ok(Box::new(move |sess, plc, x0, x1, x2| {
                 $k(sess, plc, $($attr.clone()),+), x0, x1, x2
             }))
         }
@@ -205,7 +205,11 @@ macro_rules! derive_runtime_kernel {
         crate::error::Result::<Box<dyn Fn(&_, &_, _, _, _) -> _>>::Ok(Box::new($k))
     };
     (variadic, $k:expr, $self:ident) => {
-        Box::new($k)
+        crate::error::Result::<Box<dyn Fn(&_, &_, Vec<_>) -> _>>::Ok(
+            Box::new(move |sess, plc, xs| {
+                $k(sess, plc, &xs)
+            })
+        )
     };
 }
 
@@ -235,15 +239,19 @@ macro_rules! concrete_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into()?;
+                            let op = self.clone();
 
                             let k = <$op as NullaryKernel<SyncSession, $plc, $u>>::compile(self, &plc)?;
 
                             Ok(Box::new(move |sess, operands: Vec<crate::computation::Value>| {
                                 assert_eq!(operands.len(), 0);
 
-                                let y: $u = k(sess, &plc);
-                                debug_assert_eq!(y.placement()?, plc.clone().into());
-                                Ok(y.into())
+                                let y: $u = k(sess, &plc)?;
+                                if y.placement()? == plc.clone().into() {
+                                    Ok(y.into())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
                             }))
                         }
                     )+
@@ -280,15 +288,19 @@ macro_rules! concrete_dispatch_kernel {
                             let plc: $plc = plc.clone().try_into()?;
 
                             let k = <$op as UnaryKernel<SyncSession, $plc, $t0, $u>>::compile(self, &plc)?;
+                            let op = self.clone();
 
                             Ok(Box::new(move |sess, operands: Vec<Value>| {
                                 assert_eq!(operands.len(), 1);
 
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into()?;
 
-                                let y: $u = k(sess, &plc, x0);
-                                debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
-                                Ok(y.into())
+                                let y: $u = k(sess, &plc, x0)?;
+                                if y.placement()? == plc.clone().into() {
+                                    Ok(y.into())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
                             }))
                         }
                     )+
@@ -324,6 +336,7 @@ macro_rules! concrete_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into()?;
+                            let op = self.clone();
 
                             let k = <$op as BinaryKernel<
                                 SyncSession,
@@ -340,9 +353,12 @@ macro_rules! concrete_dispatch_kernel {
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into()?;
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into()?;
 
-                                let y: $u = k(sess, &plc, x0, x1);
-                                debug_assert_eq!(y.placement()?, plc.clone().into());
-                                Ok(y.into())
+                                let y: $u = k(sess, &plc, x0, x1)?;
+                                if y.placement()? == plc.clone().into() {
+                                    Ok(y.into())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
                             }))
                         }
                     )+
@@ -379,6 +395,7 @@ macro_rules! concrete_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into()?;
+                            let op = self.clone();
 
                             let k = <$op as TernaryKernel<SyncSession, $plc, $t0, $t1, $t2, $u>>::compile(self, &plc)?;
 
@@ -389,9 +406,12 @@ macro_rules! concrete_dispatch_kernel {
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into()?;
                                 let x2: $t2 = operands.get(2).unwrap().clone().try_into()?;
 
-                                let y: $u = k(sess, &plc, x0, x1, x2);
-                                debug_assert_eq!(y.placement()?, plc.clone().into());
-                                Ok(y.into())
+                                let y: $u = k(sess, &plc, x0, x1, x2)?;
+                                if y.placement()? == plc.clone().into() {
+                                    Ok(y.into())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
                             }))
                         }
                     )+
@@ -426,15 +446,20 @@ macro_rules! concrete_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
+                            let op = self.clone();
 
                             let k = <$op as VariadicKernel<SyncSession, $plc, $ts, $u>>::compile(self, &plc)?;
 
                             Ok(Box::new(move |sess, operands: Vec<Value>| {
                                 let xs: Vec<$ts> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
 
-                                let y: $u = k(sess, &plc, xs);
-                                debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
-                                Ok(y.into())
+                                let y: $u = k(sess, &plc, xs)?;
+                                debug_assert_eq!(y.placement()?, plc.clone().into());
+                                if y.placement()? == plc.clone().into() {
+                                    Ok(y.into())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
                             }))
                         }
                     )+
@@ -484,7 +509,7 @@ macro_rules! symbolic_dispatch_kernel {
                             Ok(Box::new(move |sess, operands| {
                                 assert_eq!(operands.len(), 0);
 
-                                let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc);
+                                let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc)?;
                                 Ok(y.into())
                             }))
                         }
@@ -536,7 +561,7 @@ macro_rules! symbolic_dispatch_kernel {
 
                                 let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.get(0).unwrap().clone().try_into()?;
 
-                                let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0);
+                                let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0)?;
                                 Ok(y.into())
                             }))
                         }
@@ -591,7 +616,7 @@ macro_rules! symbolic_dispatch_kernel {
                                 let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.get(0).unwrap().clone().try_into()?;
                                 let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.get(1).unwrap().clone().try_into()?;
 
-                                let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0, x1);
+                                let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0, x1)?;
                                 Ok(y.into())
                             }))
                         }
@@ -649,7 +674,7 @@ macro_rules! symbolic_dispatch_kernel {
                                 let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.get(1).unwrap().clone().try_into()?;
                                 let x2: <$t2 as KnownType<SymbolicSession>>::Type = operands.get(2).unwrap().clone().try_into()?;
 
-                                let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0, x1, x2);
+                                let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0, x1, x2)?;
                                 Ok(y.into())
                             }))
                         }
@@ -699,7 +724,7 @@ macro_rules! symbolic_dispatch_kernel {
                             Ok(Box::new(move |sess, operands| {
                                 let xs: Vec<<$ts as KnownType<SymbolicSession>>::Type> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
 
-                                let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, xs);
+                                let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, xs)?;
                                 Ok(y.into())
                             }))
                         }
@@ -755,7 +780,9 @@ macro_rules! kernel {
                 ) -> crate::error::Result<Box<dyn Fn(
                     &crate::kernels::SyncSession,
                     &$plc)
-                    -> <$u as crate::computation::KnownType<crate::kernels::SyncSession>>::Type>>
+                    -> crate::error::Result<
+                        <$u as crate::computation::KnownType<crate::kernels::SyncSession>>::Type>>
+                    >
                 {
                     derive_runtime_kernel![nullary, $($kp)+, self]
                 }
@@ -777,18 +804,19 @@ macro_rules! kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc
-            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            ) -> crate::error::Result<
+                <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 use crate::symbolic::SymbolicSession;
 
-                let k = derive_runtime_kernel![nullary, $($kp)+, self].unwrap();
+                let k = derive_runtime_kernel![nullary, $($kp)+, self]?;
 
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
                 | {
-                    let y = k(sess, plc);
-                    y.into()
+                    let y = k(sess, plc)?;
+                    Ok(y.into())
                 }))
             }
         }
@@ -804,7 +832,7 @@ macro_rules! kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc
-            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 derive_runtime_kernel![nullary, $($kp)+, self]
             }
@@ -821,8 +849,10 @@ macro_rules! kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc)
-                -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>
-            {
+                -> crate::error::Result<
+                    <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+                >
+            >> {
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
                 let op = self.clone();
@@ -831,7 +861,7 @@ macro_rules! kernel {
                     plc: &$plc,
                 | {
                     let op_name = sess.add_operation(&op, &[], &plc.clone().into());
-                    Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                    Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                 }))
             }
         }
@@ -856,7 +886,9 @@ macro_rules! kernel {
                 fn compile(
                     &self,
                     _plc: &$plc,
-                ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0) -> $u>> {
+                ) -> crate::error::Result<
+                    Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0) -> crate::error::Result<$u>>
+                > {
                     derive_runtime_kernel![unary, $($kp)+, self]
                 }
             }
@@ -879,7 +911,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -902,12 +934,12 @@ macro_rules! kernel {
                     match v0 {
                         Ok(v0) => {
                             let y = k(sess, plc, v0);
-                            y.into()
+                            y.map(|x| x.into())
                         }
                         _ => match x0 {
                             Symbolic::Symbolic(h0) => {
                                 let op_name = sess.add_operation(op, &[&h0.op], &plc.clone().into());
-                                Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                                Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                             }
                             _ => unimplemented!() // ok
                         }
@@ -929,7 +961,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 derive_runtime_kernel![unary, $($kp)+, self]
             }
@@ -948,7 +980,9 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type)
-                -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>
+                -> crate::error::Result<
+                    <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+                >>>
             {
                 use crate::computation::{KnownType};
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
@@ -962,7 +996,7 @@ macro_rules! kernel {
                     match x0 {
                         Symbolic::Symbolic(h0) => {
                             let op_name = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
-                            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
                         _ => unimplemented!()
                     }
@@ -991,7 +1025,9 @@ macro_rules! kernel {
                 fn compile(
                     &self,
                     _plc: &$plc
-                ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1) -> $u>> {
+                ) -> crate::error::Result<
+                    Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1) -> crate::error::Result<$u>>
+                > {
                     derive_runtime_kernel![binary, $($kp)+, self]
                 }
             }
@@ -1016,7 +1052,7 @@ macro_rules! kernel {
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -1039,13 +1075,13 @@ macro_rules! kernel {
 
                     match (v0, v1) {
                         (Ok(v0), Ok(v1)) => {
-                            let y = k(sess, plc, v0, v1);
-                            y.into()
+                            let y = k(sess, plc, v0, v1)?;
+                            Ok(y.into())
                         }
                         _ => match (x0, x1) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
                                 let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
-                                Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                                Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                             }
                             _ => unimplemented!() // ok
                         }
@@ -1069,7 +1105,7 @@ macro_rules! kernel {
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -1089,12 +1125,12 @@ macro_rules! kernel {
 
                     match (x0, x1) {
                         (Symbolic::Concrete(v0), Symbolic::Concrete(v1)) => {
-                            let y = k(sess, plc, v0, v1);
-                            y
+                            let y = k(sess, plc, v0, v1)?;
+                            Ok(y)
                         }
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
                             let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
-                            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
                         _ => unimplemented!() // ok
                     }
@@ -1117,7 +1153,7 @@ macro_rules! kernel {
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 derive_runtime_kernel![binary, $($kp)+, self]
             }
@@ -1138,7 +1174,7 @@ macro_rules! kernel {
                 &$plc,
                 <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 use crate::computation::{KnownType};
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
@@ -1153,7 +1189,7 @@ macro_rules! kernel {
                     match (x0, x1) {
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
                             let op_name = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
-                            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
                         _ => unimplemented!()
                     }
@@ -1183,7 +1219,9 @@ macro_rules! kernel {
                 fn compile(
                     &self,
                     _plc: &$plc,
-                ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1, $t2) -> $u>> {
+                ) -> crate::error::Result<Box<
+                    dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1, $t2) -> crate::error::Result<$u>
+                >> {
                     derive_runtime_kernel![ternary, $($kp)+, self]
                 }
             }
@@ -1210,7 +1248,7 @@ macro_rules! kernel {
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t2 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 derive_runtime_kernel![ternary, $($kp)+, self]
             }
@@ -1233,7 +1271,7 @@ macro_rules! kernel {
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t2 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -1254,13 +1292,13 @@ macro_rules! kernel {
 
                     match (v0, v1, v2) {
                         (Ok(v0), Ok(v1), Ok(v2)) => {
-                            let y = k(sess, plc, v0, v1, v2);
-                            y.into()
+                            let y = k(sess, plc, v0, v1, v2)?;
+                            Ok(y.into())
                         }
                         _ => match (x0, x1, x2) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
                                 let op_name = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
-                                Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                                Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                             }
                             _ => unimplemented!() // ok
                         }
@@ -1286,8 +1324,9 @@ macro_rules! kernel {
                 <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t2 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>
-            {
+            ) -> crate::error::Result<
+                <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            > {
                 use crate::computation::{KnownType};
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
@@ -1302,7 +1341,7 @@ macro_rules! kernel {
                     match (x0, x1, x2) {
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
                             let op_name = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
-                            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
                         _ => unimplemented!()
                     }
@@ -1330,7 +1369,9 @@ macro_rules! kernel {
                 fn compile(
                     &self,
                     _plc: &$plc,
-                ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, &$plc, Vec<$ts>) -> $u>> {
+                ) -> crate::error::Result<Box<
+                    dyn Fn(&crate::kernels::SyncSession, &$plc, Vec<$ts>) -> crate::error::Result<$u>
+                >> {
                     derive_runtime_kernel![variadic, $($kp)+, self]
                 }
             }
@@ -1353,7 +1394,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
-            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 derive_runtime_kernel![variadic, $($kp)+, self]
             }
@@ -1372,7 +1413,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
-            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -1394,15 +1435,15 @@ macro_rules! kernel {
                     let kernel_vals: Vec<_> = xs.iter().cloned().filter_map(|x| x.try_into().ok()).collect();
                     if kernel_vals.len() == xs.len() {
                         // success; we can apply kernel
-                        let y = k(sess, plc, kernel_vals);
-                        y.into()
+                        let y = k(sess, plc, kernel_vals)?;
+                        Ok(y.into())
                     } else {
                         // operands did not match kernel so record in graph instead
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
                         if handles.len() == xs.len() {
                             // success; we can record in graph
                             let op_name = sess.add_operation(op, &handles, &plc.clone().into());
-                            return Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() });
+                            return Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }));
                         } else {
                             // unexpected
                             unimplemented!()
@@ -1424,9 +1465,10 @@ macro_rules! kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc,
-                Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>)
-                -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>
-            {
+                Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
+            ) -> crate::error::Result<
+                <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>
+            > {
                 use crate::computation::{KnownType};
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
@@ -1447,7 +1489,7 @@ macro_rules! kernel {
 
                     if  res.len() == xs.len() {
                         let op_name = sess.add_operation(&op, &res, &plc.clone().into());
-                        return Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() });
+                        return Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }));
                     }
 
                     unimplemented!()

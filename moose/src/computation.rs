@@ -7,8 +7,8 @@ use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{
     HostBitArray128, HostBitArray64, HostBitTensor, HostEncFixed128Tensor, HostFixed128Tensor,
     HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
-    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
-    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
+    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostString, HostUint16Tensor,
+    HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::kernels::Session;
 use crate::logical::{Tensor, TensorDType};
@@ -162,6 +162,12 @@ pub trait KnownType<S: Session> {
     const TY: Ty;
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct FixedpointConstant {
+    pub value: f64,
+    pub precision: usize,
+}
+
 // Constants are trivial values. They are what can live on the nodes of the computation graph.
 // Constant can not be a Unit, an Unknown or a complex structure such as ReplicatedTensor.
 macro_rules! constants {
@@ -176,6 +182,7 @@ macro_rules! constants {
             Float64(f64),
             Ring64(u64),
             Ring128(u128),
+            Fixed(FixedpointConstant),
         }
 
         impl Constant {
@@ -188,13 +195,16 @@ macro_rules! constants {
                     Constant::Float64(_) => Ty::Float64,
                     Constant::Ring64(_) => Ty::Ring64,
                     Constant::Ring128(_) => Ty::Ring128,
+                    Constant::Fixed(_) => Ty::Fixed,
                 }
             }
 
             pub fn place(&self, plc: &HostPlacement) -> Value {
                 match self {
                     $(
-                        Constant::$val(x) => {constants!(@value(x.clone(), plc.clone().into()) $val $($t)?)},
+                        Constant::$val(x) => {
+                            constants!(@value(x.clone(), plc) $val $(as $t)?)
+                        },
                     )+
                     // TODO promote below to match other values
                     Constant::Bit(x) => Value::Bit(Box::new(x.clone())),
@@ -202,6 +212,7 @@ macro_rules! constants {
                     Constant::Float64(x) => Value::Float64(Box::new(x.clone())),
                     Constant::Ring64(x) => Value::Ring64(Box::new(x.clone())),
                     Constant::Ring128(x) => Value::Ring128(Box::new(x.clone())),
+                    Constant::Fixed(x) => Value::Fixed(Box::new(x.clone())),
                 }
             }
         }
@@ -218,8 +229,8 @@ macro_rules! constants {
     (@ty $val:ident $t:ident) => {Ty::$t};
     (@ty $val:ident) => {Ty::$val};
 
-    (@value($x:expr, $plc:expr) $val:ident $t:ident) => {Value::$t(Box::new($t($x, $plc)))};
-    (@value($x:expr, $plc:expr) $val:ident) => {Value::$val(Box::new($x))};
+    (@value($x:expr, $plc:expr) $val:ident as $t:ident) => {Value::$t(Box::new($t($x, $plc.clone().into())))};
+    (@value($x:expr, $plc:expr) $val:ident) => {Value::$val(Box::new($val::place($plc, $x.0)))};
 }
 
 // The lines with 2 identifiers are for linking to the "Placed" values - the types whose `Value` incarnation has a placement already.
@@ -228,7 +239,7 @@ constants![
     RawShape HostShape,
     RawSeed Seed,
     RawPrfKey PrfKey,
-    String,
+    String HostString,
     HostBitTensor,
     HostRing64Tensor,
     HostRing128Tensor,
@@ -264,6 +275,14 @@ impl From<u128> for Constant {
         Constant::Ring128(x)
     }
 }
+impl From<FixedpointConstant> for Constant {
+    fn from(x: FixedpointConstant) -> Self {
+        Constant::Fixed(FixedpointConstant {
+            value: x.value,
+            precision: x.precision,
+        })
+    }
+}
 
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
@@ -280,6 +299,7 @@ macro_rules! values {
             Float64,
             Ring64,
             Ring128,
+            Fixed,
         }
 
         #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -291,6 +311,7 @@ macro_rules! values {
             Float64(Box<f64>),
             Ring64(Box<u64>),
             Ring128(Box<u128>),
+            Fixed(Box<FixedpointConstant>),
         }
 
         impl Value {
@@ -303,6 +324,7 @@ macro_rules! values {
                     Value::Float64(_) => Ty::Float64,
                     Value::Ring64(_) => Ty::Ring64,
                     Value::Ring128(_) => Ty::Ring128,
+                    Value::Fixed(_) => Ty::Fixed,
                 }
             }
         }
@@ -418,7 +440,7 @@ values![
     HostShape,
     Seed,
     PrfKey,
-    String,
+    HostString,
     Tensor(TensorDType::Unknown),
     HostBitTensor,
     HostBitArray64,
@@ -462,7 +484,7 @@ values![
 macro_rules! for_all_values {( $($rules:tt)* ) => (
     macro_rules! __emit__ { $($rules)* }
     __emit__! {
-        String,
+        HostString,
         Unit,
         HostShape,
         Seed,
@@ -889,12 +911,14 @@ operators![
     HostReshape,
     HostSqueeze,
     HostSum,
+    HostAddN,
     HostOnes,
     HostConcat,
     HostTranspose,
     HostInverse,
     HostAtLeast2D,
     HostShlDim,
+    Sign,
     RingAdd,
     RingSub,
     RingNeg,
@@ -923,6 +947,7 @@ operators![
     FixedpointAdd,
     FixedpointSub,
     FixedpointMul,
+    FixedpointDiv,
     FixedpointDot,
     FixedpointTruncPr,
     FixedpointMean,
@@ -966,6 +991,7 @@ operators![
     RepFixedpointMean,
     RepShl,
     RepSum,
+    RepAddN,
     RepTruncPr,
     RepToAdt,
     RepIndexAxis,
@@ -973,7 +999,10 @@ operators![
     RepDiag,
     RepSlice,
     RepBitDec,
+    RepBitCompose,
     RepShlDim,
+    RepEqual,
+    RepIfElse,
 ];
 
 pub trait HasShortName {
@@ -1132,6 +1161,11 @@ pub struct HostDivOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct SignOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct HostDotOp {
     pub sig: Signature,
 }
@@ -1185,6 +1219,11 @@ pub struct HostReshapeOp {
 pub struct HostSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostAddNOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -1400,6 +1439,11 @@ pub struct FixedpointMulOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointDivOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointDotOp {
     pub sig: Signature,
 }
@@ -1606,6 +1650,11 @@ pub struct RepFixedpointMeanOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepAddNOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -1667,6 +1716,26 @@ pub struct RepSliceOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepBitDecOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepBitComposeOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepEqualOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepIfElseOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepNegOp {
     pub sig: Signature,
 }
 

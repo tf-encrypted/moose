@@ -1,8 +1,8 @@
 use crate::computation::*;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::{HostEncFixed128Tensor, HostFixed128Tensor, HostShape};
+use crate::host::{HostEncFixed128Tensor, HostFixed128Tensor, HostShape, HostString};
 use crate::kernels::*;
 use crate::replicated::ReplicatedFixed128Tensor;
 use crate::symbolic::Symbolic;
@@ -53,6 +53,21 @@ pub type Tensor = AbstractTensor<
     Float32Tensor,
     Float64Tensor,
 >;
+
+impl<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+{
+    pub fn ty_desc(&self) -> String {
+        match self {
+            AbstractTensor::Fixed64(_) => "Tensor(Fixed64)",
+            AbstractTensor::Fixed128(_) => "Tensor(Fixed128)",
+            AbstractTensor::EncFixed128(_) => unimplemented!(),
+            AbstractTensor::Float32(_) => "Tensor(Float32)",
+            AbstractTensor::Float64(_) => "Tensor(Float64)",
+        }
+        .to_string()
+    }
+}
 
 impl<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T> Placed
     for AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
@@ -217,7 +232,7 @@ impl AddOp {
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
         y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementAdd<S, Fixed64T, Fixed64T, Fixed64T>,
         HostPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -227,21 +242,26 @@ impl AddOp {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let result = plc.add(sess, &x, &y);
-                AbstractTensor::Fixed64(result)
+                Ok(AbstractTensor::Fixed64(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let result = plc.add(sess, &x, &y);
-                AbstractTensor::Fixed128(result)
+                Ok(AbstractTensor::Fixed128(result))
             }
             (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
                 let result = plc.add(sess, &x, &y);
-                AbstractTensor::Float32(result)
+                Ok(AbstractTensor::Float32(result))
             }
             (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
                 let result = plc.add(sess, &x, &y);
-                AbstractTensor::Float64(result)
+                Ok(AbstractTensor::Float64(result))
             }
-            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing host add op for {:?} and {:?}",
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
         }
     }
 
@@ -250,7 +270,7 @@ impl AddOp {
         plc: &ReplicatedPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
         y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementAdd<S, Fixed64T, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -258,13 +278,18 @@ impl AddOp {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let result = plc.add(sess, &x, &y);
-                AbstractTensor::Fixed64(result)
+                Ok(AbstractTensor::Fixed64(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let result = plc.add(sess, &x, &y);
-                AbstractTensor::Fixed128(result)
+                Ok(AbstractTensor::Fixed128(result))
             }
-            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated add op for {:?} and {:?}",
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
         }
     }
 }
@@ -285,7 +310,7 @@ impl SubOp {
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
         y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementSub<S, Fixed64T, Fixed64T, Fixed64T>,
         HostPlacement: PlacementSub<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -295,21 +320,26 @@ impl SubOp {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let result = plc.sub(sess, &x, &y);
-                AbstractTensor::Fixed64(result)
+                Ok(AbstractTensor::Fixed64(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let result = plc.sub(sess, &x, &y);
-                AbstractTensor::Fixed128(result)
+                Ok(AbstractTensor::Fixed128(result))
             }
             (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
                 let result = plc.sub(sess, &x, &y);
-                AbstractTensor::Float32(result)
+                Ok(AbstractTensor::Float32(result))
             }
             (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
                 let result = plc.sub(sess, &x, &y);
-                AbstractTensor::Float64(result)
+                Ok(AbstractTensor::Float64(result))
             }
-            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing host sub op for {:?} and {:?}",
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
         }
     }
 
@@ -318,7 +348,7 @@ impl SubOp {
         plc: &ReplicatedPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
         y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementSub<S, Fixed64T, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementSub<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -326,13 +356,18 @@ impl SubOp {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let result = plc.sub(sess, &x, &y);
-                AbstractTensor::Fixed64(result)
+                Ok(AbstractTensor::Fixed64(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let result = plc.sub(sess, &x, &y);
-                AbstractTensor::Fixed128(result)
+                Ok(AbstractTensor::Fixed128(result))
             }
-            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated sub op for {:?} and {:?}",
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
         }
     }
 }
@@ -354,7 +389,7 @@ impl MulOp {
         sig: Signature,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
         y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementMul<S, Fixed64T, Fixed64T, Fixed64T>,
         HostPlacement: PlacementMul<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -378,22 +413,27 @@ impl MulOp {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let z = plc.mul(sess, &x, &y);
                 let result = plc.trunc_pr(sess, precision.unwrap(), &z);
-                AbstractTensor::Fixed64(result)
+                Ok(AbstractTensor::Fixed64(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let z = plc.mul(sess, &x, &y);
                 let result = plc.trunc_pr(sess, precision.unwrap(), &z);
-                AbstractTensor::Fixed128(result)
+                Ok(AbstractTensor::Fixed128(result))
             }
             (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
                 let result = plc.mul(sess, &x, &y);
-                AbstractTensor::Float32(result)
+                Ok(AbstractTensor::Float32(result))
             }
             (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
                 let result = plc.mul(sess, &x, &y);
-                AbstractTensor::Float64(result)
+                Ok(AbstractTensor::Float64(result))
             }
-            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing host mul op for {:?} and {:?}",
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
         }
     }
 
@@ -403,7 +443,7 @@ impl MulOp {
         sig: Signature,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
         y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementMul<S, Fixed64T, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementMul<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -426,14 +466,19 @@ impl MulOp {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let z = plc.mul(sess, &x, &y);
                 let result = plc.trunc_pr(sess, precision.unwrap(), &z);
-                AbstractTensor::Fixed64(result)
+                Ok(AbstractTensor::Fixed64(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let z = plc.mul(sess, &x, &y);
                 let result = plc.trunc_pr(sess, precision.unwrap(), &z);
-                AbstractTensor::Fixed128(result)
+                Ok(AbstractTensor::Fixed128(result))
             }
-            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated mul op for {:?} and {:?}",
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
         }
     }
 }
@@ -455,46 +500,65 @@ impl DivOp {
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
         y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
-        // HostPlacement: PlacementDiv<S, Fixed64T, Fixed64T, Fixed64T>,
-        // HostPlacement: PlacementDiv<S, Fixed128T, Fixed128T, Fixed128T>,
-        // HostPlacement: PlacementTruncPr<S, Fixed64T, Fixed64T>,
-        // HostPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementDiv<S, Fixed64T, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementDiv<S, Fixed128T, Fixed128T, Fixed128T>,
         HostPlacement: PlacementDiv<S, Float32T, Float32T, Float32T>,
         HostPlacement: PlacementDiv<S, Float64T, Float64T, Float64T>,
     {
         match (x, y) {
-            // TODO impl host fixed-point division
-            // (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
-            //     let z = plc.div(sess, &x, &y);
-            //     let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
-            //     AbstractTensor::Fixed64(result)
-            // }
-            // (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
-            //     let z = plc.div(sess, &x, &y);
-            //     let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
-            //     AbstractTensor::Fixed128(result)
-            // }
+            (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let result = plc.div(sess, &x, &y);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let result = plc.div(sess, &x, &y);
+                Ok(AbstractTensor::Fixed128(result))
+            }
             (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
                 let result = plc.div(sess, &x, &y);
-                AbstractTensor::Float32(result)
+                Ok(AbstractTensor::Float32(result))
             }
             (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
                 let result = plc.div(sess, &x, &y);
-                AbstractTensor::Float64(result)
+                Ok(AbstractTensor::Float64(result))
             }
-            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing host div op for {:?} and {:?}",
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
         }
     }
 
     fn rep_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
-        _sess: &S,
-        _plc: &ReplicatedPlacement,
-        _x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-        _y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T> {
-        unimplemented!()
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+    where
+        ReplicatedPlacement: PlacementDiv<S, Fixed64T, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementDiv<S, Fixed128T, Fixed128T, Fixed128T>,
+    {
+        match (x, y) {
+            (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let result = plc.div(sess, &x, &y);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let result = plc.div(sess, &x, &y);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated div for {:?} and {:?}",
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
+        }
     }
 }
 
@@ -515,7 +579,7 @@ impl DotOp {
         sig: Signature,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
         y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementDot<S, Fixed64T, Fixed64T, Fixed64T>,
         HostPlacement: PlacementDot<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -539,22 +603,27 @@ impl DotOp {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let z = plc.dot(sess, &x, &y);
                 let result = plc.trunc_pr(sess, precision.unwrap(), &z);
-                AbstractTensor::Fixed64(result)
+                Ok(AbstractTensor::Fixed64(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let z = plc.dot(sess, &x, &y);
                 let result = plc.trunc_pr(sess, precision.unwrap(), &z);
-                AbstractTensor::Fixed128(result)
+                Ok(AbstractTensor::Fixed128(result))
             }
             (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
                 let result = plc.dot(sess, &x, &y);
-                AbstractTensor::Float32(result)
+                Ok(AbstractTensor::Float32(result))
             }
             (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
                 let result = plc.dot(sess, &x, &y);
-                AbstractTensor::Float64(result)
+                Ok(AbstractTensor::Float64(result))
             }
-            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing host dot op for {:?} and {:?}",
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
         }
     }
 
@@ -564,7 +633,7 @@ impl DotOp {
         sig: Signature,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
         y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementDot<S, Fixed64T, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementDot<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -586,14 +655,19 @@ impl DotOp {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let z = plc.dot(sess, &x, &y);
                 let result = plc.trunc_pr(sess, precision.unwrap(), &z);
-                AbstractTensor::Fixed64(result)
+                Ok(AbstractTensor::Fixed64(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let z = plc.dot(sess, &x, &y);
                 let result = plc.trunc_pr(sess, precision.unwrap(), &z);
-                AbstractTensor::Fixed128(result)
+                Ok(AbstractTensor::Fixed128(result))
             }
-            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated dot op for {:?} and {:?}",
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
         }
     }
 }
@@ -615,7 +689,7 @@ impl CastOp {
         plc: &HostPlacement,
         sig: Signature,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementFixedpointDecode<S, Fixed64T, Float32T>,
         HostPlacement: PlacementFixedpointDecode<S, Fixed128T, Float64T>,
@@ -649,12 +723,12 @@ impl CastOp {
             AbstractTensor::Fixed64(x) => {
                 let (fractional_precision, _) = arg0_precision.unwrap();
                 let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
-                AbstractTensor::Float32(inner)
+                Ok(AbstractTensor::Float32(inner))
             }
             AbstractTensor::Fixed128(x) => {
                 let (fractional_precision, _) = arg0_precision.unwrap();
                 let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
-                AbstractTensor::Float64(inner)
+                Ok(AbstractTensor::Float64(inner))
             }
             AbstractTensor::EncFixed128(_) => {
                 unimplemented!()
@@ -663,13 +737,13 @@ impl CastOp {
                 let (fractional_precision, integral_precision) = ret_precision.unwrap();
                 let inner =
                     plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
-                AbstractTensor::Fixed64(inner)
+                Ok(AbstractTensor::Fixed64(inner))
             }
             AbstractTensor::Float64(x) => {
                 let (fractional_precision, integral_precision) = ret_precision.unwrap();
                 let inner =
                     plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
-                AbstractTensor::Fixed128(inner)
+                Ok(AbstractTensor::Fixed128(inner))
             }
         }
     }
@@ -688,7 +762,7 @@ impl AtLeast2DOp {
         plc: &HostPlacement,
         to_column_vector: bool,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         // HostPlacement: PlacementAtLeast2D<S, Fixed64T, Fixed64T>,
         // HostPlacement: PlacementAtLeast2D<S, Fixed128T, Fixed128T>,
@@ -711,11 +785,11 @@ impl AtLeast2DOp {
             }
             AbstractTensor::Float32(x) => {
                 let z = plc.at_least_2d(sess, to_column_vector, &x);
-                AbstractTensor::Float32(z)
+                Ok(AbstractTensor::Float32(z))
             }
             AbstractTensor::Float64(x) => {
                 let z = plc.at_least_2d(sess, to_column_vector, &x);
-                AbstractTensor::Float64(z)
+                Ok(AbstractTensor::Float64(z))
             }
         }
     }
@@ -735,7 +809,7 @@ impl MeanOp {
         sig: Signature,
         axis: Option<u32>,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementMean<S, Fixed64T, Fixed64T>,
         HostPlacement: PlacementMean<S, Fixed128T, Fixed128T>,
@@ -759,23 +833,23 @@ impl MeanOp {
             AbstractTensor::Fixed64(x) => {
                 let z = plc.mean(sess, axis, &x);
                 let z = plc.trunc_pr(sess, precision.unwrap(), &z);
-                AbstractTensor::Fixed64(z)
+                Ok(AbstractTensor::Fixed64(z))
             }
             AbstractTensor::Fixed128(x) => {
                 let z = plc.mean(sess, axis, &x);
                 let z = plc.trunc_pr(sess, precision.unwrap(), &z);
-                AbstractTensor::Fixed128(z)
+                Ok(AbstractTensor::Fixed128(z))
             }
             AbstractTensor::EncFixed128(_) => {
                 unimplemented!()
             }
             AbstractTensor::Float32(x) => {
                 let z = plc.mean(sess, axis, &x);
-                AbstractTensor::Float32(z)
+                Ok(AbstractTensor::Float32(z))
             }
             AbstractTensor::Float64(x) => {
                 let z = plc.mean(sess, axis, &x);
-                AbstractTensor::Float64(z)
+                Ok(AbstractTensor::Float64(z))
             }
         }
     }
@@ -786,7 +860,7 @@ impl MeanOp {
         sig: Signature,
         axis: Option<u32>,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementMean<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementMean<S, Fixed128T, Fixed128T>,
@@ -808,16 +882,19 @@ impl MeanOp {
             AbstractTensor::Fixed64(x) => {
                 let z = plc.mean(sess, axis, &x);
                 let z = plc.trunc_pr(sess, precision.unwrap(), &z);
-                AbstractTensor::Fixed64(z)
+                Ok(AbstractTensor::Fixed64(z))
             }
             AbstractTensor::Fixed128(x) => {
                 let z = plc.mean(sess, axis, &x);
                 let z = plc.trunc_pr(sess, precision.unwrap(), &z);
-                AbstractTensor::Fixed128(z)
+                Ok(AbstractTensor::Fixed128(z))
             }
             // TODO(Morten) the fact that we are limited on replicated
             // placements  would be nice to know at (Moose) compile time
-            _ => unimplemented!(),
+            x => Err(Error::UnimplementedOperator(format!(
+                "Replicated mean is unsupported for {:?}.",
+                x.ty_desc()
+            ))),
         }
     }
 }
@@ -835,7 +912,7 @@ impl SumOp {
         plc: &HostPlacement,
         axis: Option<u32>,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementSum<S, Fixed64T, Fixed64T>,
         HostPlacement: PlacementSum<S, Fixed128T, Fixed128T>,
@@ -845,22 +922,22 @@ impl SumOp {
         match x {
             AbstractTensor::Fixed64(x) => {
                 let z = plc.sum(sess, axis, &x);
-                AbstractTensor::Fixed64(z)
+                Ok(AbstractTensor::Fixed64(z))
             }
             AbstractTensor::Fixed128(x) => {
                 let z = plc.sum(sess, axis, &x);
-                AbstractTensor::Fixed128(z)
+                Ok(AbstractTensor::Fixed128(z))
             }
             AbstractTensor::EncFixed128(_) => {
                 unimplemented!()
             }
             AbstractTensor::Float32(x) => {
                 let z = plc.sum(sess, axis, &x);
-                AbstractTensor::Float32(z)
+                Ok(AbstractTensor::Float32(z))
             }
             AbstractTensor::Float64(x) => {
                 let z = plc.sum(sess, axis, &x);
-                AbstractTensor::Float64(z)
+                Ok(AbstractTensor::Float64(z))
             }
         }
     }
@@ -870,7 +947,7 @@ impl SumOp {
         plc: &ReplicatedPlacement,
         axis: Option<u32>,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementSum<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementSum<S, Fixed128T, Fixed128T>,
@@ -878,13 +955,16 @@ impl SumOp {
         match x {
             AbstractTensor::Fixed64(x) => {
                 let z = plc.sum(sess, axis, &x);
-                AbstractTensor::Fixed64(z)
+                Ok(AbstractTensor::Fixed64(z))
             }
             AbstractTensor::Fixed128(x) => {
                 let z = plc.sum(sess, axis, &x);
-                AbstractTensor::Fixed128(z)
+                Ok(AbstractTensor::Fixed128(z))
             }
-            _ => unimplemented!(),
+            x => Err(Error::UnimplementedOperator(format!(
+                "Replicated sum is unsupported for {:?}.",
+                x.ty_desc()
+            ))),
         }
     }
 }
@@ -906,12 +986,14 @@ impl OnesOp {
         sess: &S,
         plc: &HostPlacement,
         shape: cs!(HostShape),
-    ) -> AbstractTensor<
-        cs!(Fixed64Tensor),
-        cs!(Fixed128Tensor),
-        cs!(HostEncFixed128Tensor),
-        cs!(Float32Tensor),
-        cs!(Float64Tensor),
+    ) -> Result<
+        AbstractTensor<
+            cs!(Fixed64Tensor),
+            cs!(Fixed128Tensor),
+            cs!(HostEncFixed128Tensor),
+            cs!(Float32Tensor),
+            cs!(Float64Tensor),
+        >,
     >
     where
         HostShape: KnownType<S>,
@@ -923,7 +1005,7 @@ impl OnesOp {
         HostPlacement: PlacementOnes<S, cs!(HostShape), cs!(Float64Tensor)>,
     {
         let result = plc.ones(sess, &shape);
-        AbstractTensor::Float64(result)
+        Ok(AbstractTensor::Float64(result))
     }
 
     // fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
@@ -959,7 +1041,7 @@ impl ExpandDimsOp {
         plc: &HostPlacement,
         axis: Vec<u32>,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementExpandDims<S, Float32T, Float32T>,
         HostPlacement: PlacementExpandDims<S, Float64T, Float64T>,
@@ -980,11 +1062,11 @@ impl ExpandDimsOp {
             }
             AbstractTensor::Float32(x) => {
                 let z = plc.expand_dims(sess, axis, &x);
-                AbstractTensor::Float32(z)
+                Ok(AbstractTensor::Float32(z))
             }
             AbstractTensor::Float64(x) => {
                 let z = plc.expand_dims(sess, axis, &x);
-                AbstractTensor::Float64(z)
+                Ok(AbstractTensor::Float64(z))
             }
         }
     }
@@ -1004,7 +1086,7 @@ impl ConcatOp {
         plc: &HostPlacement,
         axis: u32,
         xs: &[AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>],
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementConcatenate<S, Float32T, Float32T>,
         HostPlacement: PlacementConcatenate<S, Float64T, Float64T>,
@@ -1026,12 +1108,14 @@ impl ConcatOp {
                     .map(|x| match x {
                         AbstractTensor::Float32(x) => (*x).clone(),
                         _ => {
-                            unimplemented!("ConcatOp can not concatenate tensors of differnt kind")
+                            unimplemented!(
+                                "ConcatOp can not concatenate tensors of different kinds"
+                            )
                         }
                     })
                     .collect();
                 let result = plc.concatenate(sess, axis, &xs);
-                AbstractTensor::Float32(result)
+                Ok(AbstractTensor::Float32(result))
             }
             AbstractTensor::Float64(_) => {
                 let xs: Vec<Float64T> = xs
@@ -1039,14 +1123,19 @@ impl ConcatOp {
                     .map(|x| match x {
                         AbstractTensor::Float64(x) => (*x).clone(),
                         _ => {
-                            unimplemented!("ConcatOp can not concatenate tensors of differnt kind")
+                            unimplemented!(
+                                "ConcatOp can not concatenate tensors of different kinds"
+                            )
                         }
                     })
                     .collect();
                 let result = plc.concatenate(sess, axis, &xs);
-                AbstractTensor::Float64(result)
+                Ok(AbstractTensor::Float64(result))
             }
-            _ => unimplemented!("ConcatOp missing an implementation"), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(
+                "ConcatOp missing an implementation.".to_string(),
+            )),
         }
     }
 }
@@ -1064,7 +1153,7 @@ impl TransposeOp {
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         // HostPlacement: PlacementTranspose<S, Float32T, Float32T>,
         HostPlacement: PlacementTranspose<S, Float64T, Float64T>,
@@ -1090,7 +1179,7 @@ impl TransposeOp {
             }
             AbstractTensor::Float64(x) => {
                 let z = plc.transpose(sess, &x);
-                AbstractTensor::Float64(z)
+                Ok(AbstractTensor::Float64(z))
             }
         }
     }
@@ -1109,7 +1198,7 @@ impl InverseOp {
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
     where
         // HostPlacement: PlacementInverse<S, Float32T, Float32T>,
         HostPlacement: PlacementInverse<S, Float64T, Float64T>,
@@ -1135,7 +1224,7 @@ impl InverseOp {
             }
             AbstractTensor::Float64(x) => {
                 let z = plc.inverse(sess, &x);
-                AbstractTensor::Float64(z)
+                Ok(AbstractTensor::Float64(z))
             }
         }
     }
@@ -1146,26 +1235,28 @@ impl LoadOp {
     pub fn logical_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
-        key: cs!(String),
-        query: cs!(String),
-    ) -> AbstractTensor<
-        cs!(Fixed64Tensor),
-        cs!(Fixed128Tensor),
-        cs!(HostEncFixed128Tensor),
-        cs!(Float32Tensor),
-        cs!(Float64Tensor),
+        key: cs!(HostString),
+        query: cs!(HostString),
+    ) -> Result<
+        AbstractTensor<
+            cs!(Fixed64Tensor),
+            cs!(Fixed128Tensor),
+            cs!(HostEncFixed128Tensor),
+            cs!(Float32Tensor),
+            cs!(Float64Tensor),
+        >,
     >
     where
-        String: KnownType<S>,
+        HostString: KnownType<S>,
         Fixed64Tensor: KnownType<S>,
         Fixed128Tensor: KnownType<S>,
         HostEncFixed128Tensor: KnownType<S>,
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
-        HostPlacement: PlacementLoad<S, cs!(String), cs!(String), cs!(Float64Tensor)>,
+        HostPlacement: PlacementLoad<S, cs!(HostString), cs!(HostString), cs!(Float64Tensor)>,
     {
         let z = plc.load(sess, &key, &query);
-        AbstractTensor::Float64(z)
+        Ok(AbstractTensor::Float64(z))
     }
 }
 
@@ -1173,16 +1264,16 @@ impl SaveOp {
     pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
-        key: cs!(String),
+        key: cs!(HostString),
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> cs!(Unit)
+    ) -> Result<cs!(Unit)>
     where
-        String: KnownType<S>,
+        HostString: KnownType<S>,
         Unit: KnownType<S>,
-        // HostPlacement: PlacementSave<S, cs!(String), Fixed64T, cs!(Unit)>,
-        // HostPlacement: PlacementSave<S, cs!(String), Fixed128T, cs!(Unit)>,
-        HostPlacement: PlacementSave<S, cs!(String), Float32T, cs!(Unit)>,
-        HostPlacement: PlacementSave<S, cs!(String), Float64T, cs!(Unit)>,
+        // HostPlacement: PlacementSave<S, cs!(HostString), Fixed64T, cs!(Unit)>,
+        // HostPlacement: PlacementSave<S, cs!(HostString), Fixed128T, cs!(Unit)>,
+        HostPlacement: PlacementSave<S, cs!(HostString), Float32T, cs!(Unit)>,
+        HostPlacement: PlacementSave<S, cs!(HostString), Float64T, cs!(Unit)>,
     {
         match x {
             AbstractTensor::Fixed64(_x) => {
@@ -1196,8 +1287,8 @@ impl SaveOp {
             AbstractTensor::EncFixed128(_x) => {
                 unimplemented!()
             }
-            AbstractTensor::Float32(x) => plc.save(sess, &key, &x),
-            AbstractTensor::Float64(x) => plc.save(sess, &key, &x),
+            AbstractTensor::Float32(x) => Ok(plc.save(sess, &key, &x)),
+            AbstractTensor::Float64(x) => Ok(plc.save(sess, &key, &x)),
         }
     }
 }
@@ -1214,7 +1305,7 @@ impl ShapeOp {
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> cs!(HostShape)
+    ) -> Result<cs!(HostShape)>
     where
         HostShape: KnownType<S>,
         HostPlacement: PlacementShape<S, Float32T, cs!(HostShape)>,
@@ -1232,8 +1323,8 @@ impl ShapeOp {
             AbstractTensor::EncFixed128(_x) => {
                 unimplemented!()
             }
-            AbstractTensor::Float32(x) => plc.shape(sess, &x),
-            AbstractTensor::Float64(x) => plc.shape(sess, &x),
+            AbstractTensor::Float32(x) => Ok(plc.shape(sess, &x)),
+            AbstractTensor::Float64(x) => Ok(plc.shape(sess, &x)),
         }
     }
 }
@@ -1244,12 +1335,14 @@ impl ConstantOp {
         sess: &S,
         plc: &HostPlacement,
         value: Constant,
-    ) -> AbstractTensor<
-        cs!(Fixed64Tensor),
-        cs!(Fixed128Tensor),
-        cs!(HostEncFixed128Tensor),
-        cs!(Float32Tensor),
-        cs!(Float64Tensor),
+    ) -> Result<
+        AbstractTensor<
+            cs!(Fixed64Tensor),
+            cs!(Fixed128Tensor),
+            cs!(HostEncFixed128Tensor),
+            cs!(Float32Tensor),
+            cs!(Float64Tensor),
+        >,
     >
     where
         Fixed64Tensor: KnownType<S>,
@@ -1260,6 +1353,31 @@ impl ConstantOp {
         HostPlacement: PlacementConstant<S, cs!(Float64Tensor)>,
     {
         let z = plc.constant(sess, value);
-        AbstractTensor::Float64(z)
+        // TODO: figure out which dtype to return here
+        Ok(AbstractTensor::Float64(z))
+    }
+}
+
+impl OutputOp {
+    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+    where
+        HostString: KnownType<S>,
+        HostPlacement: PlacementOutput<S, Float32T, Float32T>,
+        HostPlacement: PlacementOutput<S, Float64T, Float64T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(_x) => Err(Error::UnimplementedOperator(
+                "OutputOp missing a Fixed64 implementation.".to_string(),
+            )),
+            AbstractTensor::Fixed128(_x) => Err(Error::UnimplementedOperator(
+                "OutputOp missing a Fixed128 implementation.".to_string(),
+            )),
+            AbstractTensor::Float32(x) => Ok(AbstractTensor::Float32(plc.output(sess, &x))),
+            AbstractTensor::Float64(x) => Ok(AbstractTensor::Float64(plc.output(sess, &x))),
+        }
     }
 }

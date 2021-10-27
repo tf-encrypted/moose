@@ -94,6 +94,7 @@ pub struct SymbolicSession {
     pub ops: Arc<RwLock<Vec<Operation>>>, // TODO use HashMap so we can do some consistency checks on the fly?
     pub replicated_keys:
         HashMap<ReplicatedPlacement, Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>,
+    // TODO(Dragos) Change this to <ReplicatedSetup as KnownType<Self>>::Type
 }
 
 impl Default for SymbolicSession {
@@ -209,19 +210,24 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepDot(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            RepAddN(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepShl(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepMsb(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepAbs(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepAnd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepXor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepNeg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            RepEqual(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            RepIfElse(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepIndex(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepDiag(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepSlice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepBitDec(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            RepBitCompose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            RepNeg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AdtAdd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AdtSub(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AdtShl(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -233,6 +239,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             HostMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostSqrt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            HostAddN(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostDiag(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -243,6 +250,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             HostMul(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostDiv(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostDot(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Sign(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostConcat(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -254,6 +262,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             FixedpointAdd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointSub(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointMul(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FixedpointDiv(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointDot(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

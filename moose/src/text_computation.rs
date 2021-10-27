@@ -848,7 +848,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Shape" => Ok((i, Ty::HostShape)),
         "Seed" => Ok((i, Ty::Seed)),
         "PrfKey" => Ok((i, Ty::PrfKey)),
-        "String" => Ok((i, Ty::String)),
+        "String" => Ok((i, Ty::HostString)),
         "BitTensor" => Ok((i, Ty::HostBitTensor)),
         "BitArray64" => Ok((i, Ty::HostBitArray64)),
         "BitArray128" => Ok((i, Ty::HostBitArray128)),
@@ -1319,7 +1319,7 @@ impl ToTextual for Operator {
             Div(op) => op.to_textual(),
             BitXor(op) => op.to_textual(),
             BitAnd(op) => op.to_textual(),
-            BitNeg(_) => unimplemented!(),
+            BitNeg(op) => op.to_textual(),
             BitFill(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
             HostAdd(op) => op.to_textual(),
@@ -1341,8 +1341,10 @@ impl ToTextual for Operator {
             HostIndexAxis(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
             HostSum(op) => op.to_textual(),
+            HostAddN(op) => op.to_textual(),
             HostTranspose(op) => op.to_textual(),
             HostInverse(op) => op.to_textual(),
+            Sign(op) => op.to_textual(),
             RingNeg(op) => op.to_textual(),
             RingAdd(op) => op.to_textual(),
             RingSub(op) => op.to_textual(),
@@ -1368,6 +1370,7 @@ impl ToTextual for Operator {
             FixedpointAdd(op) => op.to_textual(),
             FixedpointSub(op) => op.to_textual(),
             FixedpointMul(op) => op.to_textual(),
+            FixedpointDiv(op) => op.to_textual(),
             FixedpointDot(op) => op.to_textual(),
             FixedpointTruncPr(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
@@ -1391,12 +1394,13 @@ impl ToTextual for Operator {
             RepDot(op) => op.to_textual(),
             RepFixedpointMean(op) => op.to_textual(),
             RepSum(op) => op.to_textual(),
+            RepAddN(op) => op.to_textual(),
             RepAdd(op) => op.to_textual(),
             RepSub(op) => op.to_textual(),
             RepMul(op) => op.to_textual(),
             RepAnd(_) => unimplemented!(),
             RepXor(_) => unimplemented!(),
-            RepNeg(_) => unimplemented!(),
+            RepNeg(op) => op.to_textual(),
             RepTruncPr(op) => op.to_textual(),
             AdtReveal(op) => op.to_textual(),
             AdtFill(op) => op.to_textual(),
@@ -1414,8 +1418,11 @@ impl ToTextual for Operator {
             RepIndex(op) => op.to_textual(),
             RepDiag(op) => op.to_textual(),
             RepBitDec(op) => op.to_textual(),
+            RepBitCompose(op) => op.to_textual(),
             RepSlice(op) => op.to_textual(),
             RepShlDim(op) => op.to_textual(),
+            RepEqual(op) => op.to_textual(),
+            RepIfElse(op) => op.to_textual(),
         }
     }
 }
@@ -1434,7 +1441,7 @@ macro_rules! impl_to_textual {
     };
 }
 
-impl_to_textual!(ConstantOp, "{op}{{value = {}}}", value);
+impl_to_textual!(ConstantOp, "{op}{{value = {}}}: {}", value, sig);
 impl_to_textual!(IdentityOp, "{op}: {}", sig);
 impl_to_textual!(CastOp, "{op}: {}", sig);
 impl_to_textual!(LoadOp, "{op}: {}", sig);
@@ -1512,6 +1519,7 @@ impl_to_textual!(HostBitDecOp, "{op}: {}", sig);
 impl_to_textual!(HostInverseOp, "{op}: {}", sig);
 impl_to_textual!(HostSqrtOp, "{op}: {}", sig);
 impl_to_textual!(HostSqueezeOp, "{op}: {}", sig);
+impl_to_textual!(SignOp, "{op}: {}", sig);
 impl_to_textual!(ShapeOp, "{op}: {}", sig);
 impl_to_textual!(RingNegOp, "{op}: {}", sig);
 impl_to_textual!(RingAddOp, "{op}: {}", sig);
@@ -1524,6 +1532,7 @@ impl_to_textual!(RingInjectOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
 impl_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(BitXorOp, "{op}: {}", sig);
 impl_to_textual!(BitAndOp, "{op}: {}", sig);
+impl_to_textual!(BitNegOp, "{op}: {}", sig);
 impl_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
 impl_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
 impl_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
@@ -1583,6 +1592,7 @@ impl_to_textual!(AdtToRepOp, "{op}: {}", sig);
 impl_to_textual!(RepAbsOp, "{op}: {}", sig);
 impl_to_textual!(RepFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(RepMsbOp, "{op}: {}", sig);
+impl_to_textual!(RepNegOp, "{op}: {}", sig);
 impl_to_textual!(RepShlOp, "{op}: {}", sig);
 impl_to_textual!(RepToAdtOp, "{op}: {}", sig);
 impl_to_textual!(
@@ -1595,6 +1605,9 @@ impl_to_textual!(
 impl_to_textual!(RepIndexOp, "{op}{{index={}}}: {}", index, sig);
 impl_to_textual!(RepDiagOp, "{op}: {}", sig);
 impl_to_textual!(RepBitDecOp, "{op}: {}", sig);
+impl_to_textual!(RepBitComposeOp, "{op}: {}", sig);
+impl_to_textual!(RepEqualOp, "{op}: {}", sig);
+impl_to_textual!(RepIfElseOp, "{op}: {}", sig);
 impl_to_textual!(RepSliceOp, "{op}{{slice}}: {} {}", sig, slice);
 impl_to_textual!(RepShlDimOp, "{op}: {} {} {}", sig, amount, bit_length);
 
@@ -1628,6 +1641,8 @@ op_with_axis_to_textual!(RingSumOp);
 op_with_axis_to_textual!(RepSumOp);
 op_with_axis_to_textual!(FixedpointSumOp);
 
+impl_to_textual!(RepAddNOp, "{op}: {}", sig);
+impl_to_textual!(HostAddNOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointAddOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointSubOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointMulOp, "{op}: {}", sig);
@@ -1724,6 +1739,8 @@ impl ToTextual for RepFixedpointMeanOp {
     }
 }
 
+impl_to_textual!(FixedpointDivOp, "{op}: {}", sig);
+
 impl ToTextual for RingSampleOp {
     fn to_textual(&self) -> String {
         match self {
@@ -1765,11 +1782,12 @@ impl ToTextual for Ty {
     fn to_textual(&self) -> String {
         match self {
             Ty::Unit => "Unit".to_string(),
-            Ty::String => "String".to_string(),
+            Ty::HostString => "String".to_string(),
             Ty::Float32 => "Float32".to_string(),
             Ty::Float64 => "Float64".to_string(),
             Ty::Ring64 => "Ring64".to_string(),
             Ty::Ring128 => "Ring128".to_string(),
+            Ty::Fixed => "Fixed".to_string(),
             Ty::Tensor(i) => format!("Tensor({})", i), // TODO (lvorona) Come up with a textual format here
             Ty::HostRing64Tensor => "Ring64Tensor".to_string(),
             Ty::HostRing128Tensor => "Ring128Tensor".to_string(),
@@ -1832,7 +1850,8 @@ impl ToTextual for Value {
             Value::HostRing128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
             Value::Float32(x) => format!("Float32({})", x),
             Value::Float64(x) => format!("Float64({})", x),
-            Value::String(x) => format!("String({})", x.to_textual()),
+            Value::Fixed(x) => format!("Fixed({})", x.to_textual()),
+            Value::HostString(x) => format!("String({})", x.0.to_textual()),
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
             Value::HostShape(x) => format!("HostShape({:?})", x.0),
@@ -1892,6 +1911,9 @@ impl ToTextual for Constant {
             Constant::String(x) => format!("String({})", x.to_textual()),
             Constant::Ring64(x) => format!("Ring64({})", x),
             Constant::Ring128(x) => format!("Ring128({})", x),
+            Constant::Fixed(FixedpointConstant { value, precision }) => {
+                format!("Fixed({}, {})", value, precision)
+            }
             Constant::RawShape(RawShape(x)) => format!("Shape({:?})", x),
             Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
@@ -1949,6 +1971,12 @@ impl ToTextual for SyncKey {
 impl ToTextual for RendezvousKey {
     fn to_textual(&self) -> String {
         self.as_bytes().to_textual()
+    }
+}
+
+impl ToTextual for FixedpointConstant {
+    fn to_textual(&self) -> String {
+        format!("value: {:?} precision: {:?}", self.value, self.precision)
     }
 }
 

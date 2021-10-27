@@ -7,7 +7,7 @@ graphviz==0.15
 hypothesis==5.47.0
 isort==5.4.2
 msgpack==1.0.2
-numpy==1.19.0
+numpy==1.21.2
 opentelemetry-api==0.15b0
 opentelemetry-launcher==0.15b0
 pip~=21.2
