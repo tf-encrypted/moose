@@ -86,6 +86,7 @@ fn par_compile(c: &mut Criterion) {
     let ctx = CompilationContext {
         role_assignment: &std::collections::HashMap::new(),
         own_identity: &Identity::from("bench"),
+        use_sync_bridge: false,
     };
 
     let mut group = c.benchmark_group("par_compile");
@@ -523,6 +524,7 @@ fn compile(c: &mut Criterion) {
     let ctx = CompilationContext {
         role_assignment: &std::collections::HashMap::new(),
         own_identity: &Identity::from("bench"),
+        use_sync_bridge: false,
     };
 
     c.bench_function("compile_operator/sync", |b| {
@@ -593,6 +595,7 @@ fn execute(c: &mut Criterion) {
     let ctx = CompilationContext {
         role_assignment: &std::collections::HashMap::new(),
         own_identity: &Identity::from("bench"),
+        use_sync_bridge: false,
     };
 
     let mut group = c.benchmark_group("execute");
@@ -640,6 +643,14 @@ fn execute(c: &mut Criterion) {
                 arguments: hashmap! {},
                 networking: Arc::new(DummyNetworking(unit.clone())),
                 storage: Arc::new(moose::storage::LocalAsyncStorage::default()),
+                new_sess: Arc::new(moose::kernels::SyncSession::new(
+                    SessionId::try_from("12345").unwrap(),
+                    hashmap!(),
+                    hashmap!(),
+                )),
+                host: Arc::new(moose::computation::Placement::Host(HostPlacement {
+                    owner: "localhost".into(),
+                })),
             };
 
             b.iter(|| {
