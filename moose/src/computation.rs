@@ -26,6 +26,8 @@ use paste::paste;
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::generichash;
 use std::convert::TryFrom;
+use std::fs::File;
+use std::io::{Read, Write};
 
 pub const TAG_BYTES: usize = 128 / 8;
 static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::DIGEST_MIN);
@@ -1869,11 +1871,44 @@ pub struct Operation {
     pub placement: Placement,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Computation {
     // pub constants: Vec<Value>,
     // pub operators: Vec<Operator>,
     pub operations: Vec<Operation>,
+}
+
+impl Computation {
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
+        rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
+    }
+
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        rmp_serde::to_vec(self).map_err(|e| Error::SerializationError(e.to_string()))
+    }
+
+    pub fn from_disk(path: &str) -> Result<Self> {
+        let mut f = File::open(path).map_err(|e| {
+            Error::Unexpected(Some(format!(
+                "File not found error for path {0}. Original: {1}.",
+                path, e
+            )))
+        })?;
+        let mut buffer: Vec<u8> = Vec::new();
+        f.read_to_end(&mut buffer)
+            .map_err(|e| Error::SerializationError(e.to_string()))?;
+        Self::from_bytes(buffer)
+    }
+
+    pub fn to_disk(&self, path: &str) -> Result<()> {
+        let mut buffer =
+            File::create(path).map_err(|e| Error::SerializationError(e.to_string()))?;
+        let comp_bytes = self.to_bytes()?;
+        buffer
+            .write_all(&comp_bytes)
+            .map_err(|e| Error::SerializationError(e.to_string()))?;
+        Ok(())
+    }
 }
 
 mod tests {
