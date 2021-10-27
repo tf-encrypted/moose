@@ -1,6 +1,6 @@
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{HostEncFixed128Tensor, HostFixed128Tensor, HostShape, HostString};
 use crate::kernels::*;
@@ -27,41 +27,28 @@ pub enum TensorDType {
         integral_precision: u32,
         fractional_precision: u32,
     },
-    #[display(fmt = "EncFixed128({}, {})", integral_precision, fractional_precision)]
-    EncFixed128 {
-        integral_precision: u32,
-        fractional_precision: u32,
-    },
     Float32,
     Float64,
     Unknown,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T> {
+pub enum AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T> {
     Fixed64(Fixed64T),
     Fixed128(Fixed128T),
-    EncFixed128(EncFixed128T),
     Float32(Float32T),
     Float64(Float64T),
 }
 
-pub type Tensor = AbstractTensor<
-    Fixed64Tensor,
-    Fixed128Tensor,
-    HostEncFixed128Tensor,
-    Float32Tensor,
-    Float64Tensor,
->;
+pub type Tensor = AbstractTensor<Fixed64Tensor, Fixed128Tensor, Float32Tensor, Float64Tensor>;
 
-impl<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
-    AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+impl<Fixed64T, Fixed128T, Float32T, Float64T>
+    AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
 {
     pub fn ty_desc(&self) -> String {
         match self {
             AbstractTensor::Fixed64(_) => "Tensor(Fixed64)",
             AbstractTensor::Fixed128(_) => "Tensor(Fixed128)",
-            AbstractTensor::EncFixed128(_) => unimplemented!(),
             AbstractTensor::Float32(_) => "Tensor(Float32)",
             AbstractTensor::Float64(_) => "Tensor(Float64)",
         }
@@ -69,15 +56,13 @@ impl<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
     }
 }
 
-impl<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T> Placed
-    for AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+impl<Fixed64T, Fixed128T, Float32T, Float64T> Placed
+    for AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
 where
     Fixed64T: Placed,
     Fixed64T::Placement: Into<Placement>,
     Fixed128T: Placed,
     Fixed128T::Placement: Into<Placement>,
-    EncFixed128T: Placed,
-    EncFixed128T::Placement: Into<Placement>,
     Float32T: Placed,
     Float32T::Placement: Into<Placement>,
     Float64T: Placed,
@@ -89,7 +74,6 @@ where
         match self {
             AbstractTensor::Fixed64(x) => Ok(x.placement()?.into()),
             AbstractTensor::Fixed128(x) => Ok(x.placement()?.into()),
-            AbstractTensor::EncFixed128(x) => Ok(x.placement()?.into()),
             AbstractTensor::Float32(x) => Ok(x.placement()?.into()),
             AbstractTensor::Float64(x) => Ok(x.placement()?.into()),
         }
@@ -102,41 +86,38 @@ impl SymbolicType for Tensor {
         AbstractTensor<
             <Fixed64Tensor as SymbolicType>::Type,
             <Fixed128Tensor as SymbolicType>::Type,
-            <HostEncFixed128Tensor as SymbolicType>::Type,
             <Float32Tensor as SymbolicType>::Type,
             <Float64Tensor as SymbolicType>::Type,
         >,
     >;
 }
 
-impl<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
-    From<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
-    for Symbolic<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+impl<Fixed64T, Fixed128T, Float32T, Float64T>
+    From<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+    for Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
 where
     Fixed64T: Placed<Placement = Placement>,
     Fixed128T: Placed<Placement = Placement>,
-    EncFixed128T: Placed<Placement = Placement>,
     Float32T: Placed<Placement = Placement>,
     Float64T: Placed<Placement = Placement>,
 {
-    fn from(x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>) -> Self {
+    fn from(x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>) -> Self {
         Symbolic::Concrete(x)
     }
 }
 
-impl<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
-    TryFrom<Symbolic<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>>
-    for AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>
+impl<Fixed64T, Fixed128T, Float32T, Float64T>
+    TryFrom<Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>>
+    for AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
 where
     Fixed64T: Placed<Placement = Placement>,
     Fixed128T: Placed<Placement = Placement>,
-    EncFixed128T: Placed<Placement = Placement>,
     Float32T: Placed<Placement = Placement>,
     Float64T: Placed<Placement = Placement>,
 {
     type Error = ();
     fn try_from(
-        v: Symbolic<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>,
+        v: Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>,
     ) -> std::result::Result<Self, ()> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
@@ -145,77 +126,20 @@ where
     }
 }
 
-modelled!(PlacementDecrypt::decrypt, HostPlacement, (Tensor) -> Tensor, AesDecryptOp);
-modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (Tensor) -> Tensor, AesDecryptOp);
+// TODO(Morten) next two should be for a new EncryptedTensor
+// modelled!(PlacementDecrypt::decrypt, HostPlacement, (Tensor) -> Tensor, AesDecryptOp);
+// modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (Tensor) -> Tensor, AesDecryptOp);
 modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostEncFixed128Tensor) -> HostFixed128Tensor, AesDecryptOp);
 modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (HostEncFixed128Tensor) -> ReplicatedFixed128Tensor, AesDecryptOp);
 
 kernel! {
     AesDecryptOp,
     [
-        (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] Self::rep_kernel),
+        // (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::host_kernel),
+        // (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] Self::rep_kernel),
         (HostPlacement, (HostEncFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::host_fixed_kernel),
         (ReplicatedPlacement, (HostEncFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_fixed_kernel),
     ]
-}
-
-impl AesDecryptOp {
-    fn host_kernel<
-        S: Session,
-        Fixed64T,
-        Fixed128T,
-        EncFixed128T,
-        Float32T,
-        Float64T,
-        HostFixed128T,
-        RepFixed128T,
-    >(
-        sess: &S,
-        plc: &HostPlacement,
-        c: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
-    where
-        HostPlacement: PlacementDecrypt<S, EncFixed128T, HostFixed128T>,
-        Fixed128T: From<FixedTensor<HostFixed128T, RepFixed128T>>,
-    {
-        match c {
-            AbstractTensor::EncFixed128(c) => {
-                let res = plc.decrypt(sess, &c);
-                Ok(AbstractTensor::Fixed128(FixedTensor::Host(res).into()))
-            }
-            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
-        }
-    }
-
-    fn rep_kernel<
-        S: Session,
-        Fixed64T,
-        Fixed128T,
-        EncFixed128T,
-        Float32T,
-        Float64T,
-        HostFixed128T,
-        RepFixed128T,
-    >(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        c: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
-    where
-        ReplicatedPlacement: PlacementDecrypt<S, EncFixed128T, RepFixed128T>,
-        Fixed128T: From<FixedTensor<HostFixed128T, RepFixed128T>>,
-    {
-        match c {
-            AbstractTensor::EncFixed128(c) => {
-                let res = plc.decrypt(sess, &c);
-                Ok(AbstractTensor::Fixed128(
-                    FixedTensor::Replicated(res).into(),
-                ))
-            }
-            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
-        }
-    }
 }
 
 modelled!(PlacementAdd::add, HostPlacement, (Tensor, Tensor) -> Tensor, AddOp);
@@ -229,12 +153,12 @@ kernel! {
 }
 
 impl AddOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-        y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementAdd<S, Fixed64T, Fixed64T, Fixed64T>,
         HostPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -267,12 +191,12 @@ impl AddOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-        y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementAdd<S, Fixed64T, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -307,12 +231,12 @@ kernel! {
 }
 
 impl SubOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-        y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementSub<S, Fixed64T, Fixed64T, Fixed64T>,
         HostPlacement: PlacementSub<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -345,12 +269,12 @@ impl SubOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-        y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementSub<S, Fixed64T, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementSub<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -385,13 +309,13 @@ kernel! {
 }
 
 impl MulOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-        y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementMul<S, Fixed64T, Fixed64T, Fixed64T>,
         HostPlacement: PlacementMul<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -439,13 +363,13 @@ impl MulOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &ReplicatedPlacement,
         sig: Signature,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-        y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementMul<S, Fixed64T, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementMul<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -497,12 +421,12 @@ kernel! {
 }
 
 impl DivOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-        y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementDiv<S, Fixed64T, Fixed64T, Fixed64T>,
         HostPlacement: PlacementDiv<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -535,12 +459,12 @@ impl DivOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-        y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementDiv<S, Fixed64T, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementDiv<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -575,13 +499,13 @@ kernel! {
 }
 
 impl DotOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-        y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementDot<S, Fixed64T, Fixed64T, Fixed64T>,
         HostPlacement: PlacementDot<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -629,13 +553,13 @@ impl DotOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &ReplicatedPlacement,
         sig: Signature,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-        y: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementDot<S, Fixed64T, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementDot<S, Fixed128T, Fixed128T, Fixed128T>,
@@ -686,12 +610,12 @@ kernel! {
 // TODO(Morten) right now we fix what you can cast to and from; we could
 // perhaps use a `dtype` attribute to make this more flexible
 impl CastOp {
-    fn kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementFixedpointDecode<S, Fixed64T, Float32T>,
         HostPlacement: PlacementFixedpointDecode<S, Fixed128T, Float64T>,
@@ -732,9 +656,6 @@ impl CastOp {
                 let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
                 Ok(AbstractTensor::Float64(inner))
             }
-            AbstractTensor::EncFixed128(_) => {
-                unimplemented!()
-            }
             AbstractTensor::Float32(x) => {
                 let (fractional_precision, integral_precision) = ret_precision.unwrap();
                 let inner =
@@ -759,12 +680,12 @@ kernel! {
 }
 
 impl AtLeast2DOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         to_column_vector: bool,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         // HostPlacement: PlacementAtLeast2D<S, Fixed64T, Fixed64T>,
         // HostPlacement: PlacementAtLeast2D<S, Fixed128T, Fixed128T>,
@@ -781,9 +702,6 @@ impl AtLeast2DOp {
                 unimplemented!()
                 // let z = plc.at_least_2d(sess, to_column_vector, &x);
                 // AbstractTensor::Fixed128(z)
-            }
-            AbstractTensor::EncFixed128(_) => {
-                unimplemented!()
             }
             AbstractTensor::Float32(x) => {
                 let z = plc.at_least_2d(sess, to_column_vector, &x);
@@ -805,13 +723,13 @@ kernel! {
 }
 
 impl MeanOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
         axis: Option<u32>,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementMean<S, Fixed64T, Fixed64T>,
         HostPlacement: PlacementMean<S, Fixed128T, Fixed128T>,
@@ -842,9 +760,6 @@ impl MeanOp {
                 let z = plc.trunc_pr(sess, precision.unwrap(), &z);
                 Ok(AbstractTensor::Fixed128(z))
             }
-            AbstractTensor::EncFixed128(_) => {
-                unimplemented!()
-            }
             AbstractTensor::Float32(x) => {
                 let z = plc.mean(sess, axis, &x);
                 Ok(AbstractTensor::Float32(z))
@@ -856,13 +771,13 @@ impl MeanOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &ReplicatedPlacement,
         sig: Signature,
         axis: Option<u32>,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementMean<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementMean<S, Fixed128T, Fixed128T>,
@@ -909,12 +824,12 @@ kernel! {
 }
 
 impl SumOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementSum<S, Fixed64T, Fixed64T>,
         HostPlacement: PlacementSum<S, Fixed128T, Fixed128T>,
@@ -930,9 +845,6 @@ impl SumOp {
                 let z = plc.sum(sess, axis, &x);
                 Ok(AbstractTensor::Fixed128(z))
             }
-            AbstractTensor::EncFixed128(_) => {
-                unimplemented!()
-            }
             AbstractTensor::Float32(x) => {
                 let z = plc.sum(sess, axis, &x);
                 Ok(AbstractTensor::Float32(z))
@@ -944,12 +856,12 @@ impl SumOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Option<u32>,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         ReplicatedPlacement: PlacementSum<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementSum<S, Fixed128T, Fixed128T>,
@@ -992,7 +904,6 @@ impl OnesOp {
         AbstractTensor<
             cs!(Fixed64Tensor),
             cs!(Fixed128Tensor),
-            cs!(HostEncFixed128Tensor),
             cs!(Float32Tensor),
             cs!(Float64Tensor),
         >,
@@ -1001,7 +912,6 @@ impl OnesOp {
         HostShape: KnownType<S>,
         Fixed64Tensor: KnownType<S>,
         Fixed128Tensor: KnownType<S>,
-        HostEncFixed128Tensor: KnownType<S>,
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
         HostPlacement: PlacementOnes<S, cs!(HostShape), cs!(Float64Tensor)>,
@@ -1038,12 +948,12 @@ kernel! {
 }
 
 impl ExpandDimsOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         axis: Vec<u32>,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementExpandDims<S, Float32T, Float32T>,
         HostPlacement: PlacementExpandDims<S, Float64T, Float64T>,
@@ -1058,9 +968,6 @@ impl ExpandDimsOp {
                 unimplemented!()
                 // let z = plc.expand_dims(sess, axis, &x);
                 // AbstractTensor::Fixed128(z)
-            }
-            AbstractTensor::EncFixed128(_x) => {
-                unimplemented!()
             }
             AbstractTensor::Float32(x) => {
                 let z = plc.expand_dims(sess, axis, &x);
@@ -1083,12 +990,12 @@ kernel! {
 }
 
 impl ConcatOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         axis: u32,
-        xs: &[AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>],
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>],
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         HostPlacement: PlacementConcatenate<S, Float32T, Float32T>,
         HostPlacement: PlacementConcatenate<S, Float64T, Float64T>,
@@ -1151,11 +1058,11 @@ kernel! {
 }
 
 impl TransposeOp {
-    pub fn kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    pub fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         // HostPlacement: PlacementTranspose<S, Float32T, Float32T>,
         HostPlacement: PlacementTranspose<S, Float64T, Float64T>,
@@ -1170,9 +1077,6 @@ impl TransposeOp {
                 unimplemented!()
                 // let z = plc.transpose(sess, &x);
                 // AbstractTensor::Fixed128(z)
-            }
-            AbstractTensor::EncFixed128(_x) => {
-                unimplemented!()
             }
             AbstractTensor::Float32(_x) => {
                 unimplemented!()
@@ -1196,11 +1100,11 @@ kernel! {
 }
 
 impl InverseOp {
-    pub fn kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    pub fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         // HostPlacement: PlacementInverse<S, Float32T, Float32T>,
         HostPlacement: PlacementInverse<S, Float64T, Float64T>,
@@ -1215,9 +1119,6 @@ impl InverseOp {
                 unimplemented!()
                 // let z = plc.inverse(sess, &x);
                 // AbstractTensor::Fixed128(z)
-            }
-            AbstractTensor::EncFixed128(_x) => {
-                unimplemented!()
             }
             AbstractTensor::Float32(_x) => {
                 unimplemented!()
@@ -1243,7 +1144,6 @@ impl LoadOp {
         AbstractTensor<
             cs!(Fixed64Tensor),
             cs!(Fixed128Tensor),
-            cs!(HostEncFixed128Tensor),
             cs!(Float32Tensor),
             cs!(Float64Tensor),
         >,
@@ -1252,7 +1152,6 @@ impl LoadOp {
         HostString: KnownType<S>,
         Fixed64Tensor: KnownType<S>,
         Fixed128Tensor: KnownType<S>,
-        HostEncFixed128Tensor: KnownType<S>,
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
         HostPlacement: PlacementLoad<S, cs!(HostString), cs!(HostString), cs!(Float64Tensor)>,
@@ -1263,11 +1162,11 @@ impl LoadOp {
 }
 
 impl SaveOp {
-    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         key: cs!(HostString),
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> Result<cs!(Unit)>
     where
         HostString: KnownType<S>,
@@ -1286,9 +1185,6 @@ impl SaveOp {
                 unimplemented!()
                 // plc.save(sess, &key, &x)
             }
-            AbstractTensor::EncFixed128(_x) => {
-                unimplemented!()
-            }
             AbstractTensor::Float32(x) => Ok(plc.save(sess, &key, &x)),
             AbstractTensor::Float64(x) => Ok(plc.save(sess, &key, &x)),
         }
@@ -1296,17 +1192,10 @@ impl SaveOp {
 }
 
 impl ShapeOp {
-    pub(crate) fn logical_kernel<
-        S: Session,
-        Fixed64T,
-        Fixed128T,
-        EncFixed128T,
-        Float32T,
-        Float64T,
-    >(
+    pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> Result<cs!(HostShape)>
     where
         HostShape: KnownType<S>,
@@ -1321,9 +1210,6 @@ impl ShapeOp {
             AbstractTensor::Fixed128(_x) => {
                 unimplemented!()
                 // plc.shape(sess, &x)
-            }
-            AbstractTensor::EncFixed128(_x) => {
-                unimplemented!()
             }
             AbstractTensor::Float32(x) => Ok(plc.shape(sess, &x)),
             AbstractTensor::Float64(x) => Ok(plc.shape(sess, &x)),
@@ -1341,7 +1227,6 @@ impl ConstantOp {
         AbstractTensor<
             cs!(Fixed64Tensor),
             cs!(Fixed128Tensor),
-            cs!(HostEncFixed128Tensor),
             cs!(Float32Tensor),
             cs!(Float64Tensor),
         >,
@@ -1349,7 +1234,6 @@ impl ConstantOp {
     where
         Fixed64Tensor: KnownType<S>,
         Fixed128Tensor: KnownType<S>,
-        HostEncFixed128Tensor: KnownType<S>,
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
         HostPlacement: PlacementConstant<S, cs!(Float64Tensor)>,
@@ -1361,11 +1245,11 @@ impl ConstantOp {
 }
 
 impl OutputOp {
-    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>(
+    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, EncFixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
         HostString: KnownType<S>,
         HostPlacement: PlacementOutput<S, Float32T, Float32T>,
@@ -1377,9 +1261,6 @@ impl OutputOp {
             )),
             AbstractTensor::Fixed128(_x) => Err(Error::UnimplementedOperator(
                 "OutputOp missing a Fixed128 implementation.".to_string(),
-            )),
-            AbstractTensor::EncFixed128(_x) => Err(Error::UnimplementedOperator(
-                "OutputOp missing a EncFixed128 implementation.".to_string(),
             )),
             AbstractTensor::Float32(x) => Ok(AbstractTensor::Float32(plc.output(sess, &x))),
             AbstractTensor::Float64(x) => Ok(AbstractTensor::Float64(plc.output(sess, &x))),
