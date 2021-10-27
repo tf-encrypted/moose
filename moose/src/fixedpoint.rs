@@ -1096,6 +1096,7 @@ impl ReplicatedPlacement {
                                x: &AbstractReplicatedFixedTensor<RepRingT>,
                                y: &AbstractReplicatedFixedTensor<RepRingT>|
          -> AbstractReplicatedFixedTensor<RepRingT> {
+            assert_eq!(x.fractional_precision, y.fractional_precision);
             rep.trunc_pr(sess, x.fractional_precision, &rep.mul(sess, x, y))
         };
 
