@@ -1994,7 +1994,8 @@ mod tests {
                 let result = Convert::decode(&output_reveal.tensor, (2 as $tt).pow($f_precision));
 
                 for i in 0..y_target.len() {
-                    assert_eq!(result.0[i], y_target[i]);
+                    let error = (result.0[i] - y_target[i]).abs();
+                    assert!(error < f64::EPSILON);
                 }
             }
         };
