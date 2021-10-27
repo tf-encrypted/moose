@@ -1070,6 +1070,40 @@ impl FixedpointMeanOp {
     }
 }
 
+impl ReplicatedPlacement {
+    pub fn prefix_mul_fixed<S: Session, SetupT, RepRingT>(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: Vec<AbstractReplicatedFixedTensor<RepRingT>>,
+    ) -> Vec<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementMul<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
+        ReplicatedPlacement: PlacementTruncPr<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
+    {
+        let elementwise_mul = |rep: &ReplicatedPlacement,
+                               sess: &S,
+                               _setup: &SetupT,
+                               x: &AbstractReplicatedFixedTensor<RepRingT>,
+                               y: &AbstractReplicatedFixedTensor<RepRingT>|
+         -> AbstractReplicatedFixedTensor<RepRingT> {
+            assert_eq!(x.fractional_precision, y.fractional_precision);
+            rep.trunc_pr(sess, x.fractional_precision, &rep.mul(sess, x, y))
+        };
+
+        self.prefix_op(sess, setup, x, elementwise_mul)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1187,6 +1221,16 @@ mod tests {
             tensor: x,
             integral_precision,
             fractional_precision,
+        }
+    }
+
+    fn new_replicated_fixed_tensor<RepRingT>(
+        x: RepRingT,
+    ) -> AbstractReplicatedFixedTensor<RepRingT> {
+        AbstractReplicatedFixedTensor {
+            tensor: x,
+            fractional_precision: 15,
+            integral_precision: 8,
         }
     }
 
@@ -1780,5 +1824,72 @@ mod tests {
     #[test]
     fn test_fixed_rep_symbolic_div128() {
         rep_div_symbolic_test128(10, 50);
+    }
+
+    macro_rules! rep_prefix_op_fixed_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $f_precision: expr) => {
+            fn $func_name(x: Vec<ArrayD<$tt>>, y_target: Vec<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let encode = |item: &$tt| (2_i64.pow($f_precision) as $tt * item) as $tt;
+
+                let x_fixed_vec = x
+                    .into_iter()
+                    .map(|x| {
+                        let x_encode = x.map(encode);
+                        let x_ring = AbstractHostRingTensor::from_raw_plc(x_encode, alice.clone());
+                        let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
+                            rep.share(&sess, &setup, &x_ring);
+                        new_replicated_fixed_tensor(x_shared)
+                    })
+                    .collect();
+
+                let outputs = rep.prefix_mul_fixed(&sess, &setup, x_fixed_vec);
+
+                for (i, output) in outputs.iter().enumerate() {
+                    let output_reveal = alice.reveal(&sess, output);
+                    let result =
+                        Convert::decode(&output_reveal.tensor, (2 as $tt).pow($f_precision));
+                    assert_eq!(result.0.as_slice().unwrap()[0] as $tt, y_target[i]);
+                }
+            }
+        };
+    }
+
+    rep_prefix_op_fixed_test!(test_rep_prefix_mul_fixed64, prefix_mul_fixed<u64>, 15);
+    rep_prefix_op_fixed_test!(test_rep_prefix_mul_fixed128, prefix_mul_fixed<u128>, 15);
+
+    #[test]
+    fn test_rep_prefix_mul_fixed_64() {
+        let x = vec![
+            array![1u64].into_dyn(),
+            array![2u64].into_dyn(),
+            array![3u64].into_dyn(),
+            array![4u64].into_dyn(),
+        ];
+        let y_target = vec![1, 2, 6, 24];
+
+        test_rep_prefix_mul_fixed64(x, y_target);
+    }
+
+    #[test]
+    fn test_rep_prefix_mul_fixed_128() {
+        let x = vec![
+            array![1u128].into_dyn(),
+            array![2u128].into_dyn(),
+            array![3u128].into_dyn(),
+            array![4u128].into_dyn(),
+        ];
+        let y_target = vec![1u128, 2, 6, 24];
+
+        test_rep_prefix_mul_fixed128(x, y_target);
     }
 }
