@@ -443,11 +443,11 @@ impl ShapeOp {
         sess: &S,
         plc: &HostPlacement,
         x: HostEncFixed128Tensor,
-    ) -> HostShape
+    ) -> Result<HostShape>
     where
         HostPlacement: PlacementShape<S, HostRing128Tensor, HostShape>,
     {
-        plc.shape(sess, &x.tensor)
+        Ok(plc.shape(sess, &x.tensor))
     }
 }
 

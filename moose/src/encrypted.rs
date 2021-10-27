@@ -1,5 +1,6 @@
 use crate::circuits::bristol_fashion::aes;
 use crate::computation::*;
+use crate::error::Result;
 use crate::host::{
     AbstractHostEncFixedTensor, HostBitTensor, HostEncFixed128Tensor, HostFixed128Tensor,
     HostRing128Tensor, HostShape,
@@ -16,7 +17,7 @@ impl AesDecryptOp {
         sess: &S,
         plc: &HostPlacement,
         c: HostEncFixed128Tensor,
-    ) -> HostFixed128Tensor
+    ) -> Result<HostFixed128Tensor>
     where
         HostPlacement: PlacementBitDec<S, HostRing128Tensor, HostBitTensor>,
         HostPlacement: PlacementIndexAxis<S, HostBitTensor, HostBitTensor>,
@@ -41,11 +42,11 @@ impl AesDecryptOp {
             .map(|(i, b)| plc.ring_inject(sess, i, b))
             .fold(zero, |acc, x| plc.add(sess, &acc, &x));
 
-        HostFixed128Tensor {
+        Ok(HostFixed128Tensor {
             tensor: m,
             fractional_precision: c.precision,
             integral_precision: 0, // TODO
-        }
+        })
     }
 }
 
@@ -54,7 +55,7 @@ impl AesDecryptOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         c: AbstractHostEncFixedTensor<HostRingT>,
-    ) -> AbstractReplicatedFixedTensor<RepRingT>
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
         HostShape: KnownType<S>,
         ReplicatedShape: KnownType<S>,
@@ -102,11 +103,11 @@ impl AesDecryptOp {
             .fold(zero, |acc, x| rep.add(sess, &acc, &x));
 
         // wrap up as fixed-point tensor
-        AbstractReplicatedFixedTensor {
+        Ok(AbstractReplicatedFixedTensor {
             tensor: m,
             fractional_precision: c.precision,
             integral_precision: 0, // TODO
-        }
+        })
     }
 }
 

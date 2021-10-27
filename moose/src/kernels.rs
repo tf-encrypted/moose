@@ -126,7 +126,6 @@ impl Session for SyncSession {
             RepDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepTruncPr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepMsb(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepAbs(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

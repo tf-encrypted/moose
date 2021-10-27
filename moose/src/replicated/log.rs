@@ -1,11 +1,7 @@
-use crate::computation::{
-    KnownType, Placed, RepEqualOp, ReplicatedPlacement,
-};
+use crate::computation::{KnownType, Placed, RepEqualOp, ReplicatedPlacement};
 use crate::error::Result;
 use crate::kernels::*;
-use crate::replicated::{
-    ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor,
-};
+use crate::replicated::{ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor};
 use crate::{Const, Ring};
 
 modelled!(PlacementEqual::equal, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, RepEqualOp);

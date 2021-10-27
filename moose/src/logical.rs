@@ -209,7 +209,9 @@ impl AesDecryptOp {
         match c {
             AbstractTensor::EncFixed128(c) => {
                 let res = plc.decrypt(sess, &c);
-                Ok(AbstractTensor::Fixed128(FixedTensor::Replicated(res).into()))
+                Ok(AbstractTensor::Fixed128(
+                    FixedTensor::Replicated(res).into(),
+                ))
             }
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
