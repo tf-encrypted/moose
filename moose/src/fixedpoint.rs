@@ -1952,50 +1952,72 @@ mod tests {
         test_rep_prefix_mul_fixed128(x, y_target);
     }
 
+    macro_rules! rep_p_eval_fixed_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $f_precision: expr) => {
+            fn $func_name(x: ArrayD<f64>, coeffs: Vec<f64>, y_target: Vec<f64>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let encode = |item: &f64| (2_i64.pow($f_precision) as f64 * item) as $tt;
+                let x_encoded = x.map(encode);
+                let x_ring = AbstractHostRingTensor::from_raw_plc(x_encoded, alice.clone());
+                let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
+                    rep.share(&sess, &setup, &x_ring);
+                let x_fixed_shared = new_replicated_fixed_tensor(x_shared);
+
+                let coeffs_fixed_shared: Vec<
+                    AbstractReplicatedFixedTensor<
+                        AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>>,
+                    >,
+                > = coeffs
+                    .into_iter()
+                    .map(|coeff| {
+                        let coeff_encoded = array![coeff].map(encode);
+                        let coeff_ring =
+                            AbstractHostRingTensor::from_raw_plc(coeff_encoded, alice.clone());
+                        let coeff_shared: AbstractReplicatedRingTensor<
+                            AbstractHostRingTensor<$tt>,
+                        > = rep.share(&sess, &setup, &coeff_ring);
+                        new_replicated_fixed_tensor(coeff_shared)
+                    })
+                    .collect();
+
+                let output = rep.p_eval(&sess, &setup, x_fixed_shared, coeffs_fixed_shared);
+                let output_reveal = alice.reveal(&sess, &output);
+                let result = Convert::decode(&output_reveal.tensor, (2 as $tt).pow($f_precision));
+
+                for i in 0..y_target.len() {
+                    assert_eq!(result.0[i], y_target[i]);
+                }
+            }
+        };
+    }
+
+    rep_p_eval_fixed_test!(test_rep_p_eval_fixed64, p_eval<u64>, 15);
+    rep_p_eval_fixed_test!(test_rep_p_eval_fixed128, p_eval<u128>, 15);
+
     #[test]
-    fn test_p_eval() {
+    fn test_rep_p_eval_64() {
         let x = array![1f64, 2., 3., 4.].into_dyn();
         let coeffs = vec![1f64, 2., 3.];
-        let targets = vec![6f64, 17., 34., 57.];
+        let y_targets = vec![6f64, 17., 34., 57.];
 
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        test_rep_p_eval_fixed64(x, coeffs, y_targets);
+    }
 
-        let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+    #[test]
+    fn test_rep_p_eval_128() {
+        let x = array![1f64, 2., 3., 4.].into_dyn();
+        let coeffs = vec![1f64, 2., 3.];
+        let y_targets = vec![6f64, 17., 34., 57.];
 
-        let encode = |item: &f64| (2_i64.pow(15) as f64 * item) as u64;
-        let x_encoded = x.map(encode);
-        let x_ring = AbstractHostRingTensor::from_raw_plc(x_encoded, alice.clone());
-        let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>> =
-            rep.share(&sess, &setup, &x_ring);
-        let x_fixed_shared = new_replicated_fixed_tensor(x_shared);
-
-        let coeffs_fixed_shared: Vec<
-            AbstractReplicatedFixedTensor<
-                AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>,
-            >,
-        > = coeffs
-            .into_iter()
-            .map(|coeff| {
-                let coeff_encoded = array![coeff].map(encode);
-                let coeff_ring = AbstractHostRingTensor::from_raw_plc(coeff_encoded, alice.clone());
-                let coeff_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>> =
-                    rep.share(&sess, &setup, &coeff_ring);
-                new_replicated_fixed_tensor(coeff_shared)
-            })
-            .collect();
-
-        let output = rep.p_eval(&sess, &setup, x_fixed_shared, coeffs_fixed_shared);
-        let output_reveal = alice.reveal(&sess, &output);
-        let result = Convert::decode(&output_reveal.tensor, (2 as u64).pow(15));
-
-        for i in 0..targets.len() {
-            assert_eq!(result.0[i], targets[i]);
-        }
+        test_rep_p_eval_fixed128(x, coeffs, y_targets);
     }
 }
