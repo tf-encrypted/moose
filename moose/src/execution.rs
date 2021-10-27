@@ -1328,6 +1328,85 @@ impl AsyncExecutor {
         let compiled_comp = computation.compile_async(&ctx)?;
         compiled_comp.apply(session)
     }
+
+    // After execution the AsyncTasks to block on will be in session.tasks vector.
+    pub fn new_run_computation(
+        &mut self,
+        computation: &Computation,
+        session: &crate::kernels::AsyncSession,
+        role_assignment: &RoleAssignment,
+        own_identity: &Identity,
+    ) -> Result<HashMap<String, AsyncReceiver>> {
+        if !self.session_ids.insert(session.session_id.clone()) {
+            return Err(Error::SessionAlreadyExists(format!(
+                "{}",
+                session.session_id
+            )));
+        }
+
+        // using a Vec instead of eg HashSet here since we can expect it to be very small
+        let own_roles: Vec<&Role> = role_assignment
+            .iter()
+            .filter_map(|(role, identity)| {
+                if identity == own_identity {
+                    Some(role)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let own_operations = computation
+            .operations
+            .iter() // guessing that par_iter won't help here
+            .filter(|op| match &op.placement {
+                Placement::Host(plc) => own_roles.iter().any(|owner| *owner == &plc.owner),
+                Placement::Replicated(plc) => own_roles
+                    .iter()
+                    .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
+                Placement::Additive(plc) => own_roles
+                    .iter()
+                    .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
+            })
+            .collect::<Vec<_>>();
+
+        let own_output_names: Vec<String> = own_operations
+            .iter() // guessing that par_iter won't help here
+            .filter_map(|op| match op.kind {
+                Operator::Output(_) => Some(op.name.clone()),
+                _ => None,
+            })
+            .collect();
+
+        let mut env: HashMap<String, AsyncValue> = HashMap::default();
+
+        for op in own_operations.iter() {
+            use crate::kernels::Session;
+            let operator = op.kind.clone();
+            let operands = op
+                .inputs
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
+            let value = session
+                .execute(operator, &op.placement, operands)
+                .map_err(|e| {
+                    Error::KernelError(format!("AsyncSession failed due to an error: {:?}", e,))
+                })?;
+            env.insert(op.name.clone(), value);
+        }
+
+        // collect output futures
+        let outputs: HashMap<String, AsyncReceiver> = own_output_names
+            .iter()
+            .map(|op_name| {
+                let val = env.get(op_name).cloned().unwrap(); // safe to unwrap per construction
+                (op_name.clone(), val)
+            })
+            .collect();
+
+        Ok(outputs)
+    }
 }
 
 pub struct AsyncTestRuntime {
@@ -1369,6 +1448,7 @@ impl AsyncTestRuntime {
             networking,
         }
     }
+
     pub fn evaluate_computation(
         &mut self,
         computation: &Computation,
@@ -1444,6 +1524,78 @@ impl AsyncTestRuntime {
         });
 
         Ok(Some(outputs))
+    }
+
+    pub fn new_evaluate_computation(
+        &mut self,
+        computation: &Computation,
+        role_assignments: HashMap<Role, Identity>,
+        arguments: HashMap<String, Value>,
+    ) -> Result<HashMap<String, Value>> {
+        let mut session_handles: Vec<crate::kernels::AsyncSessionHandle> = Vec::new();
+        let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+
+        let (valid_role_assignments, missing_role_assignments): (
+            HashMap<Role, Identity>,
+            HashMap<Role, Identity>,
+        ) = role_assignments
+            .into_iter()
+            .partition(|kv| self.identities.contains(&kv.1));
+        if !missing_role_assignments.is_empty() {
+            let missing_roles: Vec<&Role> = missing_role_assignments.keys().collect();
+            let missing_identities: Vec<&Identity> = missing_role_assignments.values().collect();
+            return Err(Error::TestRuntime(format!("Role assignment included identities unknown to Moose runtime: missing identities {:?} for roles {:?}.",
+                missing_identities, missing_roles)));
+        }
+
+        for (own_identity, executor) in self.executors.iter_mut() {
+            let moose_session = crate::kernels::AsyncSession::new(
+                SessionId::try_from("foobar").unwrap(),
+                arguments.clone(),
+                Arc::clone(&self.networking),
+                Arc::clone(&self.runtime_storage[own_identity]),
+                Arc::new(Placement::Host(HostPlacement {
+                    owner: own_identity.0.clone().into(),
+                })),
+            );
+            let outputs = executor
+                .new_run_computation(
+                    computation,
+                    &moose_session,
+                    &valid_role_assignments,
+                    own_identity,
+                )
+                .unwrap();
+
+            for (output_name, output_future) in outputs {
+                output_futures.insert(output_name, output_future);
+            }
+
+            session_handles.push(crate::kernels::AsyncSessionHandle::for_session(
+                &moose_session,
+            ))
+        }
+
+        for handle in session_handles {
+            let result = rt.block_on(handle.join_on_first_error());
+            if let Err(e) = result {
+                return Err(Error::TestRuntime(e.to_string()));
+            }
+        }
+
+        let outputs = rt.block_on(async {
+            let mut outputs: HashMap<String, Value> = HashMap::new();
+            for (output_name, output_future) in output_futures {
+                let value = output_future.await.unwrap();
+                outputs.insert(output_name, value);
+            }
+
+            outputs
+        });
+
+        Ok(outputs)
     }
 
     pub fn read_value_from_storage(&self, identity: Identity, key: String) -> Result<Value> {
@@ -2608,5 +2760,46 @@ mod tests {
         } else {
             panic!("expected session already exists error")
         }
+    }
+
+    fn _run_new_async_computation_test(
+        computation: Computation,
+        storage_mapping: HashMap<String, HashMap<String, Value>>,
+        role_assignments: HashMap<String, String>,
+        arguments: HashMap<String, Value>,
+    ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
+        let valid_role_assignments = role_assignments
+            .into_iter()
+            .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
+            .collect::<HashMap<Role, Identity>>();
+        let mut executor = AsyncTestRuntime::new(storage_mapping);
+        let outputs =
+            executor.new_evaluate_computation(&computation, valid_role_assignments, arguments)?;
+        Ok(outputs)
+    }
+
+    #[test]
+    fn test_new_async_session() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
+        seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
+        output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string() => hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_new_async_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+        )?;
+
+        let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(
+            seed.0,
+            RawSeed([224, 87, 133, 2, 90, 170, 32, 253, 25, 80, 93, 74, 122, 196, 50, 1])
+        );
+        Ok(())
     }
 }

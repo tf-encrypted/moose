@@ -247,10 +247,90 @@ impl RuntimeSession for SyncSession {
 pub struct AsyncSession {
     pub session_id: SessionId,
     pub arguments: HashMap<String, Value>,
-    // pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
-    // pub storage: Arc<dyn Send + Sync + AsyncStorage>,
+    pub networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
+    pub storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
     pub host: Arc<Placement>,
     // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
+    pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
+}
+
+pub struct AsyncSessionHandle {
+    pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
+}
+
+impl AsyncSessionHandle {
+    pub fn for_session(session: &AsyncSession) -> Self {
+        AsyncSessionHandle {
+            tasks: Arc::clone(&session.tasks),
+        }
+    }
+
+    pub async fn join_on_first_error(self) -> anyhow::Result<()> {
+        use crate::error::Error::{OperandUnavailable, ResultUnused};
+        // use futures::StreamExt;
+
+        let mut tasks_guard = self.tasks.write().unwrap();
+        // TODO (lvorona): should really find a way to use FuturesUnordered here
+        // let mut tasks = (*tasks_guard)
+        //     .into_iter()
+        //     .collect::<futures::stream::FuturesUnordered<_>>();
+
+        let mut tasks = tasks_guard.iter_mut();
+
+        while let Some(x) = tasks.next() {
+            let x = x.await;
+            match x {
+                Ok(Ok(_)) => {
+                    continue;
+                }
+                Ok(Err(e)) => {
+                    match e {
+                        // OperandUnavailable and ResultUnused are typically not root causes.
+                        // Wait to get an error that would indicate the root cause of the problem,
+                        // and return it instead.
+                        OperandUnavailable => continue,
+                        ResultUnused => continue,
+                        _ => {
+                            for task in tasks {
+                                task.abort();
+                            }
+                            return Err(anyhow::Error::from(e));
+                        }
+                    }
+                }
+                Err(e) => {
+                    if e.is_cancelled() {
+                        continue;
+                    } else if e.is_panic() {
+                        for task in tasks {
+                            task.abort();
+                        }
+                        return Err(anyhow::Error::from(e));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl AsyncSession {
+    pub fn new(
+        session_id: SessionId,
+        arguments: HashMap<String, Value>,
+        networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
+        storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
+        host: Arc<Placement>,
+    ) -> Self {
+        AsyncSession {
+            session_id,
+            arguments,
+            networking,
+            storage,
+            host,
+            tasks: Default::default(),
+        }
+    }
 }
 
 impl Session for AsyncSession {

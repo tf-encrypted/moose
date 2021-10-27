@@ -289,7 +289,8 @@ macro_rules! concrete_dispatch_kernel {
                                 let k = <$op as NullaryKernel<AsyncSession, $plc, $u>>::compile(&op, &plc)?;
                                 let (sender, result) = crate::computation::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
-                                let _task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                let tasks = std::sync::Arc::clone(&sess.tasks);
+                                let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
                                     let y: $u = k(&sess, &plc)?;
                                     if y.placement()? == plc.clone().into() {
                                         crate::execution::map_send_result(sender.send(y.into()))?;
@@ -298,6 +299,8 @@ macro_rules! concrete_dispatch_kernel {
                                         Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
                                     }
                                 });
+                                let mut tasks = tasks.write().unwrap();
+                                tasks.push(task);
 
                                 Ok(result)
                             }))
@@ -388,7 +391,8 @@ macro_rules! concrete_dispatch_kernel {
                                 let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(&op, &plc)?;
                                 let (sender, result) = crate::computation::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
-                                let _task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                let tasks = std::sync::Arc::clone(&sess.tasks);
+                                let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
                                     let operands = futures::future::join_all(operands).await;
                                     let x0: $t0 = operands
                                             .get(0)
@@ -404,6 +408,8 @@ macro_rules! concrete_dispatch_kernel {
                                         Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
                                     }
                                 });
+                                let mut tasks = tasks.write().unwrap();
+                                tasks.push(task);
 
                                 Ok(result)
                             }))
@@ -503,7 +509,8 @@ macro_rules! concrete_dispatch_kernel {
                                 let k = <$op as BinaryKernel<AsyncSession, $plc, $t0, $t1, $u>>::compile(&op, &plc)?;
                                 let (sender, result) = crate::computation::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
-                                let _task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                let tasks = std::sync::Arc::clone(&sess.tasks);
+                                let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
                                     let operands = futures::future::join_all(operands).await;
                                     let x0: $t0 = operands
                                             .get(0)
@@ -525,6 +532,8 @@ macro_rules! concrete_dispatch_kernel {
                                         Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
                                     }
                                 });
+                                let mut tasks = tasks.write().unwrap();
+                                tasks.push(task);
 
                                 Ok(result)
                             }))
@@ -620,7 +629,8 @@ macro_rules! concrete_dispatch_kernel {
                                 let k = <$op as TernaryKernel<AsyncSession, $plc, $t0, $t1, $t2, $u>>::compile(&op, &plc)?;
                                 let (sender, result) = crate::computation::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
-                                let _task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                let tasks = std::sync::Arc::clone(&sess.tasks);
+                                let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
                                     let operands = futures::future::join_all(operands).await;
                                     let x0: $t0 = operands
                                             .get(0)
@@ -648,6 +658,8 @@ macro_rules! concrete_dispatch_kernel {
                                         Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
                                     }
                                 });
+                                let mut tasks = tasks.write().unwrap();
+                                tasks.push(task);
 
                                 Ok(result)
                             }))
