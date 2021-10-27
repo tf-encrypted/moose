@@ -182,6 +182,10 @@ pub struct AbstractReplicatedFixedTensor<RepRingT> {
 moose_type!(ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>);
 moose_type!(ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>);
 
+// TODO(Dragos) perhaps we need better abstraction mechanisms?
+moose_type!(DistributedFixed128Tensor = AbstractReplicatedFixedTensor<DistributedRing128Tensor>);
+moose_type!(DistributedFixed64Tensor = AbstractReplicatedFixedTensor<DistributedRing64Tensor>);
+
 impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;
 
