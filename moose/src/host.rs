@@ -22,22 +22,28 @@ use std::num::Wrapping;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 use std::ops::{BitAnd, BitXor, Neg, Shl, Shr};
 
-moose_type!(String);
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct HostString(pub String, pub HostPlacement);
 
-impl Placed for String {
-    type Placement = Placement;
+moose_type!(HostString);
+
+impl Placed for HostString {
+    type Placement = HostPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        // TODO we need a wrapper for strings that contains placement info
-        unimplemented!()
+        Ok(self.1.clone())
     }
 }
 
-impl<S: Session> PlacementPlace<S, String> for HostPlacement {
-    fn place(&self, _sess: &S, x: String) -> String {
-        match x.placement() {
-            Ok(Placement::Host(place)) if &place == self => x,
-            _ => unimplemented!("Not yet able to place strings"), // TODO: Err
+impl<S: Session> PlacementPlace<S, HostString> for HostPlacement {
+    fn place(&self, _sess: &S, string: HostString) -> HostString {
+        match string.placement() {
+            Ok(place) if self == &place => string,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                HostString(string.0, self.clone())
+            }
         }
     }
 }
@@ -180,6 +186,15 @@ impl<S: Session, T> PlacementPlace<S, HostTensor<T>> for HostPlacement {
     }
 }
 
+impl<S: Session> PlacementPlace<S, Unit> for HostPlacement {
+    fn place(&self, _sess: &S, x: Unit) -> Unit {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => Unit(self.clone()),
+        }
+    }
+}
+
 modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostRing64Tensor, RingFixedpointMeanOp);
 modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostRing128Tensor, RingFixedpointMeanOp);
 
@@ -229,12 +244,20 @@ impl RingFixedpointMeanOp {
 
 modelled!(PlacementAdd::add, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostAddOp);
 modelled!(PlacementAdd::add, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (HostInt8Tensor, HostInt8Tensor) -> HostInt8Tensor, HostAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (HostInt16Tensor, HostInt16Tensor) -> HostInt16Tensor, HostAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor, HostAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor, HostAddOp);
 
 kernel! {
     HostAddOp,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt8Tensor, HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt16Tensor, HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::kernel),
     ]
 }
 
@@ -254,12 +277,20 @@ impl HostAddOp {
 
 modelled!(PlacementSub::sub, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostSubOp);
 modelled!(PlacementSub::sub, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (HostInt8Tensor, HostInt8Tensor) -> HostInt8Tensor, HostSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (HostInt16Tensor, HostInt16Tensor) -> HostInt16Tensor, HostSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor, HostSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor, HostSubOp);
 
 kernel! {
     HostSubOp,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt8Tensor, HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt16Tensor, HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::kernel),
     ]
 }
 
@@ -279,12 +310,20 @@ impl HostSubOp {
 
 modelled!(PlacementMul::mul, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostMulOp);
 modelled!(PlacementMul::mul, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (HostInt8Tensor, HostInt8Tensor) -> HostInt8Tensor, HostMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (HostInt16Tensor, HostInt16Tensor) -> HostInt16Tensor, HostMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor, HostMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor, HostMulOp);
 
 kernel! {
     HostMulOp,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt8Tensor, HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt16Tensor, HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::kernel),
     ]
 }
 
@@ -306,6 +345,10 @@ modelled!(PlacementDiv::div, HostPlacement, (HostFloat32Tensor, HostFloat32Tenso
 modelled!(PlacementDiv::div, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostDivOp);
 modelled!(PlacementDiv::div, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, HostDivOp);
 modelled!(PlacementDiv::div, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, HostDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostInt8Tensor, HostInt8Tensor) -> HostInt8Tensor, HostDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostInt16Tensor, HostInt16Tensor) -> HostInt16Tensor, HostDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor, HostDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor, HostDivOp);
 
 kernel! {
     HostDivOp,
@@ -314,6 +357,10 @@ kernel! {
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring_kernel),
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring_kernel),
+        (HostPlacement, (HostInt8Tensor, HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt16Tensor, HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::kernel),
     ]
 }
 
@@ -395,23 +442,35 @@ impl ShapeOp {
 
 modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat32Tensor) -> HostFloat32Tensor, HostAtLeast2DOp);
 modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat64Tensor) -> HostFloat64Tensor, HostAtLeast2DOp);
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostInt8Tensor) -> HostInt8Tensor, HostAtLeast2DOp);
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostInt16Tensor) -> HostInt16Tensor, HostAtLeast2DOp);
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostInt32Tensor) -> HostInt32Tensor, HostAtLeast2DOp);
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostInt64Tensor) -> HostInt64Tensor, HostAtLeast2DOp);
 
 kernel! {
     HostAtLeast2DOp,
     [
-        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[to_column_vector] Self::hostfloat_kernel),
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[to_column_vector] Self::hostfloat_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[to_column_vector] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[to_column_vector] Self::kernel),
+        (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => [runtime] attributes[to_column_vector] Self::kernel),
+        (HostPlacement, (HostInt16Tensor) -> HostInt16Tensor => [runtime] attributes[to_column_vector] Self::kernel),
+        (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] attributes[to_column_vector] Self::kernel),
+        (HostPlacement, (HostInt64Tensor) -> HostInt64Tensor => [runtime] attributes[to_column_vector] Self::kernel),
     ]
 }
 
 impl HostAtLeast2DOp {
-    fn hostfloat_kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _to_column_vector: bool,
-        _x: HostTensor<T>,
-    ) -> Result<HostTensor<T>> {
-        unimplemented!()
+    fn kernel<S: RuntimeSession, T: LinalgScalar>(
+        sess: &S,
+        plc: &HostPlacement,
+        to_column_vector: bool,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        let y = x.atleast_2d(to_column_vector);
+        Ok(plc.place(sess, y))
     }
 }
 
@@ -1002,11 +1061,19 @@ impl HostAddNOp {
 
 modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostFloat32Tensor) -> HostFloat32Tensor, HostExpandDimsOp);
 modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostExpandDimsOp);
+modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostInt8Tensor) -> HostInt8Tensor, HostExpandDimsOp);
+modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostInt16Tensor) -> HostInt16Tensor, HostExpandDimsOp);
+modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostInt32Tensor) -> HostInt32Tensor, HostExpandDimsOp);
+modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostInt64Tensor) -> HostInt64Tensor, HostExpandDimsOp);
 
 kernel! {
     HostExpandDimsOp, [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostInt16Tensor) -> HostInt16Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostInt64Tensor) -> HostInt64Tensor => [runtime] attributes[axis] Self::kernel),
     ]
 }
 
@@ -1060,11 +1127,19 @@ impl HostSqueezeOp {
 
 modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat32Tensor] -> HostFloat32Tensor, HostConcatOp);
 modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat64Tensor] -> HostFloat64Tensor, HostConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt8Tensor] -> HostInt8Tensor, HostConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt16Tensor] -> HostInt16Tensor, HostConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt32Tensor] -> HostInt32Tensor, HostConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt64Tensor] -> HostInt64Tensor, HostConcatOp);
 
 kernel! {
     HostConcatOp, [
         (HostPlacement, vec[HostFloat32Tensor] -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
         (HostPlacement, vec[HostFloat64Tensor] -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, vec[HostInt8Tensor] -> HostInt8Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, vec[HostInt16Tensor] -> HostInt16Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, vec[HostInt32Tensor] -> HostInt32Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, vec[HostInt64Tensor] -> HostInt64Tensor => [runtime] attributes[axis] Self::kernel),
     ]
 }
 
@@ -1088,11 +1163,19 @@ impl HostConcatOp {
 
 modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, HostTransposeOp);
 modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostTransposeOp);
+modelled!(PlacementTranspose::transpose, HostPlacement, (HostInt8Tensor) -> HostInt8Tensor, HostTransposeOp);
+modelled!(PlacementTranspose::transpose, HostPlacement, (HostInt16Tensor) -> HostInt16Tensor, HostTransposeOp);
+modelled!(PlacementTranspose::transpose, HostPlacement, (HostInt32Tensor) -> HostInt32Tensor, HostTransposeOp);
+modelled!(PlacementTranspose::transpose, HostPlacement, (HostInt64Tensor) -> HostInt64Tensor, HostTransposeOp);
 
 kernel! {
     HostTransposeOp, [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::kernel),
     ]
 }
 
@@ -1450,6 +1533,12 @@ impl<S: Session> PlacementPlace<S, HostBitTensor> for HostPlacement {
     }
 }
 
+impl HostBitTensor {
+    pub fn place(plc: &HostPlacement, x: ArrayD<u8>) -> HostBitTensor {
+        HostBitTensor(x, plc.clone())
+    }
+}
+
 impl ShapeOp {
     pub(crate) fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
@@ -1497,7 +1586,7 @@ modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostS
 kernel! {
     BitFillOp,
     [
-        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] attributes[value: Bit] Self::kernel),
+        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] attributes[value] Self::kernel),
     ]
 }
 
@@ -1505,9 +1594,25 @@ impl BitFillOp {
     fn kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        value: u8,
+        value: Constant,
         shape: HostShape,
     ) -> Result<HostBitTensor> {
+        use std::convert::TryInto;
+        let value: u8 = match value {
+            Constant::Bit(v) => v,
+            Constant::Ring64(v) => v.try_into().map_err(|_| {
+                Error::KernelError("Cannot fill HostBitTensor with non-binary value.".to_string())
+            })?,
+            Constant::Ring128(v) => v.try_into().map_err(|_| {
+                Error::KernelError("Cannot fill HostBitTensor with non-binary value.".to_string())
+            })?,
+            _ => {
+                return Err(Error::TypeMismatch {
+                    expected: "Bit".to_string(),
+                    found: value.ty(),
+                })
+            }
+        };
         if !(value == 0 || value == 1) {
             return Err(Error::KernelError(
                 "Cannot fill HostBitTensor with non-binary value.".to_string(),
@@ -2002,6 +2107,12 @@ where
                 AbstractHostRingTensor(x.0, self.clone())
             }
         }
+    }
+}
+
+impl<T> AbstractHostRingTensor<T> {
+    pub fn place(plc: &HostPlacement, x: ArrayD<Wrapping<T>>) -> AbstractHostRingTensor<T> {
+        AbstractHostRingTensor::<T>(x, plc.clone())
     }
 }
 

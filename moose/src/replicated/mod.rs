@@ -2475,6 +2475,73 @@ where
     }
 }
 
+impl ReplicatedPlacement {
+    pub fn prefix_op<S, SetupT, RepT>(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: Vec<RepT>,
+        op: fn(&Self, &S, &SetupT, &RepT, &RepT) -> RepT,
+    ) -> Vec<RepT> {
+        let v_len = x.len();
+
+        let log_r = ((v_len as f64).log2().ceil()) as u32;
+
+        let mut res = x;
+        for i in 0..log_r {
+            for j in 0..(2_i32.pow(log_r) / 2_i32.pow(i + 1)) {
+                let y = (2_i32.pow(i) + j * 2_i32.pow(i + 1) - 1) as usize;
+                let k_bound = (2_i32.pow(i) + 1) as usize;
+                for k in 1..k_bound {
+                    if y + k < v_len {
+                        res[y + k] = op(self, sess, setup, &res[y], &res[y + k]);
+                    }
+                }
+            }
+        }
+        res
+    }
+
+    pub fn prefix_or<S: Session, SetupT, RepT>(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: Vec<RepT>,
+    ) -> Vec<RepT>
+    where
+        ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepT, RepT, RepT>,
+        ReplicatedPlacement: PlacementXor<S, RepT, RepT, RepT>,
+    {
+        let elementwise_or =
+            |rep: &ReplicatedPlacement, sess: &S, setup: &SetupT, x: &RepT, y: &RepT| -> RepT {
+                rep.xor(
+                    sess,
+                    &rep.xor(sess, x, y),
+                    &rep.and_setup(sess, setup, x, y),
+                )
+            };
+
+        self.prefix_op(sess, setup, x, elementwise_or)
+    }
+
+    pub fn prefix_and<S: Session, SetupT, RepT>(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: Vec<RepT>,
+    ) -> Vec<RepT>
+    where
+        ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepT, RepT, RepT>,
+    {
+        let elementwise_and =
+            |rep: &ReplicatedPlacement, sess: &S, setup: &SetupT, x: &RepT, y: &RepT| -> RepT {
+                rep.and_setup(sess, setup, x, y)
+            };
+
+        self.prefix_op(sess, setup, x, elementwise_and)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3464,7 +3531,7 @@ mod tests {
         assert_eq!(opened_result, AbstractHostBitArray::from_raw_plc(zs, alice));
     }
 
-    #[rstest]
+    #[test]
     fn test_mixed_arithmetic() {
         let alice = HostPlacement {
             owner: "alice".into(),
@@ -3487,6 +3554,60 @@ mod tests {
         let opened_result = alice.reveal(&sess, &mul);
 
         assert_eq!(opened_result, target);
+    }
+
+    macro_rules! rep_prefix_op_bit_test {
+        ($func_name:ident, $test_func: ident) => {
+            fn $func_name(x: ArrayD<u64>, y_target: Vec<u8>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = AbstractHostRingTensor::from_raw_plc(x, alice.clone());
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &x);
+                let x_bits: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
+                let x_bits_vec: Vec<ReplicatedBitTensor> =
+                    (0..64).map(|i| rep.index(&sess, i, &x_bits)).collect();
+
+                let out = rep.$test_func(&sess, &setup, x_bits_vec);
+
+                for (i, el) in out.iter().enumerate() {
+                    let b = alice.reveal(&sess, el);
+                    assert_eq!(b.0[0], y_target[i]);
+                }
+            }
+        };
+    }
+
+    rep_prefix_op_bit_test!(test_rep_prefix_or, prefix_or);
+    rep_prefix_op_bit_test!(test_rep_prefix_and, prefix_and);
+
+    #[test]
+    fn test_prefix_or() {
+        let x = array![1024u64].into_dyn();
+        let y_target = vec![
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1,
+        ];
+        test_rep_prefix_or(x, y_target);
+    }
+
+    #[test]
+    fn test_prefix_and() {
+        let x = array![7u64].into_dyn();
+        let y_target = vec![
+            1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+        ];
+        test_rep_prefix_and(x, y_target);
     }
 }
 

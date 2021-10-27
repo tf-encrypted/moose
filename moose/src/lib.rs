@@ -239,6 +239,7 @@ macro_rules! concrete_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into()?;
+                            let op = self.clone();
 
                             let k = <$op as NullaryKernel<SyncSession, $plc, $u>>::compile(self, &plc)?;
 
@@ -246,8 +247,11 @@ macro_rules! concrete_dispatch_kernel {
                                 assert_eq!(operands.len(), 0);
 
                                 let y: $u = k(sess, &plc)?;
-                                debug_assert_eq!(y.placement()?, plc.clone().into());
-                                Ok(y.into())
+                                if y.placement()? == plc.clone().into() {
+                                    Ok(y.into())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
                             }))
                         }
                     )+
@@ -284,6 +288,7 @@ macro_rules! concrete_dispatch_kernel {
                             let plc: $plc = plc.clone().try_into()?;
 
                             let k = <$op as UnaryKernel<SyncSession, $plc, $t0, $u>>::compile(self, &plc)?;
+                            let op = self.clone();
 
                             Ok(Box::new(move |sess, operands: Vec<Value>| {
                                 assert_eq!(operands.len(), 1);
@@ -291,8 +296,11 @@ macro_rules! concrete_dispatch_kernel {
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into()?;
 
                                 let y: $u = k(sess, &plc, x0)?;
-                                debug_assert_eq!(y.placement()?, plc.clone().into());
-                                Ok(y.into())
+                                if y.placement()? == plc.clone().into() {
+                                    Ok(y.into())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
                             }))
                         }
                     )+
@@ -328,6 +336,7 @@ macro_rules! concrete_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into()?;
+                            let op = self.clone();
 
                             let k = <$op as BinaryKernel<
                                 SyncSession,
@@ -345,8 +354,11 @@ macro_rules! concrete_dispatch_kernel {
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into()?;
 
                                 let y: $u = k(sess, &plc, x0, x1)?;
-                                debug_assert_eq!(y.placement()?, plc.clone().into());
-                                Ok(y.into())
+                                if y.placement()? == plc.clone().into() {
+                                    Ok(y.into())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
                             }))
                         }
                     )+
@@ -383,6 +395,7 @@ macro_rules! concrete_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into()?;
+                            let op = self.clone();
 
                             let k = <$op as TernaryKernel<SyncSession, $plc, $t0, $t1, $t2, $u>>::compile(self, &plc)?;
 
@@ -394,8 +407,11 @@ macro_rules! concrete_dispatch_kernel {
                                 let x2: $t2 = operands.get(2).unwrap().clone().try_into()?;
 
                                 let y: $u = k(sess, &plc, x0, x1, x2)?;
-                                debug_assert_eq!(y.placement()?, plc.clone().into());
-                                Ok(y.into())
+                                if y.placement()? == plc.clone().into() {
+                                    Ok(y.into())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
                             }))
                         }
                     )+
@@ -430,6 +446,7 @@ macro_rules! concrete_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
+                            let op = self.clone();
 
                             let k = <$op as VariadicKernel<SyncSession, $plc, $ts, $u>>::compile(self, &plc)?;
 
@@ -438,7 +455,11 @@ macro_rules! concrete_dispatch_kernel {
 
                                 let y: $u = k(sess, &plc, xs)?;
                                 debug_assert_eq!(y.placement()?, plc.clone().into());
-                                Ok(y.into())
+                                if y.placement()? == plc.clone().into() {
+                                    Ok(y.into())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
                             }))
                         }
                     )+

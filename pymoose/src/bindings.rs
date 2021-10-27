@@ -1,8 +1,8 @@
 use moose::compilation::{compile_passes, into_pass, Pass};
-use moose::computation::{Computation, Role, Value};
+use moose::computation::{Computation, HostPlacement, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
-use moose::host::HostTensor;
+use moose::host::{HostString, HostTensor};
 use moose::python_computation::PyComputation;
 use ndarray::IxDyn;
 use ndarray::LinalgScalar;
@@ -23,7 +23,12 @@ fn pyobj_to_value(py: Python, obj: PyObject) -> PyResult<Value> {
     let obj_ref = obj.as_ref(py);
     if obj_ref.is_instance::<PyString>()? {
         let string_value: String = obj.extract(py)?;
-        Ok(Value::String(Box::new(string_value)))
+        Ok(Value::HostString(Box::new(HostString(
+            string_value,
+            HostPlacement {
+                owner: "fake".into(),
+            },
+        ))))
     } else if obj_ref.is_instance::<PyFloat>()? {
         let float_value: f64 = obj.extract(py)?;
         Ok(Value::Float64(Box::new(float_value)))
@@ -210,7 +215,7 @@ impl LocalRuntime {
                     match value {
                         Value::Unit(_) => None,
                         // TODO: not sure what to support, should eventually standardize output types of computations
-                        Value::String(s) => Some(PyString::new(py, &s).to_object(py)),
+                        Value::HostString(s) => Some(PyString::new(py, &s.0).to_object(py)),
                         Value::Float64(f) => Some(PyFloat::new(py, *f).to_object(py)),
                         // assume it's a tensor
                         _ => outputs_py_val
