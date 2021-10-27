@@ -1120,13 +1120,19 @@ impl ReplicatedPlacement {
             AbstractReplicatedFixedTensor<RepRingT>,
             AbstractReplicatedFixedTensor<RepRingT>,
         >,
+        ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementTruncPr<
             S,
             AbstractReplicatedFixedTensor<RepRingT>,
             AbstractReplicatedFixedTensor<RepRingT>,
         >,
         ReplicatedPlacement: PlacementAddN<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
     {
         let degree = coeffs.len() - 1;
 
@@ -1140,24 +1146,20 @@ impl ReplicatedPlacement {
         // multiplication instead of doing a for loop.
         let x_mul_coeffs: Vec<RepRingT> = (0..x_pre_mul.len())
             .into_iter()
-            .map(|i| {
-                self.trunc_pr(
-                    sess,
-                    x.fractional_precision,
-                    &self.mul(sess, &coeffs[i + 1], &x_pre_mul[i]),
-                )
-                .tensor
-            })
+            .map(|i| self.mul_setup(sess, setup, &coeffs[i + 1].tensor, &x_pre_mul[i].tensor))
             .collect();
 
         let x_mul_coeffs_added = self.add_n(sess, &x_mul_coeffs);
-        let result = self.add(sess, &x_mul_coeffs_added, &coeffs[0].tensor);
-
-        AbstractReplicatedFixedTensor {
-            tensor: result,
-            fractional_precision: x.fractional_precision,
+        let x_mul_coeffs_added_fixed = AbstractReplicatedFixedTensor {
+            tensor: x_mul_coeffs_added,
+            fractional_precision: 2 * x.fractional_precision,
             integral_precision: x.integral_precision,
-        }
+        };
+
+        let x_mul_coeffs_added_fixed_trunc =
+            self.trunc_pr(sess, x.fractional_precision, &x_mul_coeffs_added_fixed);
+
+        self.add(sess, &x_mul_coeffs_added_fixed_trunc, &coeffs[0])
     }
 }
 
@@ -1980,8 +1982,8 @@ mod tests {
         > = coeffs
             .into_iter()
             .map(|coeff| {
-                let coeff_encode = array![coeff].map(encode);
-                let coeff_ring = AbstractHostRingTensor::from_raw_plc(coeff_encode, alice.clone());
+                let coeff_encoded = array![coeff].map(encode);
+                let coeff_ring = AbstractHostRingTensor::from_raw_plc(coeff_encoded, alice.clone());
                 let coeff_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>> =
                     rep.share(&sess, &setup, &coeff_ring);
                 new_replicated_fixed_tensor(coeff_shared)
