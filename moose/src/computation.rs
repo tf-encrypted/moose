@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::generichash;
 use std::convert::TryFrom;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::path::Path;
 
 pub const TAG_BYTES: usize = 128 / 8;
 static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::DIGEST_MIN);
@@ -1887,25 +1887,22 @@ impl Computation {
         rmp_serde::to_vec(self).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
-    pub fn from_disk(path: &str) -> Result<Self> {
-        let mut f = File::open(path).map_err(|e| {
+    pub fn from_disk<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let p = path.as_ref();
+        let f = File::open(p).map_err(|e| {
             Error::Unexpected(Some(format!(
                 "File not found error for path {0}. Original: {1}.",
-                path, e
+                p.display(),
+                e
             )))
         })?;
-        let mut buffer: Vec<u8> = Vec::new();
-        f.read_to_end(&mut buffer)
-            .map_err(|e| Error::SerializationError(e.to_string()))?;
-        Self::from_bytes(buffer)
+        rmp_serde::decode::from_read(f).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
-    pub fn to_disk(&self, path: &str) -> Result<()> {
-        let mut buffer =
+    pub fn to_disk<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let mut file_buffer =
             File::create(path).map_err(|e| Error::SerializationError(e.to_string()))?;
-        let comp_bytes = self.to_bytes()?;
-        buffer
-            .write_all(&comp_bytes)
+        rmp_serde::encode::write(&mut file_buffer, self)
             .map_err(|e| Error::SerializationError(e.to_string()))?;
         Ok(())
     }
