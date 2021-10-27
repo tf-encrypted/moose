@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 from absl.testing import absltest
 from absl.testing import parameterized
 
@@ -44,6 +47,24 @@ class SerdeTest(parameterized.TestCase):
         original_bytes = moose_comp.to_bytes()
         rebuilt_moose_comp = MooseComputation.from_bytes(original_bytes)
         result_bytes = rebuilt_moose_comp.to_bytes()
+
+        assert hash(original_bytes) == hash(result_bytes)
+
+    def test_rust_to_from_disk(self):
+        my_comp = self._build_comp_fixture()
+        traced_comp = tracer.trace(my_comp)
+        serialized = serialize_computation(traced_comp)
+        # just need to convert PyComputation to MooseComputation,
+        # so compile w/ empty passes arg
+        moose_comp: MooseComputation = elk_compiler.compile_computation(serialized, [])
+        original_bytes = moose_comp.to_bytes()
+        assert len(original_bytes) > 0
+
+        tempdir = tempfile.gettempdir()
+        filepath = os.path.join(tempdir, "temp_comp.moose")
+        moose_comp.to_disk(filepath)
+        result = MooseComputation.from_disk(filepath)
+        result_bytes = result.to_bytes()
 
         assert hash(original_bytes) == hash(result_bytes)
 

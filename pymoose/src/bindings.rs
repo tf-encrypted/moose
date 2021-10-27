@@ -263,6 +263,22 @@ impl MooseComputation {
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         Ok(PyBytes::new(py, &comp_bytes))
     }
+
+    #[classmethod]
+    pub fn from_disk(_cls: &PyType, py: Python, path: &PyString) -> PyResult<Py<Self>> {
+        let mypath: &str = path.extract()?;
+        let computation =
+            Computation::from_disk(mypath).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        let moose_comp = MooseComputation { computation };
+        Py::new(py, moose_comp)
+    }
+
+    pub fn to_disk(&mut self, path: &PyString) -> PyResult<()> {
+        let mypath: &str = path.extract()?;
+        self.computation
+            .to_disk(mypath)
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))
+    }
 }
 
 #[pymodule]
