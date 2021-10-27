@@ -1,4 +1,4 @@
-use crate::circuits::bristol_fashion::aes;
+use crate::bristol_fashion::aes;
 use crate::computation::*;
 use crate::error::Result;
 use crate::host::{

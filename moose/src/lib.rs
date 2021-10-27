@@ -2177,7 +2177,7 @@ macro_rules! unmodelled {
 }
 
 pub mod additive;
-pub mod circuits;
+pub mod bristol_fashion;
 pub mod common;
 pub mod compilation;
 pub mod computation;
