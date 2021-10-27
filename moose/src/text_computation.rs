@@ -1825,6 +1825,8 @@ impl ToTextual for Ty {
             Ty::Fixed128Tensor => "Fixed128Tensor".to_string(),
             Ty::Float32Tensor => "Float32Tensor".to_string(),
             Ty::Float64Tensor => "Float64Tensor".to_string(),
+            Ty::DistributedRing64Tensor => "DistributedRing64Tensor".to_string(),
+            Ty::DistributedRing128Tensor => "DistributedRing128Tensor".to_string(),
         }
     }
 }
@@ -1876,6 +1878,8 @@ impl ToTextual for Value {
             | Value::ReplicatedRing128Tensor(_)
             | Value::ReplicatedFixed64Tensor(_)
             | Value::ReplicatedFixed128Tensor(_)
+            | Value::DistributedRing64Tensor(_)
+            | Value::DistributedRing128Tensor(_)
             | Value::AdditiveShape(_)
             | Value::AdditiveBitTensor(_)
             | Value::AdditiveRing64Tensor(_)
