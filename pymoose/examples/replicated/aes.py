@@ -5,10 +5,10 @@ import unittest
 import numpy as np
 
 from pymoose import edsl
-from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 from pymoose import elk_compiler
 from pymoose.computation import utils
+from pymoose.logger import get_logger
+from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(unittest.TestCase):
