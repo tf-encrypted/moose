@@ -273,7 +273,7 @@ impl FixedpointAddOp {
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementAdd<S, RepFixedT, RepFixedT, RepFixedT>,
     {
-        let setup = plc.gen_setup(sess);
+        let setup = sess.replicated_setup(plc);
 
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &setup, &v),
@@ -383,7 +383,7 @@ impl FixedpointSubOp {
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementSub<S, RepFixedT, RepFixedT, RepFixedT>,
     {
-        let setup = plc.gen_setup(sess);
+        let setup = sess.replicated_setup(plc);
 
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &setup, &v),
@@ -493,7 +493,7 @@ impl FixedpointMulOp {
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementMul<S, RepFixedT, RepFixedT, RepFixedT>,
     {
-        let setup = plc.gen_setup(sess);
+        let setup = sess.replicated_setup(plc);
 
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &setup, &v),
@@ -537,7 +537,7 @@ impl FixedpointMulOp {
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
-        let setup = plc.gen_setup(sess);
+        let setup = sess.replicated_setup(plc);
         let z = plc.mul_setup(sess, &setup, &x.tensor, &y.tensor);
         Ok(AbstractReplicatedFixedTensor {
             tensor: z,
@@ -605,7 +605,7 @@ impl FixedpointDivOp {
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementDiv<S, RepFixedT, RepFixedT, RepFixedT>,
     {
-        let setup = plc.gen_setup(sess);
+        let setup = sess.replicated_setup(plc);
 
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &setup, &v),
@@ -712,7 +712,7 @@ impl FixedpointDotOp {
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementDot<S, RepFixedT, RepFixedT, RepFixedT>,
     {
-        let setup = plc.gen_setup(sess);
+        let setup = sess.replicated_setup(plc);
 
         let x_shared = match x {
             FixedTensor::Host(x) => plc.share(sess, &setup, &x),
@@ -756,7 +756,7 @@ impl FixedpointDotOp {
         ReplicatedPlacement: PlacementDotSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
-        let setup = plc.gen_setup(sess);
+        let setup = sess.replicated_setup(plc);
         let z = plc.dot_setup(sess, &setup, &x.tensor, &y.tensor);
         Ok(AbstractReplicatedFixedTensor {
             tensor: z,
@@ -820,7 +820,7 @@ impl FixedpointTruncPrOp {
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepFixedT, RepFixedT>,
     {
-        let setup = plc.gen_setup(sess);
+        let setup = sess.replicated_setup(plc);
 
         let v = match x {
             FixedTensor::Host(x) => plc.share(sess, &setup, &x),
@@ -923,7 +923,7 @@ impl FixedpointSumOp {
     {
         let x_shared = match x {
             FixedTensor::Host(x) => {
-                let setup = plc.gen_setup(sess);
+                let setup = sess.replicated_setup(plc);
                 plc.share(sess, &setup, &x)
             }
             FixedTensor::Replicated(x) => x,
@@ -1024,7 +1024,7 @@ impl FixedpointMeanOp {
     {
         let x_shared = match x {
             FixedTensor::Host(x) => {
-                let setup = plc.gen_setup(sess);
+                let setup = sess.replicated_setup(plc);
                 plc.share(sess, &setup, &x)
             }
             FixedTensor::Replicated(x) => x,
@@ -1792,7 +1792,6 @@ mod tests {
                 });
 
                 let sess = SymbolicSession::default();
-                let _ = rep.gen_setup(&sess);
 
                 let result = rep.div(&sess, &x, &y);
                 match result {
