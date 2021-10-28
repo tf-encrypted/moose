@@ -2279,7 +2279,6 @@ impl RepAbsOp {
         x: RepT,
     ) -> Result<RepT>
     where
-        // RepT: Ring,
         RepT: Underlying<Ring = RingT>,
         MirroredRingTensor<RingT>: Underlying<Ring = RingT>,
         MirroredRingTensor<RingT>: CanonicalType,
