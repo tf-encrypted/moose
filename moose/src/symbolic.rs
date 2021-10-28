@@ -159,18 +159,27 @@ impl Session for SymbolicSession {
     }
 
     type ReplicatedSetup = <crate::replicated::ReplicatedSetup as KnownType<SymbolicSession>>::Type;
+
+    /// Produce a new replicated setup or returned a previously produced setup for the placement
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
         let state = self.state.read().unwrap();
         match state.replicated_keys.get(plc) {
             Some(setup) => Arc::clone(setup),
             None => {
                 use crate::kernels::PlacementSetupGen;
+                drop(state); // Release the read access
 
+                // This may (likely) grab a write lock to the state inside
+                let new_setup = plc.gen_setup(self);
+
+                // Grab a new write lock.
                 let mut state = self.state.write().unwrap();
+                // Only insert if missing, since someone else might have done that already
+                // If our `new_setup` end up being unused due to the race, it will be pruned later on by a dedicated pruning pass.
                 let setup = state
                     .replicated_keys
                     .entry(plc.clone())
-                    .or_insert_with(|| Arc::new(plc.gen_setup(self)));
+                    .or_insert_with(|| Arc::new(new_setup));
                 Arc::clone(setup)
             }
         }
