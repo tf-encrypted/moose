@@ -95,7 +95,7 @@ impl AesDecryptOp {
         let m_bits: Vec<_> = aes(sess, rep, c_bits_shared.clone(), c_bits_shared);
 
         // re-compose on rep
-        let zero = rep.fill(sess, Constant::Ring128(0), &shape.into());
+        let zero = rep.fill(sess, Constant::Ring128(0), &shape);
         let m = m_bits
             .iter()
             .enumerate()
