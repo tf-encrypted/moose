@@ -55,6 +55,23 @@ impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTenso
     }
 }
 
+pub trait Underlying {
+    type Ring;
+}
+
+impl<HostRingT> Underlying for AbstractReplicatedRingTensor<HostRingT> {
+    type Ring = HostRingT;
+}
+
+impl<HostRingT> Underlying for MirroredRingTensor<HostRingT> {
+    type Ring = HostRingT;
+}
+
+// TODO(Morten) revisit below to make sure it's the right approach
+impl<T: Placed + Underlying> Underlying for Symbolic<T> {
+    type Ring = <T as Underlying>::Ring;
+}
+
 impl<N> SymbolicType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
     type Type =
         Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>>;
@@ -606,6 +623,7 @@ impl RepAddOp {
         y: RepTen<R>,
     ) -> Result<RepTen<R>>
     where
+        R: Clone,
         HostPlacement: PlacementAdd<S, R, R, R>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -622,7 +640,11 @@ impl RepAddOp {
         let z02 = with_context!(player2, sess, x2 + y02);
 
         Ok(RepTen {
-            shares: [[z00, *y10], [*y11, *y21], [*y22, z02]],
+            shares: [
+                [z00, y10.clone()],
+                [y11.clone(), y21.clone()],
+                [y22.clone(), z02],
+            ],
         })
     }
 
@@ -633,6 +655,7 @@ impl RepAddOp {
         y: MirroredRingTensor<R>,
     ) -> Result<RepTen<R>>
     where
+        R: Clone,
         HostPlacement: PlacementAdd<S, R, R, R>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -649,7 +672,11 @@ impl RepAddOp {
         let z02 = with_context!(player2, sess, x02 + y2);
 
         Ok(RepTen {
-            shares: [[z00, *x10], [*x11, *x21], [*x22, z02]],
+            shares: [
+                [z00, x10.clone()],
+                [x11.clone(), x21.clone()],
+                [x22.clone(), z02],
+            ],
         })
     }
 
@@ -790,6 +817,11 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
+
+        (ReplicatedPlacement, (MirroredRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::mirr_rep_kernel),
+        (ReplicatedPlacement, (MirroredRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::mirr_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, MirroredRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_mirr_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, MirroredRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_mirr_kernel),
     ]
 }
 
@@ -937,6 +969,71 @@ impl RepSubOp {
         };
 
         Ok(rep.place(sess, RepTen { shares }))
+    }
+
+    fn mirr_rep_kernel<S: Session, R>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: MirroredRingTensor<R>,
+        y: RepTen<R>,
+    ) -> Result<RepTen<R>>
+    where
+        R: Clone,
+        HostPlacement: PlacementSub<S, R, R, R>,
+        HostPlacement: PlacementNeg<S, R, R>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let MirroredRingTensor {
+            values: [x0, _x1, x2],
+        } = &x;
+
+        let RepTen {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        } = &y;
+
+        let z00 = with_context!(player0, sess, x0 - y00);
+        let z10 = player0.neg(sess, y10);
+        let z11 = player1.neg(sess, y11);
+        let z21 = player1.neg(sess, y21);
+        let z22 = player2.neg(sess, y22);
+        let z02 = with_context!(player2, sess, x2 - y02);
+
+        Ok(RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        })
+    }
+
+    fn rep_mirr_kernel<S: Session, R>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepTen<R>,
+        y: MirroredRingTensor<R>,
+    ) -> Result<RepTen<R>>
+    where
+        R: Clone,
+        HostPlacement: PlacementSub<S, R, R, R>,
+    {
+        let (player0, _player1, player2) = rep.host_placements();
+
+        let MirroredRingTensor {
+            values: [y0, _y1, y2],
+        } = &y;
+
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let z00 = with_context!(player0, sess, x00 - y0);
+        let z02 = with_context!(player2, sess, x02 - y2);
+
+        Ok(RepTen {
+            shares: [
+                [z00, x10.clone()],
+                [x11.clone(), x21.clone()],
+                [x22.clone(), z02],
+            ],
+        })
     }
 }
 
@@ -2175,20 +2272,24 @@ kernel! {
 }
 
 impl RepAbsOp {
-    fn kernel<S: Session, SetupT, RepT, ShapeT, MirroredRingT>(
+    fn kernel<S: Session, SetupT, RepT, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
         x: RepT,
     ) -> Result<RepT>
     where
-        RepT: Ring,
+        // RepT: Ring,
+        RepT: Underlying<Ring = RingT>,
+        MirroredRingTensor<RingT>: Underlying<Ring = RingT>,
+        MirroredRingTensor<RingT>: CanonicalType,
+        <MirroredRingTensor<RingT> as CanonicalType>::Type: KnownType<S>,
         ReplicatedPlacement: PlacementMsb<S, SetupT, RepT, RepT>,
-        ReplicatedPlacement: PlacementFill<S, ShapeT, MirroredRingT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, m!(c!(MirroredRingTensor<RingT>))>,
         ReplicatedPlacement: PlacementShape<S, RepT, ShapeT>,
         ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepT, RepT, RepT>,
         ReplicatedPlacement: PlacementShl<S, RepT, RepT>,
-        ReplicatedPlacement: PlacementSub<S, MirroredRingT, RepT, RepT>,
+        ReplicatedPlacement: PlacementSub<S, m!(c!(MirroredRingTensor<RingT>)), RepT, RepT>,
     {
         let msb_ring = rep.msb(sess, &setup, &x);
         let double = rep.shl(sess, 1, &msb_ring);
@@ -2459,7 +2560,7 @@ kernel! {
 }
 
 impl RepBitComposeOp {
-    fn rep_kernel<S: Session, ShapeT, RepRingT, RepBitArrayT, RepBitT, MirroredRingT, N: Const>(
+    fn rep_kernel<S: Session, ShapeT, RepRingT, RepBitArrayT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepBitArrayT,
