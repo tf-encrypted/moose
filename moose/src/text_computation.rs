@@ -1215,7 +1215,7 @@ fn string<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
 where
     E: ParseError<&'a str>,
 {
-    let build_string = fold_many0(parse_fragment, String::new(), |mut string, fragment| {
+    let build_string = fold_many0(parse_fragment, String::new, |mut string, fragment| {
         match fragment {
             StringFragment::Literal(s) => string.push_str(s),
             StringFragment::EscapedChar(c) => string.push(c),
@@ -1364,6 +1364,7 @@ impl ToTextual for Operator {
             BitSampleSeeded(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
+            AesDecrypt(_) => unimplemented!(),
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
             FixedpointAdd(op) => op.to_textual(),
@@ -1397,6 +1398,8 @@ impl ToTextual for Operator {
             RepAdd(op) => op.to_textual(),
             RepSub(op) => op.to_textual(),
             RepMul(op) => op.to_textual(),
+            RepAnd(_) => unimplemented!(),
+            RepXor(_) => unimplemented!(),
             RepNeg(op) => op.to_textual(),
             RepTruncPr(op) => op.to_textual(),
             AdtReveal(op) => op.to_textual(),
@@ -1825,6 +1828,7 @@ impl ToTextual for Ty {
             Ty::Fixed128Tensor => "Fixed128Tensor".to_string(),
             Ty::Float32Tensor => "Float32Tensor".to_string(),
             Ty::Float64Tensor => "Float64Tensor".to_string(),
+            Ty::HostEncFixed128Tensor => unimplemented!(),
         }
     }
 }
@@ -1882,6 +1886,7 @@ impl ToTextual for Value {
             | Value::AdditiveRing128Tensor(_) => {
                 unimplemented!("Unsupported Value variant: {:?}", self)
             }
+            Value::HostEncFixed128Tensor(_) => unimplemented!(),
         }
     }
 }

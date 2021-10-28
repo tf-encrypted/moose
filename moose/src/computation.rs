@@ -5,10 +5,10 @@ use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{
-    HostBitArray128, HostBitArray64, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
-    HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor,
-    HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostString, HostUint16Tensor,
-    HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
+    HostBitArray128, HostBitArray64, HostBitTensor, HostEncFixed128Tensor, HostFixed128Tensor,
+    HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
+    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostString,
+    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::kernels::Session;
 use crate::logical::{Tensor, TensorDType};
@@ -476,6 +476,7 @@ values![
     AdditiveRing64Tensor,
     AdditiveRing128Tensor,
     AdditiveShape,
+    HostEncFixed128Tensor,
 ];
 
 // A macros to define something common for all the possible values
@@ -879,6 +880,7 @@ operators![
     Shape,
     PrimDeriveSeed,
     PrimPrfKeyGen,
+    AesDecrypt,
     AtLeast2D,
     Slice,
     Ones,
@@ -983,6 +985,8 @@ operators![
     RepMul,
     RepMsb,
     RepDot,
+    RepAnd,
+    RepXor,
     RepNeg,
     RepFixedpointMean,
     RepShl,
@@ -1298,6 +1302,11 @@ pub struct PrimDeriveSeedOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct PrimPrfKeyGenOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct AesDecryptOp {
     pub sig: Signature,
 }
 
@@ -1618,6 +1627,21 @@ pub struct RepDotOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepAndOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepXorOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepNegOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepFixedpointMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -1707,11 +1731,6 @@ pub struct RepEqualOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepIfElseOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepNegOp {
     pub sig: Signature,
 }
 

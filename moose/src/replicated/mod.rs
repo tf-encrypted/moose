@@ -499,6 +499,142 @@ impl RepRevealOp {
     }
 }
 
+modelled_alias!(PlacementAndSetup::and_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementMulSetup::mul_setup); // and = mul in Z2
+modelled!(PlacementAnd::and, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepAndOp);
+
+// TODO(Morten) should be `transparent` kernel, which would simplify trait bounds
+kernel! {
+    RepAndOp,
+    [
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
+    ]
+}
+
+impl RepAndOp {
+    fn rep_rep_kernel<S: Session>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: cs!(ReplicatedBitTensor),
+        y: cs!(ReplicatedBitTensor),
+    ) -> Result<cs!(ReplicatedBitTensor)>
+    where
+        ReplicatedBitTensor: KnownType<S>,
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+        ReplicatedPlacement: PlacementMulSetup<
+            S,
+            S::ReplicatedSetup,
+            cs!(ReplicatedBitTensor),
+            cs!(ReplicatedBitTensor),
+            cs!(ReplicatedBitTensor),
+        >,
+    {
+        // and = mul in Z2
+        let setup = rep.gen_setup(sess);
+        Ok(rep.mul_setup(sess, &setup, &x, &y))
+    }
+}
+
+modelled!(PlacementXor::xor, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepXorOp);
+
+// TODO(Morten) should be `transparent` kernel, which would simplify trait bounds
+kernel! {
+    RepXorOp,
+    [
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
+    ]
+}
+
+impl RepXorOp {
+    fn rep_rep_kernel<S: Session>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: cs!(ReplicatedBitTensor),
+        y: cs!(ReplicatedBitTensor),
+    ) -> Result<cs!(ReplicatedBitTensor)>
+    where
+        ReplicatedBitTensor: KnownType<S>,
+        ReplicatedPlacement: PlacementAdd<
+            S,
+            cs!(ReplicatedBitTensor),
+            cs!(ReplicatedBitTensor),
+            cs!(ReplicatedBitTensor),
+        >,
+    {
+        // add = xor in Z2
+        Ok(rep.add(sess, &x, &y))
+    }
+}
+
+modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor, RepNegOp);
+modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepNegOp);
+modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepNegOp);
+
+kernel! {
+    RepNegOp,
+    [
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [runtime] Self::rep_bit_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [runtime] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor ) ->ReplicatedRing128Tensor  => [runtime] Self::rep_rep_kernel),
+    ]
+}
+
+impl RepNegOp {
+    fn rep_bit_kernel<S: Session, HostBitT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepTen<HostBitT>,
+    ) -> Result<RepTen<HostBitT>>
+    where
+        HostPlacement: PlacementNeg<S, HostBitT, HostBitT>,
+    {
+        let (player0, _player1, player2) = rep.host_placements();
+
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = x;
+
+        // TODO(Morten)
+        // we could choose share to change at random
+        // to more fairly distribute compute load
+        let y00 = player0.neg(sess, &x00);
+        let y10 = x10;
+        let y11 = x11;
+        let y21 = x21;
+        let y22 = x22;
+        let y02 = player2.neg(sess, &x02);
+
+        Ok(RepTen {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        })
+    }
+
+    fn rep_rep_kernel<S: Session, HostRepT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepTen<HostRepT>,
+    ) -> Result<RepTen<HostRepT>>
+    where
+        HostPlacement: PlacementNeg<S, HostRepT, HostRepT>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = x;
+
+        let y00 = player0.neg(sess, &x00);
+        let y10 = player0.neg(sess, &x10);
+        let y11 = player1.neg(sess, &x11);
+        let y21 = player1.neg(sess, &x21);
+        let y22 = player2.neg(sess, &x22);
+        let y02 = player2.neg(sess, &x02);
+
+        Ok(RepTen {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        })
+    }
+}
+
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepAddOp);
@@ -1914,9 +2050,6 @@ impl ShapeOp {
         })
     }
 }
-
-modelled_alias!(PlacementXor::xor, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementAdd::add); // add = xor in Z2
-modelled_alias!(PlacementAndSetup::and_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementMulSetup::mul_setup); // sub = xor in Z2
 
 trait BinaryAdder<S: Session, SetupT, RepBitT> {
     fn binary_adder(

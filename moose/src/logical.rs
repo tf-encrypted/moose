@@ -2,8 +2,9 @@ use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::{HostShape, HostString};
+use crate::host::{HostEncFixed128Tensor, HostFixed128Tensor, HostShape, HostString};
 use crate::kernels::*;
+use crate::replicated::ReplicatedFixed128Tensor;
 use crate::symbolic::Symbolic;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -123,6 +124,22 @@ where
             _ => Err(()),
         }
     }
+}
+
+// TODO(Morten) next two should be for a new EncryptedTensor
+// modelled!(PlacementDecrypt::decrypt, HostPlacement, (Tensor) -> Tensor, AesDecryptOp);
+// modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (Tensor) -> Tensor, AesDecryptOp);
+modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostEncFixed128Tensor) -> HostFixed128Tensor, AesDecryptOp);
+modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (HostEncFixed128Tensor) -> ReplicatedFixed128Tensor, AesDecryptOp);
+
+kernel! {
+    AesDecryptOp,
+    [
+        // (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::host_kernel),
+        // (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] Self::rep_kernel),
+        (HostPlacement, (HostEncFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::host_fixed_kernel),
+        (ReplicatedPlacement, (HostEncFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_fixed_kernel),
+    ]
 }
 
 modelled!(PlacementAdd::add, HostPlacement, (Tensor, Tensor) -> Tensor, AddOp);
