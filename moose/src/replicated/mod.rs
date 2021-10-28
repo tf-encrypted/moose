@@ -555,11 +555,12 @@ modelled!(PlacementAdd::add, ReplicatedPlacement, (HostRing128Tensor, Replicated
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepAddOp);
-
 modelled!(PlacementAdd::add, ReplicatedPlacement, (MirroredRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (MirroredRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedRing64Tensor, MirroredRing64Tensor) -> ReplicatedRing64Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedRing128Tensor, MirroredRing128Tensor) -> ReplicatedRing128Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (MirroredBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedBitTensor, MirroredBitTensor) -> ReplicatedBitTensor, RepAddOp);
 
 kernel! {
     RepAddOp,
@@ -571,14 +572,12 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
-
-
         (ReplicatedPlacement, (MirroredRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::mirr_rep_kernel),
         (ReplicatedPlacement, (MirroredRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::mirr_rep_kernel),
-
         (ReplicatedPlacement, (ReplicatedRing64Tensor, MirroredRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_mirr_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, MirroredRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_mirr_kernel),
-
+        (ReplicatedPlacement, (MirroredBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::mirr_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, MirroredBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mirr_kernel),
     ]
 }
 
@@ -2322,6 +2321,8 @@ impl ShapeOp {
 }
 
 modelled_alias!(PlacementXor::xor, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementAdd::add); // add = xor in Z2
+modelled_alias!(PlacementXor::xor, ReplicatedPlacement, (MirroredBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementAdd::add);
+modelled_alias!(PlacementXor::xor, ReplicatedPlacement, (ReplicatedBitTensor, MirroredBitTensor) -> ReplicatedBitTensor => PlacementAdd::add);
 modelled_alias!(PlacementAndSetup::and_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementMulSetup::mul_setup); // sub = xor in Z2
 
 trait BinaryAdder<S: Session, SetupT, RepBitT> {
