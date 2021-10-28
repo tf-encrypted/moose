@@ -234,15 +234,19 @@ pub(crate) trait ApproximateReciprocal<S: Session, SetupT, T, O> {
     ) -> O;
 }
 
-impl<S: Session, SetupT, RepRingT> ApproximateReciprocal<S, SetupT, RepRingT, RepRingT>
+impl<S: Session, SetupT, RepRingT, HostRingT> ApproximateReciprocal<S, SetupT, RepRingT, RepRingT>
     for ReplicatedPlacement
 where
     ReplicatedShape: KnownType<S>,
-
+    RepRingT: Underlying<Ring = HostRingT>,
+    MirroredRingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+    MirroredRingTensor<HostRingT>: CanonicalType,
+    <MirroredRingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
     ReplicatedPlacement: DivNorm<S, SetupT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
-    ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
-    ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement:
+        PlacementFill<S, cs!(ReplicatedShape), m!(c!(MirroredRingTensor<HostRingT>))>,
+    ReplicatedPlacement: PlacementSub<S, m!(c!(MirroredRingTensor<HostRingT>)), RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
