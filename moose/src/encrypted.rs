@@ -76,7 +76,7 @@ impl AesDecryptOp {
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
     {
         let host = c.tensor.placement().unwrap();
-        let setup = rep.gen_setup(sess);
+        let setup = sess.replicated_setup(rep);
 
         let host_shape = host.shape(sess, &c.tensor);
         let shape = AbstractReplicatedShape {

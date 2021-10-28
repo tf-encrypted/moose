@@ -89,20 +89,32 @@ where
     }
 }
 
+struct SymbolicSessionState {
+    pub ops: Vec<Operation>,
+    pub replicated_keys:
+        HashMap<ReplicatedPlacement, Arc<Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>>,
+    // TODO(Dragos) Change this to <ReplicatedSetup as KnownType<SymbolicSession>>::Type
+}
+
+impl Default for SymbolicSessionState {
+    fn default() -> Self {
+        SymbolicSessionState {
+            ops: Default::default(),
+            replicated_keys: Default::default(),
+        }
+    }
+}
+
 pub struct SymbolicSession {
     pub strategy: Box<dyn SymbolicStrategy>,
-    pub ops: Arc<RwLock<Vec<Operation>>>, // TODO use HashMap so we can do some consistency checks on the fly?
-    pub replicated_keys:
-        HashMap<ReplicatedPlacement, Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>,
-    // TODO(Dragos) Change this to <ReplicatedSetup as KnownType<Self>>::Type
+    state: Arc<RwLock<SymbolicSessionState>>,
 }
 
 impl Default for SymbolicSession {
     fn default() -> Self {
         SymbolicSession {
             strategy: Box::new(DefaultSymbolicStrategy),
-            ops: Default::default(),
-            replicated_keys: Default::default(),
+            state: Default::default(),
         }
     }
 }
@@ -114,16 +126,24 @@ impl SymbolicSession {
         operands: &[&str],
         plc: &Placement,
     ) -> String {
-        let mut ops = self.ops.write().unwrap();
-        let op_name: String = format!("op_{}", ops.len());
+        let mut state = self.state.write().unwrap();
+        let op_name: String = format!("op_{}", state.ops.len());
         let op = Operation {
             name: op_name.clone(),
             kind: operator.clone().into(),
             inputs: operands.iter().map(|op| op.to_string()).collect(),
             placement: plc.clone(),
         };
-        ops.push(op);
+        state.ops.push(op);
         op_name
+    }
+
+    /// Apply a given closure to the iterator over the ops.
+    ///
+    /// The "ops" vector is locked for READ for the duration of the call.
+    pub fn ops_iter<F: FnMut(std::slice::Iter<Operation>) -> T, T>(&self, mut operation: F) -> T {
+        let state = self.state.read().unwrap();
+        operation(state.ops.iter())
     }
 }
 
@@ -139,8 +159,21 @@ impl Session for SymbolicSession {
     }
 
     type ReplicatedSetup = <crate::replicated::ReplicatedSetup as KnownType<SymbolicSession>>::Type;
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
-        self.replicated_keys.get(plc).unwrap()
+    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
+        let state = self.state.read().unwrap();
+        match state.replicated_keys.get(plc) {
+            Some(setup) => Arc::clone(setup),
+            None => {
+                use crate::kernels::PlacementSetupGen;
+
+                let mut state = self.state.write().unwrap();
+                let setup = state
+                    .replicated_keys
+                    .entry(plc.clone())
+                    .or_insert_with(|| Arc::new(plc.gen_setup(self)));
+                Arc::clone(setup)
+            }
+        }
     }
 }
 
@@ -337,14 +370,14 @@ impl SymbolicExecutor {
                 })?;
             env.insert(op.name.clone(), value);
         }
-        let ops = session.ops.read().map_err(|e| {
+        let state = session.state.read().map_err(|e| {
             Error::Compilation(format!(
                 "Failed to get operations from the Symbolic Session due to an error: {}",
                 e
             ))
         })?;
         Ok(Computation {
-            operations: ops.clone(),
+            operations: state.ops.clone(),
         })
     }
 }

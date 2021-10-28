@@ -23,7 +23,7 @@ impl FixedpointDivOp {
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
     {
         #![allow(clippy::many_single_char_names)]
-        let setup = rep.gen_setup(sess);
+        let setup = sess.replicated_setup(rep);
 
         assert_eq!(x.integral_precision, y.integral_precision);
         assert_eq!(x.fractional_precision, y.fractional_precision);
@@ -290,7 +290,7 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let x_shared = rep.share(&sess, &setup, &x);
 
@@ -318,7 +318,7 @@ mod tests {
         let expected_output = x.clone() + y.clone();
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let x_bit = alice.bit_decompose(&sess, &x);
         let y_bit = alice.bit_decompose(&sess, &y);
@@ -345,7 +345,7 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let expected_output = array![74i64];
 

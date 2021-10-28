@@ -35,7 +35,7 @@ impl RepEqualOp {
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
     {
-        let setup = rep.gen_setup(sess);
+        let setup = sess.replicated_setup(rep);
 
         let z = rep.sub(sess, &x, &y);
         let bits = rep.bit_decompose(sess, &setup, &z);
@@ -79,7 +79,7 @@ mod tests {
         };
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = sess.replicated_setup(&rep);
 
         let x = AbstractHostRingTensor::from_raw_plc(
             array![1024u64, 5, 4]
@@ -95,9 +95,9 @@ mod tests {
             bob,
         );
 
-        let x_shared = rep.share(&sess, &setup, &x);
+        let x_shared = rep.share(&sess, &(*setup), &x);
 
-        let y_shared = rep.share(&sess, &setup, &y);
+        let y_shared = rep.share(&sess, &(*setup), &y);
 
         let res: ReplicatedBitTensor = rep.equal(&sess, &x_shared, &y_shared);
 
