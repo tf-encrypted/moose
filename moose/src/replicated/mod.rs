@@ -626,10 +626,10 @@ impl RepAddOp {
         R: Clone,
         HostPlacement: PlacementAdd<S, R, R, R>,
     {
-        let (player0, player1, player2) = rep.host_placements();
+        let (player0, _player1, player2) = rep.host_placements();
 
         let MirroredRingTensor {
-            values: [x0, x1, x2],
+            values: [x0, _x1, x2],
         } = &x;
 
         let RepTen {
@@ -658,10 +658,10 @@ impl RepAddOp {
         R: Clone,
         HostPlacement: PlacementAdd<S, R, R, R>,
     {
-        let (player0, player1, player2) = rep.host_placements();
+        let (player0, _player1, player2) = rep.host_placements();
 
         let MirroredRingTensor {
-            values: [y0, y1, y2],
+            values: [y0, _y1, y2],
         } = &y;
 
         let RepTen {
