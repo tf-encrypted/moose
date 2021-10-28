@@ -9,9 +9,9 @@ impl FixedpointDivOp {
     ) -> Result<st!(AbstractReplicatedFixedTensor<RepRingT>)>
     where
         RepRingT: Underlying<Ring = HostRingT>,
-        MirroredRingTensor<HostRingT>: Underlying<Ring = HostRingT>,
-        MirroredRingTensor<HostRingT>: CanonicalType,
-        <MirroredRingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
+        Mirrored3RingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+        Mirrored3RingTensor<HostRingT>: CanonicalType,
+        <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
         AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
         <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
         AbstractReplicatedFixedTensor<RepRingT>: Into<st!(AbstractReplicatedFixedTensor<RepRingT>)>,
@@ -19,14 +19,14 @@ impl FixedpointDivOp {
         RepRingT: Ring,
         ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
         ReplicatedPlacement:
-            PlacementFill<S, cs!(ReplicatedShape), m!(c!(MirroredRingTensor<HostRingT>))>,
+            PlacementFill<S, cs!(ReplicatedShape), m!(c!(Mirrored3RingTensor<HostRingT>))>,
         ReplicatedPlacement: ApproximateReciprocal<S, S::ReplicatedSetup, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
         ReplicatedPlacement:
-            PlacementAdd<S, m!(c!(MirroredRingTensor<HostRingT>)), RepRingT, RepRingT>,
+            PlacementAdd<S, m!(c!(Mirrored3RingTensor<HostRingT>)), RepRingT, RepRingT>,
         ReplicatedPlacement:
-            PlacementSub<S, m!(c!(MirroredRingTensor<HostRingT>)), RepRingT, RepRingT>,
+            PlacementSub<S, m!(c!(Mirrored3RingTensor<HostRingT>)), RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
     {
         #![allow(clippy::many_single_char_names)]
@@ -103,14 +103,15 @@ impl<S: Session, RepRingT, HostRingT> SignFromMsb<S, RepRingT, RepRingT> for Rep
 where
     ReplicatedShape: KnownType<S>,
     RepRingT: Underlying<Ring = HostRingT>,
-    MirroredRingTensor<HostRingT>: Underlying<Ring = HostRingT>,
-    MirroredRingTensor<HostRingT>: CanonicalType,
-    <MirroredRingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
+    Mirrored3RingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+    Mirrored3RingTensor<HostRingT>: CanonicalType,
+    <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
     ReplicatedPlacement:
-        PlacementFill<S, cs!(ReplicatedShape), m!(c!(MirroredRingTensor<HostRingT>))>,
+        PlacementFill<S, cs!(ReplicatedShape), m!(c!(Mirrored3RingTensor<HostRingT>))>,
     ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementSub<S, m!(c!(MirroredRingTensor<HostRingT>)), RepRingT, RepRingT>,
+    ReplicatedPlacement:
+        PlacementSub<S, m!(c!(Mirrored3RingTensor<HostRingT>)), RepRingT, RepRingT>,
 {
     fn sign_from_msb(&self, sess: &S, msb_ring: &RepRingT) -> RepRingT {
         let rep = self;
@@ -246,14 +247,15 @@ impl<S: Session, SetupT, RepRingT, HostRingT> ApproximateReciprocal<S, SetupT, R
 where
     ReplicatedShape: KnownType<S>,
     RepRingT: Underlying<Ring = HostRingT>,
-    MirroredRingTensor<HostRingT>: Underlying<Ring = HostRingT>,
-    MirroredRingTensor<HostRingT>: CanonicalType,
-    <MirroredRingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
+    Mirrored3RingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+    Mirrored3RingTensor<HostRingT>: CanonicalType,
+    <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
     ReplicatedPlacement: DivNorm<S, SetupT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
     ReplicatedPlacement:
-        PlacementFill<S, cs!(ReplicatedShape), m!(c!(MirroredRingTensor<HostRingT>))>,
-    ReplicatedPlacement: PlacementSub<S, m!(c!(MirroredRingTensor<HostRingT>)), RepRingT, RepRingT>,
+        PlacementFill<S, cs!(ReplicatedShape), m!(c!(Mirrored3RingTensor<HostRingT>))>,
+    ReplicatedPlacement:
+        PlacementSub<S, m!(c!(Mirrored3RingTensor<HostRingT>)), RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,

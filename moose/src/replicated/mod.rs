@@ -28,16 +28,16 @@ impl<HostRingT: Ring> Ring for AbstractReplicatedRingTensor<HostRingT> {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct MirroredRingTensor<HostRingT> {
+pub struct Mirrored3RingTensor<HostRingT> {
     pub values: [HostRingT; 3],
 }
 
 moose_type!(ReplicatedRing64Tensor = AbstractReplicatedRingTensor<HostRing64Tensor>);
 moose_type!(ReplicatedRing128Tensor = AbstractReplicatedRingTensor<HostRing128Tensor>);
 moose_type!(ReplicatedBitTensor = AbstractReplicatedRingTensor<HostBitTensor>);
-moose_type!(MirroredRing64Tensor = MirroredRingTensor<HostRing64Tensor>);
-moose_type!(MirroredRing128Tensor = MirroredRingTensor<HostRing128Tensor>);
-moose_type!(MirroredBitTensor = MirroredRingTensor<HostBitTensor>);
+moose_type!(Mirrored3Ring64Tensor = Mirrored3RingTensor<HostRing64Tensor>);
+moose_type!(Mirrored3Ring128Tensor = Mirrored3RingTensor<HostRing128Tensor>);
+moose_type!(Mirrored3BitTensor = Mirrored3RingTensor<HostBitTensor>);
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedBitArray<RepBitTensorT, N>(RepBitTensorT, PhantomData<N>);
@@ -63,7 +63,7 @@ impl<HostRingT> Underlying for AbstractReplicatedRingTensor<HostRingT> {
     type Ring = HostRingT;
 }
 
-impl<HostRingT> Underlying for MirroredRingTensor<HostRingT> {
+impl<HostRingT> Underlying for Mirrored3RingTensor<HostRingT> {
     type Ring = HostRingT;
 }
 
@@ -117,14 +117,14 @@ where
     }
 }
 
-impl<HostTenT> Placed for MirroredRingTensor<HostTenT>
+impl<HostTenT> Placed for Mirrored3RingTensor<HostTenT>
 where
     HostTenT: Placed<Placement = HostPlacement>,
 {
     type Placement = ReplicatedPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        let MirroredRingTensor {
+        let Mirrored3RingTensor {
             values: [x0, x1, x2],
         } = self;
 
@@ -201,8 +201,8 @@ moose_type!(ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRi
 moose_type!(ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>);
 
 // TODO(Dragos) perhaps we need better abstraction mechanisms?
-moose_type!(DistributedFixed128Tensor = AbstractReplicatedFixedTensor<MirroredRing128Tensor>);
-moose_type!(DistributedFixed64Tensor = AbstractReplicatedFixedTensor<MirroredRing64Tensor>);
+moose_type!(DistributedFixed128Tensor = AbstractReplicatedFixedTensor<Mirrored3Ring128Tensor>);
+moose_type!(DistributedFixed64Tensor = AbstractReplicatedFixedTensor<Mirrored3Ring64Tensor>);
 
 impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;
@@ -555,12 +555,12 @@ modelled!(PlacementAdd::add, ReplicatedPlacement, (HostRing128Tensor, Replicated
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepAddOp);
-modelled!(PlacementAdd::add, ReplicatedPlacement, (MirroredRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepAddOp);
-modelled!(PlacementAdd::add, ReplicatedPlacement, (MirroredRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepAddOp);
-modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedRing64Tensor, MirroredRing64Tensor) -> ReplicatedRing64Tensor, RepAddOp);
-modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedRing128Tensor, MirroredRing128Tensor) -> ReplicatedRing128Tensor, RepAddOp);
-modelled!(PlacementAdd::add, ReplicatedPlacement, (MirroredBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepAddOp);
-modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedBitTensor, MirroredBitTensor) -> ReplicatedBitTensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (Mirrored3BitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedBitTensor, Mirrored3BitTensor) -> ReplicatedBitTensor, RepAddOp);
 
 kernel! {
     RepAddOp,
@@ -572,12 +572,12 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (MirroredRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::mirr_rep_kernel),
-        (ReplicatedPlacement, (MirroredRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::mirr_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, MirroredRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_mirr_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, MirroredRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_mirr_kernel),
-        (ReplicatedPlacement, (MirroredBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::mirr_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor, MirroredBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mirr_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::mirr_rep_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::mirr_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_mirr_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_mirr_kernel),
+        (ReplicatedPlacement, (Mirrored3BitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::mirr_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, Mirrored3BitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mirr_kernel),
     ]
 }
 
@@ -618,7 +618,7 @@ impl RepAddOp {
     fn mirr_rep_kernel<S: Session, R>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: MirroredRingTensor<R>,
+        x: Mirrored3RingTensor<R>,
         y: RepTen<R>,
     ) -> Result<RepTen<R>>
     where
@@ -627,7 +627,7 @@ impl RepAddOp {
     {
         let (player0, _player1, player2) = rep.host_placements();
 
-        let MirroredRingTensor {
+        let Mirrored3RingTensor {
             values: [x0, _x1, x2],
         } = &x;
 
@@ -651,7 +651,7 @@ impl RepAddOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepTen<R>,
-        y: MirroredRingTensor<R>,
+        y: Mirrored3RingTensor<R>,
     ) -> Result<RepTen<R>>
     where
         R: Clone,
@@ -659,7 +659,7 @@ impl RepAddOp {
     {
         let (player0, _player1, player2) = rep.host_placements();
 
-        let MirroredRingTensor {
+        let Mirrored3RingTensor {
             values: [y0, _y1, y2],
         } = &y;
 
@@ -801,10 +801,10 @@ modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedRing128Tensor, Host
 modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepSubOp);
 
 //  TODO HERE
-modelled!(PlacementSub::sub, ReplicatedPlacement, (MirroredRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepSubOp);
-modelled!(PlacementSub::sub, ReplicatedPlacement, (MirroredRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepSubOp);
-modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedRing64Tensor, MirroredRing64Tensor) -> ReplicatedRing64Tensor, RepSubOp);
-modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedRing128Tensor, MirroredRing128Tensor) -> ReplicatedRing128Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor, RepSubOp);
 
 kernel! {
     RepSubOp,
@@ -817,10 +817,10 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
 
-        (ReplicatedPlacement, (MirroredRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::mirr_rep_kernel),
-        (ReplicatedPlacement, (MirroredRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::mirr_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, MirroredRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_mirr_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, MirroredRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_mirr_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::mirr_rep_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::mirr_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_mirr_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_mirr_kernel),
     ]
 }
 
@@ -973,7 +973,7 @@ impl RepSubOp {
     fn mirr_rep_kernel<S: Session, R>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: MirroredRingTensor<R>,
+        x: Mirrored3RingTensor<R>,
         y: RepTen<R>,
     ) -> Result<RepTen<R>>
     where
@@ -983,7 +983,7 @@ impl RepSubOp {
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let MirroredRingTensor {
+        let Mirrored3RingTensor {
             values: [x0, _x1, x2],
         } = &x;
 
@@ -1007,7 +1007,7 @@ impl RepSubOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepTen<R>,
-        y: MirroredRingTensor<R>,
+        y: Mirrored3RingTensor<R>,
     ) -> Result<RepTen<R>>
     where
         R: Clone,
@@ -1015,7 +1015,7 @@ impl RepSubOp {
     {
         let (player0, _player1, player2) = rep.host_placements();
 
-        let MirroredRingTensor {
+        let Mirrored3RingTensor {
             values: [y0, _y1, y2],
         } = &y;
 
@@ -1044,10 +1044,10 @@ modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, R
 modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
 modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepMulOp);
 
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, MirroredRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, MirroredRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, MirroredRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, MirroredRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
 
 kernel! {
     RepMulOp,
@@ -1059,10 +1059,10 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_rep_kernel),
         (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, MirroredRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::dst_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, MirroredRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_dst_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, MirroredRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::dst_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, MirroredRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_dst_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::dst_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_dst_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::dst_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_dst_kernel),
     ]
 }
 
@@ -1183,7 +1183,7 @@ impl RepMulOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         _setup: AbstractReplicatedSetup<KeyT>,
-        x: MirroredRingTensor<RingT>,
+        x: Mirrored3RingTensor<RingT>,
         y: RepTen<RingT>,
     ) -> Result<RepTen<RingT>>
     where
@@ -1195,7 +1195,7 @@ impl RepMulOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
-        let MirroredRingTensor {
+        let Mirrored3RingTensor {
             values: [x0, x1, x2],
         } = &x;
 
@@ -1218,7 +1218,7 @@ impl RepMulOp {
         rep: &ReplicatedPlacement,
         _setup: AbstractReplicatedSetup<KeyT>,
         x: RepTen<RingT>,
-        y: MirroredRingTensor<RingT>,
+        y: Mirrored3RingTensor<RingT>,
     ) -> Result<RepTen<RingT>>
     where
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
@@ -1229,7 +1229,7 @@ impl RepMulOp {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let MirroredRingTensor {
+        let Mirrored3RingTensor {
             values: [y0, y1, y2],
         } = &y;
 
@@ -1701,9 +1701,9 @@ modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] 
 modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing128Tensor, RepFillOp);
 modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
 
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> MirroredRing64Tensor, RepFillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> MirroredRing128Tensor, RepFillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> MirroredBitTensor, RepFillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Ring64Tensor, RepFillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Ring128Tensor, RepFillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3BitTensor, RepFillOp);
 
 kernel! {
     RepFillOp,
@@ -1725,7 +1725,7 @@ kernel! {
                     Self::ring64_kernel(sess, rep, value, rep_shape)
                 }))
             }),
-        (ReplicatedPlacement, (ReplicatedShape) -> MirroredRing64Tensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring64Tensor => [hybrid] custom |op| {
                 let value: u64 = match op.value {
                     Constant::Bit(v) => v as u64,
                     Constant::Ring64(v) => v,
@@ -1758,7 +1758,7 @@ kernel! {
                     Self::ring128_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> MirroredRing128Tensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring128Tensor => [hybrid] custom |op| {
                 let value: u128 = match op.value {
                     Constant::Bit(v) => v as u128,
                     Constant::Ring64(v) => v as u128,
@@ -1789,7 +1789,7 @@ kernel! {
                     Self::rep_bit_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> MirroredBitTensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3BitTensor => [hybrid] custom |op| {
                 let value: u8 = match op.value {
                     Constant::Bit(v) => v,
                     Constant::Ring64(v) => v as u8,
@@ -1881,7 +1881,7 @@ impl RepFillOp {
         rep: &ReplicatedPlacement,
         value: u64,
         rep_shape: AbstractReplicatedShape<ShapeT>,
-    ) -> Result<MirroredRingTensor<RingT>>
+    ) -> Result<Mirrored3RingTensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -1897,7 +1897,7 @@ impl RepFillOp {
             player2.fill(sess, Constant::Ring64(value), s2),
         ];
 
-        Ok(MirroredRingTensor { values })
+        Ok(Mirrored3RingTensor { values })
     }
 
     fn dst_ring128_kernel<S: Session, ShapeT, RingT>(
@@ -1905,7 +1905,7 @@ impl RepFillOp {
         rep: &ReplicatedPlacement,
         value: u128,
         rep_shape: AbstractReplicatedShape<ShapeT>,
-    ) -> Result<MirroredRingTensor<RingT>>
+    ) -> Result<Mirrored3RingTensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -1921,7 +1921,7 @@ impl RepFillOp {
             player2.fill(sess, Constant::Ring128(value), s2),
         ];
 
-        Ok(MirroredRingTensor { values })
+        Ok(Mirrored3RingTensor { values })
     }
 
     fn rep_bit_kernel<S: Session, ShapeT, RingT>(
@@ -1962,7 +1962,7 @@ impl RepFillOp {
         rep: &ReplicatedPlacement,
         value: u8,
         rep_shape: AbstractReplicatedShape<ShapeT>,
-    ) -> Result<MirroredRingTensor<RingT>>
+    ) -> Result<Mirrored3RingTensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -1979,7 +1979,7 @@ impl RepFillOp {
             player2.fill(sess, Constant::Bit(value), s2),
         ];
 
-        Ok(MirroredRingTensor { values })
+        Ok(Mirrored3RingTensor { values })
     }
 }
 
@@ -2279,15 +2279,15 @@ impl RepAbsOp {
     ) -> Result<RepT>
     where
         RepT: Underlying<Ring = HostRingT>,
-        MirroredRingTensor<HostRingT>: Underlying<Ring = HostRingT>,
-        MirroredRingTensor<HostRingT>: CanonicalType,
-        <MirroredRingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
+        Mirrored3RingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+        Mirrored3RingTensor<HostRingT>: CanonicalType,
+        <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
         ReplicatedPlacement: PlacementMsb<S, SetupT, RepT, RepT>,
-        ReplicatedPlacement: PlacementFill<S, ShapeT, m!(c!(MirroredRingTensor<HostRingT>))>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, m!(c!(Mirrored3RingTensor<HostRingT>))>,
         ReplicatedPlacement: PlacementShape<S, RepT, ShapeT>,
         ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepT, RepT, RepT>,
         ReplicatedPlacement: PlacementShl<S, RepT, RepT>,
-        ReplicatedPlacement: PlacementSub<S, m!(c!(MirroredRingTensor<HostRingT>)), RepT, RepT>,
+        ReplicatedPlacement: PlacementSub<S, m!(c!(Mirrored3RingTensor<HostRingT>)), RepT, RepT>,
     {
         let msb_ring = rep.msb(sess, &setup, &x);
         let double = rep.shl(sess, 1, &msb_ring);
@@ -2321,8 +2321,8 @@ impl ShapeOp {
 }
 
 modelled_alias!(PlacementXor::xor, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementAdd::add); // add = xor in Z2
-modelled_alias!(PlacementXor::xor, ReplicatedPlacement, (MirroredBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementAdd::add);
-modelled_alias!(PlacementXor::xor, ReplicatedPlacement, (ReplicatedBitTensor, MirroredBitTensor) -> ReplicatedBitTensor => PlacementAdd::add);
+modelled_alias!(PlacementXor::xor, ReplicatedPlacement, (Mirrored3BitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementAdd::add);
+modelled_alias!(PlacementXor::xor, ReplicatedPlacement, (ReplicatedBitTensor, Mirrored3BitTensor) -> ReplicatedBitTensor => PlacementAdd::add);
 modelled_alias!(PlacementAndSetup::and_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementMulSetup::mul_setup); // sub = xor in Z2
 
 trait BinaryAdder<S: Session, SetupT, RepBitT> {
@@ -3766,7 +3766,7 @@ mod tests {
         let setup = rep.gen_setup(&sess);
 
         let x_shared = rep.share(&sess, &setup, &x);
-        let y_dst: MirroredRing64Tensor =
+        let y_dst: Mirrored3Ring64Tensor =
             rep.fill(&sess, 2u64.into(), &rep.shape(&sess, &x_shared));
 
         let mul = rep.mul_setup(&sess, &setup, &x_shared, &y_dst);

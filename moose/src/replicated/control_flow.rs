@@ -2,7 +2,7 @@ use crate::computation::{CanonicalType, KnownType, Placed, RepIfElseOp, Replicat
 use crate::error::Result;
 use crate::kernels::*;
 use crate::replicated::{
-    MirroredRingTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, Underlying,
+    Mirrored3RingTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, Underlying,
 };
 
 modelled!(PlacementIfElse::if_else, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepIfElseOp);
@@ -26,16 +26,16 @@ impl RepIfElseOp {
     ) -> Result<RepRingT>
     where
         RepRingT: Underlying<Ring = HostRingT>,
-        MirroredRingTensor<HostRingT>: Underlying<Ring = HostRingT>,
-        MirroredRingTensor<HostRingT>: CanonicalType,
-        <MirroredRingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
-        ReplicatedPlacement: PlacementFill<S, ShapeT, m!(c!(MirroredRingTensor<HostRingT>))>,
+        Mirrored3RingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+        Mirrored3RingTensor<HostRingT>: CanonicalType,
+        <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, m!(c!(Mirrored3RingTensor<HostRingT>))>,
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
         ReplicatedPlacement:
-            PlacementSub<S, m!(c!(MirroredRingTensor<HostRingT>)), RepRingT, RepRingT>,
+            PlacementSub<S, m!(c!(Mirrored3RingTensor<HostRingT>)), RepRingT, RepRingT>,
     {
         let setup = rep.gen_setup(sess);
         let ones = rep.fill(sess, 1u64.into(), &rep.shape(sess, &x));
