@@ -133,7 +133,7 @@ impl Session for SyncSession {
             RepAddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepIndex(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Index(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepDiag(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -366,8 +366,8 @@ pub trait PlacementReshape<S: Session, T, ShapeT, O> {
     fn reshape(&self, sess: &S, x: &T, shape: &ShapeT) -> O;
 }
 
-pub trait PlacementDecrypt<S: Session, T, O> {
-    fn decrypt(&self, sess: &S, c: &T) -> O;
+pub trait PlacementDecrypt<S: Session, T, K, O> {
+    fn decrypt(&self, sess: &S, c: &T, k: &K) -> O;
 }
 
 pub trait PlacementKeyGen<S: Session, KeyT> {

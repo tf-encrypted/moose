@@ -1973,6 +1973,21 @@ impl RingInjectOp {
     }
 }
 
+impl IndexOp {
+    pub(crate) fn host_kernel<S: Session, HostBitT, N>(
+        sess: &S,
+        plc: &HostPlacement,
+        index: usize,
+        x: AbstractHostBitArray<HostBitT, N>,
+    ) -> Result<HostBitT>
+    where
+        HostPlacement: PlacementIndexAxis<S, HostBitT, HostBitT>,
+    {
+        let stacked_tensor = x.0;
+        Ok(plc.index_axis(sess, 0, index, &stacked_tensor))
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostBitArray<HostBitTensorT, N>(pub HostBitTensorT, pub PhantomData<N>);
 

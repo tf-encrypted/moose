@@ -2,21 +2,25 @@ use crate::bristol_fashion::aes;
 use crate::computation::*;
 use crate::error::Result;
 use crate::host::{
-    AbstractHostEncFixedTensor, HostBitTensor, HostEncFixed128Tensor, HostFixed128Tensor,
-    HostRing128Tensor, HostShape,
+    AbstractHostEncFixedTensor, HostBitArray128, HostBitTensor, HostEncFixed128Tensor,
+    HostFixed128Tensor, HostRing128Tensor, HostShape,
 };
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitDec, PlacementFill, PlacementIndexAxis, PlacementNeg,
-    PlacementRingInject, PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementXor,
-    Session,
+    PlacementAdd, PlacementAnd, PlacementBitDec, PlacementFill, PlacementIndex, PlacementIndexAxis,
+    PlacementNeg, PlacementRingInject, PlacementSetupGen, PlacementShape, PlacementShareSetup,
+    PlacementXor, Session,
 };
-use crate::replicated::{AbstractReplicatedFixedTensor, AbstractReplicatedShape, ReplicatedShape};
+use crate::replicated::{
+    AbstractReplicatedBitArray, AbstractReplicatedFixedTensor, AbstractReplicatedShape,
+    ReplicatedShape,
+};
 
 impl AesDecryptOp {
     pub(crate) fn host_fixed_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
         c: HostEncFixed128Tensor,
+        k: HostBitArray128,
     ) -> Result<HostFixed128Tensor>
     where
         HostPlacement: PlacementBitDec<S, HostRing128Tensor, HostBitTensor>,
@@ -28,13 +32,16 @@ impl AesDecryptOp {
         HostPlacement: PlacementXor<S, HostBitTensor, HostBitTensor, HostBitTensor>,
         HostPlacement: PlacementAnd<S, HostBitTensor, HostBitTensor, HostBitTensor>,
         HostPlacement: PlacementNeg<S, HostBitTensor, HostBitTensor>,
+        HostPlacement: PlacementIndex<S, HostBitArray128, HostBitTensor>,
     {
         let shape = plc.shape(sess, &c);
         let c_decomposed = plc.bit_decompose(sess, &c.tensor);
         let c_bits: Vec<_> = (0..128)
             .map(|i| plc.index_axis(sess, 0, i, &c_decomposed))
             .collect();
-        let m_bits = aes(sess, plc, c_bits.clone(), c_bits);
+        let k_bits: Vec<_> = (0..128).map(|i| plc.index(sess, i, &k)).collect();
+
+        let m_bits = aes(sess, plc, k_bits, c_bits);
         let zero = plc.fill(sess, Constant::Ring128(0), &shape);
         let m = m_bits
             .iter()
@@ -51,10 +58,11 @@ impl AesDecryptOp {
 }
 
 impl AesDecryptOp {
-    pub(crate) fn rep_fixed_kernel<S: Session, HostBitT, RepBitT, RepRingT, HostRingT>(
+    pub(crate) fn rep_fixed_kernel<S: Session, HostBitT, RepBitT, RepRingT, HostRingT, N>(
         sess: &S,
         rep: &ReplicatedPlacement,
         c: AbstractHostEncFixedTensor<HostRingT>,
+        _k: AbstractReplicatedBitArray<RepBitT, N>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
         HostShape: KnownType<S>,
@@ -114,7 +122,22 @@ impl AesDecryptOp {
 #[cfg(test)]
 mod tests {
     // use super::*;
+    use aes_gcm::aead::{Aead, NewAead};
+    use aes_gcm::{Aes128Gcm, Key, Nonce};
 
     #[test]
-    fn test_aes_decrypt_host() {}
+    fn test_aes_decrypt_host() {
+        let key = Key::from_slice(b"a very secretkey");
+        let cipher = Aes128Gcm::new(key);
+        let nonce = Nonce::from_slice(b"unique nonce"); // 96-bits; unique per message
+
+        let ciphertext = cipher
+            .encrypt(nonce, b"0000000000000000".as_ref())
+            .expect("encryption failure!"); // NOTE: handle this error to avoid panics!
+
+        let plaintext = cipher
+            .decrypt(nonce, ciphertext.as_ref())
+            .expect("decryption failure!"); // NOTE: handle this error to avoid panics!
+        assert_eq!(&plaintext, b"0000000000000000");
+    }
 }
