@@ -1830,7 +1830,7 @@ impl ToTextual for Ty {
             Ty::Fixed128Tensor => "Fixed128Tensor".to_string(),
             Ty::Float32Tensor => "Float32Tensor".to_string(),
             Ty::Float64Tensor => "Float64Tensor".to_string(),
-            Ty::HostEncFixed128Tensor => unimplemented!(),
+            Ty::HostFixed128AesTensor => unimplemented!(),
         }
     }
 }
@@ -1889,7 +1889,7 @@ impl ToTextual for Value {
             | Value::AdditiveRing128Tensor(_) => {
                 unimplemented!("Unsupported Value variant: {:?}", self)
             }
-            Value::HostEncFixed128Tensor(_) => unimplemented!(),
+            Value::HostFixed128AesTensor(_) => unimplemented!(),
         }
     }
 }

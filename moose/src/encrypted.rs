@@ -2,7 +2,7 @@ use crate::bristol_fashion::aes;
 use crate::computation::*;
 use crate::error::Result;
 use crate::host::{
-    AbstractHostEncFixedTensor, HostBitTensor, HostEncFixed128Tensor, HostFixed128Tensor,
+    AbstractHostFixedAesTensor, HostBitTensor, HostFixed128AesTensor, HostFixed128Tensor,
     HostRing128Tensor, HostShape,
 };
 use crate::kernels::{
@@ -16,13 +16,13 @@ impl AesDecryptOp {
     pub(crate) fn host_fixed_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
-        c: HostEncFixed128Tensor,
+        c: HostFixed128AesTensor,
     ) -> Result<HostFixed128Tensor>
     where
         HostPlacement: PlacementBitDec<S, HostRing128Tensor, HostBitTensor>,
         HostPlacement: PlacementIndexAxis<S, HostBitTensor, HostBitTensor>,
         HostPlacement: PlacementRingInject<S, HostBitTensor, HostRing128Tensor>,
-        HostPlacement: PlacementShape<S, HostEncFixed128Tensor, HostShape>,
+        HostPlacement: PlacementShape<S, HostFixed128AesTensor, HostShape>,
         HostPlacement: PlacementFill<S, HostShape, HostRing128Tensor>,
         HostPlacement: PlacementAdd<S, HostRing128Tensor, HostRing128Tensor, HostRing128Tensor>,
         HostPlacement: PlacementXor<S, HostBitTensor, HostBitTensor, HostBitTensor>,
@@ -54,7 +54,7 @@ impl AesDecryptOp {
     pub(crate) fn rep_fixed_kernel<S: Session, HostBitT, RepBitT, RepRingT, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        c: AbstractHostEncFixedTensor<HostRingT>,
+        c: AbstractHostFixedAesTensor<HostRingT>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
         HostShape: KnownType<S>,

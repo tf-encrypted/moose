@@ -5,7 +5,7 @@ use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{
-    HostBitArray128, HostBitArray256, HostBitArray64, HostBitTensor, HostEncFixed128Tensor,
+    HostBitArray128, HostBitArray256, HostBitArray64, HostBitTensor, HostFixed128AesTensor,
     HostFixed128Tensor, HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor,
     HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor,
     HostShape, HostString, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
@@ -478,7 +478,7 @@ values![
     AdditiveRing64Tensor,
     AdditiveRing128Tensor,
     AdditiveShape,
-    HostEncFixed128Tensor,
+    HostFixed128AesTensor,
 ];
 
 // A macros to define something common for all the possible values

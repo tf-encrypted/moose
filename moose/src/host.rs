@@ -442,7 +442,7 @@ impl ShapeOp {
     pub(crate) fn hostencfixed_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
-        x: HostEncFixed128Tensor,
+        x: HostFixed128AesTensor,
     ) -> Result<HostShape>
     where
         HostPlacement: PlacementShape<S, HostRing128Tensor, HostShape>,
@@ -2036,14 +2036,14 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractHostEncFixedTensor<HostRingT> {
+pub struct AbstractHostFixedAesTensor<HostRingT> {
     pub tensor: HostRingT,
     pub precision: u32,
 }
 
-moose_type!(HostEncFixed128Tensor = AbstractHostEncFixedTensor<HostRing128Tensor>);
+moose_type!(HostFixed128AesTensor = AbstractHostFixedAesTensor<HostRing128Tensor>);
 
-impl<HostRingT: Placed> Placed for AbstractHostEncFixedTensor<HostRingT>
+impl<HostRingT: Placed> Placed for AbstractHostFixedAesTensor<HostRingT>
 where
     <HostRingT as Placed>::Placement: Into<Placement>,
 {
