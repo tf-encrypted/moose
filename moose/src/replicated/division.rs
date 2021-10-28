@@ -92,14 +92,18 @@ pub(crate) trait SignFromMsb<S: Session, T, O> {
     fn sign_from_msb(&self, sess: &S, msb_ring: &T) -> O;
 }
 
-impl<S: Session, RepRingT> SignFromMsb<S, RepRingT, RepRingT> for ReplicatedPlacement
+impl<S: Session, RepRingT, HostRingT> SignFromMsb<S, RepRingT, RepRingT> for ReplicatedPlacement
 where
     ReplicatedShape: KnownType<S>,
-
-    ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
+    RepRingT: Underlying<Ring = HostRingT>,
+    MirroredRingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+    MirroredRingTensor<HostRingT>: CanonicalType,
+    <MirroredRingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
+    ReplicatedPlacement:
+        PlacementFill<S, cs!(ReplicatedShape), m!(c!(MirroredRingTensor<HostRingT>))>,
     ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementSub<S, m!(c!(MirroredRingTensor<HostRingT>)), RepRingT, RepRingT>,
 {
     fn sign_from_msb(&self, sess: &S, msb_ring: &RepRingT) -> RepRingT {
         let rep = self;
