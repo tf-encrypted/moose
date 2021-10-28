@@ -1,25 +1,32 @@
 use super::*;
 
 impl FixedpointDivOp {
-    pub(crate) fn rep_rep_kernel<S: Session, RepRingT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
         y: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> Result<st!(AbstractReplicatedFixedTensor<RepRingT>)>
     where
+        RepRingT: Underlying<Ring = HostRingT>,
+        MirroredRingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+        MirroredRingTensor<HostRingT>: CanonicalType,
+        <MirroredRingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
         AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
         <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
         AbstractReplicatedFixedTensor<RepRingT>: Into<st!(AbstractReplicatedFixedTensor<RepRingT>)>,
         ReplicatedShape: KnownType<S>,
         RepRingT: Ring,
         ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
-        ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
+        ReplicatedPlacement:
+            PlacementFill<S, cs!(ReplicatedShape), m!(c!(MirroredRingTensor<HostRingT>))>,
         ReplicatedPlacement: ApproximateReciprocal<S, S::ReplicatedSetup, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement:
+            PlacementAdd<S, m!(c!(MirroredRingTensor<HostRingT>)), RepRingT, RepRingT>,
+        ReplicatedPlacement:
+            PlacementSub<S, m!(c!(MirroredRingTensor<HostRingT>)), RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
     {
         #![allow(clippy::many_single_char_names)]

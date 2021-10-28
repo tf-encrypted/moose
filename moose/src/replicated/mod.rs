@@ -2272,23 +2272,23 @@ kernel! {
 }
 
 impl RepAbsOp {
-    fn kernel<S: Session, SetupT, RepT, ShapeT, RingT>(
+    fn kernel<S: Session, SetupT, RepT, ShapeT, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
         x: RepT,
     ) -> Result<RepT>
     where
-        RepT: Underlying<Ring = RingT>,
-        MirroredRingTensor<RingT>: Underlying<Ring = RingT>,
-        MirroredRingTensor<RingT>: CanonicalType,
-        <MirroredRingTensor<RingT> as CanonicalType>::Type: KnownType<S>,
+        RepT: Underlying<Ring = HostRingT>,
+        MirroredRingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+        MirroredRingTensor<HostRingT>: CanonicalType,
+        <MirroredRingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
         ReplicatedPlacement: PlacementMsb<S, SetupT, RepT, RepT>,
-        ReplicatedPlacement: PlacementFill<S, ShapeT, m!(c!(MirroredRingTensor<RingT>))>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, m!(c!(MirroredRingTensor<HostRingT>))>,
         ReplicatedPlacement: PlacementShape<S, RepT, ShapeT>,
         ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepT, RepT, RepT>,
         ReplicatedPlacement: PlacementShl<S, RepT, RepT>,
-        ReplicatedPlacement: PlacementSub<S, m!(c!(MirroredRingTensor<RingT>)), RepT, RepT>,
+        ReplicatedPlacement: PlacementSub<S, m!(c!(MirroredRingTensor<HostRingT>)), RepT, RepT>,
     {
         let msb_ring = rep.msb(sess, &setup, &x);
         let double = rep.shl(sess, 1, &msb_ring);
