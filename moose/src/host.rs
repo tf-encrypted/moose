@@ -4,7 +4,7 @@ use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::symbolic::Symbolic;
-use crate::{Const, Ring, N128, N64};
+use crate::{Const, Ring, N128, N256, N64};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray::Slice;
@@ -2003,6 +2003,12 @@ pub type HostBitArray128 = AbstractHostBitArray<HostBitTensor, N128>;
 
 impl SymbolicType for HostBitArray128 {
     type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N128>>;
+}
+
+pub type HostBitArray256 = AbstractHostBitArray<HostBitTensor, N256>;
+
+impl SymbolicType for HostBitArray256 {
+    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N256>>;
 }
 
 impl<HostBitT: Placed, N> From<AbstractHostBitArray<HostBitT, N>>

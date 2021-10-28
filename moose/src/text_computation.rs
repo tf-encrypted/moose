@@ -852,6 +852,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "BitTensor" => Ok((i, Ty::HostBitTensor)),
         "BitArray64" => Ok((i, Ty::HostBitArray64)),
         "BitArray128" => Ok((i, Ty::HostBitArray128)),
+        "BitArray256" => Ok((i, Ty::HostBitArray256)),
         "Ring64Tensor" => Ok((i, Ty::HostRing64Tensor)),
         "Ring128Tensor" => Ok((i, Ty::HostRing128Tensor)),
         "Float32Tensor" => Ok((i, Ty::HostFloat32Tensor)),
@@ -1795,6 +1796,7 @@ impl ToTextual for Ty {
             Ty::HostBitTensor => "BitTensor".to_string(),
             Ty::HostBitArray64 => "BitArray64".to_string(),
             Ty::HostBitArray128 => "BitArray128".to_string(),
+            Ty::HostBitArray256 => "BitArray256".to_string(),
             Ty::HostShape => "Shape".to_string(),
             Ty::Seed => "Seed".to_string(),
             Ty::PrfKey => "PrfKey".to_string(),
@@ -1866,6 +1868,7 @@ impl ToTextual for Value {
             | Value::HostBitArray64(_)
             | Value::Tensor(_)
             | Value::HostBitArray128(_) => unimplemented!(),
+            Value::HostBitArray256(_) => unimplemented!(),
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)
             | Value::Fixed128Tensor(_)
