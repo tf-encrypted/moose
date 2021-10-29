@@ -5,9 +5,9 @@ use crate::computation::{
 };
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{
-    HostBitTensor, HostFixed128AesTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor,
-    HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor,
-    HostShape, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
+    HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
+    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
+    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
 };
 use crate::kernels::{PlacementReshape, PlacementRingInject, PlacementShape};
 use crate::logical::Tensor;

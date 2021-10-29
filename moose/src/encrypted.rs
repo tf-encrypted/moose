@@ -1,20 +1,15 @@
-use crate::bristol_fashion::aes;
 use crate::computation::*;
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, FixedTensor};
 use crate::host::{
-    AbstractHostFixedAesTensor, AbstractHostFixedTensor, HostAesKey, HostBitTensor,
-    HostFixed128AesTensor, HostFixed128Tensor, HostRing128Tensor, HostShape,
+    AbstractHostFixedAesTensor, AbstractHostFixedTensor, HostAesKey, HostFixed128AesTensor,
+    HostFixed128Tensor,
 };
-use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitDec, PlacementDecrypt, PlacementFill,
-    PlacementIndexAxis, PlacementNeg, PlacementRingInject, PlacementSetupGen, PlacementShape,
-    PlacementShareSetup, PlacementXor, Session,
-};
+use crate::kernels::{PlacementDecrypt, Session};
 use crate::logical::{AbstractTensor, Tensor};
 use crate::replicated::{
     aes::AbstractReplicatedAesKey, aes::ReplicatedAesKey, AbstractReplicatedFixedTensor,
-    AbstractReplicatedShape, ReplicatedFixed128Tensor, ReplicatedShape,
+    ReplicatedFixed128Tensor,
 };
 use serde::{Deserialize, Serialize};
 
@@ -122,10 +117,10 @@ impl AesDecryptOp {
     }
 
     pub(crate) fn host_fixed_aes_kernel<S: Session, HostBitArrayT, HostRing128T>(
-        sess: &S,
-        plc: &HostPlacement,
-        key: m!(HostAesKey),
-        ciphertext: AbstractHostFixedAesTensor<HostBitArrayT>,
+        _sess: &S,
+        _plc: &HostPlacement,
+        _key: m!(HostAesKey),
+        _ciphertext: AbstractHostFixedAesTensor<HostBitArrayT>,
     ) -> Result<AbstractHostFixedTensor<HostRing128T>>
     where
         HostAesKey: KnownType<S>,
@@ -211,10 +206,10 @@ impl AesDecryptOp {
     }
 
     pub(crate) fn rep_fixed_aes_kernel<S: Session, RepRingT, HostBitArray128T, HostBitArray256T>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        key: AbstractReplicatedAesKey<HostBitArray128T>,
-        ciphertext: AbstractHostFixedAesTensor<HostBitArray256T>,
+        _sess: &S,
+        _rep: &ReplicatedPlacement,
+        _key: AbstractReplicatedAesKey<HostBitArray128T>,
+        _ciphertext: AbstractHostFixedAesTensor<HostBitArray256T>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
 where
         // HostShape: KnownType<S>,

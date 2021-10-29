@@ -438,17 +438,6 @@ impl ShapeOp {
         let raw_shape = RawShape(x.0.shape().into());
         Ok(HostShape(raw_shape, plc.clone()))
     }
-
-    pub(crate) fn hostfixedaes_kernel<S: Session>(
-        sess: &S,
-        plc: &HostPlacement,
-        x: HostFixed128AesTensor,
-    ) -> Result<HostShape>
-    where
-        HostPlacement: PlacementShape<S, HostBitArray256, HostShape>,
-    {
-        Ok(plc.shape(sess, &x.tensor))
-    }
 }
 
 modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat32Tensor) -> HostFloat32Tensor, HostAtLeast2DOp);
