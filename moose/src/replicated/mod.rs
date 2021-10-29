@@ -3299,6 +3299,138 @@ mod tests {
 
     }
 
+    macro_rules! rep_mir_binary_func_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>) => {
+            fn $func_name(xs: ArrayD<$tt>, ys: $tt, zs_mir: ArrayD<$tt>, zmir_s: ArrayD<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+                let target_rep_mir = AbstractHostRingTensor::from_raw_plc(zs_mir, alice.clone());
+                let target_mir_rep = AbstractHostRingTensor::from_raw_plc(zmir_s, alice.clone());
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &x);
+                let y_mir: Mirrored3RingTensor<AbstractHostRingTensor<$tt>> =
+                    rep.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
+
+                let result_rep_mir = rep.$test_func(&sess, &x_shared, &y_mir);
+                let opened_result = alice.reveal(&sess, &result_rep_mir);
+
+                assert_eq!(opened_result, target_rep_mir);
+
+                let result_mir_rep = rep.$test_func(&sess, &y_mir, &x_shared);
+                let opened_result = alice.reveal(&sess, &result_mir_rep);
+
+                assert_eq!(opened_result, target_mir_rep);
+            }
+        };
+    }
+
+    rep_mir_binary_func_test!(test_rep_mir_add64, add<u64>);
+    rep_mir_binary_func_test!(test_rep_mir_add128, add<u128>);
+    rep_mir_binary_func_test!(test_rep_mir_sub64, sub<u64>);
+    rep_mir_binary_func_test!(test_rep_mir_sub128, sub<u128>);
+
+    #[test]
+    fn test_rep_mir_add_64() {
+        let x = array![0u64, 1, 2].into_dyn();
+        let y = 2u64;
+        let target_rep_mir = array![2u64, 3, 4].into_dyn();
+        let target_mir_rep = array![2u64, 3, 4].into_dyn();
+        test_rep_mir_add64(x, y, target_rep_mir, target_mir_rep);
+    }
+
+    #[test]
+    fn test_rep_mir_add_128() {
+        let x = array![0u128, 1, 2].into_dyn();
+        let y = 2u128;
+        let target_rep_mir = array![2u64, 3, 4].into_dyn();
+        let target_mir_rep = array![2u64, 3, 4].into_dyn();
+        test_rep_mir_add128(x, y, target_rep_mir, target_mir_rep);
+    }
+
+    #[test]
+    fn test_rep_mir_sub_64() {
+        let x = array![2u64, 3, 4].into_dyn();
+        let y = 2u64;
+        let target_rep_mir = array![0u64, 1, 2].into_dyn();
+        let target_mir_rep = array![0u64, 18446744073709551615, 18446744073709551614].into_dyn();
+        test_rep_mir_sub64(x, y, target_rep_mir, target_mir_rep);
+    }
+
+    #[test]
+    fn test_rep_mir_sub_128() {
+        let x = array![2u128, 3, 4].into_dyn();
+        let y = 2u128;
+        let target_rep_mir = array![0u128, 1, 2].into_dyn();
+        let target_mir_rep = array![
+            0u128,
+            340282366920938463463374607431768211455,
+            340282366920938463463374607431768211454
+        ]
+        .into_dyn();
+        test_rep_mir_sub128(x, y, target_rep_mir, target_mir_rep);
+    }
+
+    macro_rules! rep_mir_mul_setup_func_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>) => {
+            fn $func_name(xs: ArrayD<$tt>, ys: $tt, zs: ArrayD<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+                let target = AbstractHostRingTensor::from_raw_plc(zs, alice.clone());
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &x);
+                let y_mir: Mirrored3RingTensor<AbstractHostRingTensor<$tt>> =
+                    rep.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
+
+                let result_rep_mir = rep.$test_func(&sess, &setup, &x_shared, &y_mir);
+                let opened_result = alice.reveal(&sess, &result_rep_mir);
+
+                assert_eq!(opened_result, target);
+
+                let result_mir_rep = rep.$test_func(&sess, &setup, &y_mir, &x_shared);
+                let opened_result = alice.reveal(&sess, &result_mir_rep);
+
+                assert_eq!(opened_result, target);
+            }
+        };
+    }
+
+    rep_mir_mul_setup_func_test!(test_rep_mir_mul64, mul_setup<u64>);
+    rep_mir_mul_setup_func_test!(test_rep_mir_mul128, mul_setup<u128>);
+
+    #[test]
+    fn test_rep_mir_mul_64() {
+        let x = array![0u64, 1, 2].into_dyn();
+        let y = 2u64;
+        let target = array![0u64, 2, 4].into_dyn();
+        test_rep_mir_mul64(x, y, target);
+    }
+
+    #[test]
+    fn test_rep_mir_mul_128() {
+        let x = array![0u128, 1, 2].into_dyn();
+        let y = 2u128;
+        let target = array![2u128, 2, 4].into_dyn();
+        test_rep_mir_mul128(x, y, target);
+    }
+
     macro_rules! rep_truncation_test {
         ($func_name:ident, $tt: ident) => {
             fn $func_name(xs: ArrayD<$tt>, amount: u32, ys: ArrayD<$tt>) {
