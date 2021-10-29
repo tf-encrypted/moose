@@ -584,12 +584,16 @@ impl RepAndOp {
 }
 
 modelled!(PlacementXor::xor, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepXorOp);
+modelled!(PlacementXor::xor, ReplicatedPlacement, (Mirrored3BitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepXorOp);
+modelled!(PlacementXor::xor, ReplicatedPlacement, (ReplicatedBitTensor, Mirrored3BitTensor) -> ReplicatedBitTensor, RepXorOp);
 
 // TODO(Morten) should be `transparent` kernel, which would simplify trait bounds
 kernel! {
     RepXorOp,
     [
         (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (Mirrored3BitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, Mirrored3BitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_kernel),
     ]
 }
 
@@ -606,6 +610,46 @@ impl RepXorOp {
             S,
             cs!(ReplicatedBitTensor),
             cs!(ReplicatedBitTensor),
+            cs!(ReplicatedBitTensor),
+        >,
+    {
+        // add = xor in Z2
+        Ok(rep.add(sess, &x, &y))
+    }
+
+    fn mir_rep_kernel<S: Session>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: cs!(Mirrored3BitTensor),
+        y: cs!(ReplicatedBitTensor),
+    ) -> Result<cs!(ReplicatedBitTensor)>
+    where
+        ReplicatedBitTensor: KnownType<S>,
+        Mirrored3BitTensor: KnownType<S>,
+        ReplicatedPlacement: PlacementAdd<
+            S,
+            cs!(Mirrored3BitTensor),
+            cs!(ReplicatedBitTensor),
+            cs!(ReplicatedBitTensor),
+        >,
+    {
+        // add = xor in Z2
+        Ok(rep.add(sess, &x, &y))
+    }
+
+    fn rep_mir_kernel<S: Session>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: cs!(ReplicatedBitTensor),
+        y: cs!(Mirrored3BitTensor),
+    ) -> Result<cs!(ReplicatedBitTensor)>
+    where
+        ReplicatedBitTensor: KnownType<S>,
+        Mirrored3BitTensor: KnownType<S>,
+        ReplicatedPlacement: PlacementAdd<
+            S,
+            cs!(ReplicatedBitTensor),
+            cs!(Mirrored3BitTensor),
             cs!(ReplicatedBitTensor),
         >,
     {
