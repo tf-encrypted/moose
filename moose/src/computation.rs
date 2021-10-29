@@ -1,6 +1,7 @@
 use crate::additive::{
     AdditiveBitTensor, AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape,
 };
+use crate::encrypted::{AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
@@ -481,6 +482,8 @@ values![
     AdditiveRing64Tensor,
     AdditiveRing128Tensor,
     AdditiveShape,
+    Fixed128AesTensor,
+    AesTensor,
 ];
 
 // A macros to define something common for all the possible values

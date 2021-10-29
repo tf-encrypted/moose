@@ -1,20 +1,120 @@
 use crate::bristol_fashion::aes;
 use crate::computation::*;
 use crate::error::Result;
+use crate::fixedpoint::Fixed128Tensor;
 use crate::host::{
     AbstractHostFixedAesTensor, HostAesKey, HostBitTensor, HostFixed128AesTensor,
     HostFixed128Tensor, HostRing128Tensor, HostShape,
 };
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitDec, PlacementFill, PlacementIndexAxis, PlacementNeg,
-    PlacementRingInject, PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementXor,
-    Session,
+    PlacementAdd, PlacementAnd, PlacementBitDec, PlacementDecrypt, PlacementFill,
+    PlacementIndexAxis, PlacementNeg, PlacementRingInject, PlacementSetupGen, PlacementShape,
+    PlacementShareSetup, PlacementXor, Session,
 };
-use crate::replicated::aes::AbstractReplicatedAesKey;
-use crate::replicated::{AbstractReplicatedFixedTensor, AbstractReplicatedShape, ReplicatedShape};
+use crate::logical::Tensor;
+use crate::replicated::{
+    aes::AbstractReplicatedAesKey, aes::ReplicatedAesKey, AbstractReplicatedFixedTensor,
+    AbstractReplicatedShape, ReplicatedFixed128Tensor, ReplicatedShape,
+};
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum FixedAesTensor<HostFixedAesT> {
+    Host(HostFixedAesT),
+}
+
+moose_type!(Fixed128AesTensor = FixedAesTensor<HostFixed128AesTensor>);
+
+impl<HostFixedAesT> Placed for FixedAesTensor<HostFixedAesT>
+where
+    HostFixedAesT: Placed,
+    HostFixedAesT::Placement: Into<Placement>,
+{
+    type Placement = Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        match self {
+            FixedAesTensor::Host(x) => Ok(x.placement()?.into()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum AbstractAesTensor<Fixed128AesT> {
+    Fixed128(Fixed128AesT),
+}
+
+moose_type!(AesTensor = AbstractAesTensor<Fixed128AesTensor>);
+
+impl<Fixed128T> Placed for AbstractAesTensor<Fixed128T>
+where
+    Fixed128T: Placed,
+    Fixed128T::Placement: Into<Placement>,
+{
+    type Placement = Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        match self {
+            AbstractAesTensor::Fixed128(x) => Ok(x.placement()?.into()),
+        }
+    }
+}
+
+modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostAesKey, AesTensor) -> Tensor, AesDecryptOp);
+modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostAesKey, Fixed128AesTensor) -> Fixed128Tensor, AesDecryptOp);
+modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostAesKey, HostFixed128AesTensor) -> HostFixed128Tensor, AesDecryptOp);
+modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (ReplicatedAesKey, AesTensor) -> Tensor, AesDecryptOp);
+modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (ReplicatedAesKey, Fixed128AesTensor) -> Fixed128Tensor, AesDecryptOp);
+modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (ReplicatedAesKey, HostFixed128AesTensor) -> ReplicatedFixed128Tensor, AesDecryptOp);
+
+kernel! {
+    AesDecryptOp,
+    [
+        (HostPlacement, (HostAesKey, AesTensor) -> Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostAesKey, Fixed128AesTensor) -> Fixed128Tensor => [runtime] Self::host_fixed_kernel),
+        (HostPlacement, (HostAesKey, HostFixed128AesTensor) -> HostFixed128Tensor => [runtime] Self::host_fixed_aes_kernel),
+        (ReplicatedPlacement, (ReplicatedAesKey, AesTensor) -> Tensor => [runtime] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedAesKey, Fixed128AesTensor) -> Fixed128Tensor => [runtime] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedAesKey, HostFixed128AesTensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_fixed_aes_kernel),
+    ]
+}
 
 impl AesDecryptOp {
+    pub(crate) fn host_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        key: HostAesKey,
+        ciphertext: AesTensor,
+    ) -> Result<Tensor>
+    where
+        HostPlacement: PlacementDecrypt<S, HostAesKey, Fixed128AesTensor, Fixed128Tensor>,
+    {
+        match ciphertext {
+            AesTensor::Fixed128(c) => {
+                let x = plc.decrypt(sess, &key, &c);
+                Ok(Tensor::Fixed128(x))
+            }
+        }
+    }
+
     pub(crate) fn host_fixed_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        key: HostAesKey,
+        ciphertext: Fixed128AesTensor,
+    ) -> Result<Fixed128Tensor>
+    where
+        HostPlacement: PlacementDecrypt<S, HostAesKey, HostFixed128AesTensor, HostFixed128Tensor>,
+    {
+        match ciphertext {
+            Fixed128AesTensor::Host(c) => {
+                let x = plc.decrypt(sess, &key, &c);
+                Ok(Fixed128Tensor::Host(x))
+            }
+        }
+    }
+
+    pub(crate) fn host_fixed_aes_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
         key: HostAesKey,
@@ -53,7 +153,43 @@ where
 }
 
 impl AesDecryptOp {
-    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT, HostBitArray128T, HostBitArray256T>(
+    pub(crate) fn rep_kernel<S: Session>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        key: ReplicatedAesKey,
+        ciphertext: AesTensor,
+    ) -> Result<Tensor>
+    where
+        ReplicatedPlacement:
+            PlacementDecrypt<S, ReplicatedAesKey, Fixed128AesTensor, Fixed128Tensor>,
+    {
+        match ciphertext {
+            AesTensor::Fixed128(c) => {
+                let x = plc.decrypt(sess, &key, &c);
+                Ok(Tensor::Fixed128(x))
+            }
+        }
+    }
+
+    pub(crate) fn rep_fixed_kernel<S: Session>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        key: ReplicatedAesKey,
+        ciphertext: Fixed128AesTensor,
+    ) -> Result<Fixed128Tensor>
+    where
+        ReplicatedPlacement:
+            PlacementDecrypt<S, ReplicatedAesKey, HostFixed128AesTensor, ReplicatedFixed128Tensor>,
+    {
+        match ciphertext {
+            Fixed128AesTensor::Host(c) => {
+                let x = plc.decrypt(sess, &key, &c);
+                Ok(Fixed128Tensor::Replicated(x))
+            }
+        }
+    }
+
+    pub(crate) fn rep_fixed_aes_kernel<S: Session, RepRingT, HostBitArray128T, HostBitArray256T>(
         sess: &S,
         rep: &ReplicatedPlacement,
         key: AbstractReplicatedAesKey<HostBitArray128T>,

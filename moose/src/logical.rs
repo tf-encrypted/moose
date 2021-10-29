@@ -126,22 +126,6 @@ where
     }
 }
 
-// TODO(Morten) next two should be for a new EncryptedTensor
-// modelled!(PlacementDecrypt::decrypt, HostPlacement, (Tensor) -> Tensor, AesDecryptOp);
-// modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (Tensor) -> Tensor, AesDecryptOp);
-modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostAesKey, HostFixed128AesTensor) -> HostFixed128Tensor, AesDecryptOp);
-modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (ReplicatedAesKey, HostFixed128AesTensor) -> ReplicatedFixed128Tensor, AesDecryptOp);
-
-kernel! {
-    AesDecryptOp,
-    [
-        // (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::host_kernel),
-        // (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] Self::rep_kernel),
-        (HostPlacement, (HostAesKey, HostFixed128AesTensor) -> HostFixed128Tensor => [runtime] Self::host_fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedAesKey, HostFixed128AesTensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_fixed_kernel),
-    ]
-}
-
 modelled!(PlacementAdd::add, HostPlacement, (Tensor, Tensor) -> Tensor, AddOp);
 
 kernel! {
