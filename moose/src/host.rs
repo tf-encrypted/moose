@@ -438,6 +438,17 @@ impl ShapeOp {
         let raw_shape = RawShape(x.0.shape().into());
         Ok(HostShape(raw_shape, plc.clone()))
     }
+
+    pub(crate) fn hostencfixed_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostEncFixed128Tensor,
+    ) -> Result<HostShape>
+    where
+        HostPlacement: PlacementShape<S, HostRing128Tensor, HostShape>,
+    {
+        Ok(plc.shape(sess, &x.tensor))
+    }
 }
 
 modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat32Tensor) -> HostFloat32Tensor, HostAtLeast2DOp);
@@ -2015,6 +2026,25 @@ where
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
         }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AbstractHostEncFixedTensor<HostRingT> {
+    pub tensor: HostRingT,
+    pub precision: u32,
+}
+
+moose_type!(HostEncFixed128Tensor = AbstractHostEncFixedTensor<HostRing128Tensor>);
+
+impl<HostRingT: Placed> Placed for AbstractHostEncFixedTensor<HostRingT>
+where
+    <HostRingT as Placed>::Placement: Into<Placement>,
+{
+    type Placement = Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.tensor.placement()?.into())
     }
 }
 

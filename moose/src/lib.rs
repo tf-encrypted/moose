@@ -2008,7 +2008,7 @@ macro_rules! moose_type {
 
         // The kernel macros uses this to determine whether to invoke kernels, and
         // if so, to map symbolic values to (partially) concrete inputs
-        impl TryFrom<<$combined as crate::computation::SymbolicType>::Type>
+        impl std::convert::TryFrom<<$combined as crate::computation::SymbolicType>::Type>
             for $outer<<$inner as crate::computation::SymbolicType>::Type>
         {
             type Error = crate::error::Error;
@@ -2091,7 +2091,7 @@ macro_rules! moose_type {
 
         // The kernel macros uses this to determine whether to invoke kernels, and
         // if so, to map symbolic values to (partially) concrete inputs
-        impl TryFrom<<$combined as crate::computation::SymbolicType>::Type>
+        impl std::convert::TryFrom<<$combined as crate::computation::SymbolicType>::Type>
             for $outer<
                 <$inner1 as crate::computation::SymbolicType>::Type,
                 <$inner2 as crate::computation::SymbolicType>::Type,
@@ -2177,9 +2177,11 @@ macro_rules! unmodelled {
 }
 
 pub mod additive;
+pub mod bristol_fashion;
 pub mod common;
 pub mod compilation;
 pub mod computation;
+pub mod encrypted;
 pub mod error;
 pub mod execution;
 pub mod fixedpoint;
