@@ -1,7 +1,7 @@
 use crate::bristol_fashion::aes;
 use crate::computation::*;
 use crate::error::Result;
-use crate::fixedpoint::Fixed128Tensor;
+use crate::fixedpoint::{Fixed128Tensor, FixedTensor};
 use crate::host::{
     AbstractHostFixedAesTensor, HostAesKey, HostBitTensor, HostFixed128AesTensor,
     HostFixed128Tensor, HostRing128Tensor, HostShape,
@@ -74,7 +74,7 @@ kernel! {
         (HostPlacement, (HostAesKey, Fixed128AesTensor) -> Fixed128Tensor => [runtime] Self::host_fixed_kernel),
         (HostPlacement, (HostAesKey, HostFixed128AesTensor) -> HostFixed128Tensor => [runtime] Self::host_fixed_aes_kernel),
         (ReplicatedPlacement, (ReplicatedAesKey, AesTensor) -> Tensor => [runtime] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedAesKey, Fixed128AesTensor) -> Fixed128Tensor => [runtime] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedAesKey, Fixed128AesTensor) -> Fixed128Tensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedAesKey, HostFixed128AesTensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_fixed_aes_kernel),
     ]
 }
@@ -171,20 +171,26 @@ impl AesDecryptOp {
         }
     }
 
-    pub(crate) fn rep_fixed_kernel<S: Session>(
+    pub(crate) fn rep_fixed_kernel<
+        S: Session,
+        ReplicatedAesKeyT,
+        HostFixed128AesT,
+        HostFixed128T,
+        ReplicatedFixed128T,
+    >(
         sess: &S,
         plc: &ReplicatedPlacement,
-        key: ReplicatedAesKey,
-        ciphertext: Fixed128AesTensor,
-    ) -> Result<Fixed128Tensor>
+        key: ReplicatedAesKeyT,
+        ciphertext: FixedAesTensor<HostFixed128AesT>,
+    ) -> Result<FixedTensor<HostFixed128T, ReplicatedFixed128T>>
     where
         ReplicatedPlacement:
-            PlacementDecrypt<S, ReplicatedAesKey, HostFixed128AesTensor, ReplicatedFixed128Tensor>,
+            PlacementDecrypt<S, ReplicatedAesKeyT, HostFixed128AesT, ReplicatedFixed128T>,
     {
         match ciphertext {
-            Fixed128AesTensor::Host(c) => {
+            FixedAesTensor::Host(c) => {
                 let x = plc.decrypt(sess, &key, &c);
-                Ok(Fixed128Tensor::Replicated(x))
+                Ok(FixedTensor::Replicated(x))
             }
         }
     }
