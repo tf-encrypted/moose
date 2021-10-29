@@ -2,7 +2,10 @@ use crate::bristol_fashion::aes;
 use crate::computation::*;
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, FixedTensor};
-use crate::host::{AbstractHostFixedAesTensor, AbstractHostFixedTensor, HostAesKey, HostBitTensor, HostFixed128AesTensor, HostFixed128Tensor, HostRing128Tensor, HostShape};
+use crate::host::{
+    AbstractHostFixedAesTensor, AbstractHostFixedTensor, HostAesKey, HostBitTensor,
+    HostFixed128AesTensor, HostFixed128Tensor, HostRing128Tensor, HostShape,
+};
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitDec, PlacementDecrypt, PlacementFill,
     PlacementIndexAxis, PlacementNeg, PlacementRingInject, PlacementSetupGen, PlacementShape,
@@ -68,7 +71,7 @@ kernel! {
     AesDecryptOp,
     [
         (HostPlacement, (HostAesKey, AesTensor) -> Tensor => [runtime] Self::host_kernel),
-        (HostPlacement, (HostAesKey, Fixed128AesTensor) -> Fixed128Tensor => [runtime] Self::host_fixed_kernel),
+        (HostPlacement, (HostAesKey, Fixed128AesTensor) -> Fixed128Tensor => [hybrid] Self::host_fixed_kernel),
         (HostPlacement, (HostAesKey, HostFixed128AesTensor) -> HostFixed128Tensor => [hybrid] Self::host_fixed_aes_kernel),
         (ReplicatedPlacement, (ReplicatedAesKey, AesTensor) -> Tensor => [hybrid] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedAesKey, Fixed128AesTensor) -> Fixed128Tensor => [hybrid] Self::rep_fixed_kernel),
@@ -94,19 +97,25 @@ impl AesDecryptOp {
         }
     }
 
-    pub(crate) fn host_fixed_kernel<S: Session>(
+    pub(crate) fn host_fixed_kernel<
+        S: Session,
+        HostAesKeyT,
+        HostFixed128AesT,
+        HostFixed128T,
+        ReplicatedFixed128T,
+    >(
         sess: &S,
         plc: &HostPlacement,
-        key: HostAesKey,
-        ciphertext: Fixed128AesTensor,
-    ) -> Result<Fixed128Tensor>
+        key: HostAesKeyT,
+        ciphertext: FixedAesTensor<HostFixed128AesT>,
+    ) -> Result<FixedTensor<HostFixed128T, ReplicatedFixed128T>>
     where
-        HostPlacement: PlacementDecrypt<S, HostAesKey, HostFixed128AesTensor, HostFixed128Tensor>,
+        HostPlacement: PlacementDecrypt<S, HostAesKeyT, HostFixed128AesT, HostFixed128T>,
     {
         match ciphertext {
-            Fixed128AesTensor::Host(c) => {
+            FixedAesTensor::Host(c) => {
                 let x = plc.decrypt(sess, &key, &c);
-                Ok(Fixed128Tensor::Host(x))
+                Ok(FixedTensor::Host(x))
             }
         }
     }
