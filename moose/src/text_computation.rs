@@ -1831,8 +1831,8 @@ impl ToTextual for Ty {
             Ty::Mirrored3Ring64Tensor => "Mirrored3Ring64Tensor".to_string(),
             Ty::Mirrored3Ring128Tensor => "Mirrored3Ring128Tensor".to_string(),
             Ty::Mirrored3BitTensor => "Mirrored3BitTensor".to_string(),
-            Ty::DistributedFixed64Tensor => "DistributedFixed64Tensor".to_string(),
-            Ty::DistributedFixed128Tensor => "DistributedFixed128Tensor".to_string(),
+            Ty::Mirrored3Fixed64Tensor => "Mirrored3Fixed64Tensor".to_string(),
+            Ty::Mirrored3Fixed128Tensor => "Mirrored3Fixed128Tensor".to_string(),
             Ty::HostEncFixed128Tensor => unimplemented!(),
         }
     }
@@ -1888,8 +1888,8 @@ impl ToTextual for Value {
             | Value::Mirrored3Ring64Tensor(_)
             | Value::Mirrored3Ring128Tensor(_)
             | Value::Mirrored3BitTensor(_)
-            | Value::DistributedFixed64Tensor(_)
-            | Value::DistributedFixed128Tensor(_)
+            | Value::Mirrored3Fixed64Tensor(_)
+            | Value::Mirrored3Fixed128Tensor(_)
             | Value::AdditiveShape(_)
             | Value::AdditiveBitTensor(_)
             | Value::AdditiveRing64Tensor(_)

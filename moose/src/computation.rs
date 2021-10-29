@@ -14,10 +14,10 @@ use crate::kernels::Session;
 use crate::logical::{Tensor, TensorDType};
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::{
-    DistributedFixed128Tensor, DistributedFixed64Tensor, Mirrored3BitTensor,
-    Mirrored3Ring128Tensor, Mirrored3Ring64Tensor, ReplicatedBitArray128, ReplicatedBitArray64,
-    ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
-    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup, ReplicatedShape,
+    Mirrored3BitTensor, Mirrored3Fixed128Tensor, Mirrored3Fixed64Tensor, Mirrored3Ring128Tensor,
+    Mirrored3Ring64Tensor, ReplicatedBitArray128, ReplicatedBitArray64, ReplicatedBitTensor,
+    ReplicatedFixed128Tensor, ReplicatedFixed64Tensor, ReplicatedRing128Tensor,
+    ReplicatedRing64Tensor, ReplicatedSetup, ReplicatedShape,
 };
 use crate::symbolic::Symbolic;
 use byteorder::{ByteOrder, LittleEndian};
@@ -478,8 +478,8 @@ values![
     Mirrored3Ring64Tensor,
     Mirrored3Ring128Tensor,
     Mirrored3BitTensor,
-    DistributedFixed64Tensor,
-    DistributedFixed128Tensor,
+    Mirrored3Fixed64Tensor,
+    Mirrored3Fixed128Tensor,
     AdditiveBitTensor,
     AdditiveRing64Tensor,
     AdditiveRing128Tensor,

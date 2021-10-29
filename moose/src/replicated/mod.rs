@@ -39,6 +39,18 @@ moose_type!(Mirrored3Ring64Tensor = Mirrored3RingTensor<HostRing64Tensor>);
 moose_type!(Mirrored3Ring128Tensor = Mirrored3RingTensor<HostRing128Tensor>);
 moose_type!(Mirrored3BitTensor = Mirrored3RingTensor<HostBitTensor>);
 
+pub trait Underlying {
+    type Ring;
+}
+
+impl<HostRingT> Underlying for AbstractReplicatedRingTensor<HostRingT> {
+    type Ring = HostRingT;
+}
+
+impl<HostRingT> Underlying for Mirrored3RingTensor<HostRingT> {
+    type Ring = HostRingT;
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedBitArray<RepBitTensorT, N>(RepBitTensorT, PhantomData<N>);
 
@@ -55,19 +67,6 @@ impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTenso
     }
 }
 
-pub trait Underlying {
-    type Ring;
-}
-
-impl<HostRingT> Underlying for AbstractReplicatedRingTensor<HostRingT> {
-    type Ring = HostRingT;
-}
-
-impl<HostRingT> Underlying for Mirrored3RingTensor<HostRingT> {
-    type Ring = HostRingT;
-}
-
-// TODO(Morten) revisit below to make sure it's the right approach
 impl<T: Placed + Underlying> Underlying for Symbolic<T> {
     type Ring = <T as Underlying>::Ring;
 }
@@ -201,8 +200,8 @@ moose_type!(ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRi
 moose_type!(ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>);
 
 // TODO(Dragos) perhaps we need better abstraction mechanisms?
-moose_type!(DistributedFixed128Tensor = AbstractReplicatedFixedTensor<Mirrored3Ring128Tensor>);
-moose_type!(DistributedFixed64Tensor = AbstractReplicatedFixedTensor<Mirrored3Ring64Tensor>);
+moose_type!(Mirrored3Fixed64Tensor = AbstractReplicatedFixedTensor<Mirrored3Ring64Tensor>);
+moose_type!(Mirrored3Fixed128Tensor = AbstractReplicatedFixedTensor<Mirrored3Ring128Tensor>);
 
 impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;
@@ -979,8 +978,6 @@ modelled!(PlacementSub::sub, ReplicatedPlacement, (HostRing128Tensor, Replicated
 modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor, RepSubOp);
 modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor, RepSubOp);
 modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepSubOp);
-
-//  TODO HERE
 modelled!(PlacementSub::sub, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepSubOp);
 modelled!(PlacementSub::sub, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepSubOp);
 modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor, RepSubOp);
@@ -996,7 +993,6 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
-
         (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::mirr_rep_kernel),
         (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::mirr_rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_mirr_kernel),
@@ -2146,7 +2142,6 @@ impl RepFillOp {
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
-        // TODO should really return PublicReplicatedTensor, but we don't have that type yet
         let (player0, player1, player2) = rep.host_placements();
 
         let AbstractReplicatedShape {
