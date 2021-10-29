@@ -8,8 +8,8 @@ impl FixedpointDivOp {
         y: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> Result<st!(AbstractReplicatedFixedTensor<RepRingT>)>
     where
-        RepRingT: Underlying<Ring = HostRingT>,
-        Mirrored3RingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+        RepRingT: Underlying<TensorType = HostRingT>,
+        Mirrored3RingTensor<HostRingT>: Underlying<TensorType = HostRingT>,
         Mirrored3RingTensor<HostRingT>: CanonicalType,
         <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
         AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
@@ -102,8 +102,8 @@ pub(crate) trait SignFromMsb<S: Session, T, O> {
 impl<S: Session, RepRingT, HostRingT> SignFromMsb<S, RepRingT, RepRingT> for ReplicatedPlacement
 where
     ReplicatedShape: KnownType<S>,
-    RepRingT: Underlying<Ring = HostRingT>,
-    Mirrored3RingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+    RepRingT: Underlying<TensorType = HostRingT>,
+    Mirrored3RingTensor<HostRingT>: Underlying<TensorType = HostRingT>,
     Mirrored3RingTensor<HostRingT>: CanonicalType,
     <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
     ReplicatedPlacement:
@@ -246,8 +246,8 @@ impl<S: Session, SetupT, RepRingT, HostRingT> ApproximateReciprocal<S, SetupT, R
     for ReplicatedPlacement
 where
     ReplicatedShape: KnownType<S>,
-    RepRingT: Underlying<Ring = HostRingT>,
-    Mirrored3RingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+    RepRingT: Underlying<TensorType = HostRingT>,
+    Mirrored3RingTensor<HostRingT>: Underlying<TensorType = HostRingT>,
     Mirrored3RingTensor<HostRingT>: CanonicalType,
     <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
     ReplicatedPlacement: DivNorm<S, SetupT, RepRingT, RepRingT>,

@@ -25,8 +25,8 @@ impl RepIfElseOp {
         y: RepRingT,
     ) -> Result<RepRingT>
     where
-        RepRingT: Underlying<Ring = HostRingT>,
-        Mirrored3RingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+        RepRingT: Underlying<TensorType = HostRingT>,
+        Mirrored3RingTensor<HostRingT>: Underlying<TensorType = HostRingT>,
         Mirrored3RingTensor<HostRingT>: CanonicalType,
         <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, m!(c!(Mirrored3RingTensor<HostRingT>))>,

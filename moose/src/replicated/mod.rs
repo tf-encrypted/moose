@@ -40,15 +40,19 @@ moose_type!(Mirrored3Ring128Tensor = Mirrored3RingTensor<HostRing128Tensor>);
 moose_type!(Mirrored3BitTensor = Mirrored3RingTensor<HostBitTensor>);
 
 pub trait Underlying {
-    type Ring;
+    type TensorType;
 }
 
 impl<HostRingT> Underlying for AbstractReplicatedRingTensor<HostRingT> {
-    type Ring = HostRingT;
+    type TensorType = HostRingT;
 }
 
 impl<HostRingT> Underlying for Mirrored3RingTensor<HostRingT> {
-    type Ring = HostRingT;
+    type TensorType = HostRingT;
+}
+
+impl<T: Placed + Underlying> Underlying for Symbolic<T> {
+    type TensorType = <T as Underlying>::TensorType;
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -65,10 +69,6 @@ impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTenso
     fn placement(&self) -> Result<Self::Placement> {
         self.0.placement()
     }
-}
-
-impl<T: Placed + Underlying> Underlying for Symbolic<T> {
-    type Ring = <T as Underlying>::Ring;
 }
 
 impl<N> SymbolicType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
@@ -2453,8 +2453,8 @@ impl RepAbsOp {
         x: RepT,
     ) -> Result<RepT>
     where
-        RepT: Underlying<Ring = HostRingT>,
-        Mirrored3RingTensor<HostRingT>: Underlying<Ring = HostRingT>,
+        RepT: Underlying<TensorType = HostRingT>,
+        Mirrored3RingTensor<HostRingT>: Underlying<TensorType = HostRingT>,
         Mirrored3RingTensor<HostRingT>: CanonicalType,
         <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
         ReplicatedPlacement: PlacementMsb<S, SetupT, RepT, RepT>,
