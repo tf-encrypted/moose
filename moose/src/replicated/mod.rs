@@ -3351,8 +3351,8 @@ mod tests {
     fn test_rep_mir_add_128() {
         let x = array![0u128, 1, 2].into_dyn();
         let y = 2u128;
-        let target_rep_mir = array![2u64, 3, 4].into_dyn();
-        let target_mir_rep = array![2u64, 3, 4].into_dyn();
+        let target_rep_mir = array![2u128, 3, 4].into_dyn();
+        let target_mir_rep = array![2u128, 3, 4].into_dyn();
         test_rep_mir_add128(x, y, target_rep_mir, target_mir_rep);
     }
 
@@ -3427,7 +3427,7 @@ mod tests {
     fn test_rep_mir_mul_128() {
         let x = array![0u128, 1, 2].into_dyn();
         let y = 2u128;
-        let target = array![2u128, 2, 4].into_dyn();
+        let target = array![0u128, 2, 4].into_dyn();
         test_rep_mir_mul128(x, y, target);
     }
 
@@ -3880,31 +3880,6 @@ mod tests {
         let result: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
         let opened_result = alice.reveal(&sess, &result);
         assert_eq!(opened_result, AbstractHostBitArray::from_raw_plc(zs, alice));
-    }
-
-    #[test]
-    fn test_mixed_arithmetic() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
-
-        let x = AbstractHostRingTensor::from_raw_plc(array![0u64, 1, 2].into_dyn(), alice.clone());
-        let target = AbstractHostRingTensor::from_raw_plc(array![0u64, 2, 4], alice.clone());
-
-        let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
-
-        let x_shared = rep.share(&sess, &setup, &x);
-        let y_dst: Mirrored3Ring64Tensor =
-            rep.fill(&sess, 2u64.into(), &rep.shape(&sess, &x_shared));
-
-        let mul = rep.mul_setup(&sess, &setup, &x_shared, &y_dst);
-        let opened_result = alice.reveal(&sess, &mul);
-
-        assert_eq!(opened_result, target);
     }
 
     macro_rules! rep_prefix_op_bit_test {
