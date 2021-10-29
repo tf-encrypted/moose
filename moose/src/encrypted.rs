@@ -70,7 +70,7 @@ modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (ReplicatedAesKey, Hos
 kernel! {
     AesDecryptOp,
     [
-        (HostPlacement, (HostAesKey, AesTensor) -> Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostAesKey, AesTensor) -> Tensor => [hybrid] Self::host_kernel),
         (HostPlacement, (HostAesKey, Fixed128AesTensor) -> Fixed128Tensor => [hybrid] Self::host_fixed_kernel),
         (HostPlacement, (HostAesKey, HostFixed128AesTensor) -> HostFixed128Tensor => [hybrid] Self::host_fixed_aes_kernel),
         (ReplicatedPlacement, (ReplicatedAesKey, AesTensor) -> Tensor => [hybrid] Self::rep_kernel),
@@ -80,37 +80,38 @@ kernel! {
 }
 
 impl AesDecryptOp {
-    pub(crate) fn host_kernel<S: Session>(
+    pub(crate) fn host_kernel<S: Session, Fixed128AesT, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
-        key: HostAesKey,
-        ciphertext: AesTensor,
-    ) -> Result<Tensor>
+        key: m!(HostAesKey),
+        ciphertext: AbstractAesTensor<Fixed128AesT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
-        HostPlacement: PlacementDecrypt<S, HostAesKey, Fixed128AesTensor, Fixed128Tensor>,
+        HostAesKey: KnownType<S>,
+        HostPlacement: PlacementDecrypt<S, m!(HostAesKey), Fixed128AesT, Fixed128T>,
     {
         match ciphertext {
-            AesTensor::Fixed128(c) => {
+            AbstractAesTensor::Fixed128(c) => {
                 let x = plc.decrypt(sess, &key, &c);
-                Ok(Tensor::Fixed128(x))
+                Ok(AbstractTensor::Fixed128(x))
             }
         }
     }
 
     pub(crate) fn host_fixed_kernel<
         S: Session,
-        HostAesKeyT,
         HostFixed128AesT,
         HostFixed128T,
         ReplicatedFixed128T,
     >(
         sess: &S,
         plc: &HostPlacement,
-        key: HostAesKeyT,
+        key: m!(HostAesKey),
         ciphertext: FixedAesTensor<HostFixed128AesT>,
     ) -> Result<FixedTensor<HostFixed128T, ReplicatedFixed128T>>
     where
-        HostPlacement: PlacementDecrypt<S, HostAesKeyT, HostFixed128AesT, HostFixed128T>,
+        HostAesKey: KnownType<S>,
+        HostPlacement: PlacementDecrypt<S, m!(HostAesKey), HostFixed128AesT, HostFixed128T>,
     {
         match ciphertext {
             FixedAesTensor::Host(c) => {
@@ -120,13 +121,14 @@ impl AesDecryptOp {
         }
     }
 
-    pub(crate) fn host_fixed_aes_kernel<S: Session, HostAesKeyT, HostBitArrayT, HostRing128T>(
+    pub(crate) fn host_fixed_aes_kernel<S: Session, HostBitArrayT, HostRing128T>(
         sess: &S,
         plc: &HostPlacement,
-        key: HostAesKeyT,
+        key: m!(HostAesKey),
         ciphertext: AbstractHostFixedAesTensor<HostBitArrayT>,
     ) -> Result<AbstractHostFixedTensor<HostRing128T>>
-where
+    where
+        HostAesKey: KnownType<S>,
         // HostPlacement: PlacementBitDec<S, HostRing128Tensor, HostBitTensor>,
         // HostPlacement: PlacementIndexAxis<S, HostBitTensor, HostBitTensor>,
         // HostPlacement: PlacementRingInject<S, HostBitTensor, HostRing128Tensor>,
