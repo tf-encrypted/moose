@@ -2,7 +2,7 @@ use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::{HostFixed128AesTensor, HostAesKey, HostFixed128Tensor, HostShape, HostString};
+use crate::host::{HostAesKey, HostFixed128AesTensor, HostFixed128Tensor, HostShape, HostString};
 use crate::kernels::*;
 use crate::replicated::ReplicatedFixed128Tensor;
 use crate::symbolic::Symbolic;

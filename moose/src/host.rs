@@ -2015,7 +2015,6 @@ impl SymbolicType for HostBitArray256 {
     type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N256>>;
 }
 
-
 impl<HostBitT: Placed, N> From<AbstractHostBitArray<HostBitT, N>>
     for Symbolic<AbstractHostBitArray<HostBitT, N>>
 where
@@ -2043,7 +2042,9 @@ where
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostAesKey<HostBitArrayT>(pub(crate) HostBitArrayT);
 
-impl<HostBitArrayT: Placed<Placement=HostPlacement>> Placed for AbstractHostAesKey<HostBitArrayT> {
+impl<HostBitArrayT: Placed<Placement = HostPlacement>> Placed
+    for AbstractHostAesKey<HostBitArrayT>
+{
     type Placement = HostBitArrayT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {

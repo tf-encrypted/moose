@@ -2,8 +2,8 @@ use crate::bristol_fashion::aes;
 use crate::computation::*;
 use crate::error::Result;
 use crate::host::{
-    AbstractHostFixedAesTensor, HostBitTensor, HostFixed128AesTensor, HostFixed128Tensor,
-    HostRing128Tensor, HostShape, HostAesKey,
+    AbstractHostFixedAesTensor, HostAesKey, HostBitTensor, HostFixed128AesTensor,
+    HostFixed128Tensor, HostRing128Tensor, HostShape,
 };
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitDec, PlacementFill, PlacementIndexAxis, PlacementNeg,
@@ -19,7 +19,7 @@ impl AesDecryptOp {
         key: HostAesKey,
         ciphertext: HostFixed128AesTensor,
     ) -> Result<HostFixed128Tensor>
-    where
+where
         // HostPlacement: PlacementBitDec<S, HostRing128Tensor, HostBitTensor>,
         // HostPlacement: PlacementIndexAxis<S, HostBitTensor, HostBitTensor>,
         // HostPlacement: PlacementRingInject<S, HostBitTensor, HostRing128Tensor>,
@@ -34,7 +34,7 @@ impl AesDecryptOp {
 
         // let shape = plc.shape(sess, &c);
         // // let c_decomposed = plc.bit_decompose(sess, &c.tensor);
-        
+
         // let m_bits = aes(sess, plc, c_bits.clone(), c_bits);
         // let zero = plc.fill(sess, Constant::Ring128(0), &shape);
         // let m = m_bits
@@ -58,7 +58,7 @@ impl AesDecryptOp {
         key: HostAesKey, // TODO take ReplicatedAesKey instead
         ciphertext: AbstractHostFixedAesTensor<HostBitArrayT>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
-    where
+where
         // HostShape: KnownType<S>,
         // ReplicatedShape: KnownType<S>,
         // HostBitArrayT: Placed<Placement = HostPlacement>,
