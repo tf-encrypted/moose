@@ -2041,6 +2041,19 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AbstractHostAesKey<HostBitArrayT>(pub(crate) HostBitArrayT);
+
+impl<HostBitArrayT: Placed<Placement=HostPlacement>> Placed for AbstractHostAesKey<HostBitArrayT> {
+    type Placement = HostBitArrayT::Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        self.0.placement()
+    }
+}
+
+moose_type!(HostAesKey = AbstractHostAesKey<HostBitArray128>);
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostFixedAesTensor<HostBitArrayT> {
     pub tensor: HostBitArrayT,
     pub precision: u32,

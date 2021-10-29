@@ -3,7 +3,7 @@ use crate::computation::*;
 use crate::error::Result;
 use crate::host::{
     AbstractHostFixedAesTensor, HostBitTensor, HostFixed128AesTensor, HostFixed128Tensor,
-    HostRing128Tensor, HostShape,
+    HostRing128Tensor, HostShape, HostAesKey,
 };
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitDec, PlacementFill, PlacementIndexAxis, PlacementNeg,
@@ -16,7 +16,8 @@ impl AesDecryptOp {
     pub(crate) fn host_fixed_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
-        c: HostFixed128AesTensor,
+        key: HostAesKey,
+        ciphertext: HostFixed128AesTensor,
     ) -> Result<HostFixed128Tensor>
     where
         // HostPlacement: PlacementBitDec<S, HostRing128Tensor, HostBitTensor>,
@@ -29,13 +30,11 @@ impl AesDecryptOp {
         // HostPlacement: PlacementAnd<S, HostBitTensor, HostBitTensor, HostBitTensor>,
         // HostPlacement: PlacementNeg<S, HostBitTensor, HostBitTensor>,
     {
-        // TODO
         unimplemented!()
+
         // let shape = plc.shape(sess, &c);
         // // let c_decomposed = plc.bit_decompose(sess, &c.tensor);
-        // let c_bits: Vec<_> = (0..128)
-        //     .map(|i| plc.index_axis(sess, 0, i, &c.tensor))
-        //     .collect();
+        
         // let m_bits = aes(sess, plc, c_bits.clone(), c_bits);
         // let zero = plc.fill(sess, Constant::Ring128(0), &shape);
         // let m = m_bits
@@ -56,7 +55,8 @@ impl AesDecryptOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT, HostBitArrayT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        c: AbstractHostFixedAesTensor<HostBitArrayT>,
+        key: HostAesKey, // TODO take ReplicatedAesKey instead
+        ciphertext: AbstractHostFixedAesTensor<HostBitArrayT>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
         // HostShape: KnownType<S>,
@@ -77,7 +77,6 @@ impl AesDecryptOp {
         // ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
         // ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
     {
-        // TODO
         unimplemented!()
 
         // let host = c.tensor.placement().unwrap();

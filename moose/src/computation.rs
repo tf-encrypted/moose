@@ -9,7 +9,7 @@ use crate::host::{
     HostFixed128Tensor, HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor,
     HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor,
     HostShape, HostString, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
-    RawShape, SliceInfo,
+    RawShape, SliceInfo, HostAesKey,
 };
 use crate::kernels::Session;
 use crate::logical::{Tensor, TensorDType};
@@ -461,6 +461,8 @@ values![
     HostUint16Tensor,
     HostUint32Tensor,
     HostUint64Tensor,
+    HostFixed128AesTensor,
+    HostAesKey,
     Fixed64Tensor,
     Fixed128Tensor,
     Float32Tensor,
@@ -478,7 +480,6 @@ values![
     AdditiveRing64Tensor,
     AdditiveRing128Tensor,
     AdditiveShape,
-    HostFixed128AesTensor,
 ];
 
 // A macros to define something common for all the possible values
