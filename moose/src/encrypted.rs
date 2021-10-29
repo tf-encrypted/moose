@@ -11,7 +11,7 @@ use crate::kernels::{
     PlacementIndexAxis, PlacementNeg, PlacementRingInject, PlacementSetupGen, PlacementShape,
     PlacementShareSetup, PlacementXor, Session,
 };
-use crate::logical::Tensor;
+use crate::logical::{AbstractTensor, Tensor};
 use crate::replicated::{
     aes::AbstractReplicatedAesKey, aes::ReplicatedAesKey, AbstractReplicatedFixedTensor,
     AbstractReplicatedShape, ReplicatedFixed128Tensor, ReplicatedShape,
@@ -73,7 +73,7 @@ kernel! {
         (HostPlacement, (HostAesKey, AesTensor) -> Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostAesKey, Fixed128AesTensor) -> Fixed128Tensor => [runtime] Self::host_fixed_kernel),
         (HostPlacement, (HostAesKey, HostFixed128AesTensor) -> HostFixed128Tensor => [runtime] Self::host_fixed_aes_kernel),
-        (ReplicatedPlacement, (ReplicatedAesKey, AesTensor) -> Tensor => [runtime] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedAesKey, AesTensor) -> Tensor => [hybrid] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedAesKey, Fixed128AesTensor) -> Fixed128Tensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedAesKey, HostFixed128AesTensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_fixed_aes_kernel),
     ]
@@ -153,20 +153,27 @@ where
 }
 
 impl AesDecryptOp {
-    pub(crate) fn rep_kernel<S: Session>(
+    pub(crate) fn rep_kernel<
+        S: Session,
+        ReplicatedAesKeyT,
+        Fixed128AesT,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+    >(
         sess: &S,
         plc: &ReplicatedPlacement,
-        key: ReplicatedAesKey,
-        ciphertext: AesTensor,
-    ) -> Result<Tensor>
+        key: ReplicatedAesKeyT,
+        ciphertext: AbstractAesTensor<Fixed128AesT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
-        ReplicatedPlacement:
-            PlacementDecrypt<S, ReplicatedAesKey, Fixed128AesTensor, Fixed128Tensor>,
+        ReplicatedPlacement: PlacementDecrypt<S, ReplicatedAesKeyT, Fixed128AesT, Fixed128T>,
     {
         match ciphertext {
-            AesTensor::Fixed128(c) => {
+            AbstractAesTensor::Fixed128(c) => {
                 let x = plc.decrypt(sess, &key, &c);
-                Ok(Tensor::Fixed128(x))
+                Ok(AbstractTensor::Fixed128(x))
             }
         }
     }
