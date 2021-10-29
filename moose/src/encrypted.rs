@@ -2,10 +2,7 @@ use crate::bristol_fashion::aes;
 use crate::computation::*;
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, FixedTensor};
-use crate::host::{
-    AbstractHostFixedAesTensor, HostAesKey, HostBitTensor, HostFixed128AesTensor,
-    HostFixed128Tensor, HostRing128Tensor, HostShape,
-};
+use crate::host::{AbstractHostFixedAesTensor, AbstractHostFixedTensor, HostAesKey, HostBitTensor, HostFixed128AesTensor, HostFixed128Tensor, HostRing128Tensor, HostShape};
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitDec, PlacementDecrypt, PlacementFill,
     PlacementIndexAxis, PlacementNeg, PlacementRingInject, PlacementSetupGen, PlacementShape,
@@ -72,7 +69,7 @@ kernel! {
     [
         (HostPlacement, (HostAesKey, AesTensor) -> Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostAesKey, Fixed128AesTensor) -> Fixed128Tensor => [runtime] Self::host_fixed_kernel),
-        (HostPlacement, (HostAesKey, HostFixed128AesTensor) -> HostFixed128Tensor => [runtime] Self::host_fixed_aes_kernel),
+        (HostPlacement, (HostAesKey, HostFixed128AesTensor) -> HostFixed128Tensor => [hybrid] Self::host_fixed_aes_kernel),
         (ReplicatedPlacement, (ReplicatedAesKey, AesTensor) -> Tensor => [hybrid] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedAesKey, Fixed128AesTensor) -> Fixed128Tensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedAesKey, HostFixed128AesTensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_fixed_aes_kernel),
@@ -114,12 +111,12 @@ impl AesDecryptOp {
         }
     }
 
-    pub(crate) fn host_fixed_aes_kernel<S: Session>(
+    pub(crate) fn host_fixed_aes_kernel<S: Session, HostAesKeyT, HostBitArrayT, HostRing128T>(
         sess: &S,
         plc: &HostPlacement,
-        key: HostAesKey,
-        ciphertext: HostFixed128AesTensor,
-    ) -> Result<HostFixed128Tensor>
+        key: HostAesKeyT,
+        ciphertext: AbstractHostFixedAesTensor<HostBitArrayT>,
+    ) -> Result<AbstractHostFixedTensor<HostRing128T>>
 where
         // HostPlacement: PlacementBitDec<S, HostRing128Tensor, HostBitTensor>,
         // HostPlacement: PlacementIndexAxis<S, HostBitTensor, HostBitTensor>,
