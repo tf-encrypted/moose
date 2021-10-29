@@ -439,13 +439,13 @@ impl ShapeOp {
         Ok(HostShape(raw_shape, plc.clone()))
     }
 
-    pub(crate) fn hostencfixed_kernel<S: Session>(
+    pub(crate) fn hostfixedaes_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
         x: HostFixed128AesTensor,
     ) -> Result<HostShape>
     where
-        HostPlacement: PlacementShape<S, HostRing128Tensor, HostShape>,
+        HostPlacement: PlacementShape<S, HostBitArray256, HostShape>,
     {
         Ok(plc.shape(sess, &x.tensor))
     }
@@ -1976,6 +1976,10 @@ impl RingInjectOp {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostBitArray<HostBitTensorT, N>(pub HostBitTensorT, pub PhantomData<N>);
 
+impl<HostBitT: CanonicalType, N> CanonicalType for AbstractHostBitArray<HostBitT, N> {
+    type Type = AbstractHostBitArray<<HostBitT as CanonicalType>::Type, N>;
+}
+
 pub type HostBitArray64 = AbstractHostBitArray<HostBitTensor, N64>;
 
 #[cfg(test)]
@@ -2011,6 +2015,7 @@ impl SymbolicType for HostBitArray256 {
     type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N256>>;
 }
 
+
 impl<HostBitT: Placed, N> From<AbstractHostBitArray<HostBitT, N>>
     for Symbolic<AbstractHostBitArray<HostBitT, N>>
 where
@@ -2036,16 +2041,16 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractHostFixedAesTensor<HostRingT> {
-    pub tensor: HostRingT,
+pub struct AbstractHostFixedAesTensor<HostBitArrayT> {
+    pub tensor: HostBitArrayT,
     pub precision: u32,
 }
 
-moose_type!(HostFixed128AesTensor = AbstractHostFixedAesTensor<HostRing128Tensor>);
+moose_type!(HostFixed128AesTensor = AbstractHostFixedAesTensor<HostBitArray256>);
 
-impl<HostRingT: Placed> Placed for AbstractHostFixedAesTensor<HostRingT>
+impl<HostBitArrayT: Placed> Placed for AbstractHostFixedAesTensor<HostBitArrayT>
 where
-    <HostRingT as Placed>::Placement: Into<Placement>,
+    <HostBitArrayT as Placed>::Placement: Into<Placement>,
 {
     type Placement = Placement;
 
