@@ -1832,6 +1832,7 @@ impl ToTextual for Ty {
             Ty::Float64Tensor => "Float64Tensor".to_string(),
             Ty::HostFixed128AesTensor => unimplemented!(),
             Ty::HostAesKey => unimplemented!(),
+            Ty::ReplicatedAesKey => unimplemented!(),
         }
     }
 }
@@ -1892,6 +1893,7 @@ impl ToTextual for Value {
             }
             Value::HostFixed128AesTensor(_) => unimplemented!(),
             Value::HostAesKey(_) => unimplemented!(),
+            Value::ReplicatedAesKey(_) => unimplemented!(),
         }
     }
 }

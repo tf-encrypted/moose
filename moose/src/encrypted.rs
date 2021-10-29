@@ -10,6 +10,7 @@ use crate::kernels::{
     PlacementRingInject, PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementXor,
     Session,
 };
+use crate::replicated::aes::AbstractReplicatedAesKey;
 use crate::replicated::{AbstractReplicatedFixedTensor, AbstractReplicatedShape, ReplicatedShape};
 
 impl AesDecryptOp {
@@ -52,11 +53,11 @@ where
 }
 
 impl AesDecryptOp {
-    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT, HostBitArrayT>(
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT, HostBitArray128T, HostBitArray256T>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        key: HostAesKey, // TODO take ReplicatedAesKey instead
-        ciphertext: AbstractHostFixedAesTensor<HostBitArrayT>,
+        key: AbstractReplicatedAesKey<HostBitArray128T>,
+        ciphertext: AbstractHostFixedAesTensor<HostBitArray256T>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
 where
         // HostShape: KnownType<S>,
