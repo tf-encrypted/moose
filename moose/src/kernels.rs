@@ -370,8 +370,8 @@ pub trait PlacementReshape<S: Session, T, ShapeT, O> {
     fn reshape(&self, sess: &S, x: &T, shape: &ShapeT) -> O;
 }
 
-pub trait PlacementDecrypt<S: Session, T, O> {
-    fn decrypt(&self, sess: &S, c: &T) -> O;
+pub trait PlacementDecrypt<S: Session, KeyT, C, O> {
+    fn decrypt(&self, sess: &S, key: &KeyT, ciphertext: &C) -> O;
 }
 
 pub trait PlacementKeyGen<S: Session, KeyT> {

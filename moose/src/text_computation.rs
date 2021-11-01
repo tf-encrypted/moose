@@ -852,6 +852,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "BitTensor" => Ok((i, Ty::HostBitTensor)),
         "BitArray64" => Ok((i, Ty::HostBitArray64)),
         "BitArray128" => Ok((i, Ty::HostBitArray128)),
+        "BitArray256" => Ok((i, Ty::HostBitArray256)),
         "Ring64Tensor" => Ok((i, Ty::HostRing64Tensor)),
         "Ring128Tensor" => Ok((i, Ty::HostRing128Tensor)),
         "Float32Tensor" => Ok((i, Ty::HostFloat32Tensor)),
@@ -1795,6 +1796,7 @@ impl ToTextual for Ty {
             Ty::HostBitTensor => "BitTensor".to_string(),
             Ty::HostBitArray64 => "BitArray64".to_string(),
             Ty::HostBitArray128 => "BitArray128".to_string(),
+            Ty::HostBitArray256 => "BitArray256".to_string(),
             Ty::HostShape => "Shape".to_string(),
             Ty::Seed => "Seed".to_string(),
             Ty::PrfKey => "PrfKey".to_string(),
@@ -1828,7 +1830,16 @@ impl ToTextual for Ty {
             Ty::Fixed128Tensor => "Fixed128Tensor".to_string(),
             Ty::Float32Tensor => "Float32Tensor".to_string(),
             Ty::Float64Tensor => "Float64Tensor".to_string(),
-            Ty::HostEncFixed128Tensor => unimplemented!(),
+            Ty::Mirrored3Ring64Tensor => "Mirrored3Ring64Tensor".to_string(),
+            Ty::Mirrored3Ring128Tensor => "Mirrored3Ring128Tensor".to_string(),
+            Ty::Mirrored3BitTensor => "Mirrored3BitTensor".to_string(),
+            Ty::Mirrored3Fixed64Tensor => "Mirrored3Fixed64Tensor".to_string(),
+            Ty::Mirrored3Fixed128Tensor => "Mirrored3Fixed128Tensor".to_string(),
+            Ty::HostFixed128AesTensor => unimplemented!(),
+            Ty::HostAesKey => unimplemented!(),
+            Ty::ReplicatedAesKey => unimplemented!(),
+            Ty::Fixed128AesTensor => unimplemented!(),
+            Ty::AesTensor => unimplemented!(),
         }
     }
 }
@@ -1866,6 +1877,7 @@ impl ToTextual for Value {
             | Value::HostBitArray64(_)
             | Value::Tensor(_)
             | Value::HostBitArray128(_) => unimplemented!(),
+            Value::HostBitArray256(_) => unimplemented!(),
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)
             | Value::Fixed128Tensor(_)
@@ -1880,13 +1892,22 @@ impl ToTextual for Value {
             | Value::ReplicatedRing128Tensor(_)
             | Value::ReplicatedFixed64Tensor(_)
             | Value::ReplicatedFixed128Tensor(_)
+            | Value::Mirrored3Ring64Tensor(_)
+            | Value::Mirrored3Ring128Tensor(_)
+            | Value::Mirrored3BitTensor(_)
+            | Value::Mirrored3Fixed64Tensor(_)
+            | Value::Mirrored3Fixed128Tensor(_)
             | Value::AdditiveShape(_)
             | Value::AdditiveBitTensor(_)
             | Value::AdditiveRing64Tensor(_)
             | Value::AdditiveRing128Tensor(_) => {
                 unimplemented!("Unsupported Value variant: {:?}", self)
             }
-            Value::HostEncFixed128Tensor(_) => unimplemented!(),
+            Value::HostFixed128AesTensor(_) => unimplemented!(),
+            Value::HostAesKey(_) => unimplemented!(),
+            Value::ReplicatedAesKey(_) => unimplemented!(),
+            Value::Fixed128AesTensor(_) => unimplemented!(),
+            Value::AesTensor(_) => unimplemented!(),
         }
     }
 }

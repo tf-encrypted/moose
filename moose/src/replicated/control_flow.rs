@@ -1,7 +1,9 @@
-use crate::computation::{KnownType, Placed, RepIfElseOp, ReplicatedPlacement};
+use crate::computation::{CanonicalType, KnownType, Placed, RepIfElseOp, ReplicatedPlacement};
 use crate::error::Result;
 use crate::kernels::*;
-use crate::replicated::{ReplicatedRing128Tensor, ReplicatedRing64Tensor};
+use crate::replicated::{
+    Mirrored3RingTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, Underlying,
+};
 
 modelled!(PlacementIfElse::if_else, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepIfElseOp);
 modelled!(PlacementIfElse::if_else, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepIfElseOp);
@@ -15,7 +17,7 @@ kernel! {
 }
 
 impl RepIfElseOp {
-    fn rep_kernel<S: Session, RepRingT, ShapeT>(
+    fn rep_kernel<S: Session, RepRingT, ShapeT, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         s: RepRingT,
@@ -23,12 +25,17 @@ impl RepIfElseOp {
         y: RepRingT,
     ) -> Result<RepRingT>
     where
-        ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
+        RepRingT: Underlying<TensorType = HostRingT>,
+        Mirrored3RingTensor<HostRingT>: Underlying<TensorType = HostRingT>,
+        Mirrored3RingTensor<HostRingT>: CanonicalType,
+        <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, m!(c!(Mirrored3RingTensor<HostRingT>))>,
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
-        ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement:
+            PlacementSub<S, m!(c!(Mirrored3RingTensor<HostRingT>)), RepRingT, RepRingT>,
     {
         let setup = sess.replicated_setup(rep);
         let ones = rep.fill(sess, 1u64.into(), &rep.shape(sess, &x));
