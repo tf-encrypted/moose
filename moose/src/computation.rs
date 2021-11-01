@@ -1,25 +1,13 @@
-use crate::additive::{
-    AdditiveBitTensor, AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape,
-};
+use crate::additive::*;
 use crate::encrypted::{AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::{
-    HostAesKey, HostBitArray128, HostBitArray256, HostBitArray64, HostBitTensor,
-    HostFixed128AesTensor, HostFixed128Tensor, HostFixed64Tensor, HostFloat32Tensor,
-    HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor,
-    HostRing128Tensor, HostRing64Tensor, HostShape, HostString, HostUint16Tensor, HostUint32Tensor,
-    HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
-};
+use crate::host::*;
 use crate::kernels::Session;
 use crate::logical::{Tensor, TensorDType};
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
-use crate::replicated::{
-    ReplicatedAesKey, ReplicatedBitArray128, ReplicatedBitArray64, ReplicatedBitTensor,
-    ReplicatedFixed128Tensor, ReplicatedFixed64Tensor, ReplicatedRing128Tensor,
-    ReplicatedRing64Tensor, ReplicatedSetup, ReplicatedShape,
-};
+use crate::replicated::*;
 use crate::symbolic::Symbolic;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
@@ -480,6 +468,11 @@ values![
     ReplicatedAesKey,
     ReplicatedSetup,
     ReplicatedShape,
+    Mirrored3Ring64Tensor,
+    Mirrored3Ring128Tensor,
+    Mirrored3BitTensor,
+    Mirrored3Fixed64Tensor,
+    Mirrored3Fixed128Tensor,
     AdditiveBitTensor,
     AdditiveRing64Tensor,
     AdditiveRing128Tensor,
