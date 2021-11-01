@@ -1951,7 +1951,7 @@ mod tests {
         test_rep_prefix_mul_fixed128(x, y_target);
     }
 
-    macro_rules! rep_p_eval_fixed_test {
+    macro_rules! rep_poly_eval_fixed_test {
         ($func_name:ident, $test_func: ident<$tt: ty>, $f_precision: expr) => {
             fn $func_name(x: ArrayD<f64>, coeffs: Vec<f64>, y_target: Vec<f64>) {
                 let alice = HostPlacement {
@@ -2000,24 +2000,24 @@ mod tests {
         };
     }
 
-    rep_p_eval_fixed_test!(test_rep_p_eval_fixed64, p_eval<u64>, 15);
-    rep_p_eval_fixed_test!(test_rep_p_eval_fixed128, p_eval<u128>, 15);
+    rep_poly_eval_fixed_test!(test_rep_poly_eval_fixed64, poly_eval<u64>, 15);
+    rep_poly_eval_fixed_test!(test_rep_poly_eval_fixed128, poly_eval<u128>, 15);
 
     #[test]
-    fn test_rep_p_eval_64() {
+    fn test_rep_poly_eval_64() {
         let x = array![1f64, 2., 3., 4.].into_dyn();
         let coeffs = vec![1f64, 2., 3.];
         let y_targets = vec![6f64, 17., 34., 57.];
 
-        test_rep_p_eval_fixed64(x, coeffs, y_targets);
+        test_rep_poly_eval_fixed64(x, coeffs, y_targets);
     }
 
     #[test]
-    fn test_rep_p_eval_128() {
+    fn test_rep_poly_eval_128() {
         let x = array![1f64, 2., 3., 4.].into_dyn();
         let coeffs = vec![1f64, 2., 3.];
         let y_targets = vec![6f64, 17., 34., 57.];
 
-        test_rep_p_eval_fixed128(x, coeffs, y_targets);
+        test_rep_poly_eval_fixed128(x, coeffs, y_targets);
     }
 }
