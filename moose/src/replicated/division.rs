@@ -188,7 +188,7 @@ where
     fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: Vec<RepBitT>) -> RepRingT {
         assert_eq!(max_bits, x.len());
 
-        let rep = self.clone();
+        let rep = self;
         let x_rev: Vec<_> = (0..max_bits).map(|i| x[max_bits - i - 1].clone()).collect();
 
         let y = rep.prefix_or(sess, setup, x_rev);
