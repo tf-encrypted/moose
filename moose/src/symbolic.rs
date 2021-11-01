@@ -6,8 +6,9 @@ use crate::error::{Error, Result};
 use crate::kernels::{DispatchKernel, PlacementPlace, Session};
 use crate::prim::PrfKey;
 use crate::replicated::AbstractReplicatedSetup;
+use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
@@ -126,7 +127,7 @@ impl SymbolicSession {
         operands: &[&str],
         plc: &Placement,
     ) -> String {
-        let mut state = self.state.write().unwrap();
+        let mut state = self.state.write();
         let op_name: String = format!("op_{}", state.ops.len());
         let op = Operation {
             name: op_name.clone(),
@@ -142,7 +143,7 @@ impl SymbolicSession {
     ///
     /// The "ops" vector is locked for READ for the duration of the call.
     pub fn ops_iter<F: FnMut(std::slice::Iter<Operation>) -> T, T>(&self, mut operation: F) -> T {
-        let state = self.state.read().unwrap();
+        let state = self.state.read();
         operation(state.ops.iter())
     }
 }
@@ -162,7 +163,7 @@ impl Session for SymbolicSession {
 
     /// Produce a new replicated setup or returned a previously produced setup for the placement
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
-        let state = self.state.read().unwrap();
+        let state = self.state.read();
         match state.replicated_keys.get(plc) {
             Some(setup) => Arc::clone(setup),
             None => {
@@ -173,9 +174,9 @@ impl Session for SymbolicSession {
                 let new_setup = plc.gen_setup(self);
 
                 // Grab a new write lock.
-                let mut state = self.state.write().unwrap();
+                let mut state = self.state.write();
                 // Only insert if missing, since someone else might have done that already
-                // If our `new_setup` end up being unused due to the race, it will be pruned later on by a dedicated pruning pass.
+                // If our `new_setup` ends up being unused due to the race, it will be pruned later on by a dedicated pruning pass.
                 let setup = state
                     .replicated_keys
                     .entry(plc.clone())
@@ -379,12 +380,7 @@ impl SymbolicExecutor {
                 })?;
             env.insert(op.name.clone(), value);
         }
-        let state = session.state.read().map_err(|e| {
-            Error::Compilation(format!(
-                "Failed to get operations from the Symbolic Session due to an error: {}",
-                e
-            ))
-        })?;
+        let state = session.state.read();
         Ok(Computation {
             operations: state.ops.clone(),
         })
