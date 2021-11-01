@@ -1137,7 +1137,7 @@ impl ReplicatedPlacement {
         let degree = coeffs.len() - 1;
 
         let x_n: Vec<AbstractReplicatedFixedTensor<RepRingT>> =
-            (0..degree).into_iter().map(|_| x.clone()).collect();
+            (0..degree).map(|_| x.clone()).collect();
 
         let x_pre_mul = self.prefix_mul_fixed(sess, setup, x_n);
 
@@ -1145,7 +1145,6 @@ impl ReplicatedPlacement {
         // If x_pre_mul could be concatenated in one tensor, we could use a single
         // multiplication instead of doing a for loop.
         let x_mul_coeffs: Vec<RepRingT> = (0..x_pre_mul.len())
-            .into_iter()
             .map(|i| self.mul_setup(sess, setup, &coeffs[i + 1].tensor, &x_pre_mul[i].tensor))
             .collect();
 
