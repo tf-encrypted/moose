@@ -1,4 +1,3 @@
-
 use crate::computation::*;
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, FixedTensor};
