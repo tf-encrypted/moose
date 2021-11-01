@@ -2025,6 +2025,23 @@ impl SymbolicType for HostBitArray256 {
     type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N256>>;
 }
 
+pub trait PlacementToVec<S: Session, X> {
+    type Item;
+    fn to_vec(&self, sess: &S, x: &X) -> Vec<Self::Item>;
+}
+
+impl<S: Session, N: Const> PlacementToVec<S, AbstractHostBitArray<HostBitTensor, N>> for HostPlacement
+where
+    HostPlacement: PlacementIndex<S, HostBitTensor, HostBitTensor>,
+{
+    type Item = HostBitTensor;
+    fn to_vec(&self, sess: &S, x: &AbstractHostBitArray<HostBitTensor, N>) -> Vec<Self::Item> {
+        (0..N::VALUE)
+            .map(|i| self.index(sess, i, &x.0))
+            .collect()
+    }
+}
+
 impl<HostBitT: Placed, N> From<AbstractHostBitArray<HostBitT, N>>
     for Symbolic<AbstractHostBitArray<HostBitT, N>>
 where
