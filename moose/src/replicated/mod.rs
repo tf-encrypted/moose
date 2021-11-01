@@ -18,6 +18,40 @@ use std::marker::PhantomData;
 
 pub mod division;
 
+pub(crate) trait ShapeFill<S, TenT> {
+    type Result;
+
+    fn shape_fill<C: Into<Constant>>(
+        &self,
+        sess: &S,
+        fill_value: C,
+        shape_from: &TenT,
+    ) -> Self::Result;
+}
+
+impl<S: Session, TenT> ShapeFill<S, TenT> for ReplicatedPlacement
+where
+    TenT: Underlying,
+    Self: PlacementShape<S, TenT, m!(ReplicatedShape)>,
+    Self: PlacementFill<S, m!(ReplicatedShape), m!(c!(Mirrored3RingTensor<TenT::TensorType>))>,
+
+    ReplicatedShape: KnownType<S>,
+    Mirrored3RingTensor<TenT::TensorType>: CanonicalType,
+    <Mirrored3RingTensor<TenT::TensorType> as CanonicalType>::Type: KnownType<S>,
+{
+    type Result = m!(c!(Mirrored3RingTensor<TenT::TensorType>));
+
+    fn shape_fill<C: Into<Constant>>(
+        &self,
+        sess: &S,
+        fill_value: C,
+        shape_from: &TenT,
+    ) -> Self::Result {
+        let shape = self.shape(sess, shape_from);
+        self.fill(sess, fill_value.into(), &shape)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedRingTensor<HostRingT> {
     pub shares: [[HostRingT; 2]; 3],

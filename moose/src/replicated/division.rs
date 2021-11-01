@@ -1,34 +1,21 @@
 use super::*;
 
 impl FixedpointDivOp {
-    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, HostRingT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, MirroredT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
         y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
-        RepRingT: Underlying<TensorType = HostRingT>,
-        Mirrored3RingTensor<HostRingT>: Underlying<TensorType = HostRingT>,
-        Mirrored3RingTensor<HostRingT>: CanonicalType,
-        <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
-        AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
-        <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
-        AbstractReplicatedFixedTensor<RepRingT>:
-            Into<m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
-        ReplicatedShape: KnownType<S>,
         RepRingT: Ring,
-        ReplicatedPlacement: PlacementShape<S, RepRingT, m!(ReplicatedShape)>,
-        ReplicatedPlacement:
-            PlacementFill<S, m!(ReplicatedShape), m!(c!(Mirrored3RingTensor<HostRingT>))>,
         ReplicatedPlacement: ApproximateReciprocal<S, S::ReplicatedSetup, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
-        ReplicatedPlacement:
-            PlacementAdd<S, m!(c!(Mirrored3RingTensor<HostRingT>)), RepRingT, RepRingT>,
-        ReplicatedPlacement:
-            PlacementSub<S, m!(c!(Mirrored3RingTensor<HostRingT>)), RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<S, MirroredT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+        ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirroredT>,
     {
         #![allow(clippy::many_single_char_names)]
         let setup = rep.gen_setup(sess);
@@ -49,8 +36,6 @@ impl FixedpointDivOp {
         let x_st = x.tensor;
         let y_st = y.tensor;
 
-        let x_shape = rep.shape(sess, &x_st);
-
         let w = rep.approximate_reciprocal(
             sess,
             &setup,
@@ -64,7 +49,7 @@ impl FixedpointDivOp {
             value: 1.0,
             precision: 2 * frac_precision as usize,
         });
-        let rep_alpha = rep.fill(sess, alpha, &x_shape);
+        let rep_alpha = rep.shape_fill(sess, alpha, &x_st);
 
         let mut a = with_context!(
             rep,
@@ -91,8 +76,7 @@ impl FixedpointDivOp {
             tensor: b,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
             fractional_precision: x.fractional_precision,
-        }
-        .into())
+        })
     }
 }
 
@@ -100,28 +84,16 @@ pub(crate) trait SignFromMsb<S: Session, T, O> {
     fn sign_from_msb(&self, sess: &S, msb_ring: &T) -> O;
 }
 
-impl<S: Session, RepRingT, HostRingT> SignFromMsb<S, RepRingT, RepRingT> for ReplicatedPlacement
+impl<S: Session, RepRingT, MirroredT> SignFromMsb<S, RepRingT, RepRingT> for ReplicatedPlacement
 where
-    ReplicatedShape: KnownType<S>,
-    RepRingT: Underlying<TensorType = HostRingT>,
-    Mirrored3RingTensor<HostRingT>: Underlying<TensorType = HostRingT>,
-    Mirrored3RingTensor<HostRingT>: CanonicalType,
-    <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
-    ReplicatedPlacement:
-        PlacementFill<S, cs!(ReplicatedShape), m!(c!(Mirrored3RingTensor<HostRingT>))>,
-    ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
-    ReplicatedPlacement:
-        PlacementSub<S, m!(c!(Mirrored3RingTensor<HostRingT>)), RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
+    ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirroredT>,
 {
     fn sign_from_msb(&self, sess: &S, msb_ring: &RepRingT) -> RepRingT {
         let rep = self;
         let double = rep.shl(sess, 1, msb_ring);
-
-        let one_value: Constant = 1u8.into();
-
-        let x_shape = rep.shape(sess, msb_ring);
-        let ones = rep.fill(sess, one_value, &x_shape);
+        let ones = rep.shape_fill(sess, 1_u8, msb_ring);
         rep.sub(sess, &ones, &double)
     }
 }
@@ -243,20 +215,12 @@ pub(crate) trait ApproximateReciprocal<S: Session, SetupT, T, O> {
     ) -> O;
 }
 
-impl<S: Session, SetupT, RepRingT, HostRingT> ApproximateReciprocal<S, SetupT, RepRingT, RepRingT>
+impl<S: Session, SetupT, RepRingT, MirroredT> ApproximateReciprocal<S, SetupT, RepRingT, RepRingT>
     for ReplicatedPlacement
 where
-    ReplicatedShape: KnownType<S>,
-    RepRingT: Underlying<TensorType = HostRingT>,
-    Mirrored3RingTensor<HostRingT>: Underlying<TensorType = HostRingT>,
-    Mirrored3RingTensor<HostRingT>: CanonicalType,
-    <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
     ReplicatedPlacement: DivNorm<S, SetupT, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
-    ReplicatedPlacement:
-        PlacementFill<S, cs!(ReplicatedShape), m!(c!(Mirrored3RingTensor<HostRingT>))>,
-    ReplicatedPlacement:
-        PlacementSub<S, m!(c!(Mirrored3RingTensor<HostRingT>)), RepRingT, RepRingT>,
+    ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirroredT>,
+    ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
@@ -274,13 +238,13 @@ where
 
         let (upshifted, signed_topmost) = rep.norm(sess, setup, total_precision, x);
 
-        let x_shape = rep.shape(sess, x);
         // 2.9142 * 2^{total_precision}
         let alpha = Constant::Fixed(FixedpointConstant {
             value: 2.9142,
             precision: total_precision,
         });
-        let alpha = rep.fill(sess, alpha, &x_shape);
+        let alpha = rep.shape_fill(sess, alpha, x);
+
         let d = with_context!(rep, sess, alpha - rep.shl(sess, 1, &upshifted));
         let w = rep.mul_setup(sess, setup, &d, &signed_topmost);
 
