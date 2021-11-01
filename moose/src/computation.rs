@@ -954,7 +954,7 @@ operators![
     FixedpointTruncPr,
     FixedpointMean,
     FixedpointSum,
-    FixedpointSqrt,
+    // FixedpointSqrt,
     // Floating-point operators
     FloatingpointAdd,
     FloatingpointSub,
@@ -992,7 +992,7 @@ operators![
     RepXor,
     RepNeg,
     RepFixedpointMean,
-    RepFixedpointSqrt,
+    // RepFixedpointSqrt,
     RepShl,
     RepSum,
     RepAddN,
