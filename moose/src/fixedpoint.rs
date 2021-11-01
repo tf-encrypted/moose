@@ -1103,6 +1103,64 @@ impl ReplicatedPlacement {
     }
 }
 
+impl ReplicatedPlacement {
+    pub fn poly_eval<S: Session, SetupT, RepRingT>(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+        coeffs: Vec<AbstractReplicatedFixedTensor<RepRingT>>,
+    ) -> AbstractReplicatedFixedTensor<RepRingT>
+    where
+        AbstractReplicatedFixedTensor<RepRingT>: Clone,
+        ReplicatedPlacement: PlacementMul<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
+        ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementTruncPr<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
+        ReplicatedPlacement: PlacementAddN<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
+    {
+        let degree = coeffs.len() - 1;
+
+        let x_n: Vec<AbstractReplicatedFixedTensor<RepRingT>> =
+            (0..degree).map(|_| x.clone()).collect();
+
+        let x_pre_mul = self.prefix_mul_fixed(sess, setup, x_n);
+
+        // TODO [Yann] - this multiplication should be public/private instead
+        // If x_pre_mul could be concatenated in one tensor, we could use a single
+        // multiplication instead of doing a for loop.
+        let x_mul_coeffs: Vec<RepRingT> = (0..x_pre_mul.len())
+            .map(|i| self.mul_setup(sess, setup, &coeffs[i + 1].tensor, &x_pre_mul[i].tensor))
+            .collect();
+
+        let x_mul_coeffs_added = self.add_n(sess, &x_mul_coeffs);
+        let x_mul_coeffs_added_fixed = AbstractReplicatedFixedTensor {
+            tensor: x_mul_coeffs_added,
+            fractional_precision: 2 * x.fractional_precision,
+            integral_precision: x.integral_precision,
+        };
+
+        let x_mul_coeffs_added_fixed_trunc =
+            self.trunc_pr(sess, x.fractional_precision, &x_mul_coeffs_added_fixed);
+
+        self.add(sess, &x_mul_coeffs_added_fixed_trunc, &coeffs[0])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1890,5 +1948,75 @@ mod tests {
         let y_target = vec![1u128, 2, 6, 24];
 
         test_rep_prefix_mul_fixed128(x, y_target);
+    }
+
+    macro_rules! rep_poly_eval_fixed_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $f_precision: expr) => {
+            fn $func_name(x: ArrayD<f64>, coeffs: Vec<f64>, y_target: Vec<f64>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let encode = |item: &f64| (2_i64.pow($f_precision) as f64 * item) as $tt;
+                let x_encoded = x.map(encode);
+                let x_ring = AbstractHostRingTensor::from_raw_plc(x_encoded, alice.clone());
+                let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
+                    rep.share(&sess, &setup, &x_ring);
+                let x_fixed_shared = new_replicated_fixed_tensor(x_shared);
+
+                let coeffs_fixed_shared: Vec<
+                    AbstractReplicatedFixedTensor<
+                        AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>>,
+                    >,
+                > = coeffs
+                    .into_iter()
+                    .map(|coeff| {
+                        let coeff_encoded = array![coeff].map(encode);
+                        let coeff_ring =
+                            AbstractHostRingTensor::from_raw_plc(coeff_encoded, alice.clone());
+                        let coeff_shared: AbstractReplicatedRingTensor<
+                            AbstractHostRingTensor<$tt>,
+                        > = rep.share(&sess, &setup, &coeff_ring);
+                        new_replicated_fixed_tensor(coeff_shared)
+                    })
+                    .collect();
+
+                let output = rep.poly_eval(&sess, &setup, x_fixed_shared, coeffs_fixed_shared);
+                let output_reveal = alice.reveal(&sess, &output);
+                let result = Convert::decode(&output_reveal.tensor, (2 as $tt).pow($f_precision));
+
+                for i in 0..y_target.len() {
+                    let error = (result.0[i] - y_target[i]).abs();
+                    assert!(error < f64::EPSILON);
+                }
+            }
+        };
+    }
+
+    rep_poly_eval_fixed_test!(test_rep_poly_eval_fixed64, poly_eval<u64>, 15);
+    rep_poly_eval_fixed_test!(test_rep_poly_eval_fixed128, poly_eval<u128>, 15);
+
+    #[test]
+    fn test_rep_poly_eval_64() {
+        let x = array![1f64, 2., 3., 4.].into_dyn();
+        let coeffs = vec![1f64, 2., 3.];
+        let y_targets = vec![6f64, 17., 34., 57.];
+
+        test_rep_poly_eval_fixed64(x, coeffs, y_targets);
+    }
+
+    #[test]
+    fn test_rep_poly_eval_128() {
+        let x = array![1f64, 2., 3., 4.].into_dyn();
+        let coeffs = vec![1f64, 2., 3.];
+        let y_targets = vec![6f64, 17., 34., 57.];
+
+        test_rep_poly_eval_fixed128(x, coeffs, y_targets);
     }
 }
