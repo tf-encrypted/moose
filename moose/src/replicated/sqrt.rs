@@ -1,14 +1,26 @@
 use crate::computation::{CanonicalType, KnownType, ReplicatedPlacement};
-use crate::{Const, Ring};
 use crate::kernels::*;
 use crate::replicated::division::SignFromMsb;
 use crate::replicated::{AbstractReplicatedBitArray, AbstractReplicatedFixedTensor};
+use crate::{Const, Ring};
 
+// Alternative to PlacementMsb suited for replicated fixedpoint tensors.
+// For a fixedpoint tensor `x`, produces an array of bits of length
+// `x.integral_precision + x.fractional_precision` such that every bit is 0
+// except for the index at which `x` takes its MSB, which is 1.
+// Example:
+//      msb_index(AbstractFixedpointTensor(7, 3, 5) = [0 0 1 0 0 0 0 0]
 pub(crate) trait MsbIndex<S: RuntimeSession, SetupT, RepRingT, RepBitT> {
-    fn msb_index(&self, sess: &S, setup: &SetupT, x: &AbstractReplicatedFixedTensor<RepRingT>) -> Vec<RepRingT>;
+    fn msb_index(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: &AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Vec<RepRingT>;
 }
 
-impl<S: RuntimeSession, SetupT, RepRingT, RepBitT, N: Const> MsbIndex<S, SetupT, RepRingT, RepBitT> for ReplicatedPlacement
+impl<S: RuntimeSession, SetupT, RepRingT, RepBitT, N: Const> MsbIndex<S, SetupT, RepRingT, RepBitT>
+    for ReplicatedPlacement
 where
     RepRingT: Ring<BitLength = N> + Clone,
     RepBitT: CanonicalType,
@@ -20,19 +32,20 @@ where
     ReplicatedPlacement: PlacementMsb<S, SetupT, RepRingT, RepRingT>,
     ReplicatedPlacement: SignFromMsb<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementBitDecSetup<
-        S,
-        SetupT,
-        RepRingT,
-        m!(AbstractReplicatedBitArray<c!(RepBitT), N>),
-    >,
+    ReplicatedPlacement:
+        PlacementBitDecSetup<S, SetupT, RepRingT, m!(AbstractReplicatedBitArray<c!(RepBitT), N>)>,
     ReplicatedPlacement: PlacementIndex<S, m!(AbstractReplicatedBitArray<c!(RepBitT), N>), RepBitT>,
     ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
 {
-    fn msb_index(&self, sess: &S, setup: &SetupT, x: &AbstractReplicatedFixedTensor<RepRingT>) -> Vec<RepRingT> {
+    fn msb_index(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: &AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Vec<RepRingT> {
         let rep = self;
         let total_precision = (x.integral_precision + x.fractional_precision) as usize;
         let ltz = rep.msb(sess, setup, &x.tensor);
@@ -41,7 +54,9 @@ where
 
         let x_pos_binarray = rep.bit_decompose(sess, setup, &x_pos);
         // TODO: pull out the code that is identical in top_most into a common method
-        let x_bits_rev = (0..total_precision).map(|i| rep.index(sess, total_precision- i - 1, &x_pos_binarray)).collect();
+        let x_bits_rev = (0..total_precision)
+            .map(|i| rep.index(sess, total_precision - i - 1, &x_pos_binarray))
+            .collect();
 
         let y_bits = rep.prefix_or(sess, setup, x_bits_rev);
         let mut y_top_bits: Vec<_> = y_bits
@@ -81,7 +96,11 @@ mod tests {
         let ip = 3;
         let fp = 5;
         let tp = ip + fp;
-        let x = AbstractHostFixedTensor{tensor: x_ring, integral_precision: ip, fractional_precision: fp};
+        let x = AbstractHostFixedTensor {
+            tensor: x_ring,
+            integral_precision: ip,
+            fractional_precision: fp,
+        };
 
         let sess = SyncSession::default();
         let setup = rep.gen_setup(&sess);
@@ -90,12 +109,15 @@ mod tests {
 
         let z_bits = rep.msb_index(&sess, &setup, &x_shared);
 
-        let revealed_bits: Vec<HostRing64Tensor> = (0..tp as usize - 1).map(|i| alice.reveal(&sess, &z_bits[i])).collect();
+        let revealed_bits: Vec<HostRing64Tensor> = (0..tp as usize)
+            .map(|i| alice.reveal(&sess, &z_bits[i]))
+            .collect();
 
         let expected: Vec<HostRing64Tensor> = vec![
             HostRing64Tensor::from_raw_plc(array!(0u64), alice.clone()),
             HostRing64Tensor::from_raw_plc(array!(0u64), alice.clone()),
             HostRing64Tensor::from_raw_plc(array!(1u64), alice.clone()),
+            HostRing64Tensor::from_raw_plc(array!(0u64), alice.clone()),
             HostRing64Tensor::from_raw_plc(array!(0u64), alice.clone()),
             HostRing64Tensor::from_raw_plc(array!(0u64), alice.clone()),
             HostRing64Tensor::from_raw_plc(array!(0u64), alice.clone()),
