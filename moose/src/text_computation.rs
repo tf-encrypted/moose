@@ -1948,7 +1948,7 @@ impl<T: std::fmt::Debug> ToTextual for ndarray::ArrayD<T> {
     fn to_textual(&self) -> String {
         match self.shape() {
             [_len] => format!("{:?}", self.as_slice().unwrap()),
-            [cols, rows] => {
+            [rows, cols] => {
                 let mut buffer = String::from("[");
                 let mut first_row = true;
                 for r in 0..*rows {
@@ -2117,6 +2117,17 @@ mod tests {
         let (_, parsed_ring64) = constant_literal::<(&str, ErrorKind)>("Ring64(42)")?;
         assert_eq!(parsed_ring64, Constant::Ring64(42));
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_array_literal_non_square() -> Result<(), anyhow::Error> {
+        let parsed_f32: Constant =
+            "Float32Tensor([[1.0, 11, 12, 13], [3.0, 21, 22, 23]])".try_into()?;
+        assert_eq!(
+            parsed_f32.to_textual(),
+            "Float32Tensor([[1.0, 11.0, 12.0, 13.0], [3.0, 21.0, 22.0, 23.0]])"
+        );
         Ok(())
     }
 
