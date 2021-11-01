@@ -4,14 +4,24 @@ use crate::replicated::division::SignFromMsb;
 use crate::replicated::{AbstractReplicatedBitArray, AbstractReplicatedFixedTensor};
 use crate::{Const, Ring};
 
-// Alternative to PlacementMsb suited for replicated fixedpoint tensors.
+use super::division::TopMost;
+
+// Alternative to TopMost suited for replicated fixedpoint tensors.
 // For a fixedpoint tensor `x`, produces an array of bits of length
 // `x.integral_precision + x.fractional_precision` such that every bit is 0
-// except for the index at which `x` takes its MSB, which is 1.
+// except for the largest index at which `x` takes a nonzero bit, which is 1.
 // Example:
-//      msb_index(AbstractFixedpointTensor(7, 3, 5) = [0 0 1 0 0 0 0 0]
-pub(crate) trait MsbIndex<S: Session, SetupT, RepRingT, RepBitT> {
-    fn msb_index(
+//      rep.fixed_top_most(
+//          sess,
+//          setup,
+//          AbstractReplicatedFixedpointTensor{
+//              tensor: AbstractReplicatedHostTensor(7),
+//              integral_precision: 3,
+//              fractional_precision: 5,
+//          }
+//      ) = [0 0 1 0 0 0 0 0]
+pub(crate) trait FixedTopMost<S: Session, SetupT, RepRingT, RepBitT> {
+    fn fixed_top_most(
         &self,
         sess: &S,
         setup: &SetupT,
@@ -19,7 +29,7 @@ pub(crate) trait MsbIndex<S: Session, SetupT, RepRingT, RepBitT> {
     ) -> Vec<RepRingT>;
 }
 
-impl<S: Session, SetupT, RepRingT, RepBitT, N: Const> MsbIndex<S, SetupT, RepRingT, RepBitT>
+impl<S: Session, SetupT, RepRingT, RepBitT, N: Const> FixedTopMost<S, SetupT, RepRingT, RepBitT>
     for ReplicatedPlacement
 where
     RepRingT: Ring<BitLength = N> + Clone,
@@ -35,12 +45,9 @@ where
     ReplicatedPlacement:
         PlacementBitDecSetup<S, SetupT, RepRingT, m!(AbstractReplicatedBitArray<c!(RepBitT), N>)>,
     ReplicatedPlacement: PlacementIndex<S, m!(AbstractReplicatedBitArray<c!(RepBitT), N>), RepBitT>,
-    ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
-    ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
-    ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
-    ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement: TopMost<S, SetupT, RepBitT, RepRingT>,
 {
-    fn msb_index(
+    fn fixed_top_most(
         &self,
         sess: &S,
         setup: &SetupT,
@@ -53,25 +60,10 @@ where
         let x_pos = rep.mul_setup(sess, setup, &sign, &x.tensor);
 
         let x_pos_binarray = rep.bit_decompose(sess, setup, &x_pos);
-        // TODO: pull out the code that is identical in top_most into a common method
-        let x_bits_rev = (0..total_precision)
-            .map(|i| rep.index(sess, total_precision - i - 1, &x_pos_binarray))
+        let x_pos_bits = (0..total_precision)
+            .map(|i| rep.index(sess, i, &x_pos_binarray))
             .collect();
-
-        let y_bits = rep.prefix_or(sess, setup, x_bits_rev);
-        let mut y_top_bits: Vec<_> = y_bits
-            .iter()
-            .take(total_precision)
-            .map(|e| rep.ring_inject(sess, 0, e))
-            .collect();
-
-        y_top_bits.reverse();
-        let mut z: Vec<_> = (0..total_precision - 1)
-            .map(|i| rep.sub(sess, &y_top_bits[i], &y_top_bits[i + 1]))
-            .collect();
-        z.push(y_top_bits[total_precision - 1].clone());
-
-        z
+        rep.top_most(sess, setup, total_precision, x_pos_bits)
     }
 }
 
@@ -84,7 +76,7 @@ mod tests {
     use ndarray::array;
 
     #[test]
-    fn test_msb_index() {
+    fn test_fixed_top_most() {
         let alice = HostPlacement {
             owner: "alice".into(),
         };
@@ -106,8 +98,13 @@ mod tests {
         let setup = rep.gen_setup(&sess);
 
         let x_shared = rep.share(&sess, &setup, &x);
+        let dec = rep.bit_decompose(&sess, &setup, &x_shared.tensor);
+        let revealed: Vec<_> = (0..tp as usize)
+            .map(|i| rep.index(&sess, i, &dec))
+            .map(|e| alice.reveal(&sess, &e))
+            .collect();
 
-        let z_bits = rep.msb_index(&sess, &setup, &x_shared);
+        let z_bits = rep.fixed_top_most(&sess, &setup, &x_shared);
 
         let revealed_bits: Vec<HostRing64Tensor> = (0..tp as usize)
             .map(|i| alice.reveal(&sess, &z_bits[i]))

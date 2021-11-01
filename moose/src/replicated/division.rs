@@ -133,7 +133,7 @@ where
         RepRingT,
         cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
     >,
-    ReplicatedPlacement: TopMost<S, SetupT, cs!(ReplicatedBitTensor), RepRingT>,
+    ReplicatedPlacement: TopMostIndex<S, SetupT, cs!(ReplicatedBitTensor), RepRingT>,
     ReplicatedPlacement: PlacementIndex<
         S,
         cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
@@ -159,7 +159,7 @@ where
         let x_bits = rep.bit_decompose(sess, setup, &abs_x);
         let x_bits_vec: Vec<_> = (0..max_bits).map(|i| rep.index(sess, i, &x_bits)).collect();
 
-        let top_most = rep.top_most(sess, setup, max_bits, x_bits_vec);
+        let top_most = rep.top_most_index(sess, setup, max_bits, x_bits_vec);
         let upshifted = rep.mul_setup(sess, setup, x, &top_most);
 
         let signed_topmost = rep.mul_setup(sess, setup, &sign, &top_most);
@@ -168,27 +168,31 @@ where
 }
 
 pub(crate) trait TopMost<S: Session, SetupT, RepBitT, RepRingT> {
-    fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: Vec<RepBitT>) -> RepRingT;
+    fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: Vec<RepBitT>)
+        -> Vec<RepRingT>;
 }
 
 impl<S: Session, SetupT, RepBitT, RepRingT> TopMost<S, SetupT, RepBitT, RepRingT>
     for ReplicatedPlacement
 where
-    ReplicatedBitTensor: KnownType<S>,
-    HostBitTensor: KnownType<S>,
     RepBitT: Clone,
     RepRingT: Clone,
-    ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
-    ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
+    ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
 {
-    fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: Vec<RepBitT>) -> RepRingT {
+    fn top_most(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        max_bits: usize,
+        x: Vec<RepBitT>,
+    ) -> Vec<RepRingT> {
         assert_eq!(max_bits, x.len());
 
         let rep = self;
+
         let x_rev: Vec<_> = (0..max_bits).map(|i| x[max_bits - i - 1].clone()).collect();
 
         let y = rep.prefix_or(sess, setup, x_rev);
@@ -205,6 +209,37 @@ where
             .collect();
 
         z.push(y_vec[max_bits - 1].clone());
+        z
+    }
+}
+
+pub(crate) trait TopMostIndex<S: Session, SetupT, RepBitT, RepRingT> {
+    fn top_most_index(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        max_bits: usize,
+        x: Vec<RepBitT>,
+    ) -> RepRingT;
+}
+
+impl<S: Session, SetupT, RepBitT, RepRingT> TopMostIndex<S, SetupT, RepBitT, RepRingT>
+    for ReplicatedPlacement
+where
+    ReplicatedPlacement: TopMost<S, SetupT, RepBitT, RepRingT>,
+    ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
+{
+    fn top_most_index(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        max_bits: usize,
+        x: Vec<RepBitT>,
+    ) -> RepRingT {
+        let rep = self;
+
+        let z = rep.top_most(sess, setup, max_bits, x);
 
         let s_vec: Vec<_> = (0..max_bits)
             .map(|i| rep.shl(sess, max_bits - i - 1, &z[i]))
