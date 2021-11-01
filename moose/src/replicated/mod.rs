@@ -16,7 +16,12 @@ use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 use std::marker::PhantomData;
 
+pub mod aes;
+pub mod control_flow;
 pub mod division;
+pub mod log;
+
+pub use self::aes::ReplicatedAesKey;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedRingTensor<HostRingT> {
@@ -3533,6 +3538,3 @@ mod tests {
         test_rep_prefix_and(x, y_target);
     }
 }
-
-pub mod control_flow;
-pub mod log;

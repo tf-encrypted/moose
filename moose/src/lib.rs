@@ -2123,6 +2123,9 @@ pub struct N64;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct N128;
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct N256;
+
 pub trait Const {
     const VALUE: usize;
 }
@@ -2133,6 +2136,10 @@ impl Const for N64 {
 
 impl Const for N128 {
     const VALUE: usize = 128;
+}
+
+impl Const for N256 {
+    const VALUE: usize = 256;
 }
 
 pub trait Ring {

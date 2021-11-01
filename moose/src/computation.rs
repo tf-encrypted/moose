@@ -1,22 +1,24 @@
 use crate::additive::{
     AdditiveBitTensor, AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape,
 };
+use crate::encrypted::{AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{
-    HostBitArray128, HostBitArray64, HostBitTensor, HostEncFixed128Tensor, HostFixed128Tensor,
-    HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
-    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostString,
-    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
+    HostAesKey, HostBitArray128, HostBitArray256, HostBitArray64, HostBitTensor,
+    HostFixed128AesTensor, HostFixed128Tensor, HostFixed64Tensor, HostFloat32Tensor,
+    HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor,
+    HostRing128Tensor, HostRing64Tensor, HostShape, HostString, HostUint16Tensor, HostUint32Tensor,
+    HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::kernels::Session;
 use crate::logical::{Tensor, TensorDType};
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::{
-    ReplicatedBitArray128, ReplicatedBitArray64, ReplicatedBitTensor, ReplicatedFixed128Tensor,
-    ReplicatedFixed64Tensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup,
-    ReplicatedShape,
+    ReplicatedAesKey, ReplicatedBitArray128, ReplicatedBitArray64, ReplicatedBitTensor,
+    ReplicatedFixed128Tensor, ReplicatedFixed64Tensor, ReplicatedRing128Tensor,
+    ReplicatedRing64Tensor, ReplicatedSetup, ReplicatedShape,
 };
 use crate::symbolic::Symbolic;
 use byteorder::{ByteOrder, LittleEndian};
@@ -26,6 +28,8 @@ use paste::paste;
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::generichash;
 use std::convert::TryFrom;
+use std::fs::File;
+use std::path::Path;
 
 pub const TAG_BYTES: usize = 128 / 8;
 static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::DIGEST_MIN);
@@ -445,6 +449,7 @@ values![
     HostBitTensor,
     HostBitArray64,
     HostBitArray128,
+    HostBitArray256,
     HostRing64Tensor,
     HostRing128Tensor,
     HostFixed64Tensor,
@@ -459,6 +464,8 @@ values![
     HostUint16Tensor,
     HostUint32Tensor,
     HostUint64Tensor,
+    HostFixed128AesTensor,
+    HostAesKey,
     Fixed64Tensor,
     Fixed128Tensor,
     Float32Tensor,
@@ -470,13 +477,15 @@ values![
     ReplicatedBitArray128,
     ReplicatedFixed64Tensor,
     ReplicatedFixed128Tensor,
+    ReplicatedAesKey,
     ReplicatedSetup,
     ReplicatedShape,
     AdditiveBitTensor,
     AdditiveRing64Tensor,
     AdditiveRing128Tensor,
     AdditiveShape,
-    HostEncFixed128Tensor,
+    Fixed128AesTensor,
+    AesTensor,
 ];
 
 // A macros to define something common for all the possible values
@@ -1890,11 +1899,41 @@ pub struct Operation {
     pub placement: Placement,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Computation {
     // pub constants: Vec<Value>,
     // pub operators: Vec<Operator>,
     pub operations: Vec<Operation>,
+}
+
+impl Computation {
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
+        rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
+    }
+
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        rmp_serde::to_vec(self).map_err(|e| Error::SerializationError(e.to_string()))
+    }
+
+    pub fn from_disk<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let p = path.as_ref();
+        let f = File::open(p).map_err(|e| {
+            Error::Unexpected(Some(format!(
+                "File not found error for path {0}. Original: {1}.",
+                p.display(),
+                e
+            )))
+        })?;
+        rmp_serde::decode::from_read(f).map_err(|e| Error::SerializationError(e.to_string()))
+    }
+
+    pub fn to_disk<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let mut file_buffer =
+            File::create(path).map_err(|e| Error::SerializationError(e.to_string()))?;
+        rmp_serde::encode::write(&mut file_buffer, self)
+            .map_err(|e| Error::SerializationError(e.to_string()))?;
+        Ok(())
+    }
 }
 
 mod tests {
