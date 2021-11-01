@@ -1105,7 +1105,7 @@ impl ReplicatedPlacement {
 }
 
 impl ReplicatedPlacement {
-    pub fn p_eval<S: Session, SetupT, RepRingT>(
+    pub fn poly_eval<S: Session, SetupT, RepRingT>(
         &self,
         sess: &S,
         setup: &SetupT,
@@ -1988,7 +1988,7 @@ mod tests {
                     })
                     .collect();
 
-                let output = rep.p_eval(&sess, &setup, x_fixed_shared, coeffs_fixed_shared);
+                let output = rep.poly_eval(&sess, &setup, x_fixed_shared, coeffs_fixed_shared);
                 let output_reveal = alice.reveal(&sess, &output);
                 let result = Convert::decode(&output_reveal.tensor, (2 as $tt).pow($f_precision));
 
