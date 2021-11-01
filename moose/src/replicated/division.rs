@@ -6,7 +6,7 @@ impl FixedpointDivOp {
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
         y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<st!(AbstractReplicatedFixedTensor<RepRingT>)>
+    ) -> Result<m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>
     where
         RepRingT: Underlying<TensorType = HostRingT>,
         Mirrored3RingTensor<HostRingT>: Underlying<TensorType = HostRingT>,
@@ -14,12 +14,13 @@ impl FixedpointDivOp {
         <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
         AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
         <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
-        AbstractReplicatedFixedTensor<RepRingT>: Into<st!(AbstractReplicatedFixedTensor<RepRingT>)>,
+        AbstractReplicatedFixedTensor<RepRingT>:
+            Into<m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
         ReplicatedShape: KnownType<S>,
         RepRingT: Ring,
-        ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
+        ReplicatedPlacement: PlacementShape<S, RepRingT, m!(ReplicatedShape)>,
         ReplicatedPlacement:
-            PlacementFill<S, cs!(ReplicatedShape), m!(c!(Mirrored3RingTensor<HostRingT>))>,
+            PlacementFill<S, m!(ReplicatedShape), m!(c!(Mirrored3RingTensor<HostRingT>))>,
         ReplicatedPlacement: ApproximateReciprocal<S, S::ReplicatedSetup, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
