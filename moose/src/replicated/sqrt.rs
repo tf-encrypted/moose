@@ -98,11 +98,6 @@ mod tests {
         let setup = rep.gen_setup(&sess);
 
         let x_shared = rep.share(&sess, &setup, &x);
-        let dec = rep.bit_decompose(&sess, &setup, &x_shared.tensor);
-        let revealed: Vec<_> = (0..tp as usize)
-            .map(|i| rep.index(&sess, i, &dec))
-            .map(|e| alice.reveal(&sess, &e))
-            .collect();
 
         let z_bits = rep.fixed_top_most(&sess, &setup, &x_shared);
 
