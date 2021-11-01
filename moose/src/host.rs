@@ -1999,6 +1999,12 @@ impl<N> AbstractHostBitArray<HostBitTensor, N> {
         // TODO check that first dimension equals N
         AbstractHostBitArray::<_, N>(HostBitTensor::from_raw_plc(raw_tensor, plc), PhantomData)
     }
+
+    pub(crate) fn from_vec_plc(vec: Vec<u8>, plc: HostPlacement) -> Self {
+        // TODO check that first dimension equals N
+        AbstractHostBitArray::<_, N>(HostBitTensor::from_vec_plc(vec, plc), PhantomData)
+    }
+ 
 }
 
 // TODO implement using moose_type macro
