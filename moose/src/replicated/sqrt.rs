@@ -10,7 +10,7 @@ use crate::{Const, Ring};
 // except for the index at which `x` takes its MSB, which is 1.
 // Example:
 //      msb_index(AbstractFixedpointTensor(7, 3, 5) = [0 0 1 0 0 0 0 0]
-pub(crate) trait MsbIndex<S: RuntimeSession, SetupT, RepRingT, RepBitT> {
+pub(crate) trait MsbIndex<S: Session, SetupT, RepRingT, RepBitT> {
     fn msb_index(
         &self,
         sess: &S,
@@ -19,7 +19,7 @@ pub(crate) trait MsbIndex<S: RuntimeSession, SetupT, RepRingT, RepBitT> {
     ) -> Vec<RepRingT>;
 }
 
-impl<S: RuntimeSession, SetupT, RepRingT, RepBitT, N: Const> MsbIndex<S, SetupT, RepRingT, RepBitT>
+impl<S: Session, SetupT, RepRingT, RepBitT, N: Const> MsbIndex<S, SetupT, RepRingT, RepBitT>
     for ReplicatedPlacement
 where
     RepRingT: Ring<BitLength = N> + Clone,
