@@ -26,7 +26,7 @@ pub(crate) trait FixedTopMost<S: Session, SetupT, RepRingT, RepBitT> {
         sess: &S,
         setup: &SetupT,
         x: &AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Vec<RepRingT>;
+    ) -> Vec<RepBitT>;
 }
 
 impl<S: Session, SetupT, RepRingT, RepBitT, N: Const> FixedTopMost<S, SetupT, RepRingT, RepBitT>
@@ -45,25 +45,20 @@ where
     ReplicatedPlacement:
         PlacementBitDecSetup<S, SetupT, RepRingT, m!(AbstractReplicatedBitArray<c!(RepBitT), N>)>,
     ReplicatedPlacement: PlacementIndex<S, m!(AbstractReplicatedBitArray<c!(RepBitT), N>), RepBitT>,
-    ReplicatedPlacement: TopMost<S, SetupT, RepBitT, RepRingT>,
+    ReplicatedPlacement: TopMost<S, SetupT, RepRingT, RepBitT>,
 {
     fn fixed_top_most(
         &self,
         sess: &S,
         setup: &SetupT,
         x: &AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Vec<RepRingT> {
+    ) -> Vec<RepBitT> {
         let rep = self;
         let total_precision = (x.integral_precision + x.fractional_precision) as usize;
-        let ltz = rep.msb(sess, setup, &x.tensor);
-        let sign = rep.sign_from_msb(sess, &ltz);
+        let gtz = rep.msb(sess, setup, &x.tensor);
+        let sign = rep.sign_from_msb(sess, &gtz);
         let x_pos = rep.mul_setup(sess, setup, &sign, &x.tensor);
-
-        let x_pos_binarray = rep.bit_decompose(sess, setup, &x_pos);
-        let x_pos_bits = (0..total_precision)
-            .map(|i| rep.index(sess, i, &x_pos_binarray))
-            .collect();
-        rep.top_most(sess, setup, total_precision, x_pos_bits)
+        rep.top_most(sess, setup, total_precision, &x_pos)
     }
 }
 
@@ -71,7 +66,7 @@ where
 mod tests {
     use super::*;
     use crate::computation::{HostPlacement, ReplicatedPlacement};
-    use crate::host::{AbstractHostFixedTensor, AbstractHostRingTensor, HostRing64Tensor};
+    use crate::host::{AbstractHostFixedTensor, AbstractHostRingTensor, HostBitTensor};
     use crate::kernels::SyncSession;
     use ndarray::array;
 
@@ -101,19 +96,19 @@ mod tests {
 
         let z_bits = rep.fixed_top_most(&sess, &setup, &x_shared);
 
-        let revealed_bits: Vec<HostRing64Tensor> = (0..tp as usize)
+        let revealed_bits: Vec<HostBitTensor> = (0..tp as usize)
             .map(|i| alice.reveal(&sess, &z_bits[i]))
             .collect();
 
-        let expected: Vec<HostRing64Tensor> = vec![
-            HostRing64Tensor::from_raw_plc(array!(0u64), alice.clone()),
-            HostRing64Tensor::from_raw_plc(array!(0u64), alice.clone()),
-            HostRing64Tensor::from_raw_plc(array!(1u64), alice.clone()),
-            HostRing64Tensor::from_raw_plc(array!(0u64), alice.clone()),
-            HostRing64Tensor::from_raw_plc(array!(0u64), alice.clone()),
-            HostRing64Tensor::from_raw_plc(array!(0u64), alice.clone()),
-            HostRing64Tensor::from_raw_plc(array!(0u64), alice.clone()),
-            HostRing64Tensor::from_raw_plc(array!(0u64), alice),
+        let expected: Vec<HostBitTensor> = vec![
+            HostBitTensor::from_raw_plc(array!(0u8).into_dyn(), alice.clone()),
+            HostBitTensor::from_raw_plc(array!(0u8).into_dyn(), alice.clone()),
+            HostBitTensor::from_raw_plc(array!(1u8).into_dyn(), alice.clone()),
+            HostBitTensor::from_raw_plc(array!(0u8).into_dyn(), alice.clone()),
+            HostBitTensor::from_raw_plc(array!(0u8).into_dyn(), alice.clone()),
+            HostBitTensor::from_raw_plc(array!(0u8).into_dyn(), alice.clone()),
+            HostBitTensor::from_raw_plc(array!(0u8).into_dyn(), alice.clone()),
+            HostBitTensor::from_raw_plc(array!(0u8).into_dyn(), alice),
         ];
         assert!(revealed_bits == expected);
     }
