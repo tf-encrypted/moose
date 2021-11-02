@@ -1126,7 +1126,6 @@ impl ReplicatedPlacement {
 //     ]
 // }
 
-
 // impl FixedpointSqrtOp {
 //     fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
 //         sess: &S,
@@ -1143,7 +1142,7 @@ impl ReplicatedPlacement {
 //             FixedTensor::Host(x) => x,
 //             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
 //         };
-        
+
 //         let result = plc.sqrt(sess, &x_revealed);
 //         Ok(FixedTensor::Host(result))
 //     }
