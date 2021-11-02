@@ -20,7 +20,6 @@ pub mod aes;
 pub mod control_flow;
 pub mod division;
 pub mod log;
-pub mod sqrt;
 
 pub use self::aes::ReplicatedAesKey;
 
