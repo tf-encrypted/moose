@@ -273,7 +273,7 @@ mod tests {
 
     #[test]
     fn test_aes_replicated() {
-        use crate::kernels::{PlacementReveal, PlacementSetupGen, PlacementShareSetup};
+        use crate::kernels::{PlacementReveal, PlacementShareSetup};
         use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
         use aes::{Aes128, Block, NewBlockCipher};
 
@@ -325,14 +325,14 @@ mod tests {
             };
 
             let sess = SyncSession::default();
-            let setup = rep.gen_setup(&sess);
+            let setup = sess.replicated_setup(&rep);
 
             let k: Vec<ReplicatedBitTensor> = k
                 .iter()
                 .map(|b| {
                     rep.share(
                         &sess,
-                        &setup,
+                        setup.as_ref(),
                         &HostBitTensor::from_slice_plc(&[*b], host.clone()),
                     )
                 })
@@ -342,7 +342,7 @@ mod tests {
                 .map(|b| {
                     rep.share(
                         &sess,
-                        &setup,
+                        setup.as_ref(),
                         &HostBitTensor::from_slice_plc(&[*b], host.clone()),
                     )
                 })

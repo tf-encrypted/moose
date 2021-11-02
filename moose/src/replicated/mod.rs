@@ -609,7 +609,7 @@ impl RepAndOp {
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepT, RepT, RepT>,
     {
         // and = mul in Z2
-        let setup = rep.gen_setup(sess);
+        let setup = sess.replicated_setup(rep);
         Ok(rep.mul_setup(sess, &setup, &x, &y))
     }
 }
@@ -3024,7 +3024,7 @@ mod tests {
         };
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let scaling_base = 2;
         let scaling_exp = 24;
@@ -3075,7 +3075,7 @@ mod tests {
         let inputs = vec![a, b, c];
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>> = inputs
             .into_iter()
@@ -3104,7 +3104,7 @@ mod tests {
         let inputs = vec![a, b, c];
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u128>>> = inputs
             .into_iter()
@@ -3129,7 +3129,7 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let x_shared = rep.share(&sess, &setup, &x);
 
@@ -3155,7 +3155,7 @@ mod tests {
                 let xr = $tt::from_raw_plc(x, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
+                let setup = (*sess.replicated_setup(&rep)).clone();
 
                 let x_shared = rep.share(&sess, &setup, &xr);
 
@@ -3201,7 +3201,7 @@ mod tests {
                 let xr = $tt::from_raw_plc(x, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
+                let setup = (*sess.replicated_setup(&rep)).clone();
 
                 let x_shared = rep.share(&sess, &setup, &xr);
 
@@ -3247,7 +3247,7 @@ mod tests {
                 let xr = HostBitTensor::from_raw_plc(x, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
+                let setup = (*sess.replicated_setup(&rep)).clone();
 
                 let x_shared = rep.share(&sess, &setup, &xr);
                 let x_shared_bit_array =
@@ -3287,7 +3287,7 @@ mod tests {
                 let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
+                let setup = (*sess.replicated_setup(&rep)).clone();
 
                 let x_shared = rep.share(&sess, &setup, &x);
                 let y_shared = rep.share(&sess, &setup, &y);
@@ -3345,7 +3345,7 @@ mod tests {
                 let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
+                let setup = (*sess.replicated_setup(&rep)).clone();
 
                 let x_shared = rep.share(&sess, &setup, &x);
                 let y_shared = rep.share(&sess, &setup, &y);
@@ -3583,7 +3583,7 @@ mod tests {
                 };
 
                 let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
+                let setup = (*sess.replicated_setup(&rep)).clone();
 
                 let alice_x1 = AbstractHostRingTensor::from_raw_plc(xs.clone(), alice.clone());
                 let alice_rep = rep.share(&sess, &setup, &alice_x1);
@@ -3741,7 +3741,7 @@ mod tests {
                 let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
+                let setup = (*sess.replicated_setup(&rep)).clone();
 
                 let x_shared = rep.share(&sess, &setup, &x);
 
@@ -3804,7 +3804,7 @@ mod tests {
         let x = HostBitTensor::from_raw_plc(xs.clone(), alice.clone());
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let x_shared = rep.share(&sess, &setup, &x);
 
@@ -3847,7 +3847,7 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let x_shared = rep.share(&sess, &setup, &x);
 
@@ -3888,7 +3888,7 @@ mod tests {
                 let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
+                let setup = (*sess.replicated_setup(&rep)).clone();
 
                 let x_shared = rep.share(&sess, &setup, &x);
 
@@ -4007,7 +4007,7 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(xs, bob);
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let x_shared = rep.share(&sess, &setup, &x);
 
@@ -4028,7 +4028,7 @@ mod tests {
 
                 let x = AbstractHostRingTensor::from_raw_plc(x, alice.clone());
                 let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
+                let setup = (*sess.replicated_setup(&rep)).clone();
 
                 let x_shared = rep.share(&sess, &setup, &x);
                 let x_bits: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
