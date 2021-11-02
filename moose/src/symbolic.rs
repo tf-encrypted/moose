@@ -4,8 +4,7 @@ use crate::computation::{
 };
 use crate::error::{Error, Result};
 use crate::kernels::{DispatchKernel, PlacementPlace, Session};
-use crate::prim::PrfKey;
-use crate::replicated::AbstractReplicatedSetup;
+use crate::replicated::ReplicatedSetup;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -94,8 +93,7 @@ where
 struct SymbolicSessionState {
     pub ops: Vec<Operation>,
     pub replicated_keys:
-        HashMap<ReplicatedPlacement, Arc<Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>>,
-    // TODO(Dragos) Change this to <ReplicatedSetup as KnownType<SymbolicSession>>::Type
+        HashMap<ReplicatedPlacement, Arc<<ReplicatedSetup as KnownType<SymbolicSession>>::Type>>,
 }
 
 pub struct SymbolicSession {
