@@ -95,9 +95,9 @@ mod tests {
             bob,
         );
 
-        let x_shared = rep.share(&sess, &(*setup), &x);
+        let x_shared = rep.share(&sess, setup.as_ref(), &x);
 
-        let y_shared = rep.share(&sess, &(*setup), &y);
+        let y_shared = rep.share(&sess, setup.as_ref(), &y);
 
         let res: ReplicatedBitTensor = rep.equal(&sess, &x_shared, &y_shared);
 

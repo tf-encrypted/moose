@@ -332,7 +332,7 @@ mod tests {
                 .map(|b| {
                     rep.share(
                         &sess,
-                        &(*setup),
+                        setup.as_ref(),
                         &HostBitTensor::from_slice_plc(&[*b], host.clone()),
                     )
                 })
@@ -342,7 +342,7 @@ mod tests {
                 .map(|b| {
                     rep.share(
                         &sess,
-                        &(*setup),
+                        setup.as_ref(),
                         &HostBitTensor::from_slice_plc(&[*b], host.clone()),
                     )
                 })

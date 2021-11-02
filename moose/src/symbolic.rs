@@ -90,20 +90,12 @@ where
     }
 }
 
+#[derive(Default)]
 struct SymbolicSessionState {
     pub ops: Vec<Operation>,
     pub replicated_keys:
         HashMap<ReplicatedPlacement, Arc<Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>>,
     // TODO(Dragos) Change this to <ReplicatedSetup as KnownType<SymbolicSession>>::Type
-}
-
-impl Default for SymbolicSessionState {
-    fn default() -> Self {
-        SymbolicSessionState {
-            ops: Default::default(),
-            replicated_keys: Default::default(),
-        }
-    }
 }
 
 pub struct SymbolicSession {
