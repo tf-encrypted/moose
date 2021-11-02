@@ -655,6 +655,20 @@ impl HostIndexAxisOp {
     }
 }
 
+impl IndexOp {
+    pub(crate) fn host_kernel<S: Session, HostBitT, N>(
+        sess: &S,
+        plc: &HostPlacement,
+        index: usize,
+        x: AbstractHostBitArray<HostBitT, N>,
+    ) -> Result<HostBitT>
+    where
+        HostPlacement: PlacementIndexAxis<S, HostBitT, HostBitT>,
+    {
+        Ok(plc.index_axis(sess, 0, index, &x.0))
+    }
+}
+
 modelled!(PlacementShlDim::shl_dim, HostPlacement, attributes[amount:usize, bit_length: usize] (HostBitTensor) -> HostBitTensor, HostShlDimOp);
 
 kernel! {
