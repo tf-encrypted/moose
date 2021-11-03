@@ -12,7 +12,7 @@ use crate::host::{
     HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
-use crate::replicated::{ReplicatedRing64Tensor, ReplicatedRing128Tensor, ReplicatedSetup};
+use crate::replicated::{ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup};
 use crate::{closure_kernel, function_kernel};
 use crate::{computation::*, for_all_values};
 use std::collections::HashMap;
