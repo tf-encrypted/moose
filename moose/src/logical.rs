@@ -590,8 +590,6 @@ kernel! {
     ]
 }
 
-// TODO(Morten) right now we fix what you can cast to and from; we could
-// perhaps use a `dtype` attribute to make this more flexible
 impl CastOp {
     fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
@@ -628,29 +626,34 @@ impl CastOp {
             _ => None,
         };
 
-        match x {
-            AbstractTensor::Fixed64(x) => {
+        match (x, sig.ret()) {
+            (AbstractTensor::Fixed64(x), Ty::HostFloat32Tensor) => {
                 let (fractional_precision, _) = arg0_precision.unwrap();
                 let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
                 Ok(AbstractTensor::Float32(inner))
             }
-            AbstractTensor::Fixed128(x) => {
+            (AbstractTensor::Fixed128(x), Ty::HostFloat64Tensor) => {
                 let (fractional_precision, _) = arg0_precision.unwrap();
                 let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
                 Ok(AbstractTensor::Float64(inner))
             }
-            AbstractTensor::Float32(x) => {
+            (AbstractTensor::Float32(x), Ty::HostFixed64Tensor) => {
                 let (fractional_precision, integral_precision) = ret_precision.unwrap();
                 let inner =
                     plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
                 Ok(AbstractTensor::Fixed64(inner))
             }
-            AbstractTensor::Float64(x) => {
+            (AbstractTensor::Float64(x), Ty::HostFixed128Tensor) => {
                 let (fractional_precision, integral_precision) = ret_precision.unwrap();
                 let inner =
                     plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
                 Ok(AbstractTensor::Fixed128(inner))
             }
+            (x, ret) => Err(Error::UnimplementedOperator(format!(
+                "Cast operator does not support casting of {:?} to {:?}",
+                &x.ty_desc(),
+                &ret
+            ))),
         }
     }
 }
@@ -679,7 +682,7 @@ impl AtLeast2DOp {
             AbstractTensor::Fixed64(_x) => {
                 unimplemented!()
                 // let z = plc.at_least_2d(sess, to_column_vector, &x);
-                // AbstractTensor::Fixed64(z)
+                // Ok(AbstractTensor::Fixed64(z))
             }
             AbstractTensor::Fixed128(_x) => {
                 unimplemented!()
@@ -789,8 +792,6 @@ impl MeanOp {
                 let z = plc.trunc_pr(sess, precision.unwrap(), &z);
                 Ok(AbstractTensor::Fixed128(z))
             }
-            // TODO(Morten) the fact that we are limited on replicated
-            // placements  would be nice to know at (Moose) compile time
             x => Err(Error::UnimplementedOperator(format!(
                 "Replicated mean is unsupported for {:?}.",
                 x.ty_desc()
@@ -872,7 +873,8 @@ kernel! {
     OnesOp,
     [
         (HostPlacement, (HostShape) -> Tensor => [hybrid] Self::host_kernel),
-        // TODO(lvorona): figure out modelled op for the replicated tensor
+        // We do not support the ReplicatedPlacement: PlacementFill yet, hence we do not support Ones.
+        // Also, logical Tensor can only hold Host tensors at the moment.
         // (ReplicatedPlacement, (HostShape) -> Tensor => [hybrid] Self::rep_kernel),
     ]
 }
@@ -906,18 +908,19 @@ impl OnesOp {
     // fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
     //     sess: &S,
     //     plc: &ReplicatedPlacement,
-    //     shape: cs!(HostShape),
-    // ) -> AbstractTensor<cs!(Fixed64Tensor), cs!(Fixed128Tensor), cs!(Float32Tensor), cs!(Float64Tensor)>
+    //     shape: m!(HostShape),
+    // ) -> Result<AbstractTensor<m!(Fixed64Tensor), m!(Fixed128Tensor), m!(Float32Tensor), m!(Float64Tensor)>>
     // where
     //     HostShape: KnownType<S>,
     //     Fixed64Tensor: KnownType<S>,
     //     Fixed128Tensor: KnownType<S>,
     //     Float32Tensor: KnownType<S>,
     //     Float64Tensor: KnownType<S>,
-    //     HostPlacement: PlacementOnes<S, cs!(HostShape), cs!(Fixed128Tensor)>,
+    //     crate::replicated::ReplicatedRing128Tensor: KnownType<S>,
+    //     ReplicatedPlacement: PlacementOnes<S, m!(HostShape), m!(crate::replicated::ReplicatedRing128Tensor)>,
     // {
     //     let result = plc.ones(sess, &shape);
-    //     AbstractTensor::Fixed128(result)
+    //     Ok(AbstractTensor::Fixed128(result))
     // }
 }
 
@@ -1205,25 +1208,33 @@ impl ConstantOp {
     pub fn logical_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
+        sig: Signature,
         value: Constant,
     ) -> Result<
-        AbstractTensor<
-            cs!(Fixed64Tensor),
-            cs!(Fixed128Tensor),
-            cs!(Float32Tensor),
-            cs!(Float64Tensor),
-        >,
+        AbstractTensor<m!(Fixed64Tensor), m!(Fixed128Tensor), m!(Float32Tensor), m!(Float64Tensor)>,
     >
     where
         Fixed64Tensor: KnownType<S>,
         Fixed128Tensor: KnownType<S>,
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
-        HostPlacement: PlacementConstant<S, cs!(Float64Tensor)>,
+        HostPlacement: PlacementConstant<S, m!(Float32Tensor)>,
+        HostPlacement: PlacementConstant<S, m!(Float64Tensor)>,
     {
-        let z = plc.constant(sess, value);
-        // TODO: figure out which dtype to return here
-        Ok(AbstractTensor::Float64(z))
+        match sig.ret() {
+            Ty::Tensor(dt) if dt == TensorDType::Float32 => {
+                let z = plc.constant(sess, value);
+                Ok(AbstractTensor::Float32(z))
+            }
+            Ty::Tensor(dt) if dt == TensorDType::Float64 => {
+                let z = plc.constant(sess, value);
+                Ok(AbstractTensor::Float64(z))
+            }
+            ret => Err(Error::UnimplementedOperator(format!(
+                "ConstantOp can not produce tensors of type {:?} yet",
+                ret
+            ))),
+        }
     }
 }
 
@@ -1246,15 +1257,18 @@ impl InputOp {
         HostPlacement: PlacementInput<S, m!(Float32Tensor)>,
     {
         match sig.ret() {
-            Ty::Tensor(dt) if dt == TensorDType::Float64 => {
-                let z = plc.input(sess, arg_name);
-                Ok(AbstractTensor::Float64(z))
-            }
             Ty::Tensor(dt) if dt == TensorDType::Float32 => {
                 let z = plc.input(sess, arg_name);
                 Ok(AbstractTensor::Float32(z))
             }
-            _ => todo!(),
+            Ty::Tensor(dt) if dt == TensorDType::Float64 => {
+                let z = plc.input(sess, arg_name);
+                Ok(AbstractTensor::Float64(z))
+            }
+            ret => Err(Error::UnimplementedOperator(format!(
+                "InputOp can not produce tensors of type {:?} yet",
+                ret
+            ))),
         }
     }
 }
