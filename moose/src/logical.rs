@@ -1232,6 +1232,7 @@ impl InputOp {
     pub fn logical_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
+        sig: Signature,
         arg_name: String,
     ) -> Result<
         AbstractTensor<m!(Fixed64Tensor), m!(Fixed128Tensor), m!(Float32Tensor), m!(Float64Tensor)>,
@@ -1242,10 +1243,19 @@ impl InputOp {
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
         HostPlacement: PlacementInput<S, m!(Float64Tensor)>,
+        HostPlacement: PlacementInput<S, m!(Float32Tensor)>,
     {
-        let z = plc.input(sess, arg_name);
-        // TODO: figure out which dtype to return here
-        Ok(AbstractTensor::Float64(z))
+        match sig.ret() {
+            Ty::Tensor(dt) if dt == TensorDType::Float64 => {
+                let z = plc.input(sess, arg_name);
+                Ok(AbstractTensor::Float64(z))
+            }
+            Ty::Tensor(dt) if dt == TensorDType::Float32 => {
+                let z = plc.input(sess, arg_name);
+                Ok(AbstractTensor::Float32(z))
+            }
+            _ => todo!(),
+        }
     }
 }
 

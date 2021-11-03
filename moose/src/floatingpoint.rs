@@ -490,15 +490,27 @@ impl ConstantOp {
 }
 
 impl InputOp {
-    pub fn float_kernel<S: Session>(
+    pub fn float64_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
         arg_name: String,
     ) -> Result<FloatTensor<m!(HostFloat64Tensor)>>
     where
-        HostFloat32Tensor: KnownType<S>,
         HostFloat64Tensor: KnownType<S>,
         HostPlacement: PlacementInput<S, m!(HostFloat64Tensor)>,
+    {
+        let z = plc.input(sess, arg_name);
+        Ok(FloatTensor::Host(z))
+    }
+
+    pub fn float32_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<FloatTensor<m!(HostFloat32Tensor)>>
+    where
+        HostFloat32Tensor: KnownType<S>,
+        HostPlacement: PlacementInput<S, m!(HostFloat32Tensor)>,
     {
         let z = plc.input(sess, arg_name);
         Ok(FloatTensor::Host(z))
