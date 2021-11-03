@@ -1227,6 +1227,32 @@ impl ConstantOp {
     }
 }
 
+impl InputOp {
+    pub fn logical_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<
+        AbstractTensor<
+            cs!(Fixed64Tensor),
+            cs!(Fixed128Tensor),
+            cs!(Float32Tensor),
+            cs!(Float64Tensor),
+        >,
+    >
+    where
+        Fixed64Tensor: KnownType<S>,
+        Fixed128Tensor: KnownType<S>,
+        Float32Tensor: KnownType<S>,
+        Float64Tensor: KnownType<S>,
+        HostPlacement: PlacementInput<S, cs!(Float64Tensor)>,
+    {
+        let z = plc.input(sess, arg_name);
+        // TODO: figure out which dtype to return here
+        Ok(AbstractTensor::Float64(z))
+    }
+}
+
 impl OutputOp {
     pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
