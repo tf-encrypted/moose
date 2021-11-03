@@ -12,7 +12,7 @@ use crate::host::{
     HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
-use crate::replicated::ReplicatedSetup;
+use crate::replicated::{ReplicatedRing64Tensor, ReplicatedRing128Tensor, ReplicatedSetup};
 use crate::{closure_kernel, function_kernel};
 use crate::{computation::*, for_all_values};
 use std::collections::HashMap;
@@ -2255,6 +2255,8 @@ for_all_values! {( $($value:ty),* ) => (
         modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> $value, InputOp);
     )*
 )}
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedRing64Tensor, InputOp);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedRing128Tensor, InputOp);
 
 kernel! {
     InputOp, [
@@ -2278,7 +2280,8 @@ kernel! {
         (HostPlacement, () -> HostUint64Tensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostFixed64Tensor => [runtime] attributes[arg_name] Self::missing_kernel),
         (HostPlacement, () -> HostFixed128Tensor => [runtime] attributes[arg_name] Self::missing_kernel),
-
+        (ReplicatedPlacement, () -> ReplicatedRing64Tensor => [hybrid] attributes[arg_name] Self::replicated_ring_kernel),
+        (ReplicatedPlacement, () -> ReplicatedRing128Tensor => [hybrid] attributes[arg_name] Self::replicated_ring_kernel),
     ]
 }
 

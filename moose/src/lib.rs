@@ -805,7 +805,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc
             ) -> crate::error::Result<
-                <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+                <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 use crate::symbolic::SymbolicSession;
 
@@ -832,7 +832,7 @@ macro_rules! kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 derive_runtime_kernel![nullary, $($kp)+, self]
             }
