@@ -1234,19 +1234,14 @@ impl InputOp {
         plc: &HostPlacement,
         arg_name: String,
     ) -> Result<
-        AbstractTensor<
-            cs!(Fixed64Tensor),
-            cs!(Fixed128Tensor),
-            cs!(Float32Tensor),
-            cs!(Float64Tensor),
-        >,
+        AbstractTensor<m!(Fixed64Tensor), m!(Fixed128Tensor), m!(Float32Tensor), m!(Float64Tensor)>,
     >
     where
         Fixed64Tensor: KnownType<S>,
         Fixed128Tensor: KnownType<S>,
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
-        HostPlacement: PlacementInput<S, cs!(Float64Tensor)>,
+        HostPlacement: PlacementInput<S, m!(Float64Tensor)>,
     {
         let z = plc.input(sess, arg_name);
         // TODO: figure out which dtype to return here
