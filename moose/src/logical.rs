@@ -1228,6 +1228,7 @@ impl ConstantOp {
 }
 
 impl InputOp {
+    #[allow(clippy::type_complexity)]
     pub fn logical_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
