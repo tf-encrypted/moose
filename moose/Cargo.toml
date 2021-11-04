@@ -53,6 +53,8 @@ vec-utils = "~0.3"
 nom = { version="~7.0" }
 
 [dev-dependencies]
+aes = "~0.7"
+aes-gcm = "~0.9"
 criterion = "~0.3"
 env_logger = "~0.8"
 lazy_static = "~1.4"

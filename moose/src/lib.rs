@@ -2124,6 +2124,9 @@ pub struct N64;
 pub struct N128;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct N224;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct N256;
 
 pub trait Const {
@@ -2138,12 +2141,20 @@ impl Const for N128 {
     const VALUE: usize = 128;
 }
 
+impl Const for N224 {
+    const VALUE: usize = 224;
+}
+
 impl Const for N256 {
     const VALUE: usize = 256;
 }
 
 pub trait Ring {
     type BitLength: Const;
+}
+
+pub trait BitArray {
+    type Len: Const;
 }
 
 macro_rules! unmodelled {
