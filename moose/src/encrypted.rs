@@ -168,20 +168,14 @@ impl AesDecryptOp {
         let zero_bit: HostBitTensorT = plc.fill(sess, Constant::Bit(0), &shape);
         let mut block_bits: Vec<_> = (0..128)
             .map(|i| {
-                // if i < nonce_bits.len() {
-                //     nonce_bits[i].clone()
-                // } else {
-                //     zero_bit.clone()
-                // }
-                // if i >= 32 {
-                //     nonce_bits[i - 32].clone()
-                // } else {
-                //     zero_bit.clone()
-                // }
-                zero_bit.clone()
+                if i < nonce_bits.len() {
+                    nonce_bits[i].clone()
+                } else {
+                    zero_bit.clone()
+                }
             })
             .collect();
-        block_bits[6] = one_bit;
+        block_bits[128 - 2] = one_bit;
         println!("block_bits {:?}\n", block_bits);
 
         let r_bits = aes(sess, plc, key_bits, block_bits);
@@ -315,7 +309,7 @@ mod tests {
     use ndarray::Array;
 
     #[test]
-    fn test_aes_foo() {
+    fn test_aes_aesgcm() {
         let raw_key = [3; 16];
         let raw_nonce = [177; 12];
         let raw_plaintext = [132; 16];
@@ -341,10 +335,11 @@ mod tests {
             use aes::{Aes128, Block, NewBlockCipher};
 
             let mut raw_block = [0_u8; 16];
+            // fill first bytes with nonce
             for (i, b) in raw_nonce.iter().enumerate() {
                 raw_block[i] = *b;
             }
-            // set counter value to 2
+            // set counter to 2
             raw_block[15] = 2;
 
             let mut block = Block::clone_from_slice(&raw_block);
@@ -367,9 +362,9 @@ mod tests {
 
     #[test]
     fn test_aes_decrypt_host() {
-        let raw_key = [0; 16];
-        let raw_nonce = [0; 12];
-        let raw_plaintext = [0; 16];
+        let raw_key = [201; 16];
+        let raw_nonce = [177; 12];
+        let raw_plaintext = [255; 16];
 
         let alice = HostPlacement {
             owner: "alice".into(),
@@ -404,7 +399,6 @@ mod tests {
                 tensor: bit_array,
             }
         };
-        // println!("ciphertext: {:?}\n", ciphertext.tensor.0);
 
         let key: HostAesKey = {
             let vec = crate::bristol_fashion::byte_vec_to_bit_vec_be(raw_key.as_ref());
@@ -415,7 +409,10 @@ mod tests {
 
         let sess = SyncSession::default();
         let plaintext = alice.decrypt(&sess, &key, &ciphertext);
-        println!("decrypted plaintext {:?}\n", plaintext.tensor.0);
+        let actual_plaintext = plaintext.tensor.0[0].0;
+
+        let expected_plaintext = u128::from_be_bytes(raw_plaintext);
+        assert_eq!(actual_plaintext, expected_plaintext);
 
         // let mut ct_bits: Vec<u8>;
 
