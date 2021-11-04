@@ -45,7 +45,7 @@ class AesTensorType(StandardType):
 
     def __init__(self, dtype: dtypes.DType):
         super().__init__()
-        if not dtype.is_fixedpoint():
+        if not dtype.is_fixedpoint:
             raise ValueError(
                 "AesTensorType expects a fixedpoint DType, "
                 f"found {type(dtype.name)} instead."

@@ -28,7 +28,6 @@ from pymoose.computation.standard import SliceOperation
 from pymoose.computation.standard import SqueezeOperation
 from pymoose.computation.standard import SubOperation
 from pymoose.computation.standard import SumOperation
-from pymoose.computation.standard import TensorType
 from pymoose.computation.standard import TransposeOperation
 from pymoose.computation.standard import UnknownType
 from pymoose.deprecated.compiler.compiler import Compiler
@@ -184,7 +183,7 @@ class AstTracer:
         aes_key_op = self.visit(aes_key_expression)
         aes_cyphertext_op = self.visit(aes_cyphertext_expression)
         placement = self.visit_placement_expression(decrypt_expression.placement)
-        return self.add_computation(
+        return self.computation.add_operation(
             DecryptOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("decrypt"),

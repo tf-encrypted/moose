@@ -11,6 +11,7 @@ from pymoose.edsl.base import cast
 from pymoose.edsl.base import computation
 from pymoose.edsl.base import concatenate
 from pymoose.edsl.base import constant
+from pymoose.edsl.base import decrypt
 from pymoose.edsl.base import div
 from pymoose.edsl.base import dot
 from pymoose.edsl.base import expand_dims

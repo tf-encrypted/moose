@@ -281,8 +281,7 @@ def decrypt(key, ciphertext, placement=None):
     # key expr typecheck
     if not isinstance(key.vtype, AesKeyType):
         raise ValueError(
-            "Parameter `key` expected to be of type AesKeyType, "
-            f"found {key.vtype}."
+            "Parameter `key` expected to be of type AesKeyType, found {key.vtype}."
         )
 
     # ciphertext expr typecheck
@@ -296,9 +295,7 @@ def decrypt(key, ciphertext, placement=None):
     output_type = TensorType(output_dtype)
 
     return DecryptExpression(
-        placement=placement,
-        inputs=[key, ciphertext],
-        vtype=output_type,
+        placement=placement, inputs=[key, ciphertext], vtype=output_type,
     )
 
 
