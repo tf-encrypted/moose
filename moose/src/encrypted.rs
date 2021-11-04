@@ -77,57 +77,6 @@ kernel! {
     ]
 }
 
-fn aesgcm<S: Session, P, BitTensorT, ShapeT>(
-    sess: &S,
-    plc: &P,
-    key_bits: Vec<BitTensorT>,
-    ciphertext_bits: Vec<BitTensorT>,
-) -> Vec<BitTensorT>
-where
-    BitTensorT: Clone,
-    P: PlacementShape<S, BitTensorT, ShapeT>,
-    P: PlacementFill<S, ShapeT, BitTensorT>,
-    P: PlacementXor<S, BitTensorT, BitTensorT, BitTensorT>,
-    P: PlacementAnd<S, BitTensorT, BitTensorT, BitTensorT>,
-    P: PlacementNeg<S, BitTensorT, BitTensorT>,
-{
-    assert_eq!(key_bits.len(), 128);
-    assert_eq!(ciphertext_bits.len(), 96 + 128);
-
-    // separate into nonce bits and masked plaintext
-    let nonce_bits = &ciphertext_bits[0..96];
-    let rm_bits = &ciphertext_bits[96..224];
-    assert_eq!(nonce_bits.len(), 96);
-    assert_eq!(rm_bits.len(), 128);
-
-    // build full AES block with nonce and counter value of 2
-    let shape = plc.shape(sess, &nonce_bits[0]);
-    let one_bit: BitTensorT = plc.fill(sess, Constant::Bit(1), &shape);
-    let zero_bit: BitTensorT = plc.fill(sess, Constant::Bit(0), &shape);
-    let mut block_bits: Vec<_> = (0..128)
-        .map(|i| {
-            if i < nonce_bits.len() {
-                nonce_bits[i].clone()
-            } else {
-                zero_bit.clone()
-            }
-        })
-        .collect();
-    block_bits[128 - 2] = one_bit;
-
-    // apply AES to block to get mask
-    let r_bits = crate::bristol_fashion::aes128(sess, plc, key_bits, block_bits);
-
-    // remove mask to recover plaintext
-    let m_bits: Vec<BitTensorT> = rm_bits
-        .iter()
-        .zip(r_bits)
-        .map(|(ci, ri)| plc.xor(sess, ci, &ri))
-        .collect();
-
-    m_bits
-}
-
 impl AesDecryptOp {
     pub(crate) fn host_kernel<S: Session, Fixed128AesT, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
@@ -247,26 +196,9 @@ impl AesDecryptOp {
         HostPlacement: PlacementAnd<S, HostBitTensorT, HostBitTensorT, HostBitTensorT>,
         HostPlacement: PlacementNeg<S, HostBitTensorT, HostBitTensorT>,
     {
-        // turn inputs into vectors
-        let key_bits: Vec<HostBitTensorT> = (0..128).map(|i| plc.index(sess, i, &key.0)).collect();
-        let ciphertext_bits: Vec<HostBitTensorT> = (0..224)
-            .map(|i| plc.index(sess, i, &ciphertext.tensor))
-            .collect();
-
-        // perform AES-GCM decryption
-        let m_bits = aesgcm(sess, plc, key_bits, ciphertext_bits);
-
-        // bit compose plaintext to obtain ring values
-        let shape = plc.shape(sess, &m_bits[0]);
-        let zero_ring: HostRing128TensorT = plc.fill(sess, Constant::Ring128(0), &shape);
-        let m = m_bits
-            .iter()
-            .enumerate()
-            .map(|(i, b)| plc.ring_inject(sess, 127 - i, b))
-            .fold(zero_ring, |acc, x| plc.add(sess, &acc, &x));
-
+        let tensor = aesgcm(sess, plc, key.0, ciphertext.tensor);
         Ok(AbstractHostFixedTensor {
-            tensor: m,
+            tensor,
             integral_precision: ciphertext.integral_precision,
             fractional_precision: ciphertext.fractional_precision,
         })
@@ -289,6 +221,7 @@ impl AesDecryptOp {
     where
         RepBitArray128T: BitArray<Len = N128>,
         HostBitArray224T: BitArray<Len = N224>,
+        RepBitArray224T: BitArray<Len = N224>,
         RepBitTensorT: Clone,
         ReplicatedPlacement: PlacementIndex<S, RepBitArray128T, RepBitTensorT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArray224T, RepBitTensorT>,
@@ -306,31 +239,96 @@ impl AesDecryptOp {
     {
         let setup = sess.replicated_setup(plc);
         let shared_ciphertext = plc.share(sess, setup.as_ref(), &ciphertext.tensor);
-
-        // turn inputs into vectors
-        let key_bits: Vec<RepBitTensorT> = (0..128).map(|i| plc.index(sess, i, &key.0)).collect();
-        let ciphertext_bits: Vec<RepBitTensorT> = (0..224)
-            .map(|i| plc.index(sess, i, &shared_ciphertext))
-            .collect();
-
-        // perform AES-GCM decryption
-        let m_bits = aesgcm(sess, plc, key_bits, ciphertext_bits);
-
-        // bit compose plaintext to obtain ring values
-        let shape = plc.shape(sess, &m_bits[0]);
-        let zero_ring: RepRing128TensorT = plc.fill(sess, Constant::Ring128(0), &shape);
-        let tensor = m_bits
-            .iter()
-            .enumerate()
-            .map(|(i, b)| plc.ring_inject(sess, 127 - i, b))
-            .fold(zero_ring, |acc, x| plc.add(sess, &acc, &x));
-
+        let tensor = aesgcm(sess, plc, key.0, shared_ciphertext);
         Ok(AbstractReplicatedFixedTensor {
             tensor,
             integral_precision: ciphertext.integral_precision,
             fractional_precision: ciphertext.fractional_precision,
         })
     }
+}
+
+/// Perform AES-GCM-128 decryption of a single 128 block
+///
+/// The key must be exactly 128 bits and the ciphertext exactly
+/// 96+128 bits, where the former part is the nonce and the latter
+/// the masked plaintext.
+fn aesgcm<
+    S: Session,
+    P,
+    KeyBitArrayT,
+    CiphertextBitArrayT,
+    PlaintextRingTensorT,
+    BitTensorT,
+    ShapeT,
+>(
+    sess: &S,
+    plc: &P,
+    key: KeyBitArrayT,
+    ciphertext: CiphertextBitArrayT,
+) -> PlaintextRingTensorT
+where
+    KeyBitArrayT: BitArray<Len = N128>,
+    CiphertextBitArrayT: BitArray<Len = N224>,
+    BitTensorT: Clone,
+    P: PlacementIndex<S, KeyBitArrayT, BitTensorT>,
+    P: PlacementIndex<S, CiphertextBitArrayT, BitTensorT>,
+    P: PlacementShape<S, BitTensorT, ShapeT>,
+    P: PlacementFill<S, ShapeT, BitTensorT>,
+    P: PlacementRingInject<S, BitTensorT, PlaintextRingTensorT>,
+    P: PlacementFill<S, ShapeT, PlaintextRingTensorT>,
+    P: PlacementAdd<S, PlaintextRingTensorT, PlaintextRingTensorT, PlaintextRingTensorT>,
+    P: PlacementXor<S, BitTensorT, BitTensorT, BitTensorT>,
+    P: PlacementAnd<S, BitTensorT, BitTensorT, BitTensorT>,
+    P: PlacementNeg<S, BitTensorT, BitTensorT>,
+{
+    // turn inputs into vectors
+    let key_bits: Vec<BitTensorT> = (0..128).map(|i| plc.index(sess, i, &key)).collect();
+    let ciphertext_bits: Vec<BitTensorT> =
+        (0..224).map(|i| plc.index(sess, i, &ciphertext)).collect();
+
+    assert_eq!(key_bits.len(), 128);
+    assert_eq!(ciphertext_bits.len(), 96 + 128);
+
+    // separate ciphertext into nonce bits and masked plaintext
+    let nonce_bits = &ciphertext_bits[0..96];
+    let rm_bits = &ciphertext_bits[96..224];
+    assert_eq!(nonce_bits.len(), 96);
+    assert_eq!(rm_bits.len(), 128);
+
+    // build full AES block with nonce and counter value of 2
+    let shape = plc.shape(sess, &nonce_bits[0]);
+    let one_bit: BitTensorT = plc.fill(sess, Constant::Bit(1), &shape);
+    let zero_bit: BitTensorT = plc.fill(sess, Constant::Bit(0), &shape);
+    let mut block_bits: Vec<_> = (0..128)
+        .map(|i| {
+            if i < nonce_bits.len() {
+                nonce_bits[i].clone()
+            } else {
+                zero_bit.clone()
+            }
+        })
+        .collect();
+    block_bits[128 - 2] = one_bit;
+
+    // apply AES to block to get mask
+    let r_bits = crate::bristol_fashion::aes128(sess, plc, key_bits, block_bits);
+
+    // remove mask to recover plaintext
+    let m_bits: Vec<BitTensorT> = rm_bits
+        .iter()
+        .zip(r_bits)
+        .map(|(ci, ri)| plc.xor(sess, ci, &ri))
+        .collect();
+
+    // bit compose plaintext to obtain ring values
+    let shape = plc.shape(sess, &m_bits[0]);
+    let zero_ring: PlaintextRingTensorT = plc.fill(sess, Constant::Ring128(0), &shape);
+    m_bits
+        .iter()
+        .enumerate()
+        .map(|(i, b)| plc.ring_inject(sess, 127 - i, b))
+        .fold(zero_ring, |acc, x| plc.add(sess, &acc, &x))
 }
 
 #[cfg(test)]
