@@ -30,21 +30,19 @@ impl RepIfElseOp {
         Mirrored3RingTensor<HostRingT>: CanonicalType,
         <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, m!(c!(Mirrored3RingTensor<HostRingT>))>,
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
         ReplicatedPlacement:
             PlacementSub<S, m!(c!(Mirrored3RingTensor<HostRingT>)), RepRingT, RepRingT>,
     {
-        let setup = sess.replicated_setup(rep);
         let ones = rep.fill(sess, 1u64.into(), &rep.shape(sess, &x));
 
         // if else [s] * [x] + (1 - [s]) * [y]
-        let s_x = rep.mul_setup(sess, &setup, &s, &x);
+        let s_x = rep.mul(sess, &s, &x);
 
         let ones_minus_s = rep.sub(sess, &ones, &s);
-        let ones_s_y = rep.mul_setup(sess, &setup, &ones_minus_s, &y);
+        let ones_s_y = rep.mul(sess, &ones_minus_s, &y);
 
         Ok(rep.add(sess, &s_x, &ones_s_y))
     }
