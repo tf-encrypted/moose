@@ -213,12 +213,11 @@ pub fn byte_vec_to_bit_vec_be(bytes: &[u8]) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::computation::{HostPlacement, ReplicatedPlacement, Role};
     use crate::host::HostBitTensor;
     use crate::kernels::{PlacementSetupGen, SyncSession};
     use crate::replicated::ReplicatedBitTensor;
-
-    use super::*;
 
     #[test]
     fn test_parse_aes() {
@@ -226,31 +225,25 @@ mod tests {
     }
 
     // test vectors from https://csrc.nist.gov/csrc/media/publications/fips/197/final/documents/fips-197.pdf
-    // const K: [u8; 16] = [
-    //     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
-    //     0x0f,
-    // ];
-    // const M: [u8; 16] = [
-    //     0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
-    //     0xff,
-    // ];
-    // const C: [u8; 16] = [
-    //     0x69, 0xc4, 0xe0, 0xd8, 0x6a, 0x7b, 0x04, 0x30, 0xd8, 0xcd, 0xb7, 0x80, 0x70, 0xb4, 0xc5,
-    //     0x5a,
-    // ];
-
-    const K: [u8; 16] = [0x00; 16];
-    const M: [u8; 16] = [0x00; 16];
+    const K: [u8; 16] = [
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+        0x0f,
+    ];
+    const M: [u8; 16] = [
+        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
+        0xff,
+    ];
     const C: [u8; 16] = [
-        102, 233, 75, 212, 239, 138, 44, 59, 136, 76, 250, 89, 202, 52, 43, 46,
+        0x69, 0xc4, 0xe0, 0xd8, 0x6a, 0x7b, 0x04, 0x30, 0xd8, 0xcd, 0xb7, 0x80, 0x70, 0xb4, 0xc5,
+        0x5a,
     ];
 
     #[test]
     fn test_aes_reference() {
-        use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
-        use aes::{Aes128, Block, NewBlockCipher};
-
         let expected_c = {
+            use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
+            use aes::{Aes128, Block, NewBlockCipher};
+
             let mut block = Block::clone_from_slice(&M);
             let key = GenericArray::from_slice(&K);
             let cipher = Aes128::new(key);
@@ -281,11 +274,8 @@ mod tests {
                 .collect();
 
             let sess = SyncSession::default();
-
             let c_bits: Vec<u8> = aes(&sess, &host, k, m).iter().map(|t| t.0[0] & 1).collect();
-
             let c: Vec<u8> = c_bits.chunks(8).map(bits_to_byte_be).collect();
-
             c
         };
 
@@ -339,9 +329,7 @@ mod tests {
                         t.0[0] & 1
                     })
                     .collect();
-
             let c: Vec<u8> = c_bits.chunks(8).map(bits_to_byte_be).collect();
-
             c
         };
 

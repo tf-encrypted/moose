@@ -2074,7 +2074,8 @@ moose_type!(HostAesKey = AbstractHostAesKey<HostBitArray128>);
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostFixedAesTensor<HostBitArrayT> {
     pub tensor: HostBitArrayT,
-    pub precision: u32,
+    pub integral_precision: u32,
+    pub fractional_precision: u32,
 }
 
 moose_type!(HostFixed128AesTensor = AbstractHostFixedAesTensor<HostBitArray224>);
