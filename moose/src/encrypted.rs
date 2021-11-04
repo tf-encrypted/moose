@@ -459,7 +459,6 @@ mod tests {
         };
 
         let sess = SyncSession::default();
-        let setup = sess.replicated_setup(&rep);
 
         let ciphertext: HostFixed128AesTensor = {
             let key = aes_gcm::Key::from_slice(&raw_key);

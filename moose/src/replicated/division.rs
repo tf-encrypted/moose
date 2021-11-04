@@ -252,11 +252,10 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
 
         let sess = SyncSession::default();
-        let setup = (*sess.replicated_setup(&rep)).clone();
 
-        let x_shared = rep.share(&sess, &setup, &x);
+        let x_shared = rep.share(&sess, &x);
 
-        let (upshifted, topmost) = rep.norm(&sess, &setup, 12, &x_shared);
+        let (upshifted, topmost) = rep.norm(&sess, 12, &x_shared);
 
         let topmost_target = AbstractHostRingTensor::from_raw_plc(array![4u64], alice.clone());
         let upshifted_target = AbstractHostRingTensor::from_raw_plc(array![3584], alice.clone());
@@ -280,15 +279,14 @@ mod tests {
         let expected_output = x.clone() + y.clone();
 
         let sess = SyncSession::default();
-        let setup = sess.replicated_setup(&rep);
 
         let x_bit = alice.bit_decompose(&sess, &x);
         let y_bit = alice.bit_decompose(&sess, &y);
         let expected_output_bit: HostBitTensor = alice.bit_decompose(&sess, &expected_output);
 
-        let x_shared = rep.share(&sess, setup.as_ref(), &x_bit);
-        let y_shared = rep.share(&sess, setup.as_ref(), &y_bit);
-        let binary_adder = rep.binary_adder(&sess, setup.as_ref().clone(), x_shared, y_shared, 64);
+        let x_shared = rep.share(&sess, &x_bit);
+        let y_shared = rep.share(&sess, &y_bit);
+        let binary_adder = rep.binary_adder(&sess, x_shared, y_shared, 64);
         let binary_adder_clear = alice.reveal(&sess, &binary_adder);
 
         assert_eq!(expected_output_bit, binary_adder_clear);
@@ -307,12 +305,11 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
 
         let sess = SyncSession::default();
-        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let expected_output = array![74i64];
 
-        let x_shared = rep.share(&sess, &setup, &x);
-        let approximation = rep.approximate_reciprocal(&sess, &setup, 4, 8, &x_shared);
+        let x_shared = rep.share(&sess, &x);
+        let approximation = rep.approximate_reciprocal(&sess, 4, 8, &x_shared);
 
         let out = alice.reveal(&sess, &approximation).0;
         for (i, item) in out.iter().enumerate() {

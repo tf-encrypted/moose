@@ -74,7 +74,6 @@ mod tests {
         };
 
         let sess = SyncSession::default();
-        let setup = sess.replicated_setup(&rep);
 
         let x = AbstractHostRingTensor::from_raw_plc(
             array![1024u64, 5, 4]
@@ -90,9 +89,9 @@ mod tests {
             bob,
         );
 
-        let x_shared = rep.share(&sess, setup.as_ref(), &x);
+        let x_shared = rep.share(&sess, &x);
 
-        let y_shared = rep.share(&sess, setup.as_ref(), &y);
+        let y_shared = rep.share(&sess, &y);
 
         let res: ReplicatedBitTensor = rep.equal(&sess, &x_shared, &y_shared);
 

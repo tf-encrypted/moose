@@ -70,7 +70,6 @@ mod tests {
         };
 
         let sess = SyncSession::default();
-        let setup = sess.replicated_setup(&rep);
 
         let scaling_base = 2;
         let scaling_exp = 24;
@@ -96,17 +95,17 @@ mod tests {
         );
 
         let a = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &a);
-        let a_shared = rep.share(&sess, setup.as_ref(), &a);
+        let a_shared = rep.share(&sess, &a);
 
         let x = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &x);
-        let x_shared = rep.share(&sess, setup.as_ref(), &x);
+        let x_shared = rep.share(&sess, &x);
 
         let y = bob.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &y);
-        let y_shared = rep.share(&sess, setup.as_ref(), &y);
+        let y_shared = rep.share(&sess, &y);
 
         // simulate to a less than zero calculation to get some good values
         // to pass into if else
-        let msb: AbstractReplicatedRingTensor<_> = rep.msb(&sess, setup.as_ref(), &a_shared);
+        let msb: AbstractReplicatedRingTensor<_> = rep.msb(&sess, &a_shared);
         let ones: AbstractReplicatedRingTensor<_> =
             rep.fill(&sess, 1u64.into(), &rep.shape(&sess, &a_shared));
         let s = rep.sub(&sess, &ones, &msb);

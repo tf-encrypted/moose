@@ -1860,7 +1860,6 @@ mod tests {
                 };
 
                 let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
 
                 let encode = |item: &$tt| (2_i64.pow($f_precision) as $tt * item) as $tt;
 
@@ -1870,12 +1869,12 @@ mod tests {
                         let x_encode = x.map(encode);
                         let x_ring = AbstractHostRingTensor::from_raw_plc(x_encode, alice.clone());
                         let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
-                            rep.share(&sess, &setup, &x_ring);
+                            rep.share(&sess, &x_ring);
                         new_replicated_fixed_tensor(x_shared)
                     })
                     .collect();
 
-                let outputs = rep.prefix_mul_fixed(&sess, &setup, x_fixed_vec);
+                let outputs = rep.prefix_mul_fixed(&sess, x_fixed_vec);
 
                 for (i, output) in outputs.iter().enumerate() {
                     let output_reveal = alice.reveal(&sess, output);
@@ -1927,13 +1926,12 @@ mod tests {
                 };
 
                 let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
 
                 let encode = |item: &f64| (2_i64.pow($f_precision) as f64 * item) as $tt;
                 let x_encoded = x.map(encode);
                 let x_ring = AbstractHostRingTensor::from_raw_plc(x_encoded, alice.clone());
                 let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
-                    rep.share(&sess, &setup, &x_ring);
+                    rep.share(&sess, &x_ring);
                 let x_fixed_shared = new_replicated_fixed_tensor(x_shared);
 
                 let coeffs_fixed_shared: Vec<
@@ -1948,12 +1946,12 @@ mod tests {
                             AbstractHostRingTensor::from_raw_plc(coeff_encoded, alice.clone());
                         let coeff_shared: AbstractReplicatedRingTensor<
                             AbstractHostRingTensor<$tt>,
-                        > = rep.share(&sess, &setup, &coeff_ring);
+                        > = rep.share(&sess, &coeff_ring);
                         new_replicated_fixed_tensor(coeff_shared)
                     })
                     .collect();
 
-                let output = rep.poly_eval(&sess, &setup, x_fixed_shared, coeffs_fixed_shared);
+                let output = rep.poly_eval(&sess, x_fixed_shared, coeffs_fixed_shared);
                 let output_reveal = alice.reveal(&sess, &output);
                 let result = Convert::decode(&output_reveal.tensor, (2 as $tt).pow($f_precision));
 
