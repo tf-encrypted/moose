@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
 use crate::computation::{Placed, ReplicatedPlacement};
 use crate::error::Result;
 use crate::replicated::ReplicatedBitArray128;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractReplicatedAesKey<RepBitArrayT>(pub(crate) RepBitArrayT);

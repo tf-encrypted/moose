@@ -4,7 +4,10 @@ use crate::host::{
     AbstractHostAesKey, AbstractHostFixedAesTensor, AbstractHostFixedTensor, HostAesKey,
     HostFixed128AesTensor, HostFixed128Tensor,
 };
-use crate::kernels::{PlacementAdd, PlacementAnd, PlacementDecrypt, PlacementFill, PlacementIndex, PlacementNeg, PlacementRingInject, PlacementShape, PlacementShareSetup, PlacementXor, Session};
+use crate::kernels::{
+    PlacementAdd, PlacementAnd, PlacementDecrypt, PlacementFill, PlacementIndex, PlacementNeg,
+    PlacementRingInject, PlacementShape, PlacementShareSetup, PlacementXor, Session,
+};
 use crate::logical::{AbstractTensor, Tensor};
 use crate::replicated::{
     aes::AbstractReplicatedAesKey, aes::ReplicatedAesKey, AbstractReplicatedFixedTensor,
@@ -269,7 +272,15 @@ impl AesDecryptOp {
         })
     }
 
-    pub(crate) fn rep_fixed_aes_kernel<S: Session, ShapeT, RepBitArray128T, RepBitArray224T, HostBitArray224T, RepBitTensorT, RepRing128TensorT>(
+    pub(crate) fn rep_fixed_aes_kernel<
+        S: Session,
+        ShapeT,
+        RepBitArray128T,
+        RepBitArray224T,
+        HostBitArray224T,
+        RepBitTensorT,
+        RepRing128TensorT,
+    >(
         sess: &S,
         plc: &ReplicatedPlacement,
         key: AbstractReplicatedAesKey<RepBitArray128T>,
@@ -281,10 +292,12 @@ impl AesDecryptOp {
         RepBitTensorT: Clone,
         ReplicatedPlacement: PlacementIndex<S, RepBitArray128T, RepBitTensorT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArray224T, RepBitTensorT>,
-        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostBitArray224T, RepBitArray224T>,
+        ReplicatedPlacement:
+            PlacementShareSetup<S, S::ReplicatedSetup, HostBitArray224T, RepBitArray224T>,
         ReplicatedPlacement: PlacementRingInject<S, RepBitTensorT, RepRing128TensorT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepRing128TensorT>,
-        ReplicatedPlacement: PlacementAdd<S, RepRing128TensorT, RepRing128TensorT, RepRing128TensorT>,
+        ReplicatedPlacement:
+            PlacementAdd<S, RepRing128TensorT, RepRing128TensorT, RepRing128TensorT>,
         ReplicatedPlacement: PlacementShape<S, RepBitTensorT, ShapeT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepBitTensorT>,
         ReplicatedPlacement: PlacementXor<S, RepBitTensorT, RepBitTensorT, RepBitTensorT>,
@@ -324,8 +337,8 @@ impl AesDecryptOp {
 mod tests {
     use super::*;
     use crate::host::{HostBitArray128, HostBitArray224};
-    use crate::kernels::SyncSession;
     use crate::kernels::PlacementReveal;
+    use crate::kernels::SyncSession;
     use aes::cipher::generic_array::sequence::Concat;
     use aes_gcm::{aead::NewAead, AeadInPlace};
     use ndarray::Array;
