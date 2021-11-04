@@ -19,8 +19,10 @@ where
     P: PlacementAnd<S, BitT, BitT, BitT>,
     P: PlacementNeg<S, BitT, BitT>,
 {
-    // Note that per comments on the Bristol website, inputs and outputs
-    // for this particular circuit are given in reverse order!
+    // From [circuit website](https://homes.esat.kuleuven.be/~nsmart/MPC/):
+    //   Note for AES-128 the wire orders are in the reverse order as used
+    //   in the examples given in our earlier `Bristol Format', thus bit 0
+    //   becomes bit 127 etc, for key, plaintext and message., inputs and outputs
 
     let circuit = Circuit::try_from(AES_128).unwrap();
 
