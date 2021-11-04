@@ -185,6 +185,32 @@ fn parse_usize(line: &[u8]) -> Res<&[u8], usize> {
     Ok((line, res as usize))
 }
 
+pub fn byte_to_bits_le(byte: &u8) -> Vec<u8> {
+    (0..8).map(|i| (byte >> i) & 1).collect::<Vec<_>>()
+}
+
+pub fn byte_to_bits_be(byte: &u8) -> Vec<u8> {
+    (0..8).map(|i| (byte >> (7 - i)) & 1).collect::<Vec<_>>()
+}
+
+pub fn bits_to_byte_le(bits: &[u8]) -> u8 {
+    (0..8)
+        .map(|i| bits[i] << i)
+        .reduce(std::ops::Add::add)
+        .unwrap()
+}
+
+pub fn bits_to_byte_be(bits: &[u8]) -> u8 {
+    (0..8)
+        .map(|i| bits[i] << (7 - i))
+        .reduce(std::ops::Add::add)
+        .unwrap()
+}
+
+pub fn byte_vec_to_bit_vec_be(bytes: &[u8]) -> Vec<u8> {
+    bytes.iter().flat_map(byte_to_bits_be).collect::<Vec<_>>()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::computation::{HostPlacement, ReplicatedPlacement, Role};
@@ -200,17 +226,23 @@ mod tests {
     }
 
     // test vectors from https://csrc.nist.gov/csrc/media/publications/fips/197/final/documents/fips-197.pdf
-    const K: [u8; 16] = [
-        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
-        0x0f,
-    ];
-    const M: [u8; 16] = [
-        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
-        0xff,
-    ];
+    // const K: [u8; 16] = [
+    //     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+    //     0x0f,
+    // ];
+    // const M: [u8; 16] = [
+    //     0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
+    //     0xff,
+    // ];
+    // const C: [u8; 16] = [
+    //     0x69, 0xc4, 0xe0, 0xd8, 0x6a, 0x7b, 0x04, 0x30, 0xd8, 0xcd, 0xb7, 0x80, 0x70, 0xb4, 0xc5,
+    //     0x5a,
+    // ];
+
+    const K: [u8; 16] = [0x00; 16];
+    const M: [u8; 16] = [0x00; 16];
     const C: [u8; 16] = [
-        0x69, 0xc4, 0xe0, 0xd8, 0x6a, 0x7b, 0x04, 0x30, 0xd8, 0xcd, 0xb7, 0x80, 0x70, 0xb4, 0xc5,
-        0x5a,
+        102, 233, 75, 212, 239, 138, 44, 59, 136, 76, 250, 89, 202, 52, 43, 46,
     ];
 
     #[test]
@@ -227,30 +259,6 @@ mod tests {
         };
 
         assert_eq!(expected_c.as_slice(), &C);
-    }
-
-    #[allow(dead_code)]
-    fn byte_to_bits_le(byte: &u8) -> Vec<u8> {
-        (0..8).map(|i| (byte >> i) & 1).collect::<Vec<_>>()
-    }
-
-    fn byte_to_bits_be(byte: &u8) -> Vec<u8> {
-        (0..8).map(|i| (byte >> (7 - i)) & 1).collect::<Vec<_>>()
-    }
-
-    #[allow(dead_code)]
-    fn bits_to_byte_le(bits: &[u8]) -> u8 {
-        (0..8)
-            .map(|i| bits[i] << i)
-            .reduce(std::ops::Add::add)
-            .unwrap()
-    }
-
-    fn bits_to_byte_be(bits: &[u8]) -> u8 {
-        (0..8)
-            .map(|i| bits[i] << (7 - i))
-            .reduce(std::ops::Add::add)
-            .unwrap()
     }
 
     #[test]

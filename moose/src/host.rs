@@ -1727,7 +1727,7 @@ impl BitNegOp {
         plc: &HostPlacement,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        Ok(HostBitTensor(!x.0, plc.clone()))
+        Ok(HostBitTensor((!x.0) & 1, plc.clone()))
     }
 }
 
@@ -1970,7 +1970,7 @@ impl RingInjectOp {
         Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(
-            x.0.mapv(|ai| Wrapping(T::from(ai)) << bit_idx),
+            x.0.mapv(|ai| Wrapping(T::from(ai & 1)) << bit_idx),
             plc.clone(),
         ))
     }
