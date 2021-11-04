@@ -30,7 +30,7 @@ pub trait Session {
     ) -> Result<Self::Value>;
 
     type ReplicatedSetup;
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup;
+    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup>;
 }
 
 /// Trait for sessions that are intended for run-time use only.
@@ -49,7 +49,7 @@ pub trait RuntimeSession: Session {
 /// Session object for synchronous/eager execution (in new framework).
 pub struct SyncSession {
     session_id: SessionId,
-    replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
+    replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<ReplicatedSetup>>>,
     arguments: HashMap<String, Value>,
     role_assignments: HashMap<Role, Identity>,
 }
@@ -224,8 +224,12 @@ impl Session for SyncSession {
     }
 
     type ReplicatedSetup = ReplicatedSetup;
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
-        self.replicated_keys.get(plc).unwrap()
+    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
+        let mut replicated_keys = self.replicated_keys.write().unwrap();
+        let setup = replicated_keys
+            .entry(plc.clone())
+            .or_insert_with(|| Arc::new(plc.gen_setup(self)));
+        Arc::clone(setup)
     }
 }
 
@@ -264,7 +268,7 @@ impl Session for AsyncSession {
     }
 
     type ReplicatedSetup = (); // TODO AsyncExecutor for the new framework is not ready yet
-    fn replicated_setup(&self, _plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
+    fn replicated_setup(&self, _plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
         // TODO AsyncExecutor for the new framework is not ready yet
         unimplemented!()
     }
@@ -2251,6 +2255,8 @@ for_all_values! {( $($value:ty),* ) => (
         modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> $value, InputOp);
     )*
 )}
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> crate::logical::Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Float64Tensor, InputOp);
 
 kernel! {
     InputOp, [
@@ -2274,7 +2280,8 @@ kernel! {
         (HostPlacement, () -> HostUint64Tensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostFixed64Tensor => [runtime] attributes[arg_name] Self::missing_kernel),
         (HostPlacement, () -> HostFixed128Tensor => [runtime] attributes[arg_name] Self::missing_kernel),
-
+        (HostPlacement, () -> crate::logical::Tensor => [hybrid] attributes[arg_name] Self::logical_kernel),
+        (HostPlacement, () -> Float64Tensor => [hybrid] attributes[arg_name] Self::float_kernel),
     ]
 }
 

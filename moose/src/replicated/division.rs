@@ -18,7 +18,7 @@ impl FixedpointDivOp {
         ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirroredT>,
     {
         #![allow(clippy::many_single_char_names)]
-        let setup = rep.gen_setup(sess);
+        let setup = sess.replicated_setup(rep);
 
         assert_eq!(x.integral_precision, y.integral_precision);
         assert_eq!(x.fractional_precision, y.fractional_precision);
@@ -272,7 +272,7 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let x_shared = rep.share(&sess, &setup, &x);
 
@@ -300,15 +300,15 @@ mod tests {
         let expected_output = x.clone() + y.clone();
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = sess.replicated_setup(&rep);
 
         let x_bit = alice.bit_decompose(&sess, &x);
         let y_bit = alice.bit_decompose(&sess, &y);
         let expected_output_bit: HostBitTensor = alice.bit_decompose(&sess, &expected_output);
 
-        let x_shared = rep.share(&sess, &setup, &x_bit);
-        let y_shared = rep.share(&sess, &setup, &y_bit);
-        let binary_adder = rep.binary_adder(&sess, setup, x_shared, y_shared, 64);
+        let x_shared = rep.share(&sess, setup.as_ref(), &x_bit);
+        let y_shared = rep.share(&sess, setup.as_ref(), &y_bit);
+        let binary_adder = rep.binary_adder(&sess, setup.as_ref().clone(), x_shared, y_shared, 64);
         let binary_adder_clear = alice.reveal(&sess, &binary_adder);
 
         assert_eq!(expected_output_bit, binary_adder_clear);
@@ -327,7 +327,7 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
+        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let expected_output = array![74i64];
 

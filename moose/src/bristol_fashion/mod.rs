@@ -216,7 +216,7 @@ mod tests {
     use super::*;
     use crate::computation::{HostPlacement, ReplicatedPlacement, Role};
     use crate::host::HostBitTensor;
-    use crate::kernels::{PlacementSetupGen, SyncSession};
+    use crate::kernels::SyncSession;
     use crate::replicated::ReplicatedBitTensor;
 
     #[test]
@@ -295,7 +295,7 @@ mod tests {
             };
 
             let sess = SyncSession::default();
-            let setup = rep.gen_setup(&sess);
+            let setup = sess.replicated_setup(&rep);
 
             let k: Vec<ReplicatedBitTensor> = K
                 .iter()
@@ -303,7 +303,7 @@ mod tests {
                 .map(|b| {
                     rep.share(
                         &sess,
-                        &setup,
+                        setup.as_ref(),
                         &HostBitTensor::from_slice_plc(&[b], host.clone()),
                     )
                 })
@@ -315,7 +315,7 @@ mod tests {
                 .map(|b| {
                     rep.share(
                         &sess,
-                        &setup,
+                        setup.as_ref(),
                         &HostBitTensor::from_slice_plc(&[b], host.clone()),
                     )
                 })
