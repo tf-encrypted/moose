@@ -464,6 +464,7 @@ values![
     ReplicatedBitTensor,
     ReplicatedBitArray64,
     ReplicatedBitArray128,
+    ReplicatedBitArray224,
     ReplicatedFixed64Tensor,
     ReplicatedFixed128Tensor,
     ReplicatedAesKey,

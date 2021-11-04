@@ -1821,6 +1821,7 @@ impl ToTextual for Ty {
             Ty::ReplicatedBitTensor => "ReplicatedBitTensor".to_string(),
             Ty::ReplicatedBitArray64 => "ReplicatedBitArray64".to_string(),
             Ty::ReplicatedBitArray128 => "ReplicatedBitArray128".to_string(),
+            Ty::ReplicatedBitArray224 => "ReplicatedBitArray224".to_string(),
             Ty::ReplicatedSetup => "ReplicatedSetup".to_string(),
             Ty::ReplicatedShape => "ReplicatedShape".to_string(),
             Ty::AdditiveBitTensor => "AdditiveBitTensor".to_string(),
@@ -1890,6 +1891,7 @@ impl ToTextual for Value {
             | Value::ReplicatedBitTensor(_)
             | Value::ReplicatedBitArray64(_)
             | Value::ReplicatedBitArray128(_)
+            | Value::ReplicatedBitArray224(_)
             | Value::ReplicatedRing64Tensor(_)
             | Value::ReplicatedRing128Tensor(_)
             | Value::ReplicatedFixed64Tensor(_)

@@ -10,7 +10,7 @@ use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::symbolic::Symbolic;
 use crate::{computation::*, BitArray};
-use crate::{Const, Ring, N128, N64};
+use crate::{Const, Ring, N128, N224, N64};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
@@ -110,6 +110,8 @@ impl<RepBitTensorT: Placed, N: Const> BitArray
 pub type ReplicatedBitArray64 = AbstractReplicatedBitArray<ReplicatedBitTensor, N64>;
 
 pub type ReplicatedBitArray128 = AbstractReplicatedBitArray<ReplicatedBitTensor, N128>;
+
+pub type ReplicatedBitArray224 = AbstractReplicatedBitArray<ReplicatedBitTensor, N224>;
 
 // TODO implement using moose_type macro
 impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTensorT, N> {
@@ -369,6 +371,9 @@ modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, Hos
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> ReplicatedRing64Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> ReplicatedRing128Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor, RepShareOp);
+modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostBitArray64) -> ReplicatedBitArray64, RepShareOp);
+modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostBitArray128) -> ReplicatedBitArray128, RepShareOp);
+modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostBitArray224) -> ReplicatedBitArray224, RepShareOp);
 
 kernel! {
     RepShareOp,
@@ -378,6 +383,9 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_kernel),
         (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_kernel),
         (ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor => [hybrid] Self::ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostBitArray64) -> ReplicatedBitArray64 => [hybrid] Self::array_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostBitArray128) -> ReplicatedBitArray128 => [hybrid] Self::array_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostBitArray224) -> ReplicatedBitArray224 => [hybrid] Self::array_kernel),
     ]
 }
 
@@ -396,6 +404,19 @@ impl RepShareOp {
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
         })
+    }
+
+    fn array_kernel<S: Session, SetupT, HostBitTensorT, RepBitTensorT, N: Const>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        setup: SetupT,
+        x: AbstractHostBitArray<HostBitTensorT, N>,
+    ) -> Result<AbstractReplicatedBitArray<RepBitTensorT, N>>
+    where
+        ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostBitTensorT, RepBitTensorT>,
+    {
+        let shared_tensor = plc.share(sess, &setup, &x.0);
+        Ok(AbstractReplicatedBitArray(shared_tensor, x.1))
     }
 
     fn ring_kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
@@ -518,6 +539,7 @@ modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedRing128Tensor) -> H
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitTensor) -> HostBitTensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitArray64) -> HostBitArray64, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitArray128) -> HostBitArray128, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitArray224) -> HostBitArray224, RepRevealOp);
 
 kernel! {
     RepRevealOp,
@@ -529,6 +551,7 @@ kernel! {
         (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => [hybrid] Self::ring_kernel),
         (HostPlacement, (ReplicatedBitArray64) -> HostBitArray64 => [hybrid] Self::bit_array_kernel),
         (HostPlacement, (ReplicatedBitArray128) -> HostBitArray128 => [hybrid] Self::bit_array_kernel),
+        (HostPlacement, (ReplicatedBitArray224) -> HostBitArray224 => [hybrid] Self::bit_array_kernel),
     ]
 }
 
@@ -2223,6 +2246,7 @@ impl RepIndexAxisOp {
 
 modelled!(PlacementIndex::index, ReplicatedPlacement, attributes[index: usize] (ReplicatedBitArray64) -> ReplicatedBitTensor, IndexOp);
 modelled!(PlacementIndex::index, ReplicatedPlacement, attributes[index: usize] (ReplicatedBitArray128) -> ReplicatedBitTensor, IndexOp);
+modelled!(PlacementIndex::index, ReplicatedPlacement, attributes[index: usize] (ReplicatedBitArray224) -> ReplicatedBitTensor, IndexOp);
 modelled!(PlacementIndex::index, HostPlacement, attributes[index: usize] (HostBitArray64) -> HostBitTensor, IndexOp);
 modelled!(PlacementIndex::index, HostPlacement, attributes[index: usize] (HostBitArray128) -> HostBitTensor, IndexOp);
 modelled!(PlacementIndex::index, HostPlacement, attributes[index: usize] (HostBitArray224) -> HostBitTensor, IndexOp);
@@ -2233,6 +2257,7 @@ kernel! {
     [
         (ReplicatedPlacement, (ReplicatedBitArray64) -> ReplicatedBitTensor => [hybrid] attributes[index] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedBitArray128) -> ReplicatedBitTensor => [hybrid] attributes[index] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitArray224) -> ReplicatedBitTensor => [hybrid] attributes[index] Self::rep_kernel),
         (HostPlacement, (HostBitArray64) -> HostBitTensor => [hybrid] attributes[index] Self::host_kernel),
         (HostPlacement, (HostBitArray128) -> HostBitTensor => [hybrid] attributes[index] Self::host_kernel),
         (HostPlacement, (HostBitArray224) -> HostBitTensor => [hybrid] attributes[index] Self::host_kernel),
