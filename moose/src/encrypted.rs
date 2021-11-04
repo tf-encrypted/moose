@@ -116,7 +116,7 @@ where
     block_bits[128 - 2] = one_bit;
 
     // apply AES to block to get mask
-    let r_bits = crate::bristol_fashion::aes(sess, plc, key_bits, block_bits);
+    let r_bits = crate::bristol_fashion::aes128(sess, plc, key_bits, block_bits);
 
     // remove mask to recover plaintext
     let m_bits: Vec<BitTensorT> = rm_bits

@@ -12,18 +12,16 @@ use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor, Session};
 
 const AES_128: &[u8] = include_bytes!("aes_128.txt");
 
-pub fn aes<S: Session, P, BitT>(
-    sess: &S,
-    plc: &P,
-    mut key: Vec<BitT>,
-    mut block: Vec<BitT>,
-) -> Vec<BitT>
+pub fn aes128<S: Session, P, BitT>(sess: &S, plc: &P, key: Vec<BitT>, block: Vec<BitT>) -> Vec<BitT>
 where
     BitT: Clone,
     P: PlacementXor<S, BitT, BitT, BitT>,
     P: PlacementAnd<S, BitT, BitT, BitT>,
     P: PlacementNeg<S, BitT, BitT>,
 {
+    // Note that per comments on the Bristol website, inputs and outputs
+    // for this particular circuit are given in reverse order!
+
     let circuit = Circuit::try_from(AES_128).unwrap();
 
     // TODO(Morten)
@@ -33,14 +31,12 @@ where
     let mut wires: Vec<Option<BitT>> = vec![None; circuit.num_wires];
 
     assert_eq!(key.len(), 128);
-    key.reverse();
-    for (i, val) in key.into_iter().enumerate() {
+    for (i, val) in key.into_iter().rev().enumerate() {
         *wires.get_mut(i).unwrap() = Some(val);
     }
 
     assert_eq!(block.len(), 128);
-    block.reverse();
-    for (i, val) in block.into_iter().enumerate() {
+    for (i, val) in block.into_iter().rev().enumerate() {
         *wires.get_mut(i + 128).unwrap() = Some(val);
     }
 
@@ -78,15 +74,12 @@ where
         }
     }
 
-    let mut output: Vec<_> = wires
+    wires
         .into_iter()
         .rev()
         .take(128)
-        .rev()
         .map(|val| val.unwrap())
-        .collect();
-    output.reverse();
-    output
+        .collect()
 }
 
 #[derive(Debug)]
@@ -274,7 +267,10 @@ mod tests {
                 .collect();
 
             let sess = SyncSession::default();
-            let c_bits: Vec<u8> = aes(&sess, &host, k, m).iter().map(|t| t.0[0] & 1).collect();
+            let c_bits: Vec<u8> = aes128(&sess, &host, k, m)
+                .iter()
+                .map(|t| t.0[0] & 1)
+                .collect();
             let c: Vec<u8> = c_bits.chunks(8).map(bits_to_byte_be).collect();
             c
         };
@@ -322,7 +318,7 @@ mod tests {
                 .collect();
 
             let c_bits: Vec<u8> =
-                aes::<SyncSession, ReplicatedPlacement, ReplicatedBitTensor>(&sess, &rep, k, m)
+                aes128::<SyncSession, ReplicatedPlacement, ReplicatedBitTensor>(&sess, &rep, k, m)
                     .iter()
                     .map(|te| {
                         let t = host.reveal(&sess, te);
