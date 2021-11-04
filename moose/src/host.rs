@@ -1512,7 +1512,7 @@ pub struct HostBitTensor(pub ArrayD<u8>, HostPlacement);
 
 impl std::fmt::Debug for HostBitTensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.as_slice().fmt(f)
+        self.0.as_slice().unwrap().fmt(f)
     }
 }
 
