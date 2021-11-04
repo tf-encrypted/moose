@@ -75,6 +75,7 @@ SUPPORTED_TYPES = [
     ring_dialect.RingTensorType,
     std_dialect.AbsOperation,
     std_dialect.AddOperation,
+    std_dialect.AesKeyType,
     std_dialect.AesTensorType,
     std_dialect.AtLeast2DOperation,
     std_dialect.BytesType,

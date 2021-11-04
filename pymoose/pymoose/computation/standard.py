@@ -54,6 +54,11 @@ class AesTensorType(StandardType):
 
 
 @dataclass
+class AesKeyType(StandardType):
+    pass
+
+
+@dataclass
 class BytesType(StandardType):
     pass
 
