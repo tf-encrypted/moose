@@ -1221,11 +1221,11 @@ impl ConstantOp {
         HostPlacement: PlacementConstant<S, m!(Float64Tensor)>,
     {
         match sig.ret() {
-            Ty::Tensor(dt) if dt == TensorDType::Float32 => {
+            Ty::Tensor(TensorDType::Float32) => {
                 let z = plc.constant(sess, value);
                 Ok(AbstractTensor::Float32(z))
             }
-            Ty::Tensor(dt) if dt == TensorDType::Float64 => {
+            Ty::Tensor(TensorDType::Float64) => {
                 let z = plc.constant(sess, value);
                 Ok(AbstractTensor::Float64(z))
             }
@@ -1256,11 +1256,11 @@ impl InputOp {
         HostPlacement: PlacementInput<S, m!(Float32Tensor)>,
     {
         match sig.ret() {
-            Ty::Tensor(dt) if dt == TensorDType::Float32 => {
+            Ty::Tensor(TensorDType::Float32) => {
                 let z = plc.input(sess, arg_name);
                 Ok(AbstractTensor::Float32(z))
             }
-            Ty::Tensor(dt) if dt == TensorDType::Float64 => {
+            Ty::Tensor(TensorDType::Float64) => {
                 let z = plc.input(sess, arg_name);
                 Ok(AbstractTensor::Float64(z))
             }
