@@ -437,6 +437,7 @@ values![
     HostBitTensor,
     HostBitArray64,
     HostBitArray128,
+    HostBitArray224,
     HostBitArray256,
     HostRing64Tensor,
     HostRing128Tensor,

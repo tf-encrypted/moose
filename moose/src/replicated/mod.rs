@@ -1,15 +1,15 @@
 //! Placements backed by replicated secret sharing
 use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor};
-use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::{
-    AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128, HostBitArray64, HostBitTensor,
-    HostFixed128Tensor, HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
-    SliceInfo,
+    AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128, HostBitArray224,
+    HostBitArray256, HostBitArray64, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
+    HostRing128Tensor, HostRing64Tensor, HostShape, SliceInfo,
 };
 use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::symbolic::Symbolic;
+use crate::{computation::*, BitArray};
 use crate::{Const, Ring, N128, N64};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
@@ -96,6 +96,16 @@ impl<T: Placed + Underlying> Underlying for Symbolic<T> {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedBitArray<RepBitTensorT, N>(RepBitTensorT, PhantomData<N>);
+
+impl<RepBitTensorT, N: Const> BitArray for AbstractReplicatedBitArray<RepBitTensorT, N> {
+    type Len = N;
+}
+
+impl<RepBitTensorT: Placed, N: Const> BitArray
+    for Symbolic<AbstractReplicatedBitArray<RepBitTensorT, N>>
+{
+    type Len = N;
+}
 
 pub type ReplicatedBitArray64 = AbstractReplicatedBitArray<ReplicatedBitTensor, N64>;
 
@@ -2215,6 +2225,8 @@ modelled!(PlacementIndex::index, ReplicatedPlacement, attributes[index: usize] (
 modelled!(PlacementIndex::index, ReplicatedPlacement, attributes[index: usize] (ReplicatedBitArray128) -> ReplicatedBitTensor, IndexOp);
 modelled!(PlacementIndex::index, HostPlacement, attributes[index: usize] (HostBitArray64) -> HostBitTensor, IndexOp);
 modelled!(PlacementIndex::index, HostPlacement, attributes[index: usize] (HostBitArray128) -> HostBitTensor, IndexOp);
+modelled!(PlacementIndex::index, HostPlacement, attributes[index: usize] (HostBitArray224) -> HostBitTensor, IndexOp);
+modelled!(PlacementIndex::index, HostPlacement, attributes[index: usize] (HostBitArray256) -> HostBitTensor, IndexOp);
 
 kernel! {
     IndexOp,
@@ -2223,6 +2235,8 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedBitArray128) -> ReplicatedBitTensor => [hybrid] attributes[index] Self::rep_kernel),
         (HostPlacement, (HostBitArray64) -> HostBitTensor => [hybrid] attributes[index] Self::host_kernel),
         (HostPlacement, (HostBitArray128) -> HostBitTensor => [hybrid] attributes[index] Self::host_kernel),
+        (HostPlacement, (HostBitArray224) -> HostBitTensor => [hybrid] attributes[index] Self::host_kernel),
+        (HostPlacement, (HostBitArray256) -> HostBitTensor => [hybrid] attributes[index] Self::host_kernel),
     ]
 }
 

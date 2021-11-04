@@ -1796,6 +1796,7 @@ impl ToTextual for Ty {
             Ty::HostBitTensor => "BitTensor".to_string(),
             Ty::HostBitArray64 => "BitArray64".to_string(),
             Ty::HostBitArray128 => "BitArray128".to_string(),
+            Ty::HostBitArray224 => "BitArray224".to_string(),
             Ty::HostBitArray256 => "BitArray256".to_string(),
             Ty::HostShape => "Shape".to_string(),
             Ty::Seed => "Seed".to_string(),
@@ -1877,6 +1878,7 @@ impl ToTextual for Value {
             | Value::HostBitArray64(_)
             | Value::Tensor(_)
             | Value::HostBitArray128(_) => unimplemented!(),
+            Value::HostBitArray224(_) => unimplemented!(),
             Value::HostBitArray256(_) => unimplemented!(),
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)

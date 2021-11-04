@@ -4,7 +4,7 @@ use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::symbolic::Symbolic;
-use crate::{Const, Ring, N128, N256, N64};
+use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray::Slice;
@@ -1983,6 +1983,14 @@ impl<HostBitT: CanonicalType, N> CanonicalType for AbstractHostBitArray<HostBitT
     type Type = AbstractHostBitArray<<HostBitT as CanonicalType>::Type, N>;
 }
 
+impl<HostBitT, N: Const> BitArray for AbstractHostBitArray<HostBitT, N> {
+    type Len = N;
+}
+
+impl<HostBitT: Placed, N: Const> BitArray for Symbolic<AbstractHostBitArray<HostBitT, N>> {
+    type Len = N;
+}
+
 pub type HostBitArray64 = AbstractHostBitArray<HostBitTensor, N64>;
 
 #[cfg(test)]
@@ -2010,6 +2018,12 @@ pub type HostBitArray128 = AbstractHostBitArray<HostBitTensor, N128>;
 
 impl SymbolicType for HostBitArray128 {
     type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N128>>;
+}
+
+pub type HostBitArray224 = AbstractHostBitArray<HostBitTensor, N224>;
+
+impl SymbolicType for HostBitArray224 {
+    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N224>>;
 }
 
 pub type HostBitArray256 = AbstractHostBitArray<HostBitTensor, N256>;
@@ -2063,7 +2077,7 @@ pub struct AbstractHostFixedAesTensor<HostBitArrayT> {
     pub precision: u32,
 }
 
-moose_type!(HostFixed128AesTensor = AbstractHostFixedAesTensor<HostBitArray256>);
+moose_type!(HostFixed128AesTensor = AbstractHostFixedAesTensor<HostBitArray224>);
 
 impl<HostBitArrayT: Placed> Placed for AbstractHostFixedAesTensor<HostBitArrayT>
 where

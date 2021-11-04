@@ -12,7 +12,7 @@ use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor, Session};
 
 const AES_128: &[u8] = include_bytes!("aes_128.txt");
 
-pub fn aes<S: Session, P, BitT>(sess: &S, plc: &P, key: Vec<BitT>, block: Vec<BitT>) -> Vec<BitT>
+pub fn aes<S: Session, P, BitT>(sess: &S, plc: &P, mut key: Vec<BitT>, mut block: Vec<BitT>) -> Vec<BitT>
 where
     BitT: Clone,
     P: PlacementXor<S, BitT, BitT, BitT>,
@@ -28,11 +28,13 @@ where
     let mut wires: Vec<Option<BitT>> = vec![None; circuit.num_wires];
 
     assert_eq!(key.len(), 128);
+    // key.reverse();
     for (i, val) in key.into_iter().enumerate() {
         *wires.get_mut(i).unwrap() = Some(val);
     }
 
     assert_eq!(block.len(), 128);
+    // block.reverse();
     for (i, val) in block.into_iter().enumerate() {
         *wires.get_mut(i + 128).unwrap() = Some(val);
     }
@@ -71,12 +73,14 @@ where
         }
     }
 
-    wires
+    let mut output: Vec<_> = wires
         .into_iter()
         .rev()
         .take(128)
         .map(|val| val.unwrap())
-        .collect()
+        .collect();
+    // output.reverse();
+    output
 }
 
 #[derive(Debug)]
@@ -194,35 +198,66 @@ mod tests {
         use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
         use aes::{Aes128, Block, NewBlockCipher};
 
-        let k: Vec<u8> = vec![1; 128];
-        let m: Vec<u8> = vec![1; 128];
+        // let k: Vec<u8> = vec![0; 128];
+        // let m: Vec<u8> = vec![1; 128];
+        let k: Vec<u8> = vec![0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
+        let m: Vec<u8> = vec![0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
 
         let expected_c = {
+            // let k: Vec<u8> = k
+            //     .chunks(8)
+            //     .map(|c| {
+            //         (c[0] << 7)
+            //             + (c[1] << 6)
+            //             + (c[2] << 5)
+            //             + (c[3] << 4)
+            //             + (c[4] << 3)
+            //             + (c[5] << 2)
+            //             + (c[6] << 1)
+            //             + (c[7])
+            //     })
+            //     .collect();
+
             let k: Vec<u8> = k
                 .chunks(8)
                 .map(|c| {
-                    (c[0] << 7)
-                        + (c[1] << 6)
-                        + (c[2] << 5)
-                        + (c[3] << 4)
-                        + (c[4] << 3)
-                        + (c[5] << 2)
-                        + (c[6] << 1)
-                        + (c[7])
+                    (c[0])
+                        + (c[1] << 1)
+                        + (c[2] << 2)
+                        + (c[3] << 3)
+                        + (c[4] << 4)
+                        + (c[5] << 5)
+                        + (c[6] << 6)
+                        + (c[7] << 7)
                 })
                 .collect();
+            println!("{:?}", k);
+
+            // let m: Vec<u8> = m
+            //     .chunks(8)
+            //     .map(|c| {
+            //         (c[0] << 7)
+            //             + (c[1] << 6)
+            //             + (c[2] << 5)
+            //             + (c[3] << 4)
+            //             + (c[4] << 3)
+            //             + (c[5] << 2)
+            //             + (c[6] << 1)
+            //             + (c[7])
+            //     })
+            //     .collect();
 
             let m: Vec<u8> = m
                 .chunks(8)
                 .map(|c| {
-                    (c[0] << 7)
-                        + (c[1] << 6)
-                        + (c[2] << 5)
-                        + (c[3] << 4)
-                        + (c[4] << 3)
-                        + (c[5] << 2)
-                        + (c[6] << 1)
-                        + (c[7])
+                    (c[0])
+                        + (c[1] << 1)
+                        + (c[2] << 2)
+                        + (c[3] << 3)
+                        + (c[4] << 4)
+                        + (c[5] << 5)
+                        + (c[6] << 6)
+                        + (c[7] << 7)
                 })
                 .collect();
 
@@ -264,6 +299,20 @@ mod tests {
                         + (c[7])
                 })
                 .collect();
+
+            // let c: Vec<u8> = c_bits
+            //     .chunks(8)
+            //     .map(|c| {
+            //         (c[0])
+            //             + (c[1] << 1)
+            //             + (c[2] << 2)
+            //             + (c[3] << 3)
+            //             + (c[4] << 4)
+            //             + (c[5] << 5)
+            //             + (c[6] << 6)
+            //             + (c[7] << 7)
+            //     })
+            //     .collect();
 
             c
         };
