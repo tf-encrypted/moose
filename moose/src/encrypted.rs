@@ -262,7 +262,7 @@ impl AesDecryptOp {
         let m = m_bits
             .iter()
             .enumerate()
-            .map(|(i, b)| plc.ring_inject(sess, i, b))
+            .map(|(i, b)| plc.ring_inject(sess, 127 - i, b))
             .fold(zero_ring, |acc, x| plc.add(sess, &acc, &x));
 
         Ok(AbstractHostFixedTensor {
@@ -385,7 +385,7 @@ mod tests {
     fn test_aes_decrypt_host() {
         let raw_key = [201; 16];
         let raw_nonce = [177; 12];
-        let raw_plaintext = [255; 16];
+        let raw_plaintext = [132; 16];
 
         let alice = HostPlacement {
             owner: "alice".into(),
