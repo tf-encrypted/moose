@@ -109,6 +109,12 @@ class ConcatenateExpression(Expression):
 
 
 @dataclass
+class DecryptExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class ConstantExpression(Expression):
     value: Union[int, float]
 

@@ -39,6 +39,20 @@ class TensorType(StandardType):
         self.dtype = dtype
 
 
+@dataclass(init=False)
+class AesTensorType(StandardType):
+    dtype: dtypes.DType
+
+    def __init__(self, dtype: dtypes.DType):
+        super().__init__()
+        if not dtype.is_fixedpoint():
+            raise ValueError(
+                "AesTensorType expects a fixedpoint DType, "
+                f"found {type(dtype.name)} instead."
+            )
+        self.dtype = dtype
+
+
 @dataclass
 class BytesType(StandardType):
     pass
@@ -84,6 +98,11 @@ class OutputOperation(StandardOperation):
 @dataclass
 class ConcatenateOperation(StandardOperation):
     axis: Optional[int]
+    output_type: ValueType
+
+
+@dataclass
+class DecryptOperation(StandardOperation):
     output_type: ValueType
 
 

@@ -10,6 +10,7 @@ from pymoose.computation.standard import AtLeast2DOperation
 from pymoose.computation.standard import CastOperation
 from pymoose.computation.standard import ConcatenateOperation
 from pymoose.computation.standard import ConstantOperation
+from pymoose.computation.standard import DecryptOperation
 from pymoose.computation.standard import DivOperation
 from pymoose.computation.standard import DotOperation
 from pymoose.computation.standard import ExpandDimsOperation
@@ -27,6 +28,7 @@ from pymoose.computation.standard import SliceOperation
 from pymoose.computation.standard import SqueezeOperation
 from pymoose.computation.standard import SubOperation
 from pymoose.computation.standard import SumOperation
+from pymoose.computation.standard import TensorType
 from pymoose.computation.standard import TransposeOperation
 from pymoose.computation.standard import UnknownType
 from pymoose.deprecated.compiler.compiler import Compiler
@@ -37,6 +39,7 @@ from pymoose.edsl.base import BinaryOpExpression
 from pymoose.edsl.base import CastExpression
 from pymoose.edsl.base import ConcatenateExpression
 from pymoose.edsl.base import ConstantExpression
+from pymoose.edsl.base import DecryptExpression
 from pymoose.edsl.base import ExpandDimsExpression
 from pymoose.edsl.base import Expression
 from pymoose.edsl.base import HostPlacementExpression
@@ -171,6 +174,25 @@ class AstTracer:
                 output_type=concatenate_expression.vtype,
                 axis=concatenate_expression.axis,
                 inputs=arrays,
+            )
+        )
+
+    def visit_DecryptExpression(self, decrypt_expression):
+        assert isinstance(decrypt_expression, DecryptExpression)
+        assert len(decrypt_expression.inputs) == 2
+        aes_key_expression, aes_cyphertext_expression = decrypt_expression.inputs
+
+        placement = self.visit_placement_expression(decrypt_expression.placement)
+        aes_key_op = self.visit(aes_key_expression)
+        aes_cyphertext_op = self.visit(aes_cyphertext_expression)
+        output_dtype = aes_cyphertext_op.vtype.dtype
+        output_type = TensorType(output_dtype)
+        return self.add_computation(
+            DecryptOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("decrypt"),
+                output_type=output_type,
+                inputs={"key": aes_key_op, "cyphertext": aes_cyphertext_op},
             )
         )
 
