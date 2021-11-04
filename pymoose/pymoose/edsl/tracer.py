@@ -181,17 +181,14 @@ class AstTracer:
         assert isinstance(decrypt_expression, DecryptExpression)
         assert len(decrypt_expression.inputs) == 2
         aes_key_expression, aes_cyphertext_expression = decrypt_expression.inputs
-
-        placement = self.visit_placement_expression(decrypt_expression.placement)
         aes_key_op = self.visit(aes_key_expression)
         aes_cyphertext_op = self.visit(aes_cyphertext_expression)
-        output_dtype = aes_cyphertext_op.vtype.dtype
-        output_type = TensorType(output_dtype)
+        placement = self.visit_placement_expression(decrypt_expression.placement)
         return self.add_computation(
             DecryptOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("decrypt"),
-                output_type=output_type,
+                output_type=decrypt_expression.vtype,
                 inputs={"key": aes_key_op, "cyphertext": aes_cyphertext_op},
             )
         )
