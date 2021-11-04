@@ -607,40 +607,40 @@ impl CastOp {
     {
         let arg0_precision = match sig.arg(0) {
             Ok(Ty::Tensor(TensorDType::Fixed64 {
-                fractional_precision,
                 integral_precision,
-            })) => Some((fractional_precision, integral_precision)),
+                fractional_precision,
+            })) => Some((integral_precision, fractional_precision)),
             Ok(Ty::Tensor(TensorDType::Fixed128 {
-                fractional_precision,
                 integral_precision,
-            })) => Some((fractional_precision, integral_precision)),
+                fractional_precision,
+            })) => Some((integral_precision, fractional_precision)),
             _ => None,
         };
         let ret_precision = match sig.ret() {
             Ty::Tensor(TensorDType::Fixed64 {
-                fractional_precision,
                 integral_precision,
-            }) => Some((fractional_precision, integral_precision)),
+                fractional_precision,
+            }) => Some((integral_precision, fractional_precision)),
             Ty::Tensor(TensorDType::Fixed128 {
-                fractional_precision,
                 integral_precision,
-            }) => Some((fractional_precision, integral_precision)),
+                fractional_precision,
+            }) => Some((integral_precision, fractional_precision)),
             _ => None,
         };
 
         match x {
             AbstractTensor::Fixed64(x) => {
-                let (fractional_precision, _) = arg0_precision.unwrap();
+                let (_, fractional_precision) = arg0_precision.unwrap();
                 let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
                 Ok(AbstractTensor::Float32(inner))
             }
             AbstractTensor::Fixed128(x) => {
-                let (fractional_precision, _) = arg0_precision.unwrap();
+                let (_, fractional_precision) = arg0_precision.unwrap();
                 let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
                 Ok(AbstractTensor::Float64(inner))
             }
             AbstractTensor::Float32(x) => {
-                let (fractional_precision, integral_precision) = ret_precision.unwrap();
+                let (integral_precision, fractional_precision) = ret_precision.unwrap();
                 let inner =
                     plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
                 Ok(AbstractTensor::Fixed64(inner))

@@ -1253,14 +1253,16 @@ kernel! {
 impl RingFixedpointEncodeOp {
     fn float32_kernel<S: RuntimeSession>(
         _sess: &S,
-        _plc: &HostPlacement,
-        _scaling_base: u64,
-        _scaling_exp: u32,
-        _x: HostFloat32Tensor,
+        plc: &HostPlacement,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: HostFloat32Tensor,
     ) -> Result<HostRing64Tensor> {
-        // let scaling_factor = u64::pow(scaling_base, scaling_exp);
-        // HostRing64Tensor::encode(&x, scaling_factor)
-        unimplemented!()
+        let scaling_factor = u64::pow(scaling_base, scaling_exp);
+        let x_upshifted = &x.0 * (scaling_factor as f32);
+        let x_converted: ArrayD<Wrapping<u64>> =
+            x_upshifted.mapv(|el| Wrapping((el as i64) as u64));
+        Ok(AbstractHostRingTensor(x_converted, plc.clone()))
     }
 
     fn float64_kernel<S: RuntimeSession>(
