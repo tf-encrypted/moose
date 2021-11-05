@@ -421,20 +421,12 @@ pub trait PlacementAnd<S: Session, T, U, O> {
     fn and(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
-pub trait PlacementAndSetup<S: Session, SetupT, T, U, O> {
-    fn and_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
-}
-
 pub trait PlacementBitExtract<S: Session, T, O> {
     fn bit_extract(&self, sess: &S, bit_idx: usize, x: &T) -> O;
 }
 
 pub trait PlacementBitDec<S: Session, T, O> {
     fn bit_decompose(&self, sess: &S, x: &T) -> O;
-}
-
-pub trait PlacementBitDecSetup<S: Session, SetupT, T, O> {
-    fn bit_decompose(&self, sess: &S, setup: &SetupT, x: &T) -> O;
 }
 
 pub trait PlacementBitCompose<S: Session, T, O> {
@@ -445,24 +437,8 @@ pub trait PlacementRingInject<S: Session, T, O> {
     fn ring_inject(&self, sess: &S, bit_idx: usize, x: &T) -> O;
 }
 
-pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
-    fn mul_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
-}
-
-pub trait PlacementDotSetup<S: Session, SetupT, T, U, O> {
-    fn dot_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
-}
-
-pub trait PlacementDivSetup<S: Session, SetupT, T, U, O> {
-    fn div_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
-}
-
 pub trait PlacementShare<S: Session, T, O> {
     fn share(&self, sess: &S, x: &T) -> O;
-}
-
-pub trait PlacementShareSetup<S: Session, SetupT, T, O> {
-    fn share(&self, sess: &S, setup: &SetupT, x: &T) -> O;
 }
 
 pub trait PlacementReveal<S: Session, T, O> {
@@ -646,12 +622,12 @@ pub trait PlacementDaBitProvider<S: Session, ShapeT, O1, O2> {
     ) -> (O1, O2);
 }
 
-pub trait PlacementAbs<S: Session, SetupT, T, O> {
-    fn abs(&self, sess: &S, setup: &SetupT, x: &T) -> O;
+pub trait PlacementAbs<S: Session, T, O> {
+    fn abs(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementMsb<S: Session, SetupT, T, O> {
-    fn msb(&self, sess: &S, setup: &SetupT, x: &T) -> O;
+pub trait PlacementMsb<S: Session, T, O> {
+    fn msb(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait PlacementSign<S: Session, T, O> {

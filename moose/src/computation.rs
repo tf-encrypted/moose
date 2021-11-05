@@ -1,5 +1,5 @@
 use crate::additive::*;
-use crate::encrypted::{AesTensor, Fixed128AesTensor};
+use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
@@ -480,6 +480,7 @@ values![
     AdditiveRing128Tensor,
     AdditiveShape,
     Fixed128AesTensor,
+    AesKey,
     AesTensor,
 ];
 

@@ -367,66 +367,65 @@ impl RepSetupOp {
     }
 }
 
-modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostFixed64Tensor) -> ReplicatedFixed64Tensor, RepShareOp);
-modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostFixed128Tensor) -> ReplicatedFixed128Tensor, RepShareOp);
-modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> ReplicatedRing64Tensor, RepShareOp);
-modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> ReplicatedRing128Tensor, RepShareOp);
-modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor, RepShareOp);
-modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostBitArray64) -> ReplicatedBitArray64, RepShareOp);
-modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostBitArray128) -> ReplicatedBitArray128, RepShareOp);
-modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostBitArray224) -> ReplicatedBitArray224, RepShareOp);
+modelled!(PlacementShare::share, ReplicatedPlacement, (HostFixed64Tensor) -> ReplicatedFixed64Tensor, RepShareOp);
+modelled!(PlacementShare::share, ReplicatedPlacement, (HostFixed128Tensor) -> ReplicatedFixed128Tensor, RepShareOp);
+modelled!(PlacementShare::share, ReplicatedPlacement, (HostRing64Tensor) -> ReplicatedRing64Tensor, RepShareOp);
+modelled!(PlacementShare::share, ReplicatedPlacement, (HostRing128Tensor) -> ReplicatedRing128Tensor, RepShareOp);
+modelled!(PlacementShare::share, ReplicatedPlacement, (HostBitTensor) -> ReplicatedBitTensor, RepShareOp);
+modelled!(PlacementShare::share, ReplicatedPlacement, (HostBitArray64) -> ReplicatedBitArray64, RepShareOp);
+modelled!(PlacementShare::share, ReplicatedPlacement, (HostBitArray128) -> ReplicatedBitArray128, RepShareOp);
+modelled!(PlacementShare::share, ReplicatedPlacement, (HostBitArray224) -> ReplicatedBitArray224, RepShareOp);
 
 kernel! {
     RepShareOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, HostFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor => [hybrid] Self::ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostBitArray64) -> ReplicatedBitArray64 => [hybrid] Self::array_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostBitArray128) -> ReplicatedBitArray128 => [hybrid] Self::array_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostBitArray224) -> ReplicatedBitArray224 => [hybrid] Self::array_kernel),
+        (ReplicatedPlacement, (HostFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::fixed_kernel),
+        (ReplicatedPlacement, (HostFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::fixed_kernel),
+        (ReplicatedPlacement, (HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_kernel),
+        (ReplicatedPlacement, (HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_kernel),
+        (ReplicatedPlacement, (HostBitTensor) -> ReplicatedBitTensor => [hybrid] Self::ring_kernel),
+        (ReplicatedPlacement, (HostBitArray64) -> ReplicatedBitArray64 => [hybrid] Self::array_kernel),
+        (ReplicatedPlacement, (HostBitArray128) -> ReplicatedBitArray128 => [hybrid] Self::array_kernel),
+        (ReplicatedPlacement, (HostBitArray224) -> ReplicatedBitArray224 => [hybrid] Self::array_kernel),
     ]
 }
 
 impl RepShareOp {
-    fn fixed_kernel<S: Session, SetupT, HostRingT, RepRingT>(
+    fn fixed_kernel<S: Session, HostRingT, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        setup: SetupT,
         x: AbstractHostFixedTensor<HostRingT>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
-        ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostRingT, RepRingT>,
+        ReplicatedPlacement: PlacementShare<S, HostRingT, RepRingT>,
     {
         Ok(AbstractReplicatedFixedTensor {
-            tensor: plc.share(sess, &setup, &x.tensor),
+            tensor: plc.share(sess, &x.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
         })
     }
 
-    fn array_kernel<S: Session, SetupT, HostBitTensorT, RepBitTensorT, N: Const>(
+    fn array_kernel<S: Session, HostBitTensorT, RepBitTensorT, N: Const>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        setup: SetupT,
         x: AbstractHostBitArray<HostBitTensorT, N>,
     ) -> Result<AbstractReplicatedBitArray<RepBitTensorT, N>>
     where
-        ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostBitTensorT, RepBitTensorT>,
+        ReplicatedPlacement: PlacementShare<S, HostBitTensorT, RepBitTensorT>,
     {
-        let shared_tensor = plc.share(sess, &setup, &x.0);
+        let shared_tensor = plc.share(sess, &x.0);
         Ok(AbstractReplicatedBitArray(shared_tensor, x.1))
     }
 
     fn ring_kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        setup: AbstractReplicatedSetup<KeyT>,
         x: RingT,
     ) -> Result<RepTen<RingT>>
     where
+        <S as Session>::ReplicatedSetup: Clone,
+        <S as Session>::ReplicatedSetup: TryInto<AbstractReplicatedSetup<KeyT>>,
         RingT: Clone + Placed<Placement = HostPlacement>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, RingT>,
@@ -438,6 +437,10 @@ impl RepShareOp {
     {
         let x_player = x.placement()?;
 
+        let setup = match (*sess.replicated_setup(plc)).clone().try_into() {
+            Ok(setup) => setup,
+            _ => todo!("not sure what to do with the symbolic setup yet"), // TODO: perhaps a custom kernel could instead output a symbolic op
+        };
         let AbstractReplicatedSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
         } = &setup;
@@ -621,7 +624,6 @@ impl RepRevealOp {
     }
 }
 
-modelled_alias!(PlacementAndSetup::and_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementMulSetup::mul_setup); // and = mul in Z2
 modelled!(PlacementAnd::and, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepAndOp);
 
 kernel! {
@@ -639,12 +641,10 @@ impl RepAndOp {
         y: RepT,
     ) -> Result<RepT>
     where
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepT, RepT, RepT>,
+        ReplicatedPlacement: PlacementMul<S, RepT, RepT, RepT>,
     {
         // and = mul in Z2
-        let setup = sess.replicated_setup(rep);
-        Ok(rep.mul_setup(sess, &setup, &x, &y))
+        Ok(rep.mul(sess, &x, &y))
     }
 }
 
@@ -1215,41 +1215,40 @@ impl RepSubOp {
     }
 }
 
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepMulOp);
 
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
 
 kernel! {
     RepMulOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::dst_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_dst_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::dst_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_dst_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_rep_kernel),
+        (ReplicatedPlacement, (HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::dst_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_dst_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::dst_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_dst_kernel),
     ]
 }
 
 impl RepMulOp {
-    fn rep_rep_kernel<S: Session, RingT, KeyT, ShapeT>(
+    fn rep_rep_kernel<S: Session, RingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        setup: AbstractReplicatedSetup<KeyT>,
         x: RepTen<RingT>,
         y: RepTen<RingT>,
     ) -> Result<RepTen<RingT>>
@@ -1258,7 +1257,7 @@ impl RepMulOp {
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
-        ReplicatedPlacement: ZeroShareGen<S, KeyT, ShapeT, RingT>,
+        ReplicatedPlacement: ZeroShareGen<S, ShapeT, RingT>,
         ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -1284,7 +1283,7 @@ impl RepMulOp {
 
         let AbstractReplicatedZeroShare {
             alphas: [a0, a1, a2],
-        } = rep.gen_zero_share(sess, &setup, &zero_shape);
+        } = rep.gen_zero_share(sess, &zero_shape);
 
         let z0 = with_context!(player0, sess, { v0 + a0 });
         let z1 = with_context!(player1, sess, { v1 + a1 });
@@ -1298,10 +1297,9 @@ impl RepMulOp {
         ))
     }
 
-    fn ring_rep_kernel<S: Session, RingT, KeyT>(
+    fn ring_rep_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        _setup: AbstractReplicatedSetup<KeyT>,
         x: RingT,
         y: RepTen<RingT>,
     ) -> Result<RepTen<RingT>>
@@ -1328,10 +1326,9 @@ impl RepMulOp {
         })
     }
 
-    fn rep_ring_kernel<S: Session, RingT, KeyT>(
+    fn rep_ring_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        _setup: AbstractReplicatedSetup<KeyT>,
         x: RepTen<RingT>,
         y: RingT,
     ) -> Result<RepTen<RingT>>
@@ -1358,10 +1355,9 @@ impl RepMulOp {
         })
     }
 
-    fn dst_rep_kernel<S: Session, RingT, KeyT>(
+    fn dst_rep_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        _setup: AbstractReplicatedSetup<KeyT>,
         x: MirTen<RingT>,
         y: RepTen<RingT>,
     ) -> Result<RepTen<RingT>>
@@ -1392,10 +1388,9 @@ impl RepMulOp {
         })
     }
 
-    fn rep_dst_kernel<S: Session, RingT, KeyT>(
+    fn rep_dst_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        _setup: AbstractReplicatedSetup<KeyT>,
         x: RepTen<RingT>,
         y: MirTen<RingT>,
     ) -> Result<RepTen<RingT>>
@@ -1427,30 +1422,29 @@ impl RepMulOp {
     }
 }
 
-modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor, RepDotOp);
+modelled!(PlacementDot::dot, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepDotOp);
+modelled!(PlacementDot::dot, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepDotOp);
+modelled!(PlacementDot::dot, ReplicatedPlacement, (HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepDotOp);
+modelled!(PlacementDot::dot, ReplicatedPlacement, (HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepDotOp);
+modelled!(PlacementDot::dot, ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor, RepDotOp);
+modelled!(PlacementDot::dot, ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor, RepDotOp);
 
 kernel! {
     RepDotOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_rep_kernel),
+        (ReplicatedPlacement, (HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
     ]
 }
 
 impl RepDotOp {
-    fn rep_rep_kernel<S: Session, KeyT, ShapeT, RingT>(
+    fn rep_rep_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        setup: AbstractReplicatedSetup<KeyT>,
         x: RepTen<RingT>,
         y: RepTen<RingT>,
     ) -> Result<RepTen<RingT>>
@@ -1459,7 +1453,7 @@ impl RepDotOp {
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: PlacementDot<S, RingT, RingT, RingT>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
-        ReplicatedPlacement: ZeroShareGen<S, KeyT, ShapeT, RingT>,
+        ReplicatedPlacement: ZeroShareGen<S, ShapeT, RingT>,
         ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -1491,7 +1485,7 @@ impl RepDotOp {
 
         let AbstractReplicatedZeroShare {
             alphas: [a0, a1, a2],
-        } = rep.gen_zero_share(sess, &setup, &zero_shape);
+        } = rep.gen_zero_share(sess, &zero_shape);
 
         let z0 = with_context!(player0, sess, { v0 + a0 });
         let z1 = with_context!(player1, sess, { v1 + a1 });
@@ -1505,10 +1499,9 @@ impl RepDotOp {
         ))
     }
 
-    fn ring_rep_kernel<S: Session, RingT, KeyT>(
+    fn ring_rep_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        _setup: AbstractReplicatedSetup<KeyT>,
         x: RingT,
         y: RepTen<RingT>,
     ) -> Result<RepTen<RingT>>
@@ -1535,10 +1528,9 @@ impl RepDotOp {
         })
     }
 
-    fn rep_ring_kernel<S: Session, RingT, KeyT>(
+    fn rep_ring_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        _setup: AbstractReplicatedSetup<KeyT>,
         x: RepTen<RingT>,
         y: RingT,
     ) -> Result<RepTen<RingT>>
@@ -2399,84 +2391,81 @@ impl RepShlDimOp {
     }
 }
 
-modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor, RepMsbOp);
-modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor, RepMsbOp);
-modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMsbOp);
-modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMsbOp);
+modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedBitTensor, RepMsbOp);
+modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedBitTensor, RepMsbOp);
+modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMsbOp);
+modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMsbOp);
 
 kernel! {
     RepMsbOp,
     [
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::bit_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::bit_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::ring_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::ring_kernel),
+        (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::bit_kernel),
+        (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::bit_kernel),
+        (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::ring_kernel),
+        (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::ring_kernel),
     ]
 }
 
 impl RepMsbOp {
-    fn bit_kernel<S: Session, SetupT, RepRingT, RepBitT, N: Const>(
+    fn bit_kernel<S: Session, RepRingT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        setup: SetupT,
         x: RepRingT,
     ) -> Result<RepBitT>
     where
         RepRingT: Ring<BitLength = N>,
         RepBits<N>: KnownType<S>,
-        ReplicatedPlacement: PlacementBitDecSetup<S, SetupT, RepRingT, m!(RepBits<N>)>,
+        ReplicatedPlacement: PlacementBitDec<S, RepRingT, m!(RepBits<N>)>,
         ReplicatedPlacement: PlacementIndex<S, m!(RepBits<N>), RepBitT>,
     {
-        let bits = rep.bit_decompose(sess, &setup, &x);
+        let bits = rep.bit_decompose(sess, &x);
         Ok(rep.index(sess, N::VALUE - 1, &bits))
     }
 
-    fn ring_kernel<S: Session, SetupT, RepRingT>(
+    fn ring_kernel<S: Session, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        setup: SetupT,
         x: RepRingT,
     ) -> Result<RepRingT>
     where
         ReplicatedBitTensor: KnownType<S>,
-        ReplicatedPlacement: PlacementMsb<S, SetupT, RepRingT, m!(ReplicatedBitTensor)>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, m!(ReplicatedBitTensor)>,
         ReplicatedPlacement: PlacementRingInject<S, m!(ReplicatedBitTensor), RepRingT>,
     {
-        let x_bin = rep.msb(sess, &setup, &x);
+        let x_bin = rep.msb(sess, &x);
         Ok(rep.ring_inject(sess, 0, &x_bin))
     }
 }
 
-modelled!(PlacementAbs::abs, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepAbsOp);
-modelled!(PlacementAbs::abs, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepAbsOp);
+modelled!(PlacementAbs::abs, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepAbsOp);
+modelled!(PlacementAbs::abs, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepAbsOp);
 
 kernel! {
     RepAbsOp,
     [
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::kernel),
+        (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::kernel),
+        (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::kernel),
     ]
 }
 
 impl RepAbsOp {
-    fn kernel<S: Session, SetupT, RepT, MirroredT>(
+    fn kernel<S: Session, RepT, MirroredT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        setup: SetupT,
         x: RepT,
     ) -> Result<RepT>
     where
-        ReplicatedPlacement: PlacementMsb<S, SetupT, RepT, RepT>,
-        ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepT, RepT, RepT>,
+        ReplicatedPlacement: PlacementMsb<S, RepT, RepT>,
+        ReplicatedPlacement: PlacementMul<S, RepT, RepT, RepT>,
         ReplicatedPlacement: PlacementShl<S, RepT, RepT>,
         ReplicatedPlacement: PlacementSub<S, MirroredT, RepT, RepT>,
         ReplicatedPlacement: ShapeFill<S, RepT, Result = MirroredT>,
     {
-        let msb_ring = rep.msb(sess, &setup, &x);
+        let msb_ring = rep.msb(sess, &x);
         let double = rep.shl(sess, 1, &msb_ring);
         let ones = rep.shape_fill(sess, Constant::Ring64(1), &msb_ring);
         let sign = rep.sub(sess, &ones, &double);
-        Ok(rep.mul_setup(sess, &setup, &sign, &x))
+        Ok(rep.mul(sess, &sign, &x))
     }
 }
 
@@ -2503,33 +2492,19 @@ impl ShapeOp {
     }
 }
 
-trait BinaryAdder<S: Session, SetupT, RepBitT> {
-    fn binary_adder(
-        &self,
-        sess: &S,
-        setup: SetupT,
-        x: RepBitT,
-        y: RepBitT,
-        ring_size: usize,
-    ) -> RepBitT;
+trait BinaryAdder<S: Session, RepBitT> {
+    fn binary_adder(&self, sess: &S, x: RepBitT, y: RepBitT, ring_size: usize) -> RepBitT;
 }
 
 /// Binary addition protocol for tensors
-impl<S: Session, SetupT, RepBitT> BinaryAdder<S, SetupT, RepBitT> for ReplicatedPlacement
+impl<S: Session, RepBitT> BinaryAdder<S, RepBitT> for ReplicatedPlacement
 where
     RepBitT: Clone,
-    ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementAnd<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementShlDim<S, RepBitT, RepBitT>,
 {
-    fn binary_adder(
-        &self,
-        sess: &S,
-        setup: SetupT,
-        x: RepBitT,
-        y: RepBitT,
-        ring_size: usize,
-    ) -> RepBitT {
+    fn binary_adder(&self, sess: &S, x: RepBitT, y: RepBitT, ring_size: usize) -> RepBitT {
         #![allow(clippy::many_single_char_names)]
 
         let rep = self;
@@ -2547,7 +2522,7 @@ where
         // Note the first level is computed as P0 = x ^ y, G0 = x & y;
 
         // Perform `g = x * y` for every tensor
-        let mut g = rep.and_setup(sess, &setup, &x, &y);
+        let mut g = rep.and(sess, &x, &y);
 
         // Perform `p_store = x + y` (just a helper to avoid compute xor() twice)
         let p_store = rep.xor(sess, &x, &y);
@@ -2569,13 +2544,13 @@ where
             // Note that the original algorithm had G_a and P_b, but we can have
             // G_a and P_a instead because the 1s in P_a do not matter in the final result
             // since they are cancelled out by the zeros in G_a
-            let p_and_g = rep.and_setup(sess, &setup, &p, &g1);
+            let p_and_g = rep.and(sess, &p, &g1);
 
             // update `g = g xor p1 and g1`
             g = rep.xor(sess, &g, &p_and_g);
 
             // update `p = p * p1`
-            p = rep.and_setup(sess, &setup, &p, &p1);
+            p = rep.and(sess, &p, &p1);
         }
 
         // c is a copy of g with the first tensor (corresponding to the first bit) zeroed out
@@ -2658,22 +2633,21 @@ impl RingInjectOp {
     }
 }
 
-modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitArray64, RepBitDecOp);
-modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitArray128, RepBitDecOp);
+modelled!(PlacementBitDec::bit_decompose, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedBitArray64, RepBitDecOp);
+modelled!(PlacementBitDec::bit_decompose, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedBitArray128, RepBitDecOp);
 
 kernel! {
     RepBitDecOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitArray64 => [hybrid] Self::ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitArray128 => [hybrid] Self::ring_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedBitArray64 => [hybrid] Self::ring_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedBitArray128 => [hybrid] Self::ring_kernel),
     ]
 }
 
 impl RepBitDecOp {
-    fn ring_kernel<S: Session, SetupT, ShapeT, HostRingT, HostBitT, RepBitT, N: Const>(
+    fn ring_kernel<S: Session, ShapeT, HostRingT, HostBitT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        setup: SetupT,
         x: RepTen<HostRingT>,
     ) -> Result<AbstractReplicatedBitArray<RepBitT, N>>
     where
@@ -2688,8 +2662,8 @@ impl RepBitDecOp {
         HostPlacement: PlacementBitDec<S, HostRingT, HostBitT>,
         HostPlacement: PlacementShape<S, HostRingT, ShapeT>,
         HostPlacement: PlacementFill<S, ShapeT, HostBitT>,
-        ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostBitT, RepBitT>,
-        ReplicatedPlacement: BinaryAdder<S, SetupT, RepBitT>,
+        ReplicatedPlacement: PlacementShare<S, HostBitT, RepBitT>,
+        ReplicatedPlacement: BinaryAdder<S, RepBitT>,
         ReplicatedPlacement: PlacementIndexAxis<S, RepBitT, RepBitT>,
 
         HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
@@ -2711,7 +2685,7 @@ impl RepBitDecOp {
 
         let x2_on_2 = player2.bit_decompose(sess, x22);
 
-        let rep_bsl = rep.share(sess, &setup, &bsl);
+        let rep_bsl = rep.share(sess, &bsl);
         let rep_bsr = RepTen {
             shares: [
                 [p0_zero.clone(), p0_zero],
@@ -2721,7 +2695,7 @@ impl RepBitDecOp {
         }
         .into();
 
-        let res = rep.binary_adder(sess, setup, rep_bsl, rep_bsr, HostRingT::BitLength::VALUE);
+        let res = rep.binary_adder(sess, rep_bsl, rep_bsr, HostRingT::BitLength::VALUE);
         Ok(AbstractReplicatedBitArray(res, PhantomData))
     }
 }
@@ -2747,7 +2721,6 @@ impl RepBitComposeOp {
         RepRingT: Ring<BitLength = N>,
 
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementShape<S, RepBitT, ShapeT>,
@@ -2820,30 +2793,35 @@ struct AbstractReplicatedZeroShare<R> {
     alphas: [R; 3],
 }
 
-trait ZeroShareGen<S: Session, KeyT, ShapeT, RingT> {
+trait ZeroShareGen<S: Session, ShapeT, RingT> {
     fn gen_zero_share(
         &self,
         sess: &S,
-        setup: &AbstractReplicatedSetup<KeyT>,
         shape: &AbstractReplicatedShape<ShapeT>,
     ) -> AbstractReplicatedZeroShare<RingT>;
 }
 
-impl<S: Session, RingT, ShapeT, KeyT> ZeroShareGen<S, KeyT, ShapeT, RingT> for ReplicatedPlacement
+impl<S: Session, RingT, ShapeT> ZeroShareGen<S, ShapeT, RingT> for ReplicatedPlacement
 where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
     HostShape: KnownType<S>,
+    <S as Session>::ReplicatedSetup: Clone,
+    <S as Session>::ReplicatedSetup: TryInto<AbstractReplicatedSetup<m!(PrfKey)>>,
     HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, m!(Seed), RingT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
-    ReplicatedPlacement: ReplicatedSeedsGen<S, KeyT, m!(Seed)>,
+    ReplicatedPlacement: ReplicatedSeedsGen<S, m!(PrfKey), m!(Seed)>,
 {
     fn gen_zero_share(
         &self,
         sess: &S,
-        setup: &AbstractReplicatedSetup<KeyT>,
         shape: &AbstractReplicatedShape<ShapeT>,
     ) -> AbstractReplicatedZeroShare<RingT> {
+        let setup = match (*sess.replicated_setup(self)).clone().try_into() {
+            Ok(setup) => setup,
+            _ => todo!("not sure what to do with the symbolic setup yet"), // TODO: perhaps a custom kernel could instead output a symbolic op
+        };
+
         let (player0, player1, player2) = self.host_placements();
 
         let AbstractReplicatedShape {
@@ -2852,7 +2830,7 @@ where
 
         let AbstractReplicatedSeeds {
             seeds: [[s00, s10], [s11, s21], [s22, s02]],
-        } = &self.gen_seeds(sess, setup);
+        } = &self.gen_seeds(sess, &setup);
 
         let r00 = player0.sample_uniform_seeded(sess, shape0, s00);
         let r10 = player0.sample_uniform_seeded(sess, shape0, s10);
@@ -2873,12 +2851,11 @@ where
 }
 
 impl ReplicatedPlacement {
-    pub fn prefix_op<S, SetupT, RepT>(
+    pub fn prefix_op<S, RepT>(
         &self,
         sess: &S,
-        setup: &SetupT,
         x: Vec<RepT>,
-        op: fn(&Self, &S, &SetupT, &RepT, &RepT) -> RepT,
+        op: fn(&Self, &S, &RepT, &RepT) -> RepT,
     ) -> Vec<RepT> {
         let v_len = x.len();
 
@@ -2891,7 +2868,7 @@ impl ReplicatedPlacement {
                 let k_bound = (2_i32.pow(i) + 1) as usize;
                 for k in 1..k_bound {
                     if y + k < v_len {
-                        res[y + k] = op(self, sess, setup, &res[y], &res[y + k]);
+                        res[y + k] = op(self, sess, &res[y], &res[y + k]);
                     }
                 }
             }
@@ -2899,43 +2876,27 @@ impl ReplicatedPlacement {
         res
     }
 
-    pub fn prefix_or<S: Session, SetupT, RepT>(
-        &self,
-        sess: &S,
-        setup: &SetupT,
-        x: Vec<RepT>,
-    ) -> Vec<RepT>
+    pub fn prefix_or<S: Session, RepT>(&self, sess: &S, x: Vec<RepT>) -> Vec<RepT>
     where
-        ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepT, RepT, RepT>,
+        ReplicatedPlacement: PlacementAnd<S, RepT, RepT, RepT>,
         ReplicatedPlacement: PlacementXor<S, RepT, RepT, RepT>,
     {
-        let elementwise_or =
-            |rep: &ReplicatedPlacement, sess: &S, setup: &SetupT, x: &RepT, y: &RepT| -> RepT {
-                rep.xor(
-                    sess,
-                    &rep.xor(sess, x, y),
-                    &rep.and_setup(sess, setup, x, y),
-                )
-            };
+        let elementwise_or = |rep: &ReplicatedPlacement, sess: &S, x: &RepT, y: &RepT| -> RepT {
+            rep.xor(sess, &rep.xor(sess, x, y), &rep.and(sess, x, y))
+        };
 
-        self.prefix_op(sess, setup, x, elementwise_or)
+        self.prefix_op(sess, x, elementwise_or)
     }
 
-    pub fn prefix_and<S: Session, SetupT, RepT>(
-        &self,
-        sess: &S,
-        setup: &SetupT,
-        x: Vec<RepT>,
-    ) -> Vec<RepT>
+    pub fn prefix_and<S: Session, RepT>(&self, sess: &S, x: Vec<RepT>) -> Vec<RepT>
     where
-        ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepT, RepT, RepT>,
+        ReplicatedPlacement: PlacementAnd<S, RepT, RepT, RepT>,
     {
-        let elementwise_and =
-            |rep: &ReplicatedPlacement, sess: &S, setup: &SetupT, x: &RepT, y: &RepT| -> RepT {
-                rep.and_setup(sess, setup, x, y)
-            };
+        let elementwise_and = |rep: &ReplicatedPlacement, sess: &S, x: &RepT, y: &RepT| -> RepT {
+            rep.and(sess, x, y)
+        };
 
-        self.prefix_op(sess, setup, x, elementwise_and)
+        self.prefix_op(sess, x, elementwise_and)
     }
 }
 
@@ -3068,7 +3029,6 @@ mod tests {
         };
 
         let sess = SyncSession::default();
-        let setup = (*sess.replicated_setup(&rep)).clone();
 
         let scaling_base = 2;
         let scaling_exp = 24;
@@ -3080,7 +3040,7 @@ mod tests {
             alice.clone(),
         );
         let x = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &x);
-        let x_shared = rep.share(&sess, &setup, &x);
+        let x_shared = rep.share(&sess, &x);
 
         let mean = rep.mean_as_fixedpoint(&sess, None, scaling_base, scaling_exp, &x_shared);
         let mean = rep.trunc_pr(&sess, scaling_exp, &mean);
@@ -3119,12 +3079,9 @@ mod tests {
         let inputs = vec![a, b, c];
 
         let sess = SyncSession::default();
-        let setup = (*sess.replicated_setup(&rep)).clone();
 
-        let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>> = inputs
-            .into_iter()
-            .map(|x| rep.share(&sess, &setup, &x))
-            .collect();
+        let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>> =
+            inputs.into_iter().map(|x| rep.share(&sess, &x)).collect();
 
         let sum = rep.add_n(&sess, &shares);
         let opened_result = alice.reveal(&sess, &sum);
@@ -3148,12 +3105,9 @@ mod tests {
         let inputs = vec![a, b, c];
 
         let sess = SyncSession::default();
-        let setup = (*sess.replicated_setup(&rep)).clone();
 
-        let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u128>>> = inputs
-            .into_iter()
-            .map(|x| rep.share(&sess, &setup, &x))
-            .collect();
+        let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u128>>> =
+            inputs.into_iter().map(|x| rep.share(&sess, &x)).collect();
 
         let sum = rep.add_n(&sess, &shares);
         let opened_result = alice.reveal(&sess, &sum);
@@ -3173,9 +3127,8 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
 
         let sess = SyncSession::default();
-        let setup = (*sess.replicated_setup(&rep)).clone();
 
-        let x_shared = rep.share(&sess, &setup, &x);
+        let x_shared = rep.share(&sess, &x);
 
         let sum = rep.sum(&sess, None, &x_shared);
         let opened_result = alice.reveal(&sess, &sum);
@@ -3199,9 +3152,8 @@ mod tests {
                 let xr = $tt::from_raw_plc(x, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = (*sess.replicated_setup(&rep)).clone();
 
-                let x_shared = rep.share(&sess, &setup, &xr);
+                let x_shared = rep.share(&sess, &xr);
 
                 let diag = rep.diag(&sess, &x_shared);
                 let opened_diag = alice.reveal(&sess, &diag);
@@ -3245,9 +3197,8 @@ mod tests {
                 let xr = $tt::from_raw_plc(x, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = (*sess.replicated_setup(&rep)).clone();
 
-                let x_shared = rep.share(&sess, &setup, &xr);
+                let x_shared = rep.share(&sess, &xr);
 
                 let index_axis = rep.index_axis(&sess, 0, 1, &x_shared);
                 let opened_index_axis = alice.reveal(&sess, &index_axis);
@@ -3291,9 +3242,8 @@ mod tests {
                 let xr = HostBitTensor::from_raw_plc(x, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = (*sess.replicated_setup(&rep)).clone();
 
-                let x_shared = rep.share(&sess, &setup, &xr);
+                let x_shared = rep.share(&sess, &xr);
                 let x_shared_bit_array =
                     AbstractReplicatedBitArray::<ReplicatedBitTensor, $n>(x_shared, PhantomData);
 
@@ -3331,10 +3281,9 @@ mod tests {
                 let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = (*sess.replicated_setup(&rep)).clone();
 
-                let x_shared = rep.share(&sess, &setup, &x);
-                let y_shared = rep.share(&sess, &setup, &y);
+                let x_shared = rep.share(&sess, &x);
+                let y_shared = rep.share(&sess, &y);
 
                 let sum = rep.add(&sess, &x_shared, &y_shared);
                 let opened_sum = alice.reveal(&sess, &sum);
@@ -3389,12 +3338,11 @@ mod tests {
                 let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = (*sess.replicated_setup(&rep)).clone();
 
-                let x_shared = rep.share(&sess, &setup, &x);
-                let y_shared = rep.share(&sess, &setup, &y);
+                let x_shared = rep.share(&sess, &x);
+                let y_shared = rep.share(&sess, &y);
 
-                let sum = rep.$test_func(&sess, &setup, &x_shared, &y_shared);
+                let sum = rep.$test_func(&sess, &x_shared, &y_shared);
                 let opened_product = alice.reveal(&sess, &sum);
                 assert_eq!(
                     opened_product,
@@ -3404,10 +3352,10 @@ mod tests {
         };
     }
 
-    rep_binary_func_test!(test_rep_mul64, mul_setup<u64>);
-    rep_binary_func_test!(test_rep_mul128, mul_setup<u128>);
-    rep_binary_func_test!(test_rep_dot64, dot_setup<u64>);
-    rep_binary_func_test!(test_rep_dot128, dot_setup<u128>);
+    rep_binary_func_test!(test_rep_mul64, mul<u64>);
+    rep_binary_func_test!(test_rep_mul128, mul<u128>);
+    rep_binary_func_test!(test_rep_dot64, dot<u64>);
+    rep_binary_func_test!(test_rep_dot128, dot<u128>);
 
     macro_rules! pairwise_same_length {
         ($func_name:ident, $tt: ident) => {
@@ -3492,9 +3440,8 @@ mod tests {
                 let target_mir_rep = AbstractHostRingTensor::from_raw_plc(zmir_s, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
 
-                let x_shared = rep.share(&sess, &setup, &x);
+                let x_shared = rep.share(&sess, &x);
                 let y_mir: MirTen<AbstractHostRingTensor<$tt>> =
                     rep.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
 
@@ -3571,18 +3518,17 @@ mod tests {
                 let target = AbstractHostRingTensor::from_raw_plc(zs, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = rep.gen_setup(&sess);
 
-                let x_shared = rep.share(&sess, &setup, &x);
+                let x_shared = rep.share(&sess, &x);
                 let y_mir: MirTen<AbstractHostRingTensor<$tt>> =
                     rep.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
 
-                let result_rep_mir = rep.$test_func(&sess, &setup, &x_shared, &y_mir);
+                let result_rep_mir = rep.$test_func(&sess, &x_shared, &y_mir);
                 let opened_result = alice.reveal(&sess, &result_rep_mir);
 
                 assert_eq!(opened_result, target);
 
-                let result_mir_rep = rep.$test_func(&sess, &setup, &y_mir, &x_shared);
+                let result_mir_rep = rep.$test_func(&sess, &y_mir, &x_shared);
                 let opened_result = alice.reveal(&sess, &result_mir_rep);
 
                 assert_eq!(opened_result, target);
@@ -3590,8 +3536,8 @@ mod tests {
         };
     }
 
-    rep_mir_mul_setup_func_test!(test_rep_mir_mul64, mul_setup<u64>);
-    rep_mir_mul_setup_func_test!(test_rep_mir_mul128, mul_setup<u128>);
+    rep_mir_mul_setup_func_test!(test_rep_mir_mul64, mul<u64>);
+    rep_mir_mul_setup_func_test!(test_rep_mir_mul128, mul<u128>);
 
     #[test]
     fn test_rep_mir_mul_64() {
@@ -3627,10 +3573,9 @@ mod tests {
                 };
 
                 let sess = SyncSession::default();
-                let setup = (*sess.replicated_setup(&rep)).clone();
 
                 let alice_x1 = AbstractHostRingTensor::from_raw_plc(xs.clone(), alice.clone());
-                let alice_rep = rep.share(&sess, &setup, &alice_x1);
+                let alice_rep = rep.share(&sess, &alice_x1);
                 let alice_tr = rep.trunc_pr(&sess, amount, &alice_rep);
                 let alice_open = alice.reveal(&sess, &alice_tr);
 
@@ -3652,7 +3597,7 @@ mod tests {
                 }
 
                 let bob_x1 = AbstractHostRingTensor::from_raw_plc(xs.clone(), bob.clone());
-                let bob_rep = rep.share(&sess, &setup, &bob_x1);
+                let bob_rep = rep.share(&sess, &bob_x1);
                 let bob_tr = rep.trunc_pr(&sess, amount, &bob_rep);
                 let bob_open = bob.reveal(&sess, &bob_tr);
 
@@ -3673,7 +3618,7 @@ mod tests {
                 }
 
                 let carole_x1 = AbstractHostRingTensor::from_raw_plc(xs.clone(), carole.clone());
-                let carole_rep = rep.share(&sess, &setup, &carole_x1);
+                let carole_rep = rep.share(&sess, &carole_x1);
                 let carole_tr = rep.trunc_pr(&sess, amount, &carole_rep);
                 let carole_open = carole.reveal(&sess, &carole_tr);
 
@@ -3785,12 +3730,11 @@ mod tests {
                 let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = (*sess.replicated_setup(&rep)).clone();
 
-                let x_shared = rep.share(&sess, &setup, &x);
+                let x_shared = rep.share(&sess, &x);
 
                 let result: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
-                    rep.$test_func(&sess, &setup, &x_shared);
+                    rep.$test_func(&sess, &x_shared);
                 let opened_result = alice.reveal(&sess, &result);
                 assert_eq!(
                     opened_result,
@@ -3848,9 +3792,8 @@ mod tests {
         let x = HostBitTensor::from_raw_plc(xs.clone(), alice.clone());
 
         let sess = SyncSession::default();
-        let setup = (*sess.replicated_setup(&rep)).clone();
 
-        let x_shared = rep.share(&sess, &setup, &x);
+        let x_shared = rep.share(&sess, &x);
 
         let x_ring64: ReplicatedRing64Tensor = rep.ring_inject(&sess, 0, &x_shared);
         let x_ring128: ReplicatedRing128Tensor = rep.ring_inject(&sess, 0, &x_shared);
@@ -3891,11 +3834,10 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
 
         let sess = SyncSession::default();
-        let setup = (*sess.replicated_setup(&rep)).clone();
 
-        let x_shared = rep.share(&sess, &setup, &x);
+        let x_shared = rep.share(&sess, &x);
 
-        let result: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
+        let result: ReplicatedBitArray64 = rep.bit_decompose(&sess, &x_shared);
         let opened_result = alice.reveal(&sess, &result);
         assert_eq!(opened_result, AbstractHostBitArray::from_raw_plc(zs, alice));
     }
@@ -3932,11 +3874,10 @@ mod tests {
                 let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
 
                 let sess = SyncSession::default();
-                let setup = (*sess.replicated_setup(&rep)).clone();
 
-                let x_shared = rep.share(&sess, &setup, &x);
+                let x_shared = rep.share(&sess, &x);
 
-                let decomposed = rep.bit_decompose(&sess, &setup, &x_shared);
+                let decomposed = rep.bit_decompose(&sess, &x_shared);
 
                 let composed = rep.bit_compose(&sess, &decomposed);
 
@@ -4051,11 +3992,10 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(xs, bob);
 
         let sess = SyncSession::default();
-        let setup = (*sess.replicated_setup(&rep)).clone();
 
-        let x_shared = rep.share(&sess, &setup, &x);
+        let x_shared = rep.share(&sess, &x);
 
-        let result: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
+        let result: ReplicatedBitArray64 = rep.bit_decompose(&sess, &x_shared);
         let opened_result = alice.reveal(&sess, &result);
         assert_eq!(opened_result, AbstractHostBitArray::from_raw_plc(zs, alice));
     }
@@ -4072,14 +4012,13 @@ mod tests {
 
                 let x = AbstractHostRingTensor::from_raw_plc(x, alice.clone());
                 let sess = SyncSession::default();
-                let setup = (*sess.replicated_setup(&rep)).clone();
 
-                let x_shared = rep.share(&sess, &setup, &x);
-                let x_bits: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
+                let x_shared = rep.share(&sess, &x);
+                let x_bits: ReplicatedBitArray64 = rep.bit_decompose(&sess, &x_shared);
                 let x_bits_vec: Vec<ReplicatedBitTensor> =
                     (0..64).map(|i| rep.index(&sess, i, &x_bits)).collect();
 
-                let out = rep.$test_func(&sess, &setup, x_bits_vec);
+                let out = rep.$test_func(&sess, x_bits_vec);
 
                 for (i, el) in out.iter().enumerate() {
                     let b = alice.reveal(&sess, el);

@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn test_aes_replicated() {
-        use crate::kernels::{PlacementReveal, PlacementShareSetup};
+        use crate::kernels::{PlacementReveal, PlacementShare};
 
         let actual_c = {
             let host = HostPlacement {
@@ -293,30 +293,17 @@ mod tests {
             };
 
             let sess = SyncSession::default();
-            let setup = sess.replicated_setup(&rep);
 
             let k: Vec<ReplicatedBitTensor> = K
                 .iter()
                 .flat_map(byte_to_bits_be)
-                .map(|b| {
-                    rep.share(
-                        &sess,
-                        setup.as_ref(),
-                        &HostBitTensor::from_slice_plc(&[b], host.clone()),
-                    )
-                })
+                .map(|b| rep.share(&sess, &HostBitTensor::from_slice_plc(&[b], host.clone())))
                 .collect();
 
             let m: Vec<ReplicatedBitTensor> = M
                 .iter()
                 .flat_map(byte_to_bits_be)
-                .map(|b| {
-                    rep.share(
-                        &sess,
-                        setup.as_ref(),
-                        &HostBitTensor::from_slice_plc(&[b], host.clone()),
-                    )
-                })
+                .map(|b| rep.share(&sess, &HostBitTensor::from_slice_plc(&[b], host.clone())))
                 .collect();
 
             let c_bits: Vec<u8> =

@@ -10,6 +10,7 @@ from pymoose.computation.standard import AtLeast2DOperation
 from pymoose.computation.standard import CastOperation
 from pymoose.computation.standard import ConcatenateOperation
 from pymoose.computation.standard import ConstantOperation
+from pymoose.computation.standard import DecryptOperation
 from pymoose.computation.standard import DivOperation
 from pymoose.computation.standard import DotOperation
 from pymoose.computation.standard import ExpandDimsOperation
@@ -37,6 +38,7 @@ from pymoose.edsl.base import BinaryOpExpression
 from pymoose.edsl.base import CastExpression
 from pymoose.edsl.base import ConcatenateExpression
 from pymoose.edsl.base import ConstantExpression
+from pymoose.edsl.base import DecryptExpression
 from pymoose.edsl.base import ExpandDimsExpression
 from pymoose.edsl.base import Expression
 from pymoose.edsl.base import HostPlacementExpression
@@ -171,6 +173,22 @@ class AstTracer:
                 output_type=concatenate_expression.vtype,
                 axis=concatenate_expression.axis,
                 inputs=arrays,
+            )
+        )
+
+    def visit_DecryptExpression(self, decrypt_expression):
+        assert isinstance(decrypt_expression, DecryptExpression)
+        assert len(decrypt_expression.inputs) == 2
+        aes_key_expression, aes_ciphertext_expression = decrypt_expression.inputs
+        aes_key_op = self.visit(aes_key_expression)
+        aes_ciphertext_op = self.visit(aes_ciphertext_expression)
+        placement = self.visit_placement_expression(decrypt_expression.placement)
+        return self.computation.add_operation(
+            DecryptOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("decrypt"),
+                output_type=decrypt_expression.vtype,
+                inputs={"key": aes_key_op.name, "ciphertext": aes_ciphertext_op.name},
             )
         )
 

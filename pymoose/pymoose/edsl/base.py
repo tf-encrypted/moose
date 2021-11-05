@@ -7,6 +7,8 @@ from typing import Union
 import numpy as np
 
 from pymoose.computation import dtypes
+from pymoose.computation.standard import AesKeyType
+from pymoose.computation.standard import AesTensorType
 from pymoose.computation.standard import FloatConstant
 from pymoose.computation.standard import FloatType
 from pymoose.computation.standard import IntConstant
@@ -104,6 +106,12 @@ class ArgumentExpression(Expression):
 class ConcatenateExpression(Expression):
     axis: Optional[int]
 
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class DecryptExpression(Expression):
     def __hash__(self):
         return id(self)
 
@@ -264,6 +272,30 @@ def concatenate(arrays, axis=0, placement=None):
             )
     return ConcatenateExpression(
         placement=placement, inputs=arrays, axis=axis, vtype=input_vtype
+    )
+
+
+def decrypt(key, ciphertext, placement=None):
+    placement = placement or get_current_placement()
+
+    # key expr typecheck
+    if not isinstance(key.vtype, AesKeyType):
+        raise ValueError(
+            "Parameter `key` expected to be of type AesKeyType, found {key.vtype}."
+        )
+
+    # ciphertext expr typecheck
+    if not isinstance(ciphertext.vtype, AesTensorType):
+        raise ValueError(
+            "Parameter `ciphertext` expected to be of type AesTensorType, "
+            f"found {ciphertext.vtype}."
+        )
+    # decrypt converts AesTensorType(fixed(i, f)) -> TensorType(fixed(i, f))
+    output_dtype = ciphertext.vtype.dtype
+    output_type = TensorType(output_dtype)
+
+    return DecryptExpression(
+        placement=placement, inputs=[key, ciphertext], vtype=output_type,
     )
 
 

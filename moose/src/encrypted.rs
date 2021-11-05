@@ -6,7 +6,7 @@ use crate::host::{
 };
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementDecrypt, PlacementFill, PlacementIndex, PlacementNeg,
-    PlacementRingInject, PlacementShape, PlacementShareSetup, PlacementXor, Session,
+    PlacementRingInject, PlacementShape, PlacementShare, PlacementXor, Session,
 };
 use crate::logical::{AbstractTensor, Tensor};
 use crate::replicated::{
@@ -54,6 +54,31 @@ where
     fn placement(&self) -> Result<Self::Placement> {
         match self {
             AbstractAesTensor::Fixed128(x) => Ok(x.placement()?.into()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum AbstractAesKey<HostKeyT, RepKeyT> {
+    Host(HostKeyT),
+    Replicated(RepKeyT),
+}
+
+moose_type!(AesKey = AbstractAesKey<HostAesKey, ReplicatedAesKey>);
+
+impl<HostKeyT, RepKeyT> Placed for AbstractAesKey<HostKeyT, RepKeyT>
+where
+    HostKeyT: Placed,
+    HostKeyT::Placement: Into<Placement>,
+    RepKeyT: Placed,
+    RepKeyT::Placement: Into<Placement>,
+{
+    type Placement = Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        match self {
+            AbstractAesKey::Host(x) => Ok(x.placement()?.into()),
+            AbstractAesKey::Replicated(x) => Ok(x.placement()?.into()),
         }
     }
 }
@@ -225,8 +250,7 @@ impl AesDecryptOp {
         RepBitTensorT: Clone,
         ReplicatedPlacement: PlacementIndex<S, RepBitArray128T, RepBitTensorT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArray224T, RepBitTensorT>,
-        ReplicatedPlacement:
-            PlacementShareSetup<S, S::ReplicatedSetup, HostBitArray224T, RepBitArray224T>,
+        ReplicatedPlacement: PlacementShare<S, HostBitArray224T, RepBitArray224T>,
         ReplicatedPlacement: PlacementRingInject<S, RepBitTensorT, RepRing128TensorT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepRing128TensorT>,
         ReplicatedPlacement:
@@ -237,8 +261,7 @@ impl AesDecryptOp {
         ReplicatedPlacement: PlacementAnd<S, RepBitTensorT, RepBitTensorT, RepBitTensorT>,
         ReplicatedPlacement: PlacementNeg<S, RepBitTensorT, RepBitTensorT>,
     {
-        let setup = sess.replicated_setup(plc);
-        let shared_ciphertext = plc.share(sess, setup.as_ref(), &ciphertext.tensor);
+        let shared_ciphertext = plc.share(sess, &ciphertext.tensor);
         let tensor = aesgcm(sess, plc, key.0, shared_ciphertext);
         Ok(AbstractReplicatedFixedTensor {
             tensor,
@@ -461,7 +484,6 @@ mod tests {
         };
 
         let sess = SyncSession::default();
-        let setup = sess.replicated_setup(&rep);
 
         let ciphertext: HostFixed128AesTensor = {
             let key = aes_gcm::Key::from_slice(&raw_key);
@@ -495,7 +517,7 @@ mod tests {
             let vec = crate::bristol_fashion::byte_vec_to_bit_vec_be(raw_key.as_ref());
             let array = Array::from_shape_vec((128, 1), vec).unwrap().into_dyn();
             let bit_array = HostBitArray128::from_raw_plc(array, host.clone());
-            let shared_bit_array = rep.share(&sess, setup.as_ref(), &bit_array);
+            let shared_bit_array = rep.share(&sess, &bit_array);
             AbstractReplicatedAesKey(shared_bit_array)
         };
 
