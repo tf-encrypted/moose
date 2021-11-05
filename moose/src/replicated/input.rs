@@ -38,21 +38,16 @@ impl InputOp {
     {
         let ring_tensor = plc.input(sess, arg_name);
 
-        let return_type = sig.ret();
-        let ret_precision = match return_type {
+        let (integral_precision, fractional_precision) = match sig.ret() {
             // TODO(jason,morten): figure out a good way to get this static type information
             //  from the Signature (improve Ty impl in values!)
-            Ty::ReplicatedFixed64Tensor => Some((14, 23)),
-            Ty::ReplicatedFixed128Tensor => Some((46, 40)),
-            _ => None,
-        };
-        if ret_precision.is_none() {
-            return Err(Error::TypeMismatch {
+            Ty::ReplicatedFixed64Tensor => Ok((14, 23)),
+            Ty::ReplicatedFixed128Tensor => Ok((46, 40)),
+            _ => Err(Error::TypeMismatch {
                 expected: "ReplicatedFixedTensor".to_string(),
-                found: return_type,
-            });
-        }
-        let (integral_precision, fractional_precision) = ret_precision.unwrap();
+                found: sig.ret(),
+            }),
+        }?;
 
         Ok(AbstractReplicatedFixedTensor {
             tensor: ring_tensor,
