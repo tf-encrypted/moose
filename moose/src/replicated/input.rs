@@ -128,7 +128,7 @@ mod tests {
     use ndarray::{array, IxDyn};
 
     use crate::kernels::{
-        PlacementFixedpointEncode, PlacementReveal, PlacementShareSetup, SyncSession,
+        PlacementFixedpointEncode, PlacementReveal, PlacementShare, SyncSession,
     };
 
     #[test]
@@ -142,12 +142,11 @@ mod tests {
 
         // Create replicated input tensor in a previous session
         let sess0 = SyncSession::default();
-        let setup = sess0.replicated_setup(&rep);
         let x = HostRing64Tensor::from_raw_plc(
             array![1u64, 2, 3].into_dimensionality::<IxDyn>().unwrap(),
             alice.clone(),
         );
-        let x_shared = rep.share(&sess0, setup.as_ref(), &x);
+        let x_shared = rep.share(&sess0, &x);
 
         // Populate test session args with shares of x
         let arg_name = "x".to_string();
@@ -182,7 +181,6 @@ mod tests {
 
         // Create replicated input tensor in a previous session
         let sess0 = SyncSession::default();
-        let setup = sess0.replicated_setup(&rep);
         let x = HostFloat32Tensor::from_raw_plc(
             array![1.0, 2.0, 3.0]
                 .into_dimensionality::<IxDyn>()
@@ -191,7 +189,7 @@ mod tests {
         );
         // TODO change fixedpoint values when fixedpoint config is no longer hardcoded, see above TODO
         let x_encoded = alice.fixedpoint_encode(&sess0, 23, 14, &x);
-        let x_shared = rep.share(&sess0, setup.as_ref(), &x_encoded);
+        let x_shared = rep.share(&sess0, &x_encoded);
 
         // Populate test session args with shares of x
         let arg_name = "x".to_string();
