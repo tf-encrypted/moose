@@ -45,6 +45,7 @@ __all__ = [
     constant,
     host_placement,
     replicated_placement,
+    decrypt,
     div,
     dot,
     expand_dims,
