@@ -437,6 +437,7 @@ values![
     HostBitTensor,
     HostBitArray64,
     HostBitArray128,
+    HostBitArray224,
     HostBitArray256,
     HostRing64Tensor,
     HostRing128Tensor,
@@ -463,6 +464,7 @@ values![
     ReplicatedBitTensor,
     ReplicatedBitArray64,
     ReplicatedBitArray128,
+    ReplicatedBitArray224,
     ReplicatedFixed64Tensor,
     ReplicatedFixed128Tensor,
     ReplicatedAesKey,
@@ -997,7 +999,7 @@ operators![
     RepTruncPr,
     RepToAdt,
     RepIndexAxis,
-    RepIndex,
+    Index,
     RepDiag,
     RepSlice,
     RepBitDec,
@@ -1700,7 +1702,7 @@ pub struct RepIndexAxisOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepIndexOp {
+pub struct IndexOp {
     pub sig: Signature,
     pub index: usize,
 }

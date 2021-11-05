@@ -1416,7 +1416,7 @@ impl ToTextual for Operator {
             RepShl(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
             RepIndexAxis(op) => op.to_textual(),
-            RepIndex(op) => op.to_textual(),
+            Index(op) => op.to_textual(),
             RepDiag(op) => op.to_textual(),
             RepBitDec(op) => op.to_textual(),
             RepBitCompose(op) => op.to_textual(),
@@ -1603,7 +1603,7 @@ impl_to_textual!(
     index,
     sig
 );
-impl_to_textual!(RepIndexOp, "{op}{{index={}}}: {}", index, sig);
+impl_to_textual!(IndexOp, "{op}{{index={}}}: {}", index, sig);
 impl_to_textual!(RepDiagOp, "{op}: {}", sig);
 impl_to_textual!(RepBitDecOp, "{op}: {}", sig);
 impl_to_textual!(RepBitComposeOp, "{op}: {}", sig);
@@ -1796,6 +1796,7 @@ impl ToTextual for Ty {
             Ty::HostBitTensor => "BitTensor".to_string(),
             Ty::HostBitArray64 => "BitArray64".to_string(),
             Ty::HostBitArray128 => "BitArray128".to_string(),
+            Ty::HostBitArray224 => "BitArray224".to_string(),
             Ty::HostBitArray256 => "BitArray256".to_string(),
             Ty::HostShape => "Shape".to_string(),
             Ty::Seed => "Seed".to_string(),
@@ -1820,6 +1821,7 @@ impl ToTextual for Ty {
             Ty::ReplicatedBitTensor => "ReplicatedBitTensor".to_string(),
             Ty::ReplicatedBitArray64 => "ReplicatedBitArray64".to_string(),
             Ty::ReplicatedBitArray128 => "ReplicatedBitArray128".to_string(),
+            Ty::ReplicatedBitArray224 => "ReplicatedBitArray224".to_string(),
             Ty::ReplicatedSetup => "ReplicatedSetup".to_string(),
             Ty::ReplicatedShape => "ReplicatedShape".to_string(),
             Ty::AdditiveBitTensor => "AdditiveBitTensor".to_string(),
@@ -1877,6 +1879,7 @@ impl ToTextual for Value {
             | Value::HostBitArray64(_)
             | Value::Tensor(_)
             | Value::HostBitArray128(_) => unimplemented!(),
+            Value::HostBitArray224(_) => unimplemented!(),
             Value::HostBitArray256(_) => unimplemented!(),
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)
@@ -1888,6 +1891,7 @@ impl ToTextual for Value {
             | Value::ReplicatedBitTensor(_)
             | Value::ReplicatedBitArray64(_)
             | Value::ReplicatedBitArray128(_)
+            | Value::ReplicatedBitArray224(_)
             | Value::ReplicatedRing64Tensor(_)
             | Value::ReplicatedRing128Tensor(_)
             | Value::ReplicatedFixed64Tensor(_)

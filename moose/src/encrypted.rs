@@ -1,16 +1,19 @@
-use crate::computation::*;
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, FixedTensor};
 use crate::host::{
-    AbstractHostFixedAesTensor, AbstractHostFixedTensor, HostAesKey, HostFixed128AesTensor,
-    HostFixed128Tensor,
+    AbstractHostAesKey, AbstractHostFixedAesTensor, AbstractHostFixedTensor, HostAesKey,
+    HostFixed128AesTensor, HostFixed128Tensor,
 };
-use crate::kernels::{PlacementDecrypt, Session};
+use crate::kernels::{
+    PlacementAdd, PlacementAnd, PlacementDecrypt, PlacementFill, PlacementIndex, PlacementNeg,
+    PlacementRingInject, PlacementShape, PlacementShareSetup, PlacementXor, Session,
+};
 use crate::logical::{AbstractTensor, Tensor};
 use crate::replicated::{
     aes::AbstractReplicatedAesKey, aes::ReplicatedAesKey, AbstractReplicatedFixedTensor,
     ReplicatedFixed128Tensor,
 };
+use crate::{computation::*, BitArray, N128, N224};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -116,46 +119,6 @@ impl AesDecryptOp {
         }
     }
 
-    pub(crate) fn host_fixed_aes_kernel<S: Session, HostBitArrayT, HostRing128T>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _key: m!(HostAesKey),
-        _ciphertext: AbstractHostFixedAesTensor<HostBitArrayT>,
-    ) -> Result<AbstractHostFixedTensor<HostRing128T>>
-    where
-        HostAesKey: KnownType<S>,
-        // HostPlacement: PlacementBitDec<S, HostRing128Tensor, HostBitTensor>,
-        // HostPlacement: PlacementIndexAxis<S, HostBitTensor, HostBitTensor>,
-        // HostPlacement: PlacementRingInject<S, HostBitTensor, HostRing128Tensor>,
-        // HostPlacement: PlacementShape<S, HostFixed128AesTensor, HostShape>,
-        // HostPlacement: PlacementFill<S, HostShape, HostRing128Tensor>,
-        // HostPlacement: PlacementAdd<S, HostRing128Tensor, HostRing128Tensor, HostRing128Tensor>,
-        // HostPlacement: PlacementXor<S, HostBitTensor, HostBitTensor, HostBitTensor>,
-        // HostPlacement: PlacementAnd<S, HostBitTensor, HostBitTensor, HostBitTensor>,
-        // HostPlacement: PlacementNeg<S, HostBitTensor, HostBitTensor>,
-    {
-        unimplemented!()
-
-        // let shape = plc.shape(sess, &c);
-        // // let c_decomposed = plc.bit_decompose(sess, &c.tensor);
-
-        // let m_bits = aes(sess, plc, c_bits.clone(), c_bits);
-        // let zero = plc.fill(sess, Constant::Ring128(0), &shape);
-        // let m = m_bits
-        //     .iter()
-        //     .enumerate()
-        //     .map(|(i, b)| plc.ring_inject(sess, i, b))
-        //     .fold(zero, |acc, x| plc.add(sess, &acc, &x));
-
-        // Ok(HostFixed128Tensor {
-        //     tensor: m,
-        //     fractional_precision: c.precision,
-        //     integral_precision: 0, // TODO
-        // })
-    }
-}
-
-impl AesDecryptOp {
     pub(crate) fn rep_kernel<
         S: Session,
         ReplicatedAesKeyT,
@@ -205,73 +168,342 @@ impl AesDecryptOp {
         }
     }
 
-    pub(crate) fn rep_fixed_aes_kernel<S: Session, RepRingT, HostBitArray128T, HostBitArray256T>(
-        _sess: &S,
-        _rep: &ReplicatedPlacement,
-        _key: AbstractReplicatedAesKey<HostBitArray128T>,
-        _ciphertext: AbstractHostFixedAesTensor<HostBitArray256T>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
-where
-        // HostShape: KnownType<S>,
-        // ReplicatedShape: KnownType<S>,
-        // HostBitArrayT: Placed<Placement = HostPlacement>,
-        // ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        // HostPlacement: PlacementShape<S, HostBitArrayT, m!(HostShape)>,
-        // m!(HostShape): Clone,
-        // HostPlacement: PlacementBitDec<S, HostBitArrayT, HostBitT>,
-        // HostPlacement: PlacementIndexAxis<S, HostBitT, HostBitT>,
-        // ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostBitT, RepBitT>,
-        // RepBitT: Clone,
-        // ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
-        // ReplicatedPlacement: PlacementAnd<S, RepBitT, RepBitT, RepBitT>,
-        // ReplicatedPlacement: PlacementNeg<S, RepBitT, RepBitT>,
-        // AbstractReplicatedShape<m!(HostShape)>: Into<m!(ReplicatedShape)>,
-        // ReplicatedPlacement: PlacementFill<S, m!(ReplicatedShape), RepRingT>,
-        // ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
-        // ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
+    pub(crate) fn host_fixed_aes_kernel<
+        S: Session,
+        HostBitArray128T,
+        HostBitArray224T,
+        ShapeT,
+        HostRing128TensorT,
+        HostBitTensorT,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        key: AbstractHostAesKey<HostBitArray128T>,
+        ciphertext: AbstractHostFixedAesTensor<HostBitArray224T>,
+    ) -> Result<AbstractHostFixedTensor<HostRing128TensorT>>
+    where
+        HostBitArray128T: BitArray<Len = N128>,
+        HostBitArray224T: BitArray<Len = N224>,
+        HostBitTensorT: Clone,
+        HostPlacement: PlacementIndex<S, HostBitArray128T, HostBitTensorT>,
+        HostPlacement: PlacementIndex<S, HostBitArray224T, HostBitTensorT>,
+        HostPlacement: PlacementShape<S, HostBitTensorT, ShapeT>,
+        HostPlacement: PlacementFill<S, ShapeT, HostBitTensorT>,
+        HostPlacement: PlacementRingInject<S, HostBitTensorT, HostRing128TensorT>,
+        HostPlacement: PlacementFill<S, ShapeT, HostRing128TensorT>,
+        HostPlacement: PlacementAdd<S, HostRing128TensorT, HostRing128TensorT, HostRing128TensorT>,
+        HostPlacement: PlacementXor<S, HostBitTensorT, HostBitTensorT, HostBitTensorT>,
+        HostPlacement: PlacementAnd<S, HostBitTensorT, HostBitTensorT, HostBitTensorT>,
+        HostPlacement: PlacementNeg<S, HostBitTensorT, HostBitTensorT>,
     {
-        unimplemented!()
-
-        // let host = c.tensor.placement().unwrap();
-        // let setup = rep.gen_setup(sess);
-
-        // let host_shape = host.shape(sess, &c.tensor);
-        // let shape = AbstractReplicatedShape {
-        //     shapes: [host_shape.clone(), host_shape.clone(), host_shape],
-        // }
-        // .into(); // TODO use macro to call `into` here? or update modelled! to call into?
-
-        // // decompose into bits on host
-        // let c_decomposed = host.bit_decompose(sess, &c.tensor);
-        // let c_bits = (0..128).map(|i| host.index_axis(sess, 0, i, &c_decomposed));
-
-        // // sharing bits (could be public values but we don't have that yet)
-        // let c_bits_shared: Vec<_> = c_bits.map(|b| rep.share(sess, &setup, &b)).collect();
-
-        // // run AES
-        // let m_bits: Vec<_> = aes(sess, rep, c_bits_shared.clone(), c_bits_shared);
-
-        // // re-compose on rep
-        // let zero = rep.fill(sess, Constant::Ring128(0), &shape);
-        // let m = m_bits
-        //     .iter()
-        //     .enumerate()
-        //     .map(|(i, b)| rep.ring_inject(sess, i, b))
-        //     .fold(zero, |acc, x| rep.add(sess, &acc, &x));
-
-        // // wrap up as fixed-point tensor
-        // Ok(AbstractReplicatedFixedTensor {
-        //     tensor: m,
-        //     fractional_precision: c.precision,
-        //     integral_precision: 0, // TODO
-        // })
+        let tensor = aesgcm(sess, plc, key.0, ciphertext.tensor);
+        Ok(AbstractHostFixedTensor {
+            tensor,
+            integral_precision: ciphertext.integral_precision,
+            fractional_precision: ciphertext.fractional_precision,
+        })
     }
+
+    pub(crate) fn rep_fixed_aes_kernel<
+        S: Session,
+        ShapeT,
+        RepBitArray128T,
+        RepBitArray224T,
+        HostBitArray224T,
+        RepBitTensorT,
+        RepRing128TensorT,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        key: AbstractReplicatedAesKey<RepBitArray128T>,
+        ciphertext: AbstractHostFixedAesTensor<HostBitArray224T>,
+    ) -> Result<AbstractReplicatedFixedTensor<RepRing128TensorT>>
+    where
+        RepBitArray128T: BitArray<Len = N128>,
+        HostBitArray224T: BitArray<Len = N224>,
+        RepBitArray224T: BitArray<Len = N224>,
+        RepBitTensorT: Clone,
+        ReplicatedPlacement: PlacementIndex<S, RepBitArray128T, RepBitTensorT>,
+        ReplicatedPlacement: PlacementIndex<S, RepBitArray224T, RepBitTensorT>,
+        ReplicatedPlacement:
+            PlacementShareSetup<S, S::ReplicatedSetup, HostBitArray224T, RepBitArray224T>,
+        ReplicatedPlacement: PlacementRingInject<S, RepBitTensorT, RepRing128TensorT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepRing128TensorT>,
+        ReplicatedPlacement:
+            PlacementAdd<S, RepRing128TensorT, RepRing128TensorT, RepRing128TensorT>,
+        ReplicatedPlacement: PlacementShape<S, RepBitTensorT, ShapeT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepBitTensorT>,
+        ReplicatedPlacement: PlacementXor<S, RepBitTensorT, RepBitTensorT, RepBitTensorT>,
+        ReplicatedPlacement: PlacementAnd<S, RepBitTensorT, RepBitTensorT, RepBitTensorT>,
+        ReplicatedPlacement: PlacementNeg<S, RepBitTensorT, RepBitTensorT>,
+    {
+        let setup = sess.replicated_setup(plc);
+        let shared_ciphertext = plc.share(sess, setup.as_ref(), &ciphertext.tensor);
+        let tensor = aesgcm(sess, plc, key.0, shared_ciphertext);
+        Ok(AbstractReplicatedFixedTensor {
+            tensor,
+            integral_precision: ciphertext.integral_precision,
+            fractional_precision: ciphertext.fractional_precision,
+        })
+    }
+}
+
+/// Perform AES-GCM-128 decryption of a single 128 block
+///
+/// The key must be exactly 128 bits and the ciphertext exactly
+/// 96+128 bits, where the former part is the nonce and the latter
+/// the masked plaintext.
+fn aesgcm<
+    S: Session,
+    P,
+    KeyBitArrayT,
+    CiphertextBitArrayT,
+    PlaintextRingTensorT,
+    BitTensorT,
+    ShapeT,
+>(
+    sess: &S,
+    plc: &P,
+    key: KeyBitArrayT,
+    ciphertext: CiphertextBitArrayT,
+) -> PlaintextRingTensorT
+where
+    KeyBitArrayT: BitArray<Len = N128>,
+    CiphertextBitArrayT: BitArray<Len = N224>,
+    BitTensorT: Clone,
+    P: PlacementIndex<S, KeyBitArrayT, BitTensorT>,
+    P: PlacementIndex<S, CiphertextBitArrayT, BitTensorT>,
+    P: PlacementShape<S, BitTensorT, ShapeT>,
+    P: PlacementFill<S, ShapeT, BitTensorT>,
+    P: PlacementRingInject<S, BitTensorT, PlaintextRingTensorT>,
+    P: PlacementFill<S, ShapeT, PlaintextRingTensorT>,
+    P: PlacementAdd<S, PlaintextRingTensorT, PlaintextRingTensorT, PlaintextRingTensorT>,
+    P: PlacementXor<S, BitTensorT, BitTensorT, BitTensorT>,
+    P: PlacementAnd<S, BitTensorT, BitTensorT, BitTensorT>,
+    P: PlacementNeg<S, BitTensorT, BitTensorT>,
+{
+    // turn inputs into vectors
+    let key_bits: Vec<BitTensorT> = (0..128).map(|i| plc.index(sess, i, &key)).collect();
+    let ciphertext_bits: Vec<BitTensorT> =
+        (0..224).map(|i| plc.index(sess, i, &ciphertext)).collect();
+
+    assert_eq!(key_bits.len(), 128);
+    assert_eq!(ciphertext_bits.len(), 96 + 128);
+
+    // separate ciphertext into nonce bits and masked plaintext
+    let nonce_bits = &ciphertext_bits[0..96];
+    let rm_bits = &ciphertext_bits[96..224];
+    assert_eq!(nonce_bits.len(), 96);
+    assert_eq!(rm_bits.len(), 128);
+
+    // build full AES block with nonce and counter value of 2
+    let shape = plc.shape(sess, &nonce_bits[0]);
+    let one_bit: BitTensorT = plc.fill(sess, Constant::Bit(1), &shape);
+    let zero_bit: BitTensorT = plc.fill(sess, Constant::Bit(0), &shape);
+    let mut block_bits: Vec<_> = (0..128)
+        .map(|i| {
+            if i < nonce_bits.len() {
+                nonce_bits[i].clone()
+            } else {
+                zero_bit.clone()
+            }
+        })
+        .collect();
+    block_bits[128 - 2] = one_bit;
+
+    // apply AES to block to get mask
+    let r_bits = crate::bristol_fashion::aes128(sess, plc, key_bits, block_bits);
+
+    // remove mask to recover plaintext
+    let m_bits: Vec<BitTensorT> = rm_bits
+        .iter()
+        .zip(r_bits)
+        .map(|(ci, ri)| plc.xor(sess, ci, &ri))
+        .collect();
+
+    // bit compose plaintext to obtain ring values
+    let shape = plc.shape(sess, &m_bits[0]);
+    let zero_ring: PlaintextRingTensorT = plc.fill(sess, Constant::Ring128(0), &shape);
+    m_bits
+        .iter()
+        .enumerate()
+        .map(|(i, b)| plc.ring_inject(sess, 127 - i, b))
+        .fold(zero_ring, |acc, x| plc.add(sess, &acc, &x))
 }
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
+    use super::*;
+    use crate::host::{HostBitArray128, HostBitArray224};
+    use crate::kernels::PlacementReveal;
+    use crate::kernels::SyncSession;
+    use aes::cipher::generic_array::sequence::Concat;
+    use aes_gcm::{aead::NewAead, AeadInPlace};
+    use ndarray::Array;
 
     #[test]
-    fn test_aes_decrypt_host() {}
+    fn test_aes_aesgcm() {
+        let raw_key = [3; 16];
+        let raw_nonce = [177; 12];
+        let raw_plaintext = [132; 16];
+
+        let expected_ciphertext = {
+            let key = aes_gcm::Key::from_slice(&raw_key);
+            let nonce = aes_gcm::Nonce::from_slice(&raw_nonce);
+
+            // plaintext initially, then ciphertext
+            let mut buffer = raw_plaintext;
+
+            let cipher = aes_gcm::Aes128Gcm::new(key);
+            let associated_data = vec![];
+            let _tag = cipher
+                .encrypt_in_place_detached(nonce, &associated_data, buffer.as_mut())
+                .unwrap();
+
+            buffer
+        };
+
+        let actual_ciphertext = {
+            use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
+            use aes::NewBlockCipher;
+
+            let mut raw_block = [0_u8; 16];
+            // fill first bytes with nonce
+            for (i, b) in raw_nonce.iter().enumerate() {
+                raw_block[i] = *b;
+            }
+            // set counter to 2
+            raw_block[15] = 2;
+
+            let mut block = aes::Block::clone_from_slice(&raw_block);
+            let key = GenericArray::from_slice(&raw_key);
+            assert_eq!(block.len(), 16);
+            assert_eq!(key.len(), 16);
+
+            let cipher = aes::Aes128::new(key);
+            cipher.encrypt_block(&mut block);
+
+            block
+                .iter()
+                .zip(raw_plaintext)
+                .map(|(r, m)| r ^ m)
+                .collect::<Vec<_>>()
+        };
+
+        assert_eq!(&actual_ciphertext, &expected_ciphertext);
+    }
+
+    #[test]
+    fn test_aes_decrypt_host() {
+        let raw_key = [201; 16];
+        let raw_nonce = [177; 12];
+        let raw_plaintext = [132; 16];
+
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+
+        let ciphertext: HostFixed128AesTensor = {
+            let key = aes_gcm::Key::from_slice(&raw_key);
+            let nonce = aes_gcm::Nonce::from_slice(&raw_nonce);
+
+            // plaintext initially, then ciphertext
+            let mut buffer = raw_plaintext;
+
+            let cipher = aes_gcm::Aes128Gcm::new(key);
+            let associated_data = vec![];
+            let _tag = cipher
+                .encrypt_in_place_detached(nonce, &associated_data, buffer.as_mut())
+                .unwrap();
+
+            assert_eq!(nonce.len(), 12);
+            assert_eq!(buffer.len(), 16);
+            let raw_ciphertext = nonce.concat(buffer.into());
+
+            let vec = crate::bristol_fashion::byte_vec_to_bit_vec_be(raw_ciphertext.as_ref());
+            let array = Array::from_shape_vec((224, 1), vec).unwrap().into_dyn();
+            let bit_array = HostBitArray224::from_raw_plc(array, alice.clone());
+
+            HostFixed128AesTensor {
+                integral_precision: 10,
+                fractional_precision: 0,
+                tensor: bit_array,
+            }
+        };
+
+        let key: HostAesKey = {
+            let vec = crate::bristol_fashion::byte_vec_to_bit_vec_be(raw_key.as_ref());
+            let array = Array::from_shape_vec((128, 1), vec).unwrap().into_dyn();
+            let bit_array = HostBitArray128::from_raw_plc(array, alice.clone());
+            AbstractHostAesKey(bit_array)
+        };
+
+        let sess = SyncSession::default();
+        let plaintext = alice.decrypt(&sess, &key, &ciphertext);
+
+        let actual_plaintext = plaintext.tensor.0[0].0;
+        let expected_plaintext = u128::from_be_bytes(raw_plaintext);
+        assert_eq!(actual_plaintext, expected_plaintext);
+    }
+
+    #[test]
+    fn test_aes_decrypt_replicated() {
+        let raw_key = [201; 16];
+        let raw_nonce = [177; 12];
+        let raw_plaintext = [132; 16];
+
+        let host = HostPlacement {
+            owner: "host".into(),
+        };
+
+        let rep = ReplicatedPlacement {
+            owners: [Role::from("alice"), Role::from("bob"), Role::from("carole")],
+        };
+
+        let sess = SyncSession::default();
+        let setup = sess.replicated_setup(&rep);
+
+        let ciphertext: HostFixed128AesTensor = {
+            let key = aes_gcm::Key::from_slice(&raw_key);
+            let nonce = aes_gcm::Nonce::from_slice(&raw_nonce);
+
+            // plaintext initially, then ciphertext
+            let mut buffer = raw_plaintext;
+
+            let cipher = aes_gcm::Aes128Gcm::new(key);
+            let associated_data = vec![];
+            let _tag = cipher
+                .encrypt_in_place_detached(nonce, &associated_data, buffer.as_mut())
+                .unwrap();
+
+            assert_eq!(nonce.len(), 12);
+            assert_eq!(buffer.len(), 16);
+            let raw_ciphertext = nonce.concat(buffer.into());
+
+            let vec = crate::bristol_fashion::byte_vec_to_bit_vec_be(raw_ciphertext.as_ref());
+            let array = Array::from_shape_vec((224, 1), vec).unwrap().into_dyn();
+            let bit_array = HostBitArray224::from_raw_plc(array, host.clone());
+
+            HostFixed128AesTensor {
+                integral_precision: 10,
+                fractional_precision: 0,
+                tensor: bit_array,
+            }
+        };
+
+        let key: ReplicatedAesKey = {
+            let vec = crate::bristol_fashion::byte_vec_to_bit_vec_be(raw_key.as_ref());
+            let array = Array::from_shape_vec((128, 1), vec).unwrap().into_dyn();
+            let bit_array = HostBitArray128::from_raw_plc(array, host.clone());
+            let shared_bit_array = rep.share(&sess, setup.as_ref(), &bit_array);
+            AbstractReplicatedAesKey(shared_bit_array)
+        };
+
+        let shared_plaintext = rep.decrypt(&sess, &key, &ciphertext);
+        let plaintext = host.reveal(&sess, &shared_plaintext);
+
+        let actual_plaintext = plaintext.tensor.0[0].0;
+        let expected_plaintext = u128::from_be_bytes(raw_plaintext);
+        assert_eq!(actual_plaintext, expected_plaintext);
+    }
 }
