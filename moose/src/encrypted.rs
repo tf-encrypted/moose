@@ -58,6 +58,31 @@ where
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum AbstractAesKey<HostKeyT, RepKeyT> {
+    Host(HostKeyT),
+    Replicated(RepKeyT),
+}
+
+moose_type!(AesKey = AbstractAesKey<HostAesKey, ReplicatedAesKey>);
+
+impl<HostKeyT, RepKeyT> Placed for AbstractAesKey<HostKeyT, RepKeyT>
+where
+    HostKeyT: Placed,
+    HostKeyT::Placement: Into<Placement>,
+    RepKeyT: Placed,
+    RepKeyT::Placement: Into<Placement>,
+{
+    type Placement = Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        match self {
+            AbstractAesKey::Host(x) => Ok(x.placement()?.into()),
+            AbstractAesKey::Replicated(x) => Ok(x.placement()?.into())
+        }
+    }
+}
+
 modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostAesKey, AesTensor) -> Tensor, AesDecryptOp);
 modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostAesKey, Fixed128AesTensor) -> Fixed128Tensor, AesDecryptOp);
 modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostAesKey, HostFixed128AesTensor) -> HostFixed128Tensor, AesDecryptOp);
