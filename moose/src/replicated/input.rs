@@ -1,8 +1,8 @@
 use super::*;
-use crate::replicated::aes::AbstractReplicatedAesKey;
 use crate::computation::{HostPlacement, InputOp, ReplicatedPlacement, Signature, Ty};
 use crate::error::{Error, Result};
 use crate::kernels::{PlacementInput, Session};
+use crate::replicated::aes::AbstractReplicatedAesKey;
 use std::marker::PhantomData;
 
 impl InputOp {
@@ -112,12 +112,9 @@ mod tests {
     use super::*;
     use crate::computation::SessionId;
     use crate::host::{FromRawPlc, HostFloat32Tensor, HostRing64Tensor};
+    use crate::kernels::{PlacementFixedpointEncode, PlacementReveal, PlacementShare, SyncSession};
     use crate::replicated::{ReplicatedFixed64Tensor, ReplicatedRing64Tensor};
     use ndarray::{array, IxDyn};
-
-    use crate::kernels::{
-        PlacementFixedpointEncode, PlacementReveal, PlacementShare, SyncSession,
-    };
 
     #[test]
     fn test_input_rep_ring() {

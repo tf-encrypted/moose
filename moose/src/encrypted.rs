@@ -4,7 +4,10 @@ use crate::host::{
     AbstractHostAesKey, AbstractHostFixedAesTensor, AbstractHostFixedTensor, HostAesKey,
     HostFixed128AesTensor, HostFixed128Tensor,
 };
-use crate::kernels::{PlacementAdd, PlacementAnd, PlacementDecrypt, PlacementFill, PlacementIndex, PlacementInput, PlacementNeg, PlacementRingInject, PlacementShape, PlacementShare, PlacementXor, Session};
+use crate::kernels::{
+    PlacementAdd, PlacementAnd, PlacementDecrypt, PlacementFill, PlacementIndex, PlacementInput,
+    PlacementNeg, PlacementRingInject, PlacementShape, PlacementShare, PlacementXor, Session,
+};
 use crate::logical::{AbstractTensor, Tensor};
 use crate::replicated::{
     aes::AbstractReplicatedAesKey, aes::ReplicatedAesKey, AbstractReplicatedFixedTensor,
@@ -81,6 +84,46 @@ where
 }
 
 impl InputOp {
+    pub(crate) fn aestensor<S: Session, Fixed128AesTensorT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<AbstractAesTensor<Fixed128AesTensorT>>
+    where
+        HostPlacement: PlacementInput<S, Fixed128AesTensorT>,
+    {
+        let tensor = plc.input(sess, arg_name);
+        Ok(AbstractAesTensor::Fixed128(tensor))
+    }
+
+    pub(crate) fn fixed_aestensor<S: Session, HostFixed128AesTensorT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<FixedAesTensor<HostFixed128AesTensorT>>
+    where
+        HostPlacement: PlacementInput<S, HostFixed128AesTensorT>,
+    {
+        let tensor = plc.input(sess, arg_name);
+        Ok(FixedAesTensor::Host(tensor))
+    }
+
+    pub(crate) fn host_fixed_aestensor<S: Session, HostBitArrayT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<AbstractHostFixedAesTensor<HostBitArrayT>>
+    where
+        HostPlacement: PlacementInput<S, HostBitArrayT>,
+    {
+        let tensor = plc.input(sess, arg_name);
+        Ok(AbstractHostFixedAesTensor {
+            tensor,
+            integral_precision: 40,
+            fractional_precision: 47,
+        })
+    }
+
     pub(crate) fn aes_kernel_on_host<S: Session, HostAesKeyT, RepAesKeyT>(
         sess: &S,
         plc: &HostPlacement,
