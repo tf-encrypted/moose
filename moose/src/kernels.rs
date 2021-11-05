@@ -3,6 +3,7 @@ use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Identity, Kernel,
     SyncKernel,
 };
+use crate::encrypted::AesKey;
 use crate::fixedpoint::Convert;
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::*;
@@ -2231,6 +2232,10 @@ for_all_values! {( $($value:ty),* ) => (
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> crate::logical::Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Float32Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Float64Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitArray64, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitArray128, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitArray224, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostAesKey, InputOp);
 modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedBitTensor, InputOp);
 modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedRing64Tensor, InputOp);
 modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedRing128Tensor, InputOp);
@@ -2248,6 +2253,9 @@ kernel! {
         (HostPlacement, () -> HostShape => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Seed => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> PrfKey => [runtime] attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostBitArray64 => [runtime] attributes[arg_name] Self::host_bitarray64),
+        (HostPlacement, () -> HostBitArray128 => [runtime] attributes[arg_name] Self::host_bitarray128),
+        (HostPlacement, () -> HostBitArray224 => [runtime] attributes[arg_name] Self::host_bitarray224),
         (HostPlacement, () -> HostBitTensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostRing64Tensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostRing128Tensor => [runtime] attributes[arg_name] Self::kernel),
@@ -2274,8 +2282,10 @@ kernel! {
         (ReplicatedPlacement, () -> ReplicatedBitArray64 => [hybrid] attributes[arg_name] Self::replicated_bitarray64),
         (ReplicatedPlacement, () -> ReplicatedBitArray128 => [hybrid] attributes[arg_name] Self::replicated_bitarray128),
         (ReplicatedPlacement, () -> ReplicatedBitArray224 => [hybrid] attributes[arg_name] Self::replicated_bitarray224),
+        (HostPlacement, () -> AesKey => [hybrid] attributes[arg_name] Self::aes_kernel_on_host),
+        (ReplicatedPlacement, () -> AesKey => [hybrid] attributes[arg_name] Self::aes_kernel_on_replicated),
+        (HostPlacement, () -> HostAesKey => [hybrid] attributes[arg_name] Self::host_aes_kernel),
         (ReplicatedPlacement, () -> ReplicatedAesKey => [hybrid] attributes[arg_name] Self::replicated_aes_kernel),
-        // (ReplicatedPlacement, () -> AesKey => [hybrid] attributes[arg_name] Self::aes_kernel), // TODO
     ]
 }
 

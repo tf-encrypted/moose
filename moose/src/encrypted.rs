@@ -4,10 +4,7 @@ use crate::host::{
     AbstractHostAesKey, AbstractHostFixedAesTensor, AbstractHostFixedTensor, HostAesKey,
     HostFixed128AesTensor, HostFixed128Tensor,
 };
-use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementDecrypt, PlacementFill, PlacementIndex, PlacementNeg,
-    PlacementRingInject, PlacementShape, PlacementShare, PlacementXor, Session,
-};
+use crate::kernels::{PlacementAdd, PlacementAnd, PlacementDecrypt, PlacementFill, PlacementIndex, PlacementInput, PlacementNeg, PlacementRingInject, PlacementShape, PlacementShare, PlacementXor, Session};
 use crate::logical::{AbstractTensor, Tensor};
 use crate::replicated::{
     aes::AbstractReplicatedAesKey, aes::ReplicatedAesKey, AbstractReplicatedFixedTensor,
@@ -80,6 +77,44 @@ where
             AbstractAesKey::Host(x) => Ok(x.placement()?.into()),
             AbstractAesKey::Replicated(x) => Ok(x.placement()?.into()),
         }
+    }
+}
+
+impl InputOp {
+    pub(crate) fn aes_kernel_on_host<S: Session, HostAesKeyT, RepAesKeyT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<AbstractAesKey<HostAesKeyT, RepAesKeyT>>
+    where
+        HostPlacement: PlacementInput<S, HostAesKeyT>,
+    {
+        let key = plc.input(sess, arg_name);
+        Ok(AbstractAesKey::Host(key))
+    }
+
+    pub(crate) fn host_aes_kernel<S: Session, HostBitArrayT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<AbstractHostAesKey<HostBitArrayT>>
+    where
+        HostPlacement: PlacementInput<S, HostBitArrayT>,
+    {
+        let bit_array = plc.input(sess, arg_name);
+        Ok(AbstractHostAesKey(bit_array))
+    }
+
+    pub(crate) fn aes_kernel_on_replicated<S: Session, HostAesKeyT, RepAesKeyT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        arg_name: String,
+    ) -> Result<AbstractAesKey<HostAesKeyT, RepAesKeyT>>
+    where
+        ReplicatedPlacement: PlacementInput<S, RepAesKeyT>,
+    {
+        let key = plc.input(sess, arg_name);
+        Ok(AbstractAesKey::Replicated(key))
     }
 }
 

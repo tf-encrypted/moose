@@ -195,6 +195,44 @@ impl<S: Session> PlacementPlace<S, Unit> for HostPlacement {
     }
 }
 
+impl InputOp {
+    pub(crate) fn host_bitarray64<S: Session, HostBitTensorT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<AbstractHostBitArray<HostBitTensorT, N64>>
+    where
+        HostPlacement: PlacementInput<S, HostBitTensorT>,
+    {
+        let bit_tensor = plc.input(sess, arg_name);
+        Ok(AbstractHostBitArray(bit_tensor, PhantomData))
+    }
+
+    pub(crate) fn host_bitarray128<S: Session, HostBitTensorT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<AbstractHostBitArray<HostBitTensorT, N128>>
+    where
+        HostPlacement: PlacementInput<S, HostBitTensorT>,
+    {
+        let bit_tensor = plc.input(sess, arg_name);
+        Ok(AbstractHostBitArray(bit_tensor, PhantomData))
+    }
+
+    pub(crate) fn host_bitarray224<S: Session, HostBitTensorT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<AbstractHostBitArray<HostBitTensorT, N224>>
+    where
+        HostPlacement: PlacementInput<S, HostBitTensorT>,
+    {
+        let bit_tensor = plc.input(sess, arg_name);
+        Ok(AbstractHostBitArray(bit_tensor, PhantomData))
+    }
+}
+
 modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostRing64Tensor, RingFixedpointMeanOp);
 modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostRing128Tensor, RingFixedpointMeanOp);
 

@@ -105,18 +105,6 @@ impl InputOp {
         let rep_bit_array = plc.input(sess, arg_name);
         Ok(AbstractReplicatedAesKey(rep_bit_array))
     }
-
-    // pub(crate) fn aes_kernel<S: Session, RepBitArrayT>(
-    //     sess: &S,
-    //     plc: &ReplicatedPlacement,
-    //     arg_name: String,
-    // ) -> Result<AbstractReplicatedAesKey<RepBitArrayT>>
-    // where
-    //     ReplicatedPlacement: PlacementInput<S, RepBitArrayT>,
-    // {
-    //     let rep_bit_array = plc.input(sess, arg_name);
-    //     Ok(AbstractReplicatedAesKey(rep_bit_array))
-    // }
 }
 
 #[cfg(test)]
