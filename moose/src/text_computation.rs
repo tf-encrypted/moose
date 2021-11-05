@@ -1842,6 +1842,7 @@ impl ToTextual for Ty {
             Ty::ReplicatedAesKey => unimplemented!(),
             Ty::Fixed128AesTensor => unimplemented!(),
             Ty::AesTensor => unimplemented!(),
+            Ty::AesKey => "AesKey".to_string(),
         }
     }
 }
@@ -1912,6 +1913,7 @@ impl ToTextual for Value {
             Value::ReplicatedAesKey(_) => unimplemented!(),
             Value::Fixed128AesTensor(_) => unimplemented!(),
             Value::AesTensor(_) => unimplemented!(),
+            Value::AesKey() => unimplemented!(),
         }
     }
 }
