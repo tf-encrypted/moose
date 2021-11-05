@@ -42,6 +42,7 @@ enum PyOperation {
     std_SliceOperation(PySliceOperation),
     std_OnesOperation(PyOnesOperation),
     std_ConcatenateOperation(PyConcatenateOperation),
+    std_DecryptOperation(PyDecryptOperation),
     std_TransposeOperation(PyTransposeOperation),
     std_ExpandDimsOperation(PyExpandDimsOperation),
     std_InverseOperation(PyInverseOperation),
@@ -93,6 +94,8 @@ enum PyValueType {
     std_ShapeType,
     std_StringType,
     std_TensorType { dtype: PyDType },
+    std_AesKeyType,
+    std_AesTensorType { dtype: PyDType },
     std_UnitType,
     std_UnknownType,
     ring_RingTensorType,
@@ -114,6 +117,7 @@ enum PyDType {
     uint64,
     fixed8_27,
     fixed14_23,
+    fixed46_40,
 }
 
 #[derive(Deserialize, Debug)]
@@ -383,6 +387,14 @@ struct PyConcatenateOperation {
     placement_name: String,
     output_type: PyValueType,
     axis: u32,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyDecryptOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -826,8 +838,19 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
                 integral_precision: 8,
                 fractional_precision: 27,
             })),
-            _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", py_type)),
+            PyDType::fixed46_40 => Ok(Ty::Tensor(TensorDType::Fixed128 {
+                integral_precision: 46,
+                fractional_precision: 40,
+            })),
+            _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
         },
+        PyValueType::std_AesTensorType { dtype } => match dtype {
+            // TODO we are erasing fixedpoint precision here on purpose
+            //  -- but we robably want to avoid this down the road
+            PyDType::fixed46_40 => Ok(Ty::AesTensor),
+            _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
+        },
+        PyValueType::std_AesKeyType => Ok(Ty::AesKey),
         PyValueType::std_UnknownType => Ok(Ty::Unknown),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
         PyValueType::ring_RingTensorType => Ok(Ty::HostRing128Tensor),
@@ -1258,6 +1281,20 @@ impl TryFrom<PyComputation> for Computation {
                             placement: map_placement(&placements, &op.placement_name)?,
                         })
                     }
+                    std_DecryptOperation(op) => Ok(Operation {
+                        kind: AesDecryptOp {
+                            sig: Signature::binary(
+                                Ty::AesKey,
+                                Ty::AesTensor,
+                                map_type(&op.output_type)?,
+                            ),
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["key", "ciphertext"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     std_TransposeOperation(op) => Ok(Operation {
                         kind: TransposeOp {
                             // we can use output type type to determine input type
