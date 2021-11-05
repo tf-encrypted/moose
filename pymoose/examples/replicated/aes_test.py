@@ -2,10 +2,7 @@ import argparse
 import logging
 import unittest
 
-import numpy as np
-
 from pymoose import edsl
-from pymoose import elk_compiler
 from pymoose.computation import utils
 from pymoose.computation.standard import AesKeyType
 from pymoose.computation.standard import AesTensorType
