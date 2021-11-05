@@ -1,5 +1,5 @@
 use crate::computation::{Computation, Operation, Operator, ReceiveOp};
-use crate::text_computation::ToTextual;
+use crate::textual::ToTextual;
 use petgraph::dot::Config::{EdgeNoLabel, NodeNoLabel};
 use petgraph::dot::Dot;
 use petgraph::visit::EdgeRef;

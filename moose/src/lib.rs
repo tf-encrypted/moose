@@ -2214,5 +2214,5 @@ pub mod python_computation;
 pub mod replicated;
 pub mod storage;
 pub mod symbolic;
-pub mod text_computation;
+pub mod textual;
 pub mod utils;
