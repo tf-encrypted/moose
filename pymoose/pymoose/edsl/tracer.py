@@ -179,16 +179,16 @@ class AstTracer:
     def visit_DecryptExpression(self, decrypt_expression):
         assert isinstance(decrypt_expression, DecryptExpression)
         assert len(decrypt_expression.inputs) == 2
-        aes_key_expression, aes_cyphertext_expression = decrypt_expression.inputs
+        aes_key_expression, aes_ciphertext_expression = decrypt_expression.inputs
         aes_key_op = self.visit(aes_key_expression)
-        aes_cyphertext_op = self.visit(aes_cyphertext_expression)
+        aes_ciphertext_op = self.visit(aes_ciphertext_expression)
         placement = self.visit_placement_expression(decrypt_expression.placement)
         return self.computation.add_operation(
             DecryptOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("decrypt"),
                 output_type=decrypt_expression.vtype,
-                inputs={"key": aes_key_op, "cyphertext": aes_cyphertext_op},
+                inputs={"key": aes_key_op.name, "ciphertext": aes_ciphertext_op.name},
             )
         )
 
