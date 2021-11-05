@@ -111,6 +111,7 @@ impl InputOp {
     pub(crate) fn host_fixed_aestensor<S: Session, HostBitArrayT>(
         sess: &S,
         plc: &HostPlacement,
+        _sig: Signature,
         arg_name: String,
     ) -> Result<AbstractHostFixedAesTensor<HostBitArrayT>>
     where
@@ -119,6 +120,7 @@ impl InputOp {
         let tensor = plc.input(sess, arg_name);
         Ok(AbstractHostFixedAesTensor {
             tensor,
+            // TODO(Morten) extract precision from sig
             integral_precision: 40,
             fractional_precision: 47,
         })

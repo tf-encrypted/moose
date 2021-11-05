@@ -2283,7 +2283,7 @@ kernel! {
         (HostPlacement, () -> HostAesKey => [hybrid] attributes[arg_name] Self::host_aes_kernel),
         (HostPlacement, () -> AesTensor => [hybrid] attributes[arg_name] Self::aestensor),
         (HostPlacement, () -> Fixed128AesTensor => [hybrid] attributes[arg_name] Self::fixed_aestensor),
-        (HostPlacement, () -> HostFixed128AesTensor => [hybrid] attributes[arg_name] Self::host_fixed_aestensor),
+        (HostPlacement, () -> HostFixed128AesTensor => [hybrid] attributes[sig, arg_name] Self::host_fixed_aestensor),
         (ReplicatedPlacement, () -> ReplicatedBitTensor => [hybrid] attributes[arg_name] Self::replicated_ring_kernel),
         (ReplicatedPlacement, () -> ReplicatedRing64Tensor => [hybrid] attributes[arg_name] Self::replicated_ring_kernel),
         (ReplicatedPlacement, () -> ReplicatedRing128Tensor => [hybrid] attributes[arg_name] Self::replicated_ring_kernel),

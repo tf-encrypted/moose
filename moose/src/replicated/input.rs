@@ -37,8 +37,9 @@ impl InputOp {
     where
         ReplicatedPlacement: PlacementInput<S, RepBitTensorT>,
     {
-        let rep_bit_tensor = plc.input(sess, arg_name);
-        Ok(AbstractReplicatedBitArray(rep_bit_tensor, PhantomData))
+        // TODO(Morten) ideally we should verify that shape of bit tensor
+        let bit_tensor = plc.input(sess, arg_name);
+        Ok(AbstractReplicatedBitArray(bit_tensor, PhantomData))
     }
 
     pub(crate) fn replicated_bitarray128<S: Session, RepBitTensorT>(
@@ -49,8 +50,9 @@ impl InputOp {
     where
         ReplicatedPlacement: PlacementInput<S, RepBitTensorT>,
     {
-        let rep_bit_tensor = plc.input(sess, arg_name);
-        Ok(AbstractReplicatedBitArray(rep_bit_tensor, PhantomData))
+        // TODO(Morten) ideally we should verify that shape of bit tensor
+        let bit_tensor = plc.input(sess, arg_name);
+        Ok(AbstractReplicatedBitArray(bit_tensor, PhantomData))
     }
 
     pub(crate) fn replicated_bitarray224<S: Session, RepBitTensorT>(
@@ -61,8 +63,9 @@ impl InputOp {
     where
         ReplicatedPlacement: PlacementInput<S, RepBitTensorT>,
     {
-        let rep_bit_tensor = plc.input(sess, arg_name);
-        Ok(AbstractReplicatedBitArray(rep_bit_tensor, PhantomData))
+        // TODO(Morten) ideally we should verify that shape of bit tensor
+        let bit_tensor = plc.input(sess, arg_name);
+        Ok(AbstractReplicatedBitArray(bit_tensor, PhantomData))
     }
 
     pub(crate) fn replicated_fixed_kernel<S: Session, RepRingT>(

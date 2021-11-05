@@ -204,6 +204,7 @@ impl InputOp {
     where
         HostPlacement: PlacementInput<S, HostBitTensorT>,
     {
+        // TODO(Morten) ideally we should verify that shape of bit tensor
         let bit_tensor = plc.input(sess, arg_name);
         Ok(AbstractHostBitArray(bit_tensor, PhantomData))
     }
@@ -216,6 +217,7 @@ impl InputOp {
     where
         HostPlacement: PlacementInput<S, HostBitTensorT>,
     {
+        // TODO(Morten) ideally we should verify that shape of bit tensor
         let bit_tensor = plc.input(sess, arg_name);
         Ok(AbstractHostBitArray(bit_tensor, PhantomData))
     }
@@ -228,6 +230,7 @@ impl InputOp {
     where
         HostPlacement: PlacementInput<S, HostBitTensorT>,
     {
+        // TODO(Morten) ideally we should verify that shape of bit tensor
         let bit_tensor = plc.input(sess, arg_name);
         Ok(AbstractHostBitArray(bit_tensor, PhantomData))
     }
