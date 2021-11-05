@@ -844,12 +844,12 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
             })),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
         },
-        PyValueType::std_AesTensorType{ dtype } => match dtype {
+        PyValueType::std_AesTensorType { dtype } => match dtype {
             // TODO we are erasing fixedpoint precision here on purpose
             //  -- but we robably want to avoid this down the road
             PyDType::fixed46_40 => Ok(Ty::AesTensor),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
-        }
+        },
         PyValueType::std_AesKeyType => Ok(Ty::AesKey),
         PyValueType::std_UnknownType => Ok(Ty::Unknown),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
@@ -1281,21 +1281,20 @@ impl TryFrom<PyComputation> for Computation {
                             placement: map_placement(&placements, &op.placement_name)?,
                         })
                     }
-                    std_DecryptOperation(op) => {
-                        Ok(Operation{
-                            kind: AesDecryptOp {
-                                sig: Signature::binary(
-                                    Ty::AesKey,
-                                    Ty::AesTensor,
-                                    map_type(&op.output_type)?,
-                                )
-                            }.into(),
-                            inputs: map_inputs(&op.inputs, &["key", "ciphertext"])
-                                .with_context(|| format!("Failed at op {:?}", op))?,
-                            name: op.name.clone(),
-                            placement: map_placement(&placements, &op.placement_name)?,
-                        })
-                    }
+                    std_DecryptOperation(op) => Ok(Operation {
+                        kind: AesDecryptOp {
+                            sig: Signature::binary(
+                                Ty::AesKey,
+                                Ty::AesTensor,
+                                map_type(&op.output_type)?,
+                            ),
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["key", "ciphertext"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     std_TransposeOperation(op) => Ok(Operation {
                         kind: TransposeOp {
                             // we can use output type type to determine input type

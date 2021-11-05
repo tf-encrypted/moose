@@ -78,7 +78,7 @@ where
     fn placement(&self) -> Result<Self::Placement> {
         match self {
             AbstractAesKey::Host(x) => Ok(x.placement()?.into()),
-            AbstractAesKey::Replicated(x) => Ok(x.placement()?.into())
+            AbstractAesKey::Replicated(x) => Ok(x.placement()?.into()),
         }
     }
 }
