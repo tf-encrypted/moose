@@ -1,10 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use moose::compilation::compile_passes;
-    use moose::compilation::Pass;
+    use crate::computation::PyComputation;
+    use moose::compilation::{compile_passes, Pass};
+    use moose::computation::*;
     use moose::execution::*;
+    use moose::host::HostFloat64Tensor;
     use moose::storage::{LocalSyncStorage, SyncStorage};
-    use moose::{computation::*, host::HostFloat64Tensor, python_computation::PyComputation};
     use ndarray::prelude::*;
     use numpy::ToPyArray;
     use pyo3::prelude::*;

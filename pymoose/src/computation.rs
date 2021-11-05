@@ -1,8 +1,8 @@
 //! Parser for computations defined in Python
 
-use crate::computation::*;
-use crate::host::{HostFloat32Tensor, HostFloat64Tensor, RawShape, SliceInfo, SliceInfoElem};
-use crate::logical::TensorDType;
+use moose::computation::*;
+use moose::host::{HostFloat32Tensor, HostFloat64Tensor, RawShape, SliceInfo, SliceInfoElem};
+use moose::logical::TensorDType;
 use ndarray::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
