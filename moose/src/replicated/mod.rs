@@ -712,9 +712,9 @@ modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedRing128Tensor) -> R
 kernel! {
     RepNegOp,
     [
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [runtime] Self::rep_bit_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [runtime] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor ) ->ReplicatedRing128Tensor  => [runtime] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_bit_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor ) ->ReplicatedRing128Tensor  => [hybrid] Self::rep_rep_kernel),
     ]
 }
 
