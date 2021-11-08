@@ -23,7 +23,7 @@ pub mod log;
 
 pub use self::aes::ReplicatedAesKey;
 
-pub(crate) trait ShapeFill<S, TenT> {
+pub trait ShapeFill<S, TenT> {
     type Result;
 
     fn shape_fill<C: Into<Constant>>(
