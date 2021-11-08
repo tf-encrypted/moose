@@ -47,15 +47,15 @@ class ReplicatedExample(unittest.TestCase):
         # If this does not error, rust was able to deserialize the pycomputation
         elk_compiler.compile_computation(comp_bin, [])
 
-    def test_aes_example_execute(self):
-        aes_comp = self._setup_aes_comp()
-        traced_aes_comp = edsl.trace(aes_comp)
-        comp_bin = utils.serialize_computation(traced_aes_comp)
-        comp_compiled = elk_compiler.compile_computation(comp_bin, [
-            "typing",
-            "full",
-            # "print",
-        ])
+    # def test_aes_example_execute(self):
+    #     aes_comp = self._setup_aes_comp()
+    #     traced_aes_comp = edsl.trace(aes_comp)
+    #     comp_bin = utils.serialize_computation(traced_aes_comp)
+    #     comp_compiled = elk_compiler.compile_computation(comp_bin, [
+    #         "typing",
+    #         "full",
+    #         # "print",
+    #     ])
 
 
 if __name__ == "__main__":
