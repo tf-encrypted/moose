@@ -8,7 +8,6 @@ from pymoose.computation import utils
 from pymoose.computation.standard import AesKeyType
 from pymoose.computation.standard import AesTensorType
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(unittest.TestCase):
@@ -57,23 +56,6 @@ class ReplicatedExample(unittest.TestCase):
             "full",
             # "print",
         ])
-        # executors_storage = {
-        #     "alice": {
-        #         "ciphertext": 5,
-        #     },
-        #     "bob": {},
-        #     "carole": {},
-        # }
-        # runtime = LocalMooseRuntime(storage_mapping=executors_storage)
-        # runtime.evaluate_compiled(
-        #     comp_bin=comp_compiled,
-        #     role_assignment={
-        #         "alice": "alice",
-        #         "bob": "bob",
-        #         "carole": "carole",
-        #     },
-        #     arguments={},
-        # )
 
 
 if __name__ == "__main__":
