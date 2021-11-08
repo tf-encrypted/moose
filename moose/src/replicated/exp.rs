@@ -15,26 +15,22 @@ where
     ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
 {
     fn pow2_from_bits(&self, sess: &S, x: &[RepRingT]) -> RepRingT {
-        #![allow(clippy::many_single_char_names)]
         let rep = self;
+
+        let ones = rep.fill(sess, 1_u8.into(), &rep.shape(sess, &x[0]));
 
         let selectors: Vec<_> = x
             .iter()
             .enumerate()
             .map(|(i, bit)| {
                 let pos = rep.shl(sess, i, bit);
-                let one = rep.fill(sess, 1_u8.into(), &rep.shape(sess, bit));
-                let neg = rep.sub(sess, &one, bit);
+                let neg = rep.sub(sess, &ones, bit);
                 rep.add(sess, &pos, &neg)
             })
             .collect();
 
         // TODO(Dragos) do tree multiplication here
-        let mut res = rep.fill(sess, 1_u8.into(), &rep.shape(sess, &x[0]));
-        for bit in selectors.iter() {
-            res = rep.mul(sess, &res, bit);
-        }
-        res
+        selectors.iter().fold(ones, |acc, y| rep.mul(sess, &acc, y))
     }
 }
 
