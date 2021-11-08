@@ -1083,7 +1083,20 @@ macro_rules! kernel {
                                 let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
                                 Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                             }
-                            _ => unimplemented!() // ok
+                            (x0, x1) => {
+                                match x0 {
+                                    Symbolic::Symbolic(ref h0) => {
+                                        let state = sess.state.read();
+                                        let foo = state.ops.iter().filter(|op| op.name == h0.op).collect::<Vec<_>>();
+                                        println!("symbolic {:?}", foo);
+                                    }
+                                    Symbolic::Concrete(ref v0) => {
+                                        println!("concrete {:?}", v0);
+                                    }
+                                }
+                                println!("\n\nlhs: {:?}\n\nrhs:{:?}", x0, x1);
+                                Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
+                            }
                         }
                     }
                 }))
