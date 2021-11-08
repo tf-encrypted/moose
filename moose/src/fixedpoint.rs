@@ -6,7 +6,8 @@ use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::*;
 use crate::kernels::*;
 use crate::replicated::{
-    AbstractReplicatedFixedTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
+    AbstractReplicatedFixedTensor, Mirrored3RingTensor, ReplicatedFixed128Tensor,
+    ReplicatedFixed64Tensor,
 };
 use macros::with_context;
 use ndarray::prelude::*;
@@ -1072,33 +1073,35 @@ impl ReplicatedPlacement {
 }
 
 impl ReplicatedPlacement {
-    pub fn poly_eval<S: Session, RepRingT>(
+    pub fn poly_eval<S: Session, RepRingT, HostRingT>(
         &self,
         sess: &S,
         x: AbstractReplicatedFixedTensor<RepRingT>,
-        coeffs: Vec<AbstractReplicatedFixedTensor<RepRingT>>,
+        coeffs: Vec<AbstractReplicatedFixedTensor<Mirrored3RingTensor<HostRingT>>>,
     ) -> AbstractReplicatedFixedTensor<RepRingT>
     where
-        AbstractReplicatedFixedTensor<RepRingT>: Clone,
+        RepRingT: Clone,
         ReplicatedPlacement: PlacementMul<
             S,
             AbstractReplicatedFixedTensor<RepRingT>,
             AbstractReplicatedFixedTensor<RepRingT>,
             AbstractReplicatedFixedTensor<RepRingT>,
         >,
-        ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMul<S, Mirrored3RingTensor<HostRingT>, RepRingT, RepRingT>,
+
         ReplicatedPlacement: PlacementTruncPr<
             S,
             AbstractReplicatedFixedTensor<RepRingT>,
             AbstractReplicatedFixedTensor<RepRingT>,
         >,
         ReplicatedPlacement: PlacementAddN<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementAdd<
-            S,
-            AbstractReplicatedFixedTensor<RepRingT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
-        >,
+        // ReplicatedPlacement: PlacementAdd<
+        //     S,
+        //     AbstractReplicatedFixedTensor<RepRingT>,
+        //     AbstractReplicatedFixedTensor<Mirrored3RingTensor<HostRingT>>,
+        //     AbstractReplicatedFixedTensor<RepRingT>,
+        // >,
+        ReplicatedPlacement: PlacementAdd<S, RepRingT, Mirrored3RingTensor<HostRingT>, RepRingT>,
     {
         let degree = coeffs.len() - 1;
 
@@ -1124,7 +1127,17 @@ impl ReplicatedPlacement {
         let x_mul_coeffs_added_fixed_trunc =
             self.trunc_pr(sess, x.fractional_precision, &x_mul_coeffs_added_fixed);
 
-        self.add(sess, &x_mul_coeffs_added_fixed_trunc, &coeffs[0])
+        // self.add(sess, &x_mul_coeffs_added_fixed_trunc, &coeffs[0])
+        let out = self.add(
+            sess,
+            &x_mul_coeffs_added_fixed_trunc.tensor,
+            &coeffs[0].tensor,
+        );
+        AbstractReplicatedFixedTensor {
+            tensor: out,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        }
     }
 }
 
@@ -1915,6 +1928,8 @@ mod tests {
         test_rep_prefix_mul_fixed128(x, y_target);
     }
 
+    use crate::replicated::Mirrored3RingTensor;
+
     macro_rules! rep_poly_eval_fixed_test {
         ($func_name:ident, $test_func: ident<$tt: ty>, $f_precision: expr) => {
             fn $func_name(x: ArrayD<f64>, coeffs: Vec<f64>, y_target: Vec<f64>) {
@@ -1932,22 +1947,21 @@ mod tests {
                 let x_ring = AbstractHostRingTensor::from_raw_plc(x_encoded, alice.clone());
                 let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
                     rep.share(&sess, &x_ring);
-                let x_fixed_shared = new_replicated_fixed_tensor(x_shared);
+                let x_fixed_shared = new_replicated_fixed_tensor(x_shared.clone());
 
                 let coeffs_fixed_shared: Vec<
-                    AbstractReplicatedFixedTensor<
-                        AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>>,
-                    >,
+                    AbstractReplicatedFixedTensor<Mirrored3RingTensor<AbstractHostRingTensor<$tt>>>,
                 > = coeffs
                     .into_iter()
                     .map(|coeff| {
-                        let coeff_encoded = array![coeff].map(encode);
-                        let coeff_ring =
-                            AbstractHostRingTensor::from_raw_plc(coeff_encoded, alice.clone());
-                        let coeff_shared: AbstractReplicatedRingTensor<
-                            AbstractHostRingTensor<$tt>,
-                        > = rep.share(&sess, &coeff_ring);
-                        new_replicated_fixed_tensor(coeff_shared)
+                        let coeff_constant = Constant::Fixed(FixedpointConstant {
+                            value: coeff,
+                            precision: x_fixed_shared.fractional_precision as usize,
+                        });
+
+                        let coeff_mir: Mirrored3RingTensor<AbstractHostRingTensor<$tt>> =
+                            rep.fill(&sess, coeff_constant, &rep.shape(&sess, &x_shared));
+                        new_replicated_fixed_tensor(coeff_mir)
                     })
                     .collect();
 
@@ -1956,6 +1970,7 @@ mod tests {
                 let result = Convert::decode(&output_reveal.tensor, (2 as $tt).pow($f_precision));
 
                 for i in 0..y_target.len() {
+                    println!("{:?} -- {:?}: ", result.0[i], y_target[i]);
                     let error = (result.0[i] - y_target[i]).abs();
                     assert!(error < f64::EPSILON);
                 }
