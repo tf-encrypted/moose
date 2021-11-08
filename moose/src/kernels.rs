@@ -219,7 +219,6 @@ impl Session for SyncSession {
             Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            ShrRaw(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -859,7 +858,6 @@ impl Compile<SyncKernel> for Operator {
             HostSqrt(_) => unimplemented!(),
             HostDiag(_) => unimplemented!(),
             HostSqueeze(_) => unimplemented!(),
-            ShrRaw(_) => unimplemented!(),
             Cast(_) => unimplemented!("No implementation of Cast for the old framework"),
             _ => {
                 unimplemented!("Not supported {:?}", self)
@@ -940,7 +938,7 @@ impl Compile<AsyncKernel> for Operator {
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
             | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostShlDim(_) | HostSqrt(_)
-            | HostSqueeze(_) | HostDiag(_) | ShrRaw(_) | Cast(_) => {
+            | HostSqueeze(_) | HostDiag(_) | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             FloatingpointAdd(op) => unimplemented!("Not done yet: {:?}", op),

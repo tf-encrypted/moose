@@ -208,7 +208,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Load(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Save(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Shape(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            ShrRaw(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitFill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingFill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepFill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

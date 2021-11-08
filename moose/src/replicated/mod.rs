@@ -2782,32 +2782,39 @@ impl RepBitComposeOp {
     }
 }
 
-modelled!(PlacementShrRaw::shr_raw, ReplicatedPlacement, attributes[amount: usize] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, ShrRawOp);
-modelled!(PlacementShrRaw::shr_raw, ReplicatedPlacement, attributes[amount: usize] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, ShrRawOp);
-
-kernel! {
-    ShrRawOp,
-    [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] attributes[amount] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] attributes[amount] Self::kernel),
-    ]
+impl<S: Session, HostRingT: Placed<Placement = HostPlacement>>
+    PlacementShrRaw<S, Symbolic<RepTen<HostRingT>>, Symbolic<RepTen<HostRingT>>>
+    for ReplicatedPlacement
+where
+    ReplicatedPlacement: PlacementShrRaw<S, RepTen<HostRingT>, RepTen<HostRingT>>,
+    RepTen<HostRingT>: Into<Symbolic<RepTen<HostRingT>>>,
+{
+    fn shr_raw(
+        &self,
+        sess: &S,
+        amount: usize,
+        x: &Symbolic<RepTen<HostRingT>>,
+    ) -> Symbolic<RepTen<HostRingT>> {
+        let concrete_x = match x {
+            Symbolic::Concrete(x) => x,
+            Symbolic::Symbolic(_) => unimplemented!(),
+        };
+        let concrete_y = Self::shr_raw(self, sess, amount, concrete_x);
+        concrete_y.into()
+    }
 }
 
-/// Note that this should only be called in conjunction with split()
-impl ShrRawOp {
-    fn kernel<S: Session, RingT>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        amount: usize,
-        x: RepTen<RingT>,
-    ) -> Result<RepTen<RingT>>
-    where
-        HostPlacement: PlacementShr<S, RingT, RingT>,
-    {
-        let (player0, player1, player2) = plc.host_placements();
+impl<S: Session, HostRingT> PlacementShrRaw<S, RepTen<HostRingT>, RepTen<HostRingT>>
+    for ReplicatedPlacement
+where
+    HostPlacement: PlacementShr<S, HostRingT, HostRingT>,
+{
+    fn shr_raw(&self, sess: &S, amount: usize, x: &RepTen<HostRingT>) -> RepTen<HostRingT> {
+        let (player0, player1, player2) = self.host_placements();
         let AbstractReplicatedRingTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
+
         let z00 = player0.shr(sess, amount, x00);
         let z10 = player0.shr(sess, amount, x10);
 
@@ -2817,9 +2824,9 @@ impl ShrRawOp {
         let z22 = player2.shr(sess, amount, x22);
         let z02 = player2.shr(sess, amount, x02);
 
-        Ok(RepTen {
+        RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
-        })
+        }
     }
 }
 

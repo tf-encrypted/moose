@@ -1008,7 +1008,6 @@ operators![
     RepShlDim,
     RepEqual,
     RepIfElse,
-    ShrRaw,
 ];
 
 pub trait HasShortName {
@@ -1375,12 +1374,6 @@ pub struct RingShlOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingShrOp {
-    pub sig: Signature,
-    pub amount: usize,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct ShrRawOp {
     pub sig: Signature,
     pub amount: usize,
 }
