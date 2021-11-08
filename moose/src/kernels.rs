@@ -43,7 +43,6 @@ pub trait RuntimeSession: Session {
 }
 
 /// Session object for synchronous/eager execution (in new framework).
-#[derive(std::fmt::Debug)]
 pub struct SyncSession {
     session_id: SessionId,
     replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<ReplicatedSetup>>>,

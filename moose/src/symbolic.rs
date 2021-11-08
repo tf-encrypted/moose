@@ -110,12 +110,6 @@ impl Default for SymbolicSession {
     }
 }
 
-impl std::fmt::Debug for SymbolicSession {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.state.read().ops.len().fmt(f)
-    }
-}
-
 impl SymbolicSession {
     pub fn add_operation<'s, O: Into<Operator> + Clone>(
         &'s self,
