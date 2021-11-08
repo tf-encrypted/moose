@@ -122,8 +122,8 @@ impl InputOp {
         Ok(AbstractHostFixedAesTensor {
             tensor,
             // TODO(Morten) extract precision from sig
-            integral_precision: 40,
-            fractional_precision: 47,
+            integral_precision: 46,
+            fractional_precision: 40,
         })
     }
 
