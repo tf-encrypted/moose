@@ -286,7 +286,7 @@ mod tests {
 
         let x_shared = rep.share(&sess, &x_bit);
         let y_shared = rep.share(&sess, &y_bit);
-        let binary_adder = rep.binary_adder(&sess, x_shared, y_shared, 64);
+        let binary_adder = rep.binary_adder(&sess, &x_shared, &y_shared, 64);
         let binary_adder_clear = alice.reveal(&sess, &binary_adder);
 
         assert_eq!(expected_output_bit, binary_adder_clear);

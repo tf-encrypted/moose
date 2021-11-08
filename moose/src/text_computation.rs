@@ -1424,6 +1424,7 @@ impl ToTextual for Operator {
             RepShlDim(op) => op.to_textual(),
             RepEqual(op) => op.to_textual(),
             RepIfElse(op) => op.to_textual(),
+            ShrRaw(_) => unimplemented!(),
         }
     }
 }

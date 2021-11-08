@@ -219,6 +219,7 @@ impl Session for SyncSession {
             Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            ShrRaw(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -416,6 +417,14 @@ pub trait PlacementShl<S: Session, T, O> {
 
 pub trait PlacementShr<S: Session, T, O> {
     fn shr(&self, sess: &S, amount: usize, x: &T) -> O;
+}
+
+pub trait PlacementSplit<S: Session, T, O1, O2> {
+    fn split(&self, sess: &S, x: &T) -> (O1, O2);
+}
+
+pub trait PlacementShrRaw<S: Session, T, O> {
+    fn shr_raw(&self, sess: &S, amount: usize, x: &T) -> O;
 }
 
 pub trait PlacementXor<S: Session, T, U, O> {
@@ -850,6 +859,7 @@ impl Compile<SyncKernel> for Operator {
             HostSqrt(_) => unimplemented!(),
             HostDiag(_) => unimplemented!(),
             HostSqueeze(_) => unimplemented!(),
+            ShrRaw(_) => unimplemented!(),
             Cast(_) => unimplemented!("No implementation of Cast for the old framework"),
             _ => {
                 unimplemented!("Not supported {:?}", self)
@@ -930,7 +940,7 @@ impl Compile<AsyncKernel> for Operator {
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
             | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostShlDim(_) | HostSqrt(_)
-            | HostSqueeze(_) | HostDiag(_) | Cast(_) => {
+            | HostSqueeze(_) | HostDiag(_) | ShrRaw(_) | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             FloatingpointAdd(op) => unimplemented!("Not done yet: {:?}", op),
