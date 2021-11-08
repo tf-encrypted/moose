@@ -4,7 +4,7 @@ use crate::compilation::pruning::prune_graph;
 use crate::compilation::replicated_lowering::replicated_lowering;
 use crate::compilation::typing::update_types_one_hop;
 use crate::computation::Computation;
-use crate::text_computation::ToTextual;
+use crate::textual::ToTextual;
 
 use self::deprecated_logical::deprecated_logical_lowering;
 

@@ -2213,5 +2213,5 @@ pub mod prng;
 pub mod replicated;
 pub mod storage;
 pub mod symbolic;
-pub mod text_computation;
+pub mod textual;
 pub mod utils;
