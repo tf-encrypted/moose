@@ -6,8 +6,8 @@ use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::*;
 use crate::kernels::*;
 use crate::replicated::{
-    AbstractReplicatedFixedTensor, Mirrored3RingTensor, ReplicatedFixed128Tensor,
-    ReplicatedFixed64Tensor,
+    AbstractReplicatedFixedTensor, Mirrored3Fixed128Tensor, Mirrored3Fixed64Tensor,
+    Mirrored3RingTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
 };
 use macros::with_context;
 use ndarray::prelude::*;
@@ -224,6 +224,8 @@ modelled!(PlacementAdd::add, HostPlacement, (HostFixed64Tensor, HostFixed64Tenso
 modelled!(PlacementAdd::add, HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor, FixedpointAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointAddOp);
+// modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointAddOp);
+// modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointAddOp);
 
 kernel! {
     FixedpointAddOp,
@@ -236,6 +238,8 @@ kernel! {
         (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::repfixed_kernel),
+        // (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_kernel),
+        // (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::repfixed_kernel),
     ]
 }
 
@@ -321,6 +325,24 @@ impl FixedpointAddOp {
             integral_precision: x.integral_precision,
         })
     }
+
+    // fn repfixed_mir_kernel<S: Session, RepRingT, HostRingT>(
+    //     sess: &S,
+    //     plc: &ReplicatedPlacement,
+    //     x: AbstractReplicatedFixedTensor<RepRingT>,
+    //     y: AbstractReplicatedFixedTensor<Mirrored3RingTensor<HostRingT>>,
+    // ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    // where
+    //     ReplicatedPlacement: PlacementAdd<S, RepRingT, Mirrored3RingTensor<HostRingT>, RepRingT>,
+    // {
+    //     assert_eq!(x.fractional_precision, y.fractional_precision);
+    //     let z = plc.add(sess, &x.tensor, &y.tensor);
+    //     Ok(AbstractReplicatedFixedTensor {
+    //         tensor: z,
+    //         fractional_precision: x.fractional_precision,
+    //         integral_precision: x.integral_precision,
+    //     })
+    // }
 }
 
 modelled!(PlacementSub::sub, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointSubOp);
@@ -1127,6 +1149,7 @@ impl ReplicatedPlacement {
         let x_mul_coeffs_added_fixed_trunc =
             self.trunc_pr(sess, x.fractional_precision, &x_mul_coeffs_added_fixed);
 
+        // TODO [Yann] Make it work with FixedTensor instead
         // self.add(sess, &x_mul_coeffs_added_fixed_trunc, &coeffs[0])
         let out = self.add(
             sess,
