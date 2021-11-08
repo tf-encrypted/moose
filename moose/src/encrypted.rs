@@ -350,6 +350,7 @@ impl AesDecryptOp {
         HostPlacement: PlacementXor<S, HostBitTensorT, HostBitTensorT, HostBitTensorT>,
         HostPlacement: PlacementAnd<S, HostBitTensorT, HostBitTensorT, HostBitTensorT>,
         HostPlacement: PlacementNeg<S, HostBitTensorT, HostBitTensorT>,
+        S: std::fmt::Debug,
     {
         let tensor = aesgcm(sess, plc, key.0, ciphertext.tensor);
         Ok(AbstractHostFixedTensor {
@@ -390,6 +391,7 @@ impl AesDecryptOp {
         ReplicatedPlacement: PlacementXor<S, RepBitTensorT, RepBitTensorT, RepBitTensorT>,
         ReplicatedPlacement: PlacementAnd<S, RepBitTensorT, RepBitTensorT, RepBitTensorT>,
         ReplicatedPlacement: PlacementNeg<S, RepBitTensorT, RepBitTensorT>,
+        S: std::fmt::Debug,
     {
         let shared_ciphertext = plc.share(sess, &ciphertext.tensor);
         let tensor = aesgcm(sess, plc, key.0, shared_ciphertext);
@@ -434,6 +436,7 @@ where
     P: PlacementXor<S, BitTensorT, BitTensorT, BitTensorT>,
     P: PlacementAnd<S, BitTensorT, BitTensorT, BitTensorT>,
     P: PlacementNeg<S, BitTensorT, BitTensorT>,
+    S: std::fmt::Debug,
 {
     // turn inputs into vectors
     let key_bits: Vec<BitTensorT> = (0..128).map(|i| plc.index(sess, i, &key)).collect();
@@ -463,9 +466,12 @@ where
         })
         .collect();
     block_bits[128 - 2] = one_bit;
+    println!("number of ops BEFORE AES {:?}", sess);
 
     // apply AES to block to get mask
     let r_bits = crate::bristol_fashion::aes128(sess, plc, key_bits, block_bits);
+
+    println!("number of ops AFTER AES {:?}", sess);
 
     // remove mask to recover plaintext
     let m_bits: Vec<BitTensorT> = rm_bits
@@ -477,11 +483,15 @@ where
     // bit compose plaintext to obtain ring values
     let shape = plc.shape(sess, &m_bits[0]);
     let zero_ring: PlaintextRingTensorT = plc.fill(sess, Constant::Ring128(0), &shape);
-    m_bits
+
+    let res = m_bits
         .iter()
         .enumerate()
         .map(|(i, b)| plc.ring_inject(sess, 127 - i, b))
-        .fold(zero_ring, |acc, x| plc.add(sess, &acc, &x))
+        .fold(zero_ring, |acc, x| plc.add(sess, &acc, &x));
+
+    println!("number of ops at the end {:?}", sess);
+    res
 }
 
 #[cfg(test)]
