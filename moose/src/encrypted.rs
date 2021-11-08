@@ -337,10 +337,9 @@ impl AesDecryptOp {
         ciphertext: AbstractHostFixedAesTensor<HostBitArray224T>,
     ) -> Result<AbstractHostFixedTensor<HostRing128TensorT>>
     where
-        ShapeT: std::fmt::Debug,
         HostBitArray128T: BitArray<Len = N128>,
         HostBitArray224T: BitArray<Len = N224>,
-        HostBitTensorT: Clone + std::fmt::Debug,
+        HostBitTensorT: Clone,
         HostPlacement: PlacementIndex<S, HostBitArray128T, HostBitTensorT>,
         HostPlacement: PlacementIndex<S, HostBitArray224T, HostBitTensorT>,
         HostPlacement: PlacementShape<S, HostBitTensorT, ShapeT>,
@@ -375,11 +374,10 @@ impl AesDecryptOp {
         ciphertext: AbstractHostFixedAesTensor<HostBitArray224T>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRing128TensorT>>
     where
-        ShapeT: std::fmt::Debug,
         RepBitArray128T: BitArray<Len = N128>,
         HostBitArray224T: BitArray<Len = N224>,
         RepBitArray224T: BitArray<Len = N224>,
-        RepBitTensorT: Clone + std::fmt::Debug,
+        RepBitTensorT: Clone,
         ReplicatedPlacement: PlacementIndex<S, RepBitArray128T, RepBitTensorT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArray224T, RepBitTensorT>,
         ReplicatedPlacement: PlacementShare<S, HostBitArray224T, RepBitArray224T>,
@@ -423,10 +421,9 @@ fn aesgcm<
     ciphertext: CiphertextBitArrayT,
 ) -> PlaintextRingTensorT
 where
-    ShapeT: std::fmt::Debug,
     KeyBitArrayT: BitArray<Len = N128>,
     CiphertextBitArrayT: BitArray<Len = N224>,
-    BitTensorT: Clone + std::fmt::Debug,
+    BitTensorT: Clone,
     P: PlacementIndex<S, KeyBitArrayT, BitTensorT>,
     P: PlacementIndex<S, CiphertextBitArrayT, BitTensorT>,
     P: PlacementShape<S, BitTensorT, ShapeT>,
@@ -454,8 +451,6 @@ where
 
     // build full AES block with nonce and counter value of 2
     let shape = plc.shape(sess, &nonce_bits[0]);
-    println!("\nNONCE: {:?}\n", &nonce_bits[0]);
-    println!("\nSHAPE: {:?}\n", &shape);
     let one_bit: BitTensorT = plc.fill(sess, Constant::Bit(1), &shape);
     let zero_bit: BitTensorT = plc.fill(sess, Constant::Bit(0), &shape);
     let mut block_bits: Vec<_> = (0..128)
@@ -468,13 +463,6 @@ where
         })
         .collect();
     block_bits[128 - 2] = one_bit;
-
-    for (i, b) in key_bits.iter().enumerate() {
-        println!("\nKEY {}: {:?}\n", i, b);
-    }
-    for (i, b) in block_bits.iter().enumerate() {
-        println!("\nBLOCK {}: {:?}\n", i, b);
-    }
 
     // apply AES to block to get mask
     let r_bits = crate::bristol_fashion::aes128(sess, plc, key_bits, block_bits);
