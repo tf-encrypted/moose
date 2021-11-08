@@ -90,7 +90,7 @@ where
 }
 
 #[derive(Default)]
-pub(crate) struct SymbolicSessionState {
+struct SymbolicSessionState {
     pub ops: Vec<Operation>,
     pub replicated_keys:
         HashMap<ReplicatedPlacement, Arc<<ReplicatedSetup as KnownType<SymbolicSession>>::Type>>,
@@ -98,7 +98,7 @@ pub(crate) struct SymbolicSessionState {
 
 pub struct SymbolicSession {
     pub strategy: Box<dyn SymbolicStrategy>,
-    pub(crate) state: Arc<RwLock<SymbolicSessionState>>,
+    state: Arc<RwLock<SymbolicSessionState>>,
 }
 
 impl Default for SymbolicSession {
