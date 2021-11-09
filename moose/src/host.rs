@@ -1040,19 +1040,8 @@ impl HostSumOp {
     }
 }
 
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor, HostAddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor, HostAddNOp);
-
-kernel! {
-    HostAddNOp,
-    [
-        (HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor => [runtime] Self::kernel),
-        (HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor => [runtime] Self::kernel),
-    ]
-}
-
-impl HostAddNOp {
-    fn kernel<S: RuntimeSession, T>(
+impl AddNOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         xs: &[AbstractHostRingTensor<T>],

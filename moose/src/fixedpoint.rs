@@ -482,6 +482,10 @@ modelled!(PlacementMul::mul, HostPlacement, (HostFixed64Tensor, HostFixed64Tenso
 modelled!(PlacementMul::mul, HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor, FixedpointMulOp);
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointMulOp);
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointMulOp);
 
 kernel! {
     FixedpointMulOp,
@@ -494,6 +498,10 @@ kernel! {
         (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_mirfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::repfixed_mirfixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::mirfixed_repfixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::mirfixed_repfixed_kernel),
     ]
 }
 
@@ -577,6 +585,42 @@ impl FixedpointMulOp {
             tensor: z,
             fractional_precision: x.fractional_precision + y.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
+        })
+    }
+
+    fn repfixed_mirfixed_kernel<S: Session, RepRingT, MirroredRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+        y: AbstractReplicatedFixedTensor<MirroredRingT>,
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementMul<S, RepRingT, MirroredRingT, RepRingT>,
+    {
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+        let z = plc.mul(sess, &x.tensor, &y.tensor);
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: z,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+
+    fn mirfixed_repfixed_kernel<S: Session, RepRingT, MirroredRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<MirroredRingT>,
+        y: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementMul<S, MirroredRingT, RepRingT, RepRingT>,
+    {
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+        let z = plc.mul(sess, &x.tensor, &y.tensor);
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: z,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
         })
     }
 }
@@ -1117,7 +1161,7 @@ impl ReplicatedPlacement {
 }
 
 impl ReplicatedPlacement {
-    pub fn polynomial_eval<S: Session, RepRingT, HostRingT>(
+    pub fn polynomial_eval<S: Session, RepRingT, MirroredT>(
         &self,
         sess: &S,
         x: AbstractReplicatedFixedTensor<RepRingT>,
@@ -1125,27 +1169,33 @@ impl ReplicatedPlacement {
     ) -> AbstractReplicatedFixedTensor<RepRingT>
     where
         RepRingT: Clone,
+        AbstractReplicatedFixedTensor<RepRingT>: Clone,
         ReplicatedPlacement: PlacementMul<
             S,
             AbstractReplicatedFixedTensor<RepRingT>,
             AbstractReplicatedFixedTensor<RepRingT>,
             AbstractReplicatedFixedTensor<RepRingT>,
         >,
-        ReplicatedPlacement: PlacementMul<S, Mirrored3RingTensor<HostRingT>, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMul<
+            S,
+            AbstractReplicatedFixedTensor<MirroredT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
 
         ReplicatedPlacement: PlacementTruncPr<
             S,
             AbstractReplicatedFixedTensor<RepRingT>,
             AbstractReplicatedFixedTensor<RepRingT>,
         >,
-        ReplicatedPlacement: PlacementAddN<S, RepRingT, RepRingT>,
+        // ReplicatedPlacement: PlacementAddN<S, AbstractReplicatedFixedTensor<RepRingT>, AbstractReplicatedFixedTensor<RepRingT>>,
         ReplicatedPlacement: PlacementAdd<
             S,
             AbstractReplicatedFixedTensor<RepRingT>,
-            AbstractReplicatedFixedTensor<Mirrored3RingTensor<HostRingT>>,
+            AbstractReplicatedFixedTensor<MirroredT>,
             AbstractReplicatedFixedTensor<RepRingT>,
         >,
-        ReplicatedPlacement: ShapeFill<S, RepRingT, Result = Mirrored3RingTensor<HostRingT>>,
+        ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirroredT>,
     {
         let mut degree = coeffs.len() - 1;
 
@@ -1158,8 +1208,7 @@ impl ReplicatedPlacement {
             }
         }
 
-        let coeffs_mir: Vec<AbstractReplicatedFixedTensor<Mirrored3RingTensor<HostRingT>>> = coeffs
-            [0..degree + 1]
+        let coeffs_mir: Vec<AbstractReplicatedFixedTensor<MirroredT>> = coeffs[0..degree + 1]
             .iter()
             .map(|coeff| {
                 let coeff_constant = Constant::Fixed(FixedpointConstant {
@@ -1167,8 +1216,7 @@ impl ReplicatedPlacement {
                     precision: x.fractional_precision as usize,
                 });
 
-                let coeff_mir: Mirrored3RingTensor<HostRingT> =
-                    self.shape_fill(sess, coeff_constant, &x.tensor);
+                let coeff_mir: MirroredT = self.shape_fill(sess, coeff_constant, &x.tensor);
 
                 AbstractReplicatedFixedTensor {
                     tensor: coeff_mir,
@@ -1186,21 +1234,23 @@ impl ReplicatedPlacement {
         // TODO [Yann] - this multiplication should be public/private instead
         // If x_pre_mul could be concatenated in one tensor, we could use a single
         // multiplication instead of doing a for loop.
-        let x_mul_coeffs: Vec<RepRingT> = (0..x_pre_mul.len())
-            .map(|i| self.mul(sess, &coeffs_mir[i + 1].tensor, &x_pre_mul[i].tensor))
+        let x_mul_coeffs: Vec<AbstractReplicatedFixedTensor<RepRingT>> = (0..x_pre_mul.len())
+            .map(|i| self.mul(sess, &coeffs_mir[i + 1], &x_pre_mul[i]))
             .collect();
 
-        let x_mul_coeffs_added = self.add_n(sess, &x_mul_coeffs);
-        let x_mul_coeffs_added_fixed = AbstractReplicatedFixedTensor {
-            tensor: x_mul_coeffs_added,
-            fractional_precision: 2 * x.fractional_precision,
-            integral_precision: x.integral_precision,
-        };
+        x_mul_coeffs[0].clone()
 
-        let x_mul_coeffs_added_fixed_trunc =
-            self.trunc_pr(sess, x.fractional_precision, &x_mul_coeffs_added_fixed);
+        // let x_mul_coeffs_added = self.add_n(sess, &x_mul_coeffs);
+        // let x_mul_coeffs_added_fixed = AbstractReplicatedFixedTensor {
+        //     tensor: x_mul_coeffs_added,
+        //     fractional_precision: 2 * x.fractional_precision,
+        //     integral_precision: x.integral_precision,
+        // };
 
-        self.add(sess, &x_mul_coeffs_added_fixed_trunc, &coeffs_mir[0])
+        // let x_mul_coeffs_added_fixed_trunc =
+        //     self.trunc_pr(sess, x.fractional_precision, &x_mul_coeffs_added_fixed);
+
+        // self.add(sess, &x_mul_coeffs_added_fixed_trunc, &coeffs_mir[0])
     }
 }
 
