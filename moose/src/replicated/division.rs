@@ -156,11 +156,7 @@ where
         assert_eq!(max_bits, x.len());
 
         let rep = self;
-        let x_rev: Vec<_> = x
-            .into_iter()
-            .take(max_bits)
-            .rev()
-            .collect();
+        let x_rev: Vec<_> = x.into_iter().take(max_bits).rev().collect();
 
         let y = rep.prefix_or(sess, x_rev);
 
