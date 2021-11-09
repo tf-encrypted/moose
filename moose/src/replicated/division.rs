@@ -156,17 +156,21 @@ where
         assert_eq!(max_bits, x.len());
 
         let rep = self;
-        let x_rev: Vec<_> = (0..max_bits).map(|i| x[max_bits - i - 1].clone()).collect();
+        let x_rev: Vec<_> = x
+            .into_iter()
+            .take(max_bits)
+            .rev()
+            .collect();
 
         let y = rep.prefix_or(sess, x_rev);
 
-        let mut y_vec: Vec<_> = y
+        let y_vec: Vec<_> = y
             .iter()
             .take(max_bits)
             .map(|item| rep.ring_inject(sess, 0, item))
+            .rev()
             .collect();
 
-        y_vec.reverse();
         let mut z: Vec<_> = (0..max_bits - 1)
             .map(|i| rep.sub(sess, &y_vec[i], &y_vec[i + 1]))
             .collect();
