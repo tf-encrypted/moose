@@ -2632,6 +2632,14 @@ impl RingInjectOp {
     }
 }
 
+/// Splits a replicated secret x into 2 replicated bit tensor values (x1, x2)
+/// such that when interpreted as ring tensors, they reconstruct to x
+/// i.e. (x1 + x2) mod R = x
+/// Useful for some protocols that don't necessarily need the full bit-decomposition such as exponentiation
+trait PlacementSplit<S: Session, T, O1, O2> {
+    fn split(&self, sess: &S, x: &T) -> (O1, O2);
+}
+
 impl<
         S: Session,
         HostRingT: Placed<Placement = HostPlacement>,
@@ -2780,6 +2788,14 @@ impl RepBitComposeOp {
             rep.add(sess, &x, &rep.ring_inject(sess, i, y))
         }))
     }
+}
+
+/// ShrRaw takes as input a replicated secret and shifts to the right all local shares
+/// It should be used carefully since
+/// [x]>>amount is NOT equal to [ [x0 >> amount, x1 >> amount], [x1 >> amount, x2 >> amount], [x2 >> amount, x0>>amount]
+/// Used in conjunction with split operation so that we don't use the full bit-decomposition in order to perform exact truncation
+trait PlacementShrRaw<S: Session, T, O> {
+    fn shr_raw(&self, sess: &S, amount: usize, x: &T) -> O;
 }
 
 impl<S: Session, HostRingT: Placed<Placement = HostPlacement>>

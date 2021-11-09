@@ -418,14 +418,6 @@ pub trait PlacementShr<S: Session, T, O> {
     fn shr(&self, sess: &S, amount: usize, x: &T) -> O;
 }
 
-pub trait PlacementSplit<S: Session, T, O1, O2> {
-    fn split(&self, sess: &S, x: &T) -> (O1, O2);
-}
-
-pub trait PlacementShrRaw<S: Session, T, O> {
-    fn shr_raw(&self, sess: &S, amount: usize, x: &T) -> O;
-}
-
 pub trait PlacementXor<S: Session, T, U, O> {
     fn xor(&self, sess: &S, x: &T, y: &U) -> O;
 }
