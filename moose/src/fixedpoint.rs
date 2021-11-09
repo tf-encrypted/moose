@@ -1127,6 +1127,26 @@ impl FixedpointMeanOp {
         })
     }
 }
+impl AddNOp {
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        xs: &[AbstractReplicatedFixedTensor<RepRingT>],
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementAddN<S, RepRingT, RepRingT>,
+        RepRingT: Clone,
+    {
+        let zs: Vec<RepRingT> = xs.iter().map(|item| item.tensor.clone()).collect();
+
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: rep.add_n(sess, &zs),
+            fractional_precision: xs[0].fractional_precision,
+            //TODO(Dragos) figure out later how we estimate integral precision
+            integral_precision: xs[0].integral_precision,
+        })
+    }
+}
 
 impl ReplicatedPlacement {
     pub fn prefix_mul_fixed<S: Session, RepRingT>(
@@ -1188,7 +1208,11 @@ impl ReplicatedPlacement {
             AbstractReplicatedFixedTensor<RepRingT>,
             AbstractReplicatedFixedTensor<RepRingT>,
         >,
-        // ReplicatedPlacement: PlacementAddN<S, AbstractReplicatedFixedTensor<RepRingT>, AbstractReplicatedFixedTensor<RepRingT>>,
+        ReplicatedPlacement: PlacementAddN<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
         ReplicatedPlacement: PlacementAdd<
             S,
             AbstractReplicatedFixedTensor<RepRingT>,
@@ -1238,19 +1262,11 @@ impl ReplicatedPlacement {
             .map(|i| self.mul(sess, &coeffs_mir[i + 1], &x_pre_mul[i]))
             .collect();
 
-        x_mul_coeffs[0].clone()
+        let x_mul_coeffs_added = self.add_n(sess, &x_mul_coeffs);
+        let x_mul_coeffs_added_fixed_trunc =
+            self.trunc_pr(sess, x.fractional_precision, &x_mul_coeffs_added);
 
-        // let x_mul_coeffs_added = self.add_n(sess, &x_mul_coeffs);
-        // let x_mul_coeffs_added_fixed = AbstractReplicatedFixedTensor {
-        //     tensor: x_mul_coeffs_added,
-        //     fractional_precision: 2 * x.fractional_precision,
-        //     integral_precision: x.integral_precision,
-        // };
-
-        // let x_mul_coeffs_added_fixed_trunc =
-        //     self.trunc_pr(sess, x.fractional_precision, &x_mul_coeffs_added_fixed);
-
-        // self.add(sess, &x_mul_coeffs_added_fixed_trunc, &coeffs_mir[0])
+        self.add(sess, &x_mul_coeffs_added_fixed_trunc, &coeffs_mir[0])
     }
 }
 
