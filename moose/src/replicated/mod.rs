@@ -250,11 +250,26 @@ pub struct AbstractReplicatedFixedTensor<RepRingT> {
 moose_type!(ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>);
 moose_type!(ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>);
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AbstractMirroredFixedTensor<MirroredT> {
+    pub tensor: MirroredT,
+    pub fractional_precision: u32,
+    pub integral_precision: u32,
+}
+
 // TODO(Dragos) perhaps we need better abstraction mechanisms?
-moose_type!(Mirrored3Fixed64Tensor = AbstractReplicatedFixedTensor<Mirrored3Ring64Tensor>);
-moose_type!(Mirrored3Fixed128Tensor = AbstractReplicatedFixedTensor<Mirrored3Ring128Tensor>);
+moose_type!(Mirrored3Fixed64Tensor = AbstractMirroredFixedTensor<Mirrored3Ring64Tensor>);
+moose_type!(Mirrored3Fixed128Tensor = AbstractMirroredFixedTensor<Mirrored3Ring128Tensor>);
 
 impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
+    type Placement = RepRingT::Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        self.tensor.placement()
+    }
+}
+
+impl<RepRingT: Placed> Placed for AbstractMirroredFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
