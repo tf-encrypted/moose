@@ -195,6 +195,47 @@ impl<S: Session> PlacementPlace<S, Unit> for HostPlacement {
     }
 }
 
+impl InputOp {
+    pub(crate) fn host_bitarray64<S: Session, HostBitTensorT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<AbstractHostBitArray<HostBitTensorT, N64>>
+    where
+        HostPlacement: PlacementInput<S, HostBitTensorT>,
+    {
+        // TODO(Morten) ideally we should verify that shape of bit tensor
+        let bit_tensor = plc.input(sess, arg_name);
+        Ok(AbstractHostBitArray(bit_tensor, PhantomData))
+    }
+
+    pub(crate) fn host_bitarray128<S: Session, HostBitTensorT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<AbstractHostBitArray<HostBitTensorT, N128>>
+    where
+        HostPlacement: PlacementInput<S, HostBitTensorT>,
+    {
+        // TODO(Morten) ideally we should verify that shape of bit tensor
+        let bit_tensor = plc.input(sess, arg_name);
+        Ok(AbstractHostBitArray(bit_tensor, PhantomData))
+    }
+
+    pub(crate) fn host_bitarray224<S: Session, HostBitTensorT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<AbstractHostBitArray<HostBitTensorT, N224>>
+    where
+        HostPlacement: PlacementInput<S, HostBitTensorT>,
+    {
+        // TODO(Morten) ideally we should verify that shape of bit tensor
+        let bit_tensor = plc.input(sess, arg_name);
+        Ok(AbstractHostBitArray(bit_tensor, PhantomData))
+    }
+}
+
 modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostRing64Tensor, RingFixedpointMeanOp);
 modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostRing128Tensor, RingFixedpointMeanOp);
 
@@ -1267,14 +1308,16 @@ kernel! {
 impl RingFixedpointEncodeOp {
     fn float32_kernel<S: RuntimeSession>(
         _sess: &S,
-        _plc: &HostPlacement,
-        _scaling_base: u64,
-        _scaling_exp: u32,
-        _x: HostFloat32Tensor,
+        plc: &HostPlacement,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: HostFloat32Tensor,
     ) -> Result<HostRing64Tensor> {
-        // let scaling_factor = u64::pow(scaling_base, scaling_exp);
-        // HostRing64Tensor::encode(&x, scaling_factor)
-        unimplemented!()
+        let scaling_factor = u64::pow(scaling_base, scaling_exp);
+        let x_upshifted = &x.0 * (scaling_factor as f32);
+        let x_converted: ArrayD<Wrapping<u64>> =
+            x_upshifted.mapv(|el| Wrapping((el as i64) as u64));
+        Ok(AbstractHostRingTensor(x_converted, plc.clone()))
     }
 
     fn float64_kernel<S: RuntimeSession>(

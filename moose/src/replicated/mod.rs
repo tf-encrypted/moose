@@ -2,12 +2,13 @@
 use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor};
 use crate::error::{Error, Result};
 use crate::host::{
-    AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128, HostBitArray224,
-    HostBitArray256, HostBitArray64, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
-    HostRing128Tensor, HostRing64Tensor, HostShape, SliceInfo,
+    AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedTensor, HostAesKey, HostBitArray128,
+    HostBitArray224, HostBitArray256, HostBitArray64, HostBitTensor, HostFixed128Tensor,
+    HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, SliceInfo,
 };
 use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
+use crate::replicated::aes::AbstractReplicatedAesKey;
 use crate::symbolic::Symbolic;
 use crate::{computation::*, BitArray};
 use crate::{Const, Ring, N128, N224, N64};
@@ -19,9 +20,10 @@ use std::marker::PhantomData;
 pub mod aes;
 pub mod control_flow;
 pub mod division;
-pub mod exp;
-pub mod log;
 
+pub mod exp;
+pub mod input;
+pub mod log;
 pub use self::aes::ReplicatedAesKey;
 
 pub(crate) trait ShapeFill<S, TenT> {
@@ -375,6 +377,7 @@ modelled!(PlacementShare::share, ReplicatedPlacement, (HostBitTensor) -> Replica
 modelled!(PlacementShare::share, ReplicatedPlacement, (HostBitArray64) -> ReplicatedBitArray64, RepShareOp);
 modelled!(PlacementShare::share, ReplicatedPlacement, (HostBitArray128) -> ReplicatedBitArray128, RepShareOp);
 modelled!(PlacementShare::share, ReplicatedPlacement, (HostBitArray224) -> ReplicatedBitArray224, RepShareOp);
+modelled!(PlacementShare::share, ReplicatedPlacement, (HostAesKey) -> ReplicatedAesKey, RepShareOp);
 
 kernel! {
     RepShareOp,
@@ -387,10 +390,23 @@ kernel! {
         (ReplicatedPlacement, (HostBitArray64) -> ReplicatedBitArray64 => [hybrid] Self::array_kernel),
         (ReplicatedPlacement, (HostBitArray128) -> ReplicatedBitArray128 => [hybrid] Self::array_kernel),
         (ReplicatedPlacement, (HostBitArray224) -> ReplicatedBitArray224 => [hybrid] Self::array_kernel),
+        (ReplicatedPlacement, (HostAesKey) -> ReplicatedAesKey => [hybrid] Self::aeskey_kernel),
     ]
 }
 
 impl RepShareOp {
+    fn aeskey_kernel<S: Session, HostBitArrayT, RepBitArrayT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        key: AbstractHostAesKey<HostBitArrayT>,
+    ) -> Result<AbstractReplicatedAesKey<RepBitArrayT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostBitArrayT, RepBitArrayT>,
+    {
+        let bit_array = plc.share(sess, &key.0);
+        Ok(AbstractReplicatedAesKey(bit_array))
+    }
+
     fn fixed_kernel<S: Session, HostRingT, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -544,6 +560,7 @@ modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitTensor) -> HostB
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitArray64) -> HostBitArray64, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitArray128) -> HostBitArray128, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitArray224) -> HostBitArray224, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedAesKey) -> HostAesKey, RepRevealOp);
 
 kernel! {
     RepRevealOp,
@@ -556,10 +573,23 @@ kernel! {
         (HostPlacement, (ReplicatedBitArray64) -> HostBitArray64 => [hybrid] Self::bit_array_kernel),
         (HostPlacement, (ReplicatedBitArray128) -> HostBitArray128 => [hybrid] Self::bit_array_kernel),
         (HostPlacement, (ReplicatedBitArray224) -> HostBitArray224 => [hybrid] Self::bit_array_kernel),
+        (HostPlacement, (ReplicatedAesKey) -> HostAesKey => [hybrid] Self::aeskey_kernel),
     ]
 }
 
 impl RepRevealOp {
+    fn aeskey_kernel<S: Session, RepBitArrayT, HostBitArrayT>(
+        sess: &S,
+        receiver: &HostPlacement,
+        key: AbstractReplicatedAesKey<RepBitArrayT>,
+    ) -> Result<AbstractHostAesKey<HostBitArrayT>>
+    where
+        HostPlacement: PlacementReveal<S, RepBitArrayT, HostBitArrayT>,
+    {
+        let bit_array = receiver.reveal(sess, &key.0);
+        Ok(AbstractHostAesKey(bit_array))
+    }
+
     fn fixed_kernel<S: Session, RepRingT, HostRingT>(
         sess: &S,
         receiver: &HostPlacement,
@@ -683,9 +713,9 @@ modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedRing128Tensor) -> R
 kernel! {
     RepNegOp,
     [
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [runtime] Self::rep_bit_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [runtime] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor ) ->ReplicatedRing128Tensor  => [runtime] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_bit_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor ) ->ReplicatedRing128Tensor  => [hybrid] Self::rep_rep_kernel),
     ]
 }
 
