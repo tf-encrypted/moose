@@ -1190,7 +1190,6 @@ impl ReplicatedPlacement {
     ) -> AbstractReplicatedFixedTensor<RepRingT>
     where
         RepRingT: Clone,
-        AbstractReplicatedFixedTensor<RepRingT>: Clone,
         ReplicatedPlacement: PlacementMul<
             S,
             AbstractReplicatedFixedTensor<RepRingT>,
