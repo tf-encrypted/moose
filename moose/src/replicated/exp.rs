@@ -1,5 +1,12 @@
 use super::*;
 
+/// Computes 2^x given the bit representation of x: [b(0)]...[b(k-1)].
+///
+/// This is done by computing the product of p(i) = b(i) * 2^i + (1 - b(i)).
+///
+/// One can see that b(i) acts as selector here, i.e. if b(i) = 1 then p(i) = 2^i, o/w p(i) = 1.
+///
+/// The product of all p(i) yields [2^x] since 2^x = prod(2^b(i)) where b(i) = 1.
 pub(crate) trait Pow2FromBits<S: Session, RepRingT> {
     fn pow2_from_bits(&self, sess: &S, x: &[RepRingT]) -> RepRingT;
 }
@@ -23,8 +30,11 @@ where
             .iter()
             .enumerate()
             .map(|(i, bit)| {
+                // compute b(i) * 2^i
                 let pos = rep.shl(sess, i, bit);
+                // compute 1 - b(i)
                 let neg = rep.sub(sess, &ones, bit);
+                // compute p(i) = b(i) * 2^i + (1 - b(i))
                 rep.add(sess, &pos, &neg)
             })
             .collect();
