@@ -1,6 +1,6 @@
 use moose::compilation::{compile_passes, into_pass};
-use moose::text_computation::verbose_parse_computation;
-use moose::text_computation::ToTextual;
+use moose::textual::verbose_parse_computation;
+use moose::textual::ToTextual;
 use std::fs::{read_to_string, write};
 use std::path::PathBuf;
 

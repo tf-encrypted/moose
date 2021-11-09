@@ -605,24 +605,24 @@ impl CastOp {
     {
         let arg0_precision = match sig.arg(0) {
             Ok(Ty::Tensor(TensorDType::Fixed64 {
-                fractional_precision,
                 integral_precision,
-            })) => Some((fractional_precision, integral_precision)),
+                fractional_precision,
+            })) => Some((integral_precision, fractional_precision)),
             Ok(Ty::Tensor(TensorDType::Fixed128 {
-                fractional_precision,
                 integral_precision,
-            })) => Some((fractional_precision, integral_precision)),
+                fractional_precision,
+            })) => Some((integral_precision, fractional_precision)),
             _ => None,
         };
 
         match (x, sig.ret()) {
             (AbstractTensor::Fixed64(x), Ty::Tensor(TensorDType::Float32)) => {
-                let (fractional_precision, _) = arg0_precision.unwrap();
+                let (_, fractional_precision) = arg0_precision.unwrap();
                 let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
                 Ok(AbstractTensor::Float32(inner))
             }
             (AbstractTensor::Fixed128(x), Ty::Tensor(TensorDType::Float64)) => {
-                let (fractional_precision, _) = arg0_precision.unwrap();
+                let (_, fractional_precision) = arg0_precision.unwrap();
                 let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
                 Ok(AbstractTensor::Float64(inner))
             }

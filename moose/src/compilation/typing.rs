@@ -44,7 +44,7 @@ pub fn update_types_one_hop(comp: &Computation) -> anyhow::Result<Option<Computa
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text_computation::ToTextual;
+    use crate::textual::ToTextual;
     use std::convert::TryInto;
 
     #[test]
