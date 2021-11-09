@@ -808,6 +808,16 @@ impl RepToAdtOp {
     }
 }
 
+pub trait PlacementDaBitProvider<S: Session, ShapeT, O1, O2> {
+    fn gen_dabit(
+        &self,
+        sess: &S,
+        shape_provider: ShapeT,
+        shape_a: ShapeT,
+        provider: &HostPlacement,
+    ) -> (O1, O2);
+}
+
 impl<
         S: Session,
         ShapeT,
@@ -875,8 +885,8 @@ where
     ) -> (AbstractAdditiveTensor<RingT>, AbstractAdditiveTensor<BitT>) {
         let adt = self;
         let (player0, player1) = adt.host_placements();
-        assert!(provider != &player0);
-        assert!(provider != &player1);
+        assert!(*provider != player0);
+        assert!(*provider != player1);
 
         let b: BitT = provider.sample_uniform(sess, &shape_provider);
         let br: RingT = provider.ring_inject(sess, 0, &b);
@@ -884,11 +894,11 @@ where
         let key = provider.gen_key(sess);
         let seed_b = provider.derive_seed(sess, SyncKey::random(), &key);
         let seed_br = provider.derive_seed(sess, SyncKey::random(), &key);
-        
+
         let b0_provider: BitT = provider.sample_uniform_seeded(sess, &shape_provider, &seed_b);
         let b0: BitT = player0.sample_uniform_seeded(sess, &shape_player0, &seed_b);
         let b1: BitT = player1.place(sess, with_context!(provider, sess, b - b0_provider));
-        
+
         let br0_provider: RingT = provider.sample_uniform_seeded(sess, &shape_provider, &seed_br);
         let br0: RingT = player0.sample_uniform_seeded(sess, &shape_player0, &seed_br);
         let br1: RingT = player1.place(sess, with_context!(provider, sess, br - br0_provider));

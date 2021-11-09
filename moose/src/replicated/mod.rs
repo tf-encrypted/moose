@@ -1,5 +1,7 @@
 //! Placements backed by replicated secret sharing
-use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor};
+use crate::additive::{
+    AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor, PlacementDaBitProvider,
+};
 use crate::error::{Error, Result};
 use crate::host::{
     AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedTensor, HostAesKey, HostBitArray128,
