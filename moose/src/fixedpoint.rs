@@ -7,8 +7,8 @@ use crate::host::*;
 use crate::kernels::*;
 use crate::replicated::{
     AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor, Mirrored3Fixed128Tensor,
-    Mirrored3Fixed64Tensor, Mirrored3RingTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
-    ShapeFill,
+    Mirrored3Fixed64Tensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor, ShapeFill,
+    Underlying,
 };
 use macros::with_context;
 use ndarray::prelude::*;
@@ -111,6 +111,19 @@ where
                     .map_err(|e| Error::KernelError(e.to_string()))?,
             ))
         }
+    }
+}
+
+impl ShapeOp {
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT, ShapeT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<ShapeT>
+    where
+        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
+    {
+        Ok(rep.shape(sess, &x.tensor))
     }
 }
 
@@ -1149,83 +1162,76 @@ impl AddNOp {
     }
 }
 
+pub trait FixedpointTensor {
+    fn fractional_precision(&self) -> u32;
+    fn integral_precision(&self) -> u32;
+}
+
+impl<RepRingT> FixedpointTensor for AbstractReplicatedFixedTensor<RepRingT> {
+    fn fractional_precision(&self) -> u32 {
+        self.fractional_precision
+    }
+
+    fn integral_precision(&self) -> u32 {
+        self.integral_precision
+    }
+}
+
 impl ReplicatedPlacement {
-    pub fn prefix_mul_fixed<S: Session, RepRingT>(
+    pub fn prefix_mul_fixed<S: Session, RepFixedT>(
         &self,
         sess: &S,
-        x: Vec<AbstractReplicatedFixedTensor<RepRingT>>,
-    ) -> Vec<AbstractReplicatedFixedTensor<RepRingT>>
+        x: Vec<RepFixedT>,
+    ) -> Vec<RepFixedT>
     where
-        ReplicatedPlacement: PlacementMul<
-            S,
-            AbstractReplicatedFixedTensor<RepRingT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
-        >,
-        ReplicatedPlacement: PlacementTruncPr<
-            S,
-            AbstractReplicatedFixedTensor<RepRingT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
-        >,
+        RepFixedT: FixedpointTensor,
+        ReplicatedPlacement: PlacementMul<S, RepFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementTruncPr<S, RepFixedT, RepFixedT>,
     {
-        let elementwise_mul = |rep: &ReplicatedPlacement,
-                               sess: &S,
-                               x: &AbstractReplicatedFixedTensor<RepRingT>,
-                               y: &AbstractReplicatedFixedTensor<RepRingT>|
-         -> AbstractReplicatedFixedTensor<RepRingT> {
-            assert_eq!(x.fractional_precision, y.fractional_precision);
-            rep.trunc_pr(sess, x.fractional_precision, &rep.mul(sess, x, y))
-        };
+        let elementwise_mul =
+            |rep: &ReplicatedPlacement, sess: &S, x: &RepFixedT, y: &RepFixedT| -> RepFixedT {
+                assert_eq!(x.fractional_precision(), y.fractional_precision());
+                rep.trunc_pr(sess, x.fractional_precision(), &rep.mul(sess, x, y))
+            };
 
         self.prefix_op(sess, x, elementwise_mul)
     }
 }
 
 impl ReplicatedPlacement {
-    pub fn polynomial_eval<S: Session, RepRingT, MirroredT>(
+    pub fn polynomial_eval<S: Session, RepRingT, RepFixedTensorT, MirroredT>(
         &self,
         sess: &S,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
+        x: RepFixedTensorT,
         coeffs: Vec<f64>,
-    ) -> AbstractReplicatedFixedTensor<RepRingT>
+    ) -> RepFixedTensorT
     where
-        RepRingT: Clone,
-        ReplicatedPlacement: PlacementMul<
-            S,
-            AbstractReplicatedFixedTensor<RepRingT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
-        >,
+        RepFixedTensorT: Underlying<TensorType = RepRingT>,
+        RepFixedTensorT: FixedpointTensor,
+        RepFixedTensorT: Clone,
+        ReplicatedPlacement: PlacementMul<S, RepFixedTensorT, RepFixedTensorT, RepFixedTensorT>,
         ReplicatedPlacement: PlacementMul<
             S,
             AbstractMirroredFixedTensor<MirroredT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
+            RepFixedTensorT,
+            RepFixedTensorT,
         >,
 
-        ReplicatedPlacement: PlacementTruncPr<
-            S,
-            AbstractReplicatedFixedTensor<RepRingT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
-        >,
-        ReplicatedPlacement: PlacementAddN<
-            S,
-            AbstractReplicatedFixedTensor<RepRingT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
-        >,
+        ReplicatedPlacement: PlacementTruncPr<S, RepFixedTensorT, RepFixedTensorT>,
+        ReplicatedPlacement: PlacementAddN<S, RepFixedTensorT, RepFixedTensorT>,
         ReplicatedPlacement: PlacementAdd<
             S,
-            AbstractReplicatedFixedTensor<RepRingT>,
+            RepFixedTensorT,
             AbstractMirroredFixedTensor<MirroredT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
+            RepFixedTensorT,
         >,
-        ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirroredT>,
+        ReplicatedPlacement: ShapeFill<S, RepFixedTensorT, Result = MirroredT>,
     {
         let mut degree = coeffs.len() - 1;
 
         // Exclude coefficients under precision
-        for coeff in coeffs.clone().into_iter().rev() {
-            if coeff < 2f64.powi(-(x.fractional_precision as i32 + 1)) as f64 {
+        for coeff in coeffs.iter().rev() {
+            if *coeff < 2f64.powi(-(x.fractional_precision() as i32 + 1)) as f64 {
                 degree -= 1
             } else {
                 break;
@@ -1237,34 +1243,33 @@ impl ReplicatedPlacement {
             .map(|coeff| {
                 let coeff_constant = Constant::Fixed(FixedpointConstant {
                     value: *coeff,
-                    precision: x.fractional_precision as usize,
+                    precision: x.fractional_precision() as usize,
                 });
 
-                let coeff_mir: MirroredT = self.shape_fill(sess, coeff_constant, &x.tensor);
+                let coeff_mir: MirroredT = self.shape_fill(sess, coeff_constant, &x);
 
                 AbstractMirroredFixedTensor {
                     tensor: coeff_mir,
-                    fractional_precision: x.fractional_precision,
-                    integral_precision: x.integral_precision,
+                    fractional_precision: x.fractional_precision(),
+                    integral_precision: x.integral_precision(),
                 }
             })
             .collect();
 
-        let x_n: Vec<AbstractReplicatedFixedTensor<RepRingT>> =
-            (0..degree).map(|_| x.clone()).collect();
+        let x_n: Vec<RepFixedTensorT> = (0..degree).map(|_| x.clone()).collect();
 
         let x_pre_mul = self.prefix_mul_fixed(sess, x_n);
 
         // TODO [Yann] - this multiplication should be public/private instead
         // If x_pre_mul could be concatenated in one tensor, we could use a single
         // multiplication instead of doing a for loop.
-        let x_mul_coeffs: Vec<AbstractReplicatedFixedTensor<RepRingT>> = (0..x_pre_mul.len())
+        let x_mul_coeffs: Vec<RepFixedTensorT> = (0..x_pre_mul.len())
             .map(|i| self.mul(sess, &coeffs_mir[i + 1], &x_pre_mul[i]))
             .collect();
 
         let x_mul_coeffs_added = self.add_n(sess, &x_mul_coeffs);
         let x_mul_coeffs_added_fixed_trunc =
-            self.trunc_pr(sess, x.fractional_precision, &x_mul_coeffs_added);
+            self.trunc_pr(sess, x.fractional_precision(), &x_mul_coeffs_added);
 
         self.add(sess, &x_mul_coeffs_added_fixed_trunc, &coeffs_mir[0])
     }

@@ -257,6 +257,10 @@ pub struct AbstractMirroredFixedTensor<MirroredT> {
     pub integral_precision: u32,
 }
 
+impl<RepRingT: Underlying> Underlying for AbstractReplicatedFixedTensor<RepRingT> {
+    type TensorType = RepRingT::TensorType;
+}
+
 // TODO(Dragos) perhaps we need better abstraction mechanisms?
 moose_type!(Mirrored3Fixed64Tensor = AbstractMirroredFixedTensor<Mirrored3Ring64Tensor>);
 moose_type!(Mirrored3Fixed128Tensor = AbstractMirroredFixedTensor<Mirrored3Ring128Tensor>);
