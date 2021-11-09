@@ -857,55 +857,46 @@ where
     PrfKey: KnownType<S>,
     HostPlacement: PlacementKeyGen<S, cs!(PrfKey)>,
     HostPlacement: PlacementDeriveSeed<S, cs!(PrfKey), cs!(Seed)>,
+    HostPlacement: PlacementSampleUniform<S, ShapeT, BitT>,
     HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, cs!(Seed), BitT>,
     HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, cs!(Seed), RingT>,
     HostPlacement: PlacementSub<S, BitT, BitT, BitT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
     HostPlacement: PlacementRingInject<S, BitT, RingT>,
-    AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
-    AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<BitT>>,
+    HostPlacement: PlacementPlace<S, RingT>,
+    HostPlacement: PlacementPlace<S, BitT>,
 {
     fn gen_dabit(
         &self,
         sess: &S,
         shape_provider: ShapeT,
-        shape_a: ShapeT,
+        shape_player0: ShapeT,
         provider: &HostPlacement,
     ) -> (AbstractAdditiveTensor<RingT>, AbstractAdditiveTensor<BitT>) {
         let adt = self;
-        let (player_a, player_b) = adt.host_placements();
-        assert!(provider != &player_a);
-        assert!(provider != &player_b);
+        let (player0, player1) = adt.host_placements();
+        assert!(provider != &player0);
+        assert!(provider != &player1);
+
+        let b: BitT = provider.sample_uniform(sess, &shape_provider);
+        let br: RingT = provider.ring_inject(sess, 0, &b);
 
         let key = provider.gen_key(sess);
+        let seed_b = provider.derive_seed(sess, SyncKey::random(), &key);
+        let seed_br = provider.derive_seed(sess, SyncKey::random(), &key);
+        
+        let b0_provider: BitT = provider.sample_uniform_seeded(sess, &shape_provider, &seed_b);
+        let b0: BitT = player0.sample_uniform_seeded(sess, &shape_player0, &seed_b);
+        let b1: BitT = player1.place(sess, with_context!(provider, sess, b - b0_provider));
+        
+        let br0_provider: RingT = provider.sample_uniform_seeded(sess, &shape_provider, &seed_br);
+        let br0: RingT = player0.sample_uniform_seeded(sess, &shape_player0, &seed_br);
+        let br1: RingT = player1.place(sess, with_context!(provider, sess, br - br0_provider));
 
-        let sync_key = SyncKey::random();
-        let seed0 = provider.derive_seed(sess, sync_key, &key);
-        let b: BitT = provider.sample_uniform_seeded(sess, &shape_provider, &seed0);
-        let b2k = provider.ring_inject(sess, 0, &b);
+        let b_shared = AbstractAdditiveTensor { shares: [b0, b1] };
+        let br_shared = AbstractAdditiveTensor { shares: [br0, br1] };
 
-        let sync_key2 = SyncKey::random();
-        let seed2 = provider.derive_seed(sess, sync_key2, &key);
-        let b20 = provider.sample_uniform_seeded(sess, &shape_provider, &seed2);
-        let b21 = with_context!(provider, sess, b - b20);
-
-        let sync_key2k = SyncKey::random();
-        let seed2k = provider.derive_seed(sess, sync_key2k, &key);
-        let b2k0: RingT = provider.sample_uniform_seeded(sess, &shape_provider, &seed2k);
-        let b2k1 = with_context!(provider, sess, b2k - b2k0);
-
-        let b20: BitT = player_a.sample_uniform_seeded(sess, &shape_a, &seed2);
-        let b2k0: RingT = player_a.sample_uniform_seeded(sess, &shape_a, &seed2k);
-
-        (
-            adt.place(
-                sess,
-                AbstractAdditiveTensor {
-                    shares: [b2k0, b2k1],
-                },
-            ),
-            adt.place(sess, AbstractAdditiveTensor { shares: [b20, b21] }),
-        )
+        (br_shared, b_shared)
     }
 }
 
