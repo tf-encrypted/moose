@@ -9,7 +9,11 @@ impl Pow2Op {
         x: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
+        AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
+        <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
+
         RepRingT: Ring<BitLength = N>,
+        RepRingT: Clone,
 
         RepBitT: Clone,
         AbstractReplicatedBitArray<RepBitT, N>: Into<st!(AbstractReplicatedBitArray<RepBitT, N>)>,
@@ -19,17 +23,22 @@ impl Pow2Op {
         ReplicatedPlacement: PlacementShrRaw<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementSplit<S, RepRingT, RepBitT, RepBitT>,
         ReplicatedPlacement: BinaryAdder<S, RepBitT>,
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement:
             PlacementIndex<S, st!(AbstractReplicatedBitArray<RepBitT, N>), RepBitT>,
         ReplicatedPlacement: PlacementAdd<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: Pow2FromBits<S, RepRingT>,
+
+        ReplicatedPlacement:
+            ExpFromParts<S, RepRingT, st!(AbstractReplicatedFixedTensor<RepRingT>)>,
     {
+        // unimplemented!()
         let integral_precision = x.integral_precision as usize;
         let fractional_precision = x.fractional_precision as usize;
-        let _k = fractional_precision + integral_precision;
+        let k = fractional_precision + integral_precision;
 
         let (x0, x1) = rep.split(sess, &x.tensor);
         let bits = rep.binary_adder(sess, &x0, &x1, RepRingT::BitLength::VALUE);
@@ -40,21 +49,38 @@ impl Pow2Op {
 
         let x0_f = rep.index(sess, fractional_precision, &x0_bits.into());
         let x1_f = rep.index(sess, fractional_precision, &x1_bits.into());
-        let b_f = rep.index(sess, fractional_precision, &x_bits.into());
+
+        let x_bits_canonical = x_bits.into();
+        let b_f = rep.index(sess, fractional_precision, &x_bits_canonical);
 
         let overflow_half1 = rep.ring_inject(sess, fractional_precision, &x0_f);
         let overflow_half2 = with_context!(rep, sess, x0_f + x1_f + b_f);
         let overflow_half2 = rep.ring_inject(sess, fractional_precision, &overflow_half2);
-        let overflow = with_context!(rep, sess, overflow_half1 + overflow_half2);
+        let shifted_overflow = with_context!(rep, sess, overflow_half1 + overflow_half2);
 
+        // compute RawMod2M
         let x_shifted_raw = rep.shr_raw(sess, fractional_precision, &x.tensor);
-        let lower = with_context!(rep, sess, x_shifted_raw - overflow);
+        let x_mod2m = with_context!(
+            rep,
+            sess,
+            x.tensor - &rep.shl(sess, fractional_precision, &x_shifted_raw)
+        );
+        let lower = with_context!(rep, sess, x_mod2m - shifted_overflow);
+        // convert lower to fixed point representation
+        // let c = AbstractReplicatedFixedTensor {
+        //     tensor: lower,
+        //     fractional_precision: fractional_precision as u32,
+        //     integral_precision: integral_precision as u32,
+        // };
 
-        Ok(AbstractReplicatedFixedTensor {
-            tensor: lower,
-            fractional_precision: x.fractional_precision,
-            integral_precision: x.integral_precision,
-        })
+        let higher: Vec<_> = (fractional_precision..k)
+            .map(|i| rep.ring_inject(sess, 0, &rep.index(sess, i, &x_bits_canonical)))
+            .collect();
+
+        let d = rep.pow2_from_bits(sess, higher.as_slice());
+        unimplemented!()
+        // let g = rep.exp_from_parts(sess, &d, &lower, fractional_precision as u32, k as u32);
+        // Ok(g)
     }
 }
 
@@ -116,7 +142,7 @@ impl<S: Session, RepRingT, RepFixedT> ExpFromParts<S, RepRingT, RepFixedT> for R
 where
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     RepRingT: Clone,
-    ReplicatedPlacement: PolynomialEval<S, RepRingT, RepFixedT>,
+    ReplicatedPlacement: PolynomialEval<S, RepFixedT>,
     AbstractReplicatedFixedTensor<RepRingT>: TryInto<RepFixedT>,
     RepFixedT: TryInto<AbstractReplicatedFixedTensor<RepRingT>>,
     ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
