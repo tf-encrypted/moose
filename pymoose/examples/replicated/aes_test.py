@@ -1,6 +1,7 @@
 import argparse
 import logging
 import unittest
+
 import numpy as np
 
 from pymoose import edsl
@@ -79,16 +80,12 @@ class ReplicatedExample(unittest.TestCase):
         storage = {
             "alice": {},
             "bob": {},
-            "carole": {},   
+            "carole": {},
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
         _outputs = runtime.evaluate_compiled(
             comp_bin=compiled_comp,
-            role_assignment={
-                "alice": "alice",
-                "bob": "bob",
-                "carole": "carole",
-            },
+            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={
                 "key/player0/share0": np.array([0] * 128, dtype=np.bool_),
                 "key/player0/share1": np.array([0] * 128, dtype=np.bool_),
