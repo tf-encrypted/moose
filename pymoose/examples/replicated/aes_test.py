@@ -1,6 +1,7 @@
 import argparse
 import logging
 import unittest
+import numpy as np
 
 from pymoose import edsl
 from pymoose import elk_compiler
@@ -8,6 +9,7 @@ from pymoose.computation import utils
 from pymoose.computation.standard import AesKeyType
 from pymoose.computation.standard import AesTensorType
 from pymoose.logger import get_logger
+from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(unittest.TestCase):
@@ -56,9 +58,43 @@ class ReplicatedExample(unittest.TestCase):
             [
                 "typing",
                 "full",
-                "prune",
                 # "print",
             ],
+        )
+
+    def test_aes_example_execute(self):
+        aes_comp = self._setup_aes_comp()
+        traced_aes_comp = edsl.trace(aes_comp)
+        comp_bin = utils.serialize_computation(traced_aes_comp)
+        compiled_comp = elk_compiler.compile_computation(
+            comp_bin,
+            [
+                "typing",
+                "full",
+                "prune",
+                "networking",
+                # "print",
+            ],
+        )
+        storage = {
+            "alice": {},
+            "bob": {},
+            "carole": {},   
+        }
+        runtime = LocalMooseRuntime(storage_mapping=storage)
+        _ = runtime.evaluate_compiled(
+            comp_bin=compiled_comp,
+            role_assignment={
+                "alice": "alice",
+                "bob": "bob",
+                "carole": "carole",
+            },
+            arguments={
+                "key/player1/share1": np.array([0] * 128, dtype=np.bool_),
+                "key/player1/share2": np.array([0] * 128, dtype=np.bool_),
+                "key/player2/share2": np.array([0] * 128, dtype=np.bool_),
+                "key/player2/share0": np.array([0] * 128, dtype=np.bool_),
+            },
         )
 
 
