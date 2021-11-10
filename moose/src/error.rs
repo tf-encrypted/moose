@@ -50,6 +50,9 @@ pub enum Error {
 
     #[error("Session {0} already exists for this executor")]
     SessionAlreadyExists(String),
+
+    #[error("Failed to serialize computation: {0}")]
+    SerializationError(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

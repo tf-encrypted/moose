@@ -16,7 +16,7 @@ impl Pow2Op {
 
         ReplicatedPlacement: PlacementShrRaw<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementSplit<S, RepRingT, RepBitT, RepBitT>,
-        ReplicatedPlacement: BinaryAdder<S, S::ReplicatedSetup, RepBitT>,
+        ReplicatedPlacement: BinaryAdder<S, RepBitT>,
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement:
             PlacementIndex<S, st!(AbstractReplicatedBitArray<RepBitT, N>), RepBitT>,
@@ -29,10 +29,8 @@ impl Pow2Op {
         let fractional_precision = x.fractional_precision as usize;
         let _k = fractional_precision + integral_precision;
 
-        let setup = rep.gen_setup(sess);
-
         let (x0, x1) = rep.split(sess, &x.tensor);
-        let bits = rep.binary_adder(sess, setup, &x0, &x1, RepRingT::BitLength::VALUE);
+        let bits = rep.binary_adder(sess, &x0, &x1, RepRingT::BitLength::VALUE);
 
         let x_bits = AbstractReplicatedBitArray::<RepBitT, N>(bits, PhantomData);
         let x0_bits = AbstractReplicatedBitArray::<RepBitT, N>(x0, PhantomData);
@@ -58,6 +56,13 @@ impl Pow2Op {
     }
 }
 
+/// Computes 2^x given the bit representation of x: [b(0)]...[b(k-1)].
+///
+/// This is done by computing the product of p(i) = b(i) * 2^i + (1 - b(i)).
+///
+/// One can see that b(i) acts as selector here, i.e. if b(i) = 1 then p(i) = 2^i, o/w p(i) = 1.
+///
+/// The product of all p(i) yields [2^x] since 2^x = prod(2^b(i)) where b(i) = 1.
 pub(crate) trait Pow2FromBits<S: Session, RepRingT> {
     fn pow2_from_bits(&self, sess: &S, x: &[RepRingT]) -> RepRingT;
 }
@@ -65,9 +70,7 @@ pub(crate) trait Pow2FromBits<S: Session, RepRingT> {
 impl<S: Session, RepRingT> Pow2FromBits<S, RepRingT> for ReplicatedPlacement
 where
     ReplicatedShape: KnownType<S>,
-
-    ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-    ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
     ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
@@ -75,27 +78,25 @@ where
     ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
 {
     fn pow2_from_bits(&self, sess: &S, x: &[RepRingT]) -> RepRingT {
-        #![allow(clippy::many_single_char_names)]
         let rep = self;
 
-        let setup = rep.gen_setup(sess);
+        let ones = rep.fill(sess, 1_u8.into(), &rep.shape(sess, &x[0]));
+
         let selectors: Vec<_> = x
             .iter()
             .enumerate()
             .map(|(i, bit)| {
+                // compute b(i) * 2^i
                 let pos = rep.shl(sess, i, bit);
-                let one = rep.fill(sess, 1_u8.into(), &rep.shape(sess, bit));
-                let neg = rep.sub(sess, &one, bit);
+                // compute 1 - b(i)
+                let neg = rep.sub(sess, &ones, bit);
+                // compute p(i) = b(i) * 2^i + (1 - b(i))
                 rep.add(sess, &pos, &neg)
             })
             .collect();
 
         // TODO(Dragos) do tree multiplication here
-        let mut res = rep.fill(sess, 1_u8.into(), &rep.shape(sess, &x[0]));
-        for bit in selectors.iter() {
-            res = rep.mul_setup(sess, &setup, &res, bit);
-        }
-        res
+        selectors.iter().fold(ones, |acc, y| rep.mul(sess, &acc, y))
     }
 }
 
@@ -122,9 +123,8 @@ mod tests {
         let target = AbstractHostRingTensor::from_raw_plc(array![64u64], alice.clone());
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
 
-        let x_shared = rep.share(&sess, &setup, &x);
+        let x_shared = rep.share(&sess, &x);
         let x0 = rep.index_axis(&sess, 0, 0, &x_shared);
         let x1 = rep.index_axis(&sess, 0, 1, &x_shared);
         let x2 = rep.index_axis(&sess, 0, 2, &x_shared);

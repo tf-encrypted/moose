@@ -281,6 +281,16 @@ fn lower_op(op: &Operation) -> Operation {
             inputs: op.inputs.clone(),
             placement: op.placement.clone(),
         },
+        (Placement::Host(_), Operator::Constant(ref i)) => Operation {
+            name: op.name.clone(),
+            kind: ConstantOp {
+                sig: Signature::nullary(lower_ty(i.sig.ret())),
+                value: i.value.clone(),
+            }
+            .into(),
+            inputs: op.inputs.clone(),
+            placement: op.placement.clone(),
+        },
 
         _ => op.clone(),
     }
@@ -289,7 +299,7 @@ fn lower_op(op: &Operation) -> Operation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text_computation::ToTextual;
+    use crate::textual::ToTextual;
     use std::convert::TryInto;
 
     #[test]

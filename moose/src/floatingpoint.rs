@@ -1,6 +1,6 @@
 use crate::computation::*;
 use crate::error::Result;
-use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape};
+use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape, HostString};
 use crate::kernels::*;
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
@@ -427,14 +427,14 @@ impl LoadOp {
     pub fn float_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
-        key: cs!(String),
-        query: cs!(String),
+        key: cs!(HostString),
+        query: cs!(HostString),
     ) -> Result<FloatTensor<cs!(HostFloat64Tensor)>>
     where
-        String: KnownType<S>,
+        HostString: KnownType<S>,
         HostFloat32Tensor: KnownType<S>,
         HostFloat64Tensor: KnownType<S>,
-        HostPlacement: PlacementLoad<S, cs!(String), cs!(String), cs!(HostFloat64Tensor)>,
+        HostPlacement: PlacementLoad<S, cs!(HostString), cs!(HostString), cs!(HostFloat64Tensor)>,
     {
         let z = plc.load(sess, &key, &query);
         Ok(FloatTensor::Host(z))
@@ -445,13 +445,13 @@ impl SaveOp {
     pub fn float_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
-        key: cs!(String),
+        key: cs!(HostString),
         x: FloatTensor<HostFloatT>,
     ) -> Result<cs!(Unit)>
     where
-        String: KnownType<S>,
+        HostString: KnownType<S>,
         Unit: KnownType<S>,
-        HostPlacement: PlacementSave<S, cs!(String), HostFloatT, cs!(Unit)>,
+        HostPlacement: PlacementSave<S, cs!(HostString), HostFloatT, cs!(Unit)>,
     {
         let FloatTensor::Host(x) = x;
         Ok(plc.save(sess, &key, &x))
@@ -474,17 +474,72 @@ impl ShapeOp {
 }
 
 impl ConstantOp {
-    pub fn float_kernel<S: Session>(
+    pub fn float32_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
         value: Constant,
-    ) -> Result<FloatTensor<cs!(HostFloat64Tensor)>>
+    ) -> Result<FloatTensor<m!(HostFloat32Tensor)>>
     where
         HostFloat32Tensor: KnownType<S>,
-        HostFloat64Tensor: KnownType<S>,
-        HostPlacement: PlacementConstant<S, cs!(HostFloat64Tensor)>,
+        HostPlacement: PlacementConstant<S, m!(HostFloat32Tensor)>,
     {
         let z = plc.constant(sess, value);
         Ok(FloatTensor::Host(z))
+    }
+
+    pub fn float64_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        value: Constant,
+    ) -> Result<FloatTensor<m!(HostFloat64Tensor)>>
+    where
+        HostFloat64Tensor: KnownType<S>,
+        HostPlacement: PlacementConstant<S, m!(HostFloat64Tensor)>,
+    {
+        let z = plc.constant(sess, value);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
+impl InputOp {
+    pub fn float64_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<FloatTensor<m!(HostFloat64Tensor)>>
+    where
+        HostFloat64Tensor: KnownType<S>,
+        HostPlacement: PlacementInput<S, m!(HostFloat64Tensor)>,
+    {
+        let z = plc.input(sess, arg_name);
+        Ok(FloatTensor::Host(z))
+    }
+
+    pub fn float32_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<FloatTensor<m!(HostFloat32Tensor)>>
+    where
+        HostFloat32Tensor: KnownType<S>,
+        HostPlacement: PlacementInput<S, m!(HostFloat32Tensor)>,
+    {
+        let z = plc.input(sess, arg_name);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
+impl OutputOp {
+    pub fn float_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT>,
+    ) -> Result<FloatTensor<HostFloatT>>
+    where
+        HostString: KnownType<S>,
+        HostPlacement: PlacementOutput<S, HostFloatT, HostFloatT>,
+    {
+        let FloatTensor::Host(x) = x;
+        Ok(FloatTensor::Host(plc.output(sess, &x)))
     }
 }

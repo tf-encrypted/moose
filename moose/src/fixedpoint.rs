@@ -12,7 +12,6 @@ use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
 use std::num::Wrapping;
 use std::ops::Mul;
 
@@ -270,18 +269,15 @@ impl FixedpointAddOp {
         y: FixedTensor<HostFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementAdd<S, RepFixedT, RepFixedT, RepFixedT>,
     {
-        let setup = plc.gen_setup(sess);
-
         let x = match x {
-            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Host(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
-            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Host(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -380,18 +376,15 @@ impl FixedpointSubOp {
         y: FixedTensor<HostFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementSub<S, RepFixedT, RepFixedT, RepFixedT>,
     {
-        let setup = plc.gen_setup(sess);
-
         let x = match x {
-            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Host(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
-            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Host(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -490,18 +483,15 @@ impl FixedpointMulOp {
         y: FixedTensor<HostFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementMul<S, RepFixedT, RepFixedT, RepFixedT>,
     {
-        let setup = plc.gen_setup(sess);
-
         let x = match x {
-            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Host(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
-            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Host(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -534,16 +524,14 @@ impl FixedpointMulOp {
         y: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
-        let setup = plc.gen_setup(sess);
-        let z = plc.mul_setup(sess, &setup, &x.tensor, &y.tensor);
+        let z = plc.mul(sess, &x.tensor, &y.tensor);
         Ok(AbstractReplicatedFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision + y.fractional_precision,
-            integral_precision: u32::max(x.fractional_precision, y.fractional_precision),
+            integral_precision: u32::max(x.integral_precision, y.integral_precision),
         })
     }
 }
@@ -602,18 +590,15 @@ impl FixedpointDivOp {
         y: FixedTensor<HostFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementDiv<S, RepFixedT, RepFixedT, RepFixedT>,
     {
-        let setup = plc.gen_setup(sess);
-
         let x = match x {
-            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Host(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
-            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Host(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -709,18 +694,15 @@ impl FixedpointDotOp {
         y: FixedTensor<HostFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementDot<S, RepFixedT, RepFixedT, RepFixedT>,
     {
-        let setup = plc.gen_setup(sess);
-
         let x_shared = match x {
-            FixedTensor::Host(x) => plc.share(sess, &setup, &x),
+            FixedTensor::Host(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
         let y_shared = match y {
-            FixedTensor::Host(x) => plc.share(sess, &setup, &x),
+            FixedTensor::Host(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -753,12 +735,10 @@ impl FixedpointDotOp {
         y: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementDotSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementDot<S, RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
-        let setup = plc.gen_setup(sess);
-        let z = plc.dot_setup(sess, &setup, &x.tensor, &y.tensor);
+        let z = plc.dot(sess, &x.tensor, &y.tensor);
         Ok(AbstractReplicatedFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision + y.fractional_precision,
@@ -817,14 +797,11 @@ impl FixedpointTruncPrOp {
         x: FixedTensor<HostFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepFixedT, RepFixedT>,
     {
-        let setup = plc.gen_setup(sess);
-
         let v = match x {
-            FixedTensor::Host(x) => plc.share(sess, &setup, &x),
+            FixedTensor::Host(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -918,15 +895,11 @@ impl FixedpointSumOp {
         x: FixedTensor<RingT, RepT>,
     ) -> Result<FixedTensor<RingT, RepT>>
     where
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
+        ReplicatedPlacement: PlacementShare<S, RingT, RepT>,
         ReplicatedPlacement: PlacementSum<S, RepT, RepT>,
     {
         let x_shared = match x {
-            FixedTensor::Host(x) => {
-                let setup = plc.gen_setup(sess);
-                plc.share(sess, &setup, &x)
-            }
+            FixedTensor::Host(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -1019,15 +992,11 @@ impl FixedpointMeanOp {
         x: FixedTensor<HostFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementMean<S, RepFixedT, RepFixedT>,
     {
         let x_shared = match x {
-            FixedTensor::Host(x) => {
-                let setup = plc.gen_setup(sess);
-                plc.share(sess, &setup, &x)
-            }
+            FixedTensor::Host(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -1079,6 +1048,95 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::rep_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_rep_kernel),
     ]
+}
+
+impl ReplicatedPlacement {
+    pub fn prefix_mul_fixed<S: Session, RepRingT>(
+        &self,
+        sess: &S,
+        x: Vec<AbstractReplicatedFixedTensor<RepRingT>>,
+    ) -> Vec<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementMul<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
+        ReplicatedPlacement: PlacementTruncPr<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
+    {
+        let elementwise_mul = |rep: &ReplicatedPlacement,
+                               sess: &S,
+                               x: &AbstractReplicatedFixedTensor<RepRingT>,
+                               y: &AbstractReplicatedFixedTensor<RepRingT>|
+         -> AbstractReplicatedFixedTensor<RepRingT> {
+            assert_eq!(x.fractional_precision, y.fractional_precision);
+            rep.trunc_pr(sess, x.fractional_precision, &rep.mul(sess, x, y))
+        };
+
+        self.prefix_op(sess, x, elementwise_mul)
+    }
+}
+
+impl ReplicatedPlacement {
+    pub fn poly_eval<S: Session, RepRingT>(
+        &self,
+        sess: &S,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+        coeffs: Vec<AbstractReplicatedFixedTensor<RepRingT>>,
+    ) -> AbstractReplicatedFixedTensor<RepRingT>
+    where
+        AbstractReplicatedFixedTensor<RepRingT>: Clone,
+        ReplicatedPlacement: PlacementMul<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
+        ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementTruncPr<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
+        ReplicatedPlacement: PlacementAddN<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<
+            S,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+        >,
+    {
+        let degree = coeffs.len() - 1;
+
+        let x_n: Vec<AbstractReplicatedFixedTensor<RepRingT>> =
+            (0..degree).map(|_| x.clone()).collect();
+
+        let x_pre_mul = self.prefix_mul_fixed(sess, x_n);
+
+        // TODO [Yann] - this multiplication should be public/private instead
+        // If x_pre_mul could be concatenated in one tensor, we could use a single
+        // multiplication instead of doing a for loop.
+        let x_mul_coeffs: Vec<RepRingT> = (0..x_pre_mul.len())
+            .map(|i| self.mul(sess, &coeffs[i + 1].tensor, &x_pre_mul[i].tensor))
+            .collect();
+
+        let x_mul_coeffs_added = self.add_n(sess, &x_mul_coeffs);
+        let x_mul_coeffs_added_fixed = AbstractReplicatedFixedTensor {
+            tensor: x_mul_coeffs_added,
+            fractional_precision: 2 * x.fractional_precision,
+            integral_precision: x.integral_precision,
+        };
+
+        let x_mul_coeffs_added_fixed_trunc =
+            self.trunc_pr(sess, x.fractional_precision, &x_mul_coeffs_added_fixed);
+
+        self.add(sess, &x_mul_coeffs_added_fixed_trunc, &coeffs[0])
+    }
 }
 
 #[cfg(test)]
@@ -1198,6 +1256,16 @@ mod tests {
             tensor: x,
             integral_precision,
             fractional_precision,
+        }
+    }
+
+    fn new_replicated_fixed_tensor<RepRingT>(
+        x: RepRingT,
+    ) -> AbstractReplicatedFixedTensor<RepRingT> {
+        AbstractReplicatedFixedTensor {
+            tensor: x,
+            fractional_precision: 15,
+            integral_precision: 8,
         }
     }
 
@@ -1760,7 +1828,6 @@ mod tests {
                 });
 
                 let sess = SymbolicSession::default();
-                let _ = rep.gen_setup(&sess);
 
                 let result = rep.div(&sess, &x, &y);
                 match result {
@@ -1791,5 +1858,140 @@ mod tests {
     #[test]
     fn test_fixed_rep_symbolic_div128() {
         rep_div_symbolic_test128(10, 50);
+    }
+
+    macro_rules! rep_prefix_op_fixed_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $f_precision: expr) => {
+            fn $func_name(x: Vec<ArrayD<$tt>>, y_target: Vec<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let sess = SyncSession::default();
+
+                let encode = |item: &$tt| (2_i64.pow($f_precision) as $tt * item) as $tt;
+
+                let x_fixed_vec = x
+                    .into_iter()
+                    .map(|x| {
+                        let x_encode = x.map(encode);
+                        let x_ring = AbstractHostRingTensor::from_raw_plc(x_encode, alice.clone());
+                        let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
+                            rep.share(&sess, &x_ring);
+                        new_replicated_fixed_tensor(x_shared)
+                    })
+                    .collect();
+
+                let outputs = rep.prefix_mul_fixed(&sess, x_fixed_vec);
+
+                for (i, output) in outputs.iter().enumerate() {
+                    let output_reveal = alice.reveal(&sess, output);
+                    let result =
+                        Convert::decode(&output_reveal.tensor, (2 as $tt).pow($f_precision));
+                    assert_eq!(result.0.as_slice().unwrap()[0] as $tt, y_target[i]);
+                }
+            }
+        };
+    }
+
+    rep_prefix_op_fixed_test!(test_rep_prefix_mul_fixed64, prefix_mul_fixed<u64>, 15);
+    rep_prefix_op_fixed_test!(test_rep_prefix_mul_fixed128, prefix_mul_fixed<u128>, 15);
+
+    #[test]
+    fn test_rep_prefix_mul_fixed_64() {
+        let x = vec![
+            array![1u64].into_dyn(),
+            array![2u64].into_dyn(),
+            array![3u64].into_dyn(),
+            array![4u64].into_dyn(),
+        ];
+        let y_target = vec![1, 2, 6, 24];
+
+        test_rep_prefix_mul_fixed64(x, y_target);
+    }
+
+    #[test]
+    fn test_rep_prefix_mul_fixed_128() {
+        let x = vec![
+            array![1u128].into_dyn(),
+            array![2u128].into_dyn(),
+            array![3u128].into_dyn(),
+            array![4u128].into_dyn(),
+        ];
+        let y_target = vec![1u128, 2, 6, 24];
+
+        test_rep_prefix_mul_fixed128(x, y_target);
+    }
+
+    macro_rules! rep_poly_eval_fixed_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $f_precision: expr) => {
+            fn $func_name(x: ArrayD<f64>, coeffs: Vec<f64>, y_target: Vec<f64>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let sess = SyncSession::default();
+
+                let encode = |item: &f64| (2_i64.pow($f_precision) as f64 * item) as $tt;
+                let x_encoded = x.map(encode);
+                let x_ring = AbstractHostRingTensor::from_raw_plc(x_encoded, alice.clone());
+                let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
+                    rep.share(&sess, &x_ring);
+                let x_fixed_shared = new_replicated_fixed_tensor(x_shared);
+
+                let coeffs_fixed_shared: Vec<
+                    AbstractReplicatedFixedTensor<
+                        AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>>,
+                    >,
+                > = coeffs
+                    .into_iter()
+                    .map(|coeff| {
+                        let coeff_encoded = array![coeff].map(encode);
+                        let coeff_ring =
+                            AbstractHostRingTensor::from_raw_plc(coeff_encoded, alice.clone());
+                        let coeff_shared: AbstractReplicatedRingTensor<
+                            AbstractHostRingTensor<$tt>,
+                        > = rep.share(&sess, &coeff_ring);
+                        new_replicated_fixed_tensor(coeff_shared)
+                    })
+                    .collect();
+
+                let output = rep.poly_eval(&sess, x_fixed_shared, coeffs_fixed_shared);
+                let output_reveal = alice.reveal(&sess, &output);
+                let result = Convert::decode(&output_reveal.tensor, (2 as $tt).pow($f_precision));
+
+                for i in 0..y_target.len() {
+                    let error = (result.0[i] - y_target[i]).abs();
+                    assert!(error < f64::EPSILON);
+                }
+            }
+        };
+    }
+
+    rep_poly_eval_fixed_test!(test_rep_poly_eval_fixed64, poly_eval<u64>, 15);
+    rep_poly_eval_fixed_test!(test_rep_poly_eval_fixed128, poly_eval<u128>, 15);
+
+    #[test]
+    fn test_rep_poly_eval_64() {
+        let x = array![1f64, 2., 3., 4.].into_dyn();
+        let coeffs = vec![1f64, 2., 3.];
+        let y_targets = vec![6f64, 17., 34., 57.];
+
+        test_rep_poly_eval_fixed64(x, coeffs, y_targets);
+    }
+
+    #[test]
+    fn test_rep_poly_eval_128() {
+        let x = array![1f64, 2., 3., 4.].into_dyn();
+        let coeffs = vec![1f64, 2., 3.];
+        let y_targets = vec![6f64, 17., 34., 57.];
+
+        test_rep_poly_eval_fixed128(x, coeffs, y_targets);
     }
 }

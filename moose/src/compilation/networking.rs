@@ -73,7 +73,7 @@ impl NetworkingPass {
         let send_operation = Operation {
             name: format!("send_{}", index),
             kind: SendOp {
-                sig: Signature::unary(Ty::Unknown, Ty::Unit),
+                sig: Signature::unary(src_op.kind.sig().ret(), Ty::Unit),
                 rendezvous_key: rendezvous_key.clone(),
                 receiver: Role::from(dst),
             }
@@ -86,7 +86,7 @@ impl NetworkingPass {
         let receive_operation = Operation {
             name: format!("receive_{}", index),
             kind: ReceiveOp {
-                sig: Signature::nullary(Ty::Unknown),
+                sig: Signature::nullary(src_op.kind.sig().ret()),
                 rendezvous_key,
                 sender: Role::from(src),
             }
@@ -119,7 +119,7 @@ fn placement_discrimnator<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text_computation::ToTextual;
+    use crate::textual::ToTextual;
     use std::convert::TryInto;
 
     #[test]
@@ -159,9 +159,9 @@ mod tests {
 
         // Networking should introduce one new networking operation (not 2) for the 2 jumps. And leave the mean unchaged (dot already on the right host)
         assert!(comp.contains(
-            r#"send_0 = Send {rendezvous_key=00000000000000000000000000000000, receiver="alice"}: (Unknown) -> Unit (y) @Host(bob)"#
+            r#"send_0 = Send {rendezvous_key=00000000000000000000000000000000, receiver="alice"}: (Float32Tensor) -> Unit (y) @Host(bob)"#
         ));
-        assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key=00000000000000000000000000000000, sender="bob"} : () -> Unknown () @Host(alice)"#));
+        assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key=00000000000000000000000000000000, sender="bob"} : () -> Float32Tensor () @Host(alice)"#));
         assert!(comp.contains("mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
         assert!(comp.contains("dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
         assert!(
@@ -181,13 +181,13 @@ mod tests {
             .to_textual();
         // Should have one send/receive pair per each variable being sent
         assert!(comp.contains(
-            r#"send_0 = Send {rendezvous_key=00000000000000000000000000000000, receiver="bob"}: (Unknown) -> Unit (x) @Host(alice)"#
+            r#"send_0 = Send {rendezvous_key=00000000000000000000000000000000, receiver="bob"}: (Float32Tensor) -> Unit (x) @Host(alice)"#
         ));
-        assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key=00000000000000000000000000000000, sender="alice"} : () -> Unknown () @Host(bob)"#));
+        assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key=00000000000000000000000000000000, sender="alice"} : () -> Float32Tensor () @Host(bob)"#));
         assert!(comp.contains(
-            r#"send_1 = Send {rendezvous_key=01000000000000000000000000000000, receiver="bob"}: (Unknown) -> Unit (y) @Host(alice)"#
+            r#"send_1 = Send {rendezvous_key=01000000000000000000000000000000, receiver="bob"}: (Float32Tensor) -> Unit (y) @Host(alice)"#
         ));
-        assert!(comp.contains(r#"receive_1 = Receive {rendezvous_key=01000000000000000000000000000000, sender="alice"} : () -> Unknown () @Host(bob)"#));
+        assert!(comp.contains(r#"receive_1 = Receive {rendezvous_key=01000000000000000000000000000000, sender="alice"} : () -> Float32Tensor () @Host(bob)"#));
         // Should use the same pair of operators for both computations on both (asserting for no extra jumps)
         assert!(comp.contains(r#"add = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (receive_0, receive_1) @Host(bob)"#));
         assert!(comp.contains(r#"mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (receive_0, receive_1) @Host(bob)"#));

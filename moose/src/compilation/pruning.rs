@@ -27,7 +27,7 @@ pub fn prune_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text_computation::ToTextual;
+    use crate::textual::ToTextual;
     use std::convert::TryInto;
 
     #[test]
@@ -42,10 +42,10 @@ mod tests {
         assert_eq!(comp.operations.len(), 4);
         let comp = comp.to_textual();
         assert!(comp.contains(
-            "x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} () @Host(alice)"
+            "x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor () @Host(alice)"
         ));
         assert!(comp.contains(
-            "y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} () @Host(alice)"
+            "y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor () @Host(alice)"
         ));
         assert!(comp.contains(
             "mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn test_simple_prune() -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         add = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
@@ -68,10 +68,10 @@ mod tests {
         assert_eq!(comp.operations.len(), 4);
         let comp = comp.to_textual();
         assert!(comp.contains(
-            "x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} () @Host(alice)"
+            "x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor () @Host(alice)"
         ));
         assert!(comp.contains(
-            "y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} () @Host(alice)"
+            "y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor () @Host(alice)"
         ));
         assert!(comp.contains(
             "mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
@@ -97,10 +97,10 @@ mod tests {
         assert_eq!(comp.operations.len(), 6);
         let comp = comp.to_textual();
         assert!(comp.contains(
-            "x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} () @Host(alice)"
+            "x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor () @Host(alice)"
         ));
         assert!(comp.contains(
-            "y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} () @Host(bob)"
+            "y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor () @Host(bob)"
         ));
         assert!(comp.contains(
             "mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_mul) @Host(alice)"
@@ -133,10 +133,10 @@ mod tests {
         assert_eq!(comp.operations.len(), 6);
         let comp = comp.to_textual();
         assert!(comp.contains(
-            "x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} () @Host(alice)"
+            "x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor () @Host(alice)"
         ));
         assert!(comp.contains(
-            "y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} () @Host(alice)"
+            "y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor () @Host(alice)"
         ));
         assert!(comp.contains(
             "mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"

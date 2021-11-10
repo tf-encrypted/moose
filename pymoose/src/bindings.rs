@@ -1,14 +1,14 @@
+use crate::computation::PyComputation;
 use moose::compilation::{compile_passes, into_pass, Pass};
-use moose::computation::{Computation, Role, Value};
+use moose::computation::{Computation, HostPlacement, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
-use moose::host::HostTensor;
-use moose::python_computation::PyComputation;
+use moose::host::{HostString, HostTensor};
 use ndarray::IxDyn;
 use ndarray::LinalgScalar;
 use numpy::{Element, PyArrayDescr, PyArrayDyn, ToPyArray};
 use pyo3::exceptions::PyRuntimeError;
-use pyo3::types::{PyFloat, PyString};
+use pyo3::types::{PyBytes, PyFloat, PyString, PyType};
 use pyo3::{exceptions::PyTypeError, prelude::*, AsPyPointer};
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -23,7 +23,12 @@ fn pyobj_to_value(py: Python, obj: PyObject) -> PyResult<Value> {
     let obj_ref = obj.as_ref(py);
     if obj_ref.is_instance::<PyString>()? {
         let string_value: String = obj.extract(py)?;
-        Ok(Value::String(Box::new(string_value)))
+        Ok(Value::HostString(Box::new(HostString(
+            string_value,
+            HostPlacement {
+                owner: "fake".into(),
+            },
+        ))))
     } else if obj_ref.is_instance::<PyFloat>()? {
         let float_value: f64 = obj.extract(py)?;
         Ok(Value::Float64(Box::new(float_value)))
@@ -210,7 +215,7 @@ impl LocalRuntime {
                     match value {
                         Value::Unit(_) => None,
                         // TODO: not sure what to support, should eventually standardize output types of computations
-                        Value::String(s) => Some(PyString::new(py, &s).to_object(py)),
+                        Value::HostString(s) => Some(PyString::new(py, &s.0).to_object(py)),
                         Value::Float64(f) => Some(PyFloat::new(py, *f).to_object(py)),
                         // assume it's a tensor
                         _ => outputs_py_val
@@ -242,6 +247,42 @@ impl MooseComputation {
             .starts_with("<builtins.MooseComputation object at "));
         let moose = unsafe { Py::from_borrowed_ptr(py, computation.as_ptr()) };
         Ok(moose)
+    }
+}
+
+#[pymethods]
+impl MooseComputation {
+    #[classmethod]
+    pub fn from_bytes(_cls: &PyType, py: Python, bytes: &PyBytes) -> PyResult<Py<Self>> {
+        let mybytes: Vec<u8> = bytes.extract()?;
+        let computation =
+            Computation::from_bytes(mybytes).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        let moose_comp = MooseComputation { computation };
+        Py::new(py, moose_comp)
+    }
+
+    pub fn to_bytes<'py>(&mut self, py: Python<'py>) -> PyResult<&'py PyBytes> {
+        let comp_bytes = self
+            .computation
+            .to_bytes()
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        Ok(PyBytes::new(py, &comp_bytes))
+    }
+
+    #[classmethod]
+    pub fn from_disk(_cls: &PyType, py: Python, path: &PyString) -> PyResult<Py<Self>> {
+        let mypath: &str = path.extract()?;
+        let computation =
+            Computation::from_disk(mypath).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        let moose_comp = MooseComputation { computation };
+        Py::new(py, moose_comp)
+    }
+
+    pub fn to_disk(&mut self, path: &PyString) -> PyResult<()> {
+        let mypath: &str = path.extract()?;
+        self.computation
+            .to_disk(mypath)
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))
     }
 }
 

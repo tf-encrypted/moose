@@ -229,6 +229,87 @@ pub type AsyncReceiver = Shared<
 
 pub type AsyncTask = tokio::task::JoinHandle<Result<()>>;
 
+/// A bridge beetween the old and new framework.
+///
+/// We could implement those on the Operators themselves, but having it a separate struct will make it easier to delete once we are done.
+struct Bridge;
+
+impl Bridge {
+    pub fn nullary(op: Operator) -> NullaryAsyncKernel {
+        Box::new(move |sess, sender| {
+            let new_sess = sess.new_sess.clone();
+            let op = op.clone();
+            let plc = sess.host.clone();
+            tokio::spawn(async move {
+                use crate::kernels::Session;
+                let y = new_sess.execute(op, &plc, vec![])?;
+                map_send_result(sender.send(y))
+            })
+        })
+    }
+
+    pub fn unary(op: Operator) -> UnaryAsyncKernel {
+        Box::new(move |sess, v, sender| {
+            let new_sess = sess.new_sess.clone();
+            let op = op.clone();
+            let plc = sess.host.clone();
+            tokio::spawn(async move {
+                use crate::kernels::Session;
+                let v: Value = v.await.map_err(map_receive_error)?;
+                let y = new_sess.execute(op, &plc, vec![v])?;
+                map_send_result(sender.send(y))
+            })
+        })
+    }
+
+    pub fn binary(op: Operator) -> BinaryAsyncKernel {
+        Box::new(move |sess, v0, v1, sender| {
+            let new_sess = sess.new_sess.clone();
+            let op = op.clone();
+            let plc = sess.host.clone();
+            tokio::spawn(async move {
+                use crate::kernels::Session;
+                let v0: Value = v0.await.map_err(map_receive_error)?;
+                let v1: Value = v1.await.map_err(map_receive_error)?;
+                let y = new_sess.execute(op, &plc, vec![v0, v1])?;
+                map_send_result(sender.send(y))
+            })
+        })
+    }
+
+    pub fn ternary(op: Operator) -> TernaryAsyncKernel {
+        Box::new(move |sess, v0, v1, v2, sender| {
+            let new_sess = sess.new_sess.clone();
+            let op = op.clone();
+            let plc = sess.host.clone();
+            tokio::spawn(async move {
+                use crate::kernels::Session;
+                let v0: Value = v0.await.map_err(map_receive_error)?;
+                let v1: Value = v1.await.map_err(map_receive_error)?;
+                let v2: Value = v2.await.map_err(map_receive_error)?;
+                let y = new_sess.execute(op, &plc, vec![v0, v1, v2])?;
+                map_send_result(sender.send(y))
+            })
+        })
+    }
+
+    pub fn variadic(op: Operator) -> VariadicAsyncKernel {
+        Box::new(move |sess, xs, sender| {
+            let new_sess = sess.new_sess.clone();
+            let op = op.clone();
+            let plc = sess.host.clone();
+            tokio::spawn(async move {
+                use crate::kernels::Session;
+                let xs: Vec<Value> = futures::future::try_join_all(xs)
+                    .await
+                    .map_err(map_receive_error)?;
+                let y = new_sess.execute(op, &plc, xs)?;
+                map_send_result(sender.send(y))
+            })
+        })
+    }
+}
+
 pub trait Compile<C> {
     fn compile(&self, ctx: &CompilationContext) -> Result<C>;
 }
@@ -399,6 +480,7 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
 pub struct CompilationContext<'s> {
     pub role_assignment: &'s HashMap<Role, Identity>,
     pub own_identity: &'s Identity,
+    pub use_sync_bridge: bool,
 }
 
 pub type SyncArgs = HashMap<String, Value>;
@@ -540,6 +622,16 @@ impl Compile<CompiledSyncOperation> for Operation {
 
 impl Compile<CompiledAsyncOperation> for Operation {
     fn compile(&self, ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
+        if ctx.use_sync_bridge {
+            self.bridge_compile(ctx)
+        } else {
+            self.older_compile(ctx)
+        }
+    }
+}
+
+impl Operation {
+    fn older_compile(&self, ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
         let operator_kernel = Compile::<AsyncKernel>::compile(&self.kind, ctx)?;
         match operator_kernel {
             AsyncKernel::Nullary(k) => {
@@ -601,6 +693,89 @@ impl Compile<CompiledAsyncOperation> for Operation {
                     }),
                 })
             }
+        }
+    }
+
+    fn bridge_compile(&self, ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
+        match self.kind {
+            // This kinds of operators should not be using the brdiged Sync kernels. Instead, they should be using the old kernels,
+            // because there is where the Sync/Async storage and networking is done right at the moment.
+            Operator::Receive(_) | Operator::Send(_) | Operator::Load(_) | Operator::Save(_) => {
+                return self.older_compile(ctx)
+            }
+            _ => {}
+        };
+
+        let op = self.clone();
+
+        match self.kind.sig().arity() {
+            Some(0) => {
+                check_arity(&self.name, &self.inputs, 0)?;
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, _, sender| {
+                        let k = Bridge::nullary(op.kind.clone());
+                        Ok(k(sess, sender))
+                    }),
+                })
+            }
+            Some(1) => {
+                check_arity(&self.name, &self.inputs, 1)?;
+                let x0_name = self.inputs[0].clone();
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, env, sender| {
+                        let x0 = find_env(env, &x0_name)?;
+                        let k = Bridge::unary(op.kind.clone());
+                        Ok(k(sess, x0, sender))
+                    }),
+                })
+            }
+            Some(2) => {
+                check_arity(&self.name, &self.inputs, 2)?;
+                let x0_name = self.inputs[0].clone();
+                let x1_name = self.inputs[1].clone();
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, env, sender| {
+                        let x0 = find_env(env, &x0_name)?;
+                        let x1 = find_env(env, &x1_name)?;
+                        let k = Bridge::binary(op.kind.clone());
+                        Ok(k(sess, x0, x1, sender))
+                    }),
+                })
+            }
+            Some(3) => {
+                check_arity(&self.name, &self.inputs, 3)?;
+                let x0_name = self.inputs[0].clone();
+                let x1_name = self.inputs[1].clone();
+                let x2_name = self.inputs[2].clone();
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, env, sender| {
+                        let x0 = find_env(env, &x0_name)?;
+                        let x1 = find_env(env, &x1_name)?;
+                        let x2 = find_env(env, &x2_name)?;
+                        let k = Bridge::ternary(op.kind.clone());
+                        Ok(k(sess, x0, x1, x2, sender))
+                    }),
+                })
+            }
+            None => {
+                let inputs = self.inputs.clone();
+                Ok(CompiledAsyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, env, sender| {
+                        let xs = inputs
+                            .iter()
+                            .map(|input| find_env(env, input))
+                            .collect::<Result<Vec<_>>>()?;
+                        let k = Bridge::variadic(op.kind.clone());
+                        Ok(k(sess, xs, sender))
+                    }),
+                })
+            }
+            _ => unimplemented!("No support for the bridge of an unexpected arity"),
         }
     }
 }
@@ -900,6 +1075,7 @@ impl EagerExecutor {
         let ctx = CompilationContext {
             role_assignment,
             own_identity,
+            use_sync_bridge: false, // Sync Session should never use the bridge
         };
         let computation = compile_passes(computation, &[Pass::Typing, Pass::DeprecatedLogical])
             .map_err(|e| {
@@ -996,6 +1172,9 @@ pub struct AsyncSession {
     pub arguments: HashMap<String, Value>,
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
     pub storage: Arc<dyn Send + Sync + AsyncStorage>,
+    // Two fields to support the new framework
+    pub new_sess: Arc<crate::kernels::SyncSession>,
+    pub host: Arc<Placement>,
 }
 
 pub type RoleAssignment = HashMap<Role, Identity>;
@@ -1127,6 +1306,7 @@ impl AsyncExecutor {
         role_assignment: &RoleAssignment,
         own_identity: &Identity,
         session: AsyncSession,
+        use_sync_bridge: bool,
     ) -> Result<(AsyncSessionHandle, HashMap<String, AsyncReceiver>)> {
         if !self.session_ids.insert(session.sid.clone()) {
             return Err(Error::SessionAlreadyExists(format!("{}", session.sid)));
@@ -1135,6 +1315,7 @@ impl AsyncExecutor {
         let ctx = CompilationContext {
             role_assignment,
             own_identity,
+            use_sync_bridge,
         };
 
         let computation = compile_passes(computation, &[Pass::Typing, Pass::DeprecatedLogical])
@@ -1218,6 +1399,15 @@ impl AsyncTestRuntime {
                 arguments: arguments.clone(),
                 networking: Arc::clone(&self.networking),
                 storage: Arc::clone(&self.runtime_storage[own_identity]),
+                // Creating independent new framework's sync sessions for the bridge
+                new_sess: Arc::new(crate::kernels::SyncSession::new(
+                    SessionId::try_from("foobar").unwrap(),
+                    arguments.clone(),
+                    valid_role_assignments.clone(),
+                )),
+                host: Arc::new(Placement::Host(HostPlacement {
+                    owner: own_identity.0.clone().into(),
+                })),
             };
             let (moose_session_handle, outputs) = executor
                 .run_computation(
@@ -1225,6 +1415,7 @@ impl AsyncTestRuntime {
                     &valid_role_assignments,
                     own_identity,
                     moose_session,
+                    true, // Let's test with the new framework
                 )
                 .unwrap();
 
@@ -1303,9 +1494,12 @@ impl AsyncTestRuntime {
 mod tests {
     use super::*;
     use crate::compilation::networking::NetworkingPass;
-    use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostShape, RawShape};
+    use crate::host::{
+        HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostShape, HostString, HostTensor,
+        RawShape,
+    };
     use crate::host::{HostRing128Tensor, HostRing64Tensor};
-    use crate::prim::{RawPrfKey, RawSeed, Seed, SyncKey};
+    use crate::prim::{RawSeed, Seed};
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;
@@ -1320,8 +1514,13 @@ mod tests {
     ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
         match run_async {
             false => {
-                let executor = TestExecutor::default();
-                let outputs = executor.run_computation(&computation, arguments)?;
+                let executor = crate::kernels::TestSyncExecutor::default();
+                let session = crate::kernels::SyncSession::new(
+                    SessionId::try_from("foobar").unwrap(),
+                    arguments,
+                    hashmap!(),
+                );
+                let outputs = executor.run_computation(&computation, &session)?;
                 Ok(outputs)
             }
             true => {
@@ -1362,7 +1561,7 @@ mod tests {
             })
             .join("\n");
         definition.push_str(&body);
-        definition.push_str("\nz = Output: (Ring64Tensor) -> Unit (x0) @Host(alice)");
+        definition.push_str("\nz = Output: (Ring64Tensor) -> Ring64Tensor (x0) @Host(alice)");
 
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -1406,10 +1605,7 @@ mod tests {
         let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
             seed.0,
-            RawSeed::from_prf(
-                &RawPrfKey([0; 16]),
-                &SyncKey::try_from(vec![1, 2, 3]).unwrap()
-            )
+            RawSeed([224, 87, 133, 2, 90, 170, 32, 253, 25, 80, 93, 74, 122, 196, 50, 1])
         );
         Ok(())
     }
@@ -1487,7 +1683,7 @@ mod tests {
         #[case] input_data: Value,
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        use crate::text_computation::ToTextual;
+        use crate::textual::ToTextual;
 
         let data_type_str = input_data.ty().to_textual();
         let source_template = r#"x_uri = Input {arg_name="x_uri"}: () -> String () @Host(alice)
@@ -1498,9 +1694,12 @@ mod tests {
         output = Output: (Unit) -> Unit (save) @Host(alice)
         "#;
         let source = source_template.replace("TensorType", &data_type_str);
-        let arguments: HashMap<String, Value> = hashmap!("x_uri".to_string()=> Value::from("input_data".to_string()),
-            "x_query".to_string() => Value::from("".to_string()),
-            "saved_uri".to_string() => Value::from("saved_data".to_string()));
+        let plc = HostPlacement {
+            owner: "alice".into(),
+        };
+        let arguments: HashMap<String, Value> = hashmap!("x_uri".to_string()=> HostString("input_data".to_string(), plc.clone()).into(),
+            "x_query".to_string() => HostString("".to_string(), plc.clone()).into(),
+            "saved_uri".to_string() => HostString("saved_data".to_string(), plc).into());
 
         let saved_data = match run_async {
             true => {
@@ -1653,7 +1852,7 @@ mod tests {
 
         let outputs = match run_async {
             true => {
-                let computation = NetworkingPass::pass(&computation).unwrap().unwrap();
+                let computation = compile_passes(&computation, &[Pass::Networking])?;
                 _run_computation_test(
                     computation,
                     storage_mapping,
@@ -1671,11 +1870,15 @@ mod tests {
             )?,
         };
 
-        let expected_output = Value::from(HostFloat32Tensor::from(
+        let expected_output: Value = HostTensor::<f32>(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
-        ));
+            HostPlacement {
+                owner: "alice".into(),
+            },
+        )
+        .into();
         assert_eq!(outputs["output"], expected_output);
         Ok(())
     }
@@ -1701,10 +1904,13 @@ mod tests {
             run_async,
         )?;
 
-        let expected_output = HostFloat32Tensor::from(
+        let expected_output = HostTensor::<f32>(
             array![[0.6, -0.40000004], [-0.40000004, 0.6]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
+            HostPlacement {
+                owner: "alice".into(),
+            },
         );
         let x_inv: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_output, x_inv);
@@ -1745,10 +1951,13 @@ mod tests {
                 let r: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
-                    HostFloat32Tensor::from(
+                    HostTensor::<f32>(
                         array![[1.0, 1.0], [1.0, 1.0]]
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
+                        HostPlacement {
+                            owner: "alice".into()
+                        },
                     )
                 );
                 Ok(())
@@ -1757,10 +1966,13 @@ mod tests {
                 let r: HostFloat64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
-                    HostFloat64Tensor::from(
+                    HostTensor::<f64>(
                         array![[1.0, 1.0], [1.0, 1.0]]
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
+                        HostPlacement {
+                            owner: "alice".into()
+                        },
                     )
                 );
                 Ok(())
@@ -1769,10 +1981,13 @@ mod tests {
                 let r: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
-                    HostInt64Tensor::from(
+                    HostTensor::<i64>(
                         array![[1, 1], [1, 1]]
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
+                        HostPlacement {
+                            owner: "alice".into()
+                        },
                     )
                 );
                 Ok(())
@@ -1956,21 +2171,27 @@ mod tests {
             run_async,
         )?;
 
-        let comp_result: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result = outputs
+            .get("output")
+            .ok_or_else(|| anyhow::anyhow!("Expected result missing"))?;
 
         if unwrap_flag {
-            let shaped_result = comp_result.reshape(HostShape(
-                RawShape(vec![1]),
-                HostPlacement {
-                    owner: "alice".into(),
-                },
-            ));
-            assert_eq!(
-                expected_result,
-                Value::Float32(Box::new(shaped_result.0[0]))
-            );
+            if let Value::HostFloat32Tensor(x) = comp_result {
+                let shaped_result = x.clone().reshape(HostShape(
+                    RawShape(vec![1]),
+                    HostPlacement {
+                        owner: "alice".into(),
+                    },
+                ));
+                assert_eq!(
+                    expected_result,
+                    Value::Float32(Box::new(shaped_result.0[0]))
+                );
+            } else {
+                panic!("Value of incorrect type {:?}", comp_result);
+            }
         } else {
-            assert_eq!(expected_result, comp_result.into());
+            assert_eq!(&expected_result, comp_result);
         }
         Ok(())
     }
@@ -2196,7 +2417,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
             r#"shape = Constant{{value=Shape([{shape}])}} @Host(alice)
-        res = RingFill {{value = Ring64(1)}} : (Shape) -> {t}Tensor (shape) @Host(alice)
+        res = RingFill {{value = {t}(1)}} : (Shape) -> {t}Tensor (shape) @Host(alice)
         output = Output : ({t}Tensor) -> {t}Tensor (res) @Host(alice)
         "#,
             t = type_str,
@@ -2318,7 +2539,7 @@ mod tests {
         let identity = Identity::from("alice");
 
         let exec_storage: Arc<dyn Send + Sync + AsyncStorage> =
-            Arc::new(LocalAsyncStorage::from_hashmap(HashMap::new()));
+            Arc::new(LocalAsyncStorage::default());
 
         let valid_role_assignments: HashMap<Role, Identity> =
             hashmap!(Role::from("alice") => identity.clone());
@@ -2333,6 +2554,14 @@ mod tests {
             arguments: hashmap!(),
             networking: Arc::clone(&networking),
             storage: Arc::clone(&exec_storage),
+            new_sess: Arc::new(crate::kernels::SyncSession::new(
+                SessionId::try_from("foobar").unwrap(),
+                hashmap!(),
+                valid_role_assignments.clone(),
+            )),
+            host: Arc::new(Placement::Host(HostPlacement {
+                owner: "localhost".into(),
+            })),
         };
 
         let computation: Computation = source.try_into().unwrap();
@@ -2344,6 +2573,7 @@ mod tests {
                 &valid_role_assignments,
                 &own_identity,
                 moose_session,
+                true,
             )
             .unwrap();
 
@@ -2352,6 +2582,14 @@ mod tests {
             arguments: hashmap!(),
             networking: Arc::clone(&networking),
             storage: Arc::clone(&exec_storage),
+            new_sess: Arc::new(crate::kernels::SyncSession::new(
+                SessionId::try_from("foobar").unwrap(),
+                hashmap!(),
+                valid_role_assignments.clone(),
+            )),
+            host: Arc::new(Placement::Host(HostPlacement {
+                owner: "localhost".into(),
+            })),
         };
 
         let expected =
@@ -2362,6 +2600,7 @@ mod tests {
             &valid_role_assignments,
             &own_identity,
             moose_session,
+            true,
         );
 
         if let Err(e) = res {
