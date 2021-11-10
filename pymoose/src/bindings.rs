@@ -121,8 +121,6 @@ pub struct LocalRuntime {
 impl LocalRuntime {
     #[new]
     fn new(py: Python, storage_mapping: HashMap<String, HashMap<String, PyObject>>) -> Self {
-        console_subscriber::init();
-
         let mut moose_storage_mapping: HashMap<String, HashMap<String, Value>> = HashMap::new();
         for (identity_str, storage) in storage_mapping {
             // TODO handle Result in map predicate instead of `unwrap`
