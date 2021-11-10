@@ -1,12 +1,53 @@
+use crate::fixedpoint::FixedpointTensor;
+
 use super::*;
 
 impl ExpOp {
-    pub(crate) fn rep_rep_kernel<S: Session, RepRingT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT /*, MirroredT*/>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>> {
-        let base_e = 1.0_f64.exp().log2();
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+where
+        // AbstractReplicatedFixedTensor<RepRingT>: KnownType<S>,
+        // AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
+        // <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
+        // AbstractMirroredFixedTensor<MirroredT>: CanonicalType,
+        // <AbstractMirroredFixedTensor<MirroredT> as CanonicalType>::Type: KnownType<S>,
+        // AbstractReplicatedFixedTensor<RepRingT>:
+        //     Underlying<TensorType = AbstractReplicatedFixedTensor<RepRingT>>,
+        // RepFixedTensorT: FixedpointTensor,
+        // ReplicatedPlacement:
+        //     ShapeFill<S, AbstractReplicatedFixedTensor<RepRingT>, Result = MirroredT>,
+        // ReplicatedPlacement: PlacementMul<
+        //     S,
+        //     AbstractReplicatedFixedTensor<RepRingT>,
+        //     AbstractMirroredFixedTensor<MirroredT>,
+        //     AbstractReplicatedFixedTensor<RepRingT>,
+        // >,
+        // ReplicatedPlacement: PlacementPow2<
+        //     S,
+        //     AbstractReplicatedFixedTensor<RepRingT>,
+        //     AbstractReplicatedFixedTensor<RepRingT>,
+        // >,
+    {
+        // let base_e = Constant::Fixed(FixedpointConstant {
+        //     value: 1.0_f64.exp().log2(),
+        //     precision: x.fractional_precision() as usize,
+        // });
+
+        // let base_e_mir: MirroredT = rep.shape_fill(sess, base_e, &x);
+
+        // let base_e_mir_fixed: AbstractMirroredFixedTensor<MirroredT> =
+        //     AbstractMirroredFixedTensor {
+        //         tensor: base_e_mir,
+        //         fractional_precision: x.fractional_precision(),
+        //         integral_precision: x.integral_precision(),
+        //     };
+
+        // let exp = rep.pow2(sess, &rep.mul(sess, &x, &base_e_mir_fixed));
+        // Ok(exp)
+
         Ok(x)
     }
 }
