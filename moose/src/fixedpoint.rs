@@ -1151,13 +1151,21 @@ impl AddNOp {
         ReplicatedPlacement: PlacementAddN<S, RepRingT, RepRingT>,
         RepRingT: Clone,
     {
+        let fractional_precision = xs[0].fractional_precision;
+        let integral_precision = xs[0].integral_precision;
+
+        for x in xs.iter() {
+            assert_eq!(x.fractional_precision, fractional_precision);
+            assert_eq!(x.integral_precision, integral_precision);
+        }
+
         let zs: Vec<RepRingT> = xs.iter().map(|item| item.tensor.clone()).collect();
 
         Ok(AbstractReplicatedFixedTensor {
             tensor: rep.add_n(sess, &zs),
-            fractional_precision: xs[0].fractional_precision,
+            fractional_precision: fractional_precision,
             //TODO(Dragos) figure out later how we estimate integral precision
-            integral_precision: xs[0].integral_precision,
+            integral_precision: integral_precision,
         })
     }
 }
