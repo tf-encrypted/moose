@@ -1,9 +1,10 @@
 import argparse
 import logging
-import unittest
 
 import numpy as np
 import pytest
+from absl.testing import absltest
+from absl.testing import parameterized
 
 from pymoose import edsl
 from pymoose import elk_compiler
@@ -14,19 +15,21 @@ from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 
-class ReplicatedExample(unittest.TestCase):
-    def _setup_aes_comp(self):
+class ReplicatedExample(parameterized.TestCase):
+    def _setup_aes_comp(self, host_decrypt):
         alice = edsl.host_placement(name="alice")
         bob = edsl.host_placement(name="bob")
         carole = edsl.host_placement(name="carole")
         rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+
+        decryptor = alice if host_decrypt else rep
 
         @edsl.computation
         def my_aes_comp(
             key: edsl.Argument(rep, vtype=AesKeyType()),
             ciphertext: edsl.Argument(alice, vtype=AesTensorType(edsl.fixed(46, 40))),
         ):
-            with rep:
+            with decryptor:
                 data = edsl.decrypt(key, ciphertext)
 
             with alice:
@@ -36,23 +39,26 @@ class ReplicatedExample(unittest.TestCase):
 
         return my_aes_comp
 
-    def test_aes_example_serde(self):
-        aes_comp = self._setup_aes_comp()
+    @parameterized.parameters(True, False)
+    def test_aes_example_serde(self, host_decrypt):
+        aes_comp = self._setup_aes_comp(host_decrypt)
         traced_aes_comp = edsl.trace(aes_comp)
         comp_bin = utils.serialize_computation(traced_aes_comp)
         deser_aes_comp = utils.deserialize_computation(comp_bin)
         assert traced_aes_comp == deser_aes_comp
 
-    def test_aes_example_rust_serde(self):
-        aes_comp = self._setup_aes_comp()
+    @parameterized.parameters(True, False)
+    def test_aes_example_rust_serde(self, host_decrypt):
+        aes_comp = self._setup_aes_comp(host_decrypt)
         traced_aes_comp = edsl.trace(aes_comp)
         comp_bin = utils.serialize_computation(traced_aes_comp)
         # Compile in Rust
         # If this does not error, rust was able to deserialize the pycomputation
         elk_compiler.compile_computation(comp_bin, [])
 
-    def test_aes_example_compile(self):
-        aes_comp = self._setup_aes_comp()
+    @parameterized.parameters(True, False)
+    def test_aes_example_compile(self, host_decrypt):
+        aes_comp = self._setup_aes_comp(host_decrypt)
         traced_aes_comp = edsl.trace(aes_comp)
         comp_bin = utils.serialize_computation(traced_aes_comp)
         _ = elk_compiler.compile_computation(
@@ -64,9 +70,10 @@ class ReplicatedExample(unittest.TestCase):
             ],
         )
 
+    @parameterized.parameters(True, False)
     @pytest.mark.slow
-    def test_aes_example_execute(self):
-        aes_comp = self._setup_aes_comp()
+    def test_aes_example_execute(self, host_decrypt):
+        aes_comp = self._setup_aes_comp(host_decrypt)
         traced_aes_comp = edsl.trace(aes_comp)
         comp_bin = utils.serialize_computation(traced_aes_comp)
         compiled_comp = elk_compiler.compile_computation(
@@ -108,4 +115,4 @@ if __name__ == "__main__":
     if args.verbose:
         get_logger().setLevel(level=logging.DEBUG)
 
-    unittest.main()
+    absltest.main()
