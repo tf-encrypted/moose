@@ -2527,6 +2527,17 @@ impl ShapeOp {
             ],
         })
     }
+
+    pub fn rep_fixed_kernel<S: Session, RepRingT, ShapeT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<ShapeT>
+    where
+        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
+    {
+        Ok(rep.shape(sess, &x.tensor))
+    }
 }
 
 trait BinaryAdder<S: Session, RepBitT> {

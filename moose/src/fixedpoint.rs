@@ -114,19 +114,6 @@ where
     }
 }
 
-impl ShapeOp {
-    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT, ShapeT>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<ShapeT>
-    where
-        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
-    {
-        Ok(rep.shape(sess, &x.tensor))
-    }
-}
-
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[fractional_precision: u32, integral_precision: u32] (Float32Tensor) -> Fixed64Tensor, FixedpointEncodeOp);
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[fractional_precision: u32, integral_precision: u32] (Float64Tensor) -> Fixed128Tensor, FixedpointEncodeOp);
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[fractional_precision: u32, integral_precision: u32] (HostFloat32Tensor) -> HostFixed64Tensor, FixedpointEncodeOp);
