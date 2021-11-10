@@ -1151,9 +1151,8 @@ impl AddNOp {
 
         Ok(AbstractReplicatedFixedTensor {
             tensor: rep.add_n(sess, &zs),
-            fractional_precision: fractional_precision,
-            //TODO(Dragos) figure out later how we estimate integral precision
-            integral_precision: integral_precision,
+            fractional_precision,
+            integral_precision,
         })
     }
 }
@@ -1223,7 +1222,7 @@ impl ReplicatedPlacement {
         >,
         ReplicatedPlacement: ShapeFill<S, RepFixedTensorT, Result = MirroredT>,
     {
-        assert!(coeffs.len() >= 1);
+        assert!(!coeffs.is_empty());
         let mut degree = coeffs.len() - 1;
 
         // Exclude coefficients under precision
