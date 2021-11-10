@@ -82,7 +82,7 @@ class ReplicatedExample(unittest.TestCase):
             "carole": {},   
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
-        _ = runtime.evaluate_compiled(
+        _outputs = runtime.evaluate_compiled(
             comp_bin=compiled_comp,
             role_assignment={
                 "alice": "alice",
@@ -96,6 +96,7 @@ class ReplicatedExample(unittest.TestCase):
                 "key/player1/share2": np.array([0] * 128, dtype=np.bool_),
                 "key/player2/share2": np.array([0] * 128, dtype=np.bool_),
                 "key/player2/share0": np.array([0] * 128, dtype=np.bool_),
+                "ciphertext": np.array([0] * 224, dtype=np.bool_),
             },
         )
 
