@@ -21,11 +21,12 @@ maplit = "~1.0"
 numpy = "~0.14"
 ndarray = "~0.15"
 moose = { path = "../moose" }
-tokio = { version="~1.9", features=["full"] }
+tokio = { version="1.9", features=["full"] }
 rand = "~0.8"
 rmp-serde = "~0.15"
 serde = { version="~1.0", features=["derive"] }
 serde_bytes="~0.11"
+console-subscriber = { path = "/home/dahl/work/tokio-rs/console/console-subscriber" }
 
 [dependencies.pyo3]
 version = "~0.14"

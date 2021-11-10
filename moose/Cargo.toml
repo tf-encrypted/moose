@@ -47,7 +47,7 @@ smallvec = "~1.6"
 sodiumoxide = "~0.2"
 static_assertions = "~1.1"
 thiserror = "~1.0"
-tokio = { version="~1.9", features=["full"] }
+tokio = { version="1.9", features=["full"] }
 tracing = { version="~0.1", features=["log"] }
 vec-utils = "~0.3"
 nom = { version="~7.0" }
