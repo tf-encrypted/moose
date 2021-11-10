@@ -1139,12 +1139,13 @@ impl AddNOp {
         RepRingT: Clone,
     {
         let fractional_precision = xs[0].fractional_precision;
-        let integral_precision = xs[0].integral_precision;
+        let integral_precision = xs
+            .iter()
+            .fold(xs[0].integral_precision, |a, b| a.max(b.integral_precision));
 
-        for x in xs.iter() {
-            assert_eq!(x.fractional_precision, fractional_precision);
-            assert_eq!(x.integral_precision, integral_precision);
-        }
+        assert!(xs
+            .iter()
+            .all(|x| x.fractional_precision == fractional_precision));
 
         let zs: Vec<RepRingT> = xs.iter().map(|item| item.tensor.clone()).collect();
 
