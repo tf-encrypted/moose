@@ -3,6 +3,7 @@ import logging
 import unittest
 
 import numpy as np
+import pytest
 
 from pymoose import edsl
 from pymoose import elk_compiler
@@ -63,6 +64,7 @@ class ReplicatedExample(unittest.TestCase):
             ],
         )
 
+    @pytest.mark.slow
     def test_aes_example_execute(self):
         aes_comp = self._setup_aes_comp()
         traced_aes_comp = edsl.trace(aes_comp)
@@ -83,7 +85,7 @@ class ReplicatedExample(unittest.TestCase):
             "carole": {},
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
-        _outputs = runtime.evaluate_compiled(
+        _ = runtime.evaluate_compiled(
             comp_bin=compiled_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={
