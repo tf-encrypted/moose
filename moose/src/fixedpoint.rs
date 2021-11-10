@@ -1204,35 +1204,26 @@ impl ReplicatedPlacement {
     }
 }
 
-impl ReplicatedPlacement {
-    pub fn polynomial_eval<S: Session, RepRingT, RepFixedTensorT, MirroredT>(
-        &self,
-        sess: &S,
-        coeffs: Vec<f64>,
-        x: RepFixedTensorT,
-    ) -> RepFixedTensorT
-    where
-        RepFixedTensorT: Underlying<TensorType = RepRingT>,
-        RepFixedTensorT: FixedpointTensor,
-        RepFixedTensorT: Clone,
-        ReplicatedPlacement: PlacementMul<S, RepFixedTensorT, RepFixedTensorT, RepFixedTensorT>,
-        ReplicatedPlacement: PlacementMul<
-            S,
-            AbstractMirroredFixedTensor<MirroredT>,
-            RepFixedTensorT,
-            RepFixedTensorT,
-        >,
+pub(crate) trait PolynomialEval<S: Session, RepRingT, RepFixedTensorT> {
+    fn polynomial_eval(&self, sess: &S, coeffs: Vec<f64>, x: RepFixedTensorT) -> RepFixedTensorT;
+}
+impl<S: Session, RepRingT, RepFixedTensorT, MirroredT> PolynomialEval<S, RepRingT, RepFixedTensorT>
+    for ReplicatedPlacement
+where
+    RepFixedTensorT: Underlying<TensorType = RepRingT>,
+    RepFixedTensorT: FixedpointTensor,
+    RepFixedTensorT: Clone,
+    ReplicatedPlacement: PlacementMul<S, RepFixedTensorT, RepFixedTensorT, RepFixedTensorT>,
+    ReplicatedPlacement:
+        PlacementMul<S, AbstractMirroredFixedTensor<MirroredT>, RepFixedTensorT, RepFixedTensorT>,
 
-        ReplicatedPlacement: PlacementTruncPr<S, RepFixedTensorT, RepFixedTensorT>,
-        ReplicatedPlacement: PlacementAddN<S, RepFixedTensorT, RepFixedTensorT>,
-        ReplicatedPlacement: PlacementAdd<
-            S,
-            RepFixedTensorT,
-            AbstractMirroredFixedTensor<MirroredT>,
-            RepFixedTensorT,
-        >,
-        ReplicatedPlacement: ShapeFill<S, RepFixedTensorT, Result = MirroredT>,
-    {
+    ReplicatedPlacement: PlacementTruncPr<S, RepFixedTensorT, RepFixedTensorT>,
+    ReplicatedPlacement: PlacementAddN<S, RepFixedTensorT, RepFixedTensorT>,
+    ReplicatedPlacement:
+        PlacementAdd<S, RepFixedTensorT, AbstractMirroredFixedTensor<MirroredT>, RepFixedTensorT>,
+    ReplicatedPlacement: ShapeFill<S, RepFixedTensorT, Result = MirroredT>,
+{
+    fn polynomial_eval(&self, sess: &S, coeffs: Vec<f64>, x: RepFixedTensorT) -> RepFixedTensorT {
         assert!(!coeffs.is_empty());
         let mut degree = coeffs.len() - 1;
 
