@@ -357,8 +357,8 @@ impl FixedpointAddOp {
         let z = plc.add(sess, &x.tensor, &y.tensor);
         Ok(AbstractReplicatedFixedTensor {
             tensor: z,
-            fractional_precision: x.fractional_precision,
-            integral_precision: x.integral_precision,
+            fractional_precision: u32::max(x.fractional_precision, y.fractional_precision),
+            integral_precision: u32::max(x.integral_precision, y.integral_precision),
         })
     }
 
@@ -375,8 +375,8 @@ impl FixedpointAddOp {
         let z = plc.add(sess, &x.tensor, &y.tensor);
         Ok(AbstractReplicatedFixedTensor {
             tensor: z,
-            fractional_precision: x.fractional_precision,
-            integral_precision: x.integral_precision,
+            fractional_precision: u32::max(x.fractional_precision, y.fractional_precision),
+            integral_precision: u32::max(x.integral_precision, y.integral_precision),
         })
     }
 }
@@ -1202,8 +1202,8 @@ impl ReplicatedPlacement {
     pub fn polynomial_eval<S: Session, RepRingT, RepFixedTensorT, MirroredT>(
         &self,
         sess: &S,
-        x: RepFixedTensorT,
         coeffs: Vec<f64>,
+        x: RepFixedTensorT,
     ) -> RepFixedTensorT
     where
         RepFixedTensorT: Underlying<TensorType = RepRingT>,
@@ -1227,6 +1227,7 @@ impl ReplicatedPlacement {
         >,
         ReplicatedPlacement: ShapeFill<S, RepFixedTensorT, Result = MirroredT>,
     {
+        assert!(coeffs.len() >= 1);
         let mut degree = coeffs.len() - 1;
 
         // Exclude coefficients under precision
@@ -2081,7 +2082,7 @@ mod tests {
                     rep.share(&sess, &x_ring);
                 let x_fixed_shared = new_replicated_fixed_tensor(x_shared.clone());
 
-                let output = rep.polynomial_eval(&sess, x_fixed_shared, coeffs);
+                let output = rep.polynomial_eval(&sess, coeffs, x_fixed_shared);
                 let output_reveal = alice.reveal(&sess, &output);
                 let result = Convert::decode(&output_reveal.tensor, (2 as $tt).pow($f_precision));
 
