@@ -90,6 +90,8 @@ class ReplicatedExample(unittest.TestCase):
                 "carole": "carole",
             },
             arguments={
+                "key/player0/share0": np.array([0] * 128, dtype=np.bool_),
+                "key/player0/share1": np.array([0] * 128, dtype=np.bool_),
                 "key/player1/share1": np.array([0] * 128, dtype=np.bool_),
                 "key/player1/share2": np.array([0] * 128, dtype=np.bool_),
                 "key/player2/share2": np.array([0] * 128, dtype=np.bool_),
