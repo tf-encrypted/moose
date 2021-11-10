@@ -227,6 +227,10 @@ class MeanOperation(StandardOperation):
 class ExpOperation(StandardOperation):
     output_type: ValueType
 
+@dataclass
+class Pow2Operation(StandardOperation):
+    output_type: ValueType
+
 
 @dataclass
 class SqrtOperation(StandardOperation):

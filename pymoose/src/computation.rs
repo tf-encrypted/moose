@@ -75,6 +75,7 @@ enum PyOperation {
     rep_ShareOperation(PyRepShareOperation),
     rep_DotOperation(PyRepDotOperation),
     rep_ExpOperation(PyRepExpOperation),
+    rep_Pow2Operation(PyRepPow2Operation),
     rep_TruncPrOperation(PyRepTruncPrOperation),
     rep_SubOperation(PyRepSubOperation),
     rep_MulOperation(PyRepMulOperation),
@@ -654,6 +655,14 @@ struct PyRepShareOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyRepDotOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyRepPow2Operation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -1669,6 +1678,19 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     rep_ExpOperation(op) => Ok(Operation {
                         kind: ExpOp {
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    rep_Pow2Operation(op) => Ok(Operation {
+                        kind: Pow2Op {
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,

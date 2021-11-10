@@ -182,6 +182,13 @@ class ExpExpression(Expression):
     def __hash__(self):
         return id(self)
 
+
+@dataclass
+class Pow2Expression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
 @dataclass
 class SqrtExpression(Expression):
     def __hash__(self):
