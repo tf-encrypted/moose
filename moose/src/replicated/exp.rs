@@ -1,5 +1,16 @@
 use super::*;
 
+impl ExpOp {
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>> {
+        let base_e = 1.0_f64.exp().log2();
+        Ok(x)
+    }
+}
+
 impl Pow2Op {
     pub(crate) fn rep_rep_kernel<S: Session, RepRingT, RepBitT, N: Const>(
         sess: &S,

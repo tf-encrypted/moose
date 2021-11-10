@@ -1183,6 +1183,17 @@ kernel! {
     ]
 }
 
+modelled!(PlacementExp::exp, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, ExpOp);
+modelled!(PlacementExp::exp, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, ExpOp);
+
+kernel! {
+    ExpOp,
+    [
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_rep_kernel),
+    ]
+}
+
 impl ReplicatedPlacement {
     pub fn prefix_mul_fixed<S: Session, RepFixedT>(
         &self,

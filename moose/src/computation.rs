@@ -900,6 +900,7 @@ operators![
     Mean,
     Sum,
     Div,
+    Exp,
     // Host operators
     HostAdd,
     HostSub,
@@ -1412,6 +1413,11 @@ pub struct BitNegOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct Pow2Op {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct ExpOp {
     pub sig: Signature,
 }
 

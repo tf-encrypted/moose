@@ -215,6 +215,7 @@ impl Session for SyncSession {
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Pow2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Exp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -498,6 +499,10 @@ pub trait PlacementIfElse<S: Session, T, U, V, O> {
 
 pub trait PlacementPow2<S: Session, T, O> {
     fn pow2(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementExp<S: Session, T, O> {
+    fn exp(&self, sess: &S, x: &T) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
