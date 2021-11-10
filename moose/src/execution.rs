@@ -240,9 +240,13 @@ impl Bridge {
             let new_sess = sess.new_sess.clone();
             let op = op.clone();
             let plc = sess.host.clone();
+            let counter = sess.counter.clone();
             tokio::spawn(async move {
                 use crate::kernels::Session;
+                counter.send(CounterValue::TaskSpawned).await.expect("counter failed");
+                counter.send(CounterValue::TaskReady).await.expect("counter failed");
                 let y = new_sess.execute(op, &plc, vec![])?;
+                counter.send(CounterValue::TaskDone).await.expect("counter failed");
                 map_send_result(sender.send(y))
             })
         })
@@ -253,10 +257,14 @@ impl Bridge {
             let new_sess = sess.new_sess.clone();
             let op = op.clone();
             let plc = sess.host.clone();
+            let counter = sess.counter.clone();
             tokio::spawn(async move {
                 use crate::kernels::Session;
+                counter.send(CounterValue::TaskSpawned).await.expect("counter failed");
                 let v: Value = v.await.map_err(map_receive_error)?;
+                counter.send(CounterValue::TaskReady).await.expect("counter failed");
                 let y = new_sess.execute(op, &plc, vec![v])?;
+                counter.send(CounterValue::TaskDone).await.expect("counter failed");
                 map_send_result(sender.send(y))
             })
         })
@@ -267,11 +275,15 @@ impl Bridge {
             let new_sess = sess.new_sess.clone();
             let op = op.clone();
             let plc = sess.host.clone();
+            let counter = sess.counter.clone();
             tokio::spawn(async move {
                 use crate::kernels::Session;
+                counter.send(CounterValue::TaskSpawned).await.expect("counter failed");
                 let v0: Value = v0.await.map_err(map_receive_error)?;
                 let v1: Value = v1.await.map_err(map_receive_error)?;
+                counter.send(CounterValue::TaskReady).await.expect("counter failed");
                 let y = new_sess.execute(op, &plc, vec![v0, v1])?;
+                counter.send(CounterValue::TaskDone).await.expect("counter failed");
                 map_send_result(sender.send(y))
             })
         })
@@ -282,12 +294,16 @@ impl Bridge {
             let new_sess = sess.new_sess.clone();
             let op = op.clone();
             let plc = sess.host.clone();
+            let counter = sess.counter.clone();
             tokio::spawn(async move {
                 use crate::kernels::Session;
+                counter.send(CounterValue::TaskSpawned).await.expect("counter failed");
                 let v0: Value = v0.await.map_err(map_receive_error)?;
                 let v1: Value = v1.await.map_err(map_receive_error)?;
                 let v2: Value = v2.await.map_err(map_receive_error)?;
+                counter.send(CounterValue::TaskReady).await.expect("counter failed");
                 let y = new_sess.execute(op, &plc, vec![v0, v1, v2])?;
+                counter.send(CounterValue::TaskDone).await.expect("counter failed");
                 map_send_result(sender.send(y))
             })
         })
@@ -298,12 +314,16 @@ impl Bridge {
             let new_sess = sess.new_sess.clone();
             let op = op.clone();
             let plc = sess.host.clone();
+            let counter = sess.counter.clone();
             tokio::spawn(async move {
                 use crate::kernels::Session;
+                counter.send(CounterValue::TaskSpawned).await.expect("counter failed");
                 let xs: Vec<Value> = futures::future::try_join_all(xs)
                     .await
                     .map_err(map_receive_error)?;
+                counter.send(CounterValue::TaskReady).await.expect("counter failed");
                 let y = new_sess.execute(op, &plc, xs)?;
+                counter.send(CounterValue::TaskDone).await.expect("counter failed");
                 map_send_result(sender.send(y))
             })
         })
@@ -1165,6 +1185,13 @@ impl TestExecutor {
     }
 }
 
+#[derive(Display, Debug, Clone)]
+pub enum CounterValue {
+    TaskSpawned,
+    TaskReady,
+    TaskDone,
+}
+
 /// A session is essentially the activation frame of the graph function call.
 #[derive(Clone)]
 pub struct AsyncSession {
@@ -1175,6 +1202,7 @@ pub struct AsyncSession {
     // Two fields to support the new framework
     pub new_sess: Arc<crate::kernels::SyncSession>,
     pub host: Arc<Placement>,
+    pub counter: tokio::sync::mpsc::Sender<CounterValue>,
 }
 
 pub type RoleAssignment = HashMap<Role, Identity>;
@@ -1393,6 +1421,42 @@ impl AsyncTestRuntime {
                 missing_identities, missing_roles)));
         }
 
+        let total_expected_tasks = computation.operations.len();
+
+        let (sender, mut receiver) = tokio::sync::mpsc::channel(10_000_000);
+
+        tokio::spawn(async move {
+            let mut ticker = tokio::time::interval(tokio::time::Duration::from_secs(5));
+            
+            let mut task_spawned_counter = 0;
+            let mut task_ready_counter = 0;
+            let mut task_done_counter = 0;
+
+            loop {
+                tokio::select! {
+                    Some(update) = receiver.recv() => {
+                        match update {
+                            CounterValue::TaskSpawned => {
+                                task_spawned_counter += 1;
+                            }
+                            CounterValue::TaskReady => {
+                                task_ready_counter += 1;
+                            }
+                            CounterValue::TaskDone => {
+                                task_done_counter += 1;
+                            }
+                        }
+                    }
+                    _ = ticker.tick() => {
+                        println!("Expected: {:10}, spawned: {:10}, ready: {:10}, done: {:10}", total_expected_tasks, task_spawned_counter, task_ready_counter, task_done_counter);
+                    }
+                    else => { 
+                        break;
+                    }
+                }
+            }
+        });
+
         for (own_identity, executor) in self.executors.iter_mut() {
             let moose_session = AsyncSession {
                 sid: SessionId::try_from("foobar").unwrap(),
@@ -1408,6 +1472,7 @@ impl AsyncTestRuntime {
                 host: Arc::new(Placement::Host(HostPlacement {
                     owner: own_identity.0.clone().into(),
                 })),
+                counter: sender.clone(),
             };
             let (moose_session_handle, outputs) = executor
                 .run_computation(
