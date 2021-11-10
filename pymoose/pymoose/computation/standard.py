@@ -223,6 +223,10 @@ class MeanOperation(StandardOperation):
     axis: Optional[Union[int, Tuple[int]]]
     output_type: ValueType
 
+@dataclass
+class ExpOperation(StandardOperation):
+    output_type: ValueType
+
 
 @dataclass
 class SqrtOperation(StandardOperation):

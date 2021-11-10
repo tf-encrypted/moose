@@ -177,6 +177,10 @@ class MeanExpression(Expression):
     def __hash__(self):
         return id(self)
 
+@dataclass
+class ExpExpression(Expression):
+    def __hash__(self):
+        return id(self)
 
 @dataclass
 class SqrtExpression(Expression):
