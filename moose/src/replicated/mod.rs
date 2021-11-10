@@ -26,7 +26,7 @@ pub mod input;
 pub mod log;
 pub use self::aes::ReplicatedAesKey;
 
-pub(crate) trait ShapeFill<S, TenT> {
+pub trait ShapeFill<S, TenT> {
     type Result;
 
     fn shape_fill<C: Into<Constant>>(
@@ -253,11 +253,30 @@ pub struct AbstractReplicatedFixedTensor<RepRingT> {
 moose_type!(ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>);
 moose_type!(ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>);
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AbstractMirroredFixedTensor<MirroredT> {
+    pub tensor: MirroredT,
+    pub fractional_precision: u32,
+    pub integral_precision: u32,
+}
+
+impl<RepRingT: Underlying> Underlying for AbstractReplicatedFixedTensor<RepRingT> {
+    type TensorType = RepRingT::TensorType;
+}
+
 // TODO(Dragos) perhaps we need better abstraction mechanisms?
-moose_type!(Mirrored3Fixed64Tensor = AbstractReplicatedFixedTensor<Mirrored3Ring64Tensor>);
-moose_type!(Mirrored3Fixed128Tensor = AbstractReplicatedFixedTensor<Mirrored3Ring128Tensor>);
+moose_type!(Mirrored3Fixed64Tensor = AbstractMirroredFixedTensor<Mirrored3Ring64Tensor>);
+moose_type!(Mirrored3Fixed128Tensor = AbstractMirroredFixedTensor<Mirrored3Ring128Tensor>);
 
 impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
+    type Placement = RepRingT::Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        self.tensor.placement()
+    }
+}
+
+impl<RepRingT: Placed> Placed for AbstractMirroredFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -1630,19 +1649,8 @@ impl RepFixedpointMeanOp {
     }
 }
 
-modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, RepAddNOp);
-modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, RepAddNOp);
-
-kernel! {
-    RepAddNOp,
-    [
-        (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [hybrid] Self::kernel),
-        (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [hybrid] Self::kernel),
-    ]
-}
-
-impl RepAddNOp {
-    fn kernel<S: Session, HostRingT>(
+impl AddNOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         xs: &[RepTen<HostRingT>],
@@ -2519,6 +2527,17 @@ impl ShapeOp {
                 player2.shape(sess, x22),
             ],
         })
+    }
+
+    pub fn rep_fixed_kernel<S: Session, RepRingT, ShapeT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<ShapeT>
+    where
+        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
+    {
+        Ok(rep.shape(sess, &x.tensor))
     }
 }
 
