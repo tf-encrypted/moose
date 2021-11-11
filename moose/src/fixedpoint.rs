@@ -1183,28 +1183,52 @@ impl<RepRingT: Placed> FixedpointTensor for Symbolic<AbstractReplicatedFixedTens
     }
 }
 
+modelled!(PlacementPow2::pow2, ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor, Pow2Op);
+modelled!(PlacementPow2::pow2, ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor, Pow2Op);
+
 modelled!(PlacementPow2::pow2, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, Pow2Op);
 modelled!(PlacementPow2::pow2, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, Pow2Op);
 
 kernel! {
     Pow2Op,
     [
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::rep_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_rep_kernel),
     ]
 }
 
-impl ReplicatedPlacement {
-    pub fn prefix_mul_fixed<S: Session, RepFixedT>(
-        &self,
+impl Pow2Op {
+    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
         sess: &S,
-        x: Vec<RepFixedT>,
-    ) -> Vec<RepFixedT>
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
-        RepFixedT: FixedpointTensor,
-        ReplicatedPlacement: PlacementMul<S, RepFixedT, RepFixedT, RepFixedT>,
-        ReplicatedPlacement: PlacementTruncPr<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementPow2<S, RepFixedT, RepFixedT>,
     {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let z = plc.pow2(sess, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+}
+
+pub(crate) trait PrefixMul<S: Session, RepFixedT> {
+    fn prefix_mul(&self, sess: &S, x: Vec<RepFixedT>) -> Vec<RepFixedT>;
+}
+
+impl<S: Session, RepFixedT> PrefixMul<S, RepFixedT> for ReplicatedPlacement
+where
+    RepFixedT: FixedpointTensor,
+    ReplicatedPlacement: PlacementMul<S, RepFixedT, RepFixedT, RepFixedT>,
+    ReplicatedPlacement: PlacementTruncPr<S, RepFixedT, RepFixedT>,
+{
+    fn prefix_mul(&self, sess: &S, x: Vec<RepFixedT>) -> Vec<RepFixedT> {
         let elementwise_mul =
             |rep: &ReplicatedPlacement, sess: &S, x: &RepFixedT, y: &RepFixedT| -> RepFixedT {
                 assert_eq!(x.fractional_precision(), y.fractional_precision());
@@ -1219,23 +1243,20 @@ pub(crate) trait PolynomialEval<S: Session, RepFixedTensorT> {
     fn polynomial_eval(&self, sess: &S, coeffs: Vec<f64>, x: RepFixedTensorT) -> RepFixedTensorT;
 }
 
-impl<S: Session, RepRingT, RepFixedTensorT, MirroredT> PolynomialEval<S, RepFixedTensorT>
+impl<S: Session, RepRingT, RepFixedTensorT, MirroredRingT> PolynomialEval<S, RepFixedTensorT>
     for ReplicatedPlacement
 where
     RepFixedTensorT: Underlying<TensorType = RepRingT>,
     RepFixedTensorT: FixedpointTensor,
     RepFixedTensorT: Clone,
-    ReplicatedPlacement: PlacementMul<S, RepFixedTensorT, RepFixedTensorT, RepFixedTensorT>,
+    AbstractMirroredFixedTensor<MirroredRingT>: CanonicalType,
+    <AbstractMirroredFixedTensor<MirroredRingT> as CanonicalType>::Type: KnownType<S>,
 
-    AbstractMirroredFixedTensor<MirroredT>: CanonicalType,
-    <AbstractMirroredFixedTensor<MirroredT> as CanonicalType>::Type: KnownType<S>,
-
-    AbstractMirroredFixedTensor<MirroredT>: Into<st!(AbstractMirroredFixedTensor<MirroredT>)>,
-    st!(AbstractMirroredFixedTensor<MirroredT>): KnownType<S>,
-
+    AbstractMirroredFixedTensor<MirroredRingT>:
+        Into<m!(c!(AbstractMirroredFixedTensor<MirroredRingT>))>,
     ReplicatedPlacement: PlacementMul<
         S,
-        st!(AbstractMirroredFixedTensor<MirroredT>),
+        m!(c!(AbstractMirroredFixedTensor<MirroredRingT>)),
         RepFixedTensorT,
         RepFixedTensorT,
     >,
@@ -1245,10 +1266,11 @@ where
     ReplicatedPlacement: PlacementAdd<
         S,
         RepFixedTensorT,
-        st!(AbstractMirroredFixedTensor<MirroredT>),
+        m!(c!(AbstractMirroredFixedTensor<MirroredRingT>)),
         RepFixedTensorT,
     >,
-    ReplicatedPlacement: ShapeFill<S, RepFixedTensorT, Result = MirroredT>,
+    ReplicatedPlacement: ShapeFill<S, RepFixedTensorT, Result = MirroredRingT>,
+    ReplicatedPlacement: PrefixMul<S, RepFixedTensorT>,
 {
     fn polynomial_eval(&self, sess: &S, coeffs: Vec<f64>, x: RepFixedTensorT) -> RepFixedTensorT {
         assert!(!coeffs.is_empty());
@@ -1263,7 +1285,7 @@ where
             }
         }
 
-        let coeffs_mir: Vec<st!(AbstractMirroredFixedTensor<MirroredT>)> = coeffs[0..degree + 1]
+        let coeffs_mir: Vec<_> = coeffs[0..degree + 1]
             .iter()
             .map(|coeff| {
                 let coeff_constant = Constant::Fixed(FixedpointConstant {
@@ -1271,7 +1293,7 @@ where
                     precision: x.fractional_precision() as usize,
                 });
 
-                let coeff_mir: MirroredT = self.shape_fill(sess, coeff_constant, &x);
+                let coeff_mir: MirroredRingT = self.shape_fill(sess, coeff_constant, &x);
 
                 AbstractMirroredFixedTensor {
                     tensor: coeff_mir,
@@ -1284,7 +1306,7 @@ where
 
         let x_n: Vec<RepFixedTensorT> = (0..degree).map(|_| x.clone()).collect();
 
-        let x_pre_mul = self.prefix_mul_fixed(sess, x_n);
+        let x_pre_mul = self.prefix_mul(sess, x_n);
 
         // TODO [Yann] - this multiplication should be public/private instead
         // If x_pre_mul could be concatenated in one tensor, we could use a single
@@ -2047,7 +2069,7 @@ mod tests {
                     })
                     .collect();
 
-                let outputs = rep.prefix_mul_fixed(&sess, x_fixed_vec);
+                let outputs = rep.prefix_mul(&sess, x_fixed_vec);
 
                 for (i, output) in outputs.iter().enumerate() {
                     let output_reveal = alice.reveal(&sess, output);
@@ -2138,5 +2160,52 @@ mod tests {
         let y_targets = vec![6f64, 17., 34., 57.];
 
         test_rep_poly_eval_fixed128(x, coeffs, y_targets);
+    }
+
+    macro_rules! rep_pow2_fixed_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $i_precision: expr, $f_precision: expr) => {
+            fn $func_name(x: ArrayD<f64>, y_target: Vec<f64>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let sess = SyncSession::default();
+
+                let encode = |item: &f64| (2_i64.pow($f_precision) as f64 * item) as $tt;
+                let x_encoded = x.map(encode);
+
+                let x = FixedTensor::Host(new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()), $i_precision, $f_precision)
+                );
+
+                let exp_result = rep.pow2(&sess, &x);
+
+                let opened_exp = match exp_result {
+                    FixedTensor::Replicated(r) => alice.reveal(&sess, &r),
+                    _ => panic!("Should not produce an non-replicated tensor on a replicated placement"),
+                };
+
+                let result = Convert::decode(&opened_exp.tensor, (2 as $tt).pow($f_precision));
+
+                println!("result: {:?}", result);
+                for i in 0..y_target.len() {
+                    let error = (result.0[i] - y_target[i]).abs();
+                    assert!(error < f64::EPSILON);
+                }
+            }
+        };
+    }
+
+    rep_pow2_fixed_test!(test_rep_pow2_fixed64, pow2<u64>, 10, 2);
+    rep_pow2_fixed_test!(test_rep_pow2_fixed128, pow2<u128>, 10, 2);
+
+    #[test]
+    fn test_exp2() {
+        let x = array![1f64, 2.0, 3.0, 4.0].into_dyn();
+        let y_targets = vec![2f64, 4.0, 8.0, 16.0];
+        test_rep_pow2_fixed64(x, y_targets);
     }
 }
