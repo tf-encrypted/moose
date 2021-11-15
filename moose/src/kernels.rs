@@ -386,7 +386,6 @@ impl Session for AsyncSession {
             RepSum(op) => DispatchKernel::compile(&op, plc)?,
             RepShl(op) => DispatchKernel::compile(&op, plc)?,
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?,
-            RepIndex(op) => DispatchKernel::compile(&op, plc)?,
             RepDiag(op) => DispatchKernel::compile(&op, plc)?,
             RepSlice(op) => DispatchKernel::compile(&op, plc)?,
             RepBitDec(op) => DispatchKernel::compile(&op, plc)?,
