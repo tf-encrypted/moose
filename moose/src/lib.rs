@@ -701,9 +701,9 @@ macro_rules! concrete_dispatch_kernel {
                             let k = <$op as VariadicKernel<SyncSession, $plc, $ts, $u>>::compile(self, &plc)?;
 
                             Ok(Box::new(move |sess, operands: Vec<Value>| {
-                                let xs: Vec<$ts> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
+                                let xs: crate::error::Result<Vec<$ts>> = operands.into_iter().map(|xi| xi.try_into()).collect();
 
-                                let y: $u = k(sess, &plc, xs)?;
+                                let y: $u = k(sess, &plc, xs?)?;
                                 debug_assert_eq!(y.placement()?, plc.clone().into());
                                 if y.placement()? == plc.clone().into() {
                                     Ok(y.into())
@@ -712,6 +712,62 @@ macro_rules! concrete_dispatch_kernel {
                                 }
                             }))
                         }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                }
+            }
+        }
+
+        impl crate::kernels::DispatchKernel<crate::kernels::AsyncSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::AsyncSession, Vec<crate::computation::AsyncValue>) -> crate::error::Result<crate::computation::AsyncValue> + Send>>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature, AsyncValue};
+                use crate::kernels::{AsyncSession, VariadicKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Variadic(VariadicSignature {
+                                args: <$ts as KnownType<AsyncSession>>::TY,
+                                ret: <$u as KnownType<AsyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+                            // TODO: Do we want to be deriving the kernel inside? Probably not...
+                            let op = self.clone();
+
+                            Ok(Box::new(move |sess, operands: Vec<AsyncValue>| {
+                                assert_eq!(operands.len(), 3);
+                                let sess = sess.clone();
+                                let plc = plc.clone();
+                                let k = <$op as VariadicKernel<AsyncSession, $plc, $ts, $u>>::compile(&op, &plc)?;
+                                let (sender, result) = crate::computation::new_async_value(); // This creates a channel
+                                let op = op.clone(); // Needed for the error message for KernelError
+                                let tasks = std::sync::Arc::clone(&sess.tasks);
+                                let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                    // A bit of involved way of going from a vector of futures to a vector of concrete values extracted
+                                    let xs = futures::future::join_all(operands).await;
+                                    let xs: std::result::Result<Vec<crate::computation::Value>, _> = xs.into_iter().collect();
+                                    let xs = xs.map_err(crate::execution::map_receive_error)?;
+                                    let xs: crate::error::Result<Vec<$ts>> = xs.into_iter().map(|xi| xi.try_into()).collect();
+                                    let y: $u = k(&sess, &plc, xs?)?;
+                                    if y.placement()? == plc.clone().into() {
+                                        crate::execution::map_send_result(sender.send(y.into()))?;
+                                        Ok(())
+                                    } else {
+                                        Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                    }
+                                });
+                                let mut tasks = tasks.write().unwrap();
+                                tasks.push(task);
+
+                                Ok(result)
+                            }))                        }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
                 }
@@ -1708,6 +1764,25 @@ macro_rules! kernel {
         )+
 
         $(
+            impl crate::kernels::VariadicKernel<
+                crate::kernels::AsyncSession,
+                $plc,
+                $ts,
+                $u
+            > for $op
+            {
+                fn compile(
+                    &self,
+                    _plc: &$plc,
+                ) -> crate::error::Result<
+                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, Vec<$ts>) -> crate::error::Result<$u> + Send>
+                > {
+                    derive_runtime_kernel![variadic, $($kp)+, self]
+                }
+            }
+        )+
+
+        $(
             kernel!(__variadic $flavour, $op, $plc, vec[$ts] -> $u => $($kp)+);
         )+
     };
@@ -2314,6 +2389,47 @@ macro_rules! modelled {
                     .unwrap()
                     .try_into()
                     .unwrap()
+            }
+        }
+
+        impl crate::kernels::VariadicKernelCheck<crate::kernels::AsyncSession, $plc, $ts, $u> for $op {}
+
+        impl $t<
+            crate::kernels::AsyncSession,
+            $ts,
+            $u
+        > for $plc {
+            fn $f(
+                &self,
+                sess: &crate::kernels::AsyncSession,
+                $($($attr_id:$attr_ty),*,)?
+                xs: &[$ts]
+            ) -> $u {
+                use crate::computation::{KnownType, VariadicSignature};
+                use crate::kernels::{Session, AsyncSession};
+                use std::convert::TryInto;
+
+                let sig = VariadicSignature {
+                    args: <$ts as KnownType<AsyncSession>>::TY,
+                    ret: <$u as KnownType<AsyncSession>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+
+                // Trying to find a way for the concrete value to turn into a AsyncValue (future)
+                let arguments = xs.iter().map(|x| {
+                    let (sender, fut_x) = crate::computation::new_async_value(); // This creates a channel
+                    crate::execution::map_send_result(sender.send(x.clone().into())).unwrap();
+                    fut_x
+                }).collect();
+
+                let future = sess.execute(op.into(), &self.into(), arguments).unwrap();
+
+                let handle = tokio::runtime::Handle::current();
+                let _guard = handle.enter();
+                futures::executor::block_on(future).unwrap().try_into().unwrap()
             }
         }
 
