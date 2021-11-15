@@ -1364,7 +1364,7 @@ impl ToTextual for Operator {
             BitSampleSeeded(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
-            AesDecrypt(_) => unimplemented!(),
+            AesDecrypt(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
             FixedpointAdd(op) => op.to_textual(),
@@ -1536,6 +1536,7 @@ impl_to_textual!(BitNegOp, "{op}: {}", sig);
 impl_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
 impl_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
 impl_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
+impl_to_textual!(AesDecryptOp, "{op}: {}", sig);
 impl_to_textual!(
     FixedpointEncodeOp,
     "{op}{{fractional_precision={}, integral_precision={}}}: {}",
@@ -1835,11 +1836,11 @@ impl ToTextual for Ty {
             Ty::Mirrored3BitTensor => "Mirrored3BitTensor".to_string(),
             Ty::Mirrored3Fixed64Tensor => "Mirrored3Fixed64Tensor".to_string(),
             Ty::Mirrored3Fixed128Tensor => "Mirrored3Fixed128Tensor".to_string(),
-            Ty::HostFixed128AesTensor => unimplemented!(),
-            Ty::HostAesKey => unimplemented!(),
-            Ty::ReplicatedAesKey => unimplemented!(),
-            Ty::Fixed128AesTensor => unimplemented!(),
-            Ty::AesTensor => unimplemented!(),
+            Ty::HostFixed128AesTensor => "HostFixed128AesTensor".to_string(),
+            Ty::HostAesKey => "HostAesKey".to_string(),
+            Ty::ReplicatedAesKey => "ReplicatedAesKey".to_string(),
+            Ty::Fixed128AesTensor => "Fixed128AesTensor".to_string(),
+            Ty::AesTensor => "AesTensor".to_string(),
             Ty::AesKey => "AesKey".to_string(),
         }
     }
