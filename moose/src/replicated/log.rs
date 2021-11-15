@@ -1,11 +1,7 @@
-use crate::computation::{
-    HostPlacement, KnownType, Placed, RepEqualOp, RepNegOp, ReplicatedPlacement,
-};
+use crate::computation::{KnownType, Placed, RepEqualOp, ReplicatedPlacement};
 use crate::error::Result;
 use crate::kernels::*;
-use crate::replicated::{
-    RepTen, ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor,
-};
+use crate::replicated::{ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor};
 use crate::{Const, Ring};
 
 modelled!(PlacementEqual::equal, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, RepEqualOp);
@@ -29,20 +25,17 @@ impl RepEqualOp {
     where
         RepRingT: Ring<BitLength = N>,
 
-        ReplicatedPlacement: PlacementBitDecSetup<S, S::ReplicatedSetup, RepRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementBitDec<S, RepRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepBitT>,
         ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
-        ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementMul<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
     {
-        let setup = rep.gen_setup(sess);
-
         let z = rep.sub(sess, &x, &y);
-        let bits = rep.bit_decompose(sess, &setup, &z);
+        let bits = rep.bit_decompose(sess, &z);
 
         let v: Vec<_> = (0..RepRingT::BitLength::VALUE)
             .map(|i| rep.index(sess, i, &bits))
@@ -54,79 +47,7 @@ impl RepEqualOp {
 
         // TODO we can optimize this by having a binary multipler like
         // we are doing with the binary adder in bit decompitision
-        Ok(v_not
-            .iter()
-            .fold(ones, |acc, y| rep.mul_setup(sess, &setup, &acc, y)))
-    }
-}
-
-modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor, RepNegOp);
-modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepNegOp);
-modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepNegOp);
-
-kernel! {
-    RepNegOp,
-    [
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [runtime] Self::rep_bit_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [runtime] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor ) ->ReplicatedRing128Tensor  => [runtime] Self::rep_rep_kernel),
-    ]
-}
-
-impl RepNegOp {
-    fn rep_bit_kernel<S: Session, HostBitT>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        x: RepTen<HostBitT>,
-    ) -> Result<RepTen<HostBitT>>
-    where
-        HostPlacement: PlacementNeg<S, HostBitT, HostBitT>,
-    {
-        let (player0, _player1, player2) = rep.host_placements();
-
-        let RepTen {
-            shares: [[x00, x10], [x11, x21], [x22, x02]],
-        } = x;
-
-        // TODO(Morten)
-        // we could choose share to change at random
-        // to more fairly distribute compute load
-        let y00 = player0.neg(sess, &x00);
-        let y10 = x10;
-        let y11 = x11;
-        let y21 = x21;
-        let y22 = x22;
-        let y02 = player2.neg(sess, &x02);
-
-        Ok(RepTen {
-            shares: [[y00, y10], [y11, y21], [y22, y02]],
-        })
-    }
-
-    fn rep_rep_kernel<S: Session, HostRepT>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        x: RepTen<HostRepT>,
-    ) -> Result<RepTen<HostRepT>>
-    where
-        HostPlacement: PlacementNeg<S, HostRepT, HostRepT>,
-    {
-        let (player0, player1, player2) = rep.host_placements();
-
-        let RepTen {
-            shares: [[x00, x10], [x11, x21], [x22, x02]],
-        } = x;
-
-        let y00 = player0.neg(sess, &x00);
-        let y10 = player0.neg(sess, &x10);
-        let y11 = player1.neg(sess, &x11);
-        let y21 = player1.neg(sess, &x21);
-        let y22 = player2.neg(sess, &x22);
-        let y02 = player2.neg(sess, &x02);
-
-        Ok(RepTen {
-            shares: [[y00, y10], [y11, y21], [y22, y02]],
-        })
+        Ok(v_not.iter().fold(ones, |acc, y| rep.mul(sess, &acc, y)))
     }
 }
 
@@ -153,7 +74,6 @@ mod tests {
         };
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
 
         let x = AbstractHostRingTensor::from_raw_plc(
             array![1024u64, 5, 4]
@@ -169,9 +89,9 @@ mod tests {
             bob,
         );
 
-        let x_shared = rep.share(&sess, &setup, &x);
+        let x_shared = rep.share(&sess, &x);
 
-        let y_shared = rep.share(&sess, &setup, &y);
+        let y_shared = rep.share(&sess, &y);
 
         let res: ReplicatedBitTensor = rep.equal(&sess, &x_shared, &y_shared);
 

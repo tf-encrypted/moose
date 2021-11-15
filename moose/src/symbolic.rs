@@ -4,10 +4,10 @@ use crate::computation::{
 };
 use crate::error::{Error, Result};
 use crate::kernels::{DispatchKernel, PlacementPlace, Session};
-use crate::prim::PrfKey;
-use crate::replicated::AbstractReplicatedSetup;
+use crate::replicated::ReplicatedSetup;
+use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
@@ -89,20 +89,23 @@ where
     }
 }
 
+#[derive(Default)]
+struct SymbolicSessionState {
+    pub ops: Vec<Operation>,
+    pub replicated_keys:
+        HashMap<ReplicatedPlacement, Arc<<ReplicatedSetup as KnownType<SymbolicSession>>::Type>>,
+}
+
 pub struct SymbolicSession {
     pub strategy: Box<dyn SymbolicStrategy>,
-    pub ops: Arc<RwLock<Vec<Operation>>>, // TODO use HashMap so we can do some consistency checks on the fly?
-    pub replicated_keys:
-        HashMap<ReplicatedPlacement, Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>,
-    // TODO(Dragos) Change this to <ReplicatedSetup as KnownType<Self>>::Type
+    state: Arc<RwLock<SymbolicSessionState>>,
 }
 
 impl Default for SymbolicSession {
     fn default() -> Self {
         SymbolicSession {
             strategy: Box::new(DefaultSymbolicStrategy),
-            ops: Default::default(),
-            replicated_keys: Default::default(),
+            state: Default::default(),
         }
     }
 }
@@ -114,16 +117,24 @@ impl SymbolicSession {
         operands: &[&str],
         plc: &Placement,
     ) -> String {
-        let mut ops = self.ops.write().unwrap();
-        let op_name: String = format!("op_{}", ops.len());
+        let mut state = self.state.write();
+        let op_name: String = format!("op_{}", state.ops.len());
         let op = Operation {
             name: op_name.clone(),
             kind: operator.clone().into(),
             inputs: operands.iter().map(|op| op.to_string()).collect(),
             placement: plc.clone(),
         };
-        ops.push(op);
+        state.ops.push(op);
         op_name
+    }
+
+    /// Apply a given closure to the iterator over the ops.
+    ///
+    /// The "ops" vector is locked for READ for the duration of the call.
+    pub fn ops_iter<F: FnMut(std::slice::Iter<Operation>) -> T, T>(&self, mut operation: F) -> T {
+        let state = self.state.read();
+        operation(state.ops.iter())
     }
 }
 
@@ -139,8 +150,30 @@ impl Session for SymbolicSession {
     }
 
     type ReplicatedSetup = <crate::replicated::ReplicatedSetup as KnownType<SymbolicSession>>::Type;
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
-        self.replicated_keys.get(plc).unwrap()
+
+    /// Produce a new replicated setup or returned a previously produced setup for the placement
+    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
+        let state = self.state.read();
+        match state.replicated_keys.get(plc) {
+            Some(setup) => Arc::clone(setup),
+            None => {
+                use crate::kernels::PlacementSetupGen;
+                drop(state); // Release the read access
+
+                // This may (likely) grab a write lock to the state inside
+                let new_setup = plc.gen_setup(self);
+
+                // Grab a new write lock.
+                let mut state = self.state.write();
+                // Only insert if missing, since someone else might have done that already
+                // If our `new_setup` ends up being unused due to the race, it will be pruned later on by a dedicated pruning pass.
+                let setup = state
+                    .replicated_keys
+                    .entry(plc.clone())
+                    .or_insert_with(|| Arc::new(new_setup));
+                Arc::clone(setup)
+            }
+        }
     }
 }
 
@@ -179,6 +212,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RingFill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepFill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            AesDecrypt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitXor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitAnd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitNeg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -209,21 +243,23 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepDot(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepAddN(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            AddN(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepShl(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepMsb(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepAbs(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            RepAnd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            RepXor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            RepNeg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepIfElse(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepIndex(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Index(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepDiag(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepSlice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepBitDec(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepBitCompose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepNeg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AdtAdd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AdtSub(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AdtShl(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -235,7 +271,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             HostMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostSqrt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            HostAddN(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostDiag(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -334,14 +369,9 @@ impl SymbolicExecutor {
                 })?;
             env.insert(op.name.clone(), value);
         }
-        let ops = session.ops.read().map_err(|e| {
-            Error::Compilation(format!(
-                "Failed to get operations from the Symbolic Session due to an error: {}",
-                e
-            ))
-        })?;
+        let state = session.state.read();
         Ok(Computation {
-            operations: ops.clone(),
+            operations: state.ops.clone(),
         })
     }
 }

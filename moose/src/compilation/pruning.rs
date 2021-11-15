@@ -27,7 +27,7 @@ pub fn prune_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text_computation::ToTextual;
+    use crate::textual::ToTextual;
     use std::convert::TryInto;
 
     #[test]

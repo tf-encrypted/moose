@@ -4,7 +4,7 @@ use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::symbolic::Symbolic;
-use crate::{Const, Ring, N128, N64};
+use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray::Slice;
@@ -192,6 +192,47 @@ impl<S: Session> PlacementPlace<S, Unit> for HostPlacement {
             Ok(place) if &place == self => x,
             _ => Unit(self.clone()),
         }
+    }
+}
+
+impl InputOp {
+    pub(crate) fn host_bitarray64<S: Session, HostBitTensorT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<AbstractHostBitArray<HostBitTensorT, N64>>
+    where
+        HostPlacement: PlacementInput<S, HostBitTensorT>,
+    {
+        // TODO(Morten) ideally we should verify that shape of bit tensor
+        let bit_tensor = plc.input(sess, arg_name);
+        Ok(AbstractHostBitArray(bit_tensor, PhantomData))
+    }
+
+    pub(crate) fn host_bitarray128<S: Session, HostBitTensorT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<AbstractHostBitArray<HostBitTensorT, N128>>
+    where
+        HostPlacement: PlacementInput<S, HostBitTensorT>,
+    {
+        // TODO(Morten) ideally we should verify that shape of bit tensor
+        let bit_tensor = plc.input(sess, arg_name);
+        Ok(AbstractHostBitArray(bit_tensor, PhantomData))
+    }
+
+    pub(crate) fn host_bitarray224<S: Session, HostBitTensorT>(
+        sess: &S,
+        plc: &HostPlacement,
+        arg_name: String,
+    ) -> Result<AbstractHostBitArray<HostBitTensorT, N224>>
+    where
+        HostPlacement: PlacementInput<S, HostBitTensorT>,
+    {
+        // TODO(Morten) ideally we should verify that shape of bit tensor
+        let bit_tensor = plc.input(sess, arg_name);
+        Ok(AbstractHostBitArray(bit_tensor, PhantomData))
     }
 }
 
@@ -655,6 +696,20 @@ impl HostIndexAxisOp {
     }
 }
 
+impl IndexOp {
+    pub(crate) fn host_kernel<S: Session, HostBitT, N>(
+        sess: &S,
+        plc: &HostPlacement,
+        index: usize,
+        x: AbstractHostBitArray<HostBitT, N>,
+    ) -> Result<HostBitT>
+    where
+        HostPlacement: PlacementIndexAxis<S, HostBitT, HostBitT>,
+    {
+        Ok(plc.index_axis(sess, 0, index, &x.0))
+    }
+}
+
 modelled!(PlacementShlDim::shl_dim, HostPlacement, attributes[amount:usize, bit_length: usize] (HostBitTensor) -> HostBitTensor, HostShlDimOp);
 
 kernel! {
@@ -1026,19 +1081,8 @@ impl HostSumOp {
     }
 }
 
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor, HostAddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor, HostAddNOp);
-
-kernel! {
-    HostAddNOp,
-    [
-        (HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor => [runtime] Self::kernel),
-        (HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor => [runtime] Self::kernel),
-    ]
-}
-
-impl HostAddNOp {
-    fn kernel<S: RuntimeSession, T>(
+impl AddNOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         xs: &[AbstractHostRingTensor<T>],
@@ -1253,14 +1297,16 @@ kernel! {
 impl RingFixedpointEncodeOp {
     fn float32_kernel<S: RuntimeSession>(
         _sess: &S,
-        _plc: &HostPlacement,
-        _scaling_base: u64,
-        _scaling_exp: u32,
-        _x: HostFloat32Tensor,
+        plc: &HostPlacement,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: HostFloat32Tensor,
     ) -> Result<HostRing64Tensor> {
-        // let scaling_factor = u64::pow(scaling_base, scaling_exp);
-        // HostRing64Tensor::encode(&x, scaling_factor)
-        unimplemented!()
+        let scaling_factor = u64::pow(scaling_base, scaling_exp);
+        let x_upshifted = &x.0 * (scaling_factor as f32);
+        let x_converted: ArrayD<Wrapping<u64>> =
+            x_upshifted.mapv(|el| Wrapping((el as i64) as u64));
+        Ok(AbstractHostRingTensor(x_converted, plc.clone()))
     }
 
     fn float64_kernel<S: RuntimeSession>(
@@ -1498,7 +1544,7 @@ pub struct HostBitTensor(pub ArrayD<u8>, HostPlacement);
 
 impl std::fmt::Debug for HostBitTensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.as_slice().fmt(f)
+        self.0.as_slice().unwrap().fmt(f)
     }
 }
 
@@ -1713,7 +1759,7 @@ impl BitNegOp {
         plc: &HostPlacement,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        Ok(HostBitTensor(!x.0, plc.clone()))
+        Ok(HostBitTensor((!x.0) & 1, plc.clone()))
     }
 }
 
@@ -1965,6 +2011,18 @@ impl RingInjectOp {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostBitArray<HostBitTensorT, N>(pub HostBitTensorT, pub PhantomData<N>);
 
+impl<HostBitT: CanonicalType, N> CanonicalType for AbstractHostBitArray<HostBitT, N> {
+    type Type = AbstractHostBitArray<<HostBitT as CanonicalType>::Type, N>;
+}
+
+impl<HostBitT, N: Const> BitArray for AbstractHostBitArray<HostBitT, N> {
+    type Len = N;
+}
+
+impl<HostBitT: Placed, N: Const> BitArray for Symbolic<AbstractHostBitArray<HostBitT, N>> {
+    type Len = N;
+}
+
 pub type HostBitArray64 = AbstractHostBitArray<HostBitTensor, N64>;
 
 #[cfg(test)]
@@ -1994,6 +2052,18 @@ impl SymbolicType for HostBitArray128 {
     type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N128>>;
 }
 
+pub type HostBitArray224 = AbstractHostBitArray<HostBitTensor, N224>;
+
+impl SymbolicType for HostBitArray224 {
+    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N224>>;
+}
+
+pub type HostBitArray256 = AbstractHostBitArray<HostBitTensor, N256>;
+
+impl SymbolicType for HostBitArray256 {
+    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N256>>;
+}
+
 impl<HostBitT: Placed, N> From<AbstractHostBitArray<HostBitT, N>>
     for Symbolic<AbstractHostBitArray<HostBitT, N>>
 where
@@ -2015,6 +2085,41 @@ where
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
         }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AbstractHostAesKey<HostBitArrayT>(pub(crate) HostBitArrayT);
+
+impl<HostBitArrayT: Placed<Placement = HostPlacement>> Placed
+    for AbstractHostAesKey<HostBitArrayT>
+{
+    type Placement = HostBitArrayT::Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        self.0.placement()
+    }
+}
+
+moose_type!(HostAesKey = AbstractHostAesKey<HostBitArray128>);
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AbstractHostFixedAesTensor<HostBitArrayT> {
+    pub tensor: HostBitArrayT,
+    pub integral_precision: u32,
+    pub fractional_precision: u32,
+}
+
+moose_type!(HostFixed128AesTensor = AbstractHostFixedAesTensor<HostBitArray224>);
+
+impl<HostBitArrayT: Placed> Placed for AbstractHostFixedAesTensor<HostBitArrayT>
+where
+    <HostBitArrayT as Placed>::Placement: Into<Placement>,
+{
+    type Placement = Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.tensor.placement()?.into())
     }
 }
 

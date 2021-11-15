@@ -1835,7 +1835,7 @@ mod tests {
         #[case] input_data: Value,
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        use crate::text_computation::ToTextual;
+        use crate::textual::ToTextual;
 
         let data_type_str = input_data.ty().to_textual();
         let source_template = r#"x_uri = Input {arg_name="x_uri"}: () -> String () @Host(alice)

@@ -1,3 +1,4 @@
+use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Identity, Kernel,
@@ -5,14 +6,9 @@ use crate::execution::{
 };
 use crate::fixedpoint::Convert;
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::{
-    AbstractHostFixedTensor, AbstractHostRingTensor, HostBitTensor, HostFixed128Tensor,
-    HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
-    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostString,
-    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
-};
+use crate::host::*;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
-use crate::replicated::ReplicatedSetup;
+use crate::replicated::*;
 use crate::{closure_kernel, function_kernel};
 use crate::{computation::*, for_all_values};
 use std::collections::HashMap;
@@ -30,7 +26,7 @@ pub trait Session {
     ) -> Result<Self::Value>;
 
     type ReplicatedSetup;
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup;
+    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup>;
 }
 
 /// Trait for sessions that are intended for run-time use only.
@@ -49,7 +45,7 @@ pub trait RuntimeSession: Session {
 /// Session object for synchronous/eager execution (in new framework).
 pub struct SyncSession {
     session_id: SessionId,
-    replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
+    replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<ReplicatedSetup>>>,
     arguments: HashMap<String, Value>,
     role_assignments: HashMap<Role, Identity>,
 }
@@ -120,18 +116,20 @@ impl Session for SyncSession {
             RepAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepAnd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepXor(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepTruncPr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepMsb(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepAbs(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepAddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            AddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepIndex(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Index(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepDiag(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -145,6 +143,7 @@ impl Session for SyncSession {
             AdtReveal(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            AesDecrypt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Constant(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Input(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -155,7 +154,6 @@ impl Session for SyncSession {
             HostMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqrt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostAddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -221,8 +219,12 @@ impl Session for SyncSession {
     }
 
     type ReplicatedSetup = ReplicatedSetup;
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
-        self.replicated_keys.get(plc).unwrap()
+    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
+        let mut replicated_keys = self.replicated_keys.write().unwrap();
+        let setup = replicated_keys
+            .entry(plc.clone())
+            .or_insert_with(|| Arc::new(plc.gen_setup(self)));
+        Arc::clone(setup)
     }
 }
 
@@ -474,7 +476,7 @@ impl Session for AsyncSession {
     }
 
     type ReplicatedSetup = ReplicatedSetup;
-    fn replicated_setup(&self, _plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
+    fn replicated_setup(&self, _plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
         unimplemented!()
     }
 }
@@ -575,6 +577,10 @@ pub trait PlacementReshape<S: Session, T, ShapeT, O> {
     fn reshape(&self, sess: &S, x: &T, shape: &ShapeT) -> O;
 }
 
+pub trait PlacementDecrypt<S: Session, KeyT, C, O> {
+    fn decrypt(&self, sess: &S, key: &KeyT, ciphertext: &C) -> O;
+}
+
 pub trait PlacementKeyGen<S: Session, KeyT> {
     fn gen_key(&self, sess: &S) -> KeyT;
 }
@@ -627,20 +633,12 @@ pub trait PlacementAnd<S: Session, T, U, O> {
     fn and(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
-pub trait PlacementAndSetup<S: Session, SetupT, T, U, O> {
-    fn and_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
-}
-
 pub trait PlacementBitExtract<S: Session, T, O> {
     fn bit_extract(&self, sess: &S, bit_idx: usize, x: &T) -> O;
 }
 
 pub trait PlacementBitDec<S: Session, T, O> {
     fn bit_decompose(&self, sess: &S, x: &T) -> O;
-}
-
-pub trait PlacementBitDecSetup<S: Session, SetupT, T, O> {
-    fn bit_decompose(&self, sess: &S, setup: &SetupT, x: &T) -> O;
 }
 
 pub trait PlacementBitCompose<S: Session, T, O> {
@@ -651,24 +649,8 @@ pub trait PlacementRingInject<S: Session, T, O> {
     fn ring_inject(&self, sess: &S, bit_idx: usize, x: &T) -> O;
 }
 
-pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
-    fn mul_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
-}
-
-pub trait PlacementDotSetup<S: Session, SetupT, T, U, O> {
-    fn dot_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
-}
-
-pub trait PlacementDivSetup<S: Session, SetupT, T, U, O> {
-    fn div_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
-}
-
 pub trait PlacementShare<S: Session, T, O> {
     fn share(&self, sess: &S, x: &T) -> O;
-}
-
-pub trait PlacementShareSetup<S: Session, SetupT, T, O> {
-    fn share(&self, sess: &S, setup: &SetupT, x: &T) -> O;
 }
 
 pub trait PlacementReveal<S: Session, T, O> {
@@ -852,12 +834,12 @@ pub trait PlacementDaBitProvider<S: Session, ShapeT, O1, O2> {
     ) -> (O1, O2);
 }
 
-pub trait PlacementAbs<S: Session, SetupT, T, O> {
-    fn abs(&self, sess: &S, setup: &SetupT, x: &T) -> O;
+pub trait PlacementAbs<S: Session, T, O> {
+    fn abs(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementMsb<S: Session, SetupT, T, O> {
-    fn msb(&self, sess: &S, setup: &SetupT, x: &T) -> O;
+pub trait PlacementMsb<S: Session, T, O> {
+    fn msb(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait PlacementSign<S: Session, T, O> {
@@ -1032,13 +1014,13 @@ impl Compile<SyncKernel> for Operator {
             BitSampleSeeded(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
+            BitNeg(_) => unimplemented!(),
             PrimDeriveSeed(op) => Compile::<SyncKernel>::compile(op, ctx),
             PrimPrfKeyGen(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointSub(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostAddN(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointAdd(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointSub(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointMul(op) => unimplemented!("Not done yet: {:?}", op),
@@ -1067,6 +1049,7 @@ impl Compile<SyncKernel> for Operator {
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO
+            AesDecrypt(_) => unimplemented!(),
             HostIndexAxis(_) => unimplemented!(),
             HostBitDec(_) => unimplemented!(),
             HostShlDim(_) => unimplemented!(),
@@ -1074,15 +1057,7 @@ impl Compile<SyncKernel> for Operator {
             HostDiag(_) => unimplemented!(),
             HostSqueeze(_) => unimplemented!(),
             Cast(_) => unimplemented!("No implementation of Cast for the old framework"),
-            // NOTE the following are not supported by design
-            AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
-            | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
-            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
-            | RepEqual(_) | RepIfElse(_) | FixedpointMul(_) | FixedpointDot(_)
-            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) | BitNeg(_)
-            | RepNeg(_) | FixedpointDiv(_) | Sign(_) | RepAddN(_) | RepBitCompose(_) => {
+            _ => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -1138,9 +1113,10 @@ impl Compile<AsyncKernel> for Operator {
             BitSampleSeeded(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            BitNeg(_) => unimplemented!(),
             PrimDeriveSeed(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimPrfKeyGen(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostAddN(op) => unimplemented!("Not done yet: {:?}", op),
+            AddN(op) => unimplemented!("Not done yet: {:?}", op),
             AtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
             Slice(op) => unimplemented!("Not done yet: {:?}", op),
             Ones(op) => unimplemented!("Not done yet: {:?}", op),
@@ -1156,6 +1132,7 @@ impl Compile<AsyncKernel> for Operator {
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO implement below (needed until we switch to new framework for execution)
+            AesDecrypt(_) => unimplemented!(),
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
             | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostShlDim(_) | HostSqrt(_)
@@ -1175,14 +1152,7 @@ impl Compile<AsyncKernel> for Operator {
             FloatingpointInverse(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointMean(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointSum(op) => unimplemented!("Not done yet: {:?}", op),
-            // NOTE the following are not supported by design
-            AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
-            | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
-            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | RepEqual(_) | RepIfElse(_) | RepIndex(_) | RepDiag(_) | RepShlDim(_)
-            | RepSlice(_) | BitNeg(_) | RepNeg(_) | RepBitDec(_) | FixedpointDiv(_) | Sign(_)
-            | RepAddN(_) | RepBitCompose(_) => {
+            _ => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -1359,7 +1329,6 @@ impl Compile<Kernel> for HostOnesOp {
 
 impl Compile<Kernel> for HostConcatOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        use crate::host::concatenate;
         let axis = self.axis as usize;
         match self.sig {
             signature![vec[_] -> Ty::HostFloat32Tensor] => {
@@ -2089,6 +2058,7 @@ macro_rules! constant_kernels {
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> PrfKey, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Seed, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
+        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
 
         kernel! {
@@ -2100,8 +2070,9 @@ macro_rules! constant_kernels {
                 (HostPlacement, () -> HostShape => [runtime] attributes[value: RawShape] Self::shape_kernel),
                 (HostPlacement, () -> PrfKey => [runtime] attributes[value: RawPrfKey] Self::prf_key_kernel),
                 (HostPlacement, () -> Seed => [runtime] attributes[value: RawSeed] Self::seed_kernel),
-                (HostPlacement, () -> crate::logical::Tensor => [hybrid] attributes[value] Self::logical_kernel),
-                (HostPlacement, () -> Float64Tensor => [hybrid] attributes[value] Self::float_kernel),
+                (HostPlacement, () -> crate::logical::Tensor => [hybrid] attributes[sig, value] Self::logical_kernel),
+                (HostPlacement, () -> Float32Tensor => [hybrid] attributes[value] Self::float32_kernel),
+                (HostPlacement, () -> Float64Tensor => [hybrid] attributes[value] Self::float64_kernel),
             ]
         }
     };
@@ -2468,6 +2439,28 @@ for_all_values! {( $($value:ty),* ) => (
     )*
 )}
 
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> crate::logical::Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Float32Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Float64Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitArray64, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitArray128, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitArray224, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostAesKey, InputOp);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedBitTensor, InputOp);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedRing64Tensor, InputOp);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedRing128Tensor, InputOp);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedFixed64Tensor, InputOp);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedFixed128Tensor, InputOp);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedBitArray64, InputOp);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedBitArray128, InputOp);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedBitArray224, InputOp);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedAesKey, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> AesKey, InputOp);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> AesKey, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> AesTensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Fixed128AesTensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFixed128AesTensor, InputOp);
+
 kernel! {
     InputOp, [
         (HostPlacement, () -> HostString => [runtime] attributes[arg_name] Self::kernel),
@@ -2475,6 +2468,9 @@ kernel! {
         (HostPlacement, () -> HostShape => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Seed => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> PrfKey => [runtime] attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostBitArray64 => [hybrid] attributes[arg_name] Self::host_bitarray64),
+        (HostPlacement, () -> HostBitArray128 => [hybrid] attributes[arg_name] Self::host_bitarray128),
+        (HostPlacement, () -> HostBitArray224 => [hybrid] attributes[arg_name] Self::host_bitarray224),
         (HostPlacement, () -> HostBitTensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostRing64Tensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostRing128Tensor => [runtime] attributes[arg_name] Self::kernel),
@@ -2490,7 +2486,24 @@ kernel! {
         (HostPlacement, () -> HostUint64Tensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostFixed64Tensor => [runtime] attributes[arg_name] Self::missing_kernel),
         (HostPlacement, () -> HostFixed128Tensor => [runtime] attributes[arg_name] Self::missing_kernel),
-
+        (HostPlacement, () -> crate::logical::Tensor => [hybrid] attributes[sig, arg_name] Self::logical_kernel),
+        (HostPlacement, () -> Float32Tensor => [hybrid] attributes[arg_name] Self::float32_kernel),
+        (HostPlacement, () -> Float64Tensor => [hybrid] attributes[arg_name] Self::float64_kernel),
+        (HostPlacement, () -> AesKey => [hybrid] attributes[arg_name] Self::aes_kernel_on_host),
+        (HostPlacement, () -> HostAesKey => [hybrid] attributes[arg_name] Self::host_aes_kernel),
+        (HostPlacement, () -> AesTensor => [hybrid] attributes[arg_name] Self::aestensor),
+        (HostPlacement, () -> Fixed128AesTensor => [hybrid] attributes[arg_name] Self::fixed_aestensor),
+        (HostPlacement, () -> HostFixed128AesTensor => [hybrid] attributes[sig, arg_name] Self::host_fixed_aestensor),
+        (ReplicatedPlacement, () -> ReplicatedBitTensor => [hybrid] attributes[arg_name] Self::replicated_ring_kernel),
+        (ReplicatedPlacement, () -> ReplicatedRing64Tensor => [hybrid] attributes[arg_name] Self::replicated_ring_kernel),
+        (ReplicatedPlacement, () -> ReplicatedRing128Tensor => [hybrid] attributes[arg_name] Self::replicated_ring_kernel),
+        (ReplicatedPlacement, () -> ReplicatedFixed64Tensor => [hybrid] attributes[sig, arg_name] Self::replicated_fixed_kernel),
+        (ReplicatedPlacement, () -> ReplicatedFixed128Tensor => [hybrid] attributes[sig, arg_name] Self::replicated_fixed_kernel),
+        (ReplicatedPlacement, () -> ReplicatedBitArray64 => [hybrid] attributes[arg_name] Self::replicated_bitarray64),
+        (ReplicatedPlacement, () -> ReplicatedBitArray128 => [hybrid] attributes[arg_name] Self::replicated_bitarray128),
+        (ReplicatedPlacement, () -> ReplicatedBitArray224 => [hybrid] attributes[arg_name] Self::replicated_bitarray224),
+        (ReplicatedPlacement, () -> AesKey => [hybrid] attributes[arg_name] Self::aes_kernel_on_replicated),
+        (ReplicatedPlacement, () -> ReplicatedAesKey => [hybrid] attributes[arg_name] Self::replicated_aes_kernel),
     ]
 }
 

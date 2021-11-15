@@ -299,7 +299,7 @@ fn lower_op(op: &Operation) -> Operation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text_computation::ToTextual;
+    use crate::textual::ToTextual;
     use std::convert::TryInto;
 
     #[test]

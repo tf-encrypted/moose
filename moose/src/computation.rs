@@ -1,23 +1,13 @@
-use crate::additive::{
-    AdditiveBitTensor, AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape,
-};
+use crate::additive::*;
+use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::{
-    HostBitArray128, HostBitArray64, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
-    HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor,
-    HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostString, HostUint16Tensor,
-    HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
-};
+use crate::host::*;
 use crate::kernels::Session;
 use crate::logical::{Tensor, TensorDType};
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
-use crate::replicated::{
-    ReplicatedBitArray128, ReplicatedBitArray64, ReplicatedBitTensor, ReplicatedFixed128Tensor,
-    ReplicatedFixed64Tensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup,
-    ReplicatedShape,
-};
+use crate::replicated::*;
 use crate::symbolic::Symbolic;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
@@ -26,6 +16,8 @@ use paste::paste;
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::generichash;
 use std::convert::TryFrom;
+use std::fs::File;
+use std::path::Path;
 
 pub const TAG_BYTES: usize = 128 / 8;
 static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::DIGEST_MIN);
@@ -453,6 +445,8 @@ values![
     HostBitTensor,
     HostBitArray64,
     HostBitArray128,
+    HostBitArray224,
+    HostBitArray256,
     HostRing64Tensor,
     HostRing128Tensor,
     HostFixed64Tensor,
@@ -467,6 +461,8 @@ values![
     HostUint16Tensor,
     HostUint32Tensor,
     HostUint64Tensor,
+    HostFixed128AesTensor,
+    HostAesKey,
     Fixed64Tensor,
     Fixed128Tensor,
     Float32Tensor,
@@ -476,14 +472,24 @@ values![
     ReplicatedBitTensor,
     ReplicatedBitArray64,
     ReplicatedBitArray128,
+    ReplicatedBitArray224,
     ReplicatedFixed64Tensor,
     ReplicatedFixed128Tensor,
+    ReplicatedAesKey,
     ReplicatedSetup,
     ReplicatedShape,
+    Mirrored3Ring64Tensor,
+    Mirrored3Ring128Tensor,
+    Mirrored3BitTensor,
+    Mirrored3Fixed64Tensor,
+    Mirrored3Fixed128Tensor,
     AdditiveBitTensor,
     AdditiveRing64Tensor,
     AdditiveRing128Tensor,
     AdditiveShape,
+    Fixed128AesTensor,
+    AesKey,
+    AesTensor,
 ];
 
 // A macros to define something common for all the possible values
@@ -902,6 +908,7 @@ operators![
     Shape,
     PrimDeriveSeed,
     PrimPrfKeyGen,
+    AesDecrypt,
     AtLeast2D,
     Slice,
     Ones,
@@ -932,7 +939,6 @@ operators![
     HostReshape,
     HostSqueeze,
     HostSum,
-    HostAddN,
     HostOnes,
     HostConcat,
     HostTranspose,
@@ -1006,15 +1012,17 @@ operators![
     RepMul,
     RepMsb,
     RepDot,
+    RepAnd,
+    RepXor,
     RepNeg,
     RepFixedpointMean,
     RepShl,
     RepSum,
-    RepAddN,
+    AddN,
     RepTruncPr,
     RepToAdt,
     RepIndexAxis,
-    RepIndex,
+    Index,
     RepDiag,
     RepSlice,
     RepBitDec,
@@ -1241,11 +1249,6 @@ pub struct HostSumOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct HostAddNOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct HostTransposeOp {
     pub sig: Signature,
 }
@@ -1321,6 +1324,11 @@ pub struct PrimDeriveSeedOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct PrimPrfKeyGenOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct AesDecryptOp {
     pub sig: Signature,
 }
 
@@ -1641,6 +1649,21 @@ pub struct RepDotOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepAndOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepXorOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepNegOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepFixedpointMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -1649,7 +1672,7 @@ pub struct RepFixedpointMeanOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepAddNOp {
+pub struct AddNOp {
     pub sig: Signature,
 }
 
@@ -1697,7 +1720,7 @@ pub struct RepIndexAxisOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepIndexOp {
+pub struct IndexOp {
     pub sig: Signature,
     pub index: usize,
 }
@@ -1730,11 +1753,6 @@ pub struct RepEqualOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepIfElseOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepNegOp {
     pub sig: Signature,
 }
 
@@ -1894,11 +1912,41 @@ pub struct Operation {
     pub placement: Placement,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Computation {
     // pub constants: Vec<Value>,
     // pub operators: Vec<Operator>,
     pub operations: Vec<Operation>,
+}
+
+impl Computation {
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
+        rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
+    }
+
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        rmp_serde::to_vec(self).map_err(|e| Error::SerializationError(e.to_string()))
+    }
+
+    pub fn from_disk<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let p = path.as_ref();
+        let f = File::open(p).map_err(|e| {
+            Error::Unexpected(Some(format!(
+                "File not found error for path {0}. Original: {1}.",
+                p.display(),
+                e
+            )))
+        })?;
+        rmp_serde::decode::from_read(f).map_err(|e| Error::SerializationError(e.to_string()))
+    }
+
+    pub fn to_disk<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let mut file_buffer =
+            File::create(path).map_err(|e| Error::SerializationError(e.to_string()))?;
+        rmp_serde::encode::write(&mut file_buffer, self)
+            .map_err(|e| Error::SerializationError(e.to_string()))?;
+        Ok(())
+    }
 }
 
 mod tests {
