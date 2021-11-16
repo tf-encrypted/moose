@@ -98,6 +98,8 @@ impl Pow2Op {
 
         // computes 2^{integral_part}
         let d = rep.pow2_from_bits(sess, &higher_bits.as_slice()[0..integral_precision]);
+
+        // computes the 2^x from 2^{int(x)} and frac(x)
         let g = rep.exp_from_parts(
             sess,
             &d,
@@ -106,6 +108,8 @@ impl Pow2Op {
             bit_len_prec as u32,
         );
 
+        // if exponent is negative than compute the inverse of the result
+        // since 2^-x = 1/2^x.
         let one = rep.fill(sess, 1_u8.into(), &x_shape);
         let one_fixed = AbstractReplicatedFixedTensor {
             tensor: rep.shl(sess, x.fractional_precision as usize, &one),
@@ -113,13 +117,18 @@ impl Pow2Op {
             fractional_precision: x.fractional_precision,
         }
         .into();
+
         let g_fixed = AbstractReplicatedFixedTensor {
             tensor: g.clone(),
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
         }
         .into();
+
+        // compute 1/2^x
         let inverse = rep.div(sess, &one_fixed, &g_fixed).try_into().ok().unwrap();
+
+        // oblivious branching depending on the exponent sign, choose 1/2^x or 2^x
         let switch = rep.if_else(sess, &msb, &inverse.tensor, &g);
 
         Ok(AbstractReplicatedFixedTensor {
@@ -225,10 +234,15 @@ where
             fractional_precision: k - 2,
         };
         let e_approx = self.polynomial_eval(sess, P_1045.to_vec(), x.try_into().ok().unwrap());
-        let e_approx_f: AbstractReplicatedFixedTensor<RepRingT> = e_approx.try_into().ok().unwrap();
 
+        // convert replicated fixed tensor to concrete value in order to grab the replicated ring tensor
+        let e_approx_f: AbstractReplicatedFixedTensor<RepRingT> = e_approx.try_into().ok().unwrap();
         let e_approx_ring = e_approx_f.tensor;
+
+        // do replicated multiplication at the ring level
         let e_prod = self.mul(sess, e_int, &e_approx_ring);
+
+        // truncate the result but keep the most significant f bits to preserve fixed point encoding
         self.trunc_pr(sess, amount, &e_prod)
     }
 }
