@@ -24,17 +24,16 @@ test:
 	cd pymoose && pytest -m "not slow"
 
 test-long:
-	HYPOTHESIS_PROFILE='test-long' $(MAKE) test
+	$(MAKE) test
 	cd pymoose && pytest -m "slow"
 
 test-ci:
-	HYPOTHESIS_PROFILE='ci' $(MAKE) test
+	$(MAKE) test
 
 clean:
 	cargo clean
 	find ./ -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
 	rm -rf ./pymoose/.pytest_cache
-	rm -Rf .hypothesis
 
 ci-ready:
 	cargo clean
