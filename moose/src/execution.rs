@@ -1370,15 +1370,8 @@ impl AsyncExecutor {
             })
             .collect::<Vec<_>>();
 
-        let own_output_names: Vec<&str> = own_operations
-            .iter() // guessing that par_iter won't help here
-            .filter_map(|op| match op.kind {
-                Operator::Output(_) => Some(op.name.as_ref()),
-                _ => None,
-            })
-            .collect();
-
         let mut env: HashMap<String, AsyncValue> = HashMap::default();
+        let mut outputs: HashMap<String, AsyncReceiver> = HashMap::default();
 
         for op in own_operations {
             use crate::kernels::Session;
@@ -1393,17 +1386,14 @@ impl AsyncExecutor {
                 .map_err(|e| {
                     Error::KernelError(format!("AsyncSession failed due to an error: {:?}", e,))
                 })?;
-            env.insert(op.name.clone(), value);
+            if matches!(op.kind, Operator::Output(_)) {
+                // If it is an output, we need to make sure we capture it for returning.
+                outputs.insert(op.name.clone(), value);
+            } else {
+                // Everything else should be available in the env for other ops to use.
+                env.insert(op.name.clone(), value);
+            };
         }
-
-        // collect output futures
-        let outputs: HashMap<String, AsyncReceiver> = own_output_names
-            .into_iter()
-            .map(|op_name| {
-                let val = env.get(op_name).cloned().unwrap(); // safe to unwrap per construction
-                (op_name.to_string(), val)
-            })
-            .collect();
 
         Ok(outputs)
     }
