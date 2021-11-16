@@ -6,11 +6,7 @@ use crate::computation::{
     ReplicatedPlacement, RingInjectOp, ShapeOp,
 };
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::{
-    HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
-    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
-    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
-};
+use crate::host::{HostFixed128Tensor, HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor};
 use crate::kernels::{PlacementAddN, PlacementReshape, PlacementRingInject, PlacementShape};
 use crate::logical::Tensor;
 use crate::replicated::{
@@ -20,6 +16,9 @@ use crate::replicated::{
 
 modelled!(PlacementShape::shape, HostPlacement, (Float32Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (Float64Tensor) -> HostShape, ShapeOp);
+
+modelled!(PlacementShape::shape, HostPlacement, (HostFixed128Tensor) -> HostShape, ShapeOp);
+
 modelled!(PlacementShape::shape, HostPlacement, (HostRing64Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (HostRing128Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (HostBitTensor) -> HostShape, ShapeOp);
@@ -40,6 +39,7 @@ kernel! {
         (HostPlacement, (Tensor) -> HostShape => [hybrid] Self::logical_kernel),
         (HostPlacement, (Float32Tensor) -> HostShape => [hybrid] Self::float_kernel),
         (HostPlacement, (Float64Tensor) -> HostShape => [hybrid] Self::float_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostShape => [hybrid] Self::fixed_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostShape => [runtime] Self::ring_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostShape => [runtime] Self::ring_kernel),
         (HostPlacement, (HostBitTensor) -> HostShape => [runtime] Self::bit_kernel),
