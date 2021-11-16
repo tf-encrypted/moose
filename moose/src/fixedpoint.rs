@@ -1032,6 +1032,19 @@ impl FixedpointSumOp {
     }
 }
 
+impl ShapeOp {
+    pub(crate) fn fixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractHostFixedTensor<HostRingT>,
+    ) -> Result<cs!(HostShape)>
+    where
+        HostShape: KnownType<S>,
+    {
+        unimplemented!()
+    }
+}
+
 modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
 modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Fixed128Tensor) -> Fixed128Tensor, FixedpointMeanOp);
 modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
