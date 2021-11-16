@@ -1,92 +1,129 @@
 use crate::fixedpoint::PolynomialEval;
+use num::bigint::BigInt;
+use num::rational::Ratio;
+use num_traits::{FromPrimitive, One, ToPrimitive};
 
 use super::*;
+use lazy_static::lazy_static;
 
 impl Pow2Op {
-    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, RepBitT, N: Const>(
+    pub(crate) fn rep_rep_kernel<
+        S: Session,
+        RepRingT,
+        RepBitT,
+        RingT,
+        BitT,
+        RepBitArrayT,
+        N: Const,
+    >(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
+        ReplicatedShape: KnownType<S>,
         AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
         <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
+
+        AbstractReplicatedFixedTensor<RepRingT>:
+            Into<m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
+        m!(c!(AbstractReplicatedFixedTensor<RepRingT>)):
+            TryInto<AbstractReplicatedFixedTensor<RepRingT>>,
 
         RepRingT: Ring<BitLength = N>,
         RepRingT: Clone,
 
-        RepBitT: Clone,
-        AbstractReplicatedBitArray<RepBitT, N>: Into<st!(AbstractReplicatedBitArray<RepBitT, N>)>,
-        AbstractReplicatedBitArray<RepBitT, N>: CanonicalType,
-        <AbstractReplicatedBitArray<RepBitT, N> as CanonicalType>::Type: KnownType<S>,
+        ReplicatedPlacement: PlacementBitDec<S, RepRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
 
-        ReplicatedPlacement: PlacementShrRaw<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementSplit<S, RepRingT, RepBitT, RepBitT>,
-        ReplicatedPlacement: BinaryAdder<S, RepBitT>,
-        ReplicatedPlacement:
-            PlacementIndex<S, st!(AbstractReplicatedBitArray<RepBitT, N>), RepBitT>,
-        ReplicatedPlacement: PlacementAdd<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
+        ReplicatedPlacement: PlacementIfElse<S, RepRingT, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementNeg<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
+        ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
+
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
         ReplicatedPlacement: Pow2FromBits<S, RepRingT>,
 
         ReplicatedPlacement: ExpFromParts<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementIfElse<S, RepRingT, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementDiv<
+            S,
+            m!(c!(AbstractReplicatedFixedTensor<RepRingT>)),
+            m!(c!(AbstractReplicatedFixedTensor<RepRingT>)),
+            m!(c!(AbstractReplicatedFixedTensor<RepRingT>)),
+        >,
+        ReplicatedPlacement: PlacementTruncPr<
+            S,
+            m!(c!(AbstractReplicatedFixedTensor<RepRingT>)),
+            m!(c!(AbstractReplicatedFixedTensor<RepRingT>)),
+        >,
+
+        HostPlacement: PlacementReveal<S, RepRingT, RingT>,
+        HostPlacement: PlacementReveal<S, RepBitT, BitT>,
     {
         let integral_precision = x.integral_precision as usize;
         let fractional_precision = x.fractional_precision as usize;
         let bit_len_prec = fractional_precision + integral_precision;
 
-        let n_int = (integral_precision as f64).log2().ceil() as u32;
+        let x_bits = rep.bit_decompose(sess, &x.tensor);
 
-        let (x0, x1) = rep.split(sess, &x.tensor);
-        let bits = rep.binary_adder(sess, &x0, &x1, RepRingT::BitLength::VALUE);
+        let msb_bit = rep.index(sess, RepRingT::BitLength::VALUE - 1, &x_bits);
+        let msb = rep.ring_inject(sess, 0, &msb_bit);
 
-        let x_bits = AbstractReplicatedBitArray::<RepBitT, N>(bits, PhantomData);
-        let x0_bits = AbstractReplicatedBitArray::<RepBitT, N>(x0, PhantomData);
-        let x1_bits = AbstractReplicatedBitArray::<RepBitT, N>(x1, PhantomData);
+        let abs_x = rep.if_else(sess, &msb, &rep.neg(sess, &x.tensor), &x.tensor);
 
-        let x0_f = rep.index(sess, fractional_precision, &x0_bits.into());
-        let x1_f = rep.index(sess, fractional_precision, &x1_bits.into());
-
-        let x_bits_canonical = x_bits.into();
-        let b_f = rep.index(sess, fractional_precision, &x_bits_canonical);
-        let msb = rep.index(sess, bit_len_prec, &x_bits_canonical);
-        let msb_ring = rep.ring_inject(sess, 0, &msb);
-
-        let overflow_half1 = rep.ring_inject(sess, fractional_precision, &x0_f);
-        let overflow_half2 = with_context!(rep, sess, x0_f + x1_f + b_f);
-        let overflow_half2 = rep.ring_inject(sess, fractional_precision, &overflow_half2);
-        let shifted_overflow = with_context!(rep, sess, overflow_half1 + overflow_half2);
-
-        // compute RawMod2M
-        let x_shifted_raw = rep.shr_raw(sess, fractional_precision, &x.tensor);
-        let x_mod2m = with_context!(
-            rep,
-            sess,
-            x.tensor - &rep.shl(sess, fractional_precision, &x_shifted_raw)
-        );
-        let lower = with_context!(rep, sess, x_mod2m - shifted_overflow);
-
-        let higher: Vec<_> = (fractional_precision..bit_len_prec)
-            .map(|i| rep.ring_inject(sess, 0, &rep.index(sess, i, &x_bits_canonical)))
+        let absolute_bits = rep.bit_decompose(sess, &abs_x);
+        let x_bits_vec: Vec<_> = (0..RepRingT::BitLength::VALUE)
+            .map(|i| rep.index(sess, i, &absolute_bits))
             .collect();
-        let d = rep.pow2_from_bits(sess, higher.as_slice());
-        let g: RepRingT = rep.exp_from_parts(
+
+        // higher is the integral part of the exponent
+        let higher_bits: Vec<_> = (fractional_precision..RepRingT::BitLength::VALUE)
+            .map(|i| rep.ring_inject(sess, 0, &x_bits_vec[i]))
+            .collect();
+        let x_shape = rep.shape(sess, &x.tensor);
+        let zero = rep.fill(sess, 0_u8.into(), &x_shape);
+        let higher_composed = higher_bits
+            .clone()
+            .into_iter()
+            .enumerate()
+            .fold(zero, |acc, (i, item)| {
+                rep.add(sess, &acc, &rep.shl(sess, fractional_precision + i, &item))
+            });
+
+        // fractional part of the exponent
+        let fractional_part = rep.sub(sess, &abs_x, &higher_composed);
+
+        // computes 2^{integral_part}
+        let d = rep.pow2_from_bits(sess, &higher_bits.as_slice()[0..integral_precision]);
+        let g = rep.exp_from_parts(
             sess,
             &d,
-            &lower,
+            &fractional_part,
             fractional_precision as u32,
             bit_len_prec as u32,
         );
 
-        let small_result = rep.trunc_pr(sess, n_int, &g);
-        let tensor = rep.if_else(sess, &msb_ring, &small_result, &g);
+        let one = rep.fill(sess, 1_u8.into(), &x_shape);
+        let one_fixed = AbstractReplicatedFixedTensor {
+            tensor: rep.shl(sess, x.fractional_precision as usize, &one),
+            integral_precision: x.integral_precision,
+            fractional_precision: x.fractional_precision,
+        }
+        .into();
+        let g_fixed = AbstractReplicatedFixedTensor {
+            tensor: g.clone(),
+            integral_precision: x.integral_precision,
+            fractional_precision: x.fractional_precision,
+        }
+        .into();
+        let inverse = rep.div(sess, &one_fixed, &g_fixed).try_into().ok().unwrap();
+        let switch = rep.if_else(sess, &msb, &inverse.tensor, &g);
+
         Ok(AbstractReplicatedFixedTensor {
-            tensor,
+            tensor: switch,
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
         })
@@ -123,11 +160,13 @@ where
             .iter()
             .enumerate()
             .map(|(i, bit)| {
-                // compute b(i) * 2^i
-                let pos = rep.shl(sess, i, bit);
+                // compute b(i) << 2^i
+                // (Dragos) aware that this can overflow but can't do much against
+                // (unless we support larger rings than 128 bits)
+                let pos = rep.shl(sess, 1 << i, bit);
                 // compute 1 - b(i)
                 let neg = rep.sub(sess, &ones, bit);
-                // compute p(i) = b(i) * 2^i + (1 - b(i))
+                // compute p(i) = b(i) << 2^i + (1 - b(i))
                 rep.add(sess, &pos, &neg)
             })
             .collect();
@@ -135,6 +174,19 @@ where
         // TODO(Dragos) do tree multiplication here
         selectors.iter().fold(ones, |acc, y| rep.mul(sess, &acc, y))
     }
+}
+
+lazy_static! {
+    static ref P_1045: Vec<f64> = (0..100).map(|coefficient_index| {
+        // p_1405[i] = math.log(2) ** i / math.factorial(i)
+        let ln2i: Ratio<BigInt> = Ratio::from_float(2_f64.ln().powf(coefficient_index as f64)).unwrap();
+        let fact = (1..coefficient_index + 1).fold(One::one(), |acc: BigInt, i| {
+            let i_th: BigInt = FromPrimitive::from_usize(i).unwrap();
+            acc * i_th
+        });
+        let coefficient_value: Ratio<BigInt> = ln2i / fact;
+        coefficient_value.to_f64().unwrap()
+    }).collect();
 }
 
 pub(crate) trait ExpFromParts<S: Session, T, O> {
@@ -166,51 +218,18 @@ where
         f: u32,
         k: u32,
     ) -> RepRingT {
-        let p_1045: Vec<_> = vec![
-            1.0f64,
-            0.6931471805599453,
-            0.2402265069591007,
-            0.055504108664821576,
-            0.009618129107628477,
-            0.0013333558146428441,
-            0.00015403530393381606,
-            1.5252733804059838e-05,
-            1.3215486790144305e-06,
-            1.0178086009239696e-07,
-            7.054911620801121e-09,
-            4.44553827187081e-10,
-            2.5678435993488196e-11,
-            1.3691488853904124e-12,
-            6.778726354822543e-14,
-            3.132436707088427e-15,
-            1.357024794875514e-16,
-            5.533046532458238e-18,
-            2.1306753354891168e-19,
-            7.77300842885735e-21,
-        ];
-
         let amount = k - 2 - f;
         let x = AbstractReplicatedFixedTensor {
             tensor: self.shl(sess, amount as usize, e_frac),
             integral_precision: 2,
             fractional_precision: k - 2,
         };
-        let e_approx = self.polynomial_eval(sess, p_1045, x.try_into().ok().unwrap());
+        let e_approx = self.polynomial_eval(sess, P_1045.to_vec(), x.try_into().ok().unwrap());
         let e_approx_f: AbstractReplicatedFixedTensor<RepRingT> = e_approx.try_into().ok().unwrap();
 
         let e_approx_ring = e_approx_f.tensor;
         let e_prod = self.mul(sess, e_int, &e_approx_ring);
-        let e_tr = self.trunc_pr(sess, amount, &e_prod);
-
-        e_tr
-
-        // let e_tr_fixed: AbstractReplicatedFixedTensor<RepRingT> = AbstractReplicatedFixedTensor {
-        //     tensor: e_tr,
-        //     integral_precision: k - f,
-        //     fractional_precision: f,
-        // };
-
-        // e_tr_fixed.try_into().ok().unwrap()
+        self.trunc_pr(sess, amount, &e_prod)
     }
 }
 

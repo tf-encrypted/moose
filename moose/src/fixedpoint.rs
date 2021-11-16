@@ -2163,7 +2163,7 @@ mod tests {
     }
 
     macro_rules! rep_pow2_fixed_test {
-        ($func_name:ident, $test_func: ident<$tt: ty>, $i_precision: expr, $f_precision: expr) => {
+        ($func_name:ident, $test_func: ident<$ti: ty, $tu: ty>, $i_precision: expr, $f_precision: expr) => {
             fn $func_name(x: ArrayD<f64>, y_target: Vec<f64>) {
                 let alice = HostPlacement {
                     owner: "alice".into(),
@@ -2173,8 +2173,10 @@ mod tests {
                 };
 
                 let sess = SyncSession::default();
-
-                let encode = |item: &f64| (2_i64.pow($f_precision) as f64 * item) as $tt;
+                let encode = |item: &f64| -> $tu {
+                    let tmp: $ti = (2f64.powf($f_precision as f64) * item) as $ti;
+                    tmp as $tu
+                };
                 let x_encoded = x.map(encode);
 
                 let x = FixedTensor::Host(new_host_fixed_tensor_with_precision(
@@ -2188,24 +2190,31 @@ mod tests {
                     _ => panic!("Should not produce an non-replicated tensor on a replicated placement"),
                 };
 
-                let result = Convert::decode(&opened_exp.tensor, (2 as $tt).pow($f_precision));
+                let result = Convert::decode(&opened_exp.tensor, (2 as $tu).pow($f_precision));
 
-                println!("result: {:?}", result);
+                // operation precision is not as accurate as the fixed point precision
                 for i in 0..y_target.len() {
                     let error = (result.0[i] - y_target[i]).abs();
-                    assert!(error < f64::EPSILON);
+                    assert!(error < 2_f64.powf((-$f_precision/2) as f64), "failed at index {:?}, error is {:?}", i, error);
                 }
             }
         };
     }
 
-    rep_pow2_fixed_test!(test_rep_pow2_fixed64, pow2<u64>, 10, 2);
-    rep_pow2_fixed_test!(test_rep_pow2_fixed128, pow2<u128>, 10, 2);
+    rep_pow2_fixed_test!(test_rep_pow2_fixed64, pow2<i64, u64>, 10, 10);
+    rep_pow2_fixed_test!(test_rep_pow2_fixed128, pow2<i128, u128>, 30, 10);
 
     #[test]
     fn test_exp2() {
-        let x = array![1f64, 2.0, 3.0, 4.0].into_dyn();
-        let y_targets = vec![2f64, 4.0, 8.0, 16.0];
+        let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
+        let y_targets: Vec<_> = x.iter().map(|item| 2_f64.powf(*item)).collect();
         test_rep_pow2_fixed64(x, y_targets);
+    }
+
+    #[test]
+    fn test_exp2_128() {
+        let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
+        let y_targets: Vec<_> = x.iter().map(|item| 2_f64.powf(*item)).collect();
+        test_rep_pow2_fixed128(x, y_targets);
     }
 }
