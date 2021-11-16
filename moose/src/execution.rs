@@ -1370,17 +1370,17 @@ impl AsyncExecutor {
             })
             .collect::<Vec<_>>();
 
-        let own_output_names: Vec<String> = own_operations
+        let own_output_names: Vec<&str> = own_operations
             .iter() // guessing that par_iter won't help here
             .filter_map(|op| match op.kind {
-                Operator::Output(_) => Some(op.name.clone()),
+                Operator::Output(_) => Some(op.name.as_ref()),
                 _ => None,
             })
             .collect();
 
         let mut env: HashMap<String, AsyncValue> = HashMap::default();
 
-        for op in own_operations.iter() {
+        for op in own_operations {
             use crate::kernels::Session;
             let operator = op.kind.clone();
             let operands = op
@@ -1398,10 +1398,10 @@ impl AsyncExecutor {
 
         // collect output futures
         let outputs: HashMap<String, AsyncReceiver> = own_output_names
-            .iter()
+            .into_iter()
             .map(|op_name| {
                 let val = env.get(op_name).cloned().unwrap(); // safe to unwrap per construction
-                (op_name.clone(), val)
+                (op_name.to_string(), val)
             })
             .collect();
 
