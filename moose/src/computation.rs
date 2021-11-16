@@ -825,6 +825,8 @@ impl Ty {
     pub fn merge(&self, another: &Ty) -> Option<Ty> {
         match self {
             Ty::Unknown => Some(*another),
+            // TODO: make sure another dtype is also a tensor
+            Ty::Tensor(TensorDType::Unknown) => Some(*another),
             _ => None,
         }
     }
