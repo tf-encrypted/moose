@@ -267,7 +267,7 @@ mod tests {
             array![[0u64], [1], [1], [1]].into_dyn(),
             alice.clone(),
         );
-        let target = AbstractHostRingTensor::from_raw_plc(array![64u64], alice.clone());
+        let target = AbstractHostRingTensor::from_raw_plc(array![16384u64], alice.clone());
 
         let sess = SyncSession::default();
 
@@ -278,6 +278,7 @@ mod tests {
         let x3 = rep.index_axis(&sess, 0, 3, &x_shared);
 
         let x_vec = vec![x0, x1, x2, x3];
+        // compute 2^(x0 * 2^0 + x1 * 2^1 + x2 * 2^2 + x3 * 2^3)
         let pow2_shared = rep.pow2_from_bits(&sess, &x_vec);
 
         assert_eq!(target, alice.reveal(&sess, &pow2_shared));
