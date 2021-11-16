@@ -484,9 +484,8 @@ impl RuntimeSession for AsyncSession {
         &self.session_id
     }
 
-    fn find_argument(&self, _key: &str) -> Option<Value> {
-        todo!("Please implement find_argument for the new AsyncSession")
-        // self.arguments.get(key)
+    fn find_argument(&self, key: &str) -> Option<Value> {
+        self.arguments.get(key).cloned()
     }
 
     fn find_role_assignment(&self, _role: &Role) -> Result<&Identity> {
@@ -1250,11 +1249,17 @@ macro_rules! host_binary_kernel {
     };
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 host_binary_kernel!(HostAddOp, |x, y| x + y);
+#[cfg(not(feature = "exclude_old_framework"))]
 host_binary_kernel!(HostSubOp, |x, y| x - y);
+#[cfg(not(feature = "exclude_old_framework"))]
 host_binary_kernel!(HostMulOp, |x, y| x * y);
+#[cfg(not(feature = "exclude_old_framework"))]
 host_binary_kernel!(HostDivOp, |x, y| x / y);
+#[cfg(not(feature = "exclude_old_framework"))]
 host_binary_kernel!(HostDotOp, |x, y| x.dot(y));
+#[cfg(not(feature = "exclude_old_framework"))]
 host_unary_kernel!(HostTransposeOp, |x| x.transpose());
 
 impl Compile<Kernel> for HostInverseOp {
