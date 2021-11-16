@@ -81,56 +81,118 @@ impl SyncNetworking for LocalSyncNetworking {
     }
 }
 
-#[derive(Default)]
-pub struct LocalAsyncNetworking {
-    store: tokio::sync::RwLock<HashMap<String, Value>>,
-}
+mod slow_localnetworking {
+    use super::*;
 
-#[async_trait]
-impl AsyncNetworking for LocalAsyncNetworking {
-    async fn send(
-        &self,
-        val: &Value,
-        _receiver: &Identity,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) -> Result<()> {
-        tracing::debug!("Async sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
-        let key = format!("{}/{}", session_id, rendezvous_key);
-        let mut store = self.store.write().await;
-        if store.contains_key(&key) {
-            tracing::error!("value has already been sent");
-            return Err(Error::Unexpected(None));
-        }
-        store.insert(key, val.clone());
-        Ok(())
+    #[derive(Default)]
+    pub struct LocalAsyncNetworking {
+        store: tokio::sync::RwLock<HashMap<String, Value>>,
     }
 
-    async fn receive(
-        &self,
-        _sender: &Identity,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) -> Result<Value> {
-        tracing::debug!(
-            "Async receiving; rdv:'{}', sid:{}",
-            rendezvous_key,
-            session_id
-        );
-        let key = format!("{}/{}", session_id, rendezvous_key);
-        // note that we are using a loop since the store doesn't immediately
-        // allow us to block until a value is present
-        loop {
-            {
-                let store = self.store.read().await;
-                if let Some(val) = store.get(&key).cloned() {
-                    return Ok(val);
-                }
+    #[async_trait]
+    impl AsyncNetworking for LocalAsyncNetworking {
+        async fn send(
+            &self,
+            val: &Value,
+            _receiver: &Identity,
+            rendezvous_key: &RendezvousKey,
+            session_id: &SessionId,
+        ) -> Result<()> {
+            tracing::debug!("Async sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
+            let key = format!("{}/{}", session_id, rendezvous_key);
+            let mut store = self.store.write().await;
+            if store.contains_key(&key) {
+                tracing::error!("value has already been sent");
+                return Err(Error::Unexpected(None));
             }
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            store.insert(key, val.clone());
+            Ok(())
+        }
+
+        async fn receive(
+            &self,
+            _sender: &Identity,
+            rendezvous_key: &RendezvousKey,
+            session_id: &SessionId,
+        ) -> Result<Value> {
+            tracing::debug!(
+                "Async receiving; rdv:'{}', sid:{}",
+                rendezvous_key,
+                session_id
+            );
+            let key = format!("{}/{}", session_id, rendezvous_key);
+            // note that we are using a loop since the store doesn't immediately
+            // allow us to block until a value is present
+            loop {
+                {
+                    let store = self.store.read().await;
+                    if let Some(val) = store.get(&key).cloned() {
+                        return Ok(val);
+                    }
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            }
         }
     }
 }
+
+mod fast_localnetworking {
+    use super::*;
+    use std::sync::Arc;
+
+    #[derive(Default)]
+    pub struct LocalAsyncNetworking {
+        // store: tokio::sync::RwLock<HashMap<String, Value>>,
+        store: dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>,
+    }
+
+    #[async_trait]
+    impl AsyncNetworking for LocalAsyncNetworking {
+        async fn send(
+            &self,
+            val: &Value,
+            _receiver: &Identity,
+            rendezvous_key: &RendezvousKey,
+            session_id: &SessionId,
+        ) -> Result<()> {
+            tracing::debug!("Async sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
+            let key = format!("{}/{}", session_id, rendezvous_key);
+            let cell = self
+                .store
+                .entry(key)
+                .or_insert_with(async_cell::sync::AsyncCell::shared)
+                .value()
+                .clone();
+            cell.set(val.clone());
+            Ok(())
+        }
+
+        async fn receive(
+            &self,
+            _sender: &Identity,
+            rendezvous_key: &RendezvousKey,
+            session_id: &SessionId,
+        ) -> Result<Value> {
+            tracing::debug!(
+                "Async receiving; rdv:'{}', sid:{}",
+                rendezvous_key,
+                session_id
+            );
+            let key = format!("{}/{}", session_id, rendezvous_key);
+            let cell = self
+                .store
+                .entry(key)
+                .or_insert_with(async_cell::sync::AsyncCell::shared)
+                .value()
+                .clone();
+            let val = cell.get().await;
+            Ok(val)
+        }
+    }
+}
+
+// pub use slow_localnetworking::*;
+pub use fast_localnetworking::*;
 
 pub struct DummyNetworking(pub Value);
 
