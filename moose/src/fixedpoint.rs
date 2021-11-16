@@ -7,8 +7,8 @@ use crate::host::*;
 use crate::kernels::*;
 use crate::replicated::{
     AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor, Mirrored3Fixed128Tensor,
-    Mirrored3Fixed64Tensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor, ShapeFill,
-    Underlying,
+    Mirrored3Fixed64Tensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor, ReplicatedShape,
+    ShapeFill, Underlying,
 };
 use macros::with_context;
 use ndarray::prelude::*;
@@ -1033,15 +1033,52 @@ impl FixedpointSumOp {
 }
 
 impl ShapeOp {
-    pub(crate) fn fixed_kernel<S: Session, HostRingT>(
+    pub(crate) fn host_fixed_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<m!(HostShape)>
+    where
+        HostShape: KnownType<S>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementShape<S, HostFixedT, m!(HostShape)>,
+    {
+        let x_revealed = match x {
+            FixedTensor::Host(x) => x,
+            FixedTensor::Replicated(x) => plc.reveal(sess, &x),
+        };
+
+        Ok(plc.shape(sess, &x_revealed))
+    }
+
+    pub(crate) fn rep_fixed_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<m!(ReplicatedShape)>
+    where
+        ReplicatedShape: KnownType<S>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShape<S, RepFixedT, m!(ReplicatedShape)>,
+    {
+        let x_shared = match x {
+            FixedTensor::Host(x) => plc.share(sess, &x),
+            FixedTensor::Replicated(x) => x,
+        };
+
+        Ok(plc.shape(sess, &x_shared))
+    }
+
+    pub(crate) fn host_hostfixed_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractHostFixedTensor<HostRingT>,
-    ) -> Result<cs!(HostShape)>
+    ) -> Result<m!(HostShape)>
     where
         HostShape: KnownType<S>,
+        HostPlacement: PlacementShape<S, HostRingT, m!(HostShape)>,
     {
-        unimplemented!()
+        Ok(plc.shape(sess, &x.tensor))
     }
 }
 

@@ -1186,19 +1186,14 @@ impl ShapeOp {
         HostShape: KnownType<S>,
         HostPlacement: PlacementShape<S, Float32T, cs!(HostShape)>,
         HostPlacement: PlacementShape<S, Float64T, cs!(HostShape)>,
+        HostPlacement: PlacementShape<S, Fixed64T, cs!(HostShape)>,
         HostPlacement: PlacementShape<S, Fixed128T, cs!(HostShape)>,
     {
         match x {
-            AbstractTensor::Fixed64(_x) => {
-                unimplemented!()
-                // plc.shape(sess, &x)
-            }
-            AbstractTensor::Fixed128(x) => {
-                //unimplemented!()
-                Ok(plc.shape(sess, &x))
-            }
             AbstractTensor::Float32(x) => Ok(plc.shape(sess, &x)),
             AbstractTensor::Float64(x) => Ok(plc.shape(sess, &x)),
+            AbstractTensor::Fixed64(x) => Ok(plc.shape(sess, &x)),
+            AbstractTensor::Fixed128(x) => Ok(plc.shape(sess, &x)),
         }
     }
 }
