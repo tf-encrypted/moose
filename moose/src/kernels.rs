@@ -333,6 +333,95 @@ impl AsyncSession {
             tasks: Default::default(),
         }
     }
+
+    fn networking_load(
+        &self,
+        op: &LoadOp,
+        plc: &HostPlacement,
+        operands: Vec<AsyncValue>,
+    ) -> Result<AsyncValue> {
+        use std::convert::TryInto;
+        assert_eq!(operands.len(), 2);
+        let sess = self.clone();
+        let op = op.clone();
+        let plc = plc.clone();
+        let (sender, result) = crate::computation::new_async_value();
+        let tasks = std::sync::Arc::clone(&self.tasks);
+        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+            let operands = futures::future::join_all(operands).await;
+            let key: HostString = operands
+                .get(0)
+                .ok_or_else(|| {
+                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0))
+                })?
+                .clone()
+                .map_err(crate::execution::map_receive_error)?
+                .try_into()?;
+            let query: HostString = operands
+                .get(1)
+                .ok_or_else(|| {
+                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 1))
+                })?
+                .clone()
+                .map_err(crate::execution::map_receive_error)?
+                .try_into()?;
+
+            let value: Value = sess
+                .storage
+                .load(&key.0, &sess.session_id, Some(op.sig.ret()), &query.0)
+                .await?;
+            // TODO: Hmm, placement of a Value does not work like this... But perhaps it should?
+            // let value = plc.place(&sess, value);
+            crate::execution::map_send_result(sender.send(value))?;
+            Ok(())
+        });
+        let mut tasks = tasks.write().unwrap();
+        tasks.push(task);
+
+        Ok(result)
+    }
+
+    fn networking_save(
+        &self,
+        op: &SaveOp,
+        plc: &HostPlacement,
+        operands: Vec<AsyncValue>,
+    ) -> Result<AsyncValue> {
+        use std::convert::TryInto;
+        assert_eq!(operands.len(), 2);
+        let sess = self.clone();
+        let op = op.clone();
+        let plc = plc.clone();
+        let (sender, result) = crate::computation::new_async_value();
+        let tasks = std::sync::Arc::clone(&self.tasks);
+        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+            let operands = futures::future::join_all(operands).await;
+            let key: HostString = operands
+                .get(0)
+                .ok_or_else(|| {
+                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0))
+                })?
+                .clone()
+                .map_err(crate::execution::map_receive_error)?
+                .try_into()?;
+            let x: Value = operands
+                .get(1)
+                .ok_or_else(|| {
+                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 1))
+                })?
+                .clone()
+                .map_err(crate::execution::map_receive_error)?;
+
+            sess.storage.save(&key.0, &sess.session_id, &x).await?;
+            let result = Unit(plc);
+            crate::execution::map_send_result(sender.send(result.into()))?;
+            Ok(())
+        });
+        let mut tasks = tasks.write().unwrap();
+        tasks.push(task);
+
+        Ok(result)
+    }
 }
 
 impl Session for AsyncSession {
@@ -343,6 +432,17 @@ impl Session for AsyncSession {
         plc: &Placement,
         operands: Vec<Self::Value>,
     ) -> Result<Self::Value> {
+        // The kernels that are doing funny things to the async context, such as awaiting for more than their inputs.
+        match (&op, plc) {
+            (Operator::Load(op), Placement::Host(plc)) => {
+                return self.networking_load(op, plc, operands)
+            }
+            (Operator::Save(op), Placement::Host(plc)) => {
+                return self.networking_save(op, plc, operands)
+            }
+            _ => (),
+        };
+        // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
         use Operator::*;
         let kernel = match op {
             Shape(op) => DispatchKernel::compile(&op, plc)?,
