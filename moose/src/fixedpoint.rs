@@ -1175,11 +1175,17 @@ impl<RepRingT> FixedpointTensor for AbstractReplicatedFixedTensor<RepRingT> {
 
 impl<RepRingT: Placed> FixedpointTensor for Symbolic<AbstractReplicatedFixedTensor<RepRingT>> {
     fn fractional_precision(&self) -> u32 {
-        unimplemented!()
+        match self {
+            Symbolic::Symbolic(_) => unimplemented!(), // TODO(Dragos) this needs to be fixed
+            Symbolic::Concrete(x) => x.fractional_precision,
+        }
     }
 
     fn integral_precision(&self) -> u32 {
-        unimplemented!()
+        match self {
+            Symbolic::Symbolic(_) => unimplemented!(), // TODO(Dragos) this needs to be fixed
+            Symbolic::Concrete(x) => x.integral_precision,
+        }
     }
 }
 
@@ -2268,5 +2274,49 @@ mod tests {
         let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
         let y_targets: Vec<_> = x.iter().map(|item| item.exp()).collect();
         test_rep_exp_fixed128(x, y_targets);
+    }
+
+    macro_rules! rep_unary_symbolic_test {
+        ($func_name:ident, $test_func:ident, $new_symbolic_rep: ident) => {
+            fn $func_name(i_precision: u32, f_precision: u32) {
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                    fractional_precision: f_precision,
+                    integral_precision: i_precision,
+                    tensor: $new_symbolic_rep(&"x", &rep),
+                });
+
+                let sess = SymbolicSession::default();
+
+                let result = rep.$test_func(&sess, &x);
+                match result {
+                    Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                        tensor: _,
+                        fractional_precision,
+                        integral_precision,
+                    }) => {
+                        assert_eq!(fractional_precision, f_precision);
+                        assert_eq!(integral_precision, i_precision);
+                    }
+                    _ => {
+                        panic!("Expected a concrete result from the symbolic unary op on a concrete value")
+                    }
+                }
+            }
+        }
+    }
+
+    rep_unary_symbolic_test!(
+        rep_exp_symbolic_test64,
+        exp,
+        new_symbolic_replicated_tensor64
+    );
+
+    #[test]
+    fn test_fixed_rep_symbolic_exp64() {
+        rep_exp_symbolic_test64(10, 10);
     }
 }
