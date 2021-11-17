@@ -1935,28 +1935,13 @@ macro_rules! modelled {
             crate::kernels::AsyncSession,
             $u
         > for $plc {
+            #[allow(unused_variables)]
             fn $f(
                 &self,
                 sess: &crate::kernels::AsyncSession,
                 $($($attr_id:$attr_ty),*,)?
             ) -> $u {
-                use crate::computation::{KnownType, NullarySignature};
-                use crate::kernels::{Session, AsyncSession};
-                use std::convert::TryInto;
-
-                let sig = NullarySignature {
-                    ret: <$u as KnownType<AsyncSession>>::TY,
-                };
-                let op = $op {
-                    sig: sig.into(),
-                    $($($attr_id),*)?
-                };
-
-                let future = sess.execute(op.into(), &self.into(), vec![]).unwrap();
-
-                let handle = tokio::runtime::Handle::current();
-                let _guard = handle.enter();
-                futures::executor::block_on(future).unwrap().try_into().unwrap()
+                unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
             }
         }
 
@@ -2038,35 +2023,14 @@ macro_rules! modelled {
             $t0,
             $u
         > for $plc {
+            #[allow(unused_variables)]
             fn $f(
                 &self,
                 sess: &crate::kernels::AsyncSession,
                 $($($attr_id:$attr_ty),*,)?
                 x0: &$t0
             ) -> $u {
-                use crate::computation::{KnownType, UnarySignature};
-                use crate::kernels::{Session, AsyncSession};
-                use std::convert::TryInto;
-
-                let sig = UnarySignature {
-                    arg0: <$t0 as KnownType<AsyncSession>>::TY,
-                    ret: <$u as KnownType<AsyncSession>>::TY,
-                };
-                let op = $op {
-                    sig: sig.into(),
-                    $($($attr_id),*)?
-                };
-
-                // Trying to find a way for the concrete value to turn into a AsyncValue (future)
-                let (sender0, fut_x0) = crate::computation::new_async_value(); // This creates a channel
-                crate::execution::map_send_result(sender0.send(x0.clone().into())).unwrap();
-
-                let future = sess.execute(op.into(), &self.into(), vec![fut_x0])
-                    .unwrap();
-
-                let handle = tokio::runtime::Handle::current();
-                let _guard = handle.enter();
-                futures::executor::block_on(future).unwrap().try_into().unwrap()
+                unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
             }
         }
 
@@ -2149,6 +2113,7 @@ macro_rules! modelled {
             $t1,
             $u
         > for $plc {
+            #[allow(unused_variables)]
             fn $f(
                 &self,
                 sess: &crate::kernels::AsyncSession,
@@ -2156,31 +2121,7 @@ macro_rules! modelled {
                 x0: &$t0,
                 x1: &$t1,
             ) -> $u {
-                use crate::computation::{KnownType, BinarySignature};
-                use crate::kernels::{Session, AsyncSession};
-                use std::convert::TryInto;
-
-                let sig = BinarySignature {
-                    arg0: <$t0 as KnownType<AsyncSession>>::TY,
-                    arg1: <$t1 as KnownType<AsyncSession>>::TY,
-                    ret: <$u as KnownType<AsyncSession>>::TY,
-                };
-                let op = $op {
-                    sig: sig.into(),
-                    $($($attr_id),*)?
-                };
-
-                // Trying to find a way for the concrete value to turn into a AsyncValue (future)
-                let (sender0, fut_x0) = crate::computation::new_async_value(); // This creates a channel
-                crate::execution::map_send_result(sender0.send(x0.clone().into())).unwrap();
-                let (sender1, fut_x1) = crate::computation::new_async_value(); // This creates a channel
-                crate::execution::map_send_result(sender1.send(x1.clone().into())).unwrap();
-
-                let future = sess.execute(op.into(), &self.into(), vec![fut_x0, fut_x1]).unwrap();
-
-                let handle = tokio::runtime::Handle::current();
-                let _guard = handle.enter();
-                futures::executor::block_on(future).unwrap().try_into().unwrap()
+                unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
             }
         }
 
@@ -2269,6 +2210,7 @@ macro_rules! modelled {
             $t2,
             $u
         > for $plc {
+            #[allow(unused_variables)]
             fn $f(
                 &self,
                 sess: &crate::kernels::AsyncSession,
@@ -2277,34 +2219,7 @@ macro_rules! modelled {
                 x1: &$t1,
                 x2: &$t2,
             ) -> $u {
-                use crate::computation::{KnownType, TernarySignature};
-                use crate::kernels::{Session, AsyncSession};
-                use std::convert::TryInto;
-
-                let sig = TernarySignature {
-                    arg0: <$t0 as KnownType<AsyncSession>>::TY,
-                    arg1: <$t1 as KnownType<AsyncSession>>::TY,
-                    arg2: <$t2 as KnownType<AsyncSession>>::TY,
-                    ret: <$u as KnownType<AsyncSession>>::TY,
-                };
-                let op = $op {
-                    sig: sig.into(),
-                    $($($attr_id),*)?
-                };
-
-                // Trying to find a way for the concrete value to turn into a AsyncValue (future)
-                let (sender0, fut_x0) = crate::computation::new_async_value(); // This creates a channel
-                crate::execution::map_send_result(sender0.send(x0.clone().into())).unwrap();
-                let (sender1, fut_x1) = crate::computation::new_async_value(); // This creates a channel
-                crate::execution::map_send_result(sender1.send(x1.clone().into())).unwrap();
-                let (sender2, fut_x2) = crate::computation::new_async_value(); // This creates a channel
-                crate::execution::map_send_result(sender2.send(x2.clone().into())).unwrap();
-
-                let future = sess.execute(op.into(), &self.into(), vec![fut_x0, fut_x1, fut_x2]).unwrap();
-
-                let handle = tokio::runtime::Handle::current();
-                let _guard = handle.enter();
-                futures::executor::block_on(future).unwrap().try_into().unwrap()
+                unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
             }
         }
 
@@ -2398,37 +2313,14 @@ macro_rules! modelled {
             $ts,
             $u
         > for $plc {
+            #[allow(unused_variables)]
             fn $f(
                 &self,
                 sess: &crate::kernels::AsyncSession,
                 $($($attr_id:$attr_ty),*,)?
                 xs: &[$ts]
             ) -> $u {
-                use crate::computation::{KnownType, VariadicSignature};
-                use crate::kernels::{Session, AsyncSession};
-                use std::convert::TryInto;
-
-                let sig = VariadicSignature {
-                    args: <$ts as KnownType<AsyncSession>>::TY,
-                    ret: <$u as KnownType<AsyncSession>>::TY,
-                };
-                let op = $op {
-                    sig: sig.into(),
-                    $($($attr_id),*)?
-                };
-
-                // Trying to find a way for the concrete value to turn into a AsyncValue (future)
-                let arguments = xs.iter().map(|x| {
-                    let (sender, fut_x) = crate::computation::new_async_value(); // This creates a channel
-                    crate::execution::map_send_result(sender.send(x.clone().into())).unwrap();
-                    fut_x
-                }).collect();
-
-                let future = sess.execute(op.into(), &self.into(), arguments).unwrap();
-
-                let handle = tokio::runtime::Handle::current();
-                let _guard = handle.enter();
-                futures::executor::block_on(future).unwrap().try_into().unwrap()
+                unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
             }
         }
 
