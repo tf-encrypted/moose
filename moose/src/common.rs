@@ -20,6 +20,7 @@ use crate::replicated::{
     ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
 };
 
+modelled!(PlacementShape::shape, HostPlacement, (Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (Float32Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (Float64Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (Fixed64Tensor) -> HostShape, ShapeOp);
@@ -32,6 +33,7 @@ modelled!(PlacementShape::shape, HostPlacement, (HostBitTensor) -> HostShape, Sh
 modelled!(PlacementShape::shape, HostPlacement, (HostFloat32Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (HostFloat64Tensor) -> HostShape, ShapeOp);
 // modelled!(PlacementShape::shape, HostPlacement, (HostFixed128AesTensor) -> HostShape, ShapeOp);
+modelled!(PlacementShape::shape, ReplicatedPlacement, (Tensor) -> ReplicatedShape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (Fixed64Tensor) -> ReplicatedShape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (Fixed128Tensor) -> ReplicatedShape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape, ShapeOp);
