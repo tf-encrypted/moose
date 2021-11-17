@@ -1642,7 +1642,6 @@ impl AsyncTestRuntime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compilation::networking::NetworkingPass;
     use crate::host::{
         HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostShape, HostString, HostTensor,
         RawShape,
@@ -1958,7 +1957,7 @@ mod tests {
 
         let outputs = match run_async {
             true => {
-                let computation = NetworkingPass::pass(&computation).unwrap().unwrap();
+                let computation = compile_passes(&computation, &[Pass::Networking])?.toposort()?;
                 _run_computation_test(
                     computation,
                     storage_mapping,

@@ -11,8 +11,8 @@ categories = ["", ""]
 edition = "2018"
 
 [features]
-# default = ["new_async_session"]
-default = []
+default = ["new_async_session"]
+# default = []
 exclude_old_framework = []
 new_async_session = []
 

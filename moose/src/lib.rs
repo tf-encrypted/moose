@@ -742,7 +742,6 @@ macro_rules! concrete_dispatch_kernel {
                             let op = self.clone();
 
                             Ok(Box::new(move |sess, operands: Vec<AsyncValue>| {
-                                assert_eq!(operands.len(), 3);
                                 let sess = sess.clone();
                                 let plc = plc.clone();
                                 let k = <$op as VariadicKernel<AsyncSession, $plc, $ts, $u>>::compile(&op, &plc)?;

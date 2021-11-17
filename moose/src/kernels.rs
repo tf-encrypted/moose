@@ -340,14 +340,14 @@ impl AsyncSession {
     fn storage_load(
         &self,
         op: &LoadOp,
-        plc: &HostPlacement,
+        _plc: &HostPlacement,
         operands: Vec<AsyncValue>,
     ) -> Result<AsyncValue> {
         use std::convert::TryInto;
         assert_eq!(operands.len(), 2);
         let sess = self.clone();
         let op = op.clone();
-        let plc = plc.clone();
+        // let plc = plc.clone();
         let (sender, result) = crate::computation::new_async_value();
         let tasks = std::sync::Arc::clone(&self.tasks);
         let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
@@ -428,13 +428,13 @@ impl AsyncSession {
     fn networking_receive(
         &self,
         op: &ReceiveOp,
-        plc: &HostPlacement,
+        _plc: &HostPlacement,
         operands: Vec<AsyncValue>,
     ) -> Result<AsyncValue> {
         assert_eq!(operands.len(), 0);
         let sess = self.clone();
         let op = op.clone();
-        let plc = plc.clone();
+        // let plc = plc.clone();
         let (sender, result) = crate::computation::new_async_value();
         let tasks = std::sync::Arc::clone(&self.tasks);
         let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
