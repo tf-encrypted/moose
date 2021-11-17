@@ -141,14 +141,16 @@ mod tests {
 
         // Populate test session args with shares of x
         let arg_name = "x".to_string();
-        let lift_name = |name, player_ix, share_ix| {
-            format!("{0}/player{1}/share{2}", name, player_ix, share_ix)
+        let repl_roles = &plc.owners;
+        let lift_name = |player_ix, share_ix| {
+            let repl_role: &Role = &repl_roles[player_ix];
+            format!("{0}/{1}/share{2}", &arg_name, repl_role.0, share_ix)
         };
         let mut new_args = std::collections::HashMap::new();
         for i in 0..3 {
             for j in 0..2 {
                 new_args.insert(
-                    lift_name(arg_name.clone(), i, (i + j) % 3),
+                    lift_name(i, (i + j) % 3),
                     x_shared.shares[i][j].clone().into(),
                 );
             }
@@ -184,14 +186,16 @@ mod tests {
 
         // Populate test session args with shares of x
         let arg_name = "x".to_string();
-        let lift_name = |name, player_ix, share_ix| {
-            format!("{0}/player{1}/share{2}", name, player_ix, share_ix)
+        let repl_roles = &plc.owners;
+        let lift_name = |player_ix, share_ix| {
+            let repl_role: &Role = &repl_roles[player_ix];
+            format!("{0}/{1}/share{2}", &arg_name, repl_role.0, share_ix)
         };
         let mut new_args = std::collections::HashMap::new();
         for i in 0..3 {
             for j in 0..2 {
                 new_args.insert(
-                    lift_name(arg_name.clone(), i, (i + j) % 3),
+                    lift_name(i, (i + j) % 3),
                     x_shared.tensor.shares[i][j].clone().into(),
                 );
             }
