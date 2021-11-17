@@ -141,7 +141,7 @@ mod tests {
 
         // Populate test session args with shares of x
         let arg_name = "x".to_string();
-        let repl_roles = &plc.owners;
+        let repl_roles = &rep.owners;
         let lift_name = |player_ix, share_ix| {
             let repl_role: &Role = &repl_roles[player_ix];
             format!("{0}/{1}/share{2}", &arg_name, repl_role.0, share_ix)
@@ -186,7 +186,7 @@ mod tests {
 
         // Populate test session args with shares of x
         let arg_name = "x".to_string();
-        let repl_roles = &plc.owners;
+        let repl_roles = &rep.owners;
         let lift_name = |player_ix, share_ix| {
             let repl_role: &Role = &repl_roles[player_ix];
             format!("{0}/{1}/share{2}", &arg_name, repl_role.0, share_ix)
