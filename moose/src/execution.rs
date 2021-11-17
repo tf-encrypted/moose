@@ -1392,9 +1392,10 @@ impl AsyncExecutor {
             if matches!(op.kind, Operator::Output(_)) {
                 // If it is an output, we need to make sure we capture it for returning.
                 outputs.insert(op.name.clone(), value.clone());
-            };
-            // Everything else should be available in the env for other ops to use.
-            env.insert(op.name.clone(), value);
+            } else {
+                // Everything else should be available in the env for other ops to use.
+                env.insert(op.name.clone(), value);
+            }
         }
 
         Ok(outputs)
@@ -1548,6 +1549,7 @@ impl AsyncTestRuntime {
             let moose_session = crate::kernels::AsyncSession::new(
                 SessionId::try_from("foobar").unwrap(),
                 arguments.clone(),
+                valid_role_assignments.clone(),
                 Arc::clone(&self.networking),
                 Arc::clone(&self.runtime_storage[own_identity]),
                 Arc::new(Placement::Host(HostPlacement {
@@ -1996,7 +1998,7 @@ mod tests {
 
         let outputs = match run_async {
             true => {
-                let computation = compile_passes(&computation, &[Pass::Networking])?;
+                let computation = compile_passes(&computation, &[Pass::Networking])?.toposort()?;
                 _run_computation_test(
                     computation,
                     storage_mapping,
@@ -2697,11 +2699,12 @@ mod tests {
     fn _create_async_session(
         networking: &Arc<dyn Send + Sync + AsyncNetworking>,
         exec_storage: &Arc<dyn Send + Sync + AsyncStorage>,
-        _ignored_role_assignments: HashMap<Role, Identity>,
+        role_assignments: HashMap<Role, Identity>,
     ) -> crate::kernels::AsyncSession {
         crate::kernels::AsyncSession::new(
             SessionId::try_from("foobar").unwrap(),
             hashmap!(),
+            role_assignments,
             Arc::clone(&networking),
             Arc::clone(&exec_storage),
             Arc::new(Placement::Host(HostPlacement {

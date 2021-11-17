@@ -248,7 +248,8 @@ impl RuntimeSession for SyncSession {
 #[derive(Clone)]
 pub struct AsyncSession {
     pub session_id: SessionId,
-    pub arguments: HashMap<String, Value>,
+    pub arguments: Arc<HashMap<String, Value>>,
+    pub role_assignments: Arc<HashMap<Role, Identity>>,
     pub networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
     pub storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
     pub host: Arc<Placement>,
@@ -320,13 +321,15 @@ impl AsyncSession {
     pub fn new(
         session_id: SessionId,
         arguments: HashMap<String, Value>,
+        role_assignments: HashMap<Role, Identity>,
         networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
         storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
         host: Arc<Placement>,
     ) -> Self {
         AsyncSession {
             session_id,
-            arguments,
+            arguments: Arc::new(arguments),
+            role_assignments: Arc::new(role_assignments),
             networking,
             storage,
             host,
@@ -334,7 +337,7 @@ impl AsyncSession {
         }
     }
 
-    fn networking_load(
+    fn storage_load(
         &self,
         op: &LoadOp,
         plc: &HostPlacement,
@@ -381,16 +384,15 @@ impl AsyncSession {
         Ok(result)
     }
 
-    fn networking_save(
+    fn storage_save(
         &self,
-        op: &SaveOp,
+        _op: &SaveOp,
         plc: &HostPlacement,
         operands: Vec<AsyncValue>,
     ) -> Result<AsyncValue> {
         use std::convert::TryInto;
         assert_eq!(operands.len(), 2);
         let sess = self.clone();
-        let op = op.clone();
         let plc = plc.clone();
         let (sender, result) = crate::computation::new_async_value();
         let tasks = std::sync::Arc::clone(&self.tasks);
@@ -422,6 +424,72 @@ impl AsyncSession {
 
         Ok(result)
     }
+
+    fn networking_receive(
+        &self,
+        op: &ReceiveOp,
+        plc: &HostPlacement,
+        operands: Vec<AsyncValue>,
+    ) -> Result<AsyncValue> {
+        assert_eq!(operands.len(), 0);
+        let sess = self.clone();
+        let op = op.clone();
+        let plc = plc.clone();
+        let (sender, result) = crate::computation::new_async_value();
+        let tasks = std::sync::Arc::clone(&self.tasks);
+        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+            let net_sender = sess.find_role_assignment(&op.sender)?;
+
+            let value: Value = sess
+                .networking
+                .receive(net_sender, &op.rendezvous_key, &sess.session_id)
+                .await?;
+            // TODO: Hmm, placement of a Value does not work like this... But perhaps it should?
+            // let value = plc.place(&sess, value);
+            crate::execution::map_send_result(sender.send(value))?;
+            Ok(())
+        });
+        let mut tasks = tasks.write().unwrap();
+        tasks.push(task);
+
+        Ok(result)
+    }
+
+    fn networking_send(
+        &self,
+        op: &SendOp,
+        plc: &HostPlacement,
+        operands: Vec<AsyncValue>,
+    ) -> Result<AsyncValue> {
+        assert_eq!(operands.len(), 1);
+        let sess = self.clone();
+        let plc = plc.clone();
+        let op = op.clone();
+        let (sender, result) = crate::computation::new_async_value();
+        let tasks = std::sync::Arc::clone(&self.tasks);
+        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+            let receiver = sess.find_role_assignment(&op.receiver)?;
+            let operands = futures::future::join_all(operands).await;
+            let x: Value = operands
+                .get(0)
+                .ok_or_else(|| {
+                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0))
+                })?
+                .clone()
+                .map_err(crate::execution::map_receive_error)?;
+
+            sess.networking
+                .send(&x, receiver, &op.rendezvous_key, &sess.session_id)
+                .await?;
+            let result = Unit(plc);
+            crate::execution::map_send_result(sender.send(result.into()))?;
+            Ok(())
+        });
+        let mut tasks = tasks.write().unwrap();
+        tasks.push(task);
+
+        Ok(result)
+    }
 }
 
 impl Session for AsyncSession {
@@ -435,10 +503,16 @@ impl Session for AsyncSession {
         // The kernels that are doing funny things to the async context, such as awaiting for more than their inputs.
         match (&op, plc) {
             (Operator::Load(op), Placement::Host(plc)) => {
-                return self.networking_load(op, plc, operands)
+                return self.storage_load(op, plc, operands)
             }
             (Operator::Save(op), Placement::Host(plc)) => {
-                return self.networking_save(op, plc, operands)
+                return self.storage_save(op, plc, operands)
+            }
+            (Operator::Send(op), Placement::Host(plc)) => {
+                return self.networking_send(op, plc, operands)
+            }
+            (Operator::Receive(op), Placement::Host(plc)) => {
+                return self.networking_receive(op, plc, operands)
             }
             _ => (),
         };
@@ -588,10 +662,10 @@ impl RuntimeSession for AsyncSession {
         self.arguments.get(key).cloned()
     }
 
-    fn find_role_assignment(&self, _role: &Role) -> Result<&Identity> {
-        Err(Error::Networking(
-            "new AsyncSession networking is not implemented yet".to_string(),
-        ))
+    fn find_role_assignment(&self, role: &Role) -> Result<&Identity> {
+        self.role_assignments
+            .get(role)
+            .ok_or_else(|| Error::Networking(format!("Missing role assignemnt for {}", role)))
     }
 }
 
