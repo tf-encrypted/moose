@@ -15,8 +15,11 @@ impl InputOp {
         HostPlacement: PlacementInput<S, HostTensorT>,
     {
         // TODO standardize this arg_name format for shares
-        let lift_name =
-            |player_ix, share_ix| format!("{0}/player{1}/share{2}", &arg_name, player_ix, share_ix);
+        let repl_roles = &plc.owners;
+        let lift_name = |player_ix, share_ix| {
+            let repl_role: &Role = &repl_roles[player_ix];
+            format!("{0}/{1}/share{2}", &arg_name, repl_role.0, share_ix)
+        };
         let (p0, p1, p2) = plc.host_placements();
         let in00 = p0.input(sess, lift_name(0, 0));
         let in10 = p0.input(sess, lift_name(0, 1));
