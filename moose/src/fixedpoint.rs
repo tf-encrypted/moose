@@ -1222,6 +1222,7 @@ modelled!(PlacementExp::exp, ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tens
 modelled!(PlacementExp::exp, ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor, ExpOp);
 modelled!(PlacementExp::exp, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, ExpOp);
 modelled!(PlacementExp::exp, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, ExpOp);
+modelled!(PlacementExp::exp, ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor, ExpOp);
 
 kernel! {
     ExpOp,
@@ -1230,6 +1231,7 @@ kernel! {
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
     ]
 }
 

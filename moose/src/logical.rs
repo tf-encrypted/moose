@@ -1295,3 +1295,31 @@ impl OutputOp {
         }
     }
 }
+
+impl ExpOp {
+    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+    where
+        ReplicatedPlacement: PlacementExp<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementExp<S, Fixed128T, Fixed128T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = plc.exp(sess, &x);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = plc.exp(sess, &x);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated exp for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+}
