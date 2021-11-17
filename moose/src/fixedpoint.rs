@@ -1185,7 +1185,6 @@ impl<RepRingT: Placed> FixedpointTensor for Symbolic<AbstractReplicatedFixedTens
 
 modelled!(PlacementPow2::pow2, ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor, Pow2Op);
 modelled!(PlacementPow2::pow2, ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor, Pow2Op);
-
 modelled!(PlacementPow2::pow2, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, Pow2Op);
 modelled!(PlacementPow2::pow2, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, Pow2Op);
 

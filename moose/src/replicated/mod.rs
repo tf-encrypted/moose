@@ -1270,7 +1270,6 @@ modelled!(PlacementMul::mul, ReplicatedPlacement, (HostRing128Tensor, Replicated
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepMulOp);
-
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
 modelled!(PlacementMul::mul, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
@@ -2540,7 +2539,7 @@ impl ShapeOp {
     }
 }
 
-pub trait BinaryAdder<S: Session, RepBitT> {
+pub(crate) trait BinaryAdder<S: Session, RepBitT> {
     fn binary_adder(&self, sess: &S, x: &RepBitT, y: &RepBitT, ring_size: usize) -> RepBitT;
 }
 
