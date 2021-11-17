@@ -599,7 +599,7 @@ impl FixedpointMulOp {
     where
         ReplicatedPlacement: PlacementMul<S, RepRingT, MirroredRingT, RepRingT>,
     {
-        // assert_eq!(x.fractional_precision, y.fractional_precision);
+        assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.mul(sess, &x.tensor, &y.tensor);
         Ok(AbstractReplicatedFixedTensor {
             tensor: z,
@@ -617,7 +617,7 @@ impl FixedpointMulOp {
     where
         ReplicatedPlacement: PlacementMul<S, MirroredRingT, RepRingT, RepRingT>,
     {
-        // assert_eq!(x.fractional_precision, y.fractional_precision);
+        assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.mul(sess, &x.tensor, &y.tensor);
         Ok(AbstractReplicatedFixedTensor {
             tensor: z,
