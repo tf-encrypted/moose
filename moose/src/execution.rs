@@ -1527,6 +1527,7 @@ impl AsyncTestRuntime {
         role_assignments: HashMap<Role, Identity>,
         arguments: HashMap<String, Value>,
     ) -> Result<HashMap<String, Value>> {
+        let computation = computation.toposort()?;
         let mut session_handles: Vec<crate::kernels::AsyncSessionHandle> = Vec::new();
         let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
         let rt = Runtime::new().unwrap();
@@ -1558,7 +1559,7 @@ impl AsyncTestRuntime {
             );
             let outputs = executor
                 .run_computation(
-                    computation,
+                    &computation,
                     &valid_role_assignments,
                     own_identity,
                     &moose_session,
@@ -1957,7 +1958,7 @@ mod tests {
 
         let outputs = match run_async {
             true => {
-                let computation = compile_passes(&computation, &[Pass::Networking])?.toposort()?;
+                let computation = compile_passes(&computation, &[Pass::Networking])?;
                 _run_computation_test(
                     computation,
                     storage_mapping,
@@ -1997,7 +1998,7 @@ mod tests {
 
         let outputs = match run_async {
             true => {
-                let computation = compile_passes(&computation, &[Pass::Networking])?.toposort()?;
+                let computation = compile_passes(&computation, &[Pass::Networking])?;
                 _run_computation_test(
                     computation,
                     storage_mapping,
