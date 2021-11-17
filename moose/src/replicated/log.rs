@@ -25,20 +25,17 @@ impl RepEqualOp {
     where
         RepRingT: Ring<BitLength = N>,
 
-        ReplicatedPlacement: PlacementBitDecSetup<S, S::ReplicatedSetup, RepRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementBitDec<S, RepRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepBitT>,
         ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
-        ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementMul<S, RepBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
     {
-        let setup = rep.gen_setup(sess);
-
         let z = rep.sub(sess, &x, &y);
-        let bits = rep.bit_decompose(sess, &setup, &z);
+        let bits = rep.bit_decompose(sess, &z);
 
         let v: Vec<_> = (0..RepRingT::BitLength::VALUE)
             .map(|i| rep.index(sess, i, &bits))
@@ -50,9 +47,7 @@ impl RepEqualOp {
 
         // TODO we can optimize this by having a binary multipler like
         // we are doing with the binary adder in bit decompitision
-        Ok(v_not
-            .iter()
-            .fold(ones, |acc, y| rep.mul_setup(sess, &setup, &acc, y)))
+        Ok(v_not.iter().fold(ones, |acc, y| rep.mul(sess, &acc, y)))
     }
 }
 
@@ -79,7 +74,6 @@ mod tests {
         };
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
 
         let x = AbstractHostRingTensor::from_raw_plc(
             array![1024u64, 5, 4]
@@ -95,9 +89,9 @@ mod tests {
             bob,
         );
 
-        let x_shared = rep.share(&sess, &setup, &x);
+        let x_shared = rep.share(&sess, &x);
 
-        let y_shared = rep.share(&sess, &setup, &y);
+        let y_shared = rep.share(&sess, &y);
 
         let res: ReplicatedBitTensor = rep.equal(&sess, &x_shared, &y_shared);
 

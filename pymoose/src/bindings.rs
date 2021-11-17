@@ -1,9 +1,9 @@
+use crate::computation::PyComputation;
 use moose::compilation::{compile_passes, into_pass, Pass};
 use moose::computation::{Computation, HostPlacement, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
-use moose::host::{HostString, HostTensor};
-use moose::python_computation::PyComputation;
+use moose::host::{HostBitTensor, HostString, HostTensor};
 use ndarray::IxDyn;
 use ndarray::LinalgScalar;
 use numpy::{Element, PyArrayDescr, PyArrayDyn, ToPyArray};
@@ -58,6 +58,17 @@ where
     )
 }
 
+fn pyobj_tensor_to_host_bit_tensor(py: Python, obj: &PyObject) -> HostBitTensor {
+    let pyarray = obj.cast_as::<PyArrayDyn<bool>>(py).unwrap();
+    HostBitTensor::from(
+        pyarray
+            .to_owned_array()
+            .map(|b| *b as u8)
+            .into_dimensionality::<IxDyn>()
+            .unwrap(),
+    )
+}
+
 fn pyobj_tensor_to_value(py: Python, obj: &PyObject) -> Result<Value, anyhow::Error> {
     let dtype_obj = obj.getattr(py, "dtype")?;
     let dtype: &PyArrayDescr = dtype_obj.cast_as(py).unwrap();
@@ -73,6 +84,7 @@ fn pyobj_tensor_to_value(py: Python, obj: &PyObject) -> Result<Value, anyhow::Er
         numpy::DataType::Uint16 => Ok(Value::from(pyobj_tensor_to_host_tensor::<u16>(py, obj))),
         numpy::DataType::Uint32 => Ok(Value::from(pyobj_tensor_to_host_tensor::<u32>(py, obj))),
         numpy::DataType::Uint64 => Ok(Value::from(pyobj_tensor_to_host_tensor::<u64>(py, obj))),
+        numpy::DataType::Bool => Ok(Value::from(pyobj_tensor_to_host_bit_tensor(py, obj))),
         otherwise => Err(anyhow::Error::msg(format!(
             "Unsupported numpy datatype {:?}",
             otherwise
@@ -92,6 +104,7 @@ fn tensorval_to_pyobj(py: Python, tensor: Value) -> PyResult<PyObject> {
         Value::HostUint16Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::HostUint32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::HostUint64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostBitTensor(t) => Ok(t.0.map(|v| *v != 0).to_pyarray(py).to_object(py)),
         otherwise => Err(PyTypeError::new_err(format!(
             r#"Values of type {:?} cannot be handled by runtime storage: must be a tensor of supported dtype."#,
             otherwise

@@ -1342,7 +1342,6 @@ impl ToTextual for Operator {
             HostIndexAxis(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
             HostSum(op) => op.to_textual(),
-            HostAddN(op) => op.to_textual(),
             HostTranspose(op) => op.to_textual(),
             HostInverse(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
@@ -1365,7 +1364,7 @@ impl ToTextual for Operator {
             BitSampleSeeded(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
-            AesDecrypt(_) => unimplemented!(),
+            AesDecrypt(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
             FixedpointAdd(op) => op.to_textual(),
@@ -1395,7 +1394,7 @@ impl ToTextual for Operator {
             RepDot(op) => op.to_textual(),
             RepFixedpointMean(op) => op.to_textual(),
             RepSum(op) => op.to_textual(),
-            RepAddN(op) => op.to_textual(),
+            AddN(op) => op.to_textual(),
             RepAdd(op) => op.to_textual(),
             RepSub(op) => op.to_textual(),
             RepMul(op) => op.to_textual(),
@@ -1416,7 +1415,7 @@ impl ToTextual for Operator {
             RepShl(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
             RepIndexAxis(op) => op.to_textual(),
-            RepIndex(op) => op.to_textual(),
+            Index(op) => op.to_textual(),
             RepDiag(op) => op.to_textual(),
             RepBitDec(op) => op.to_textual(),
             RepBitCompose(op) => op.to_textual(),
@@ -1424,6 +1423,7 @@ impl ToTextual for Operator {
             RepShlDim(op) => op.to_textual(),
             RepEqual(op) => op.to_textual(),
             RepIfElse(op) => op.to_textual(),
+            Pow2(op) => op.to_textual(),
         }
     }
 }
@@ -1537,6 +1537,7 @@ impl_to_textual!(BitNegOp, "{op}: {}", sig);
 impl_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
 impl_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
 impl_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
+impl_to_textual!(AesDecryptOp, "{op}: {}", sig);
 impl_to_textual!(
     FixedpointEncodeOp,
     "{op}{{fractional_precision={}, integral_precision={}}}: {}",
@@ -1595,6 +1596,7 @@ impl_to_textual!(RepFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(RepMsbOp, "{op}: {}", sig);
 impl_to_textual!(RepNegOp, "{op}: {}", sig);
 impl_to_textual!(RepShlOp, "{op}: {}", sig);
+impl_to_textual!(Pow2Op, "{op}: {}", sig);
 impl_to_textual!(RepToAdtOp, "{op}: {}", sig);
 impl_to_textual!(
     RepIndexAxisOp,
@@ -1603,7 +1605,7 @@ impl_to_textual!(
     index,
     sig
 );
-impl_to_textual!(RepIndexOp, "{op}{{index={}}}: {}", index, sig);
+impl_to_textual!(IndexOp, "{op}{{index={}}}: {}", index, sig);
 impl_to_textual!(RepDiagOp, "{op}: {}", sig);
 impl_to_textual!(RepBitDecOp, "{op}: {}", sig);
 impl_to_textual!(RepBitComposeOp, "{op}: {}", sig);
@@ -1642,8 +1644,7 @@ op_with_axis_to_textual!(RingSumOp);
 op_with_axis_to_textual!(RepSumOp);
 op_with_axis_to_textual!(FixedpointSumOp);
 
-impl_to_textual!(RepAddNOp, "{op}: {}", sig);
-impl_to_textual!(HostAddNOp, "{op}: {}", sig);
+impl_to_textual!(AddNOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointAddOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointSubOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointMulOp, "{op}: {}", sig);
@@ -1796,6 +1797,7 @@ impl ToTextual for Ty {
             Ty::HostBitTensor => "BitTensor".to_string(),
             Ty::HostBitArray64 => "BitArray64".to_string(),
             Ty::HostBitArray128 => "BitArray128".to_string(),
+            Ty::HostBitArray224 => "BitArray224".to_string(),
             Ty::HostBitArray256 => "BitArray256".to_string(),
             Ty::HostShape => "Shape".to_string(),
             Ty::Seed => "Seed".to_string(),
@@ -1820,6 +1822,7 @@ impl ToTextual for Ty {
             Ty::ReplicatedBitTensor => "ReplicatedBitTensor".to_string(),
             Ty::ReplicatedBitArray64 => "ReplicatedBitArray64".to_string(),
             Ty::ReplicatedBitArray128 => "ReplicatedBitArray128".to_string(),
+            Ty::ReplicatedBitArray224 => "ReplicatedBitArray224".to_string(),
             Ty::ReplicatedSetup => "ReplicatedSetup".to_string(),
             Ty::ReplicatedShape => "ReplicatedShape".to_string(),
             Ty::AdditiveBitTensor => "AdditiveBitTensor".to_string(),
@@ -1830,11 +1833,17 @@ impl ToTextual for Ty {
             Ty::Fixed128Tensor => "Fixed128Tensor".to_string(),
             Ty::Float32Tensor => "Float32Tensor".to_string(),
             Ty::Float64Tensor => "Float64Tensor".to_string(),
-            Ty::HostFixed128AesTensor => unimplemented!(),
-            Ty::HostAesKey => unimplemented!(),
-            Ty::ReplicatedAesKey => unimplemented!(),
-            Ty::Fixed128AesTensor => unimplemented!(),
-            Ty::AesTensor => unimplemented!(),
+            Ty::Mirrored3Ring64Tensor => "Mirrored3Ring64Tensor".to_string(),
+            Ty::Mirrored3Ring128Tensor => "Mirrored3Ring128Tensor".to_string(),
+            Ty::Mirrored3BitTensor => "Mirrored3BitTensor".to_string(),
+            Ty::Mirrored3Fixed64Tensor => "Mirrored3Fixed64Tensor".to_string(),
+            Ty::Mirrored3Fixed128Tensor => "Mirrored3Fixed128Tensor".to_string(),
+            Ty::HostFixed128AesTensor => "HostFixed128AesTensor".to_string(),
+            Ty::HostAesKey => "HostAesKey".to_string(),
+            Ty::ReplicatedAesKey => "ReplicatedAesKey".to_string(),
+            Ty::Fixed128AesTensor => "Fixed128AesTensor".to_string(),
+            Ty::AesTensor => "AesTensor".to_string(),
+            Ty::AesKey => "AesKey".to_string(),
         }
     }
 }
@@ -1872,6 +1881,7 @@ impl ToTextual for Value {
             | Value::HostBitArray64(_)
             | Value::Tensor(_)
             | Value::HostBitArray128(_) => unimplemented!(),
+            Value::HostBitArray224(_) => unimplemented!(),
             Value::HostBitArray256(_) => unimplemented!(),
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)
@@ -1883,10 +1893,16 @@ impl ToTextual for Value {
             | Value::ReplicatedBitTensor(_)
             | Value::ReplicatedBitArray64(_)
             | Value::ReplicatedBitArray128(_)
+            | Value::ReplicatedBitArray224(_)
             | Value::ReplicatedRing64Tensor(_)
             | Value::ReplicatedRing128Tensor(_)
             | Value::ReplicatedFixed64Tensor(_)
             | Value::ReplicatedFixed128Tensor(_)
+            | Value::Mirrored3Ring64Tensor(_)
+            | Value::Mirrored3Ring128Tensor(_)
+            | Value::Mirrored3BitTensor(_)
+            | Value::Mirrored3Fixed64Tensor(_)
+            | Value::Mirrored3Fixed128Tensor(_)
             | Value::AdditiveShape(_)
             | Value::AdditiveBitTensor(_)
             | Value::AdditiveRing64Tensor(_)
@@ -1898,6 +1914,7 @@ impl ToTextual for Value {
             Value::ReplicatedAesKey(_) => unimplemented!(),
             Value::Fixed128AesTensor(_) => unimplemented!(),
             Value::AesTensor(_) => unimplemented!(),
+            Value::AesKey(_) => unimplemented!(),
         }
     }
 }
@@ -1938,7 +1955,7 @@ impl<T: std::fmt::Debug> ToTextual for ndarray::ArrayD<T> {
     fn to_textual(&self) -> String {
         match self.shape() {
             [_len] => format!("{:?}", self.as_slice().unwrap()),
-            [cols, rows] => {
+            [rows, cols] => {
                 let mut buffer = String::from("[");
                 let mut first_row = true;
                 for r in 0..*rows {
@@ -2107,6 +2124,17 @@ mod tests {
         let (_, parsed_ring64) = constant_literal::<(&str, ErrorKind)>("Ring64(42)")?;
         assert_eq!(parsed_ring64, Constant::Ring64(42));
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_array_literal_non_square() -> Result<(), anyhow::Error> {
+        let parsed_f32: Constant =
+            "Float32Tensor([[1.0, 11, 12, 13], [3.0, 21, 22, 23]])".try_into()?;
+        assert_eq!(
+            parsed_f32.to_textual(),
+            "Float32Tensor([[1.0, 11.0, 12.0, 13.0], [3.0, 21.0, 22.0, 23.0]])"
+        );
         Ok(())
     }
 

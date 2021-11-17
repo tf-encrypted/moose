@@ -12,13 +12,18 @@ use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor, Session};
 
 const AES_128: &[u8] = include_bytes!("aes_128.txt");
 
-pub fn aes<S: Session, P, BitT>(sess: &S, plc: &P, key: Vec<BitT>, block: Vec<BitT>) -> Vec<BitT>
+pub fn aes128<S: Session, P, BitT>(sess: &S, plc: &P, key: Vec<BitT>, block: Vec<BitT>) -> Vec<BitT>
 where
     BitT: Clone,
     P: PlacementXor<S, BitT, BitT, BitT>,
     P: PlacementAnd<S, BitT, BitT, BitT>,
     P: PlacementNeg<S, BitT, BitT>,
 {
+    // From [circuit website](https://homes.esat.kuleuven.be/~nsmart/MPC/):
+    //   Note for AES-128 the wire orders are in the reverse order as used
+    //   in the examples given in our earlier `Bristol Format', thus bit 0
+    //   becomes bit 127 etc, for key, plaintext and message., inputs and outputs
+
     let circuit = Circuit::try_from(AES_128).unwrap();
 
     // TODO(Morten)
@@ -28,12 +33,12 @@ where
     let mut wires: Vec<Option<BitT>> = vec![None; circuit.num_wires];
 
     assert_eq!(key.len(), 128);
-    for (i, val) in key.into_iter().enumerate() {
+    for (i, val) in key.into_iter().rev().enumerate() {
         *wires.get_mut(i).unwrap() = Some(val);
     }
 
     assert_eq!(block.len(), 128);
-    for (i, val) in block.into_iter().enumerate() {
+    for (i, val) in block.into_iter().rev().enumerate() {
         *wires.get_mut(i + 128).unwrap() = Some(val);
     }
 
@@ -175,146 +180,109 @@ fn parse_usize(line: &[u8]) -> Res<&[u8], usize> {
     Ok((line, res as usize))
 }
 
+pub fn byte_to_bits_le(byte: &u8) -> Vec<u8> {
+    (0..8).map(|i| (byte >> i) & 1).collect::<Vec<_>>()
+}
+
+pub fn byte_to_bits_be(byte: &u8) -> Vec<u8> {
+    (0..8).map(|i| (byte >> (7 - i)) & 1).collect::<Vec<_>>()
+}
+
+pub fn bits_to_byte_le(bits: &[u8]) -> u8 {
+    (0..8)
+        .map(|i| bits[i] << i)
+        .reduce(std::ops::Add::add)
+        .unwrap()
+}
+
+pub fn bits_to_byte_be(bits: &[u8]) -> u8 {
+    (0..8)
+        .map(|i| bits[i] << (7 - i))
+        .reduce(std::ops::Add::add)
+        .unwrap()
+}
+
+pub fn byte_vec_to_bit_vec_be(bytes: &[u8]) -> Vec<u8> {
+    bytes.iter().flat_map(byte_to_bits_be).collect::<Vec<_>>()
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::computation::{HostPlacement, ReplicatedPlacement, Role};
     use crate::host::HostBitTensor;
     use crate::kernels::SyncSession;
     use crate::replicated::ReplicatedBitTensor;
-
-    use super::*;
 
     #[test]
     fn test_parse_aes() {
         let _circuit = Circuit::try_from(AES_128).unwrap();
     }
 
+    // test vectors from https://csrc.nist.gov/csrc/media/publications/fips/197/final/documents/fips-197.pdf
+    const K: [u8; 16] = [
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+        0x0f,
+    ];
+    const M: [u8; 16] = [
+        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
+        0xff,
+    ];
+    const C: [u8; 16] = [
+        0x69, 0xc4, 0xe0, 0xd8, 0x6a, 0x7b, 0x04, 0x30, 0xd8, 0xcd, 0xb7, 0x80, 0x70, 0xb4, 0xc5,
+        0x5a,
+    ];
+
     #[test]
-    fn test_aes_host() {
-        use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
-        use aes::{Aes128, Block, NewBlockCipher};
-
-        let k: Vec<u8> = vec![1; 128];
-        let m: Vec<u8> = vec![1; 128];
-
+    fn test_aes_reference() {
         let expected_c = {
-            let k: Vec<u8> = k
-                .chunks(8)
-                .map(|c| {
-                    (c[0] << 7)
-                        + (c[1] << 6)
-                        + (c[2] << 5)
-                        + (c[3] << 4)
-                        + (c[4] << 3)
-                        + (c[5] << 2)
-                        + (c[6] << 1)
-                        + (c[7])
-                })
-                .collect();
+            use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
+            use aes::{Aes128, Block, NewBlockCipher};
 
-            let m: Vec<u8> = m
-                .chunks(8)
-                .map(|c| {
-                    (c[0] << 7)
-                        + (c[1] << 6)
-                        + (c[2] << 5)
-                        + (c[3] << 4)
-                        + (c[4] << 3)
-                        + (c[5] << 2)
-                        + (c[6] << 1)
-                        + (c[7])
-                })
-                .collect();
-
-            let mut block = Block::clone_from_slice(&m);
-            let key = GenericArray::from_slice(&k);
+            let mut block = Block::clone_from_slice(&M);
+            let key = GenericArray::from_slice(&K);
             let cipher = Aes128::new(key);
             cipher.encrypt_block(&mut block);
             block
         };
 
+        assert_eq!(expected_c.as_slice(), &C);
+    }
+
+    #[test]
+    fn test_aes_host() {
         let actual_c = {
             let host = HostPlacement {
                 owner: Role::from("host"),
             };
 
-            let k: Vec<HostBitTensor> = k
+            let k: Vec<HostBitTensor> = K
                 .iter()
-                .map(|b| HostBitTensor::from_slice_plc(&[*b], host.clone()))
+                .flat_map(byte_to_bits_be)
+                .map(|b| HostBitTensor::from_slice_plc(&[b], host.clone()))
                 .collect();
-            let m: Vec<HostBitTensor> = m
+
+            let m: Vec<HostBitTensor> = M
                 .iter()
-                .map(|b| HostBitTensor::from_slice_plc(&[*b], host.clone()))
+                .flat_map(byte_to_bits_be)
+                .map(|b| HostBitTensor::from_slice_plc(&[b], host.clone()))
                 .collect();
 
             let sess = SyncSession::default();
-
-            let c_bits: Vec<u8> = aes(&sess, &host, k, m).iter().map(|t| t.0[0] & 1).collect();
-
-            let c: Vec<u8> = c_bits
-                .chunks(8)
-                .map(|c| {
-                    (c[0] << 7)
-                        + (c[1] << 6)
-                        + (c[2] << 5)
-                        + (c[3] << 4)
-                        + (c[4] << 3)
-                        + (c[5] << 2)
-                        + (c[6] << 1)
-                        + (c[7])
-                })
+            let c_bits: Vec<u8> = aes128(&sess, &host, k, m)
+                .iter()
+                .map(|t| t.0[0] & 1)
                 .collect();
-
+            let c: Vec<u8> = c_bits.chunks(8).map(bits_to_byte_be).collect();
             c
         };
 
-        assert_eq!(actual_c.as_slice(), expected_c.as_slice());
+        assert_eq!(actual_c.as_slice(), &C);
     }
 
     #[test]
     fn test_aes_replicated() {
-        use crate::kernels::{PlacementReveal, PlacementSetupGen, PlacementShareSetup};
-        use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
-        use aes::{Aes128, Block, NewBlockCipher};
-
-        let k: Vec<u8> = vec![0; 128];
-        let m: Vec<u8> = vec![0; 128];
-
-        let expected_c = {
-            let k: Vec<u8> = k
-                .chunks(8)
-                .map(|c| {
-                    (c[0] << 7)
-                        + (c[1] << 6)
-                        + (c[2] << 5)
-                        + (c[3] << 4)
-                        + (c[4] << 3)
-                        + (c[5] << 2)
-                        + (c[6] << 1)
-                        + (c[7])
-                })
-                .collect();
-
-            let m: Vec<u8> = m
-                .chunks(8)
-                .map(|c| {
-                    (c[0] << 7)
-                        + (c[1] << 6)
-                        + (c[2] << 5)
-                        + (c[3] << 4)
-                        + (c[4] << 3)
-                        + (c[5] << 2)
-                        + (c[6] << 1)
-                        + (c[7])
-                })
-                .collect();
-
-            let mut block = Block::clone_from_slice(&m);
-            let key = GenericArray::from_slice(&k);
-            let cipher = Aes128::new(key);
-            cipher.encrypt_block(&mut block);
-            block
-        };
+        use crate::kernels::{PlacementReveal, PlacementShare};
 
         let actual_c = {
             let host = HostPlacement {
@@ -325,55 +293,31 @@ mod tests {
             };
 
             let sess = SyncSession::default();
-            let setup = rep.gen_setup(&sess);
 
-            let k: Vec<ReplicatedBitTensor> = k
+            let k: Vec<ReplicatedBitTensor> = K
                 .iter()
-                .map(|b| {
-                    rep.share(
-                        &sess,
-                        &setup,
-                        &HostBitTensor::from_slice_plc(&[*b], host.clone()),
-                    )
-                })
+                .flat_map(byte_to_bits_be)
+                .map(|b| rep.share(&sess, &HostBitTensor::from_slice_plc(&[b], host.clone())))
                 .collect();
-            let m: Vec<ReplicatedBitTensor> = m
+
+            let m: Vec<ReplicatedBitTensor> = M
                 .iter()
-                .map(|b| {
-                    rep.share(
-                        &sess,
-                        &setup,
-                        &HostBitTensor::from_slice_plc(&[*b], host.clone()),
-                    )
-                })
+                .flat_map(byte_to_bits_be)
+                .map(|b| rep.share(&sess, &HostBitTensor::from_slice_plc(&[b], host.clone())))
                 .collect();
 
-            // TODO impl Neg for replicated placements
-            let c_bits: Vec<u8> = aes(&sess, &rep, k, m)
-                .iter()
-                .map(|te| {
-                    let t = host.reveal(&sess, te);
-                    t.0[0] & 1
-                })
-                .collect();
-
-            let c: Vec<u8> = c_bits
-                .chunks(8)
-                .map(|c| {
-                    (c[0] << 7)
-                        + (c[1] << 6)
-                        + (c[2] << 5)
-                        + (c[3] << 4)
-                        + (c[4] << 3)
-                        + (c[5] << 2)
-                        + (c[6] << 1)
-                        + (c[7])
-                })
-                .collect();
-
+            let c_bits: Vec<u8> =
+                aes128::<SyncSession, ReplicatedPlacement, ReplicatedBitTensor>(&sess, &rep, k, m)
+                    .iter()
+                    .map(|te| {
+                        let t = host.reveal(&sess, te);
+                        t.0[0] & 1
+                    })
+                    .collect();
+            let c: Vec<u8> = c_bits.chunks(8).map(bits_to_byte_be).collect();
             c
         };
 
-        assert_eq!(actual_c.as_slice(), expected_c.as_slice());
+        assert_eq!(actual_c.as_slice(), &C);
     }
 }

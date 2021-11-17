@@ -805,7 +805,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc
             ) -> crate::error::Result<
-                <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+                <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 use crate::symbolic::SymbolicSession;
 
@@ -832,7 +832,7 @@ macro_rules! kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>>
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>>
             {
                 derive_runtime_kernel![nullary, $($kp)+, self]
             }
@@ -1083,7 +1083,9 @@ macro_rules! kernel {
                                 let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
                                 Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                             }
-                            _ => unimplemented!() // ok
+                            _ => {
+                                Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
+                            }
                         }
                     }
                 }))
@@ -1132,7 +1134,7 @@ macro_rules! kernel {
                             let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
                             Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
-                        _ => unimplemented!() // ok
+                        => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
                     }
                 }))
             }
@@ -1191,7 +1193,7 @@ macro_rules! kernel {
                             let op_name = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
                             Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
-                        _ => unimplemented!()
+                        _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
                     }
                 }))
             }
@@ -1300,7 +1302,7 @@ macro_rules! kernel {
                                 let op_name = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
                                 Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                             }
-                            _ => unimplemented!() // ok
+                            _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
                         }
                     }
                 }))
@@ -1343,7 +1345,7 @@ macro_rules! kernel {
                             let op_name = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
                             Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
-                        _ => unimplemented!()
+                        _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
                     }
                 })
             }
@@ -1443,10 +1445,9 @@ macro_rules! kernel {
                         if handles.len() == xs.len() {
                             // success; we can record in graph
                             let op_name = sess.add_operation(op, &handles, &plc.clone().into());
-                            return Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }));
+                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         } else {
-                            // unexpected
-                            unimplemented!()
+                            Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
                         }
                     }
                 }))
@@ -1487,7 +1488,7 @@ macro_rules! kernel {
                         }
                     }).collect();
 
-                    if  res.len() == xs.len() {
+                    if res.len() == xs.len() {
                         let op_name = sess.add_operation(&op, &res, &plc.clone().into());
                         return Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }));
                     }
@@ -2124,6 +2125,9 @@ pub struct N64;
 pub struct N128;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct N224;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct N256;
 
 pub trait Const {
@@ -2138,12 +2142,20 @@ impl Const for N128 {
     const VALUE: usize = 128;
 }
 
+impl Const for N224 {
+    const VALUE: usize = 224;
+}
+
 impl Const for N256 {
     const VALUE: usize = 256;
 }
 
 pub trait Ring {
     type BitLength: Const;
+}
+
+pub trait BitArray {
+    type Len: Const;
 }
 
 macro_rules! unmodelled {
@@ -2199,9 +2211,8 @@ pub mod logical;
 pub mod networking;
 pub mod prim;
 pub mod prng;
-pub mod python_computation;
 pub mod replicated;
 pub mod storage;
 pub mod symbolic;
-pub mod text_computation;
+pub mod textual;
 pub mod utils;

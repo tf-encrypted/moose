@@ -1,25 +1,13 @@
-use crate::additive::{
-    AdditiveBitTensor, AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape,
-};
-use crate::encrypted::{AesTensor, Fixed128AesTensor};
+use crate::additive::*;
+use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::{
-    HostAesKey, HostBitArray128, HostBitArray256, HostBitArray64, HostBitTensor,
-    HostFixed128AesTensor, HostFixed128Tensor, HostFixed64Tensor, HostFloat32Tensor,
-    HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor,
-    HostRing128Tensor, HostRing64Tensor, HostShape, HostString, HostUint16Tensor, HostUint32Tensor,
-    HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
-};
+use crate::host::*;
 use crate::kernels::Session;
 use crate::logical::{Tensor, TensorDType};
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
-use crate::replicated::{
-    ReplicatedAesKey, ReplicatedBitArray128, ReplicatedBitArray64, ReplicatedBitTensor,
-    ReplicatedFixed128Tensor, ReplicatedFixed64Tensor, ReplicatedRing128Tensor,
-    ReplicatedRing64Tensor, ReplicatedSetup, ReplicatedShape,
-};
+use crate::replicated::*;
 use crate::symbolic::Symbolic;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
@@ -449,6 +437,7 @@ values![
     HostBitTensor,
     HostBitArray64,
     HostBitArray128,
+    HostBitArray224,
     HostBitArray256,
     HostRing64Tensor,
     HostRing128Tensor,
@@ -475,16 +464,23 @@ values![
     ReplicatedBitTensor,
     ReplicatedBitArray64,
     ReplicatedBitArray128,
+    ReplicatedBitArray224,
     ReplicatedFixed64Tensor,
     ReplicatedFixed128Tensor,
     ReplicatedAesKey,
     ReplicatedSetup,
     ReplicatedShape,
+    Mirrored3Ring64Tensor,
+    Mirrored3Ring128Tensor,
+    Mirrored3BitTensor,
+    Mirrored3Fixed64Tensor,
+    Mirrored3Fixed128Tensor,
     AdditiveBitTensor,
     AdditiveRing64Tensor,
     AdditiveRing128Tensor,
     AdditiveShape,
     Fixed128AesTensor,
+    AesKey,
     AesTensor,
 ];
 
@@ -829,6 +825,8 @@ impl Ty {
     pub fn merge(&self, another: &Ty) -> Option<Ty> {
         match self {
             Ty::Unknown => Some(*another),
+            // TODO: make sure another dtype is also a tensor
+            Ty::Tensor(TensorDType::Unknown) => Some(*another),
             _ => None,
         }
     }
@@ -920,7 +918,6 @@ operators![
     HostReshape,
     HostSqueeze,
     HostSum,
-    HostAddN,
     HostOnes,
     HostConcat,
     HostTranspose,
@@ -961,6 +958,7 @@ operators![
     FixedpointTruncPr,
     FixedpointMean,
     FixedpointSum,
+    Pow2,
     // Floating-point operators
     FloatingpointAdd,
     FloatingpointSub,
@@ -1000,11 +998,11 @@ operators![
     RepFixedpointMean,
     RepShl,
     RepSum,
-    RepAddN,
+    AddN,
     RepTruncPr,
     RepToAdt,
     RepIndexAxis,
-    RepIndex,
+    Index,
     RepDiag,
     RepSlice,
     RepBitDec,
@@ -1231,11 +1229,6 @@ pub struct HostSumOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct HostAddNOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct HostTransposeOp {
     pub sig: Signature,
 }
@@ -1416,6 +1409,11 @@ pub struct BitAndOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct BitNegOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct Pow2Op {
     pub sig: Signature,
 }
 
@@ -1659,7 +1657,7 @@ pub struct RepFixedpointMeanOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepAddNOp {
+pub struct AddNOp {
     pub sig: Signature,
 }
 
@@ -1707,7 +1705,7 @@ pub struct RepIndexAxisOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepIndexOp {
+pub struct IndexOp {
     pub sig: Signature,
     pub index: usize,
 }

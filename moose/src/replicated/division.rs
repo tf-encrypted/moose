@@ -1,29 +1,22 @@
 use super::*;
 
 impl FixedpointDivOp {
-    pub(crate) fn rep_rep_kernel<S: Session, RepRingT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, MirroredT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
         y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<st!(AbstractReplicatedFixedTensor<RepRingT>)>
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
-        AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
-        <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
-        AbstractReplicatedFixedTensor<RepRingT>: Into<st!(AbstractReplicatedFixedTensor<RepRingT>)>,
-        ReplicatedShape: KnownType<S>,
         RepRingT: Ring,
-        ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
-        ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
-        ReplicatedPlacement: ApproximateReciprocal<S, S::ReplicatedSetup, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: ApproximateReciprocal<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+        ReplicatedPlacement: PlacementAdd<S, MirroredT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
+        ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirroredT>,
     {
         #![allow(clippy::many_single_char_names)]
-        let setup = rep.gen_setup(sess);
 
         assert_eq!(x.integral_precision, y.integral_precision);
         assert_eq!(x.fractional_precision, y.fractional_precision);
@@ -41,11 +34,8 @@ impl FixedpointDivOp {
         let x_st = x.tensor;
         let y_st = y.tensor;
 
-        let x_shape = rep.shape(sess, &x_st);
-
         let w = rep.approximate_reciprocal(
             sess,
-            &setup,
             int_precision as usize,
             frac_precision as usize,
             &y_st,
@@ -56,35 +46,30 @@ impl FixedpointDivOp {
             value: 1.0,
             precision: 2 * frac_precision as usize,
         });
-        let rep_alpha = rep.fill(sess, alpha, &x_shape);
+        let rep_alpha = rep.shape_fill(sess, alpha, &x_st);
 
-        let mut a = with_context!(
-            rep,
-            sess,
-            rep_alpha - &rep.mul_setup(sess, &setup, &y_st, &w)
-        );
+        let mut a = with_context!(rep, sess, rep_alpha - &rep.mul(sess, &y_st, &w));
         // max_bits(a) = max(2f, k)
 
-        let mut b = rep.mul_setup(sess, &setup, &x_st, &w);
+        let mut b = rep.mul(sess, &x_st, &w);
 
         // no need to truncate with 2f since w is already truncated
         b = rep.trunc_pr(sess, frac_precision, &b);
 
         for _i in 0..theta {
-            let x = rep.mul_setup(sess, &setup, &a, &a);
-            let y = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
+            let x = rep.mul(sess, &a, &a);
+            let y = rep.mul(sess, &b, &rep.add(sess, &rep_alpha, &a));
             a = rep.trunc_pr(sess, 2 * frac_precision, &x);
             b = rep.trunc_pr(sess, 2 * frac_precision, &y);
         }
-        b = rep.mul_setup(sess, &setup, &b, &rep.add(sess, &rep_alpha, &a));
+        b = rep.mul(sess, &b, &rep.add(sess, &rep_alpha, &a));
         b = rep.trunc_pr(sess, 2 * frac_precision, &b);
 
         Ok(AbstractReplicatedFixedTensor {
             tensor: b,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
             fractional_precision: x.fractional_precision,
-        }
-        .into())
+        })
     }
 }
 
@@ -92,99 +77,83 @@ pub(crate) trait SignFromMsb<S: Session, T, O> {
     fn sign_from_msb(&self, sess: &S, msb_ring: &T) -> O;
 }
 
-impl<S: Session, RepRingT> SignFromMsb<S, RepRingT, RepRingT> for ReplicatedPlacement
+impl<S: Session, RepRingT, MirroredT> SignFromMsb<S, RepRingT, RepRingT> for ReplicatedPlacement
 where
-    ReplicatedShape: KnownType<S>,
-
-    ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
-    ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
+    ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirroredT>,
 {
     fn sign_from_msb(&self, sess: &S, msb_ring: &RepRingT) -> RepRingT {
         let rep = self;
         let double = rep.shl(sess, 1, msb_ring);
-
-        let one_value: Constant = 1u8.into();
-
-        let x_shape = rep.shape(sess, msb_ring);
-        let ones = rep.fill(sess, one_value, &x_shape);
+        let ones = rep.shape_fill(sess, 1_u8, msb_ring);
         rep.sub(sess, &ones, &double)
     }
 }
 
-pub(crate) trait DivNorm<S: Session, SetupT, T, O> {
-    fn norm(&self, sess: &S, setup: &SetupT, max_bits: usize, x: &T) -> (O, O);
+pub(crate) trait DivNorm<S: Session, T, O> {
+    fn norm(&self, sess: &S, max_bits: usize, x: &T) -> (O, O);
 }
 
-impl<S: Session, SetupT, RepRingT, N> DivNorm<S, SetupT, RepRingT, RepRingT> for ReplicatedPlacement
+impl<S: Session, RepRingT, N> DivNorm<S, RepRingT, RepRingT> for ReplicatedPlacement
 where
     RepRingT: Ring<BitLength = N>,
     AbstractReplicatedBitArray<ReplicatedBitTensor, N>: KnownType<S>,
     ReplicatedBitTensor: KnownType<S>,
 
-    ReplicatedPlacement: PlacementMsb<S, SetupT, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
     ReplicatedPlacement: SignFromMsb<S, RepRingT, RepRingT>,
-
-    ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
-    ReplicatedPlacement: TopMostIndex<S, SetupT, cs!(ReplicatedBitTensor), RepRingT>,
+    ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement: TopMostIndex<S, cs!(ReplicatedBitTensor), RepRingT>,
     ReplicatedPlacement: PlacementIndex<
         S,
         cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
         cs!(ReplicatedBitTensor),
     >,
 {
-    fn norm(
-        &self,
-        sess: &S,
-        setup: &SetupT,
-        max_bits: usize,
-        x: &RepRingT,
-    ) -> (RepRingT, RepRingT) {
+    fn norm(&self, sess: &S, max_bits: usize, x: &RepRingT) -> (RepRingT, RepRingT) {
         let rep = self;
 
-        let msb = rep.msb(sess, setup, x);
+        let msb = rep.msb(sess, x);
         let sign = rep.sign_from_msb(sess, &msb);
-        let abs_x = rep.mul_setup(sess, setup, &sign, x);
+        let abs_x = rep.mul(sess, &sign, x);
 
         // Although we don't need all bits (only max_bits from the bit-decomposition)
         // this is going to be optimized when using the rust compiler since the extra operations
         // will be pruned away.
+        let top_most = rep.top_most_index(sess, max_bits, &abs_x);
+        let upshifted = rep.mul(sess, x, &top_most);
 
-        let top_most = rep.top_most_index(sess, setup, max_bits, &abs_x);
-        let upshifted = rep.mul_setup(sess, setup, x, &top_most);
-
-        let signed_topmost = rep.mul_setup(sess, setup, &sign, &top_most);
+        let signed_topmost = rep.mul(sess, &sign, &top_most);
         (upshifted, signed_topmost)
     }
 }
 
-pub(crate) trait TopMost<S: Session, SetupT, RepRingT, RepBitT> {
-    fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: &RepRingT) -> Vec<RepBitT>;
+pub(crate) trait TopMost<S: Session, RepRingT, RepBitT> {
+    fn top_most(&self, sess: &S, max_bits: usize, x: &RepRingT) -> Vec<RepBitT>;
 }
 
-impl<S: Session, SetupT, RepRingT, RepBitT, N: Const> TopMost<S, SetupT, RepRingT, RepBitT>
-    for ReplicatedPlacement
+impl<S: Session, RepRingT, RepBitT, N: Const> TopMost<S, RepRingT, RepBitT> for ReplicatedPlacement
 where
     RepBitT: Clone + CanonicalType,
     RepRingT: Clone + Ring<BitLength = N>,
     AbstractReplicatedBitArray<c!(RepBitT), N>: KnownType<S>,
     ReplicatedPlacement:
-        PlacementBitDecSetup<S, SetupT, RepRingT, m!(AbstractReplicatedBitArray<c!(RepBitT), N>)>,
+        PlacementBitDec<S, RepRingT, m!(AbstractReplicatedBitArray<c!(RepBitT), N>)>,
     ReplicatedPlacement: PlacementIndex<S, m!(AbstractReplicatedBitArray<c!(RepBitT), N>), RepBitT>,
-    ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementAnd<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementSub<S, RepBitT, RepBitT, RepBitT>,
 {
-    fn top_most(&self, sess: &S, setup: &SetupT, max_bits: usize, x: &RepRingT) -> Vec<RepBitT> {
+    fn top_most(&self, sess: &S, max_bits: usize, x: &RepRingT) -> Vec<RepBitT> {
         let rep = self;
 
-        let x_bits = rep.bit_decompose(sess, setup, x);
+        let x_bits = rep.bit_decompose(sess, x);
         let x_rev: Vec<_> = (0..max_bits)
             .map(|i| rep.index(sess, max_bits - i - 1, &x_bits))
             .collect();
 
-        let mut y = rep.prefix_or(sess, setup, x_rev);
+        let mut y = rep.prefix_or(sess, x_rev);
         y.reverse();
 
         let mut z: Vec<_> = (0..max_bits - 1)
@@ -196,22 +165,21 @@ where
     }
 }
 
-pub(crate) trait TopMostIndex<S: Session, SetupT, RepBitT, RepRingT> {
-    fn top_most_index(&self, sess: &S, setup: &SetupT, max_bits: usize, x: &RepRingT) -> RepRingT;
+pub(crate) trait TopMostIndex<S: Session, RepBitT, RepRingT> {
+    fn top_most_index(&self, sess: &S, max_bits: usize, x: &RepRingT) -> RepRingT;
 }
 
-impl<S: Session, SetupT, RepBitT, RepRingT> TopMostIndex<S, SetupT, RepBitT, RepRingT>
-    for ReplicatedPlacement
+impl<S: Session, RepBitT, RepRingT> TopMostIndex<S, RepBitT, RepRingT> for ReplicatedPlacement
 where
-    ReplicatedPlacement: TopMost<S, SetupT, RepRingT, RepBitT>,
+    ReplicatedPlacement: TopMost<S, RepRingT, RepBitT>,
     ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
 {
-    fn top_most_index(&self, sess: &S, setup: &SetupT, max_bits: usize, x: &RepRingT) -> RepRingT {
+    fn top_most_index(&self, sess: &S, max_bits: usize, x: &RepRingT) -> RepRingT {
         let rep = self;
 
-        let z = rep.top_most(sess, setup, max_bits, x);
+        let z = rep.top_most(sess, max_bits, x);
         let z_ring: Vec<RepRingT> = z.iter().map(|e| rep.ring_inject(sess, 0, e)).collect();
 
         let s_vec: Vec<_> = z_ring
@@ -229,34 +197,29 @@ where
     }
 }
 
-pub(crate) trait ApproximateReciprocal<S: Session, SetupT, T, O> {
+pub(crate) trait ApproximateReciprocal<S: Session, T, O> {
     fn approximate_reciprocal(
         &self,
         sess: &S,
-        setup: &SetupT,
         int_precision: usize,
         frac_precision: usize,
         x: &T,
     ) -> O;
 }
 
-impl<S: Session, SetupT, RepRingT> ApproximateReciprocal<S, SetupT, RepRingT, RepRingT>
+impl<S: Session, RepRingT, MirroredT> ApproximateReciprocal<S, RepRingT, RepRingT>
     for ReplicatedPlacement
 where
-    ReplicatedShape: KnownType<S>,
-
-    ReplicatedPlacement: DivNorm<S, SetupT, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
-    ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
-    ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement: DivNorm<S, RepRingT, RepRingT>,
+    ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirroredT>,
+    ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
 {
     fn approximate_reciprocal(
         &self,
         sess: &S,
-        setup: &SetupT,
         int_precision: usize,
         frac_precision: usize,
         x: &RepRingT,
@@ -264,17 +227,17 @@ where
         let rep = self;
         let total_precision = int_precision + frac_precision;
 
-        let (upshifted, signed_topmost) = rep.norm(sess, setup, total_precision, x);
+        let (upshifted, signed_topmost) = rep.norm(sess, total_precision, x);
 
-        let x_shape = rep.shape(sess, x);
         // 2.9142 * 2^{total_precision}
         let alpha = Constant::Fixed(FixedpointConstant {
             value: 2.9142,
             precision: total_precision,
         });
-        let alpha = rep.fill(sess, alpha, &x_shape);
+        let alpha = rep.shape_fill(sess, alpha, x);
+
         let d = with_context!(rep, sess, alpha - rep.shl(sess, 1, &upshifted));
-        let w = rep.mul_setup(sess, setup, &d, &signed_topmost);
+        let w = rep.mul(sess, &d, &signed_topmost);
 
         // truncate result
         rep.trunc_pr(sess, 2 * int_precision as u32, &w)
@@ -300,11 +263,10 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
 
-        let x_shared = rep.share(&sess, &setup, &x);
+        let x_shared = rep.share(&sess, &x);
 
-        let (upshifted, topmost) = rep.norm(&sess, &setup, 12, &x_shared);
+        let (upshifted, topmost) = rep.norm(&sess, 12, &x_shared);
 
         let topmost_target = AbstractHostRingTensor::from_raw_plc(array![4u64], alice.clone());
         let upshifted_target = AbstractHostRingTensor::from_raw_plc(array![3584], alice.clone());
@@ -328,15 +290,14 @@ mod tests {
         let expected_output = x.clone() + y.clone();
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
 
         let x_bit = alice.bit_decompose(&sess, &x);
         let y_bit = alice.bit_decompose(&sess, &y);
         let expected_output_bit: HostBitTensor = alice.bit_decompose(&sess, &expected_output);
 
-        let x_shared = rep.share(&sess, &setup, &x_bit);
-        let y_shared = rep.share(&sess, &setup, &y_bit);
-        let binary_adder = rep.binary_adder(&sess, setup, x_shared, y_shared, 64);
+        let x_shared = rep.share(&sess, &x_bit);
+        let y_shared = rep.share(&sess, &y_bit);
+        let binary_adder = rep.binary_adder(&sess, &x_shared, &y_shared, 64);
         let binary_adder_clear = alice.reveal(&sess, &binary_adder);
 
         assert_eq!(expected_output_bit, binary_adder_clear);
@@ -355,12 +316,11 @@ mod tests {
         let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
 
         let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
 
         let expected_output = array![74i64];
 
-        let x_shared = rep.share(&sess, &setup, &x);
-        let approximation = rep.approximate_reciprocal(&sess, &setup, 4, 8, &x_shared);
+        let x_shared = rep.share(&sess, &x);
+        let approximation = rep.approximate_reciprocal(&sess, 4, 8, &x_shared);
 
         let out = alice.reveal(&sess, &approximation).0;
         for (i, item) in out.iter().enumerate() {

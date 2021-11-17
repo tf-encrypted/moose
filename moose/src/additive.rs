@@ -1141,8 +1141,7 @@ mod tests {
             _ => panic!("Expected a symbolic result from the symbolic addition"),
         };
 
-        let ops = sess.ops.read().unwrap();
-        match ops.iter().find(|o| o.name == op_name) {
+        sess.ops_iter(|mut iter| match iter.find(|o| o.name == op_name) {
             None => panic!("Newly created operation was not placed on graph"),
             Some(op) => assert!(matches!(
                 op,
@@ -1151,7 +1150,7 @@ mod tests {
                     ..
                 }
             )),
-        }
+        });
     }
 
     #[test]
@@ -1218,28 +1217,30 @@ mod tests {
             }
         }
 
-        let ops = sess.ops.read().unwrap();
+        sess.ops_iter(|mut iter| {
+            assert!(iter.any(|o| matches!(o,
+                Operation {
+                    name,
+                    kind: Operator::RingAdd(RingAddOp { sig: _ }),
+                    inputs,
+                    placement: Placement::Host(HostPlacement { owner }),
+                    ..
+                }
+                if name == "op_0" && inputs == &vec!["x0", "y0"] && owner.0 == "alice"
+            )));
+        });
 
-        assert!(ops.iter().any(|o| matches!(o,
-            Operation {
-                name,
-                kind: Operator::RingAdd(RingAddOp { sig: _ }),
-                inputs,
-                placement: Placement::Host(HostPlacement { owner }),
-                ..
-            }
-            if name == "op_0" && inputs == &vec!["x0", "y0"] && owner.0 == "alice"
-        )));
-
-        assert!(ops.iter().any(|o| matches!(o,
-            Operation {
-                name,
-                kind: Operator::RingAdd(RingAddOp { sig: _ }),
-                inputs,
-                placement: Placement::Host(HostPlacement { owner }),
-                ..
-            }
-            if name == "op_1" && inputs == &vec!["x1", "y1"] && owner.0 == "bob"
-        )));
+        sess.ops_iter(|mut iter| {
+            assert!(iter.any(|o| matches!(o,
+                Operation {
+                    name,
+                    kind: Operator::RingAdd(RingAddOp { sig: _ }),
+                    inputs,
+                    placement: Placement::Host(HostPlacement { owner }),
+                    ..
+                }
+                if name == "op_1" && inputs == &vec!["x1", "y1"] && owner.0 == "bob"
+            )));
+        });
     }
 }
