@@ -225,6 +225,11 @@ class MeanOperation(StandardOperation):
 
 
 @dataclass
+class ExpOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class SqrtOperation(StandardOperation):
     output_type: ValueType
 
