@@ -2705,8 +2705,8 @@ mod tests {
             SessionId::try_from("foobar").unwrap(),
             hashmap!(),
             role_assignments,
-            Arc::clone(&networking),
-            Arc::clone(&exec_storage),
+            Arc::clone(networking),
+            Arc::clone(exec_storage),
             Arc::new(Placement::Host(HostPlacement {
                 owner: "localhost".into(),
             })),
