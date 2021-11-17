@@ -848,6 +848,8 @@ impl Ty {
     pub fn merge(&self, another: &Ty) -> Option<Ty> {
         match self {
             Ty::Unknown => Some(*another),
+            // TODO: make sure another dtype is also a tensor
+            Ty::Tensor(TensorDType::Unknown) => Some(*another),
             _ => None,
         }
     }
@@ -979,6 +981,7 @@ operators![
     FixedpointTruncPr,
     FixedpointMean,
     FixedpointSum,
+    Pow2,
     // Floating-point operators
     FloatingpointAdd,
     FloatingpointSub,
@@ -1429,6 +1432,11 @@ pub struct BitAndOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct BitNegOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct Pow2Op {
     pub sig: Signature,
 }
 

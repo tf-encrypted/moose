@@ -1208,9 +1208,8 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
-                        // TODO (lvorona): We can actually use TensorDType::Unknown and let the type inference figure the type out.
                         kind: ShapeOp {
-                            sig: Signature::unary(Ty::Tensor(TensorDType::Float64), Ty::HostShape),
+                            sig: Signature::unary(Ty::Tensor(TensorDType::Unknown), Ty::HostShape),
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
