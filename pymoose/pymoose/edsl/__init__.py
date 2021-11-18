@@ -14,6 +14,7 @@ from pymoose.edsl.base import constant
 from pymoose.edsl.base import decrypt
 from pymoose.edsl.base import div
 from pymoose.edsl.base import dot
+from pymoose.edsl.base import exp
 from pymoose.edsl.base import expand_dims
 from pymoose.edsl.base import host_placement
 from pymoose.edsl.base import inverse
@@ -48,6 +49,7 @@ __all__ = [
     decrypt,
     div,
     dot,
+    exp,
     expand_dims,
     fixed,
     float32,

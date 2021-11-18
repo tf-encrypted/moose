@@ -45,6 +45,7 @@ enum PyOperation {
     std_DecryptOperation(PyDecryptOperation),
     std_TransposeOperation(PyTransposeOperation),
     std_ExpandDimsOperation(PyExpandDimsOperation),
+    std_ExpOperation(PyExpOperation),
     std_InverseOperation(PyInverseOperation),
     std_MeanOperation(PyMeanOperation),
     std_SqrtOperation(PySqrtOperation),
@@ -378,6 +379,14 @@ struct PyExpandDimsOperation {
     placement_name: String,
     output_type: PyValueType,
     axis: Vec<u32>,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyExpOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -1253,6 +1262,19 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis.clone(),
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_ExpOperation(op) => Ok(Operation {
+                        kind: ExpOp {
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])

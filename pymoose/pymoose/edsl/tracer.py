@@ -14,6 +14,7 @@ from pymoose.computation.standard import DecryptOperation
 from pymoose.computation.standard import DivOperation
 from pymoose.computation.standard import DotOperation
 from pymoose.computation.standard import ExpandDimsOperation
+from pymoose.computation.standard import ExpOperation
 from pymoose.computation.standard import InputOperation
 from pymoose.computation.standard import InverseOperation
 from pymoose.computation.standard import LoadOperation
@@ -40,6 +41,7 @@ from pymoose.edsl.base import ConcatenateExpression
 from pymoose.edsl.base import ConstantExpression
 from pymoose.edsl.base import DecryptExpression
 from pymoose.edsl.base import ExpandDimsExpression
+from pymoose.edsl.base import ExpExpression
 from pymoose.edsl.base import Expression
 from pymoose.edsl.base import HostPlacementExpression
 from pymoose.edsl.base import InverseExpression
@@ -293,6 +295,20 @@ class AstTracer:
                 name=self.get_fresh_name("expand_dims"),
                 output_type=expand_dims_expression.vtype,
                 axis=expand_dims_expression.axis,
+                inputs={"x": x_operation.name},
+            )
+        )
+
+    def visit_ExpExpression(self, exp_expression):
+        assert isinstance(exp_expression, ExpExpression)
+        (x_expression,) = exp_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(exp_expression.placement)
+        return self.computation.add_operation(
+            ExpOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("exp"),
+                output_type=exp_expression.vtype,
                 inputs={"x": x_operation.name},
             )
         )
