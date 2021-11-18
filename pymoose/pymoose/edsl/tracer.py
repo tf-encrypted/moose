@@ -1,6 +1,8 @@
 import inspect
 from collections import defaultdict
 
+from pymoose import elk_compiler
+from pymoose.computation import utils
 from pymoose.computation.base import Computation
 from pymoose.computation.host import HostPlacement
 from pymoose.computation.replicated import ReplicatedPlacement
@@ -32,7 +34,6 @@ from pymoose.computation.standard import SubOperation
 from pymoose.computation.standard import SumOperation
 from pymoose.computation.standard import TransposeOperation
 from pymoose.computation.standard import UnknownType
-from pymoose.deprecated.compiler.compiler import Compiler
 from pymoose.edsl.base import AbsExpression
 from pymoose.edsl.base import ArgumentExpression
 from pymoose.edsl.base import AtLeast2DExpression
@@ -77,13 +78,21 @@ def trace(abstract_computation):
     return logical_comp
 
 
-def trace_and_compile(
-    abstract_computation, compiler_passes=None, render=False, ring=64
-):
+def trace_and_compile(abstract_computation, compiler_passes=None, ring=64):
     logical_computation = trace(abstract_computation)
-    compiler = Compiler(passes=compiler_passes, ring=ring)
-    physical_comp = compiler.compile(logical_computation, render=render)
-    return physical_comp
+    comp_bin = utils.serialize_computation(logical_computation)
+    if compiler_passes is None:
+        compiler_passes = [
+            "typing",
+            # All of the symbolic passes. Currently combines functionality of
+            # [ReplicatedOpsPass, HostRingLoweringPass, ReplicatedLoweringPass]
+            "full",
+            "prune",
+            "networking",
+            "typing",
+        ]
+    physical_comp_ref = elk_compiler.compile_computation(comp_bin, compiler_passes)
+    return physical_comp_ref
 
 
 class AstTracer:

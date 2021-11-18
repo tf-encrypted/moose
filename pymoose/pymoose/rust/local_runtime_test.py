@@ -5,7 +5,6 @@ from absl.testing import parameterized
 from pymoose import LocalRuntime
 from pymoose import edsl
 from pymoose.computation.standard import StringType
-from pymoose.computation.utils import serialize_computation
 
 x_owner = edsl.host_placement(name="x_owner")
 y_owner = edsl.host_placement(name="y_owner")
@@ -95,8 +94,7 @@ class RunComputation(parameterized.TestCase):
         }
 
     def _inner_prepare_runtime(self, comp, storage_dict):
-        concrete_comp = edsl.trace_and_compile(comp, ring=128)
-        comp_bin = serialize_computation(concrete_comp)
+        comp_bin = edsl.trace_and_compile(comp)
         runtime = LocalRuntime(storage_mapping=storage_dict)
         return comp_bin, runtime
 
@@ -104,7 +102,7 @@ class RunComputation(parameterized.TestCase):
         comp_bin, runtime = self._inner_prepare_runtime(
             add_full_storage, self.storage_dict
         )
-        outputs = runtime.evaluate_computation(
+        outputs = runtime.evaluate_compiled_computation(
             comp_bin, self.role_assignment, self.storage_args
         )
         assert len(outputs) == 0
@@ -115,7 +113,7 @@ class RunComputation(parameterized.TestCase):
         comp_bin, runtime = self._inner_prepare_runtime(
             add_input_storage, self.storage_dict
         )
-        result = runtime.evaluate_computation(
+        result = runtime.evaluate_compiled_computation(
             comp_bin, self.role_assignment, self.storage_args
         )
         np.testing.assert_array_equal(result["output_0"], np.array([3.0]))
@@ -124,7 +122,7 @@ class RunComputation(parameterized.TestCase):
         comp_bin, runtime = self._inner_prepare_runtime(
             add_output_storage, self.empty_storage
         )
-        outputs = runtime.evaluate_computation(
+        outputs = runtime.evaluate_compiled_computation(
             comp_bin, self.role_assignment, self.actual_args
         )
         assert len(outputs) == 0
@@ -135,7 +133,7 @@ class RunComputation(parameterized.TestCase):
         comp_bin, runtime = self._inner_prepare_runtime(
             add_no_storage, self.storage_dict
         )
-        result = runtime.evaluate_computation(
+        result = runtime.evaluate_compiled_computation(
             comp_bin, self.role_assignment, self.actual_args
         )
         np.testing.assert_array_equal(result["output_0"], np.array([3.0]))
@@ -144,7 +142,7 @@ class RunComputation(parameterized.TestCase):
         comp_bin, runtime = self._inner_prepare_runtime(
             add_multioutput, self.storage_dict
         )
-        result = runtime.evaluate_computation(
+        result = runtime.evaluate_compiled_computation(
             comp_bin, self.role_assignment, self.actual_args
         )
         np.testing.assert_array_equal(result["output_0"], np.array([3.0]))

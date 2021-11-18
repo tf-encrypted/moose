@@ -1,6 +1,5 @@
 from pymoose import LocalRuntime
 from pymoose import edsl
-from pymoose.computation.utils import serialize_computation
 
 
 class LocalMooseRuntime(LocalRuntime):
@@ -21,10 +20,9 @@ class LocalMooseRuntime(LocalRuntime):
     ):
         if arguments is None:
             arguments = {}
-        concrete_comp = edsl.trace_and_compile(computation, ring=ring)
-        comp_bin = serialize_computation(concrete_comp)
-        comp_outputs = super().evaluate_computation(
-            comp_bin, role_assignment, arguments
+        concrete_comp_ref = edsl.trace_and_compile(computation)
+        comp_outputs = super().evaluate_compiled(
+            concrete_comp_ref, role_assignment, arguments
         )
         outputs = list(dict(sorted(comp_outputs.items())).values())
         return outputs

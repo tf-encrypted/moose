@@ -5,7 +5,7 @@ pydep:
 	pip install -r pymoose/requirements-dev.txt
 
 pylib:
-	pip install -e pymoose
+	cd pymoose & python setup.py develop
 
 install: pydep pylib
 
