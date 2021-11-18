@@ -1,7 +1,7 @@
 use super::*;
 
 impl FixedpointDivOp {
-    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, MirroredT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
@@ -12,9 +12,9 @@ impl FixedpointDivOp {
         ReplicatedPlacement: ApproximateReciprocal<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementAdd<S, MirroredT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
-        ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirroredT>,
+        ReplicatedPlacement: PlacementAdd<S, MirRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirRingT>,
     {
         #![allow(clippy::many_single_char_names)]
 
@@ -77,11 +77,11 @@ pub(crate) trait SignFromMsb<S: Session, T, O> {
     fn sign_from_msb(&self, sess: &S, msb_ring: &T) -> O;
 }
 
-impl<S: Session, RepRingT, MirroredT> SignFromMsb<S, RepRingT, RepRingT> for ReplicatedPlacement
+impl<S: Session, RepRingT, MirRingT> SignFromMsb<S, RepRingT, RepRingT> for ReplicatedPlacement
 where
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
-    ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirroredT>,
+    ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirRingT>,
 {
     fn sign_from_msb(&self, sess: &S, msb_ring: &RepRingT) -> RepRingT {
         let rep = self;
@@ -196,12 +196,12 @@ pub(crate) trait ApproximateReciprocal<S: Session, T, O> {
     ) -> O;
 }
 
-impl<S: Session, RepRingT, MirroredT> ApproximateReciprocal<S, RepRingT, RepRingT>
+impl<S: Session, RepRingT, MirRingT> ApproximateReciprocal<S, RepRingT, RepRingT>
     for ReplicatedPlacement
 where
     ReplicatedPlacement: DivNorm<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirroredT>,
-    ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
+    ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirRingT>,
+    ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
