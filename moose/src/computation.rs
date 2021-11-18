@@ -958,6 +958,8 @@ operators![
     FixedpointTruncPr,
     FixedpointMean,
     FixedpointSum,
+    Pow2,
+    Exp,
     // Floating-point operators
     FloatingpointAdd,
     FloatingpointSub,
@@ -1408,6 +1410,16 @@ pub struct BitAndOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct BitNegOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct Pow2Op {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct ExpOp {
     pub sig: Signature,
 }
 

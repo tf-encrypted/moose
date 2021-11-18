@@ -1423,6 +1423,8 @@ impl ToTextual for Operator {
             RepShlDim(op) => op.to_textual(),
             RepEqual(op) => op.to_textual(),
             RepIfElse(op) => op.to_textual(),
+            Pow2(op) => op.to_textual(),
+            Exp(op) => op.to_textual(),
         }
     }
 }
@@ -1595,6 +1597,8 @@ impl_to_textual!(RepFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(RepMsbOp, "{op}: {}", sig);
 impl_to_textual!(RepNegOp, "{op}: {}", sig);
 impl_to_textual!(RepShlOp, "{op}: {}", sig);
+impl_to_textual!(Pow2Op, "{op}: {}", sig);
+impl_to_textual!(ExpOp, "{op}: {}", sig);
 impl_to_textual!(RepToAdtOp, "{op}: {}", sig);
 impl_to_textual!(
     RepIndexAxisOp,

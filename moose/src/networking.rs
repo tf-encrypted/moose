@@ -3,6 +3,7 @@ use crate::error::{Error, Result};
 use crate::execution::Identity;
 use async_trait::async_trait;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub trait SyncNetworking {
     fn send(
@@ -83,7 +84,7 @@ impl SyncNetworking for LocalSyncNetworking {
 
 #[derive(Default)]
 pub struct LocalAsyncNetworking {
-    store: tokio::sync::RwLock<HashMap<String, Value>>,
+    store: dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>,
 }
 
 #[async_trait]
@@ -97,12 +98,13 @@ impl AsyncNetworking for LocalAsyncNetworking {
     ) -> Result<()> {
         tracing::debug!("Async sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
         let key = format!("{}/{}", session_id, rendezvous_key);
-        let mut store = self.store.write().await;
-        if store.contains_key(&key) {
-            tracing::error!("value has already been sent");
-            return Err(Error::Unexpected(None));
-        }
-        store.insert(key, val.clone());
+        let cell = self
+            .store
+            .entry(key)
+            .or_insert_with(async_cell::sync::AsyncCell::shared)
+            .value()
+            .clone();
+        cell.set(val.clone());
         Ok(())
     }
 
@@ -118,17 +120,14 @@ impl AsyncNetworking for LocalAsyncNetworking {
             session_id
         );
         let key = format!("{}/{}", session_id, rendezvous_key);
-        // note that we are using a loop since the store doesn't immediately
-        // allow us to block until a value is present
-        loop {
-            {
-                let store = self.store.read().await;
-                if let Some(val) = store.get(&key).cloned() {
-                    return Ok(val);
-                }
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        }
+        let cell = self
+            .store
+            .entry(key)
+            .or_insert_with(async_cell::sync::AsyncCell::shared)
+            .value()
+            .clone();
+        let val = cell.get().await;
+        Ok(val)
     }
 }
 

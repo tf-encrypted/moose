@@ -214,6 +214,8 @@ impl Session for SyncSession {
             Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Pow2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Exp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -486,6 +488,14 @@ pub trait PlacementEqual<S: Session, T, U, O> {
 
 pub trait PlacementIfElse<S: Session, T, U, V, O> {
     fn if_else(&self, sess: &S, s: &T, x: &U, y: &V) -> O;
+}
+
+pub trait PlacementPow2<S: Session, T, O> {
+    fn pow2(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementExp<S: Session, T, O> {
+    fn exp(&self, sess: &S, x: &T) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -836,6 +846,8 @@ impl Compile<SyncKernel> for Operator {
             Mean(op) => unimplemented!("Not done yet: {:?}", op),
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
+            Pow2(op) => unimplemented!("Not done yet: {:?}", op),
+            Exp(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO
             AesDecrypt(_) => unimplemented!(),
             HostIndexAxis(_) => unimplemented!(),
@@ -919,6 +931,8 @@ impl Compile<AsyncKernel> for Operator {
             Mean(op) => unimplemented!("Not done yet: {:?}", op),
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
+            Pow2(op) => unimplemented!("Not done yet: {:?}", op),
+            Exp(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO implement below (needed until we switch to new framework for execution)
             AesDecrypt(_) => unimplemented!(),
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)

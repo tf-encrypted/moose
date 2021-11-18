@@ -20,7 +20,6 @@ use std::marker::PhantomData;
 pub mod aes;
 pub mod control_flow;
 pub mod division;
-
 pub mod exp;
 pub mod input;
 pub mod log;
@@ -264,7 +263,6 @@ impl<RepRingT: Underlying> Underlying for AbstractReplicatedFixedTensor<RepRingT
     type TensorType = RepRingT::TensorType;
 }
 
-// TODO(Dragos) perhaps we need better abstraction mechanisms?
 moose_type!(Mirrored3Fixed64Tensor = AbstractMirroredFixedTensor<Mirrored3Ring64Tensor>);
 moose_type!(Mirrored3Fixed128Tensor = AbstractMirroredFixedTensor<Mirrored3Ring128Tensor>);
 
@@ -734,7 +732,7 @@ kernel! {
     [
         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_bit_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor ) ->ReplicatedRing128Tensor  => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
     ]
 }
 
@@ -1271,7 +1269,6 @@ modelled!(PlacementMul::mul, ReplicatedPlacement, (HostRing128Tensor, Replicated
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepMulOp);
-
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
 modelled!(PlacementMul::mul, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMulOp);
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor, RepMulOp);
@@ -2541,7 +2538,7 @@ impl ShapeOp {
     }
 }
 
-trait BinaryAdder<S: Session, RepBitT> {
+pub(crate) trait BinaryAdder<S: Session, RepBitT> {
     fn binary_adder(&self, sess: &S, x: &RepBitT, y: &RepBitT, ring_size: usize) -> RepBitT;
 }
 
@@ -2686,7 +2683,7 @@ impl RingInjectOp {
 /// such that when interpreted as ring tensors, they reconstruct to x
 /// i.e. (x1 + x2) mod R = x
 /// Useful for some protocols that don't necessarily need the full bit-decomposition such as exponentiation
-trait PlacementSplit<S: Session, T, O1, O2> {
+pub trait PlacementSplit<S: Session, T, O1, O2> {
     fn split(&self, sess: &S, x: &T) -> (O1, O2);
 }
 
@@ -2844,7 +2841,7 @@ impl RepBitComposeOp {
 /// It should be used carefully since
 /// [x]>>amount is NOT equal to [ [x0 >> amount, x1 >> amount], [x1 >> amount, x2 >> amount], [x2 >> amount, x0>>amount]
 /// Used in conjunction with split operation so that we don't use the full bit-decomposition in order to perform exact truncation
-trait PlacementShrRaw<S: Session, T, O> {
+pub trait PlacementShrRaw<S: Session, T, O> {
     fn shr_raw(&self, sess: &S, amount: usize, x: &T) -> O;
 }
 
