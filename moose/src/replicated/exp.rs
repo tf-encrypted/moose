@@ -248,7 +248,7 @@ where
 }
 
 impl ExpOp {
-    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, MirroredRingT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, MirRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepFixedT,
@@ -257,16 +257,16 @@ impl ExpOp {
         ReplicatedShape: KnownType<S>,
         RepFixedT: FixedpointTensor,
 
-        AbstractMirroredFixedTensor<MirroredRingT>: CanonicalType,
-        <AbstractMirroredFixedTensor<MirroredRingT> as CanonicalType>::Type: KnownType<S>,
-        AbstractMirroredFixedTensor<MirroredRingT>:
-            Into<m!(c!(AbstractMirroredFixedTensor<MirroredRingT>))>,
+        AbstractMirroredFixedTensor<MirRingT>: CanonicalType,
+        <AbstractMirroredFixedTensor<MirRingT> as CanonicalType>::Type: KnownType<S>,
+        AbstractMirroredFixedTensor<MirRingT>:
+            Into<m!(c!(AbstractMirroredFixedTensor<MirRingT>))>,
 
         ReplicatedPlacement: PlacementShape<S, RepFixedT, cs!(ReplicatedShape)>,
-        ReplicatedPlacement: ShapeFill<S, RepFixedT, Result = MirroredRingT>,
+        ReplicatedPlacement: ShapeFill<S, RepFixedT, Result = MirRingT>,
         ReplicatedPlacement: PlacementMul<
             S,
-            m!(c!(AbstractMirroredFixedTensor<MirroredRingT>)),
+            m!(c!(AbstractMirroredFixedTensor<MirRingT>)),
             RepFixedT,
             RepFixedT,
         >,
