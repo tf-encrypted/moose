@@ -31,7 +31,7 @@ class ReplicatedExample(parameterized.TestCase):
                 y = edsl.exp(x)
 
             with alice:
-                res = edsl.cast(y, edsl.float64)
+                res = edsl.save("y_uri", edsl.cast(y, edsl.float64))
 
             return res
 
@@ -91,7 +91,8 @@ class ReplicatedExample(parameterized.TestCase):
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
-
+        actual_result = runtime.read_value_from_storage("alice", "y_uri")
+        np.testing.assert_almost_equal(actual_result, np.exp([2]))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Exp example")
