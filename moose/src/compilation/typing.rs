@@ -33,9 +33,7 @@ pub fn update_types_one_hop(comp: &Computation) -> anyhow::Result<Option<Computa
             2 => Signature::binary(find_type(0)?, find_type(1)?, ret),
             3 => Signature::ternary(find_type(0)?, find_type(1)?, find_type(2)?, ret),
             n => {
-                assert!((0..n)
-                    .into_iter()
-                    .all(|i| find_type(i).ok() == find_type(0).ok()));
+                assert!((0..n).all(|i| find_type(i).ok() == find_type(0).ok()));
                 Signature::variadic(find_type(0)?, ret)
             }
         };
