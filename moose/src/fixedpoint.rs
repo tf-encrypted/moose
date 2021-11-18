@@ -2159,4 +2159,23 @@ mod tests {
 
         test_rep_poly_eval_fixed128(x, coeffs, y_targets);
     }
+
+    #[test]
+    fn test_host_shape_op() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let x = AbstractHostRingTensor::from_raw_plc(
+            array![1024u64, 5, 4]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+            alice.clone(),
+        );
+
+        let shape = x.shape();
+        let raw_shape: RawShape = shape.0;
+        let underlying = vec![3];
+        let expected: RawShape = RawShape(underlying);
+        assert_eq!(expected, raw_shape);
+    }
 }
