@@ -1,4 +1,4 @@
-use crate::fixedpoint::PolynomialEval;
+use crate::fixedpoint::{FixedpointTensor, PolynomialEval};
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num_traits::{FromPrimitive, One, ToPrimitive};
@@ -244,6 +244,46 @@ where
 
         // truncate the result but keep the most significant f bits to preserve fixed point encoding
         self.trunc_pr(sess, amount, &e_prod)
+    }
+}
+
+impl ExpOp {
+    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, MirRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepFixedT,
+    ) -> Result<RepFixedT>
+    where
+        ReplicatedShape: KnownType<S>,
+        RepFixedT: FixedpointTensor,
+
+        AbstractMirroredFixedTensor<MirRingT>: CanonicalType,
+        <AbstractMirroredFixedTensor<MirRingT> as CanonicalType>::Type: KnownType<S>,
+        AbstractMirroredFixedTensor<MirRingT>: Into<m!(c!(AbstractMirroredFixedTensor<MirRingT>))>,
+
+        ReplicatedPlacement: PlacementShape<S, RepFixedT, cs!(ReplicatedShape)>,
+        ReplicatedPlacement: ShapeFill<S, RepFixedT, Result = MirRingT>,
+        ReplicatedPlacement:
+            PlacementMul<S, m!(c!(AbstractMirroredFixedTensor<MirRingT>)), RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementTruncPr<S, RepFixedT, RepFixedT>,
+
+        ReplicatedPlacement: PlacementPow2<S, RepFixedT, RepFixedT>,
+    {
+        let log2e = Constant::Fixed(FixedpointConstant {
+            value: 1.0_f64.exp().log2(),
+            precision: x.fractional_precision() as usize,
+        });
+
+        let log2e = AbstractMirroredFixedTensor {
+            tensor: rep.shape_fill(sess, log2e, &x),
+            integral_precision: x.integral_precision(),
+            fractional_precision: x.fractional_precision(),
+        }
+        .into();
+
+        let shifted_exponent = rep.mul(sess, &log2e, &x);
+        let exponent = rep.trunc_pr(sess, x.fractional_precision(), &shifted_exponent);
+        Ok(rep.pow2(sess, &exponent))
     }
 }
 

@@ -1175,11 +1175,17 @@ impl<RepRingT> FixedpointTensor for AbstractReplicatedFixedTensor<RepRingT> {
 
 impl<RepRingT: Placed> FixedpointTensor for Symbolic<AbstractReplicatedFixedTensor<RepRingT>> {
     fn fractional_precision(&self) -> u32 {
-        unimplemented!()
+        match self {
+            Symbolic::Symbolic(_) => unimplemented!(), // TODO(Dragos) extract from underlying op signature
+            Symbolic::Concrete(x) => x.fractional_precision,
+        }
     }
 
     fn integral_precision(&self) -> u32 {
-        unimplemented!()
+        match self {
+            Symbolic::Symbolic(_) => unimplemented!(), // TODO(Dragos) extract from underlying op signature
+            Symbolic::Concrete(x) => x.integral_precision,
+        }
     }
 }
 
@@ -1213,6 +1219,42 @@ impl Pow2Op {
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.pow2(sess, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+}
+
+modelled!(PlacementExp::exp, ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor, ExpOp);
+modelled!(PlacementExp::exp, ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor, ExpOp);
+modelled!(PlacementExp::exp, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, ExpOp);
+modelled!(PlacementExp::exp, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, ExpOp);
+modelled!(PlacementExp::exp, ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor, ExpOp);
+
+kernel! {
+    ExpOp,
+    [
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
+    ]
+}
+
+impl ExpOp {
+    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let z = plc.exp(sess, &x);
         Ok(FixedTensor::Replicated(z))
     }
 }
@@ -2161,8 +2203,8 @@ mod tests {
         test_rep_poly_eval_fixed128(x, coeffs, y_targets);
     }
 
-    macro_rules! rep_pow2_fixed_test {
-        ($func_name:ident, $test_func: ident<$ti: ty, $tu: ty>, $i_precision: expr, $f_precision: expr) => {
+    macro_rules! rep_approx_unary_fixed_test {
+        ($func_name:ident, $test_func: ident<$ti: ty, $tu: ty>, $i_precision: expr, $f_precision: expr, $err: expr) => {
             fn $func_name(x: ArrayD<f64>, y_target: Vec<f64>) {
                 let alice = HostPlacement {
                     owner: "alice".into(),
@@ -2182,7 +2224,7 @@ mod tests {
                     AbstractHostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()), $i_precision, $f_precision)
                 );
 
-                let exp_result = rep.pow2(&sess, &x);
+                let exp_result = rep.$test_func(&sess, &x);
 
                 let opened_exp = match exp_result {
                     FixedTensor::Replicated(r) => alice.reveal(&sess, &r),
@@ -2194,17 +2236,20 @@ mod tests {
                 // operation precision is not as accurate as the fixed point precision
                 for i in 0..y_target.len() {
                     let error = (result.0[i] - y_target[i]).abs();
-                    assert!(error < 2_f64.powf((-$f_precision/2) as f64), "failed at index {:?}, error is {:?}", i, error);
+                    assert!(error < $err, "failed at index {:?}, error is {:?}", i, error);
                 }
             }
         };
     }
 
-    rep_pow2_fixed_test!(test_rep_pow2_fixed64, pow2<i64, u64>, 10, 10);
-    rep_pow2_fixed_test!(test_rep_pow2_fixed128, pow2<i128, u128>, 30, 10);
+    rep_approx_unary_fixed_test!(test_rep_pow2_fixed64, pow2<i64, u64>, 10, 10, 0.001);
+    rep_approx_unary_fixed_test!(test_rep_pow2_fixed128, pow2<i128, u128>, 30, 10, 0.001);
+
+    rep_approx_unary_fixed_test!(test_rep_exp_fixed64, exp<i64, u64>, 10, 10, 0.1);
+    rep_approx_unary_fixed_test!(test_rep_exp_fixed128, exp<i128, u128>, 20, 20, 0.001);
 
     #[test]
-    fn test_exp2() {
+    fn test_exp2_64() {
         let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
         let y_targets: Vec<_> = x.iter().map(|item| 2_f64.powf(*item)).collect();
         test_rep_pow2_fixed64(x, y_targets);
@@ -2215,5 +2260,63 @@ mod tests {
         let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
         let y_targets: Vec<_> = x.iter().map(|item| 2_f64.powf(*item)).collect();
         test_rep_pow2_fixed128(x, y_targets);
+    }
+
+    #[test]
+    fn test_exponential_64() {
+        let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
+        let y_targets: Vec<_> = x.iter().map(|item| item.exp()).collect();
+        test_rep_exp_fixed64(x, y_targets);
+    }
+
+    #[test]
+    fn test_exponential_128() {
+        let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
+        let y_targets: Vec<_> = x.iter().map(|item| item.exp()).collect();
+        test_rep_exp_fixed128(x, y_targets);
+    }
+
+    macro_rules! rep_unary_symbolic_test {
+        ($func_name:ident, $test_func:ident, $new_symbolic_rep: ident) => {
+            fn $func_name(i_precision: u32, f_precision: u32) {
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                    fractional_precision: f_precision,
+                    integral_precision: i_precision,
+                    tensor: $new_symbolic_rep(&"x", &rep),
+                });
+
+                let sess = SymbolicSession::default();
+
+                let result = rep.$test_func(&sess, &x);
+                match result {
+                    Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                        tensor: _,
+                        fractional_precision,
+                        integral_precision,
+                    }) => {
+                        assert_eq!(fractional_precision, f_precision);
+                        assert_eq!(integral_precision, i_precision);
+                    }
+                    _ => {
+                        panic!("Expected a concrete result from the symbolic unary op on a concrete value")
+                    }
+                }
+            }
+        }
+    }
+
+    rep_unary_symbolic_test!(
+        rep_exp_symbolic_test64,
+        exp,
+        new_symbolic_replicated_tensor64
+    );
+
+    #[test]
+    fn test_fixed_rep_symbolic_exp64() {
+        rep_exp_symbolic_test64(10, 10);
     }
 }
