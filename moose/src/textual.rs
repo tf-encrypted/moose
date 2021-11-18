@@ -1425,6 +1425,7 @@ impl ToTextual for Operator {
             RepIfElse(op) => op.to_textual(),
             Pow2(op) => op.to_textual(),
             Exp(op) => op.to_textual(),
+            LessThan(op) => op.to_textual(),
         }
     }
 }
@@ -1599,6 +1600,7 @@ impl_to_textual!(RepNegOp, "{op}: {}", sig);
 impl_to_textual!(RepShlOp, "{op}: {}", sig);
 impl_to_textual!(Pow2Op, "{op}: {}", sig);
 impl_to_textual!(ExpOp, "{op}: {}", sig);
+impl_to_textual!(LessThanOp, "{op}: {}", sig);
 impl_to_textual!(RepToAdtOp, "{op}: {}", sig);
 impl_to_textual!(
     RepIndexAxisOp,

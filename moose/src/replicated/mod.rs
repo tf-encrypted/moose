@@ -18,6 +18,7 @@ use std::convert::{TryFrom, TryInto};
 use std::marker::PhantomData;
 
 pub mod aes;
+pub mod comparison;
 pub mod control_flow;
 pub mod division;
 pub mod exp;

@@ -216,6 +216,7 @@ impl Session for SyncSession {
             RepIfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Pow2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Exp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            LessThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -496,6 +497,10 @@ pub trait PlacementPow2<S: Session, T, O> {
 
 pub trait PlacementExp<S: Session, T, O> {
     fn exp(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementLessThan<S: Session, T, U, O> {
+    fn less_than(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -848,6 +853,7 @@ impl Compile<SyncKernel> for Operator {
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             Pow2(op) => unimplemented!("Not done yet: {:?}", op),
             Exp(op) => unimplemented!("Not done yet: {:?}", op),
+            LessThan(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO
             AesDecrypt(_) => unimplemented!(),
             HostIndexAxis(_) => unimplemented!(),
@@ -933,6 +939,7 @@ impl Compile<AsyncKernel> for Operator {
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             Pow2(op) => unimplemented!("Not done yet: {:?}", op),
             Exp(op) => unimplemented!("Not done yet: {:?}", op),
+            LessThan(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO implement below (needed until we switch to new framework for execution)
             AesDecrypt(_) => unimplemented!(),
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
@@ -2619,6 +2626,14 @@ impl LoadOp {
             &<O as KnownType<S>>::TY
         )))
     }
+}
+
+kernel! {
+    LessThanOp,
+    [
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_kernel),
+    ]
 }
 
 impl Compile<SyncKernel> for LoadOp {
