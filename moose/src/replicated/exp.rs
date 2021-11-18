@@ -259,17 +259,12 @@ impl ExpOp {
 
         AbstractMirroredFixedTensor<MirRingT>: CanonicalType,
         <AbstractMirroredFixedTensor<MirRingT> as CanonicalType>::Type: KnownType<S>,
-        AbstractMirroredFixedTensor<MirRingT>:
-            Into<m!(c!(AbstractMirroredFixedTensor<MirRingT>))>,
+        AbstractMirroredFixedTensor<MirRingT>: Into<m!(c!(AbstractMirroredFixedTensor<MirRingT>))>,
 
         ReplicatedPlacement: PlacementShape<S, RepFixedT, cs!(ReplicatedShape)>,
         ReplicatedPlacement: ShapeFill<S, RepFixedT, Result = MirRingT>,
-        ReplicatedPlacement: PlacementMul<
-            S,
-            m!(c!(AbstractMirroredFixedTensor<MirRingT>)),
-            RepFixedT,
-            RepFixedT,
-        >,
+        ReplicatedPlacement:
+            PlacementMul<S, m!(c!(AbstractMirroredFixedTensor<MirRingT>)), RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepFixedT, RepFixedT>,
 
         ReplicatedPlacement: PlacementPow2<S, RepFixedT, RepFixedT>,
