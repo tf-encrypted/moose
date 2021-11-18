@@ -2169,7 +2169,7 @@ mod tests {
             array![1024u64, 5, 4]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
-            alice.clone(),
+            alice,
         );
 
         let shape = x.shape();
