@@ -13,7 +13,6 @@ from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 
-
 class ReplicatedExample(parameterized.TestCase):
     def _setup_exp_comp(self):
         alice = edsl.host_placement(name="alice")
@@ -93,6 +92,7 @@ class ReplicatedExample(parameterized.TestCase):
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
         np.testing.assert_almost_equal(actual_result, np.exp([2]))
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Exp example")
