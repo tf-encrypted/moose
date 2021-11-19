@@ -22,6 +22,7 @@ impl LessThanOp {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use crate::computation::{HostPlacement, ReplicatedPlacement};
     use crate::host::AbstractHostRingTensor;
