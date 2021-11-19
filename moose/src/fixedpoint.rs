@@ -8,7 +8,7 @@ use crate::kernels::*;
 use crate::replicated::{
     AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor, Mirrored3Fixed128Tensor,
     Mirrored3Fixed64Tensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor, ShapeFill,
-    Underlying,
+    Underlying, ReplicatedRing64Tensor, ReplicatedRing128Tensor,
 };
 use crate::symbolic::Symbolic;
 use macros::with_context;
@@ -1363,7 +1363,7 @@ where
         self.add(sess, &x_mul_coeffs_added_fixed_trunc, &coeffs_mir[0])
     }
 }
-
+// (Dragos) insert modeled here.
 impl LessThanOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
         sess: &S,
@@ -1405,6 +1405,53 @@ impl LessThanOp {
         Ok(plc.less_than(sess, &x.tensor, &y.tensor))
     }
 }
+
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
+// (Dragos) workout the output types
+
+impl GreaterThanOp {
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+        y: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementGreaterThan<S, RepRingT, RepRingT, RepRingT>,
+    {
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+        Ok(plc.greater_than(sess, &x.tensor, &y.tensor))
+    }
+
+    pub(crate) fn rep_mir_fixed_kernel<S: Session, RepRingT, MirroredT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractMirroredFixedTensor<MirroredT>,
+        y: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementGreaterThan<S, MirroredT, RepRingT, RepRingT>,
+    {
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+        Ok(plc.greater_than(sess, &x.tensor, &y.tensor))
+    }
+
+    pub(crate) fn rep_fixed_mir_kernel<S: Session, RepRingT, MirroredT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+        y: AbstractMirroredFixedTensor<MirroredT>,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementGreaterThan<S, RepRingT, MirroredT, RepRingT>,
+    {
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+        Ok(plc.greater_than(sess, &x.tensor, &y.tensor))
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {
@@ -2361,4 +2408,57 @@ mod tests {
     fn test_fixed_rep_symbolic_exp64() {
         rep_exp_symbolic_test64(10, 10);
     }
+
+    macro_rules! rep_signed_binary_func_test {
+        ($func_name:ident, $test_func: ident<$ti: ty, $tu: ty>, $i_precision: expr, $f_precision: expr) => {
+            fn $func_name(x: ArrayD<f64>, y: ArrayD<f64>, target: Vec<$tu>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let sess = SyncSession::default();
+                let encode = |item: &f64| -> $tu {
+                    let tmp: $ti = (2f64.powf($f_precision as f64) * item) as $ti;
+                    tmp as $tu
+                };
+                let x_encoded = x.map(encode);
+                let y_encoded = y.map(encode);
+
+                let x = new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()), $i_precision, $f_precision);
+
+                let y = new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(y_encoded.clone(), alice.clone()), $i_precision, $f_precision);
+
+                let xs = rep.share(&sess, &x);
+                let ys = rep.share(&sess, &y);
+
+                let zs = rep.$test_func(&sess, &xs, &ys);
+                let z = alice.reveal(&sess, &zs);
+
+                // (Dragos) cleanup  this assert
+                for i in 0..target.len() {
+                    assert_eq!(target[i] as $tu, z.0[i].0);
+                }
+            }
+        };
+    }
+
+    rep_signed_binary_func_test!(test_rep_greater_than64, greater_than<i64, u64>, 10, 10);
+    rep_signed_binary_func_test!(test_rep_greater_than128, greater_than<i128, u128>, 10, 10);
+
+
+
+    #[test]
+    fn test_fixed_rep_greater_than64() {
+        let x = array![0f64, 2.7, -2.9, 4.1].into_dyn();
+        let y = array![1f64, 2.5, -3.0, 4.0].into_dyn();
+        let targets: Vec<u64> = vec![0_u64, 1, 1, 1];
+        test_rep_greater_than64(x, y, targets);
+    }
+
+
 }
