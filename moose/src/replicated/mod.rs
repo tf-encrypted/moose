@@ -3056,6 +3056,16 @@ impl ReplicatedPlacement {
     }
 }
 
+impl SigmoidOp {
+    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepFixedT,
+    ) -> Result<RepFixedT> {
+        Ok(x)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

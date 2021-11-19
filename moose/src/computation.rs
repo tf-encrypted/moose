@@ -960,6 +960,7 @@ operators![
     FixedpointSum,
     Pow2,
     Exp,
+    Sigmoid,
     // Floating-point operators
     FloatingpointAdd,
     FloatingpointSub,
@@ -1140,6 +1141,11 @@ pub struct DotOp {
 pub struct MeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct SigmoidOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
