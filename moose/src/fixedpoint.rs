@@ -1364,6 +1364,48 @@ where
     }
 }
 
+impl LessThanOp {
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+        y: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementLessThan<S, RepRingT, RepRingT, RepRingT>,
+    {
+        // (Dragos) if fractional precision would be different than comparison would become a bit more difficult
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+        Ok(plc.less_than(sess, &x.tensor, &y.tensor))
+    }
+
+    pub(crate) fn rep_mir_fixed_kernel<S: Session, RepRingT, MirroredT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractMirroredFixedTensor<MirroredT>,
+        y: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementLessThan<S, MirroredT, RepRingT, RepRingT>,
+    {
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+        Ok(plc.less_than(sess, &x.tensor, &y.tensor))
+    }
+
+    pub(crate) fn rep_fixed_mir_kernel<S: Session, RepRingT, MirroredT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+        y: AbstractMirroredFixedTensor<MirroredT>,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementLessThan<S, RepRingT, MirroredT, RepRingT>,
+    {
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+        Ok(plc.less_than(sess, &x.tensor, &y.tensor))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
