@@ -216,6 +216,7 @@ impl Session for SyncSession {
             RepIfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Pow2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Exp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            LessThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -496,6 +497,10 @@ pub trait PlacementPow2<S: Session, T, O> {
 
 pub trait PlacementExp<S: Session, T, O> {
     fn exp(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementLessThan<S: Session, T, U, O> {
+    fn less_than(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -848,6 +853,7 @@ impl Compile<SyncKernel> for Operator {
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             Pow2(op) => unimplemented!("Not done yet: {:?}", op),
             Exp(op) => unimplemented!("Not done yet: {:?}", op),
+            LessThan(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO
             AesDecrypt(_) => unimplemented!(),
             HostIndexAxis(_) => unimplemented!(),
@@ -933,6 +939,7 @@ impl Compile<AsyncKernel> for Operator {
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             Pow2(op) => unimplemented!("Not done yet: {:?}", op),
             Exp(op) => unimplemented!("Not done yet: {:?}", op),
+            LessThan(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO implement below (needed until we switch to new framework for execution)
             AesDecrypt(_) => unimplemented!(),
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
@@ -2619,6 +2626,29 @@ impl LoadOp {
             &<O as KnownType<S>>::TY
         )))
     }
+}
+
+kernel! {
+    LessThanOp,
+    [
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_fixed_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_fixed_mir_kernel),
+        // TODO(Dragos) these do not work now as they should output a boolean/ring type. makes no sense to output a fixed tensor
+        // (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [transparent] Self::fixed_kernel),
+        // (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [transparent] Self::fixed_kernel),
+    ]
 }
 
 impl Compile<SyncKernel> for LoadOp {

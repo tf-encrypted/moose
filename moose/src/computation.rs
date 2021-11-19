@@ -960,6 +960,7 @@ operators![
     FixedpointSum,
     Pow2,
     Exp,
+    LessThan,
     // Floating-point operators
     FloatingpointAdd,
     FloatingpointSub,
@@ -1420,6 +1421,11 @@ pub struct Pow2Op {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct ExpOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct LessThanOp {
     pub sig: Signature,
 }
 
