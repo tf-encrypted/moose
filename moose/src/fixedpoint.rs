@@ -1294,18 +1294,8 @@ modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (Fixed128Tensor) -> Fi
 modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, SigmoidOp);
 modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, SigmoidOp);
 
-kernel! {
-    SigmoidOp,
-    [
-        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_rep_kernel),
-    ]
-}
-
 impl SigmoidOp {
-    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: FixedTensor<HostFixedT, RepFixedT>,

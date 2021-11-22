@@ -4,7 +4,7 @@ use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Identity, Kernel,
     SyncKernel,
 };
-use crate::fixedpoint::Convert;
+use crate::fixedpoint::{Convert, Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::*;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
@@ -2635,6 +2635,16 @@ impl LoadOp {
             &<O as KnownType<S>>::TY
         )))
     }
+}
+
+kernel! {
+    SigmoidOp,
+    [
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_rep_kernel),
+    ]
 }
 
 kernel! {
