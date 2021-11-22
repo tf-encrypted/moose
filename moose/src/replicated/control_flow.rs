@@ -1,9 +1,7 @@
-use crate::computation::{CanonicalType, KnownType, Placed, RepIfElseOp, ReplicatedPlacement};
+use crate::computation::{KnownType, Placed, RepIfElseOp, ReplicatedPlacement};
 use crate::error::Result;
 use crate::kernels::*;
-use crate::replicated::{
-    Mirrored3RingTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, Underlying,
-};
+use crate::replicated::{ReplicatedRing128Tensor, ReplicatedRing64Tensor};
 
 modelled!(PlacementIfElse::if_else, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepIfElseOp);
 modelled!(PlacementIfElse::if_else, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepIfElseOp);
@@ -17,7 +15,7 @@ kernel! {
 }
 
 impl RepIfElseOp {
-    fn rep_kernel<S: Session, RepRingT, ShapeT, HostRingT>(
+    fn rep_kernel<S: Session, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         s: RepRingT,
@@ -25,29 +23,15 @@ impl RepIfElseOp {
         y: RepRingT,
     ) -> Result<RepRingT>
     where
-        RepRingT: Underlying<TensorType = HostRingT>,
-        Mirrored3RingTensor<HostRingT>: Underlying<TensorType = HostRingT>,
-        Mirrored3RingTensor<HostRingT>: CanonicalType,
-        <Mirrored3RingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
-        ReplicatedPlacement: PlacementFill<S, ShapeT, m!(c!(Mirrored3RingTensor<HostRingT>))>,
         ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
-        ReplicatedPlacement:
-            PlacementSub<S, m!(c!(Mirrored3RingTensor<HostRingT>)), RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     {
-        let ones = rep.fill(sess, 1u64.into(), &rep.shape(sess, &x));
+        // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
+        let diff = rep.sub(sess, &x, &y);
+        let s_diff = rep.mul(sess, &s, &diff);
 
-        // if else [s] * [x] + (1 - [s]) * [y]
-
-        // TODO(Dragos) This can be done using a single multiplication
-        // [s] * ([x] - [y]) + [y]
-        let s_x = rep.mul(sess, &s, &x);
-
-        let ones_minus_s = rep.sub(sess, &ones, &s);
-        let ones_s_y = rep.mul(sess, &ones_minus_s, &y);
-
-        Ok(rep.add(sess, &s_x, &ones_s_y))
+        Ok(rep.add(sess, &s_diff, &y))
     }
 }
 
