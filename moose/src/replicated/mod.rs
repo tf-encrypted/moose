@@ -4349,16 +4349,17 @@ mod tests {
 
     #[test]
     fn test_rep_gt_64() {
-        let x = array![0u64, 1, 2, -1_i64 as u64, -2_i64 as u64].into_dyn();
+        let x = array![0u64, 1, 2, -1_i64 as u64, -2_i64 as u64, 2u64.pow(62)].into_dyn();
         let y = array![
             -1_i64 as u64,
             -2_i64 as u64,
             3_u64,
             -1_i64 as u64,
-            -1_i64 as u64
+            -1_i64 as u64,
+            (-4611686018427387904_i64 + 1) as u64 // -2^62+1
         ]
         .into_dyn();
-        let target = array![1, 1, 0, 0, 0].into_dyn();
+        let target = array![1, 1, 0, 0, 0, 1].into_dyn();
         test_rep_gt64(x, y, target);
     }
 

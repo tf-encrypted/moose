@@ -2654,7 +2654,8 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_fixed_mir_kernel),
         // TODO(Dragos) these do not work now as they should output a boolean/ring type. makes no sense to output a fixed tensor
         // (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [transparent] Self::fixed_kernel),
-        // (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [transparent] Self::fixed_kernel),
+        // instead it should be
+        // (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> BitTensor => [transparent] Self::fixed_kernel),
     ]
 }
 

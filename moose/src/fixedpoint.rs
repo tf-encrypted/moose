@@ -1373,7 +1373,6 @@ modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Fixed64Te
 modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedRing128Tensor, LessThanOp);
 modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor, LessThanOp);
 
-// (Dragos) insert modeled here.
 impl LessThanOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
         sess: &S,
@@ -1424,8 +1423,6 @@ modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Fix
 
 modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
 modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
-
-// (Dragos) workout the output types
 
 impl GreaterThanOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
@@ -2503,6 +2500,14 @@ mod tests {
         let y = array![1f64, 2.5, -3.0, 4.0].into_dyn();
         let targets: Vec<u64> = vec![0_u64, 1, 1, 1];
         test_rep_greater_than64(x, y, targets);
+    }
+
+    #[test]
+    fn test_fixed_rep_greater_than128() {
+        let x = array![0f64, 2.7, -2.9, 4.1, -3.555].into_dyn();
+        let y = array![1f64, 2.5, -3.0, 4.0, -3.354].into_dyn();
+        let targets: Vec<u128> = vec![0_u128, 1, 1, 1, 0];
+        test_rep_greater_than128(x, y, targets);
     }
 
     #[test]
