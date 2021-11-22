@@ -3089,6 +3089,7 @@ impl SigmoidOp {
         .into();
 
         let denominator = rep.add(sess, &ones_rep, &rep.exp(sess, &rep.neg(sess, &x)));
+        // let denominator = rep.add(sess, &ones_rep, &rep.exp(sess, &x));
         let output = rep.div(sess, &ones_rep, &denominator);
 
         Ok(output)
