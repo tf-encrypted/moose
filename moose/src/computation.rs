@@ -961,7 +961,7 @@ operators![
     Pow2,
     Exp,
     Sigmoid,
-    FixedpointNeg,
+    Neg,
     LessThan,
     // Floating-point operators
     FloatingpointAdd,
@@ -1493,7 +1493,7 @@ pub struct FixedpointSumOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct FixedpointNegOp {
+pub struct NegOp {
     pub sig: Signature,
 }
 

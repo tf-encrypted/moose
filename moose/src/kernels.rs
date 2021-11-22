@@ -164,7 +164,6 @@ impl Session for SyncSession {
             FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FixedpointNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostDiag(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -211,6 +210,7 @@ impl Session for SyncSession {
             Sub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Mul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Mean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Neg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -854,12 +854,12 @@ impl Compile<SyncKernel> for Operator {
             Sub(op) => unimplemented!("Not done yet: {:?}", op),
             Mul(op) => unimplemented!("Not done yet: {:?}", op),
             Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Neg(op) => unimplemented!("Not done yet: {:?}", op),
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             Pow2(op) => unimplemented!("Not done yet: {:?}", op),
             Exp(op) => unimplemented!("Not done yet: {:?}", op),
             Sigmoid(op) => unimplemented!("Not done yet: {:?}", op),
-            FixedpointNeg(op) => unimplemented!("Not done yet: {:?}", op),
             LessThan(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO
             AesDecrypt(_) => unimplemented!(),
@@ -942,6 +942,7 @@ impl Compile<AsyncKernel> for Operator {
             Sub(op) => unimplemented!("Not done yet: {:?}", op),
             Mul(op) => unimplemented!("Not done yet: {:?}", op),
             Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Neg(op) => unimplemented!("Not done yet: {:?}", op),
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             Pow2(op) => unimplemented!("Not done yet: {:?}", op),
@@ -952,8 +953,8 @@ impl Compile<AsyncKernel> for Operator {
             AesDecrypt(_) => unimplemented!(),
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) | FixedpointNeg(_) | HostBitDec(_) | HostIndexAxis(_)
-            | HostShlDim(_) | HostSqrt(_) | HostSqueeze(_) | HostDiag(_) | Cast(_) => {
+            | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostShlDim(_) | HostSqrt(_)
+            | HostSqueeze(_) | HostDiag(_) | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             FloatingpointAdd(op) => unimplemented!("Not done yet: {:?}", op),
