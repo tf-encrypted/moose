@@ -3058,7 +3058,7 @@ impl ReplicatedPlacement {
 }
 
 impl SigmoidOp {
-    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, MirRingT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, ShapeT, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepFixedT,
@@ -3066,33 +3066,32 @@ impl SigmoidOp {
     where
         ReplicatedShape: KnownType<S>,
         RepFixedT: FixedpointTensor,
-
-        AbstractMirroredFixedTensor<MirRingT>: CanonicalType,
-        <AbstractMirroredFixedTensor<MirRingT> as CanonicalType>::Type: KnownType<S>,
-        AbstractMirroredFixedTensor<MirRingT>: Into<m!(c!(AbstractMirroredFixedTensor<MirRingT>))>,
-
-        ReplicatedPlacement: PlacementShape<S, RepFixedT, cs!(ReplicatedShape)>,
-        ReplicatedPlacement: ShapeFill<S, RepFixedT, Result = MirRingT>,
-        ReplicatedPlacement:
-            PlacementAdd<S, m!(c!(AbstractMirroredFixedTensor<MirRingT>)), RepFixedT, RepFixedT>,
+        AbstractReplicatedFixedTensor<RepRingT>: Into<RepFixedT>,
+        ReplicatedPlacement: PlacementShape<S, RepFixedT, ShapeT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<S, RepFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementDiv<S, RepFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementNeg<S, RepFixedT, RepFixedT>,
     {
+        // TODO [Yann]: revisit once we support mixed arithmetic for division
         let ones = Constant::Fixed(FixedpointConstant {
             value: 1.0_f64,
             precision: x.fractional_precision() as usize,
         });
 
-        let ones_mir = AbstractMirroredFixedTensor {
-            tensor: rep.shape_fill(sess, ones, &x),
+        let ones_fill = rep.fill(sess, ones, &rep.shape(sess, &x));
+        let ones_rep = AbstractReplicatedFixedTensor {
+            tensor: ones_fill,
             integral_precision: x.integral_precision(),
             fractional_precision: x.fractional_precision(),
         }
         .into();
 
-        let denominator = rep.add(sess, &ones_mir, &rep.exp(sess, &rep.neg(sess, &x)));
+        let denominator = rep.add(sess, &ones_rep, &rep.exp(sess, &rep.neg(sess, &x)));
+        let output = rep.div(sess, &ones_rep, &denominator);
 
-        Ok(denominator)
+        Ok(output)
     }
 }
 
