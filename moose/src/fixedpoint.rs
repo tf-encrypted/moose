@@ -1293,7 +1293,6 @@ modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (Fixed64Tensor) -> Fix
 modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor, SigmoidOp);
 modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, SigmoidOp);
 modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, SigmoidOp);
-// modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor, SigmoidOp);
 
 kernel! {
     SigmoidOp,
@@ -1302,7 +1301,6 @@ kernel! {
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_rep_kernel),
-        // (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
     ]
 }
 
@@ -2392,14 +2390,14 @@ mod tests {
     fn test_sigmoid_64() {
         let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
         let y_targets: Vec<_> = x.iter().map(|item| 1.0 / (1.0 + (-item).exp())).collect();
-        test_rep_exp_fixed64(x, y_targets);
+        test_rep_sigmoid_fixed64(x, y_targets);
     }
 
     #[test]
     fn test_sigmoid_128() {
         let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
         let y_targets: Vec<_> = x.iter().map(|item| 1.0 / (1.0 + (-item).exp())).collect();
-        test_rep_exp_fixed128(x, y_targets);
+        test_rep_sigmoid_fixed128(x, y_targets);
     }
 
     macro_rules! rep_unary_symbolic_test {
