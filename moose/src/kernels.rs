@@ -4,7 +4,7 @@ use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Identity, Kernel,
     SyncKernel,
 };
-use crate::fixedpoint::Convert;
+use crate::fixedpoint::{Convert, Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::*;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
@@ -210,12 +210,14 @@ impl Session for SyncSession {
             Sub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Mul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Mean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Neg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Pow2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Exp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Sigmoid(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             LessThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
@@ -500,6 +502,9 @@ pub trait PlacementExp<S: Session, T, O> {
     fn exp(&self, sess: &S, x: &T) -> O;
 }
 
+pub trait PlacementSigmoid<S: Session, T, O> {
+    fn sigmoid(&self, sess: &S, x: &T) -> O;
+}
 pub trait PlacementLessThan<S: Session, T, U, O> {
     fn less_than(&self, sess: &S, x: &T, y: &U) -> O;
 }
@@ -854,10 +859,12 @@ impl Compile<SyncKernel> for Operator {
             Sub(op) => unimplemented!("Not done yet: {:?}", op),
             Mul(op) => unimplemented!("Not done yet: {:?}", op),
             Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Neg(op) => unimplemented!("Not done yet: {:?}", op),
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             Pow2(op) => unimplemented!("Not done yet: {:?}", op),
             Exp(op) => unimplemented!("Not done yet: {:?}", op),
+            Sigmoid(op) => unimplemented!("Not done yet: {:?}", op),
             LessThan(op) => unimplemented!("Not done yet: {:?}", op),
             GreaterThan(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO
@@ -941,10 +948,12 @@ impl Compile<AsyncKernel> for Operator {
             Sub(op) => unimplemented!("Not done yet: {:?}", op),
             Mul(op) => unimplemented!("Not done yet: {:?}", op),
             Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Neg(op) => unimplemented!("Not done yet: {:?}", op),
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             Pow2(op) => unimplemented!("Not done yet: {:?}", op),
             Exp(op) => unimplemented!("Not done yet: {:?}", op),
+            Sigmoid(op) => unimplemented!("Not done yet: {:?}", op),
             LessThan(op) => unimplemented!("Not done yet: {:?}", op),
             GreaterThan(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO implement below (needed until we switch to new framework for execution)
@@ -2633,6 +2642,16 @@ impl LoadOp {
             &<O as KnownType<S>>::TY
         )))
     }
+}
+
+kernel! {
+    SigmoidOp,
+    [
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_rep_kernel),
+    ]
 }
 
 kernel! {

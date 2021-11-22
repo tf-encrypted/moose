@@ -1179,6 +1179,36 @@ impl FixedpointMeanOp {
         })
     }
 }
+
+modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, NegOp);
+modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, NegOp);
+
+kernel! {
+    NegOp,
+    [
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::repfixed_kernel),
+    ]
+}
+
+impl NegOp {
+    fn repfixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementNeg<S, RepRingT, RepRingT>,
+    {
+        let y = plc.neg(sess, &x.tensor);
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: y,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+}
+
 impl AddNOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
         sess: &S,
@@ -1305,6 +1335,30 @@ impl ExpOp {
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.exp(sess, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+}
+
+modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor, SigmoidOp);
+modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor, SigmoidOp);
+modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, SigmoidOp);
+modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, SigmoidOp);
+
+impl SigmoidOp {
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementSigmoid<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let z = plc.sigmoid(sess, &x);
         Ok(FixedTensor::Replicated(z))
     }
 }
@@ -2464,6 +2518,23 @@ mod tests {
         let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
         let y_targets: Vec<_> = x.iter().map(|item| item.exp()).collect();
         test_rep_exp_fixed128(x, y_targets);
+    }
+
+    rep_approx_unary_fixed_test!(test_rep_sigmoid_fixed64, sigmoid<i64, u64>, 10, 10, 0.1);
+    rep_approx_unary_fixed_test!(test_rep_sigmoid_fixed128, sigmoid<i128, u128>, 20, 20, 0.001);
+
+    #[test]
+    fn test_sigmoid_64() {
+        let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
+        let y_targets: Vec<_> = x.iter().map(|item| 1.0 / (1.0 + (-item).exp())).collect();
+        test_rep_sigmoid_fixed64(x, y_targets);
+    }
+
+    #[test]
+    fn test_sigmoid_128() {
+        let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
+        let y_targets: Vec<_> = x.iter().map(|item| 1.0 / (1.0 + (-item).exp())).collect();
+        test_rep_sigmoid_fixed128(x, y_targets);
     }
 
     macro_rules! rep_unary_symbolic_test {

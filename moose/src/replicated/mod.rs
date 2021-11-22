@@ -1,6 +1,7 @@
 //! Placements backed by replicated secret sharing
 use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor};
 use crate::error::{Error, Result};
+use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
     AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedTensor, HostAesKey, HostBitArray128,
     HostBitArray224, HostBitArray256, HostBitArray64, HostBitTensor, HostFixed128Tensor,
@@ -3053,6 +3054,44 @@ impl ReplicatedPlacement {
         };
 
         self.prefix_op(sess, x, elementwise_and)
+    }
+}
+
+impl SigmoidOp {
+    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, ShapeT, RepRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepFixedT,
+    ) -> Result<RepFixedT>
+    where
+        ReplicatedShape: KnownType<S>,
+        RepFixedT: FixedpointTensor,
+        AbstractReplicatedFixedTensor<RepRingT>: Into<RepFixedT>,
+        ReplicatedPlacement: PlacementShape<S, RepFixedT, ShapeT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<S, RepFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementDiv<S, RepFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementNeg<S, RepFixedT, RepFixedT>,
+    {
+        // TODO [Yann]: revisit once we support mixed arithmetic for division
+        let ones = Constant::Fixed(FixedpointConstant {
+            value: 1.0_f64,
+            precision: x.fractional_precision() as usize,
+        });
+
+        let ones_fill = rep.fill(sess, ones, &rep.shape(sess, &x));
+        let ones_rep = AbstractReplicatedFixedTensor {
+            tensor: ones_fill,
+            integral_precision: x.integral_precision(),
+            fractional_precision: x.fractional_precision(),
+        }
+        .into();
+
+        let denominator = rep.add(sess, &ones_rep, &rep.exp(sess, &rep.neg(sess, &x)));
+        let output = rep.div(sess, &ones_rep, &denominator);
+
+        Ok(output)
     }
 }
 

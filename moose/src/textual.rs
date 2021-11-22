@@ -1423,8 +1423,10 @@ impl ToTextual for Operator {
             RepShlDim(op) => op.to_textual(),
             RepEqual(op) => op.to_textual(),
             RepIfElse(op) => op.to_textual(),
+            Neg(op) => op.to_textual(),
             Pow2(op) => op.to_textual(),
             Exp(op) => op.to_textual(),
+            Sigmoid(op) => op.to_textual(),
             LessThan(op) => op.to_textual(),
             GreaterThan(op) => op.to_textual(),
         }
@@ -1558,6 +1560,7 @@ impl_to_textual!(FixedpointAddOp, "{op}: {}", sig);
 impl_to_textual!(FixedpointSubOp, "{op}: {}", sig);
 impl_to_textual!(FixedpointMulOp, "{op}: {}", sig);
 impl_to_textual!(FixedpointDotOp, "{op}: {}", sig);
+impl_to_textual!(NegOp, "{op}: {}", sig);
 impl_to_textual!(
     FixedpointTruncPrOp,
     "{op}{{precision={}}}: {}",
@@ -1601,6 +1604,7 @@ impl_to_textual!(RepNegOp, "{op}: {}", sig);
 impl_to_textual!(RepShlOp, "{op}: {}", sig);
 impl_to_textual!(Pow2Op, "{op}: {}", sig);
 impl_to_textual!(ExpOp, "{op}: {}", sig);
+impl_to_textual!(SigmoidOp, "{op}: {}", sig);
 impl_to_textual!(LessThanOp, "{op}: {}", sig);
 impl_to_textual!(GreaterThanOp, "{op}: {}", sig);
 impl_to_textual!(RepToAdtOp, "{op}: {}", sig);
