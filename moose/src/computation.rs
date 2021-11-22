@@ -1435,8 +1435,6 @@ pub struct GreaterThanOp {
     pub sig: Signature,
 }
 
-
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointEncodeOp {
     pub sig: Signature,

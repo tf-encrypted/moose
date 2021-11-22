@@ -7,8 +7,8 @@ use crate::host::*;
 use crate::kernels::*;
 use crate::replicated::{
     AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor, Mirrored3Fixed128Tensor,
-    Mirrored3Fixed64Tensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor, ShapeFill,
-    Underlying, ReplicatedRing64Tensor, ReplicatedRing128Tensor,
+    Mirrored3Fixed64Tensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
+    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ShapeFill, Underlying,
 };
 use crate::symbolic::Symbolic;
 use macros::with_context;
@@ -1363,6 +1363,16 @@ where
         self.add(sess, &x_mul_coeffs_added_fixed_trunc, &coeffs_mir[0])
     }
 }
+
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor, LessThanOp);
+
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedRing64Tensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor, LessThanOp);
+
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedRing128Tensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor, LessThanOp);
+
 // (Dragos) insert modeled here.
 impl LessThanOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
@@ -1408,6 +1418,13 @@ impl LessThanOp {
 
 modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor, GreaterThanOp);
 modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
+
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedRing64Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor, GreaterThanOp);
+
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
+
 // (Dragos) workout the output types
 
 impl GreaterThanOp {
@@ -1450,8 +1467,6 @@ impl GreaterThanOp {
         Ok(plc.greater_than(sess, &x.tensor, &y.tensor))
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -1790,6 +1805,7 @@ mod tests {
     }
 
     pairwise_bounded_same_length!(pairwise_bounded_same_length64, i64);
+    pairwise_bounded_same_length!(pairwise_bounded_same_length128, i128);
 
     #[test]
     fn test_fixed_rep_mul64() {
@@ -1996,6 +2012,25 @@ mod tests {
             test_rep_dot128(a, b, target);
         }
 
+        #[test]
+        fn test_fuzzy_fixed_rep_greater_than64((a,b) in pairwise_bounded_same_length64(10 + 1))
+        {
+            let mut target: Vec<u64> = vec![0_u64; a.len()];
+            for i in 0..a.len() {
+                target[i] = (a[i] > b[i]) as u64;
+            }
+            test_rep_greater_than64(a.map(|x| *x as f64), b.map(|x| *x as f64), target);
+        }
+
+        #[test]
+        fn test_fuzzy_fixed_rep_greater_than128((a,b) in pairwise_bounded_same_length128(10 + 1))
+        {
+            let mut target: Vec<u128> = vec![0_u128; a.len()];
+            for i in 0..a.len() {
+                target[i] = (a[i] > b[i]) as u128;
+            }
+            test_rep_greater_than128(a.map(|x| *x as f64), b.map(|x| *x as f64), target);
+        }
     }
 
     fn squared_distance(x: &HostFloat64Tensor, target: &ArrayD<f64>) -> ArrayD<f64> {
@@ -2427,21 +2462,30 @@ mod tests {
                 let x_encoded = x.map(encode);
                 let y_encoded = y.map(encode);
 
-                let x = new_host_fixed_tensor_with_precision(
-                    AbstractHostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()), $i_precision, $f_precision);
+                let xf = new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()),
+                    $i_precision,
+                    $f_precision,
+                );
 
-                let y = new_host_fixed_tensor_with_precision(
-                    AbstractHostRingTensor::from_raw_plc(y_encoded.clone(), alice.clone()), $i_precision, $f_precision);
+                let yf = new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(y_encoded.clone(), alice.clone()),
+                    $i_precision,
+                    $f_precision,
+                );
 
-                let xs = rep.share(&sess, &x);
-                let ys = rep.share(&sess, &y);
+                let xs = rep.share(&sess, &xf);
+                let ys = rep.share(&sess, &yf);
 
                 let zs = rep.$test_func(&sess, &xs, &ys);
                 let z = alice.reveal(&sess, &zs);
 
-                // (Dragos) cleanup  this assert
                 for i in 0..target.len() {
-                    assert_eq!(target[i] as $tu, z.0[i].0);
+                    assert_eq!(
+                        target[i] as $tu, z.0[i].0,
+                        "failed comparing {:?} with {:?}",
+                        x[i], y[i]
+                    );
                 }
             }
         };
@@ -2450,7 +2494,8 @@ mod tests {
     rep_signed_binary_func_test!(test_rep_greater_than64, greater_than<i64, u64>, 10, 10);
     rep_signed_binary_func_test!(test_rep_greater_than128, greater_than<i128, u128>, 10, 10);
 
-
+    rep_signed_binary_func_test!(test_rep_less_than64, less_than<i64, u64>, 10, 10);
+    rep_signed_binary_func_test!(test_rep_less_than128, less_than<i128, u128>, 20, 20);
 
     #[test]
     fn test_fixed_rep_greater_than64() {
@@ -2460,5 +2505,19 @@ mod tests {
         test_rep_greater_than64(x, y, targets);
     }
 
+    #[test]
+    fn test_fixed_rep_less_than64() {
+        let x = array![0f64, 2.7, -2.9, 4.1, -3.555].into_dyn();
+        let y = array![1f64, 2.5, -3.0, 4.0, -3.354].into_dyn();
+        let targets: Vec<u64> = vec![1_u64, 0, 0, 0, 1];
+        test_rep_less_than64(x, y, targets);
+    }
 
+    #[test]
+    fn test_fixed_rep_less_than128() {
+        let x = array![0f64, 2.7, -2.9, 4.1, -3.555].into_dyn();
+        let y = array![1f64, 2.5, -3.0, 4.0, -3.354].into_dyn();
+        let targets: Vec<u128> = vec![1_u128, 0, 0, 0, 1];
+        test_rep_less_than128(x, y, targets);
+    }
 }

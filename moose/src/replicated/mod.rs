@@ -3158,8 +3158,6 @@ impl GreaterThanOp {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4378,7 +4376,4 @@ mod tests {
         let target = array![1, 1, 0, 0, 0].into_dyn();
         test_rep_gt128(x, y, target);
     }
-
-
-
 }

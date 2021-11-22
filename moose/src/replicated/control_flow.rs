@@ -39,6 +39,9 @@ impl RepIfElseOp {
         let ones = rep.fill(sess, 1u64.into(), &rep.shape(sess, &x));
 
         // if else [s] * [x] + (1 - [s]) * [y]
+
+        // TODO(Dragos) This can be done using a single multiplication
+        // [s] * ([x] - [y]) + [y]
         let s_x = rep.mul(sess, &s, &x);
 
         let ones_minus_s = rep.sub(sess, &ones, &s);
