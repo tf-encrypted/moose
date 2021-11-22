@@ -2526,7 +2526,7 @@ impl ShapeOp {
         })
     }
 
-    pub fn rep_fixed_kernel<S: Session, RepRingT, ShapeT>(
+    pub fn rep_repfixed_kernel<S: Session, RepRingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
