@@ -1336,13 +1336,13 @@ impl SigmoidOp {
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
-        ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementSigmoid<S, RepFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
-        let z = plc.exp(sess, &x);
+        let z = plc.sigmoid(sess, &x);
         Ok(FixedTensor::Replicated(z))
     }
 }
