@@ -1,5 +1,6 @@
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::fixedpoint::FixedTensor;
 use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -534,6 +535,8 @@ impl SliceOp {
 modelled!(PlacementSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostShape) -> HostShape, HostSliceOp);
 modelled!(PlacementSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostRing64Tensor) -> HostRing64Tensor, HostSliceOp);
 modelled!(PlacementSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostRing128Tensor) -> HostRing128Tensor, HostSliceOp);
+//modelled!(PlacementSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostFixed64Tensor) -> HostFixed64Tensor, HostSliceOp);
+modelled!(PlacementSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostFixed128Tensor) -> HostFixed128Tensor, HostSliceOp);
 
 kernel! {
     HostSliceOp,
@@ -541,6 +544,8 @@ kernel! {
         (HostPlacement, (HostShape) -> HostShape => [runtime] attributes[slice] Self::shape_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] attributes[slice] Self::kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] attributes[slice] Self::kernel),
+        //(HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [runtime] attributes[slice] Self::host_fixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [runtime] attributes[slice] Self::host_fixed_kernel),
     ]
 }
 
@@ -571,6 +576,15 @@ impl HostSliceOp {
             slice_info.0[0].end.unwrap() as usize,
         );
         Ok(HostShape(slice, plc.clone()))
+    }
+
+    pub(crate) fn host_fixed_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        slice_info: SliceInfo,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<HostShape> {
+        unimplemented!()
     }
 }
 
