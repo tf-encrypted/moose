@@ -91,7 +91,7 @@ class ReplicatedExample(parameterized.TestCase):
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
-        sigmoid = lambda x: 1 /(1 + np.exp(-x))
+        sigmoid = lambda x: 1 / (1 + np.exp(-x))
         np.testing.assert_almost_equal(actual_result, sigmoid(2))
 
 
