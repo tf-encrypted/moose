@@ -3107,6 +3107,57 @@ impl LessThanOp {
     }
 }
 
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
+
+impl GreaterThanOp {
+    pub(crate) fn rep_kernel<S: Session, RepRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepRingT,
+        y: RepRingT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+    {
+        let z = rep.sub(sess, &y, &x);
+        Ok(rep.msb(sess, &z))
+    }
+
+    pub(crate) fn rep_mir_kernel<S: Session, RepRingT, MirroredT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepRingT,
+        y: MirroredT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+    {
+        let z = rep.sub(sess, &y, &x);
+        Ok(rep.msb(sess, &z))
+    }
+
+    pub(crate) fn mir_rep_kernel<S: Session, RepRingT, MirroredT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: MirroredT,
+        y: RepRingT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementSub<S, RepRingT, MirroredT, RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+    {
+        let z = rep.sub(sess, &y, &x);
+        Ok(rep.msb(sess, &z))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4291,5 +4342,39 @@ mod tests {
         .into_dyn();
         let target = array![0, 0, 1, 0, 1].into_dyn();
         test_rep_lt128(x, y, target);
+    }
+
+    rep_binary_func_test!(test_rep_gt64, greater_than<u64>);
+    rep_binary_func_test!(test_rep_gt128, greater_than<u128>);
+
+    #[test]
+    fn test_rep_gt_64() {
+        let x = array![0u64, 1, 2, -1_i64 as u64, -2_i64 as u64, 2u64.pow(62)].into_dyn();
+        let y = array![
+            -1_i64 as u64,
+            -2_i64 as u64,
+            3_u64,
+            -1_i64 as u64,
+            -1_i64 as u64,
+            (-4611686018427387904_i64 + 1) as u64 // -2^62+1
+        ]
+        .into_dyn();
+        let target = array![1, 1, 0, 0, 0, 1].into_dyn();
+        test_rep_gt64(x, y, target);
+    }
+
+    #[test]
+    fn test_rep_gt_128() {
+        let x = array![0u128, 1, 2, -1_i128 as u128, -2_i128 as u128].into_dyn();
+        let y = array![
+            -1_i128 as u128,
+            -2_i128 as u128,
+            3_u128,
+            -1_i128 as u128,
+            -1_i128 as u128
+        ]
+        .into_dyn();
+        let target = array![1, 1, 0, 0, 0].into_dyn();
+        test_rep_gt128(x, y, target);
     }
 }

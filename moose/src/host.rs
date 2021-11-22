@@ -2695,6 +2695,25 @@ impl LessThanOp {
     }
 }
 
+modelled!(PlacementGreaterThan::greater_than, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, GreaterThanOp);
+
+impl GreaterThanOp {
+    pub(crate) fn host_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostRingT,
+        y: HostRingT,
+    ) -> Result<HostRingT>
+    where
+        HostPlacement: PlacementSign<S, HostRingT, HostRingT>,
+        HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
+    {
+        let z = plc.sub(sess, &y, &x);
+        Ok(plc.sign(sess, &z))
+    }
+}
+
 #[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing64Tensor {
     pub fn sample_uniform(shape: &RawShape) -> HostRing64Tensor {
