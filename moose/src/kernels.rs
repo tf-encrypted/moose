@@ -164,6 +164,7 @@ impl Session for SyncSession {
             FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            FixedpointNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostDiag(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -854,6 +855,7 @@ impl Compile<SyncKernel> for Operator {
             Pow2(op) => unimplemented!("Not done yet: {:?}", op),
             Exp(op) => unimplemented!("Not done yet: {:?}", op),
             Sigmoid(op) => unimplemented!("Not done yet: {:?}", op),
+            FixedpointNeg(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO
             AesDecrypt(_) => unimplemented!(),
             HostIndexAxis(_) => unimplemented!(),
@@ -944,8 +946,8 @@ impl Compile<AsyncKernel> for Operator {
             AesDecrypt(_) => unimplemented!(),
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostShlDim(_) | HostSqrt(_)
-            | HostSqueeze(_) | HostDiag(_) | Cast(_) => {
+            | FixedpointSum(_) | FixedpointNeg(_) | HostBitDec(_) | HostIndexAxis(_)
+            | HostShlDim(_) | HostSqrt(_) | HostSqueeze(_) | HostDiag(_) | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             FloatingpointAdd(op) => unimplemented!("Not done yet: {:?}", op),

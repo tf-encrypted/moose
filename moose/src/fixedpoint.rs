@@ -635,6 +635,8 @@ modelled!(PlacementDiv::div, HostPlacement, (HostFixed64Tensor, HostFixed64Tenso
 modelled!(PlacementDiv::div, HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor, FixedpointDivOp);
 modelled!(PlacementDiv::div, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointDivOp);
 modelled!(PlacementDiv::div, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointDivOp);
+// modelled!(PlacementDiv::div, ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointDivOp);
+// modelled!(PlacementDiv::div, ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointDivOp);
 
 kernel! {
     FixedpointDivOp,
@@ -647,6 +649,8 @@ kernel! {
         (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::rep_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_rep_kernel),
+        // (ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::mirfixed_repfixed_kernel),
+        // (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::mirfixed_repfixed_kernel),
     ]
 }
 
@@ -729,6 +733,24 @@ impl FixedpointDivOp {
             integral_precision: x.integral_precision,
         })
     }
+
+    // fn mirfixed_repfixed_kernel<S: Session, RepRingT, MirroredRingT>(
+    //     sess: &S,
+    //     plc: &ReplicatedPlacement,
+    //     x: AbstractMirroredFixedTensor<MirroredRingT>,
+    //     y: AbstractReplicatedFixedTensor<RepRingT>,
+    // ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    // where
+    //     ReplicatedPlacement: PlacementDiv<S, MirroredRingT, RepRingT, RepRingT>,
+    // {
+    //     assert_eq!(x.fractional_precision, y.fractional_precision);
+    //     let z = plc.div(sess, &x.tensor, &y.tensor);
+    //     Ok(AbstractReplicatedFixedTensor {
+    //         tensor: z,
+    //         fractional_precision: x.fractional_precision + y.fractional_precision,
+    //         integral_precision: u32::max(x.integral_precision, y.integral_precision),
+    //     })
+    // }
 }
 
 modelled!(PlacementDot::dot, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDotOp);
@@ -1129,6 +1151,36 @@ impl FixedpointMeanOp {
         })
     }
 }
+
+modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointNegOp);
+modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointNegOp);
+
+kernel! {
+    FixedpointNegOp,
+    [
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::repfixed_kernel),
+    ]
+}
+
+impl FixedpointNegOp {
+    fn repfixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementNeg<S, RepRingT, RepRingT>,
+    {
+        let y = plc.neg(sess, &x.tensor);
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: y,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+}
+
 impl AddNOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
         sess: &S,

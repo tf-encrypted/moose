@@ -301,6 +301,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            FixedpointNeg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Identity(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostReshape(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

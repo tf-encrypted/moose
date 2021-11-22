@@ -1375,6 +1375,7 @@ impl ToTextual for Operator {
             FixedpointTruncPr(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
             FixedpointSum(op) => op.to_textual(),
+            FixedpointNeg(op) => op.to_textual(),
             FloatingpointAdd(op) => op.to_textual(),
             FloatingpointSub(op) => op.to_textual(),
             FloatingpointMul(op) => op.to_textual(),
@@ -1557,6 +1558,7 @@ impl_to_textual!(FixedpointAddOp, "{op}: {}", sig);
 impl_to_textual!(FixedpointSubOp, "{op}: {}", sig);
 impl_to_textual!(FixedpointMulOp, "{op}: {}", sig);
 impl_to_textual!(FixedpointDotOp, "{op}: {}", sig);
+impl_to_textual!(FixedpointNegOp, "{op}: {}", sig);
 impl_to_textual!(
     FixedpointTruncPrOp,
     "{op}{{precision={}}}: {}",
