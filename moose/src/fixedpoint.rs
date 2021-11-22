@@ -8,7 +8,7 @@ use crate::kernels::*;
 use crate::replicated::{
     AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor, Mirrored3Fixed128Tensor,
     Mirrored3Fixed64Tensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
-    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ShapeFill, Underlying,
+    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape, ShapeFill, Underlying,
 };
 use crate::symbolic::Symbolic;
 use macros::with_context;
@@ -1030,6 +1030,56 @@ impl FixedpointSumOp {
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
         })
+    }
+}
+
+impl ShapeOp {
+    pub(crate) fn host_fixed_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<m!(HostShape)>
+    where
+        HostShape: KnownType<S>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementShape<S, HostFixedT, m!(HostShape)>,
+    {
+        let x_revealed = match x {
+            FixedTensor::Host(x) => x,
+            FixedTensor::Replicated(x) => plc.reveal(sess, &x),
+        };
+
+        Ok(plc.shape(sess, &x_revealed))
+    }
+
+    pub(crate) fn rep_fixed_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<m!(ReplicatedShape)>
+    where
+        ReplicatedShape: KnownType<S>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShape<S, RepFixedT, m!(ReplicatedShape)>,
+    {
+        let x_shared = match x {
+            FixedTensor::Host(x) => plc.share(sess, &x),
+            FixedTensor::Replicated(x) => x,
+        };
+
+        Ok(plc.shape(sess, &x_shared))
+    }
+
+    pub(crate) fn host_hostfixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractHostFixedTensor<HostRingT>,
+    ) -> Result<m!(HostShape)>
+    where
+        HostShape: KnownType<S>,
+        HostPlacement: PlacementShape<S, HostRingT, m!(HostShape)>,
+    {
+        Ok(plc.shape(sess, &x.tensor))
     }
 }
 
@@ -2322,6 +2372,25 @@ mod tests {
         let y_targets = vec![6f64, 17., 34., 57.];
 
         test_rep_poly_eval_fixed128(x, coeffs, y_targets);
+    }
+
+    #[test]
+    fn test_host_shape_op() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let x = AbstractHostRingTensor::from_raw_plc(
+            array![1024u64, 5, 4]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+            alice,
+        );
+
+        let shape = x.shape();
+        let raw_shape: RawShape = shape.0;
+        let underlying = vec![3];
+        let expected: RawShape = RawShape(underlying);
+        assert_eq!(expected, raw_shape);
     }
 
     macro_rules! rep_approx_unary_fixed_test {

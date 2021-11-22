@@ -1951,6 +1951,27 @@ macro_rules! moose_type {
         impl crate::computation::CanonicalType for crate::symbolic::Symbolic<$atomic> {
             type Type = $atomic;
         }
+
+        impl From<$atomic> for <$atomic as crate::computation::SymbolicType>::Type {
+            fn from(x: $atomic) -> Self {
+                crate::symbolic::Symbolic::Concrete(x)
+            }
+        }
+
+        impl std::convert::TryFrom<<$atomic as crate::computation::SymbolicType>::Type>
+            for $atomic
+        {
+            type Error = crate::error::Error;
+
+            fn try_from(
+                v: <$atomic as crate::computation::SymbolicType>::Type,
+            ) -> crate::error::Result<Self> {
+                match v {
+                    crate::symbolic::Symbolic::Concrete(x) => Ok(x),
+                    _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
+                }
+            }
+        }
     };
 
     // Use this for undefined parameterised types that may be wrapping non-Moose types
@@ -1967,6 +1988,27 @@ macro_rules! moose_type {
 
         impl crate::computation::CanonicalType for crate::symbolic::Symbolic<$combined> {
             type Type = $combined;
+        }
+
+        impl From<$combined> for <$combined as crate::computation::SymbolicType>::Type {
+            fn from(x: $combined) -> Self {
+                crate::symbolic::Symbolic::Concrete(x)
+            }
+        }
+
+        impl std::convert::TryFrom<<$combined as crate::computation::SymbolicType>::Type>
+            for $combined
+        {
+            type Error = crate::error::Error;
+
+            fn try_from(
+                v: <$combined as crate::computation::SymbolicType>::Type,
+            ) -> crate::error::Result<Self> {
+                match v {
+                    crate::symbolic::Symbolic::Concrete(x) => Ok(x),
+                    _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
+                }
+            }
         }
     };
 

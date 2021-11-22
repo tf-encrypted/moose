@@ -1216,16 +1216,25 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    std_ShapeOperation(op) => Ok(Operation {
-                        kind: ShapeOp {
-                            sig: Signature::unary(Ty::Tensor(TensorDType::Unknown), Ty::HostShape),
-                        }
-                        .into(),
-                        inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        name: op.name.clone(),
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
+                    std_ShapeOperation(op) => {
+                        let plc = map_placement(&placements, &op.placement_name)?;
+                        let ret = match plc {
+                            Placement::Host(_) => Ty::HostShape,
+                            Placement::Replicated(_) => Ty::ReplicatedShape,
+                            _ => Ty::HostShape, // TODO(lvorona): Do we want to support std_Shape on any other placements?
+                        };
+
+                        Ok(Operation {
+                            kind: ShapeOp {
+                                sig: Signature::unary(Ty::Tensor(TensorDType::Unknown), ret),
+                            }
+                            .into(),
+                            inputs: map_inputs(&op.inputs, &["x"])
+                                .with_context(|| format!("Failed at op {:?}", op))?,
+                            name: op.name.clone(),
+                            placement: plc,
+                        })
+                    }
                     std_SliceOperation(op) => Ok(Operation {
                         kind: SliceOp {
                             sig: Signature::unary(
