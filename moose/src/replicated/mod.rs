@@ -1,6 +1,7 @@
 //! Placements backed by replicated secret sharing
 use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor};
 use crate::error::{Error, Result};
+use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
     AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedTensor, HostAesKey, HostBitArray128,
     HostBitArray224, HostBitArray256, HostBitArray64, HostBitTensor, HostFixed128Tensor,
@@ -3057,12 +3058,40 @@ impl ReplicatedPlacement {
 }
 
 impl SigmoidOp {
-    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, MirRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepFixedT,
-    ) -> Result<RepFixedT> {
-        Ok(x)
+    ) -> Result<RepFixedT>
+    where
+        ReplicatedShape: KnownType<S>,
+        RepFixedT: FixedpointTensor,
+
+        AbstractMirroredFixedTensor<MirRingT>: CanonicalType,
+        <AbstractMirroredFixedTensor<MirRingT> as CanonicalType>::Type: KnownType<S>,
+        AbstractMirroredFixedTensor<MirRingT>: Into<m!(c!(AbstractMirroredFixedTensor<MirRingT>))>,
+
+        ReplicatedPlacement: PlacementShape<S, RepFixedT, cs!(ReplicatedShape)>,
+        ReplicatedPlacement: ShapeFill<S, RepFixedT, Result = MirRingT>,
+        ReplicatedPlacement:
+            PlacementAdd<S, m!(c!(AbstractMirroredFixedTensor<MirRingT>)), RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
+    {
+        let ones = Constant::Fixed(FixedpointConstant {
+            value: 1.0_f64,
+            precision: x.fractional_precision() as usize,
+        });
+
+        let ones_mir = AbstractMirroredFixedTensor {
+            tensor: rep.shape_fill(sess, ones, &x),
+            integral_precision: x.integral_precision(),
+            fractional_precision: x.fractional_precision(),
+        }
+        .into();
+
+        let denominator = rep.add(sess, &ones_mir, &rep.exp(sess, &x));
+
+        Ok(denominator)
     }
 }
 
