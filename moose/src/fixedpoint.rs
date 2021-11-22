@@ -2341,7 +2341,6 @@ mod tests {
 
                 // operation precision is not as accurate as the fixed point precision
                 for i in 0..y_target.len() {
-                    println!("Actual {} - Expected {}", result.0[i], y_target[i]);
                     let error = (result.0[i] - y_target[i]).abs();
                     assert!(error < $err, "failed at index {:?}, error is {:?}", i, error);
                 }
