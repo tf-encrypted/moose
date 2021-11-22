@@ -116,17 +116,6 @@ impl<S: Session> PlacementPlace<S, HostShape> for HostPlacement {
     }
 }
 
-// TODO(lvorona): should probably become part of moose_type!
-impl TryFrom<Symbolic<HostShape>> for HostShape {
-    type Error = ();
-    fn try_from(v: Symbolic<HostShape>) -> std::result::Result<Self, ()> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(()),
-        }
-    }
-}
-
 /// One slice for slicing op
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SliceInfoElem {
@@ -2702,6 +2691,25 @@ impl LessThanOp {
         HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
     {
         let z = plc.sub(sess, &x, &y);
+        Ok(plc.sign(sess, &z))
+    }
+}
+
+modelled!(PlacementGreaterThan::greater_than, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, GreaterThanOp);
+
+impl GreaterThanOp {
+    pub(crate) fn host_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostRingT,
+        y: HostRingT,
+    ) -> Result<HostRingT>
+    where
+        HostPlacement: PlacementSign<S, HostRingT, HostRingT>,
+        HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
+    {
+        let z = plc.sub(sess, &y, &x);
         Ok(plc.sign(sess, &z))
     }
 }

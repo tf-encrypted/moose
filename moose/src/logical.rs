@@ -4,6 +4,7 @@ use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{HostShape, HostString};
 use crate::kernels::*;
+use crate::replicated::ReplicatedShape;
 use crate::symbolic::Symbolic;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -1177,27 +1178,42 @@ impl SaveOp {
 }
 
 impl ShapeOp {
-    pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+    pub(crate) fn host_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-    ) -> Result<cs!(HostShape)>
+    ) -> Result<m!(HostShape)>
     where
         HostShape: KnownType<S>,
-        HostPlacement: PlacementShape<S, Float32T, cs!(HostShape)>,
-        HostPlacement: PlacementShape<S, Float64T, cs!(HostShape)>,
+        HostPlacement: PlacementShape<S, Float32T, m!(HostShape)>,
+        HostPlacement: PlacementShape<S, Float64T, m!(HostShape)>,
+        HostPlacement: PlacementShape<S, Fixed64T, m!(HostShape)>,
+        HostPlacement: PlacementShape<S, Fixed128T, m!(HostShape)>,
     {
         match x {
-            AbstractTensor::Fixed64(_x) => {
-                unimplemented!()
-                // plc.shape(sess, &x)
-            }
-            AbstractTensor::Fixed128(_x) => {
-                unimplemented!()
-                // plc.shape(sess, &x)
-            }
             AbstractTensor::Float32(x) => Ok(plc.shape(sess, &x)),
             AbstractTensor::Float64(x) => Ok(plc.shape(sess, &x)),
+            AbstractTensor::Fixed64(x) => Ok(plc.shape(sess, &x)),
+            AbstractTensor::Fixed128(x) => Ok(plc.shape(sess, &x)),
+        }
+    }
+
+    pub(crate) fn rep_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<m!(ReplicatedShape)>
+    where
+        ReplicatedShape: KnownType<S>,
+        ReplicatedPlacement: PlacementShape<S, Fixed64T, m!(ReplicatedShape)>,
+        ReplicatedPlacement: PlacementShape<S, Fixed128T, m!(ReplicatedShape)>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => Ok(plc.shape(sess, &x)),
+            AbstractTensor::Fixed128(x) => Ok(plc.shape(sess, &x)),
+            _ => Err(Error::UnimplementedOperator(
+                "Floating point ops not supported on ReplicatedPlacement.".to_string(),
+            )),
         }
     }
 }

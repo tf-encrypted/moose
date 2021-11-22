@@ -286,6 +286,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Exp(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             LessThan(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            GreaterThan(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostConcat(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
