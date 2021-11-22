@@ -551,6 +551,9 @@ pub fn new_async_value() -> (crate::execution::AsyncSender, AsyncValue) {
     (sender, shared_receiver)
 }
 
+pub type CompiledKernel<S> =
+    Box<dyn Fn(&S, Vec<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send>;
+
 impl Ty {
     pub fn flatten(&self) -> Ty {
         match self {
