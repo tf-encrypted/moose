@@ -26,6 +26,7 @@ from pymoose.edsl.base import replicated_placement
 from pymoose.edsl.base import reshape
 from pymoose.edsl.base import save
 from pymoose.edsl.base import shape
+from pymoose.edsl.base import sigmoid
 from pymoose.edsl.base import slice
 from pymoose.edsl.base import square
 from pymoose.edsl.base import squeeze
@@ -67,6 +68,7 @@ __all__ = [
     shape,
     square,
     squeeze,
+    sigmoid,
     sub,
     sum,
     transpose,
