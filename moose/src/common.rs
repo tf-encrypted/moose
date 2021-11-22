@@ -32,7 +32,6 @@ modelled!(PlacementShape::shape, HostPlacement, (HostRing128Tensor) -> HostShape
 modelled!(PlacementShape::shape, HostPlacement, (HostBitTensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (HostFloat32Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (HostFloat64Tensor) -> HostShape, ShapeOp);
-// modelled!(PlacementShape::shape, HostPlacement, (HostFixed128AesTensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (Tensor) -> ReplicatedShape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (Fixed64Tensor) -> ReplicatedShape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (Fixed128Tensor) -> ReplicatedShape, ShapeOp);
@@ -59,7 +58,6 @@ kernel! {
         (HostPlacement, (HostBitTensor) -> HostShape => [runtime] Self::bit_kernel),
         (HostPlacement, (HostFloat32Tensor) -> HostShape => [runtime] Self::host_kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostShape => [runtime] Self::host_kernel),
-        // (HostPlacement, (HostFixed128AesTensor) -> HostShape => [runtime] Self::hostfixedaes_kernel),
         (ReplicatedPlacement, (Tensor) -> ReplicatedShape => [hybrid] Self::rep_logical_kernel),
         (ReplicatedPlacement, (Fixed64Tensor) -> ReplicatedShape => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> ReplicatedShape => [hybrid] Self::rep_fixed_kernel),

@@ -1952,15 +1952,12 @@ macro_rules! moose_type {
             type Type = $atomic;
         }
 
-        // The kernel macro uses this to map (partially) concrete outputs to symbolic values
         impl From<$atomic> for <$atomic as crate::computation::SymbolicType>::Type {
             fn from(x: $atomic) -> Self {
                 crate::symbolic::Symbolic::Concrete(x)
             }
         }
 
-        // The kernel macros uses this to determine whether to invoke kernels, and
-        // if so, to map symbolic values to (partially) concrete inputs
         impl std::convert::TryFrom<<$atomic as crate::computation::SymbolicType>::Type>
             for $atomic
         {
@@ -1993,15 +1990,12 @@ macro_rules! moose_type {
             type Type = $combined;
         }
 
-        // The kernel macro uses this to map (partially) concrete outputs to symbolic values
         impl From<$combined> for <$combined as crate::computation::SymbolicType>::Type {
             fn from(x: $combined) -> Self {
                 crate::symbolic::Symbolic::Concrete(x)
             }
         }
 
-        // The kernel macros uses this to determine whether to invoke kernels, and
-        // if so, to map symbolic values to (partially) concrete inputs
         impl std::convert::TryFrom<<$combined as crate::computation::SymbolicType>::Type>
             for $combined
         {
