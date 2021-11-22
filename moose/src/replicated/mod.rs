@@ -3076,6 +3076,7 @@ impl SigmoidOp {
         ReplicatedPlacement:
             PlacementAdd<S, m!(c!(AbstractMirroredFixedTensor<MirRingT>)), RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementNeg<S, RepFixedT, RepFixedT>,
     {
         let ones = Constant::Fixed(FixedpointConstant {
             value: 1.0_f64,
@@ -3089,7 +3090,7 @@ impl SigmoidOp {
         }
         .into();
 
-        let denominator = rep.add(sess, &ones_mir, &rep.exp(sess, &x));
+        let denominator = rep.add(sess, &ones_mir, &rep.exp(sess, &rep.neg(sess, &x)));
 
         Ok(denominator)
     }
