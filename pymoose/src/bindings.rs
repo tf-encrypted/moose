@@ -223,7 +223,7 @@ impl LocalRuntime {
 
         let mut outputs_py_val: HashMap<String, PyObject> = HashMap::new();
         match outputs {
-            Ok(Some(outputs)) => {
+            Ok(outputs) => {
                 for (output_name, value) in outputs {
                     match value {
                         Value::Unit(_) => None,
@@ -236,7 +236,6 @@ impl LocalRuntime {
                     };
                 }
             }
-            Ok(None) => (),
             Err(e) => return Err(PyRuntimeError::new_err(e.to_string())),
         }
 

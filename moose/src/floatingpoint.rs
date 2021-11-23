@@ -463,10 +463,10 @@ impl ShapeOp {
         sess: &S,
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT>,
-    ) -> Result<cs!(HostShape)>
+    ) -> Result<m!(HostShape)>
     where
         HostShape: KnownType<S>,
-        HostPlacement: PlacementShape<S, HostFloatT, cs!(HostShape)>,
+        HostPlacement: PlacementShape<S, HostFloatT, m!(HostShape)>,
     {
         let FloatTensor::Host(x) = x;
         Ok(plc.shape(sess, &x))

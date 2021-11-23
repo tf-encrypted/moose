@@ -4,7 +4,7 @@ use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Identity, Kernel,
     SyncKernel,
 };
-use crate::fixedpoint::Convert;
+use crate::fixedpoint::{Convert, Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::*;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
@@ -210,13 +210,16 @@ impl Session for SyncSession {
             Sub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Mul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Mean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Neg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepIfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Pow2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Exp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Sigmoid(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             LessThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -248,26 +251,410 @@ impl RuntimeSession for SyncSession {
 }
 
 /// Session object for asynchronous execution (in new framework).
+#[derive(Clone)]
 pub struct AsyncSession {
-    session_id: SessionId,
+    pub session_id: SessionId,
+    pub arguments: Arc<HashMap<String, Value>>,
+    pub role_assignments: Arc<HashMap<Role, Identity>>,
+    pub networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
+    pub storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
+    pub host: Arc<Placement>,
     // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
+    pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
+}
+
+pub struct AsyncSessionHandle {
+    pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
+}
+
+impl AsyncSessionHandle {
+    pub fn for_session(session: &AsyncSession) -> Self {
+        AsyncSessionHandle {
+            tasks: Arc::clone(&session.tasks),
+        }
+    }
+
+    pub async fn join_on_first_error(self) -> anyhow::Result<()> {
+        use crate::error::Error::{OperandUnavailable, ResultUnused};
+        // use futures::StreamExt;
+
+        let mut tasks_guard = self.tasks.write().unwrap();
+        // TODO (lvorona): should really find a way to use FuturesUnordered here
+        // let mut tasks = (*tasks_guard)
+        //     .into_iter()
+        //     .collect::<futures::stream::FuturesUnordered<_>>();
+
+        let mut tasks = tasks_guard.iter_mut();
+
+        while let Some(x) = tasks.next() {
+            let x = x.await;
+            match x {
+                Ok(Ok(_)) => {
+                    continue;
+                }
+                Ok(Err(e)) => {
+                    match e {
+                        // OperandUnavailable and ResultUnused are typically not root causes.
+                        // Wait to get an error that would indicate the root cause of the problem,
+                        // and return it instead.
+                        OperandUnavailable => continue,
+                        ResultUnused => continue,
+                        _ => {
+                            for task in tasks {
+                                task.abort();
+                            }
+                            return Err(anyhow::Error::from(e));
+                        }
+                    }
+                }
+                Err(e) => {
+                    if e.is_cancelled() {
+                        continue;
+                    } else if e.is_panic() {
+                        for task in tasks {
+                            task.abort();
+                        }
+                        return Err(anyhow::Error::from(e));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl AsyncSession {
+    pub fn new(
+        session_id: SessionId,
+        arguments: HashMap<String, Value>,
+        role_assignments: HashMap<Role, Identity>,
+        networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
+        storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
+        host: Arc<Placement>,
+    ) -> Self {
+        AsyncSession {
+            session_id,
+            arguments: Arc::new(arguments),
+            role_assignments: Arc::new(role_assignments),
+            networking,
+            storage,
+            host,
+            tasks: Default::default(),
+        }
+    }
+
+    fn storage_load(
+        &self,
+        op: &LoadOp,
+        _plc: &HostPlacement,
+        operands: Vec<AsyncValue>,
+    ) -> Result<AsyncValue> {
+        use std::convert::TryInto;
+        assert_eq!(operands.len(), 2);
+        let sess = self.clone();
+        let op = op.clone();
+        // let plc = plc.clone();
+        let (sender, result) = crate::computation::new_async_value();
+        let tasks = std::sync::Arc::clone(&self.tasks);
+        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+            let operands = futures::future::join_all(operands).await;
+            let key: HostString = operands
+                .get(0)
+                .ok_or_else(|| {
+                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0))
+                })?
+                .clone()
+                .map_err(crate::execution::map_receive_error)?
+                .try_into()?;
+            let query: HostString = operands
+                .get(1)
+                .ok_or_else(|| {
+                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 1))
+                })?
+                .clone()
+                .map_err(crate::execution::map_receive_error)?
+                .try_into()?;
+
+            let value: Value = sess
+                .storage
+                .load(&key.0, &sess.session_id, Some(op.sig.ret()), &query.0)
+                .await?;
+            // TODO: Hmm, placement of a Value does not work like this... But perhaps it should?
+            // let value = plc.place(&sess, value);
+            crate::execution::map_send_result(sender.send(value))?;
+            Ok(())
+        });
+        let mut tasks = tasks.write().unwrap();
+        tasks.push(task);
+
+        Ok(result)
+    }
+
+    fn storage_save(
+        &self,
+        _op: &SaveOp,
+        plc: &HostPlacement,
+        operands: Vec<AsyncValue>,
+    ) -> Result<AsyncValue> {
+        use std::convert::TryInto;
+        assert_eq!(operands.len(), 2);
+        let sess = self.clone();
+        let plc = plc.clone();
+        let (sender, result) = crate::computation::new_async_value();
+        let tasks = std::sync::Arc::clone(&self.tasks);
+        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+            let operands = futures::future::join_all(operands).await;
+            let key: HostString = operands
+                .get(0)
+                .ok_or_else(|| {
+                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0))
+                })?
+                .clone()
+                .map_err(crate::execution::map_receive_error)?
+                .try_into()?;
+            let x: Value = operands
+                .get(1)
+                .ok_or_else(|| {
+                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 1))
+                })?
+                .clone()
+                .map_err(crate::execution::map_receive_error)?;
+
+            sess.storage.save(&key.0, &sess.session_id, &x).await?;
+            let result = Unit(plc);
+            crate::execution::map_send_result(sender.send(result.into()))?;
+            Ok(())
+        });
+        let mut tasks = tasks.write().unwrap();
+        tasks.push(task);
+
+        Ok(result)
+    }
+
+    fn networking_receive(
+        &self,
+        op: &ReceiveOp,
+        _plc: &HostPlacement,
+        operands: Vec<AsyncValue>,
+    ) -> Result<AsyncValue> {
+        assert_eq!(operands.len(), 0);
+        let sess = self.clone();
+        let op = op.clone();
+        // let plc = plc.clone();
+        let (sender, result) = crate::computation::new_async_value();
+        let tasks = std::sync::Arc::clone(&self.tasks);
+        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+            let net_sender = sess.find_role_assignment(&op.sender)?;
+
+            let value: Value = sess
+                .networking
+                .receive(net_sender, &op.rendezvous_key, &sess.session_id)
+                .await?;
+            // TODO: Hmm, placement of a Value does not work like this... But perhaps it should?
+            // let value = plc.place(&sess, value);
+            crate::execution::map_send_result(sender.send(value))?;
+            Ok(())
+        });
+        let mut tasks = tasks.write().unwrap();
+        tasks.push(task);
+
+        Ok(result)
+    }
+
+    fn networking_send(
+        &self,
+        op: &SendOp,
+        plc: &HostPlacement,
+        operands: Vec<AsyncValue>,
+    ) -> Result<AsyncValue> {
+        assert_eq!(operands.len(), 1);
+        let sess = self.clone();
+        let plc = plc.clone();
+        let op = op.clone();
+        let (sender, result) = crate::computation::new_async_value();
+        let tasks = std::sync::Arc::clone(&self.tasks);
+        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+            let receiver = sess.find_role_assignment(&op.receiver)?;
+            let operands = futures::future::join_all(operands).await;
+            let x: Value = operands
+                .get(0)
+                .ok_or_else(|| {
+                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0))
+                })?
+                .clone()
+                .map_err(crate::execution::map_receive_error)?;
+
+            sess.networking
+                .send(&x, receiver, &op.rendezvous_key, &sess.session_id)
+                .await?;
+            let result = Unit(plc);
+            crate::execution::map_send_result(sender.send(result.into()))?;
+            Ok(())
+        });
+        let mut tasks = tasks.write().unwrap();
+        tasks.push(task);
+
+        Ok(result)
+    }
 }
 
 impl Session for AsyncSession {
-    type Value = (); // TODO AsyncExecutor for the new framework is not ready yet
+    type Value = AsyncValue;
     fn execute(
         &self,
-        _op: Operator,
-        _plc: &Placement,
-        _operands: Vec<Self::Value>,
+        op: Operator,
+        plc: &Placement,
+        operands: Vec<Self::Value>,
     ) -> Result<Self::Value> {
-        // TODO AsyncExecutor for the new framework is not ready yet
-        unimplemented!()
+        // The kernels that are doing funny things to the async context, such as awaiting for more than their inputs.
+        match (&op, plc) {
+            (Operator::Load(op), Placement::Host(plc)) => {
+                return self.storage_load(op, plc, operands)
+            }
+            (Operator::Save(op), Placement::Host(plc)) => {
+                return self.storage_save(op, plc, operands)
+            }
+            (Operator::Send(op), Placement::Host(plc)) => {
+                return self.networking_send(op, plc, operands)
+            }
+            (Operator::Receive(op), Placement::Host(plc)) => {
+                return self.networking_receive(op, plc, operands)
+            }
+            _ => (),
+        };
+        // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
+        use Operator::*;
+        let kernel = match op {
+            Shape(op) => DispatchKernel::compile(&op, plc)?,
+            BitFill(op) => DispatchKernel::compile(&op, plc)?,
+            RingFill(op) => DispatchKernel::compile(&op, plc)?,
+            PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?,
+            BitSample(op) => DispatchKernel::compile(&op, plc)?,
+            BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)?,
+            BitXor(op) => DispatchKernel::compile(&op, plc)?,
+            BitAnd(op) => DispatchKernel::compile(&op, plc)?,
+            BitNeg(op) => DispatchKernel::compile(&op, plc)?,
+            BitExtract(op) => DispatchKernel::compile(&op, plc)?,
+            RingSample(op) => DispatchKernel::compile(&op, plc)?,
+            RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)?,
+            RingAdd(op) => DispatchKernel::compile(&op, plc)?,
+            RingSub(op) => DispatchKernel::compile(&op, plc)?,
+            RingMul(op) => DispatchKernel::compile(&op, plc)?,
+            RingDot(op) => DispatchKernel::compile(&op, plc)?,
+            RingNeg(op) => DispatchKernel::compile(&op, plc)?,
+            RingShl(op) => DispatchKernel::compile(&op, plc)?,
+            RingShr(op) => DispatchKernel::compile(&op, plc)?,
+            RingSum(op) => DispatchKernel::compile(&op, plc)?,
+            RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
+            RingFixedpointEncode(op) => DispatchKernel::compile(&op, plc)?,
+            RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?,
+            RingInject(op) => DispatchKernel::compile(&op, plc)?,
+            RepFill(op) => DispatchKernel::compile(&op, plc)?,
+            RepSetup(op) => DispatchKernel::compile(&op, plc)?,
+            RepShare(op) => DispatchKernel::compile(&op, plc)?,
+            RepReveal(op) => DispatchKernel::compile(&op, plc)?,
+            RepAdd(op) => DispatchKernel::compile(&op, plc)?,
+            RepSub(op) => DispatchKernel::compile(&op, plc)?,
+            RepMul(op) => DispatchKernel::compile(&op, plc)?,
+            RepDot(op) => DispatchKernel::compile(&op, plc)?,
+            RepTruncPr(op) => DispatchKernel::compile(&op, plc)?,
+            RepMsb(op) => DispatchKernel::compile(&op, plc)?,
+            RepNeg(op) => DispatchKernel::compile(&op, plc)?,
+            RepAbs(op) => DispatchKernel::compile(&op, plc)?,
+            RepToAdt(op) => DispatchKernel::compile(&op, plc)?,
+            RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
+            RepSum(op) => DispatchKernel::compile(&op, plc)?,
+            RepShl(op) => DispatchKernel::compile(&op, plc)?,
+            RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?,
+            RepDiag(op) => DispatchKernel::compile(&op, plc)?,
+            RepSlice(op) => DispatchKernel::compile(&op, plc)?,
+            RepBitDec(op) => DispatchKernel::compile(&op, plc)?,
+            RepShlDim(op) => DispatchKernel::compile(&op, plc)?,
+            AdtAdd(op) => DispatchKernel::compile(&op, plc)?,
+            AdtSub(op) => DispatchKernel::compile(&op, plc)?,
+            AdtShl(op) => DispatchKernel::compile(&op, plc)?,
+            AdtMul(op) => DispatchKernel::compile(&op, plc)?,
+            AdtFill(op) => DispatchKernel::compile(&op, plc)?,
+            AdtReveal(op) => DispatchKernel::compile(&op, plc)?,
+            AdtToRep(op) => DispatchKernel::compile(&op, plc)?,
+            PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)?,
+            Constant(op) => DispatchKernel::compile(&op, plc)?,
+            HostOnes(op) => DispatchKernel::compile(&op, plc)?,
+            Input(op) => DispatchKernel::compile(&op, plc)?,
+            Output(op) => DispatchKernel::compile(&op, plc)?,
+            Load(op) => DispatchKernel::compile(&op, plc)?,
+            Save(op) => DispatchKernel::compile(&op, plc)?,
+            HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)?,
+            HostMean(op) => DispatchKernel::compile(&op, plc)?,
+            HostSqrt(op) => DispatchKernel::compile(&op, plc)?,
+            HostSum(op) => DispatchKernel::compile(&op, plc)?,
+            FixedpointEncode(op) => DispatchKernel::compile(&op, plc)?,
+            FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?,
+            FixedpointAdd(op) => DispatchKernel::compile(&op, plc)?,
+            FixedpointSub(op) => DispatchKernel::compile(&op, plc)?,
+            FixedpointMul(op) => DispatchKernel::compile(&op, plc)?,
+            FixedpointDiv(op) => DispatchKernel::compile(&op, plc)?,
+            FixedpointDot(op) => DispatchKernel::compile(&op, plc)?,
+            FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)?,
+            FixedpointSum(op) => DispatchKernel::compile(&op, plc)?,
+            FixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
+            HostSlice(op) => DispatchKernel::compile(&op, plc)?,
+            HostDiag(op) => DispatchKernel::compile(&op, plc)?,
+            HostShlDim(op) => DispatchKernel::compile(&op, plc)?,
+            HostIndexAxis(op) => DispatchKernel::compile(&op, plc)?,
+            HostAdd(op) => DispatchKernel::compile(&op, plc)?,
+            HostSub(op) => DispatchKernel::compile(&op, plc)?,
+            HostMul(op) => DispatchKernel::compile(&op, plc)?,
+            HostDiv(op) => DispatchKernel::compile(&op, plc)?,
+            HostDot(op) => DispatchKernel::compile(&op, plc)?,
+            HostExpandDims(op) => DispatchKernel::compile(&op, plc)?,
+            HostSqueeze(op) => DispatchKernel::compile(&op, plc)?,
+            HostConcat(op) => DispatchKernel::compile(&op, plc)?,
+            Sign(op) => DispatchKernel::compile(&op, plc)?,
+            FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?,
+            FloatingpointSub(op) => DispatchKernel::compile(&op, plc)?,
+            FloatingpointMul(op) => DispatchKernel::compile(&op, plc)?,
+            FloatingpointDiv(op) => DispatchKernel::compile(&op, plc)?,
+            FloatingpointDot(op) => DispatchKernel::compile(&op, plc)?,
+            FloatingpointAtLeast2D(op) => DispatchKernel::compile(&op, plc)?,
+            FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)?,
+            FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?,
+            FloatingpointExpandDims(op) => DispatchKernel::compile(&op, plc)?,
+            FloatingpointTranspose(op) => DispatchKernel::compile(&op, plc)?,
+            FloatingpointInverse(op) => DispatchKernel::compile(&op, plc)?,
+            FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?,
+            FloatingpointSum(op) => DispatchKernel::compile(&op, plc)?,
+            HostTranspose(op) => DispatchKernel::compile(&op, plc)?,
+            HostInverse(op) => DispatchKernel::compile(&op, plc)?,
+            HostBitDec(op) => DispatchKernel::compile(&op, plc)?,
+            Identity(op) => DispatchKernel::compile(&op, plc)?,
+            Cast(op) => DispatchKernel::compile(&op, plc)?,
+            Send(op) => DispatchKernel::compile(&op, plc)?,
+            Receive(op) => DispatchKernel::compile(&op, plc)?,
+            HostReshape(op) => DispatchKernel::compile(&op, plc)?,
+            AtLeast2D(op) => DispatchKernel::compile(&op, plc)?,
+            Slice(op) => DispatchKernel::compile(&op, plc)?,
+            Ones(op) => DispatchKernel::compile(&op, plc)?,
+            ExpandDims(op) => DispatchKernel::compile(&op, plc)?,
+            Concat(op) => DispatchKernel::compile(&op, plc)?,
+            Transpose(op) => DispatchKernel::compile(&op, plc)?,
+            Dot(op) => DispatchKernel::compile(&op, plc)?,
+            Inverse(op) => DispatchKernel::compile(&op, plc)?,
+            Add(op) => DispatchKernel::compile(&op, plc)?,
+            Sub(op) => DispatchKernel::compile(&op, plc)?,
+            Mul(op) => DispatchKernel::compile(&op, plc)?,
+            Mean(op) => DispatchKernel::compile(&op, plc)?,
+            Sum(op) => DispatchKernel::compile(&op, plc)?,
+            Div(op) => DispatchKernel::compile(&op, plc)?,
+            RepEqual(op) => DispatchKernel::compile(&op, plc)?,
+            RepIfElse(op) => DispatchKernel::compile(&op, plc)?,
+            _ => todo!(),
+        };
+        kernel(self, operands)
     }
 
-    type ReplicatedSetup = (); // TODO AsyncExecutor for the new framework is not ready yet
+    type ReplicatedSetup = ReplicatedSetup;
     fn replicated_setup(&self, _plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
-        // TODO AsyncExecutor for the new framework is not ready yet
         unimplemented!()
     }
 }
@@ -277,15 +664,14 @@ impl RuntimeSession for AsyncSession {
         &self.session_id
     }
 
-    fn find_argument(&self, _key: &str) -> Option<Value> {
-        todo!("Please implement find_argument for the new AsyncSession")
-        // self.arguments.get(key)
+    fn find_argument(&self, key: &str) -> Option<Value> {
+        self.arguments.get(key).cloned()
     }
 
-    fn find_role_assignment(&self, _role: &Role) -> Result<&Identity> {
-        Err(Error::Networking(
-            "new AsyncSession networking is not implemented yet".to_string(),
-        ))
+    fn find_role_assignment(&self, role: &Role) -> Result<&Identity> {
+        self.role_assignments
+            .get(role)
+            .ok_or_else(|| Error::Networking(format!("Missing role assignemnt for {}", role)))
     }
 }
 
@@ -294,7 +680,7 @@ pub trait DispatchKernel<S: Session> {
     fn compile(
         &self,
         plc: &Placement,
-    ) -> Result<Box<dyn Fn(&S, Vec<S::Value>) -> Result<S::Value>>>;
+    ) -> Result<Box<dyn Fn(&S, Vec<S::Value>) -> Result<S::Value> + Send>>;
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
@@ -303,27 +689,27 @@ pub trait DispatchKernel<S: Session> {
 
 pub trait NullaryKernel<S: Session, P, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P) -> Result<Y>>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P) -> Result<Y> + Send>>;
 }
 
 pub trait UnaryKernel<S: Session, P, X0, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0) -> Result<Y>>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send>>;
 }
 
 pub trait BinaryKernel<S: Session, P, X0, X1, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Result<Y>>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send>>;
 }
 
 pub trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y>>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send>>;
 }
 
 pub trait VariadicKernel<S: Session, P, XS, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y>>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send>>;
 }
 
 pub(crate) trait NullaryKernelCheck<S: Session, P, Y>
@@ -499,8 +885,15 @@ pub trait PlacementExp<S: Session, T, O> {
     fn exp(&self, sess: &S, x: &T) -> O;
 }
 
+pub trait PlacementSigmoid<S: Session, T, O> {
+    fn sigmoid(&self, sess: &S, x: &T) -> O;
+}
 pub trait PlacementLessThan<S: Session, T, U, O> {
     fn less_than(&self, sess: &S, x: &T, y: &U) -> O;
+}
+
+pub trait PlacementGreaterThan<S: Session, T, U, O> {
+    fn greater_than(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -849,11 +1242,14 @@ impl Compile<SyncKernel> for Operator {
             Sub(op) => unimplemented!("Not done yet: {:?}", op),
             Mul(op) => unimplemented!("Not done yet: {:?}", op),
             Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Neg(op) => unimplemented!("Not done yet: {:?}", op),
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             Pow2(op) => unimplemented!("Not done yet: {:?}", op),
             Exp(op) => unimplemented!("Not done yet: {:?}", op),
+            Sigmoid(op) => unimplemented!("Not done yet: {:?}", op),
             LessThan(op) => unimplemented!("Not done yet: {:?}", op),
+            GreaterThan(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO
             AesDecrypt(_) => unimplemented!(),
             HostIndexAxis(_) => unimplemented!(),
@@ -935,11 +1331,14 @@ impl Compile<AsyncKernel> for Operator {
             Sub(op) => unimplemented!("Not done yet: {:?}", op),
             Mul(op) => unimplemented!("Not done yet: {:?}", op),
             Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Neg(op) => unimplemented!("Not done yet: {:?}", op),
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             Pow2(op) => unimplemented!("Not done yet: {:?}", op),
             Exp(op) => unimplemented!("Not done yet: {:?}", op),
+            Sigmoid(op) => unimplemented!("Not done yet: {:?}", op),
             LessThan(op) => unimplemented!("Not done yet: {:?}", op),
+            GreaterThan(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO implement below (needed until we switch to new framework for execution)
             AesDecrypt(_) => unimplemented!(),
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
@@ -1061,11 +1460,17 @@ macro_rules! host_binary_kernel {
     };
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 host_binary_kernel!(HostAddOp, |x, y| x + y);
+#[cfg(not(feature = "exclude_old_framework"))]
 host_binary_kernel!(HostSubOp, |x, y| x - y);
+#[cfg(not(feature = "exclude_old_framework"))]
 host_binary_kernel!(HostMulOp, |x, y| x * y);
+#[cfg(not(feature = "exclude_old_framework"))]
 host_binary_kernel!(HostDivOp, |x, y| x / y);
+#[cfg(not(feature = "exclude_old_framework"))]
 host_binary_kernel!(HostDotOp, |x, y| x.dot(y));
+#[cfg(not(feature = "exclude_old_framework"))]
 host_unary_kernel!(HostTransposeOp, |x| x.transpose());
 
 impl Compile<Kernel> for HostInverseOp {
@@ -2631,6 +3036,16 @@ impl LoadOp {
 }
 
 kernel! {
+    SigmoidOp,
+    [
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_rep_kernel),
+    ]
+}
+
+kernel! {
     LessThanOp,
     [
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
@@ -2649,7 +3064,34 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_fixed_mir_kernel),
         // TODO(Dragos) these do not work now as they should output a boolean/ring type. makes no sense to output a fixed tensor
         // (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [transparent] Self::fixed_kernel),
-        // (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [transparent] Self::fixed_kernel),
+        // instead it should be
+        // (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> BitTensor => [transparent] Self::fixed_kernel),
+    ]
+}
+
+kernel! {
+    GreaterThanOp,
+    [
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
+
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::mir_rep_kernel),
+
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::mir_rep_kernel),
+
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_kernel),
+
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_fixed_mir_kernel),
+
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_fixed_mir_kernel),
+
     ]
 }
 

@@ -1,6 +1,7 @@
 //! Placements backed by replicated secret sharing
 use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor};
 use crate::error::{Error, Result};
+use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
     AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedTensor, HostAesKey, HostBitArray128,
     HostBitArray224, HostBitArray256, HostBitArray64, HostBitTensor, HostFixed128Tensor,
@@ -2526,7 +2527,7 @@ impl ShapeOp {
         })
     }
 
-    pub fn rep_fixed_kernel<S: Session, RepRingT, ShapeT>(
+    pub fn rep_repfixed_kernel<S: Session, RepRingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
@@ -3056,6 +3057,44 @@ impl ReplicatedPlacement {
     }
 }
 
+impl SigmoidOp {
+    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, ShapeT, RepRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepFixedT,
+    ) -> Result<RepFixedT>
+    where
+        ReplicatedShape: KnownType<S>,
+        RepFixedT: FixedpointTensor,
+        AbstractReplicatedFixedTensor<RepRingT>: Into<RepFixedT>,
+        ReplicatedPlacement: PlacementShape<S, RepFixedT, ShapeT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<S, RepFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementDiv<S, RepFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementNeg<S, RepFixedT, RepFixedT>,
+    {
+        // TODO [Yann]: revisit once we support mixed arithmetic for division
+        let ones = Constant::Fixed(FixedpointConstant {
+            value: 1.0_f64,
+            precision: x.fractional_precision() as usize,
+        });
+
+        let ones_fill = rep.fill(sess, ones, &rep.shape(sess, &x));
+        let ones_rep = AbstractReplicatedFixedTensor {
+            tensor: ones_fill,
+            integral_precision: x.integral_precision(),
+            fractional_precision: x.fractional_precision(),
+        }
+        .into();
+
+        let denominator = rep.add(sess, &ones_rep, &rep.exp(sess, &rep.neg(sess, &x)));
+        let output = rep.div(sess, &ones_rep, &denominator);
+
+        Ok(output)
+    }
+}
+
 modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, LessThanOp);
 modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, LessThanOp);
 modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor, LessThanOp);
@@ -3103,6 +3142,57 @@ impl LessThanOp {
         ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
     {
         let z = rep.sub(sess, &x, &y);
+        Ok(rep.msb(sess, &z))
+    }
+}
+
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
+
+impl GreaterThanOp {
+    pub(crate) fn rep_kernel<S: Session, RepRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepRingT,
+        y: RepRingT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+    {
+        let z = rep.sub(sess, &y, &x);
+        Ok(rep.msb(sess, &z))
+    }
+
+    pub(crate) fn rep_mir_kernel<S: Session, RepRingT, MirroredT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepRingT,
+        y: MirroredT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+    {
+        let z = rep.sub(sess, &y, &x);
+        Ok(rep.msb(sess, &z))
+    }
+
+    pub(crate) fn mir_rep_kernel<S: Session, RepRingT, MirroredT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: MirroredT,
+        y: RepRingT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementSub<S, RepRingT, MirroredT, RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+    {
+        let z = rep.sub(sess, &y, &x);
         Ok(rep.msb(sess, &z))
     }
 }
@@ -4291,5 +4381,39 @@ mod tests {
         .into_dyn();
         let target = array![0, 0, 1, 0, 1].into_dyn();
         test_rep_lt128(x, y, target);
+    }
+
+    rep_binary_func_test!(test_rep_gt64, greater_than<u64>);
+    rep_binary_func_test!(test_rep_gt128, greater_than<u128>);
+
+    #[test]
+    fn test_rep_gt_64() {
+        let x = array![0u64, 1, 2, -1_i64 as u64, -2_i64 as u64, 2u64.pow(62)].into_dyn();
+        let y = array![
+            -1_i64 as u64,
+            -2_i64 as u64,
+            3_u64,
+            -1_i64 as u64,
+            -1_i64 as u64,
+            (-4611686018427387904_i64 + 1) as u64 // -2^62+1
+        ]
+        .into_dyn();
+        let target = array![1, 1, 0, 0, 0, 1].into_dyn();
+        test_rep_gt64(x, y, target);
+    }
+
+    #[test]
+    fn test_rep_gt_128() {
+        let x = array![0u128, 1, 2, -1_i128 as u128, -2_i128 as u128].into_dyn();
+        let y = array![
+            -1_i128 as u128,
+            -2_i128 as u128,
+            3_u128,
+            -1_i128 as u128,
+            -1_i128 as u128
+        ]
+        .into_dyn();
+        let target = array![1, 1, 0, 0, 0].into_dyn();
+        test_rep_gt128(x, y, target);
     }
 }
