@@ -9,6 +9,7 @@ from absl.testing import parameterized
 from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose.computation import utils
+from pymoose.computation.standard import TensorType
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
@@ -21,11 +22,12 @@ class ReplicatedExample(parameterized.TestCase):
         rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
         @edsl.computation
-        def my_model_comp():
+        def my_model_comp(
+            x: edsl.Argument(bob, vtype=TensorType(edsl.float64)),
+            w: edsl.Argument(bob, vtype=TensorType(edsl.float64)),
+        ):
             with bob:
-                x = edsl.constant(np.array([2], dtype=np.float64))
                 x = edsl.cast(x, dtype=edsl.fixed(8, 27))
-                w = edsl.constant(np.array([0.5], dtype=np.float64))
                 w = edsl.cast(w, dtype=edsl.fixed(8, 27))
 
             with rep:
@@ -66,8 +68,9 @@ class ReplicatedExample(parameterized.TestCase):
             ],
         )
 
-    @pytest.mark.slow
     def test_logistic_regression_example_execute(self):
+        input_x = np.array([2.0, 1.0], dtype=np.float64)
+        input_weights = np.array([0.5, 0.1], dtype=np.float64)
         model_comp = self._setup_model_comp()
         traced_model_comp = edsl.trace(model_comp)
         comp_bin = utils.serialize_computation(traced_model_comp)
@@ -90,16 +93,18 @@ class ReplicatedExample(parameterized.TestCase):
         _ = runtime.evaluate_compiled(
             comp_bin=compiled_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
-            arguments={},
+            arguments={"x": input_x, "w": input_weights},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
 
         def logistic_regression(input, weights):
             y = np.dot(input, weights)
-            sigmoid = 1 / (1 + np.exp(-y))
-            return sigmoid
+            sigmoid_out = 1 / (1 + np.exp(-y))
+            return sigmoid_out
 
-        np.testing.assert_almost_equal(actual_result, logistic_regression(np.array([2]), np.array([0.5])))
+        np.testing.assert_almost_equal(
+            actual_result, logistic_regression(input_x, input_weights)
+        )
 
 
 if __name__ == "__main__":
