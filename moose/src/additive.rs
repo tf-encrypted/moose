@@ -129,7 +129,7 @@ impl AdtFillOp {
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
-        // TODO should really return PublicAdditiveTensor, but we don't have that type yet
+        // TODO should really return Mirrored2Tensor, but we don't have that type yet
 
         let (player0, player1) = plc.host_placements();
 
@@ -149,7 +149,7 @@ impl AdtFillOp {
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
-        // TODO should really return PublicAdditiveTensor, but we don't have that type yet
+        // TODO should really return Mirrored2Tensor, but we don't have that type yet
 
         let AbstractAdditiveShape {
             shapes: [shape0, shape1],
