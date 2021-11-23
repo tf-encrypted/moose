@@ -99,6 +99,7 @@ SUPPORTED_TYPES = [
     std_dialect.MulOperation,
     std_dialect.OnesOperation,
     std_dialect.OutputOperation,
+    std_dialect.SigmoidOperation,
     std_dialect.ReceiveOperation,
     std_dialect.ReshapeOperation,
     std_dialect.SaveOperation,
