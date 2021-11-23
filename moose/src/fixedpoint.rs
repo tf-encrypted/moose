@@ -1239,11 +1239,15 @@ impl AddNOp {
 }
 
 pub trait FixedpointTensor {
+    type InnerT;
     fn fractional_precision(&self) -> u32;
     fn integral_precision(&self) -> u32;
+    fn inner_tensor(&self) -> Self::InnerT;
 }
 
-impl<RepRingT> FixedpointTensor for AbstractReplicatedFixedTensor<RepRingT> {
+impl<RepRingT: Clone> FixedpointTensor for AbstractReplicatedFixedTensor<RepRingT> {
+    type InnerT = RepRingT;
+
     fn fractional_precision(&self) -> u32 {
         self.fractional_precision
     }
@@ -1251,9 +1255,16 @@ impl<RepRingT> FixedpointTensor for AbstractReplicatedFixedTensor<RepRingT> {
     fn integral_precision(&self) -> u32 {
         self.integral_precision
     }
+    fn inner_tensor(&self) -> RepRingT {
+        self.tensor.clone()
+    }
 }
 
-impl<RepRingT: Placed> FixedpointTensor for Symbolic<AbstractReplicatedFixedTensor<RepRingT>> {
+impl<RepRingT: Placed + Clone> FixedpointTensor
+    for Symbolic<AbstractReplicatedFixedTensor<RepRingT>>
+{
+    type InnerT = RepRingT;
+
     fn fractional_precision(&self) -> u32 {
         match self {
             Symbolic::Symbolic(_) => unimplemented!(), // TODO(Dragos) extract from underlying op signature
@@ -1265,6 +1276,13 @@ impl<RepRingT: Placed> FixedpointTensor for Symbolic<AbstractReplicatedFixedTens
         match self {
             Symbolic::Symbolic(_) => unimplemented!(), // TODO(Dragos) extract from underlying op signature
             Symbolic::Concrete(x) => x.integral_precision,
+        }
+    }
+
+    fn inner_tensor(&self) -> RepRingT {
+        match self {
+            Symbolic::Symbolic(_) => unimplemented!(), // TODO(Dragos) extract from underlying op signature
+            Symbolic::Concrete(x) => x.tensor.clone(),
         }
     }
 }
@@ -2525,14 +2543,14 @@ mod tests {
 
     #[test]
     fn test_sigmoid_64() {
-        let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
+        let x = array![1f64, 2.5, -3.0, 4.0, 40.0, -30.0, -4.0, -6.0, 6.0].into_dyn();
         let y_targets: Vec<_> = x.iter().map(|item| 1.0 / (1.0 + (-item).exp())).collect();
         test_rep_sigmoid_fixed64(x, y_targets);
     }
 
     #[test]
     fn test_sigmoid_128() {
-        let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
+        let x = array![1f64, 2.5, -3.0, 4.0, -4.0, -6.0, 6.0, 1024.0].into_dyn();
         let y_targets: Vec<_> = x.iter().map(|item| 1.0 / (1.0 + (-item).exp())).collect();
         test_rep_sigmoid_fixed128(x, y_targets);
     }

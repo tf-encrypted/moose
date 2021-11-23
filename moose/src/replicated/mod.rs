@@ -3064,8 +3064,8 @@ impl SigmoidOp {
         x: RepFixedT,
     ) -> Result<RepFixedT>
     where
-        ReplicatedShape: KnownType<S>,
-        RepFixedT: FixedpointTensor,
+        RepRingT: Clone,
+        RepFixedT: FixedpointTensor<InnerT = RepRingT>,
         AbstractReplicatedFixedTensor<RepRingT>: Into<RepFixedT>,
         ReplicatedPlacement: PlacementShape<S, RepFixedT, ShapeT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
@@ -3073,6 +3073,8 @@ impl SigmoidOp {
         ReplicatedPlacement: PlacementDiv<S, RepFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementNeg<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementGreaterThan<S, RepFixedT, RepFixedT, RepRingT>,
+        ReplicatedPlacement: PlacementIfElse<S, RepRingT, RepRingT, RepRingT, RepRingT>,
     {
         // TODO [Yann]: revisit once we support mixed arithmetic for division
         let ones = Constant::Fixed(FixedpointConstant {
@@ -3081,8 +3083,10 @@ impl SigmoidOp {
         });
 
         let ones_fill = rep.fill(sess, ones, &rep.shape(sess, &x));
+        let zeros_fill = rep.fill(sess, 0_u8.into(), &rep.shape(sess, &x));
+
         let ones_rep = AbstractReplicatedFixedTensor {
-            tensor: ones_fill,
+            tensor: ones_fill.clone(),
             integral_precision: x.integral_precision(),
             fractional_precision: x.fractional_precision(),
         }
@@ -3091,7 +3095,33 @@ impl SigmoidOp {
         let denominator = rep.add(sess, &ones_rep, &rep.exp(sess, &rep.neg(sess, &x)));
         let output = rep.div(sess, &ones_rep, &denominator);
 
-        Ok(output)
+        // input sanitization
+        let max_val = Constant::Fixed(FixedpointConstant {
+            value: 2_f64.powf((x.integral_precision() - 1).into()).ln(),
+            precision: x.fractional_precision() as usize,
+        });
+        let max_val_fill = rep.fill(sess, max_val, &rep.shape(sess, &x));
+        let max_val_rep = AbstractReplicatedFixedTensor {
+            tensor: max_val_fill,
+            integral_precision: x.integral_precision(),
+            fractional_precision: x.fractional_precision(),
+        }
+        .into();
+
+        // compute upper bound
+        let upper = rep.greater_than(sess, &x, &max_val_rep); // x > max_val?
+        let upper_wall = rep.if_else(sess, &upper, &ones_fill, &output.inner_tensor());
+
+        // compute lower bound
+        let lower = rep.greater_than(sess, &rep.neg(sess, &max_val_rep), &x); // -max_val > x?
+        let res = rep.if_else(sess, &lower, &zeros_fill, &upper_wall);
+
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: res,
+            integral_precision: x.integral_precision(),
+            fractional_precision: x.fractional_precision(),
+        }
+        .into())
     }
 }
 
