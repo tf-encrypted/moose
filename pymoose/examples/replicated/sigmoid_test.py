@@ -2,7 +2,6 @@ import argparse
 import logging
 
 import numpy as np
-import pytest
 from absl.testing import absltest
 from absl.testing import parameterized
 
