@@ -12,9 +12,9 @@ edition = "2018"
 
 [features]
 default = ["new_async_session", "blas"]
+blas = ["ndarray-linalg"]
 exclude_old_framework = []
 new_async_session = []
-blas = ["ndarray-linalg"]
 
 [dependencies]
 aes = "~0.7"
