@@ -9,7 +9,7 @@ use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray::Slice;
 #[cfg(feature = "blas")]
-use ndarray_linalg::{self, types::{Lapack, Scalar}};
+use ndarray_linalg::{Inverse, Lapack, Scalar};
 use num_traits::Zero;
 use num_traits::{Float, FromPrimitive};
 use rand::prelude::*;
@@ -1255,8 +1255,7 @@ impl HostInverseOp {
         _sess: &S,
         _plc: &HostPlacement,
         _x: HostTensor<T>,
-    ) -> Result<HostTensor<T>>
-    {
+    ) -> Result<HostTensor<T>> {
         unimplemented!("Please enable 'blas' feature");
     }
 }
