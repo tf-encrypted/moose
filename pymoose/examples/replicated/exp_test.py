@@ -2,7 +2,6 @@ import argparse
 import logging
 
 import numpy as np
-import pytest
 from absl.testing import absltest
 from absl.testing import parameterized
 
@@ -64,7 +63,6 @@ class ReplicatedExample(parameterized.TestCase):
             ],
         )
 
-    @pytest.mark.slow
     def test_exp_example_execute(self):
         exp_comp = self._setup_exp_comp()
         traced_exp_comp = edsl.trace(exp_comp)

@@ -646,8 +646,12 @@ impl Session for AsyncSession {
             Mean(op) => DispatchKernel::compile(&op, plc)?,
             Sum(op) => DispatchKernel::compile(&op, plc)?,
             Div(op) => DispatchKernel::compile(&op, plc)?,
+            AddN(op) => DispatchKernel::compile(&op, plc)?,
+            Exp(op) => DispatchKernel::compile(&op, plc)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?,
             RepIfElse(op) => DispatchKernel::compile(&op, plc)?,
+            LessThan(op) => DispatchKernel::compile(&op, plc)?,
+            GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
             _ => todo!(),
         };
         kernel(self, operands)
