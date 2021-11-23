@@ -1072,9 +1072,11 @@ impl Compile<Kernel> for HostInverseOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         // Using a fake owner for the old kernel
         match self.sig {
+            #[cfg(feature = "blas")]
             signature![(_) -> Ty::HostFloat32Tensor] => {
                 closure_kernel!(HostFloat32Tensor, |x| x.inv())
             }
+            #[cfg(feature = "blas")]
             signature![(_) -> Ty::HostFloat64Tensor] => {
                 closure_kernel!(HostFloat64Tensor, |x| x.inv())
             }

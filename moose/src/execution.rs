@@ -1883,6 +1883,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "blas")]
     #[rstest]
     #[case(true)]
     #[case(false)]

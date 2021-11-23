@@ -11,8 +11,9 @@ categories = ["", ""]
 edition = "2018"
 
 [features]
-default = []
+default = ["blas"]
 exclude_old_framework = []
+blas = ["ndarray-linalg"]
 
 [dependencies]
 aes = "~0.7"
@@ -35,7 +36,7 @@ log = "~0.4"
 macros = { path = "../macros" }
 maplit = "~1.0"
 ndarray = { version="~0.15", features=["serde"] }
-ndarray-linalg = { version = "0.14", features = ["openblas-system"] }
+ndarray-linalg = { version = "0.14", features = ["openblas-system"], optional = true }
 num = "~0.4"
 num-traits = "~0.2"
 parking_lot = "~0.11"
