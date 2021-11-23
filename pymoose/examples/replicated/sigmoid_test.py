@@ -2,7 +2,6 @@ import argparse
 import logging
 
 import numpy as np
-import pytest
 from absl.testing import absltest
 from absl.testing import parameterized
 
@@ -64,7 +63,6 @@ class ReplicatedExample(parameterized.TestCase):
             ],
         )
 
-    @pytest.mark.slow
     def test_sigmoid_example_execute(self):
         sigmoid_comp = self._setup_sigmoid_comp()
         traced_sigmoid_comp = edsl.trace(sigmoid_comp)
