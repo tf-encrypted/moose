@@ -179,6 +179,12 @@ class MeanExpression(Expression):
 
 
 @dataclass
+class ExpExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class SqrtExpression(Expression):
     def __hash__(self):
         return id(self)
@@ -450,10 +456,10 @@ def mean(x, axis=None, placement=None):
     return MeanExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
 
 
-def sqrt(x, placement=None):
+def exp(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return SqrtExpression(placement=placement, inputs=[x], vtype=x.vtype)
+    return ExpExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def shape(x, placement=None):

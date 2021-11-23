@@ -116,17 +116,6 @@ impl<S: Session> PlacementPlace<S, HostShape> for HostPlacement {
     }
 }
 
-// TODO(lvorona): should probably become part of moose_type!
-impl TryFrom<Symbolic<HostShape>> for HostShape {
-    type Error = ();
-    fn try_from(v: Symbolic<HostShape>) -> std::result::Result<Self, ()> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(()),
-        }
-    }
-}
-
 /// One slice for slicing op
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SliceInfoElem {
@@ -1081,19 +1070,8 @@ impl HostSumOp {
     }
 }
 
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor, HostAddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor, HostAddNOp);
-
-kernel! {
-    HostAddNOp,
-    [
-        (HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor => [runtime] Self::kernel),
-        (HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor => [runtime] Self::kernel),
-    ]
-}
-
-impl HostAddNOp {
-    fn kernel<S: RuntimeSession, T>(
+impl AddNOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         xs: &[AbstractHostRingTensor<T>],
@@ -2695,6 +2673,44 @@ impl RingSampleSeededOp {
         let arr =
             Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor(arr, plc.clone()))
+    }
+}
+
+modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, LessThanOp);
+
+impl LessThanOp {
+    pub(crate) fn host_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostRingT,
+        y: HostRingT,
+    ) -> Result<HostRingT>
+    where
+        HostPlacement: PlacementSign<S, HostRingT, HostRingT>,
+        HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
+    {
+        let z = plc.sub(sess, &x, &y);
+        Ok(plc.sign(sess, &z))
+    }
+}
+
+modelled!(PlacementGreaterThan::greater_than, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, GreaterThanOp);
+
+impl GreaterThanOp {
+    pub(crate) fn host_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostRingT,
+        y: HostRingT,
+    ) -> Result<HostRingT>
+    where
+        HostPlacement: PlacementSign<S, HostRingT, HostRingT>,
+        HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
+    {
+        let z = plc.sub(sess, &y, &x);
+        Ok(plc.sign(sess, &z))
     }
 }
 

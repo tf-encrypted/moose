@@ -45,6 +45,7 @@ enum PyOperation {
     std_DecryptOperation(PyDecryptOperation),
     std_TransposeOperation(PyTransposeOperation),
     std_ExpandDimsOperation(PyExpandDimsOperation),
+    std_ExpOperation(PyExpOperation),
     std_InverseOperation(PyInverseOperation),
     std_MeanOperation(PyMeanOperation),
     std_SqrtOperation(PySqrtOperation),
@@ -378,6 +379,14 @@ struct PyExpandDimsOperation {
     placement_name: String,
     output_type: PyValueType,
     axis: Vec<u32>,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyExpOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -1207,17 +1216,25 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    std_ShapeOperation(op) => Ok(Operation {
-                        // TODO (lvorona): We can actually use TensorDType::Unknown and let the type inference figure the type out.
-                        kind: ShapeOp {
-                            sig: Signature::unary(Ty::Tensor(TensorDType::Float64), Ty::HostShape),
-                        }
-                        .into(),
-                        inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        name: op.name.clone(),
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
+                    std_ShapeOperation(op) => {
+                        let plc = map_placement(&placements, &op.placement_name)?;
+                        let ret = match plc {
+                            Placement::Host(_) => Ty::HostShape,
+                            Placement::Replicated(_) => Ty::ReplicatedShape,
+                            _ => Ty::HostShape, // TODO(lvorona): Do we want to support std_Shape on any other placements?
+                        };
+
+                        Ok(Operation {
+                            kind: ShapeOp {
+                                sig: Signature::unary(Ty::Tensor(TensorDType::Unknown), ret),
+                            }
+                            .into(),
+                            inputs: map_inputs(&op.inputs, &["x"])
+                                .with_context(|| format!("Failed at op {:?}", op))?,
+                            name: op.name.clone(),
+                            placement: plc,
+                        })
+                    }
                     std_SliceOperation(op) => Ok(Operation {
                         kind: SliceOp {
                             sig: Signature::unary(
@@ -1254,6 +1271,19 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis.clone(),
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_ExpOperation(op) => Ok(Operation {
+                        kind: ExpOp {
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])

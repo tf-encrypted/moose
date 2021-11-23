@@ -1300,12 +1300,13 @@ impl Default for AsyncExecutor {
 }
 
 impl AsyncExecutor {
+    #[cfg(not(feature = "new_async_session"))]
     pub fn run_computation(
         &mut self,
         computation: &Computation,
         role_assignment: &RoleAssignment,
         own_identity: &Identity,
-        session: AsyncSession,
+        session: &AsyncSession,
         use_sync_bridge: bool,
     ) -> Result<(AsyncSessionHandle, HashMap<String, AsyncReceiver>)> {
         if !self.session_ids.insert(session.sid.clone()) {
@@ -1326,7 +1327,78 @@ impl AsyncExecutor {
                 ))
             })?;
         let compiled_comp = computation.compile_async(&ctx)?;
-        compiled_comp.apply(session)
+        compiled_comp.apply(session.clone())
+    }
+
+    // After execution the AsyncTasks to block on will be in session.tasks vector.
+    #[cfg(feature = "new_async_session")]
+    pub fn run_computation(
+        &mut self,
+        computation: &Computation,
+        role_assignment: &RoleAssignment,
+        own_identity: &Identity,
+        session: &crate::kernels::AsyncSession,
+        _ignored_deprecated_bridge_flag: bool,
+    ) -> Result<HashMap<String, AsyncReceiver>> {
+        if !self.session_ids.insert(session.session_id.clone()) {
+            return Err(Error::SessionAlreadyExists(format!(
+                "{}",
+                session.session_id
+            )));
+        }
+
+        // using a Vec instead of eg HashSet here since we can expect it to be very small
+        let own_roles: Vec<&Role> = role_assignment
+            .iter()
+            .filter_map(|(role, identity)| {
+                if identity == own_identity {
+                    Some(role)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let own_operations = computation
+            .operations
+            .iter() // guessing that par_iter won't help here
+            .filter(|op| match &op.placement {
+                Placement::Host(plc) => own_roles.iter().any(|owner| *owner == &plc.owner),
+                Placement::Replicated(plc) => own_roles
+                    .iter()
+                    .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
+                Placement::Additive(plc) => own_roles
+                    .iter()
+                    .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
+            })
+            .collect::<Vec<_>>();
+
+        let mut env: HashMap<String, AsyncValue> = HashMap::default();
+        let mut outputs: HashMap<String, AsyncReceiver> = HashMap::default();
+
+        for op in own_operations {
+            use crate::kernels::Session;
+            let operator = op.kind.clone();
+            let operands = op
+                .inputs
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
+            let value = session
+                .execute(operator, &op.placement, operands)
+                .map_err(|e| {
+                    Error::KernelError(format!("AsyncSession failed due to an error: {:?}", e,))
+                })?;
+            if matches!(op.kind, Operator::Output(_)) {
+                // If it is an output, we need to make sure we capture it for returning.
+                outputs.insert(op.name.clone(), value.clone());
+            } else {
+                // Everything else should be available in the env for other ops to use.
+                env.insert(op.name.clone(), value);
+            }
+        }
+
+        Ok(outputs)
     }
 }
 
@@ -1369,12 +1441,14 @@ impl AsyncTestRuntime {
             networking,
         }
     }
+
+    #[cfg(not(feature = "new_async_session"))]
     pub fn evaluate_computation(
         &mut self,
         computation: &Computation,
         role_assignments: HashMap<Role, Identity>,
         arguments: HashMap<String, Value>,
-    ) -> Result<Option<HashMap<String, Value>>> {
+    ) -> Result<HashMap<String, Value>> {
         let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
         let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
         let rt = Runtime::new().unwrap();
@@ -1414,7 +1488,7 @@ impl AsyncTestRuntime {
                     computation,
                     &valid_role_assignments,
                     own_identity,
-                    moose_session,
+                    &moose_session,
                     true, // Let's test with the new framework
                 )
                 .unwrap();
@@ -1443,7 +1517,83 @@ impl AsyncTestRuntime {
             outputs
         });
 
-        Ok(Some(outputs))
+        Ok(outputs)
+    }
+
+    #[cfg(feature = "new_async_session")]
+    pub fn evaluate_computation(
+        &mut self,
+        computation: &Computation,
+        role_assignments: HashMap<Role, Identity>,
+        arguments: HashMap<String, Value>,
+    ) -> Result<HashMap<String, Value>> {
+        let computation = computation.toposort()?;
+        let mut session_handles: Vec<crate::kernels::AsyncSessionHandle> = Vec::new();
+        let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+
+        let (valid_role_assignments, missing_role_assignments): (
+            HashMap<Role, Identity>,
+            HashMap<Role, Identity>,
+        ) = role_assignments
+            .into_iter()
+            .partition(|kv| self.identities.contains(&kv.1));
+        if !missing_role_assignments.is_empty() {
+            let missing_roles: Vec<&Role> = missing_role_assignments.keys().collect();
+            let missing_identities: Vec<&Identity> = missing_role_assignments.values().collect();
+            return Err(Error::TestRuntime(format!("Role assignment included identities unknown to Moose runtime: missing identities {:?} for roles {:?}.",
+                missing_identities, missing_roles)));
+        }
+
+        for (own_identity, executor) in self.executors.iter_mut() {
+            let moose_session = crate::kernels::AsyncSession::new(
+                SessionId::try_from("foobar").unwrap(),
+                arguments.clone(),
+                valid_role_assignments.clone(),
+                Arc::clone(&self.networking),
+                Arc::clone(&self.runtime_storage[own_identity]),
+                Arc::new(Placement::Host(HostPlacement {
+                    owner: own_identity.0.clone().into(),
+                })),
+            );
+            let outputs = executor
+                .run_computation(
+                    &computation,
+                    &valid_role_assignments,
+                    own_identity,
+                    &moose_session,
+                    true,
+                )
+                .unwrap();
+
+            for (output_name, output_future) in outputs {
+                output_futures.insert(output_name, output_future);
+            }
+
+            session_handles.push(crate::kernels::AsyncSessionHandle::for_session(
+                &moose_session,
+            ))
+        }
+
+        for handle in session_handles {
+            let result = rt.block_on(handle.join_on_first_error());
+            if let Err(e) = result {
+                return Err(Error::TestRuntime(e.to_string()));
+            }
+        }
+
+        let outputs = rt.block_on(async {
+            let mut outputs: HashMap<String, Value> = HashMap::new();
+            for (output_name, output_future) in output_futures {
+                let value = output_future.await.unwrap();
+                outputs.insert(output_name, value);
+            }
+
+            outputs
+        });
+
+        Ok(outputs)
     }
 
     pub fn read_value_from_storage(&self, identity: Identity, key: String) -> Result<Value> {
@@ -1493,7 +1643,6 @@ impl AsyncTestRuntime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compilation::networking::NetworkingPass;
     use crate::host::{
         HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostShape, HostString, HostTensor,
         RawShape,
@@ -1534,10 +1683,7 @@ mod tests {
                     valid_role_assignments,
                     arguments,
                 )?;
-                match outputs {
-                    Some(outputs) => Ok(outputs),
-                    None => Ok(hashmap!()),
-                }
+                Ok(outputs)
             }
         }
     }
@@ -1812,7 +1958,7 @@ mod tests {
 
         let outputs = match run_async {
             true => {
-                let computation = NetworkingPass::pass(&computation).unwrap().unwrap();
+                let computation = compile_passes(&computation, &[Pass::Networking])?;
                 _run_computation_test(
                     computation,
                     storage_mapping,
@@ -2527,6 +2673,46 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new_async_session"))]
+    fn _create_async_session(
+        networking: &Arc<dyn Send + Sync + AsyncNetworking>,
+        exec_storage: &Arc<dyn Send + Sync + AsyncStorage>,
+        valid_role_assignments: HashMap<Role, Identity>,
+    ) -> AsyncSession {
+        AsyncSession {
+            sid: SessionId::try_from("foobar").unwrap(),
+            arguments: hashmap!(),
+            networking: Arc::clone(&networking),
+            storage: Arc::clone(&exec_storage),
+            new_sess: Arc::new(crate::kernels::SyncSession::new(
+                SessionId::try_from("foobar").unwrap(),
+                hashmap!(),
+                valid_role_assignments.clone(),
+            )),
+            host: Arc::new(Placement::Host(HostPlacement {
+                owner: "localhost".into(),
+            })),
+        }
+    }
+
+    #[cfg(feature = "new_async_session")]
+    fn _create_async_session(
+        networking: &Arc<dyn Send + Sync + AsyncNetworking>,
+        exec_storage: &Arc<dyn Send + Sync + AsyncStorage>,
+        role_assignments: HashMap<Role, Identity>,
+    ) -> crate::kernels::AsyncSession {
+        crate::kernels::AsyncSession::new(
+            SessionId::try_from("foobar").unwrap(),
+            hashmap!(),
+            role_assignments,
+            Arc::clone(networking),
+            Arc::clone(exec_storage),
+            Arc::new(Placement::Host(HostPlacement {
+                owner: "localhost".into(),
+            })),
+        )
+    }
+
     #[test]
     fn test_duplicate_session_ids() {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
@@ -2549,20 +2735,8 @@ mod tests {
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
 
-        let moose_session = AsyncSession {
-            sid: SessionId::try_from("foobar").unwrap(),
-            arguments: hashmap!(),
-            networking: Arc::clone(&networking),
-            storage: Arc::clone(&exec_storage),
-            new_sess: Arc::new(crate::kernels::SyncSession::new(
-                SessionId::try_from("foobar").unwrap(),
-                hashmap!(),
-                valid_role_assignments.clone(),
-            )),
-            host: Arc::new(Placement::Host(HostPlacement {
-                owner: "localhost".into(),
-            })),
-        };
+        let moose_session =
+            _create_async_session(&networking, &exec_storage, valid_role_assignments.clone());
 
         let computation: Computation = source.try_into().unwrap();
         let own_identity = identity;
@@ -2572,25 +2746,13 @@ mod tests {
                 &computation,
                 &valid_role_assignments,
                 &own_identity,
-                moose_session,
+                &moose_session,
                 true,
             )
             .unwrap();
 
-        let moose_session = AsyncSession {
-            sid: SessionId::try_from("foobar").unwrap(),
-            arguments: hashmap!(),
-            networking: Arc::clone(&networking),
-            storage: Arc::clone(&exec_storage),
-            new_sess: Arc::new(crate::kernels::SyncSession::new(
-                SessionId::try_from("foobar").unwrap(),
-                hashmap!(),
-                valid_role_assignments.clone(),
-            )),
-            host: Arc::new(Placement::Host(HostPlacement {
-                owner: "localhost".into(),
-            })),
-        };
+        let moose_session =
+            _create_async_session(&networking, &exec_storage, valid_role_assignments.clone());
 
         let expected =
             Error::SessionAlreadyExists(format!("{}", SessionId::try_from("foobar").unwrap()));
@@ -2599,7 +2761,7 @@ mod tests {
             &computation,
             &valid_role_assignments,
             &own_identity,
-            moose_session,
+            &moose_session,
             true,
         );
 
@@ -2608,5 +2770,46 @@ mod tests {
         } else {
             panic!("expected session already exists error")
         }
+    }
+
+    fn _run_new_async_computation_test(
+        computation: Computation,
+        storage_mapping: HashMap<String, HashMap<String, Value>>,
+        role_assignments: HashMap<String, String>,
+        arguments: HashMap<String, Value>,
+    ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
+        let valid_role_assignments = role_assignments
+            .into_iter()
+            .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
+            .collect::<HashMap<Role, Identity>>();
+        let mut executor = AsyncTestRuntime::new(storage_mapping);
+        let outputs =
+            executor.evaluate_computation(&computation, valid_role_assignments, arguments)?;
+        Ok(outputs)
+    }
+
+    #[test]
+    fn test_new_async_session() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
+        seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
+        output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string() => hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_new_async_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+        )?;
+
+        let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(
+            seed.0,
+            RawSeed([224, 87, 133, 2, 90, 170, 32, 253, 25, 80, 93, 74, 122, 196, 50, 1])
+        );
+        Ok(())
     }
 }

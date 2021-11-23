@@ -1342,7 +1342,6 @@ impl ToTextual for Operator {
             HostIndexAxis(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
             HostSum(op) => op.to_textual(),
-            HostAddN(op) => op.to_textual(),
             HostTranspose(op) => op.to_textual(),
             HostInverse(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
@@ -1365,7 +1364,7 @@ impl ToTextual for Operator {
             BitSampleSeeded(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
-            AesDecrypt(_) => unimplemented!(),
+            AesDecrypt(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
             FixedpointAdd(op) => op.to_textual(),
@@ -1395,7 +1394,7 @@ impl ToTextual for Operator {
             RepDot(op) => op.to_textual(),
             RepFixedpointMean(op) => op.to_textual(),
             RepSum(op) => op.to_textual(),
-            RepAddN(op) => op.to_textual(),
+            AddN(op) => op.to_textual(),
             RepAdd(op) => op.to_textual(),
             RepSub(op) => op.to_textual(),
             RepMul(op) => op.to_textual(),
@@ -1424,6 +1423,12 @@ impl ToTextual for Operator {
             RepShlDim(op) => op.to_textual(),
             RepEqual(op) => op.to_textual(),
             RepIfElse(op) => op.to_textual(),
+            Neg(op) => op.to_textual(),
+            Pow2(op) => op.to_textual(),
+            Exp(op) => op.to_textual(),
+            Sigmoid(op) => op.to_textual(),
+            LessThan(op) => op.to_textual(),
+            GreaterThan(op) => op.to_textual(),
         }
     }
 }
@@ -1537,6 +1542,7 @@ impl_to_textual!(BitNegOp, "{op}: {}", sig);
 impl_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
 impl_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
 impl_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
+impl_to_textual!(AesDecryptOp, "{op}: {}", sig);
 impl_to_textual!(
     FixedpointEncodeOp,
     "{op}{{fractional_precision={}, integral_precision={}}}: {}",
@@ -1554,6 +1560,7 @@ impl_to_textual!(FixedpointAddOp, "{op}: {}", sig);
 impl_to_textual!(FixedpointSubOp, "{op}: {}", sig);
 impl_to_textual!(FixedpointMulOp, "{op}: {}", sig);
 impl_to_textual!(FixedpointDotOp, "{op}: {}", sig);
+impl_to_textual!(NegOp, "{op}: {}", sig);
 impl_to_textual!(
     FixedpointTruncPrOp,
     "{op}{{precision={}}}: {}",
@@ -1595,6 +1602,11 @@ impl_to_textual!(RepFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(RepMsbOp, "{op}: {}", sig);
 impl_to_textual!(RepNegOp, "{op}: {}", sig);
 impl_to_textual!(RepShlOp, "{op}: {}", sig);
+impl_to_textual!(Pow2Op, "{op}: {}", sig);
+impl_to_textual!(ExpOp, "{op}: {}", sig);
+impl_to_textual!(SigmoidOp, "{op}: {}", sig);
+impl_to_textual!(LessThanOp, "{op}: {}", sig);
+impl_to_textual!(GreaterThanOp, "{op}: {}", sig);
 impl_to_textual!(RepToAdtOp, "{op}: {}", sig);
 impl_to_textual!(
     RepIndexAxisOp,
@@ -1642,8 +1654,7 @@ op_with_axis_to_textual!(RingSumOp);
 op_with_axis_to_textual!(RepSumOp);
 op_with_axis_to_textual!(FixedpointSumOp);
 
-impl_to_textual!(RepAddNOp, "{op}: {}", sig);
-impl_to_textual!(HostAddNOp, "{op}: {}", sig);
+impl_to_textual!(AddNOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointAddOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointSubOp, "{op}: {}", sig);
 impl_to_textual!(FloatingpointMulOp, "{op}: {}", sig);
@@ -1837,11 +1848,11 @@ impl ToTextual for Ty {
             Ty::Mirrored3BitTensor => "Mirrored3BitTensor".to_string(),
             Ty::Mirrored3Fixed64Tensor => "Mirrored3Fixed64Tensor".to_string(),
             Ty::Mirrored3Fixed128Tensor => "Mirrored3Fixed128Tensor".to_string(),
-            Ty::HostFixed128AesTensor => unimplemented!(),
-            Ty::HostAesKey => unimplemented!(),
-            Ty::ReplicatedAesKey => unimplemented!(),
-            Ty::Fixed128AesTensor => unimplemented!(),
-            Ty::AesTensor => unimplemented!(),
+            Ty::HostFixed128AesTensor => "HostFixed128AesTensor".to_string(),
+            Ty::HostAesKey => "HostAesKey".to_string(),
+            Ty::ReplicatedAesKey => "ReplicatedAesKey".to_string(),
+            Ty::Fixed128AesTensor => "Fixed128AesTensor".to_string(),
+            Ty::AesTensor => "AesTensor".to_string(),
             Ty::AesKey => "AesKey".to_string(),
         }
     }
