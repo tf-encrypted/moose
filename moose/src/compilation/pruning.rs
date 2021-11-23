@@ -106,10 +106,10 @@ mod tests {
             "mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_mul) @Host(alice)"
         ));
         assert!(comp.contains(
-            r#"send_mul = Send {rendezvous_key=30303030303030303030303030303031, receiver="alice"}: (Unknown) -> Unknown (y) @Host(bob)"#
+            r#"send_mul = Send {rendezvous_key = 30303030303030303030303030303031, receiver = "alice"}: (Unknown) -> Unknown (y) @Host(bob)"#
         ));
         assert!(comp.contains(
-            r#"recv_mul = Receive {rendezvous_key=30303030303030303030303030303031, sender="bob"} : () -> Float32Tensor () @Host(alice)"#
+            r#"recv_mul = Receive {rendezvous_key = 30303030303030303030303030303031, sender = "bob"}: () -> Float32Tensor () @Host(alice)"#
         ));
         assert!(comp.contains(
             "mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_mul) @Host(alice)"
