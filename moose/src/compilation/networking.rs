@@ -183,11 +183,11 @@ mod tests {
         assert!(comp.contains(
             r#"send_0 = Send{rendezvous_key = 00000000000000000000000000000000, receiver = "bob"}: (Float32Tensor) -> Unit (x) @Host(alice)"#
         ));
-        assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key=00000000000000000000000000000000, sender="alice"}: () -> Float32Tensor () @Host(bob)"#));
+        assert!(comp.contains(r#"receive_0 = Receive{rendezvous_key = 00000000000000000000000000000000, sender = "alice"}: () -> Float32Tensor () @Host(bob)"#));
         assert!(comp.contains(
             r#"send_1 = Send{rendezvous_key = 01000000000000000000000000000000, receiver = "bob"}: (Float32Tensor) -> Unit (y) @Host(alice)"#
         ));
-        assert!(comp.contains(r#"receive_1 = Receive {rendezvous_key = 01000000000000000000000000000000, sender = "alice"}: () -> Float32Tensor () @Host(bob)"#));
+        assert!(comp.contains(r#"receive_1 = Receive{rendezvous_key = 01000000000000000000000000000000, sender = "alice"}: () -> Float32Tensor () @Host(bob)"#));
         // Should use the same pair of operators for both computations on both (asserting for no extra jumps)
         assert!(comp.contains(r#"add = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (receive_0, receive_1) @Host(bob)"#));
         assert!(comp.contains(r#"mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (receive_0, receive_1) @Host(bob)"#));
