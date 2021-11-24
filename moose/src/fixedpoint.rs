@@ -2650,8 +2650,8 @@ mod tests {
     rep_signed_binary_func_test!(test_rep_greater_than64, greater_than<i64, u64>, 10, 10);
     rep_signed_binary_func_test!(test_rep_greater_than128, greater_than<i128, u128>, 10, 10);
 
-    // rep_signed_binary_func_test!(test_rep_less_than64, less_than<i64, u64>, 10, 10);
-    // rep_signed_binary_func_test!(test_rep_less_than128, less_than<i128, u128>, 20, 20);
+    rep_signed_binary_func_test!(test_rep_less_than64, less_than<i64, u64>, 10, 10);
+    rep_signed_binary_func_test!(test_rep_less_than128, less_than<i128, u128>, 20, 20);
 
     #[test]
     fn test_fixed_rep_greater_than64() {
@@ -2669,19 +2669,19 @@ mod tests {
         test_rep_greater_than128(x, y, targets);
     }
 
-    // #[test]
-    // fn test_fixed_rep_less_than64() {
-    //     let x = array![0f64, 2.7, -2.9, 4.1, -3.555].into_dyn();
-    //     let y = array![1f64, 2.5, -3.0, 4.0, -3.354].into_dyn();
-    //     let targets: Vec<u64> = vec![1_u64, 0, 0, 0, 1];
-    //     test_rep_less_than64(x, y, targets);
-    // }
+    #[test]
+    fn test_fixed_rep_less_than64() {
+        let x = array![0f64, 2.7, -2.9, 4.1, -3.555].into_dyn();
+        let y = array![1f64, 2.5, -3.0, 4.0, -3.354].into_dyn();
+        let targets: Vec<u64> = vec![1_u64, 0, 0, 0, 1];
+        test_rep_less_than64(x, y, targets);
+    }
 
-    // #[test]
-    // fn test_fixed_rep_less_than128() {
-    //     let x = array![0f64, 2.7, -2.9, 4.1, -3.555].into_dyn();
-    //     let y = array![1f64, 2.5, -3.0, 4.0, -3.354].into_dyn();
-    //     let targets: Vec<u128> = vec![1_u128, 0, 0, 0, 1];
-    //     test_rep_less_than128(x, y, targets);
-    // }
+    #[test]
+    fn test_fixed_rep_less_than128() {
+        let x = array![0f64, 2.7, -2.9, 4.1, -3.555].into_dyn();
+        let y = array![1f64, 2.5, -3.0, 4.0, -3.354].into_dyn();
+        let targets: Vec<u128> = vec![1_u128, 0, 0, 0, 1];
+        test_rep_less_than128(x, y, targets);
+    }
 }
