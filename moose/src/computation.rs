@@ -145,6 +145,18 @@ pub trait SymbolicType {
     type Type;
 }
 
+impl<T> SymbolicType for T
+where
+    T: PartiallySymbolicType,
+    <T as PartiallySymbolicType>::Type: Placed,
+{
+    type Type = Symbolic<<T as PartiallySymbolicType>::Type>;
+}
+
+pub trait PartiallySymbolicType {
+    type Type;
+}
+
 pub trait CanonicalType {
     type Type;
 }
@@ -524,8 +536,8 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Unit(pub HostPlacement);
 
-impl SymbolicType for Unit {
-    type Type = Symbolic<Unit>;
+impl PartiallySymbolicType for Unit {
+    type Type = Unit;
 }
 
 impl Placed for Unit {

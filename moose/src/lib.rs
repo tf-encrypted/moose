@@ -2118,24 +2118,59 @@ macro_rules! modelled {
         impl crate::kernels::BinaryKernelCheck<
             crate::symbolic::SymbolicSession,
             $plc,
-            <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
-            <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
-            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$t0 as crate::computation::SymbolicType>::Type,
+            <$t1 as crate::computation::SymbolicType>::Type,
+            <$u as crate::computation::SymbolicType>::Type,
         > for $op {}
+
+        // impl $t<
+        //     crate::symbolic::SymbolicSession,
+        //     <$t0 as crate::computation::PartiallySymbolicType>::Type,
+        //     <$t1 as crate::computation::PartiallySymbolicType>::Type,
+        //     <$u as crate::computation::PartiallySymbolicType>::Type
+        // > for $plc {
+        //     fn $f(
+        //         &self,
+        //         sess: &crate::symbolic::SymbolicSession,
+        //         $($($attr_id:$attr_ty),*,)?
+        //         x0: &<$t0 as crate::computation::PartiallySymbolicType>::Type,
+        //         x1: &<$t1 as crate::computation::PartiallySymbolicType>::Type
+        //     ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
+        //         use crate::computation::{KnownType, BinarySignature};
+        //         use crate::kernels::{Session};
+        //         use crate::symbolic::{SymbolicSession, Symbolic};
+        //         use std::convert::TryInto;
+        //         let sig = BinarySignature {
+        //             arg0: <$t0 as KnownType<SymbolicSession>>::TY,
+        //             arg1: <$t1 as KnownType<SymbolicSession>>::TY,
+        //             ret: <$u as KnownType<SymbolicSession>>::TY,
+        //         };
+        //         let op = $op {
+        //             sig: sig.into(),
+        //             $($($attr_id),*)?
+        //         };
+        //         let x0 = Symbolic::Concrete(x0.clone()).into();
+        //         let x1 = Symbolic::Concrete(x1.clone()).into();
+        //         sess.execute(op.into(), &self.into(), vec![x0, x1])
+        //             .unwrap()
+        //             .try_into()
+        //             .unwrap()
+        //     }
+        // }
 
         impl $t<
             crate::symbolic::SymbolicSession,
-            <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
-            <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
-            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+            <$t0 as crate::computation::SymbolicType>::Type,
+            <$t1 as crate::computation::SymbolicType>::Type,
+            <$u as crate::computation::SymbolicType>::Type
         > for $plc {
             fn $f(
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
                 $($($attr_id:$attr_ty),*,)?
-                x0: &<$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
-                x1: &<$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type {
+                x0: &<$t0 as crate::computation::SymbolicType>::Type,
+                x1: &<$t1 as crate::computation::SymbolicType>::Type
+            ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, BinarySignature};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession};
@@ -2444,8 +2479,8 @@ macro_rules! modelled_alias {
 macro_rules! moose_type {
     // Use this for unparameterised types that are already defined
     ($atomic:ident) => {
-        impl crate::computation::SymbolicType for $atomic {
-            type Type = crate::symbolic::Symbolic<$atomic>;
+        impl crate::computation::PartiallySymbolicType for $atomic {
+            type Type = $atomic;
         }
 
         impl crate::computation::CanonicalType for $atomic {
@@ -2482,8 +2517,8 @@ macro_rules! moose_type {
     ($combined:ident = [atomic] $t:ty) => {
         pub type $combined = $t;
 
-        impl crate::computation::SymbolicType for $combined {
-            type Type = crate::symbolic::Symbolic<$combined>;
+        impl crate::computation::PartiallySymbolicType for $combined {
+            type Type = $combined;
         }
 
         impl crate::computation::CanonicalType for $combined {
@@ -2520,10 +2555,8 @@ macro_rules! moose_type {
     ($combined:ident = $outer:ident<$inner:ident>) => {
         pub type $combined = $outer<$inner>;
 
-        impl crate::computation::SymbolicType for $outer<$inner> {
-            type Type = crate::symbolic::Symbolic<
-                $outer<<$inner as crate::computation::SymbolicType>::Type>,
-            >;
+        impl crate::computation::PartiallySymbolicType for $outer<$inner> {
+            type Type = $outer<<$inner as crate::computation::SymbolicType>::Type>;
         }
 
         impl crate::computation::CanonicalType for $outer<$inner> {
@@ -2575,12 +2608,10 @@ macro_rules! moose_type {
     ($combined:ident = $outer:ident<$inner1:ident, $inner2:ident>) => {
         pub type $combined = $outer<$inner1, $inner2>;
 
-        impl crate::computation::SymbolicType for $outer<$inner1, $inner2> {
-            type Type = crate::symbolic::Symbolic<
-                $outer<
-                    <$inner1 as crate::computation::SymbolicType>::Type,
-                    <$inner2 as crate::computation::SymbolicType>::Type,
-                >,
+        impl crate::computation::PartiallySymbolicType for $outer<$inner1, $inner2> {
+            type Type = $outer<
+                <$inner1 as crate::computation::SymbolicType>::Type,
+                <$inner2 as crate::computation::SymbolicType>::Type,
             >;
         }
 

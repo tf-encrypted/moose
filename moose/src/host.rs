@@ -2031,26 +2031,26 @@ impl<HostBitTensorT: Placed, N> Placed for AbstractHostBitArray<HostBitTensorT, 
     }
 }
 
-impl SymbolicType for HostBitArray64 {
-    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N64>>;
+impl PartiallySymbolicType for HostBitArray64 {
+    type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N64>;
 }
 
 pub type HostBitArray128 = AbstractHostBitArray<HostBitTensor, N128>;
 
-impl SymbolicType for HostBitArray128 {
-    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N128>>;
+impl PartiallySymbolicType for HostBitArray128 {
+    type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N128>;
 }
 
 pub type HostBitArray224 = AbstractHostBitArray<HostBitTensor, N224>;
 
-impl SymbolicType for HostBitArray224 {
-    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N224>>;
+impl PartiallySymbolicType for HostBitArray224 {
+    type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N224>;
 }
 
 pub type HostBitArray256 = AbstractHostBitArray<HostBitTensor, N256>;
 
-impl SymbolicType for HostBitArray256 {
-    type Type = Symbolic<AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N256>>;
+impl PartiallySymbolicType for HostBitArray256 {
+    type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N256>;
 }
 
 impl<HostBitT: Placed, N> From<AbstractHostBitArray<HostBitT, N>>
