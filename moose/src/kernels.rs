@@ -3154,7 +3154,6 @@ impl TestSyncExecutor {
         session: &SyncSession,
     ) -> anyhow::Result<HashMap<String, Value>> {
         let mut env: HashMap<String, Value> = HashMap::default();
-        let computation = computation.toposort()?;
 
         let output_names: Vec<String> = computation
             .operations
