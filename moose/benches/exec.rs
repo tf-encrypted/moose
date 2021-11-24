@@ -1,7 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use moose::computation::Computation;
 use rayon::prelude::*;
-use std::convert::TryFrom;
 
 /// Benchmark iter vs par_iter for channel creation
 /// Conclusion is that this never seems worth it.
