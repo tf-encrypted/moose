@@ -64,6 +64,7 @@ class ReplicatedExample(unittest.TestCase):
                 "prune",
                 "networking",
                 "typing",
+                "toposort",
                 # "dump",
                 # "print",
             ],

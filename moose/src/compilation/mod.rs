@@ -20,6 +20,7 @@ pub enum Pass {
     Print,
     Prune,
     Symbolic,
+    Toposort,
     Typing,
     Dump,
     DeprecatedLogical, // A simple pass to support older Python compiler
@@ -31,6 +32,7 @@ fn parse_pass(name: &str) -> anyhow::Result<Pass> {
         "print" => Ok(Pass::Print),
         "prune" => Ok(Pass::Prune),
         "full" => Ok(Pass::Symbolic),
+        "toposort" => Ok(Pass::Toposort),
         "typing" => Ok(Pass::Typing),
         "dump" => Ok(Pass::Dump),
         missing_pass => Err(anyhow::anyhow!("Unknown pass requested: {}", missing_pass)),
@@ -64,5 +66,9 @@ fn do_pass(pass: &Pass, comp: &Computation) -> anyhow::Result<Option<Computation
             println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
             Ok(None)
         }
+        Pass::Toposort => comp
+            .toposort()
+            .map(Some)
+            .map_err(|e| anyhow::anyhow!("Toposort failed due to {}", e)),
     }
 }
