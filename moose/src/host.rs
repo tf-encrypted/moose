@@ -506,6 +506,7 @@ impl HostAtLeast2DOp {
 }
 
 unmodelled!(HostPlacement, attributes[slice: SliceInfo] (HostShape) -> HostShape, SliceOp);
+unmodelled!(ReplicatedPlacement, attributes[slice: SliceInfo] (ReplicatedShape) -> ReplicatedShape, SliceOp);
 
 kernel! {
     SliceOp,
@@ -582,8 +583,8 @@ impl HostSliceOp {
         sess: &S,
         plc: &HostPlacement,
         slice_info: SliceInfo,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<HostShape> {
+        x: AbstractHostFixedTensor<HostRingT>,
+    ) -> Result<AbstractHostFixedTensor<HostRingT>> {
         unimplemented!()
     }
 }
