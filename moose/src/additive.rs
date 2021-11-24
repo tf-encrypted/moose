@@ -16,7 +16,7 @@ use crate::symbolic::Symbolic;
 use crate::{Const, Ring};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryInto;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractAdditiveTensor<HostRingT> {
