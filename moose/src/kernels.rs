@@ -214,7 +214,7 @@ impl Session for SyncSession {
             Sum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepIfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            IfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Pow2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Exp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -647,7 +647,7 @@ impl Session for AsyncSession {
             Sum(op) => DispatchKernel::compile(&op, plc)?,
             Div(op) => DispatchKernel::compile(&op, plc)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?,
-            RepIfElse(op) => DispatchKernel::compile(&op, plc)?,
+            IfElse(op) => DispatchKernel::compile(&op, plc)?,
             _ => todo!(),
         };
         kernel(self, operands)
@@ -3084,6 +3084,17 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_mir_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
+    ]
+}
+
+kernel! {
+    IfElseOp,
+    [
+
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor  => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::rep_fixed_kernel),
     ]
 }
 

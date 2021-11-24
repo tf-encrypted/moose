@@ -8,7 +8,7 @@ use crate::kernels::*;
 use crate::replicated::{
     AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor, Mirrored3Fixed128Tensor,
     Mirrored3Fixed64Tensor, ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
-    ReplicatedShape, ShapeFill, Underlying,
+    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape, ShapeFill, Underlying,
 };
 use crate::symbolic::Symbolic;
 use macros::with_context;
@@ -1239,15 +1239,11 @@ impl AddNOp {
 }
 
 pub trait FixedpointTensor {
-    type InnerT;
     fn fractional_precision(&self) -> u32;
     fn integral_precision(&self) -> u32;
-    fn inner_tensor(&self) -> Self::InnerT;
 }
 
-impl<RepRingT: Clone> FixedpointTensor for AbstractReplicatedFixedTensor<RepRingT> {
-    type InnerT = RepRingT;
-
+impl<RepRingT> FixedpointTensor for AbstractReplicatedFixedTensor<RepRingT> {
     fn fractional_precision(&self) -> u32 {
         self.fractional_precision
     }
@@ -1255,16 +1251,9 @@ impl<RepRingT: Clone> FixedpointTensor for AbstractReplicatedFixedTensor<RepRing
     fn integral_precision(&self) -> u32 {
         self.integral_precision
     }
-    fn inner_tensor(&self) -> RepRingT {
-        self.tensor.clone()
-    }
 }
 
-impl<RepRingT: Placed + Clone> FixedpointTensor
-    for Symbolic<AbstractReplicatedFixedTensor<RepRingT>>
-{
-    type InnerT = RepRingT;
-
+impl<RepRingT: Placed> FixedpointTensor for Symbolic<AbstractReplicatedFixedTensor<RepRingT>> {
     fn fractional_precision(&self) -> u32 {
         match self {
             Symbolic::Symbolic(_) => unimplemented!(), // TODO(Dragos) extract from underlying op signature
@@ -1276,13 +1265,6 @@ impl<RepRingT: Placed + Clone> FixedpointTensor
         match self {
             Symbolic::Symbolic(_) => unimplemented!(), // TODO(Dragos) extract from underlying op signature
             Symbolic::Concrete(x) => x.integral_precision,
-        }
-    }
-
-    fn inner_tensor(&self) -> RepRingT {
-        match self {
-            Symbolic::Symbolic(_) => unimplemented!(), // TODO(Dragos) extract from underlying op signature
-            Symbolic::Concrete(x) => x.tensor.clone(),
         }
     }
 }
@@ -1579,6 +1561,29 @@ impl GreaterThanOp {
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         Ok(plc.greater_than(sess, &x.tensor, &y.tensor))
+    }
+}
+
+modelled!(PlacementIfElse::if_else, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, IfElseOp);
+modelled!(PlacementIfElse::if_else, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, IfElseOp);
+
+impl IfElseOp {
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        s: RepRingT,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+        y: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementIfElse<S, RepRingT, RepRingT, RepRingT, RepRingT>,
+    {
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: plc.if_else(sess, &s, &x.tensor, &y.tensor),
+            fractional_precision: x.fractional_precision,
+            integral_precision: u32::max(x.integral_precision, y.integral_precision),
+        })
     }
 }
 
