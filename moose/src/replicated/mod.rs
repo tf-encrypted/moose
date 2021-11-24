@@ -1797,7 +1797,7 @@ impl AdtToRepOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AdtTen<RingT>,
-    ) -> Result<st!(RepTen<RingT>)>
+    ) -> Result<RepTen<RingT>>
     where
         RingT: Placed<Placement = HostPlacement> + Clone,
         AdtTen<RingT>: CanonicalType,
@@ -1815,7 +1815,7 @@ impl AdtToRepOp {
             PlacementSub<S, st!(AdtTen<RingT>, S), st!(AdtTen<RingT>, S), st!(AdtTen<RingT>, S)>,
         AdtTen<RingT>: Into<st!(AdtTen<RingT>, S)>,
         HostPlacement: PlacementReveal<S, st!(AdtTen<RingT>, S), RingT>,
-        ReplicatedPlacement: PlacementPlace<S, st!(RepTen<RingT>)>,
+        ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
     {
         let AdtTen { shares: [x0, x1] } = &x;
 
@@ -1900,7 +1900,7 @@ impl AdtToRepOp {
                 }
             }
         };
-        Ok(rep.place(sess, RepTen { shares }.into()))
+        Ok(rep.place(sess, RepTen { shares }))
     }
 }
 
