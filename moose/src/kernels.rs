@@ -646,8 +646,12 @@ impl Session for AsyncSession {
             Mean(op) => DispatchKernel::compile(&op, plc)?,
             Sum(op) => DispatchKernel::compile(&op, plc)?,
             Div(op) => DispatchKernel::compile(&op, plc)?,
+            AddN(op) => DispatchKernel::compile(&op, plc)?,
+            Exp(op) => DispatchKernel::compile(&op, plc)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?,
             IfElse(op) => DispatchKernel::compile(&op, plc)?,
+            LessThan(op) => DispatchKernel::compile(&op, plc)?,
+            GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
             _ => todo!(),
         };
         kernel(self, operands)
@@ -3040,6 +3044,7 @@ kernel! {
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
     ]
 }
 

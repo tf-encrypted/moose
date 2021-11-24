@@ -13,47 +13,47 @@ from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(parameterized.TestCase):
-    def _setup_exp_comp(self):
+    def _setup_sigmoid_comp(self):
         alice = edsl.host_placement(name="alice")
         bob = edsl.host_placement(name="bob")
         carole = edsl.host_placement(name="carole")
         rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
         @edsl.computation
-        def my_exp_comp():
+        def my_sigmoid_comp():
             with bob:
                 x = edsl.constant(np.array([2], dtype=np.float64))
                 x = edsl.cast(x, dtype=edsl.fixed(8, 27))
 
             with rep:
-                y = edsl.exp(x)
+                y = edsl.sigmoid(x)
 
             with alice:
                 res = edsl.save("y_uri", edsl.cast(y, edsl.float64))
 
             return res
 
-        return my_exp_comp
+        return my_sigmoid_comp
 
-    def test_exp_example_serde(self):
-        exp_comp = self._setup_exp_comp()
-        traced_exp_comp = edsl.trace(exp_comp)
-        comp_bin = utils.serialize_computation(traced_exp_comp)
-        deser_exp_comp = utils.deserialize_computation(comp_bin)
-        assert traced_exp_comp == deser_exp_comp
+    def test_sigmoid_example_serde(self):
+        sigmoid_comp = self._setup_sigmoid_comp()
+        traced_sigmoid_comp = edsl.trace(sigmoid_comp)
+        comp_bin = utils.serialize_computation(traced_sigmoid_comp)
+        deser_sigmoid_comp = utils.deserialize_computation(comp_bin)
+        assert traced_sigmoid_comp == deser_sigmoid_comp
 
-    def test_exp_example_rust_serde(self):
-        exp_comp = self._setup_exp_comp()
-        traced_exp_comp = edsl.trace(exp_comp)
-        comp_bin = utils.serialize_computation(traced_exp_comp)
+    def test_sigmoid_example_rust_serde(self):
+        sigmoid_comp = self._setup_sigmoid_comp()
+        traced_sigmoid_comp = edsl.trace(sigmoid_comp)
+        comp_bin = utils.serialize_computation(traced_sigmoid_comp)
         # Compile in Rust
         # If this does not error, rust was able to deserialize the pycomputation
         elk_compiler.compile_computation(comp_bin, [])
 
-    def test_exp_example_compile(self):
-        exp_comp = self._setup_exp_comp()
-        traced_exp_comp = edsl.trace(exp_comp)
-        comp_bin = utils.serialize_computation(traced_exp_comp)
+    def test_sigmoid_example_compile(self):
+        sigmoid_comp = self._setup_sigmoid_comp()
+        traced_sigmoid_comp = edsl.trace(sigmoid_comp)
+        comp_bin = utils.serialize_computation(traced_sigmoid_comp)
         _ = elk_compiler.compile_computation(
             comp_bin,
             [
@@ -63,10 +63,10 @@ class ReplicatedExample(parameterized.TestCase):
             ],
         )
 
-    def test_exp_example_execute(self):
-        exp_comp = self._setup_exp_comp()
-        traced_exp_comp = edsl.trace(exp_comp)
-        comp_bin = utils.serialize_computation(traced_exp_comp)
+    def test_sigmoid_example_execute(self):
+        sigmoid_comp = self._setup_sigmoid_comp()
+        traced_sigmoid_comp = edsl.trace(sigmoid_comp)
+        comp_bin = utils.serialize_computation(traced_sigmoid_comp)
         compiled_comp = elk_compiler.compile_computation(
             comp_bin,
             [
@@ -89,11 +89,15 @@ class ReplicatedExample(parameterized.TestCase):
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
-        np.testing.assert_almost_equal(actual_result, np.exp([2]))
+
+        def exp_sigmoid(x):
+            return 1 / (1 + np.exp(-x))
+
+        np.testing.assert_almost_equal(actual_result, exp_sigmoid(2))
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Exp example")
+    parser = argparse.ArgumentParser(description="Sigmoid example")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
