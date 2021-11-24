@@ -576,37 +576,6 @@ where
     }
 }
 
-// TODO(Dragos) merge the two implementations in a single one.
-impl<S: Session, R: Placed<Placement = HostPlacement>>
-    PlacementTruncPrProvider<
-        S,
-        Symbolic<AbstractAdditiveTensor<R>>,
-        Symbolic<AbstractAdditiveTensor<R>>,
-    > for AdditivePlacement
-where
-    AdditivePlacement:
-        PlacementTruncPrProvider<S, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
-
-    Symbolic<AbstractAdditiveTensor<R>>: Clone,
-    AbstractAdditiveTensor<R>: TryFrom<Symbolic<AbstractAdditiveTensor<R>>>,
-    AbstractAdditiveTensor<R>: Into<Symbolic<AbstractAdditiveTensor<R>>>,
-{
-    fn trunc_pr(
-        &self,
-        sess: &S,
-        amount: usize,
-        provider: &HostPlacement,
-        x: &Symbolic<AbstractAdditiveTensor<R>>,
-    ) -> Symbolic<AbstractAdditiveTensor<R>> {
-        let concrete_x = match x {
-            Symbolic::Concrete(x) => x,
-            Symbolic::Symbolic(_) => unimplemented!(),
-        };
-        let concrete_y = Self::trunc_pr(self, sess, amount, provider, concrete_x);
-        concrete_y.into()
-    }
-}
-
 impl<S: Session, R>
     PlacementTruncPrProvider<S, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>
     for AdditivePlacement
@@ -617,10 +586,10 @@ where
     <AbstractReplicatedRingTensor<R> as CanonicalType>::Type: KnownType<S>,
     R: Ring,
     HostShape: KnownType<S>,
-    HostPlacement: TruncMaskGen<S, cs!(HostShape), R>,
+    HostPlacement: TruncMaskGen<S, m!(HostShape), R>,
     HostPlacement: PlacementReveal<S, st!(AbstractAdditiveTensor<R>), R>,
-    HostPlacement: PlacementOnes<S, cs!(HostShape), R>,
-    HostPlacement: PlacementShape<S, R, cs!(HostShape)>,
+    HostPlacement: PlacementOnes<S, m!(HostShape), R>,
+    HostPlacement: PlacementShape<S, R, m!(HostShape)>,
     HostPlacement: PlacementShl<S, R, R>,
     HostPlacement: PlacementShr<S, R, R>,
     AbstractAdditiveTensor<R>: Clone + Into<st!(AbstractAdditiveTensor<R>)>,

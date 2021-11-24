@@ -1762,12 +1762,13 @@ impl RepTruncPrOp {
         AdtTen<HostRingT>: CanonicalType,
         <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
 
-        RepTen<HostRingT>: TryInto<st!(RepTen<HostRingT>)>,
         RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
+        st!(AdtTen<HostRingT>): TryInto<AdtTen<HostRingT>>,
+        AdtTen<HostRingT>: Into<st!(AdtTen<HostRingT>)>,
 
         AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<HostRingT>), st!(AdtTen<HostRingT>)>,
         AdditivePlacement:
-            PlacementTruncPrProvider<S, st!(AdtTen<HostRingT>), st!(AdtTen<HostRingT>)>,
+            PlacementTruncPrProvider<S, AdtTen<HostRingT>, AdtTen<HostRingT>>,
         ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtTen<HostRingT>), st!(RepTen<HostRingT>)>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -1777,9 +1778,9 @@ impl RepTruncPrOp {
         };
         let provider = player2;
 
-        let x_adt = adt.rep_to_adt(sess, &xe.into());
+        let x_adt = adt.rep_to_adt(sess, &xe.into()).try_into().ok().unwrap();
         let y_adt = adt.trunc_pr(sess, amount as usize, &provider, &x_adt);
-        Ok(rep.adt_to_rep(sess, &y_adt))
+        Ok(rep.adt_to_rep(sess, &y_adt.into()))
     }
 }
 
