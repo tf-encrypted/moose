@@ -440,11 +440,7 @@ mod tests {
         match run_async {
             false => {
                 let executor = crate::kernels::TestSyncExecutor::default();
-                let session = crate::kernels::SyncSession::new(
-                    SessionId::try_from("foobar").unwrap(),
-                    arguments,
-                    hashmap!(),
-                );
+                let session = crate::kernels::SyncSession::default();
                 let outputs = executor.run_computation(&computation, &session)?;
                 Ok(outputs)
             }
@@ -653,6 +649,7 @@ mod tests {
                     SessionId::try_from("foobar").unwrap(),
                     arguments,
                     hashmap!(),
+                    storage.clone(),
                 );
                 let _outputs = executor.run_computation(&source.try_into()?, &session)?;
                 storage.load(

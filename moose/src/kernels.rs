@@ -1,14 +1,16 @@
 use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
-use crate::execution::Identity;
+use crate::execution::{Identity, SyncStorageImpl};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::*;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::*;
+use crate::storage::LocalSyncStorage;
 use crate::{computation::*, for_all_values};
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::rc::Rc;
 use std::sync::Arc;
 
 /// General session trait determining basic properties for session objects.
@@ -44,6 +46,7 @@ pub struct SyncSession {
     replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<ReplicatedSetup>>>,
     arguments: HashMap<String, Value>,
     role_assignments: HashMap<Role, Identity>,
+    storage: SyncStorageImpl,
 }
 
 impl Default for SyncSession {
@@ -56,6 +59,7 @@ impl Default for SyncSession {
             replicated_keys: Default::default(),
             arguments: Default::default(),
             role_assignments: Default::default(),
+            storage: Rc::new(LocalSyncStorage::default()),
         }
     }
 }
@@ -65,12 +69,14 @@ impl SyncSession {
         sid: SessionId,
         arguments: HashMap<String, Value>,
         role_assignments: HashMap<Role, Identity>,
+        storage: SyncStorageImpl,
     ) -> Self {
         SyncSession {
             session_id: sid,
             replicated_keys: Default::default(),
             arguments,
             role_assignments,
+            storage,
         }
     }
 }
@@ -144,8 +150,28 @@ impl Session for SyncSession {
             HostOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Input(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Output(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Load(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Save(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Load(op) => {
+                use std::convert::TryInto;
+                assert_eq!(operands.len(), 2);
+                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
+                let query: HostString = operands.get(1).unwrap().clone().try_into()?;
+                self.storage
+                    .load(&key.0, &self.session_id, Some(op.sig.ret()), &query.0)?
+            }
+            Save(_) => {
+                use std::convert::TryInto;
+                assert_eq!(operands.len(), 2);
+                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
+                let x = operands.get(1).unwrap().clone();
+                self.storage.save(&key.0, &self.session_id, &x)?;
+                let host = match plc {
+                    Placement::Host(host) => host,
+                    _ => unimplemented!(
+                        "SyncSession does not support running Save on non-host placements yet"
+                    ),
+                };
+                Unit(host.clone()).into()
+            }
             HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqrt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

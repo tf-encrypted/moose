@@ -1845,6 +1845,7 @@ impl TryFrom<PyComputation> for Computation {
 #[cfg(test)]
 mod tests {
     use super::PyComputation;
+    use maplit::hashmap;
     use moose::compilation::{compile_passes, Pass};
     use moose::computation::*;
     use moose::execution::*;
@@ -1916,13 +1917,10 @@ mod tests {
             })
             .unwrap();
 
-        let exec = TestExecutor::default();
-        let outputs = exec
-            .run_computation(
-                &create_computation_graph_from_python(py_any),
-                SyncArgs::new(),
-            )
-            .unwrap();
+        let computation = create_computation_graph_from_python(py_any);
+        let executor = TestSyncExecutor::default();
+        let session = SyncSession::default();
+        let outputs = executor.run_computation(&computation, &session).unwrap();
         outputs["result"].clone()
     }
     fn run_unary_func(x: &ArrayD<f64>, py_code: &str) -> Value {
@@ -1954,13 +1952,10 @@ mod tests {
             })
             .unwrap();
 
-        let exec = TestExecutor::default();
-        let outputs = exec
-            .run_computation(
-                &create_computation_graph_from_python(py_any),
-                SyncArgs::new(),
-            )
-            .unwrap();
+        let computation = create_computation_graph_from_python(py_any);
+        let executor = TestSyncExecutor::default();
+        let session = SyncSession::default();
+        let outputs = executor.run_computation(&computation, &session).unwrap();
         outputs["result"].clone()
     }
 
@@ -2332,8 +2327,10 @@ def f():
 
     "#;
 
-        let exec = TestExecutor::default();
-        let _ = exec.run_computation(&graph_from_run_call0_func(py_code), SyncArgs::new());
+        let computation = graph_from_run_call0_func(py_code);
+        let executor = TestSyncExecutor::default();
+        let session = SyncSession::default();
+        let _ = executor.run_computation(&computation, &session).unwrap();
     }
     #[test]
     fn test_deserialize_linear_regression() {

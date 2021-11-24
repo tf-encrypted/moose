@@ -115,11 +115,14 @@ impl InputOp {
 
 #[cfg(test)]
 mod tests {
+    use std::rc::Rc;
+
     use super::*;
     use crate::computation::SessionId;
     use crate::host::{FromRawPlc, HostFloat32Tensor, HostRing64Tensor};
     use crate::kernels::{PlacementFixedpointEncode, PlacementReveal, PlacementShare, SyncSession};
     use crate::replicated::{ReplicatedFixed64Tensor, ReplicatedRing64Tensor};
+    use crate::storage::LocalSyncStorage;
     use ndarray::{array, IxDyn};
 
     #[test]
@@ -157,7 +160,12 @@ mod tests {
         }
 
         // Test input op
-        let test_sess = SyncSession::new(SessionId::random(), new_args, Default::default());
+        let test_sess = SyncSession::new(
+            SessionId::random(),
+            new_args,
+            Default::default(),
+            Rc::new(LocalSyncStorage::default()),
+        );
         let y: ReplicatedRing64Tensor = rep.input(&test_sess, arg_name);
         let z = alice.reveal(&test_sess, &y);
         assert_eq!(x, z)
@@ -202,7 +210,12 @@ mod tests {
         }
 
         // Test input op
-        let test_sess = SyncSession::new(SessionId::random(), new_args, Default::default());
+        let test_sess = SyncSession::new(
+            SessionId::random(),
+            new_args,
+            Default::default(),
+            Rc::new(LocalSyncStorage::default()),
+        );
         // TODO change fixedpoint values when fixedpoint config is no longer hardcoded, see above TODO
         let y: ReplicatedFixed64Tensor = rep.input(&test_sess, arg_name);
         let z = alice.reveal(&test_sess, &y);

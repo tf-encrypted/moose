@@ -2,7 +2,9 @@ use maplit::hashmap;
 use moose::computation::*;
 use moose::host::RawShape;
 use moose::prim::SyncKey;
+use moose::storage::LocalSyncStorage;
 use std::convert::TryFrom;
+use std::rc::Rc;
 
 fn main() {
     let key_op = Operation {
@@ -78,10 +80,12 @@ fn main() {
     let comp = Computation { operations };
 
     let executor = moose::kernels::TestSyncExecutor::default();
+    let storage = Rc::new(LocalSyncStorage::default());
     let session = moose::kernels::SyncSession::new(
         SessionId::try_from("foobar").unwrap(),
         hashmap!(),
         hashmap!(),
+        storage,
     );
     let outputs = executor.run_computation(&comp, &session).unwrap();
 
