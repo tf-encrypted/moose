@@ -440,7 +440,12 @@ mod tests {
         match run_async {
             false => {
                 let executor = crate::kernels::TestSyncExecutor::default();
-                let session = crate::kernels::SyncSession::default();
+                let session = crate::kernels::SyncSession::new(
+                    SessionId::try_from("foobar").unwrap(),
+                    arguments,
+                    hashmap!(),
+                    Rc::new(LocalSyncStorage::default()),
+                );
                 let outputs = executor.run_computation(&computation, &session)?;
                 Ok(outputs)
             }
