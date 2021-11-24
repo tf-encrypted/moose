@@ -1558,7 +1558,7 @@ impl AsyncTestRuntime {
             );
             let outputs = executor
                 .run_computation(
-                    &computation,
+                    computation,
                     &valid_role_assignments,
                     own_identity,
                     &moose_session,
