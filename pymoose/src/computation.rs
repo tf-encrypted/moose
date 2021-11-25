@@ -48,6 +48,7 @@ enum PyOperation {
     std_ExpOperation(PyExpOperation),
     std_InverseOperation(PyInverseOperation),
     std_MeanOperation(PyMeanOperation),
+    std_SigmoidOperation(PySigmoidOperation),
     std_SqrtOperation(PySqrtOperation),
     std_SumOperation(PySumOperation),
     std_DivOperation(PyDivOperation),
@@ -383,6 +384,14 @@ struct PyExpandDimsOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyExpOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PySigmoidOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -1291,6 +1300,19 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    std_SigmoidOperation(op) => Ok(Operation {
+                        kind: SigmoidOp {
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     std_ConcatenateOperation(op) => {
                         let mut inputs: Vec<(&String, &String)> = op.inputs.iter().collect();
                         inputs.sort_by_key(|x| x.0);
@@ -1842,9 +1864,11 @@ mod tests {
         let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
 
         let rust_comp: Computation = comp.try_into().unwrap();
-        let rust_comp =
-            compile_passes(&rust_comp, &[Pass::Typing, Pass::DeprecatedLogical]).unwrap();
-        rust_comp.toposort().unwrap()
+        compile_passes(
+            &rust_comp,
+            &[Pass::Typing, Pass::DeprecatedLogical, Pass::Toposort],
+        )
+        .unwrap()
     }
 
     fn generate_python_names() -> (String, String) {
