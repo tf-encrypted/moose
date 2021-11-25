@@ -782,7 +782,7 @@ pub trait PlacementDaBitProvider<S: Session, ShapeT, O1, O2> {
         &self,
         sess: &S,
         shape_provider: ShapeT,
-        shape_a: ShapeT,
+        shape_player0: ShapeT,
         provider: &HostPlacement,
     ) -> (O1, O2);
 }
@@ -852,8 +852,7 @@ where
         shape_player0: ShapeT,
         provider: &HostPlacement,
     ) -> (AbstractAdditiveTensor<RingT>, AbstractAdditiveTensor<BitT>) {
-        let adt = self;
-        let (player0, player1) = adt.host_placements();
+        let (player0, player1) = self.host_placements();
         assert!(*provider != player0);
         assert!(*provider != player1);
 
