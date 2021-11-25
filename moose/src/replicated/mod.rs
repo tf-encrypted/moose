@@ -2609,7 +2609,7 @@ where
 }
 
 impl RingInjectOp {
-    pub(crate) fn rep_kernel<S: Session, HostBitT, HostRingT, ShapeT, AdtRingT, AdtBitT, RepBitT>(
+    pub(crate) fn rep_kernel<S: Session, HostBitT, HostRingT, HostShapeT, AdtRingT, AdtBitT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         bit_idx: usize,
@@ -2624,11 +2624,11 @@ impl RingInjectOp {
 
         RepTen<HostBitT>: Into<RepBitT>,
 
-        HostPlacement: PlacementShape<S, HostBitT, ShapeT>,
+        HostPlacement: PlacementShape<S, HostBitT, HostShapeT>,
         ReplicatedPlacement: PlacementAdtToRep<S, AdtRingT, st!(RepTen<HostRingT>)>,
-        AdditivePlacement: PlacementFill<S, ShapeT, AdtRingT>,
-        HostPlacement: PlacementFill<S, ShapeT, HostRingT>,
-        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtRingT, AdtBitT>,
+        AdditivePlacement: PlacementFill<S, HostShapeT, AdtRingT>,
+        HostPlacement: PlacementFill<S, HostShapeT, HostRingT>,
+        AdditivePlacement: PlacementDaBitProvider<S, HostShapeT, AdtRingT, AdtBitT>,
         AdditivePlacement: PlacementRepToAdt<S, RepBitT, AdtBitT>,
         AdditivePlacement: PlacementAdd<S, AdtBitT, AdtBitT, AdtBitT>,
         AdditivePlacement: PlacementAdd<S, AdtRingT, HostRingT, AdtRingT>,
