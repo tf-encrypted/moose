@@ -174,6 +174,7 @@ class LinearRegressionExample(parameterized.TestCase):
                 "prune",
                 "networking",
                 "typing",
+                "toposort",
                 # "dump",
                 # "print",
             ],

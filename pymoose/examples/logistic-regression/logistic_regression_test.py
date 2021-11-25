@@ -63,6 +63,7 @@ class ReplicatedExample(parameterized.TestCase):
             [
                 "typing",
                 "full",
+                "toposort",
                 # "print",
             ],
         )
@@ -80,6 +81,7 @@ class ReplicatedExample(parameterized.TestCase):
                 "full",
                 "prune",
                 "networking",
+                "toposort",
                 # "print",
             ],
         )

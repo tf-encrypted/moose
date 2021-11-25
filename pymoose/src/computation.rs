@@ -1864,9 +1864,11 @@ mod tests {
         let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
 
         let rust_comp: Computation = comp.try_into().unwrap();
-        let rust_comp =
-            compile_passes(&rust_comp, &[Pass::Typing, Pass::DeprecatedLogical]).unwrap();
-        rust_comp.toposort().unwrap()
+        compile_passes(
+            &rust_comp,
+            &[Pass::Typing, Pass::DeprecatedLogical, Pass::Toposort],
+        )
+        .unwrap()
     }
 
     fn generate_python_names() -> (String, String) {
