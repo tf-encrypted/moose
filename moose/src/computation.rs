@@ -966,7 +966,6 @@ operators![
     RingShr,
     RingInject,
     RingFill,
-    BitFill,
     BitExtract,
     BitSample,
     BitSampleSeeded,
@@ -1017,7 +1016,7 @@ operators![
     RepSetup,
     RepShare,
     RepReveal,
-    RepFill,
+    Fill,
     RepAdd,
     RepSub,
     RepMul,
@@ -1735,7 +1734,7 @@ pub struct RepToAdtOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepFillOp {
+pub struct FillOp {
     pub sig: Signature,
     pub value: Constant,
 }

@@ -60,6 +60,29 @@ where
     }
 }
 
+// impl<S: Session, TenT> ShapeFill<S, TenT> for ReplicatedPlacement
+// where
+//     TenT: Underlying+MirroredVersion,
+//     Self: PlacementShape<S, TenT, m!(ReplicatedShape)>,
+//     Self: PlacementFill<S, m!(ReplicatedShape), m!(c!(MirTen<TenT::TensorType>))>,
+
+//     ReplicatedShape: KnownType<S>,
+//     MirTen<TenT::TensorType>: CanonicalType,
+//     <MirTen<TenT::TensorType> as CanonicalType>::Type: KnownType<S>,
+// {
+//     type Result = MirroredVersion::TensorType;
+
+//     fn shape_fill<C: Into<Constant>>(
+//         &self,
+//         sess: &S,
+//         fill_value: C,
+//         shape_from: &TenT,
+//     ) -> Self::Result {
+//         let shape = self.shape(sess, shape_from);
+//         self.fill(sess, fill_value.into(), &shape)
+//     }
+// }
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedRingTensor<HostRingT> {
     pub shares: [[HostRingT; 2]; 3],
@@ -1904,117 +1927,15 @@ impl AdtToRepOp {
     }
 }
 
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing64Tensor, RepFillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing128Tensor, RepFillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Ring64Tensor, RepFillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Ring128Tensor, RepFillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3BitTensor, RepFillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing64Tensor, FillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing128Tensor, FillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, FillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Ring64Tensor, FillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Ring128Tensor, FillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3BitTensor, FillOp);
 
-kernel! {
-    RepFillOp,
-    [
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [hybrid] custom |op| {
-                let value: u64 = match op.value {
-                    Constant::Bit(v) => v as u64,
-                    Constant::Ring64(v) => v,
-                    Constant::Float64(v) => v as u64,
-                    Constant::Fixed(FixedpointConstant {
-                        value, precision
-                    }) => {
-                        (value * ((1u64 << precision) as f64)) as u64
-                    },
-                    _ => return Err(Error::UnimplementedOperator(
-                    "RepFill64 cannot convert from this type".to_string())),
-                };
-                Ok(Box::new(move |sess, rep, rep_shape| {
-                    Self::ring64_kernel(sess, rep, value, rep_shape)
-                }))
-            }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring64Tensor => [hybrid] custom |op| {
-                let value: u64 = match op.value {
-                    Constant::Bit(v) => v as u64,
-                    Constant::Ring64(v) => v,
-                    Constant::Float64(v) => v as u64,
-                    Constant::Fixed(FixedpointConstant {
-                        value, precision
-                    }) => {
-                        (value * ((1u64 << precision) as f64)) as u64
-                    },
-                    _ => return Err(Error::UnimplementedOperator(
-                    "RepFill64 cannot convert from this type".to_string())),
-                };
-                Ok(Box::new(move |sess, rep, rep_shape| {
-                    Self::mir_ring64_kernel(sess, rep, value, rep_shape)
-                }))
-            }),
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [hybrid] custom |op| {
-                let value: u128 = match op.value {
-                    Constant::Bit(v) => v as u128,
-                    Constant::Ring64(v) => v as u128,
-                    Constant::Ring128(v) => v,
-                    Constant::Float64(v) => v as u128,
-                    Constant::Fixed(FixedpointConstant{value, precision}) => {
-                            (value * ((1u128 << precision) as f64)) as u128
-                    },
-                    _ => return Err(Error::UnimplementedOperator(
-                        "RepFill128 cannot convert from this type".to_string())),
-                };
-                Ok(Box::new(move |sess, rep, rep_shape| {
-                    Self::ring128_kernel(sess, rep, value, rep_shape)
-                }))
-        }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring128Tensor => [hybrid] custom |op| {
-                let value: u128 = match op.value {
-                    Constant::Bit(v) => v as u128,
-                    Constant::Ring64(v) => v as u128,
-                    Constant::Ring128(v) => v,
-                    Constant::Float64(v) => v as u128,
-                    Constant::Fixed(FixedpointConstant{value, precision}) => {
-                            (value * ((1u128 << precision) as f64)) as u128
-                    },
-                    _ => return Err(Error::UnimplementedOperator(
-                        "RepFill128 cannot convert from this type".to_string())),
-                };
-                Ok(Box::new(move |sess, rep, rep_shape| {
-                    Self::mir_ring128_kernel(sess, rep, value, rep_shape)
-                }))
-        }),
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => [hybrid] custom |op| {
-                let value: u8 = match op.value {
-                    Constant::Bit(v) => v,
-                    Constant::Ring64(v) => v as u8,
-                    Constant::Ring128(v) => v as u8,
-                    _ => return Err(Error::UnimplementedOperator(
-                        "RepFillBit cannot convert from this type".to_string())),
-                };
-                if value != 0 && value != 1 {
-                    return Err(Error::InvalidArgument(format!("Could only support 0 and 1 for the bit tensor fill, got {}", value)));
-                }
-                Ok(Box::new(move |sess, rep, rep_shape| {
-                    Self::rep_bit_kernel(sess, rep, value, rep_shape)
-                }))
-        }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3BitTensor => [hybrid] custom |op| {
-                let value: u8 = match op.value {
-                    Constant::Bit(v) => v,
-                    Constant::Ring64(v) => v as u8,
-                    Constant::Ring128(v) => v as u8,
-                    _ => return Err(Error::UnimplementedOperator(
-                        "RepFillBit cannot convert from this type".to_string())),
-                };
-                if value != 0 && value != 1 {
-                    return Err(Error::InvalidArgument(format!("Could only support 0 and 1 for the bit tensor fill, got {}", value)));
-                }
-                Ok(Box::new(move |sess, rep, rep_shape| {
-                    Self::mir_bit_kernel(sess, rep, value, rep_shape)
-                }))
-        }),
-    ]
-}
-
-impl RepFillOp {
-    fn ring64_kernel<S: Session, ShapeT, RingT>(
+impl FillOp {
+    pub(crate) fn ring64_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u64,
@@ -2048,7 +1969,7 @@ impl RepFillOp {
         Ok(RepTen { shares })
     }
 
-    fn ring128_kernel<S: Session, ShapeT, RingT>(
+    pub(crate) fn ring128_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u128,
@@ -2082,7 +2003,7 @@ impl RepFillOp {
         Ok(RepTen { shares })
     }
 
-    fn mir_ring64_kernel<S: Session, ShapeT, RingT>(
+    pub(crate) fn mir_ring64_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u64,
@@ -2106,7 +2027,7 @@ impl RepFillOp {
         Ok(MirTen { values })
     }
 
-    fn mir_ring128_kernel<S: Session, ShapeT, RingT>(
+    pub(crate) fn mir_ring128_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u128,
@@ -2130,7 +2051,7 @@ impl RepFillOp {
         Ok(MirTen { values })
     }
 
-    fn rep_bit_kernel<S: Session, ShapeT, RingT>(
+    pub(crate) fn rep_bit_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u8,
@@ -2164,7 +2085,7 @@ impl RepFillOp {
         Ok(RepTen { shares })
     }
 
-    fn mir_bit_kernel<S: Session, ShapeT, RingT>(
+    pub(crate) fn mir_bit_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u8,

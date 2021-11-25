@@ -28,7 +28,6 @@ enum PyOperation {
     ring_RingShrOperation(PyRingShrOperation),
     bit_BitExtractOperation(PyBitExtractOperation),
     bit_BitSampleOperation(PyBitSampleOperation),
-    bit_BitFillTensorOperation(PyBitFillOperation),
     bit_BitXorOperation(PyBitXorOperation),
     bit_BitAndOperation(PyBitAndOperation),
     bit_RingInjectOperation(PyRingInjectOperation),
@@ -230,14 +229,6 @@ struct PyFillTensorOperation {
     inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyBitFillOperation {
-    name: String,
-    value: u8,
-    inputs: Inputs,
-    placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -1090,17 +1081,6 @@ impl TryFrom<PyComputation> for Computation {
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    bit_BitFillTensorOperation(op) => Ok(Operation {
-                        kind: BitFillOp {
-                            sig: Signature::unary(Ty::HostShape, Ty::HostBitTensor),
-                            value: Constant::Ring64(u64::from(op.value)),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["shape"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
                     bit_BitXorOperation(op) => Ok(Operation {
                         kind: BitXorOp {
                             sig: Signature::binary(
@@ -1925,44 +1905,6 @@ mod tests {
             .unwrap();
         outputs["result"].clone()
     }
-    fn run_unary_func(x: &ArrayD<f64>, py_code: &str) -> Value {
-        pyo3::prepare_freethreaded_python();
-        let gil = Python::acquire_gil();
-        let py = gil.python();
-
-        let xc = x.to_pyarray(py);
-
-        let (file_name, module_name) = generate_python_names();
-        let comp_graph_py = PyModule::from_code(py, py_code, &file_name, &module_name)
-            .map_err(|e| {
-                e.print(py);
-                e
-            })
-            .unwrap();
-
-        let py_any = comp_graph_py
-            .getattr("f")
-            .map_err(|e| {
-                e.print(py);
-                e
-            })
-            .unwrap()
-            .call1((xc,))
-            .map_err(|e| {
-                e.print(py);
-                e
-            })
-            .unwrap();
-
-        let exec = TestExecutor::default();
-        let outputs = exec
-            .run_computation(
-                &create_computation_graph_from_python(py_any),
-                SyncArgs::new(),
-            )
-            .unwrap();
-        outputs["result"].clone()
-    }
 
     fn graph_from_run_call0_func(py_code: &str) -> Computation {
         pyo3::prepare_freethreaded_python();
@@ -2485,106 +2427,5 @@ def f():
         .unwrap();
 
         assert!(diff.0.abs_diff_eq(&res, 0.000001));
-    }
-
-    #[test]
-    fn test_deserialize_replicated_abs() {
-        let py_code = r#"
-import numpy as np
-
-from pymoose.computation import dtypes
-from pymoose.computation import standard as standard_dialect
-from pymoose.computation.base import Computation
-from pymoose.computation.host import HostPlacement
-from pymoose.computation.replicated import ReplicatedPlacement
-from pymoose.computation.standard import TensorType
-from pymoose.computation.standard import UnitType
-from pymoose.computation.utils import serialize_computation
-from pymoose.deprecated.compiler.compiler import Compiler
-from pymoose.deprecated.computation import fixedpoint as fixedpoint_ops
-from pymoose.deprecated.computation import ring as ring_dialect
-from pymoose.deprecated.computation.ring import RingTensorType
-
-alice = HostPlacement(name="alice")
-bob = HostPlacement(name="bob")
-carole = HostPlacement(name="carole")
-rep = ReplicatedPlacement(name="rep", player_names=["alice", "bob", "carole"])
-
-
-def f(arg1):
-    comp = Computation(operations={}, placements={})
-    comp.add_placement(alice)
-    comp.add_placement(bob)
-    comp.add_placement(carole)
-    comp.add_placement(rep)
-
-    x = np.array(arg1, dtype=np.float64)
-
-    fp_dtype = dtypes.fixed(8, 27)
-
-    comp.add_operation(
-        standard_dialect.ConstantOperation(
-            name="alice_input",
-            value=standard_dialect.TensorConstant(value=x),
-            placement_name=alice.name,
-            inputs={},
-            output_type=TensorType(dtype=dtypes.float64),
-        )
-    )
-
-    comp.add_operation(
-        fixedpoint_ops.EncodeOperation(
-            name="encode_alice",
-            inputs={"value": "alice_input"},
-            placement_name="alice",
-            output_type=fixedpoint_ops.EncodedTensorType(
-                dtype=fp_dtype, precision=fp_dtype.fractional_precision
-            ),
-            precision=fp_dtype.fractional_precision,
-        )
-    )
-
-    comp.add_operation(
-        standard_dialect.AbsOperation(
-            name="rep_abs",
-            placement_name=rep.name,
-            inputs={"x": "encode_alice"},
-            output_type=TensorType(dtype=dtypes.float64),
-        )
-    )
-
-    comp.add_operation(
-        fixedpoint_ops.DecodeOperation(
-            name="decode_carole",
-            inputs={"value": "rep_abs"},
-            placement_name=carole.name,
-            output_type=TensorType(dtype=dtypes.float64),
-            precision=fp_dtype.fractional_precision,
-        )
-    )
-
-    comp.add_operation(
-        standard_dialect.OutputOperation(
-            name="result", placement_name=carole.name, inputs={"value": "decode_carole"},
-            output_type=RingTensorType(),
-        )
-    )
-
-    compiler = Compiler(ring=128)
-    comp = compiler.run_passes(comp)
-
-    return serialize_computation(comp)
-
-"#;
-        let x1 = array![[-1.0, -2.0], [-3.0, 4.0]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-
-        let result = run_unary_func(&x1, py_code);
-        let y1 = x1.mapv(f64::abs);
-        assert_eq!(
-            result,
-            Value::HostFloat64Tensor(Box::new(HostFloat64Tensor::from(y1)))
-        );
     }
 }

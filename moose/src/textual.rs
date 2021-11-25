@@ -253,7 +253,6 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(OutputOp::SHORT_NAME), cut(unary!(OutputOp))),
         preceded(tag(ConstantOp::SHORT_NAME), cut(constant)),
         preceded(tag(ShapeOp::SHORT_NAME), cut(unary!(ShapeOp))),
-        preceded(tag(BitFillOp::SHORT_NAME), cut(bit_fill)),
         preceded(tag(RingFillOp::SHORT_NAME), cut(ring_fill)),
         preceded(tag(SaveOp::SHORT_NAME), cut(save_operator)),
         preceded(tag(HostAddOp::SHORT_NAME), cut(binary!(HostAddOp))),
@@ -504,15 +503,6 @@ fn bit_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, sig) = operator_signature(0)(input)?;
     Ok((input, BitSampleSeededOp { sig }.into()))
-}
-
-/// Parses a BitFill operator.
-fn bit_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, value) = attributes_single("value", constant_literal)(input)?;
-    let (input, sig) = operator_signature(1)(input)?;
-    Ok((input, BitFillOp { sig, value }.into()))
 }
 
 /// Parses a RingFill operator.
@@ -1321,7 +1311,6 @@ impl ToTextual for Operator {
             BitXor(op) => op.to_textual(),
             BitAnd(op) => op.to_textual(),
             BitNeg(op) => op.to_textual(),
-            BitFill(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
             HostAdd(op) => op.to_textual(),
             HostSub(op) => op.to_textual(),
@@ -1410,7 +1399,7 @@ impl ToTextual for Operator {
             AdtShl(op) => op.to_textual(),
             AdtToRep(op) => op.to_textual(),
             RepAbs(op) => op.to_textual(),
-            RepFill(op) => op.to_textual(),
+            Fill(op) => op.to_textual(),
             RepMsb(op) => op.to_textual(),
             RepShl(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
@@ -1535,7 +1524,6 @@ impl_to_textual!(RingDotOp, "{op}: {}", sig);
 impl_to_textual!(RingShlOp, "{op}{{amount={}}}: {}", amount, sig);
 impl_to_textual!(RingShrOp, "{op}{{amount={}}}: {}", amount, sig);
 impl_to_textual!(RingInjectOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
-impl_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(BitXorOp, "{op}: {}", sig);
 impl_to_textual!(BitAndOp, "{op}: {}", sig);
 impl_to_textual!(BitNegOp, "{op}: {}", sig);
@@ -1598,7 +1586,7 @@ impl_to_textual!(AdtMulOp, "{op}: {}", sig);
 impl_to_textual!(AdtShlOp, "{op}: {}", sig);
 impl_to_textual!(AdtToRepOp, "{op}: {}", sig);
 impl_to_textual!(RepAbsOp, "{op}: {}", sig);
-impl_to_textual!(RepFillOp, "{op}{{value={}}}: {}", value, sig);
+impl_to_textual!(FillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(RepMsbOp, "{op}: {}", sig);
 impl_to_textual!(RepNegOp, "{op}: {}", sig);
 impl_to_textual!(RepShlOp, "{op}: {}", sig);
@@ -2465,9 +2453,6 @@ z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = BitSampleSeeded: (Shape, Seed) -> BitTensor (shape, seed) @Host(alice)",
-        )?;
-        parse_assignment::<(&str, ErrorKind)>(
-            "z = BitFill {value = Ring64(0)}: (Shape) -> BitTensor (s) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = BitXor: (BitTensor, BitTensor) -> BitTensor (x, y) @Host(alice)",

@@ -86,7 +86,6 @@ impl Session for SyncSession {
         use Operator::*;
         let kernel_output = match op {
             Shape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            BitFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitSample(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -109,7 +108,7 @@ impl Session for SyncSession {
             RingFixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingInject(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Fill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSetup(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShare(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepReveal(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -526,7 +525,6 @@ impl Session for AsyncSession {
         use Operator::*;
         let kernel = match op {
             Shape(op) => DispatchKernel::compile(&op, plc)?,
-            BitFill(op) => DispatchKernel::compile(&op, plc)?,
             RingFill(op) => DispatchKernel::compile(&op, plc)?,
             PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?,
             BitSample(op) => DispatchKernel::compile(&op, plc)?,
@@ -549,7 +547,7 @@ impl Session for AsyncSession {
             RingFixedpointEncode(op) => DispatchKernel::compile(&op, plc)?,
             RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?,
             RingInject(op) => DispatchKernel::compile(&op, plc)?,
-            RepFill(op) => DispatchKernel::compile(&op, plc)?,
+            Fill(op) => DispatchKernel::compile(&op, plc)?,
             RepSetup(op) => DispatchKernel::compile(&op, plc)?,
             RepShare(op) => DispatchKernel::compile(&op, plc)?,
             RepReveal(op) => DispatchKernel::compile(&op, plc)?,
@@ -1178,7 +1176,6 @@ impl Compile<SyncKernel> for Operator {
             Output(op) => Compile::<SyncKernel>::compile(op, ctx),
             Constant(op) => Compile::<SyncKernel>::compile(op, ctx),
             Shape(op) => Compile::<SyncKernel>::compile(op, ctx),
-            BitFill(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingFill(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostSub(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -1283,7 +1280,6 @@ impl Compile<AsyncKernel> for Operator {
             Output(op) => Compile::<AsyncKernel>::compile(op, ctx),
             Constant(op) => Compile::<AsyncKernel>::compile(op, ctx),
             Shape(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            BitFill(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingFill(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -1834,20 +1830,20 @@ impl Compile<Kernel> for ShapeOp {
     }
 }
 
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for BitFillOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (&self.sig, self.value.clone()) {
-            (signature![(_) -> Ty::HostBitTensor], Constant::Ring64(value)) => {
-                closure_kernel!(HostShape, |shape| {
-                    assert!(value == 0 || value == 1);
-                    HostBitTensor::fill(&shape.0, value as u8)
-                })
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
+// #[cfg(not(feature = "exclude_old_framework"))]
+// impl Compile<Kernel> for BitFillOp {
+//     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+//         match (&self.sig, self.value.clone()) {
+//             (signature![(_) -> Ty::HostBitTensor], Constant::Ring64(value)) => {
+//                 closure_kernel!(HostShape, |shape| {
+//                     assert!(value == 0 || value == 1);
+//                     HostBitTensor::fill(&shape.0, value as u8)
+//                 })
+//             }
+//             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+//         }
+//     }
+// }
 
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingFillOp {
@@ -3095,6 +3091,110 @@ kernel! {
         (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_mir_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_fixed_mir_kernel),
 
+    ]
+}
+
+kernel! {
+    FillOp,
+    [
+
+        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] attributes[value] Self::bit_kernel),
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [hybrid] custom |op| {
+                let value: u64 = match op.value {
+                    Constant::Bit(v) => v as u64,
+                    Constant::Ring64(v) => v,
+                    Constant::Float64(v) => v as u64,
+                    Constant::Fixed(FixedpointConstant {
+                        value, precision
+                    }) => {
+                        (value * ((1u64 << precision) as f64)) as u64
+                    },
+                    _ => return Err(Error::UnimplementedOperator(
+                    "Fill64 cannot convert from this type".to_string())),
+                };
+                Ok(Box::new(move |sess, rep, rep_shape| {
+                    Self::ring64_kernel(sess, rep, value, rep_shape)
+                }))
+            }),
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring64Tensor => [hybrid] custom |op| {
+                let value: u64 = match op.value {
+                    Constant::Bit(v) => v as u64,
+                    Constant::Ring64(v) => v,
+                    Constant::Float64(v) => v as u64,
+                    Constant::Fixed(FixedpointConstant {
+                        value, precision
+                    }) => {
+                        (value * ((1u64 << precision) as f64)) as u64
+                    },
+                    _ => return Err(Error::UnimplementedOperator(
+                    "Fill64 cannot convert from this type".to_string())),
+                };
+                Ok(Box::new(move |sess, rep, rep_shape| {
+                    Self::mir_ring64_kernel(sess, rep, value, rep_shape)
+                }))
+            }),
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [hybrid] custom |op| {
+                let value: u128 = match op.value {
+                    Constant::Bit(v) => v as u128,
+                    Constant::Ring64(v) => v as u128,
+                    Constant::Ring128(v) => v,
+                    Constant::Float64(v) => v as u128,
+                    Constant::Fixed(FixedpointConstant{value, precision}) => {
+                            (value * ((1u128 << precision) as f64)) as u128
+                    },
+                    _ => return Err(Error::UnimplementedOperator(
+                        "Fill128 cannot convert from this type".to_string())),
+                };
+                Ok(Box::new(move |sess, rep, rep_shape| {
+                    Self::ring128_kernel(sess, rep, value, rep_shape)
+                }))
+        }),
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring128Tensor => [hybrid] custom |op| {
+                let value: u128 = match op.value {
+                    Constant::Bit(v) => v as u128,
+                    Constant::Ring64(v) => v as u128,
+                    Constant::Ring128(v) => v,
+                    Constant::Float64(v) => v as u128,
+                    Constant::Fixed(FixedpointConstant{value, precision}) => {
+                            (value * ((1u128 << precision) as f64)) as u128
+                    },
+                    _ => return Err(Error::UnimplementedOperator(
+                        "Fill128 cannot convert from this type".to_string())),
+                };
+                Ok(Box::new(move |sess, rep, rep_shape| {
+                    Self::mir_ring128_kernel(sess, rep, value, rep_shape)
+                }))
+        }),
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => [hybrid] custom |op| {
+                let value: u8 = match op.value {
+                    Constant::Bit(v) => v,
+                    Constant::Ring64(v) => v as u8,
+                    Constant::Ring128(v) => v as u8,
+                    _ => return Err(Error::UnimplementedOperator(
+                        "FillBit cannot convert from this type".to_string())),
+                };
+                if value != 0 && value != 1 {
+                    return Err(Error::InvalidArgument(format!("Could only support 0 and 1 for the bit tensor fill, got {}", value)));
+                }
+                Ok(Box::new(move |sess, rep, rep_shape| {
+                    Self::rep_bit_kernel(sess, rep, value, rep_shape)
+                }))
+        }),
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3BitTensor => [hybrid] custom |op| {
+                let value: u8 = match op.value {
+                    Constant::Bit(v) => v,
+                    Constant::Ring64(v) => v as u8,
+                    Constant::Ring128(v) => v as u8,
+                    _ => return Err(Error::UnimplementedOperator(
+                        "FillBit cannot convert from this type".to_string())),
+                };
+                if value != 0 && value != 1 {
+                    return Err(Error::InvalidArgument(format!("Could only support 0 and 1 for the bit tensor fill, got {}", value)));
+                }
+                Ok(Box::new(move |sess, rep, rep_shape| {
+                    Self::mir_bit_kernel(sess, rep, value, rep_shape)
+                }))
+        }),
     ]
 }
 

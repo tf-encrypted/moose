@@ -1616,17 +1616,10 @@ impl HostReshapeOp {
     }
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostBitTensor, BitFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostBitTensor, FillOp);
 
-kernel! {
-    BitFillOp,
-    [
-        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] attributes[value] Self::kernel),
-    ]
-}
-
-impl BitFillOp {
-    fn kernel<S: RuntimeSession>(
+impl FillOp {
+    pub(crate) fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         value: Constant,
