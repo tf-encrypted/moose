@@ -80,13 +80,8 @@ fn main() {
     let comp = Computation { operations };
 
     let executor = moose::kernels::TestSyncExecutor::default();
-    let storage = Rc::new(LocalSyncStorage::default());
-    let session = moose::kernels::SyncSession::new(
-        SessionId::try_from("foobar").unwrap(),
-        hashmap!(),
-        hashmap!(),
-        storage,
-    );
+    let session =
+        moose::kernels::SyncSession::from_session_id(SessionId::try_from("foobar").unwrap());
     let outputs = executor.run_computation(&comp, &session).unwrap();
 
     println!("Outputs: {:?}", outputs);

@@ -1,5 +1,4 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use moose::computation::Computation;
 use rayon::prelude::*;
 
 /// Benchmark iter vs par_iter for channel creation
@@ -415,48 +414,5 @@ fn prim_capture(c: &mut Criterion) {
 }
 
 criterion_group!(prim, prim_arc, prim_closure, prim_capture);
-
-fn gen_sample_graph(size: usize) -> Computation {
-    use moose::computation::*;
-    use moose::host::*;
-
-    let operator = Operator::RingMul(RingMulOp {
-        sig: Signature::binary(
-            Ty::HostRing64Tensor,
-            Ty::HostRing64Tensor,
-            Ty::HostRing64Tensor,
-        ),
-    });
-
-    let mut operations: Vec<_> = (0..size)
-        .map(|i| Operation {
-            name: format!("y{}", i),
-            kind: operator.clone(),
-            inputs: vec!["x".into(), "x".into()],
-            placement: Placement::Host(HostPlacement {
-                owner: Role("alice".into()),
-            }),
-        })
-        .collect();
-
-    let raw_tensor: ndarray::ArrayD<u64> =
-        ndarray::ArrayBase::from_shape_vec([10, 10], (0..100).collect())
-            .unwrap()
-            .into_dyn();
-
-    operations.push(Operation {
-        name: "x".into(),
-        kind: Operator::Constant(ConstantOp {
-            sig: Signature::nullary(Ty::HostRing64Tensor),
-            value: Constant::HostRing64Tensor(HostRing64Tensor::from(raw_tensor)),
-        }),
-        inputs: vec![],
-        placement: Placement::Host(HostPlacement {
-            owner: Role("alice".into()),
-        }),
-    });
-
-    Computation { operations }.toposort().unwrap()
-}
 
 criterion_main!(par, prim);

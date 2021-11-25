@@ -1848,14 +1848,14 @@ mod tests {
     use maplit::hashmap;
     use moose::compilation::{compile_passes, Pass};
     use moose::computation::*;
-    use moose::execution::*;
     use moose::host::HostFloat64Tensor;
+    use moose::kernels::{SyncSession, TestSyncExecutor};
     use moose::storage::{LocalSyncStorage, SyncStorage};
     use ndarray::prelude::*;
     use numpy::ToPyArray;
     use pyo3::prelude::*;
     use rand::Rng;
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
     use std::convert::TryFrom;
     use std::convert::TryInto;
     use std::rc::Rc;
@@ -1918,8 +1918,20 @@ mod tests {
             .unwrap();
 
         let computation = create_computation_graph_from_python(py_any);
+        let all_roles = computation
+            .operations
+            .iter()
+            .flat_map(|op| -> Box<dyn Iterator<Item = &Role>> {
+                match &op.placement {
+                    // TODO(Morten) box seems too complicated..?
+                    Placement::Host(plc) => Box::new(std::iter::once(&plc.owner)),
+                    Placement::Replicated(plc) => Box::new(plc.owners.iter()),
+                    Placement::Additive(plc) => Box::new(plc.owners.iter()),
+                }
+            })
+            .collect::<HashSet<_>>();
         let executor = TestSyncExecutor::default();
-        let session = SyncSession::default();
+        let session = SyncSession::from_roles(all_roles.iter().cloned());
         let outputs = executor.run_computation(&computation, &session).unwrap();
         outputs["result"].clone()
     }
@@ -1953,8 +1965,20 @@ mod tests {
             .unwrap();
 
         let computation = create_computation_graph_from_python(py_any);
+        let all_roles = computation
+            .operations
+            .iter()
+            .flat_map(|op| -> Box<dyn Iterator<Item = &Role>> {
+                match &op.placement {
+                    // TODO(Morten) box seems too complicated..?
+                    Placement::Host(plc) => Box::new(std::iter::once(&plc.owner)),
+                    Placement::Replicated(plc) => Box::new(plc.owners.iter()),
+                    Placement::Additive(plc) => Box::new(plc.owners.iter()),
+                }
+            })
+            .collect::<HashSet<_>>();
         let executor = TestSyncExecutor::default();
-        let session = SyncSession::default();
+        let session = SyncSession::from_roles(all_roles.iter().cloned());
         let outputs = executor.run_computation(&computation, &session).unwrap();
         outputs["result"].clone()
     }
@@ -2040,7 +2064,7 @@ def f(arg1, arg2):
                 name="result",
                 inputs={"value": "add"},
                 placement_name=alice.name,
-                output_type=UnitType(),
+                output_type=TensorType(dtype=dtypes.float64),
         )
     )
 
@@ -2057,12 +2081,11 @@ def f(arg1, arg2):
 
         let result = run_binary_func(&x1, &y1, &mul_code);
 
-        assert_eq!(
-            result,
-            Value::HostFloat64Tensor(Box::new(
-                HostFloat64Tensor::from(x1) * HostFloat64Tensor::from(y1)
-            ))
-        );
+        let unwrapped_result = match result {
+            Value::HostFloat64Tensor(t) => t,
+            _ => panic!("Unexpected result type. Expected HostFloat64Tensor"),
+        };
+        assert_eq!(unwrapped_result.0, x1 * y1);
 
         let x2 = array![[1.0, 2.0], [3.0, 4.0]]
             .into_dimensionality::<IxDyn>()
@@ -2074,12 +2097,11 @@ def f(arg1, arg2):
         let add_code = py_code.replace("SPECIAL_OP", "AddOperation");
         let result = run_binary_func(&x2, &y2, &add_code);
 
-        assert_eq!(
-            result,
-            Value::HostFloat64Tensor(Box::new(
-                HostFloat64Tensor::from(x2) + HostFloat64Tensor::from(y2)
-            ))
-        );
+        let unwrapped_result = match result {
+            Value::HostFloat64Tensor(t) => t,
+            _ => panic!("Unexpected result type. Expected HostFloat64Tensor"),
+        };
+        assert_eq!(unwrapped_result.0, x2 + y2);
 
         let x3 = array![[1.0, 2.0], [3.0, 4.0]]
             .into_dimensionality::<IxDyn>()
@@ -2091,12 +2113,11 @@ def f(arg1, arg2):
         let sub_code = py_code.replace("SPECIAL_OP", "SubOperation");
         let result = run_binary_func(&x3, &y3, &sub_code);
 
-        assert_eq!(
-            result,
-            Value::HostFloat64Tensor(Box::new(
-                HostFloat64Tensor::from(x3) - HostFloat64Tensor::from(y3)
-            ))
-        );
+        let unwrapped_result = match result {
+            Value::HostFloat64Tensor(t) => t,
+            _ => panic!("Unexpected result type. Expected HostFloat64Tensor"),
+        };
+        assert_eq!(unwrapped_result.0, x3 - y3);
 
         let x4 = array![[1.0, 2.0], [3.0, 4.0]]
             .into_dimensionality::<IxDyn>()
@@ -2108,11 +2129,15 @@ def f(arg1, arg2):
         let dot_code = py_code.replace("SPECIAL_OP", "DotOperation");
         let result = run_binary_func(&x4, &y4, &dot_code);
 
+        let unwrapped_result = match result {
+            Value::HostFloat64Tensor(t) => t,
+            _ => panic!("Unexpected result type. Expected HostFloat64Tensor"),
+        };
         assert_eq!(
-            result,
-            Value::HostFloat64Tensor(Box::new(
-                HostFloat64Tensor::from(x4).dot(HostFloat64Tensor::from(y4))
-            ))
+            unwrapped_result.0,
+            HostFloat64Tensor::from(x4)
+                .dot(HostFloat64Tensor::from(y4))
+                .0
         );
     }
 
@@ -2220,7 +2245,7 @@ def f(arg1, arg2):
     comp.add_operation(
         standard_dialect.OutputOperation(
             name="result", placement_name=carole.name, inputs={"value": "decode_carole"},
-            output_type=RingTensorType(),
+            output_type=TensorType(dtype=dtypes.float64),
         )
     )
 
@@ -2240,12 +2265,11 @@ def f(arg1, arg2):
 
         let result = run_binary_func(&x1, &y1, &mul_code);
 
-        assert_eq!(
-            result,
-            Value::HostFloat64Tensor(Box::new(
-                HostFloat64Tensor::from(x1) * HostFloat64Tensor::from(y1)
-            ))
-        );
+        let unwrapped_result = match result {
+            Value::HostFloat64Tensor(t) => t,
+            _ => panic!("Unexpected result type. Expected HostFloat64Tensor"),
+        };
+        assert_eq!(unwrapped_result.0, x1 * y1);
 
         let x2 = array![[1.0, 2.0], [3.0, 4.0]]
             .into_dimensionality::<IxDyn>()
@@ -2257,12 +2281,11 @@ def f(arg1, arg2):
         let add_code = py_code.replace("SPECIAL_OP", "AddOperation");
         let result = run_binary_func(&x2, &y2, &add_code);
 
-        assert_eq!(
-            result,
-            Value::HostFloat64Tensor(Box::new(
-                HostFloat64Tensor::from(x2) + HostFloat64Tensor::from(y2)
-            ))
-        );
+        let unwrapped_result = match result {
+            Value::HostFloat64Tensor(t) => t,
+            _ => panic!("Unexpected result type. Expected HostFloat64Tensor"),
+        };
+        assert_eq!(unwrapped_result.0, x2 + y2);
 
         let x3 = array![[1.0, 2.0], [3.0, 4.0]]
             .into_dimensionality::<IxDyn>()
@@ -2274,12 +2297,11 @@ def f(arg1, arg2):
         let sub_code = py_code.replace("SPECIAL_OP", "SubOperation");
         let result = run_binary_func(&x3, &y3, &sub_code);
 
-        assert_eq!(
-            result,
-            Value::HostFloat64Tensor(Box::new(
-                HostFloat64Tensor::from(x3) - HostFloat64Tensor::from(y3)
-            ))
-        );
+        let unwrapped_result = match result {
+            Value::HostFloat64Tensor(t) => t,
+            _ => panic!("Unexpected result type. Expected HostFloat64Tensor"),
+        };
+        assert_eq!(unwrapped_result.0, x3 - y3);
 
         let x4 = array![[1.0, 2.0], [3.0, 4.0]]
             .into_dimensionality::<IxDyn>()
@@ -2291,11 +2313,15 @@ def f(arg1, arg2):
         let dot_code = py_code.replace("SPECIAL_OP", "DotOperation");
         let result = run_binary_func(&x4, &y4, &dot_code);
 
+        let unwrapped_result = match result {
+            Value::HostFloat64Tensor(t) => t,
+            _ => panic!("Unexpected result type. Expected HostFloat64Tensor"),
+        };
         assert_eq!(
-            result,
-            Value::HostFloat64Tensor(Box::new(
-                HostFloat64Tensor::from(x4).dot(HostFloat64Tensor::from(y4))
-            ))
+            unwrapped_result.0,
+            HostFloat64Tensor::from(x4)
+                .dot(HostFloat64Tensor::from(y4))
+                .0
         );
     }
     #[test]
@@ -2463,8 +2489,20 @@ def f():
         storage_inputs.insert("y_uri".to_string(), y);
 
         let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::from_hashmap(storage_inputs));
-        let exec = TestExecutor::from_storage(&storage);
-        exec.run_computation(&comp, SyncArgs::new()).unwrap();
+        let executor = TestSyncExecutor::default();
+        let own_identity = moose::execution::Identity::from("tester");
+        let role_assignments = hashmap!(
+            Role::from("x-owner") => own_identity.clone(),
+            Role::from("y-owner") => own_identity.clone(),
+            Role::from("model-owner") => own_identity.clone(),
+        );
+        let session = SyncSession::from_storage(
+            SessionId::try_from("foobar").unwrap(),
+            hashmap!(),
+            role_assignments,
+            storage.clone(),
+        );
+        let _ = executor.run_computation(&comp, &session).unwrap();
 
         let res = array![[9.9999996], [2.999999]]
             .into_dimensionality::<IxDyn>()
@@ -2563,7 +2601,7 @@ def f(arg1):
     comp.add_operation(
         standard_dialect.OutputOperation(
             name="result", placement_name=carole.name, inputs={"value": "decode_carole"},
-            output_type=RingTensorType(),
+            output_type=TensorType(dtype=dtypes.float64),
         )
     )
 

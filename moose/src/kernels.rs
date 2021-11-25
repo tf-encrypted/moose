@@ -1,9 +1,10 @@
 use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
-use crate::execution::{Identity, SyncStorageImpl};
+use crate::execution::{Identity, SyncNetworkingImpl, SyncStorageImpl};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::*;
+use crate::networking::LocalSyncNetworking;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::*;
 use crate::storage::LocalSyncStorage;
@@ -47,6 +48,7 @@ pub struct SyncSession {
     arguments: HashMap<String, Value>,
     role_assignments: HashMap<Role, Identity>,
     storage: SyncStorageImpl,
+    networking: SyncNetworkingImpl,
 }
 
 impl Default for SyncSession {
@@ -60,12 +62,24 @@ impl Default for SyncSession {
             arguments: Default::default(),
             role_assignments: Default::default(),
             storage: Rc::new(LocalSyncStorage::default()),
+            networking: Rc::new(LocalSyncNetworking::default()),
         }
     }
 }
 
 impl SyncSession {
-    pub fn new(
+    pub fn from_session_id(sid: SessionId) -> Self {
+        SyncSession {
+            session_id: sid,
+            replicated_keys: Default::default(),
+            arguments: Default::default(),
+            role_assignments: Default::default(),
+            storage: Rc::new(LocalSyncStorage::default()),
+            networking: Rc::new(LocalSyncNetworking::default()),
+        }
+    }
+
+    pub fn from_storage(
         sid: SessionId,
         arguments: HashMap<String, Value>,
         role_assignments: HashMap<Role, Identity>,
@@ -77,6 +91,38 @@ impl SyncSession {
             arguments,
             role_assignments,
             storage,
+            networking: Rc::new(LocalSyncNetworking::default()),
+        }
+    }
+
+    pub fn from_networking(
+        sid: SessionId,
+        arguments: HashMap<String, Value>,
+        role_assignments: HashMap<Role, Identity>,
+        networking: SyncNetworkingImpl,
+    ) -> Self {
+        SyncSession {
+            session_id: sid,
+            replicated_keys: Default::default(),
+            arguments,
+            role_assignments,
+            storage: Rc::new(LocalSyncStorage::default()),
+            networking,
+        }
+    }
+
+    pub fn from_roles<'a>(roles: impl Iterator<Item = &'a Role>) -> Self {
+        let own_identity = Identity::from("tester");
+        let role_assignment = roles
+            .map(|role| (role.clone(), own_identity.clone()))
+            .collect();
+        SyncSession {
+            session_id: SessionId::random(),
+            replicated_keys: Default::default(),
+            arguments: Default::default(),
+            role_assignments: role_assignment,
+            storage: Rc::new(LocalSyncStorage::default()),
+            networking: Rc::new(LocalSyncNetworking::default()),
         }
     }
 }
@@ -217,8 +263,28 @@ impl Session for SyncSession {
             HostBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Identity(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Cast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Send(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Receive(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Send(op) => {
+                assert_eq!(operands.len(), 1);
+                let x = operands.get(0).unwrap();
+                self.networking.send(
+                    &x,
+                    self.find_role_assignment(&op.receiver)?,
+                    &op.rendezvous_key,
+                    &self.session_id,
+                )?;
+                let host = match plc {
+                    Placement::Host(host) => host,
+                    _ => unimplemented!(
+                        "SyncSession does not support running Send on non-host placements yet"
+                    ),
+                };
+                Unit(host.clone()).into()
+            }
+            Receive(op) => self.networking.receive(
+                self.find_role_assignment(&op.sender)?,
+                &op.rendezvous_key,
+                &self.session_id,
+            )?,
             HostReshape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Slice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

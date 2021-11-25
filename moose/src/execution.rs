@@ -440,7 +440,7 @@ mod tests {
         match run_async {
             false => {
                 let executor = crate::kernels::TestSyncExecutor::default();
-                let session = crate::kernels::SyncSession::new(
+                let session = crate::kernels::SyncSession::from_storage(
                     SessionId::try_from("foobar").unwrap(),
                     arguments,
                     hashmap!(),
@@ -1458,29 +1458,6 @@ mod tests {
         }
     }
 
-    #[cfg(not(feature = "new_async_session"))]
-    fn _create_async_session(
-        networking: &Arc<dyn Send + Sync + AsyncNetworking>,
-        exec_storage: &Arc<dyn Send + Sync + AsyncStorage>,
-        valid_role_assignments: HashMap<Role, Identity>,
-    ) -> AsyncSession {
-        AsyncSession {
-            sid: SessionId::try_from("foobar").unwrap(),
-            arguments: hashmap!(),
-            networking: Arc::clone(&networking),
-            storage: Arc::clone(&exec_storage),
-            new_sess: Arc::new(crate::kernels::SyncSession::new(
-                SessionId::try_from("foobar").unwrap(),
-                hashmap!(),
-                valid_role_assignments.clone(),
-            )),
-            host: Arc::new(Placement::Host(HostPlacement {
-                owner: "localhost".into(),
-            })),
-        }
-    }
-
-    #[cfg(feature = "new_async_session")]
     fn _create_async_session(
         networking: &Arc<dyn Send + Sync + AsyncNetworking>,
         exec_storage: &Arc<dyn Send + Sync + AsyncStorage>,
