@@ -1,10 +1,7 @@
-use maplit::hashmap;
 use moose::computation::*;
 use moose::host::RawShape;
 use moose::prim::SyncKey;
-use moose::storage::LocalSyncStorage;
 use std::convert::TryFrom;
-use std::rc::Rc;
 
 fn main() {
     let key_op = Operation {

@@ -650,7 +650,7 @@ mod tests {
                     hashmap!("input_data".to_string() => input_data.clone());
                 let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::from_hashmap(store));
                 let executor = crate::kernels::TestSyncExecutor::default();
-                let session = crate::kernels::SyncSession::new(
+                let session = crate::kernels::SyncSession::from_storage(
                     SessionId::try_from("foobar").unwrap(),
                     arguments,
                     hashmap!(),

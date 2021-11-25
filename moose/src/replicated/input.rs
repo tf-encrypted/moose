@@ -210,7 +210,7 @@ mod tests {
         }
 
         // Test input op
-        let test_sess = SyncSession::new(
+        let test_sess = SyncSession::from_storage(
             SessionId::random(),
             new_args,
             Default::default(),
