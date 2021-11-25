@@ -12,7 +12,6 @@ use crate::replicated::{
     AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor,
     ReplicatedRing64Tensor,
 };
-use crate::symbolic::Symbolic;
 use crate::{Const, Ring};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
@@ -785,46 +784,6 @@ pub trait PlacementDaBitProvider<S: Session, ShapeT, O1, O2> {
         shape_player0: ShapeT,
         provider: &HostPlacement,
     ) -> (O1, O2);
-}
-
-impl<
-        S: Session,
-        ShapeT,
-        RingT: Placed<Placement = HostPlacement>,
-        BitT: Placed<Placement = HostPlacement>,
-    >
-    PlacementDaBitProvider<
-        S,
-        ShapeT,
-        Symbolic<AbstractAdditiveTensor<RingT>>,
-        Symbolic<AbstractAdditiveTensor<BitT>>,
-    > for AdditivePlacement
-where
-    AdditivePlacement: PlacementDaBitProvider<
-        S,
-        ShapeT,
-        AbstractAdditiveTensor<RingT>,
-        AbstractAdditiveTensor<BitT>,
-    >,
-    Symbolic<AbstractAdditiveTensor<RingT>>: Clone,
-    Symbolic<AbstractAdditiveTensor<BitT>>: Clone,
-
-    AbstractAdditiveTensor<RingT>: Into<Symbolic<AbstractAdditiveTensor<RingT>>>,
-    AbstractAdditiveTensor<BitT>: Into<Symbolic<AbstractAdditiveTensor<BitT>>>,
-{
-    fn gen_dabit(
-        &self,
-        sess: &S,
-        shape_provider: ShapeT,
-        shape_a: ShapeT,
-        provider: &HostPlacement,
-    ) -> (
-        Symbolic<AbstractAdditiveTensor<RingT>>,
-        Symbolic<AbstractAdditiveTensor<BitT>>,
-    ) {
-        let (a, b) = Self::gen_dabit(self, sess, shape_provider, shape_a, provider);
-        (a.into(), b.into())
-    }
 }
 
 impl<S: Session, ShapeT, RingT, BitT>
