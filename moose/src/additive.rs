@@ -647,6 +647,12 @@ where
         st!(AbstractAdditiveTensor<R>),
         st!(AbstractAdditiveTensor<R>),
     >,
+    AdditivePlacement: PlacementAdd<
+        S,
+        AbstractAdditiveTensor<R>,
+        AbstractAdditiveTensor<R>,
+        AbstractAdditiveTensor<R>,
+    >,
     AdditivePlacement:
         PlacementSub<S, R, st!(AbstractAdditiveTensor<R>), st!(AbstractAdditiveTensor<R>)>,
     AdditivePlacement:
@@ -695,11 +701,7 @@ where
             .try_into()
             .ok()
             .unwrap();
-        let masked: AbstractAdditiveTensor<R> = self
-            .add(sess, &x_positive.into(), &r.into())
-            .try_into()
-            .ok()
-            .unwrap();
+        let masked: AbstractAdditiveTensor<R> = self.add(sess, &x_positive, &r);
         let c = player_a.reveal(sess, &masked.into());
         let c_no_msb = player_a.shl(sess, 1, &c);
         // also called shifted
