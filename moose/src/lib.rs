@@ -2703,7 +2703,7 @@ macro_rules! modelled_kernel {
 
 
 
-    ($t:ident::$f:ident, $op:ident, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
+    ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
         concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
 
@@ -2727,8 +2727,8 @@ macro_rules! modelled_kernel {
                 }
             }
 
-            impl $t<crate::kernels::SyncSession, $t0, $t1, $u> for $plc {
-                fn $f(&self, sess: &crate::kernels::SyncSession, /*$($($attr_id:$attr_ty),*,)? TODO*/ x0: &$t0, x1: &$t1) -> $u {
+            impl $trait<crate::kernels::SyncSession, $t0, $t1, $u> for $plc {
+                fn $trait_fn(&self, sess: &crate::kernels::SyncSession, /*$($($attr_id:$attr_ty),*,)? TODO*/ x0: &$t0, x1: &$t1) -> $u {
                     use crate::computation::{KnownType, BinarySignature};
                     use crate::kernels::{Session, SyncSession};
                     use std::convert::TryInto;
@@ -2774,14 +2774,14 @@ macro_rules! modelled_kernel {
                 }
             }
 
-            impl $t<
+            impl $trait<
                 crate::kernels::AsyncSession,
                 $t0,
                 $t1,
                 $u
             > for $plc {
                 #[allow(unused_variables)]
-                fn $f(
+                fn $trait_fn(
                     &self,
                     sess: &crate::kernels::AsyncSession,
                     // $($($attr_id:$attr_ty),*,)? TODO
@@ -2795,15 +2795,15 @@ macro_rules! modelled_kernel {
 
         // support for SymbolicSession (based on flavour)
         $(
-            kernel!(__binary $flavour, $op, $plc, ($t0, $t1) -> $u => $($kp)+);
+            modelled_kernel!(__binary $flavour, $trait, $trait_fn, $op, $plc, ($t0, $t1) -> $u => $($kp)+);
 
-            impl $t<
+            impl $trait<
                 crate::symbolic::SymbolicSession,
                 <$t0 as crate::computation::SymbolicType>::Type,
                 <$t1 as crate::computation::SymbolicType>::Type,
                 <$u as crate::computation::SymbolicType>::Type
             > for $plc {
-                fn $f(
+                fn $trait_fn(
                     &self,
                     sess: &crate::symbolic::SymbolicSession,
                     // $($($attr_id:$attr_ty),*,)? TODO
@@ -2833,7 +2833,7 @@ macro_rules! modelled_kernel {
         )+
     };
 
-    (__binary hybrid, $op:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2922,7 +2922,7 @@ macro_rules! modelled_kernel {
         // }
     };
 
-    (__binary concrete, $op:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3003,7 +3003,7 @@ macro_rules! modelled_kernel {
         // }
     };
 
-    (__binary transparent, $op:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3058,7 +3058,7 @@ macro_rules! modelled_kernel {
         // }
     };
 
-    (__binary runtime, $op:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
