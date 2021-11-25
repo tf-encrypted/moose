@@ -2616,10 +2616,11 @@ def f(arg1):
             .unwrap();
 
         let result = run_unary_func(&x1, py_code);
-        let y1 = x1.mapv(f64::abs);
-        assert_eq!(
-            result,
-            Value::HostFloat64Tensor(Box::new(HostFloat64Tensor::from(y1)))
-        );
+
+        let unwrapped_result = match result {
+            Value::HostFloat64Tensor(t) => t,
+            _ => panic!("Unexpected result type. Expected HostFloat64Tensor"),
+        };
+        assert_eq!(unwrapped_result.0, x1.mapv(f64::abs));
     }
 }
