@@ -2494,7 +2494,7 @@ def f():
         let role_assignments = hashmap!(
             Role::from("x-owner") => own_identity.clone(),
             Role::from("y-owner") => own_identity.clone(),
-            Role::from("model-owner") => own_identity.clone(),
+            Role::from("model-owner") => own_identity,
         );
         let session = SyncSession::from_storage(
             SessionId::try_from("foobar").unwrap(),
