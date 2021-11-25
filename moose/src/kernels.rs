@@ -1830,21 +1830,6 @@ impl Compile<Kernel> for ShapeOp {
     }
 }
 
-// #[cfg(not(feature = "exclude_old_framework"))]
-// impl Compile<Kernel> for BitFillOp {
-//     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-//         match (&self.sig, self.value.clone()) {
-//             (signature![(_) -> Ty::HostBitTensor], Constant::Ring64(value)) => {
-//                 closure_kernel!(HostShape, |shape| {
-//                     assert!(value == 0 || value == 1);
-//                     HostBitTensor::fill(&shape.0, value as u8)
-//                 })
-//             }
-//             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-//         }
-//     }
-// }
-
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
