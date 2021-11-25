@@ -1024,16 +1024,6 @@ pub trait PlacementTruncPrProvider<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
 }
 
-pub trait PlacementDaBitProvider<S: Session, ShapeT, O1, O2> {
-    fn gen_dabit(
-        &self,
-        sess: &S,
-        shape_provider: ShapeT,
-        shape_a: ShapeT,
-        provider: &HostPlacement,
-    ) -> (O1, O2);
-}
-
 pub trait PlacementAbs<S: Session, T, O> {
     fn abs(&self, sess: &S, x: &T) -> O;
 }
