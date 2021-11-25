@@ -267,7 +267,7 @@ impl Session for SyncSession {
                 assert_eq!(operands.len(), 1);
                 let x = operands.get(0).unwrap();
                 self.networking.send(
-                    &x,
+                    x,
                     self.find_role_assignment(&op.receiver)?,
                     &op.rendezvous_key,
                     &self.session_id,
