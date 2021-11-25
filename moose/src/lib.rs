@@ -1135,6 +1135,34 @@ macro_rules! kernel {
         }
     };
 
+    (__nullary concrete, $op:ty, $plc:ty, () -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::NullaryKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc
+            ) -> crate::error::Result<
+                <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            {
+                use crate::symbolic::{Symbolic, SymbolicSession};
+
+                let k = derive_runtime_kernel![nullary, $($kp)+, self]?;
+
+                Ok(Box::new(move |
+                    sess: &SymbolicSession,
+                    plc: &$plc,
+                | {
+                    let y = k(sess, plc)?;
+                    Ok(Symbolic::Concrete(y))
+                }))
+            }
+        }
+    };
+
     (__nullary transparent, $op:ty, $plc:ty, () -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::NullaryKernel<
             crate::symbolic::SymbolicSession,
@@ -1313,7 +1341,6 @@ macro_rules! kernel {
                         Symbolic::Concrete(v0) => {
                             let y = k(sess, plc, v0)?;
                             Ok(Symbolic::Concrete(y))
-                            // Ok(y.into())
                         }
                         Symbolic::Symbolic(h0) => {
                             let op_name = sess.add_operation(op, &[&h0.op], &plc.clone().into());
@@ -1524,7 +1551,6 @@ macro_rules! kernel {
                         (Symbolic::Concrete(v0), Symbolic::Concrete(v1)) => {
                             let y = k(sess, plc, v0, v1)?;
                             Ok(Symbolic::Concrete(y))
-                            // Ok(y.into())
                         }
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
                             let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
@@ -1727,6 +1753,56 @@ macro_rules! kernel {
         }
     };
 
+    (__ternary concrete, $op:ty, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::TernaryKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$t2 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc,
+                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t2 as KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            {
+                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+
+                let op = self.clone();
+                Ok(Box::new(move |
+                    sess: &SymbolicSession,
+                    plc: &$plc,
+                    x0: <$t0 as KnownType<SymbolicSession>>::Type,
+                    x1: <$t1 as KnownType<SymbolicSession>>::Type,
+                    x2: <$t2 as KnownType<SymbolicSession>>::Type,
+                | {
+                    // TODO derive k outside box (using self instead of op)
+                    // Magic by Morten
+                    let op = &op;
+
+                    let k = derive_runtime_kernel![ternary, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
+
+                    match (x0, x1, x2) {
+                        (Symbolic::Concrete(v0), Symbolic::Concrete(v1), Symbolic::Concrete(v2)) => {
+                            let y = k(sess, plc, v0, v1, v2)?;
+                            Ok(Symbolic::Concrete(y))
+                        }
+                        (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
+                            let op_name = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                        }
+                        _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
+                    }
+                }))
+            }
+        }
+    };
+
     (__ternary runtime, $op:ty, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::TernaryKernel<
             crate::symbolic::SymbolicSession,
@@ -1875,6 +1951,60 @@ macro_rules! kernel {
                         // success; we can apply kernel
                         let y = k(sess, plc, kernel_vals)?;
                         Ok(y.into())
+                    } else {
+                        // operands did not match kernel so record in graph instead
+                        let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
+                        if handles.len() == xs.len() {
+                            // success; we can record in graph
+                            let op_name = sess.add_operation(op, &handles, &plc.clone().into());
+                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                        } else {
+                            Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
+                        }
+                    }
+                }))
+            }
+        }
+    };
+
+    (__variadic concrete, $op:ty, $plc:ty, vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
+        impl crate::kernels::VariadicKernel<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+        > for $op
+        {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
+                &crate::symbolic::SymbolicSession,
+                &$plc,
+                Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            {
+                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+
+                let op = self.clone();
+
+                Ok(Box::new(move |
+                    sess: &SymbolicSession,
+                    plc: &$plc,
+                    xs: Vec<<$ts as KnownType<SymbolicSession>>::Type>,
+                | {
+                    // TODO derive k outside box (using self instead of op)
+                    // Magic by Morten
+                    let op = &op;
+
+                    let k = derive_runtime_kernel![variadic, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
+
+                    // attempt to convert operands to match kernel
+                    let kernel_vals: Vec<_> = xs.iter().cloned().filter_map(|x| match x {
+                        Symbolic::Concrete(v) => Some(v),
+                        Symbolic::Symbolic(_) => None,
+                    }).collect();
+                    if kernel_vals.len() == xs.len() {
+                        // success; we can apply kernel
+                        let y = k(sess, plc, kernel_vals)?;
+                        Ok(Symbolic::Concrete(y))
                     } else {
                         // operands did not match kernel so record in graph instead
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();

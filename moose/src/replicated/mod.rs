@@ -355,7 +355,7 @@ modelled!(PlacementSetupGen::gen_setup, ReplicatedPlacement, () -> ReplicatedSet
 kernel! {
     RepSetupOp,
     [
-        (ReplicatedPlacement, () -> ReplicatedSetup => [hybrid] Self::kernel),
+        (ReplicatedPlacement, () -> ReplicatedSetup => [concrete] Self::kernel),
     ]
 }
 
@@ -400,15 +400,15 @@ modelled!(PlacementShare::share, ReplicatedPlacement, (HostAesKey) -> Replicated
 kernel! {
     RepShareOp,
     [
-        (ReplicatedPlacement, (HostFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::fixed_kernel),
-        (ReplicatedPlacement, (HostFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::fixed_kernel),
+        (ReplicatedPlacement, (HostFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::fixed_kernel),
+        (ReplicatedPlacement, (HostFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::fixed_kernel),
         (ReplicatedPlacement, (HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_kernel),
         (ReplicatedPlacement, (HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_kernel),
         (ReplicatedPlacement, (HostBitTensor) -> ReplicatedBitTensor => [hybrid] Self::ring_kernel),
-        (ReplicatedPlacement, (HostBitArray64) -> ReplicatedBitArray64 => [hybrid] Self::array_kernel),
-        (ReplicatedPlacement, (HostBitArray128) -> ReplicatedBitArray128 => [hybrid] Self::array_kernel),
-        (ReplicatedPlacement, (HostBitArray224) -> ReplicatedBitArray224 => [hybrid] Self::array_kernel),
-        (ReplicatedPlacement, (HostAesKey) -> ReplicatedAesKey => [hybrid] Self::aeskey_kernel),
+        (ReplicatedPlacement, (HostBitArray64) -> ReplicatedBitArray64 => [concrete] Self::array_kernel),
+        (ReplicatedPlacement, (HostBitArray128) -> ReplicatedBitArray128 => [concrete] Self::array_kernel),
+        (ReplicatedPlacement, (HostBitArray224) -> ReplicatedBitArray224 => [concrete] Self::array_kernel),
+        (ReplicatedPlacement, (HostAesKey) -> ReplicatedAesKey => [concrete] Self::aeskey_kernel),
     ]
 }
 
@@ -583,15 +583,15 @@ modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedAesKey) -> HostAesK
 kernel! {
     RepRevealOp,
     [
-        (HostPlacement, (ReplicatedFixed64Tensor) -> HostFixed64Tensor => [hybrid] Self::fixed_kernel),
-        (HostPlacement, (ReplicatedFixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::fixed_kernel),
+        (HostPlacement, (ReplicatedFixed64Tensor) -> HostFixed64Tensor => [concrete] Self::fixed_kernel),
+        (HostPlacement, (ReplicatedFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::fixed_kernel),
         (HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor => [hybrid] Self::ring_kernel),
         (HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor => [hybrid] Self::ring_kernel),
         (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => [hybrid] Self::ring_kernel),
-        (HostPlacement, (ReplicatedBitArray64) -> HostBitArray64 => [hybrid] Self::bit_array_kernel),
-        (HostPlacement, (ReplicatedBitArray128) -> HostBitArray128 => [hybrid] Self::bit_array_kernel),
-        (HostPlacement, (ReplicatedBitArray224) -> HostBitArray224 => [hybrid] Self::bit_array_kernel),
-        (HostPlacement, (ReplicatedAesKey) -> HostAesKey => [hybrid] Self::aeskey_kernel),
+        (HostPlacement, (ReplicatedBitArray64) -> HostBitArray64 => [concrete] Self::bit_array_kernel),
+        (HostPlacement, (ReplicatedBitArray128) -> HostBitArray128 => [concrete] Self::bit_array_kernel),
+        (HostPlacement, (ReplicatedBitArray224) -> HostBitArray224 => [concrete] Self::bit_array_kernel),
+        (HostPlacement, (ReplicatedAesKey) -> HostAesKey => [concrete] Self::aeskey_kernel),
     ]
 }
 
@@ -731,9 +731,9 @@ modelled!(PlacementNeg::neg, ReplicatedPlacement, (ReplicatedRing128Tensor) -> R
 kernel! {
     RepNegOp,
     [
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_bit_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::rep_bit_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_rep_kernel),
     ]
 }
 
@@ -811,19 +811,19 @@ modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedBitTensor, Mirrored
 kernel! {
     RepAddOp,
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_rep_kernel),
         (ReplicatedPlacement, (HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_rep_kernel),
         (ReplicatedPlacement, (HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::mir_rep_kernel),
-        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::mir_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_mir_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_mir_kernel),
-        (ReplicatedPlacement, (Mirrored3BitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::mir_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor, Mirrored3BitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (Mirrored3BitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, Mirrored3BitTensor) -> ReplicatedBitTensor => [concrete] Self::rep_mir_kernel),
     ]
 }
 
@@ -1043,17 +1043,17 @@ modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirr
 kernel! {
     RepSubOp,
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_rep_kernel),
         (ReplicatedPlacement, (HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_rep_kernel),
         (ReplicatedPlacement, (HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::mir_rep_kernel),
-        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::mir_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_mir_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_mir_kernel),
     ]
 }
 
@@ -1278,17 +1278,17 @@ modelled!(PlacementMul::mul, ReplicatedPlacement, (Mirrored3Ring64Tensor, Replic
 kernel! {
     RepMulOp,
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::rep_rep_kernel),
         (ReplicatedPlacement, (HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_rep_kernel),
         (ReplicatedPlacement, (HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_ring_kernel),
-        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::dst_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_dst_kernel),
-        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::dst_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_dst_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_mir_kernel),
     ]
 }
 
@@ -1402,7 +1402,7 @@ impl RepMulOp {
         })
     }
 
-    fn dst_rep_kernel<S: Session, RingT>(
+    fn mir_rep_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: MirTen<RingT>,
@@ -1435,7 +1435,7 @@ impl RepMulOp {
         })
     }
 
-    fn rep_dst_kernel<S: Session, RingT>(
+    fn rep_mir_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepTen<RingT>,
@@ -1479,8 +1479,8 @@ modelled!(PlacementDot::dot, ReplicatedPlacement, (ReplicatedRing128Tensor, Host
 kernel! {
     RepDotOp,
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_rep_kernel),
         (ReplicatedPlacement, (HostRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_rep_kernel),
         (ReplicatedPlacement, (HostRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_ring_kernel),
@@ -1611,8 +1611,8 @@ modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, ReplicatedPlacement, at
 kernel! {
     RepFixedpointMeanOp,
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] attributes[axis, scaling_base, scaling_exp] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] attributes[axis, scaling_base, scaling_exp] Self::kernel),
     ]
 }
 
@@ -1697,8 +1697,8 @@ modelled!(PlacementSum::sum, ReplicatedPlacement, attributes[axis: Option<u32>] 
 kernel! {
     RepSumOp,
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] attributes[axis] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] attributes[axis] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] attributes[axis] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] attributes[axis] Self::kernel),
     ]
 }
 
@@ -1787,8 +1787,8 @@ modelled!(PlacementAdtToRep::adt_to_rep, ReplicatedPlacement, (AdditiveRing128Te
 kernel! {
     AdtToRepOp,
     [
-        (ReplicatedPlacement, (AdditiveRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::kernel),
-        (ReplicatedPlacement, (AdditiveRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::kernel),
+        (ReplicatedPlacement, (AdditiveRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::kernel),
+        (ReplicatedPlacement, (AdditiveRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::kernel),
     ]
 }
 
@@ -1914,7 +1914,7 @@ modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] 
 kernel! {
     RepFillOp,
     [
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [concrete] custom |op| {
                 let value: u64 = match op.value {
                     Constant::Bit(v) => v as u64,
                     Constant::Ring64(v) => v,
@@ -1931,7 +1931,7 @@ kernel! {
                     Self::ring64_kernel(sess, rep, value, rep_shape)
                 }))
             }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring64Tensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring64Tensor => [concrete] custom |op| {
                 let value: u64 = match op.value {
                     Constant::Bit(v) => v as u64,
                     Constant::Ring64(v) => v,
@@ -1948,7 +1948,7 @@ kernel! {
                     Self::mir_ring64_kernel(sess, rep, value, rep_shape)
                 }))
             }),
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [concrete] custom |op| {
                 let value: u128 = match op.value {
                     Constant::Bit(v) => v as u128,
                     Constant::Ring64(v) => v as u128,
@@ -1964,7 +1964,7 @@ kernel! {
                     Self::ring128_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring128Tensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring128Tensor => [concrete] custom |op| {
                 let value: u128 = match op.value {
                     Constant::Bit(v) => v as u128,
                     Constant::Ring64(v) => v as u128,
@@ -1980,7 +1980,7 @@ kernel! {
                     Self::mir_ring128_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => [concrete] custom |op| {
                 let value: u8 = match op.value {
                     Constant::Bit(v) => v,
                     Constant::Ring64(v) => v as u8,
@@ -1995,7 +1995,7 @@ kernel! {
                     Self::rep_bit_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3BitTensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3BitTensor => [concrete] custom |op| {
                 let value: u8 = match op.value {
                     Constant::Bit(v) => v,
                     Constant::Ring64(v) => v as u8,
@@ -2195,20 +2195,20 @@ modelled!(PlacementShl::shl, ReplicatedPlacement, attributes[amount: usize] (Rep
 kernel! {
     RepShlOp,
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] attributes[amount] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] attributes[amount] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] attributes[amount] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] attributes[amount] Self::kernel),
     ]
 }
 
 impl RepShlOp {
-    fn kernel<S: Session, RingT>(
+    fn kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         amount: usize,
-        x: RepTen<RingT>,
-    ) -> Result<RepTen<RingT>>
+        x: RepTen<HostRingT>,
+    ) -> Result<RepTen<HostRingT>>
     where
-        HostPlacement: PlacementShl<S, RingT, RingT>,
+        HostPlacement: PlacementShl<S, HostRingT, HostRingT>,
     {
         let (player0, player1, player2) = plc.host_placements();
         let AbstractReplicatedRingTensor {
@@ -2236,22 +2236,22 @@ modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: 
 kernel! {
     RepIndexAxisOp,
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] attributes[axis, index] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] attributes[axis, index] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] attributes[axis, index] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] attributes[axis, index] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] attributes[axis, index] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] attributes[axis, index] Self::kernel),
     ]
 }
 
 impl RepIndexAxisOp {
-    fn kernel<S: Session, RingT>(
+    fn kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: usize,
         index: usize,
-        x: RepTen<RingT>,
-    ) -> Result<RepTen<RingT>>
+        x: RepTen<HostRingT>,
+    ) -> Result<RepTen<HostRingT>>
     where
-        HostPlacement: PlacementIndexAxis<S, RingT, RingT>,
+        HostPlacement: PlacementIndexAxis<S, HostRingT, HostRingT>,
     {
         let (player0, player1, player2) = plc.host_placements();
         let RepTen {
@@ -2317,9 +2317,9 @@ modelled!(PlacementDiag::diag, ReplicatedPlacement, (ReplicatedBitTensor) -> Rep
 kernel! {
     RepDiagOp,
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::kernel),
     ]
 }
 
@@ -2357,7 +2357,7 @@ modelled!(PlacementSlice::slice, ReplicatedPlacement, attributes[slice: SliceInf
 kernel! {
     RepSliceOp,
     [
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedShape => [hybrid] attributes[slice] Self::shape_kernel),
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedShape => [concrete] attributes[slice] Self::shape_kernel),
     ]
 }
 
@@ -2392,20 +2392,20 @@ modelled!(PlacementShlDim::shl_dim, ReplicatedPlacement, attributes[amount: usiz
 kernel! {
     RepShlDimOp,
     [
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] attributes[amount, bit_length] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] attributes[amount, bit_length] Self::kernel),
     ]
 }
 
 impl RepShlDimOp {
-    fn kernel<S: Session, HostBitTensorT>(
+    fn kernel<S: Session, HostBitT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         amount: usize,
         bit_length: usize,
-        x: RepTen<HostBitTensorT>,
-    ) -> Result<RepTen<HostBitTensorT>>
+        x: RepTen<HostBitT>,
+    ) -> Result<RepTen<HostBitT>>
     where
-        HostPlacement: PlacementShlDim<S, HostBitTensorT, HostBitTensorT>,
+        HostPlacement: PlacementShlDim<S, HostBitT, HostBitT>,
     {
         let (player0, player1, player2) = plc.host_placements();
         let RepTen {
@@ -2527,13 +2527,13 @@ impl ShapeOp {
         })
     }
 
-    pub fn rep_repfixed_kernel<S: Session, RepRingT, ShapeT>(
+    pub fn rep_repfixed_kernel<S: Session, RepRingT, RepShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<ShapeT>
+    ) -> Result<RepShapeT>
     where
-        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
+        ReplicatedPlacement: PlacementShape<S, RepRingT, RepShapeT>,
     {
         Ok(rep.shape(sess, &x.tensor))
     }
@@ -2609,7 +2609,15 @@ where
 }
 
 impl RingInjectOp {
-    pub(crate) fn rep_kernel<S: Session, HostBitT, HostRingT, HostShapeT, AdtRingT, AdtBitT, RepBitT>(
+    pub(crate) fn rep_kernel<
+        S: Session,
+        HostBitT,
+        HostRingT,
+        HostShapeT,
+        AdtRingT,
+        AdtBitT,
+        RepBitT,
+    >(
         sess: &S,
         rep: &ReplicatedPlacement,
         bit_idx: usize,
@@ -3168,28 +3176,28 @@ impl GreaterThanOp {
         Ok(rep.msb(sess, &z))
     }
 
-    pub(crate) fn rep_mir_kernel<S: Session, RepRingT, MirroredT>(
+    pub(crate) fn rep_mir_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
-        y: MirroredT,
+        y: MirRingT,
     ) -> Result<RepRingT>
     where
-        ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
     {
         let z = rep.sub(sess, &y, &x);
         Ok(rep.msb(sess, &z))
     }
 
-    pub(crate) fn mir_rep_kernel<S: Session, RepRingT, MirroredT>(
+    pub(crate) fn mir_rep_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: MirroredT,
+        x: MirRingT,
         y: RepRingT,
     ) -> Result<RepRingT>
     where
-        ReplicatedPlacement: PlacementSub<S, RepRingT, MirroredT, RepRingT>,
+        ReplicatedPlacement: PlacementSub<S, RepRingT, MirRingT, RepRingT>,
         ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
     {
         let z = rep.sub(sess, &y, &x);
