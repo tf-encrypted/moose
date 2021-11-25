@@ -1570,6 +1570,27 @@ impl GreaterThanOp {
     }
 }
 
+impl FillOp {
+    pub(crate) fn mir_fixed_kernel<S: Session, MirroredT, ShapeT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        value: Constant,
+        shape: ShapeT,
+        fractional_precision: u32,
+        integral_precision: u32,
+    ) -> Result<AbstractMirroredFixedTensor<MirroredT>>
+    where
+        ReplicatedPlacement: PlacementFill<S, ShapeT, MirroredT>,
+    {
+        let filled = plc.fill(sess, value, &shape);
+        Ok(AbstractMirroredFixedTensor {
+            tensor: filled,
+            integral_precision,
+            fractional_precision,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

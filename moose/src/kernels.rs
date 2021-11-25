@@ -3180,6 +3180,36 @@ kernel! {
                     Self::mir_bit_kernel(sess, rep, value, rep_shape)
                 }))
         }),
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Fixed64Tensor => [hybrid] custom |op| {
+                let (ring_value, fractional_precision, integral_precision) = match op.value {
+                    Constant::Fixed(FixedpointConstant{value, precision}) => {
+                        let ring_value: u64 = (value * ((1u64 << precision) as f64)) as u64;
+                        let fractional_precision = precision as u32;
+                        let integral_precision = value.log2().ceil() as u32;
+                        (ring_value, fractional_precision, integral_precision)
+                    },
+                    _ => return Err(Error::UnimplementedOperator(
+                        "FillOp  cannot convert from this type".to_string())),
+                };
+                Ok(Box::new(move |sess, rep, rep_shape| {
+                    Self::mir_fixed_kernel(sess, rep, Constant::Ring64(ring_value), rep_shape, fractional_precision, integral_precision)
+                }))
+        }),
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Fixed128Tensor => [hybrid] custom |op| {
+                let (ring_value, fractional_precision, integral_precision) = match op.value {
+                    Constant::Fixed(FixedpointConstant{value, precision}) => {
+                        let ring_value: u128 = (value * ((1u128 << precision) as f64)) as u128;
+                        let fractional_precision = precision as u32;
+                        let integral_precision = value.log2().ceil() as u32;
+                        (ring_value, fractional_precision, integral_precision)
+                    },
+                    _ => return Err(Error::UnimplementedOperator(
+                        "FillOp  cannot convert from this type".to_string())),
+                };
+                Ok(Box::new(move |sess, rep, rep_shape| {
+                    Self::mir_fixed_kernel(sess, rep, Constant::Ring128(ring_value), rep_shape, fractional_precision, integral_precision)
+                }))
+        }),
     ]
 }
 

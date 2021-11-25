@@ -62,7 +62,7 @@ where
 
 // impl<S: Session, TenT> ShapeFill<S, TenT> for ReplicatedPlacement
 // where
-//     TenT: Underlying+MirroredVersion,
+//     TenT: MirroredVersion,
 //     Self: PlacementShape<S, TenT, m!(ReplicatedShape)>,
 //     Self: PlacementFill<S, m!(ReplicatedShape), m!(c!(MirTen<TenT::TensorType>))>,
 
