@@ -232,14 +232,14 @@ modelled_kernel! {
 // }
 
 impl AdtAddOp {
-    fn adt_adt_kernel<S: Session, RingT>(
+    fn adt_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AbstractAdditiveTensor<RingT>,
-        y: AbstractAdditiveTensor<RingT>,
-    ) -> Result<AbstractAdditiveTensor<RingT>>
+        x: AbstractAdditiveTensor<HostRingT>,
+        y: AbstractAdditiveTensor<HostRingT>,
+    ) -> Result<AbstractAdditiveTensor<HostRingT>>
     where
-        HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
+        HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
     {
         let (player0, player1) = adt.host_placements();
 
@@ -252,16 +252,16 @@ impl AdtAddOp {
         Ok(AbstractAdditiveTensor { shares: [z0, z1] })
     }
 
-    fn adt_ring_kernel<S: Session, RingT>(
+    fn adt_ring_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AbstractAdditiveTensor<RingT>,
-        y: RingT,
-    ) -> Result<AbstractAdditiveTensor<RingT>>
+        x: AbstractAdditiveTensor<HostRingT>,
+        y: HostRingT,
+    ) -> Result<AbstractAdditiveTensor<HostRingT>>
     where
-        RingT: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
-        AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
+        HostRingT: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
+        AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<HostRingT>>,
     {
         let (player0, player1) = adt.host_placements();
         let y_plc = y.placement()?;
@@ -276,16 +276,16 @@ impl AdtAddOp {
         Ok(adt.place(sess, AbstractAdditiveTensor { shares }))
     }
 
-    fn ring_adt_kernel<S: Session, RingT>(
+    fn ring_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: RingT,
-        y: AbstractAdditiveTensor<RingT>,
-    ) -> Result<AbstractAdditiveTensor<RingT>>
+        x: HostRingT,
+        y: AbstractAdditiveTensor<HostRingT>,
+    ) -> Result<AbstractAdditiveTensor<HostRingT>>
     where
-        RingT: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
-        AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
+        HostRingT: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
+        AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<HostRingT>>,
     {
         let (player0, player1) = adt.host_placements();
         let x_plc = x.placement()?;
@@ -544,16 +544,16 @@ pub trait TruncMaskGen<S: Session, ShapeT, RingT> {
     );
 }
 
-impl<S: Session, R> TruncMaskGen<S, cs!(HostShape), R> for HostPlacement
+impl<S: Session, R> TruncMaskGen<S, m!(HostShape), R> for HostPlacement
 where
     PrfKey: KnownType<S>,
     HostShape: KnownType<S>,
     Seed: KnownType<S>,
     R: Ring + Clone,
-    HostPlacement: PlacementDeriveSeed<S, cs!(PrfKey), cs!(Seed)>,
-    HostPlacement: PlacementSampleUniform<S, cs!(HostShape), R>,
-    HostPlacement: PlacementSampleUniformSeeded<S, cs!(HostShape), cs!(Seed), R>,
-    HostPlacement: PlacementKeyGen<S, cs!(PrfKey)>,
+    HostPlacement: PlacementDeriveSeed<S, m!(PrfKey), m!(Seed)>,
+    HostPlacement: PlacementSampleUniform<S, m!(HostShape), R>,
+    HostPlacement: PlacementSampleUniformSeeded<S, m!(HostShape), m!(Seed), R>,
+    HostPlacement: PlacementKeyGen<S, m!(PrfKey)>,
     HostPlacement: PlacementSub<S, R, R, R>,
     HostPlacement: PlacementShr<S, R, R>,
     HostPlacement: PlacementShl<S, R, R>,
@@ -562,7 +562,7 @@ where
         &self,
         sess: &S,
         amount: usize,
-        shape: &cs!(HostShape), // TODO(Morten) take AdditiveShape instead?
+        shape: &m!(HostShape), // TODO(Morten) take AdditiveShape instead?
     ) -> (
         AbstractAdditiveTensor<R>,
         AbstractAdditiveTensor<R>,
@@ -631,10 +631,10 @@ where
     <AbstractReplicatedRingTensor<R> as CanonicalType>::Type: KnownType<S>,
     R: Ring,
     HostShape: KnownType<S>,
-    HostPlacement: TruncMaskGen<S, cs!(HostShape), R>,
+    HostPlacement: TruncMaskGen<S, m!(HostShape), R>,
     HostPlacement: PlacementReveal<S, st!(AbstractAdditiveTensor<R>), R>,
-    HostPlacement: PlacementOnes<S, cs!(HostShape), R>,
-    HostPlacement: PlacementShape<S, R, cs!(HostShape)>,
+    HostPlacement: PlacementOnes<S, m!(HostShape), R>,
+    HostPlacement: PlacementShape<S, R, m!(HostShape)>,
     HostPlacement: PlacementShl<S, R, R>,
     HostPlacement: PlacementShr<S, R, R>,
     AbstractAdditiveTensor<R>: Clone + Into<st!(AbstractAdditiveTensor<R>)>,
@@ -867,10 +867,10 @@ where
     RingT: Clone,
     Seed: KnownType<S>,
     PrfKey: KnownType<S>,
-    HostPlacement: PlacementKeyGen<S, cs!(PrfKey)>,
-    HostPlacement: PlacementDeriveSeed<S, cs!(PrfKey), cs!(Seed)>,
-    HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, cs!(Seed), BitT>,
-    HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, cs!(Seed), RingT>,
+    HostPlacement: PlacementKeyGen<S, m!(PrfKey)>,
+    HostPlacement: PlacementDeriveSeed<S, m!(PrfKey), m!(Seed)>,
+    HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, m!(Seed), BitT>,
+    HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, m!(Seed), RingT>,
     HostPlacement: PlacementSub<S, BitT, BitT, BitT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
     HostPlacement: PlacementRingInject<S, BitT, RingT>,
