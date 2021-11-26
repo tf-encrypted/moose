@@ -7,8 +7,8 @@ use crate::host::*;
 use crate::kernels::*;
 use crate::replicated::{
     AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor, Mirrored3Fixed128Tensor,
-    Mirrored3Fixed64Tensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
-    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape, ShapeFill, Underlying,
+    Mirrored3Fixed64Tensor, NewShapeFill, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
+    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
 };
 use crate::symbolic::Symbolic;
 use macros::with_context;
@@ -1389,33 +1389,18 @@ pub(crate) trait PolynomialEval<S: Session, RepFixedTensorT> {
     fn polynomial_eval(&self, sess: &S, coeffs: Vec<f64>, x: RepFixedTensorT) -> RepFixedTensorT;
 }
 
-impl<S: Session, RepRingT, RepFixedTensorT, MirroredRingT> PolynomialEval<S, RepFixedTensorT>
+impl<S: Session, RepFixedTensorT, MirFixedT> PolynomialEval<S, RepFixedTensorT>
     for ReplicatedPlacement
 where
-    RepFixedTensorT: Underlying<TensorType = RepRingT>,
     RepFixedTensorT: FixedpointTensor,
     RepFixedTensorT: Clone,
-    AbstractMirroredFixedTensor<MirroredRingT>: CanonicalType,
-    <AbstractMirroredFixedTensor<MirroredRingT> as CanonicalType>::Type: KnownType<S>,
 
-    AbstractMirroredFixedTensor<MirroredRingT>:
-        Into<m!(c!(AbstractMirroredFixedTensor<MirroredRingT>))>,
-    ReplicatedPlacement: PlacementMul<
-        S,
-        m!(c!(AbstractMirroredFixedTensor<MirroredRingT>)),
-        RepFixedTensorT,
-        RepFixedTensorT,
-    >,
+    ReplicatedPlacement: PlacementMul<S, MirFixedT, RepFixedTensorT, RepFixedTensorT>,
 
     ReplicatedPlacement: PlacementTruncPr<S, RepFixedTensorT, RepFixedTensorT>,
     ReplicatedPlacement: PlacementAddN<S, RepFixedTensorT, RepFixedTensorT>,
-    ReplicatedPlacement: PlacementAdd<
-        S,
-        RepFixedTensorT,
-        m!(c!(AbstractMirroredFixedTensor<MirroredRingT>)),
-        RepFixedTensorT,
-    >,
-    ReplicatedPlacement: ShapeFill<S, RepFixedTensorT, Result = MirroredRingT>,
+    ReplicatedPlacement: PlacementAdd<S, RepFixedTensorT, MirFixedT, RepFixedTensorT>,
+    ReplicatedPlacement: NewShapeFill<S, RepFixedTensorT, Result = MirFixedT>,
     ReplicatedPlacement: PrefixMul<S, RepFixedTensorT>,
 {
     fn polynomial_eval(&self, sess: &S, coeffs: Vec<f64>, x: RepFixedTensorT) -> RepFixedTensorT {
@@ -1438,15 +1423,7 @@ where
                     value: *coeff,
                     precision: x.fractional_precision() as usize,
                 });
-
-                let coeff_mir: MirroredRingT = self.shape_fill(sess, coeff_constant, &x);
-
-                AbstractMirroredFixedTensor {
-                    tensor: coeff_mir,
-                    fractional_precision: x.fractional_precision(),
-                    integral_precision: x.integral_precision(),
-                }
-                .into()
+                self.new_shape_fill(sess, coeff_constant, &x)
             })
             .collect();
 
@@ -1569,6 +1546,9 @@ impl GreaterThanOp {
         Ok(plc.greater_than(sess, &x.tensor, &y.tensor))
     }
 }
+
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed64Tensor, FillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed128Tensor, FillOp);
 
 impl FillOp {
     pub(crate) fn mir_fixed_kernel<S: Session, MirroredT, ShapeT>(

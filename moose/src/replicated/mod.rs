@@ -60,28 +60,37 @@ where
     }
 }
 
-// impl<S: Session, TenT> ShapeFill<S, TenT> for ReplicatedPlacement
-// where
-//     TenT: MirroredVersion,
-//     Self: PlacementShape<S, TenT, m!(ReplicatedShape)>,
-//     Self: PlacementFill<S, m!(ReplicatedShape), m!(c!(MirTen<TenT::TensorType>))>,
+pub trait NewShapeFill<S, TenT> {
+    type Result;
 
-//     ReplicatedShape: KnownType<S>,
-//     MirTen<TenT::TensorType>: CanonicalType,
-//     <MirTen<TenT::TensorType> as CanonicalType>::Type: KnownType<S>,
-// {
-//     type Result = MirroredVersion::TensorType;
+    fn new_shape_fill<C: Into<Constant>>(
+        &self,
+        sess: &S,
+        fill_value: C,
+        shape_from: &TenT,
+    ) -> Self::Result;
+}
 
-//     fn shape_fill<C: Into<Constant>>(
-//         &self,
-//         sess: &S,
-//         fill_value: C,
-//         shape_from: &TenT,
-//     ) -> Self::Result {
-//         let shape = self.shape(sess, shape_from);
-//         self.fill(sess, fill_value.into(), &shape)
-//     }
-// }
+impl<S: Session, TenT> NewShapeFill<S, TenT> for ReplicatedPlacement
+where
+    TenT: MirroredCounterpart,
+    Self: PlacementShape<S, TenT, m!(ReplicatedShape)>,
+    Self: PlacementFill<S, m!(ReplicatedShape), TenT::MirroredType>,
+
+    ReplicatedShape: KnownType<S>,
+{
+    type Result = TenT::MirroredType;
+
+    fn new_shape_fill<C: Into<Constant>>(
+        &self,
+        sess: &S,
+        fill_value: C,
+        shape_from: &TenT,
+    ) -> Self::Result {
+        let shape = self.shape(sess, shape_from);
+        self.fill(sess, fill_value.into(), &shape)
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedRingTensor<HostRingT> {
@@ -108,8 +117,16 @@ pub trait Underlying {
     type TensorType;
 }
 
+pub trait MirroredCounterpart {
+    type MirroredType;
+}
+
 impl<HostRingT> Underlying for AbstractReplicatedRingTensor<HostRingT> {
     type TensorType = HostRingT;
+}
+
+impl<HostRingT> MirroredCounterpart for AbstractReplicatedRingTensor<HostRingT> {
+    type MirroredType = Mirrored3RingTensor<HostRingT>;
 }
 
 impl<HostRingT> Underlying for Mirrored3RingTensor<HostRingT> {
@@ -118,6 +135,13 @@ impl<HostRingT> Underlying for Mirrored3RingTensor<HostRingT> {
 
 impl<T: Placed + Underlying> Underlying for Symbolic<T> {
     type TensorType = <T as Underlying>::TensorType;
+}
+
+impl<T: Placed + MirroredCounterpart> MirroredCounterpart for Symbolic<T>
+where
+    <T as MirroredCounterpart>::MirroredType: Placed,
+{
+    type MirroredType = Symbolic<<T as MirroredCounterpart>::MirroredType>;
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -285,6 +309,12 @@ pub struct AbstractMirroredFixedTensor<MirroredT> {
 
 impl<RepRingT: Underlying> Underlying for AbstractReplicatedFixedTensor<RepRingT> {
     type TensorType = RepRingT::TensorType;
+}
+
+impl<RepRingT: MirroredCounterpart> MirroredCounterpart
+    for AbstractReplicatedFixedTensor<RepRingT>
+{
+    type MirroredType = AbstractMirroredFixedTensor<RepRingT::MirroredType>;
 }
 
 moose_type!(Mirrored3Fixed64Tensor = AbstractMirroredFixedTensor<Mirrored3Ring64Tensor>);

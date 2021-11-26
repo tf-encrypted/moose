@@ -248,25 +248,16 @@ where
 }
 
 impl ExpOp {
-    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, MirRingT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, MirFixedT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepFixedT,
     ) -> Result<RepFixedT>
     where
-        ReplicatedShape: KnownType<S>,
         RepFixedT: FixedpointTensor,
-
-        AbstractMirroredFixedTensor<MirRingT>: CanonicalType,
-        <AbstractMirroredFixedTensor<MirRingT> as CanonicalType>::Type: KnownType<S>,
-        AbstractMirroredFixedTensor<MirRingT>: Into<m!(c!(AbstractMirroredFixedTensor<MirRingT>))>,
-
-        ReplicatedPlacement: PlacementShape<S, RepFixedT, cs!(ReplicatedShape)>,
-        ReplicatedPlacement: ShapeFill<S, RepFixedT, Result = MirRingT>,
-        ReplicatedPlacement:
-            PlacementMul<S, m!(c!(AbstractMirroredFixedTensor<MirRingT>)), RepFixedT, RepFixedT>,
+        ReplicatedPlacement: NewShapeFill<S, RepFixedT, Result = MirFixedT>,
+        ReplicatedPlacement: PlacementMul<S, MirFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepFixedT, RepFixedT>,
-
         ReplicatedPlacement: PlacementPow2<S, RepFixedT, RepFixedT>,
     {
         let log2e = Constant::Fixed(FixedpointConstant {
@@ -274,13 +265,7 @@ impl ExpOp {
             precision: x.fractional_precision() as usize,
         });
 
-        let log2e = AbstractMirroredFixedTensor {
-            tensor: rep.shape_fill(sess, log2e, &x),
-            integral_precision: x.integral_precision(),
-            fractional_precision: x.fractional_precision(),
-        }
-        .into();
-
+        let log2e = rep.new_shape_fill(sess, log2e, &x);
         let shifted_exponent = rep.mul(sess, &log2e, &x);
         let exponent = rep.trunc_pr(sess, x.fractional_precision(), &shifted_exponent);
         Ok(rep.pow2(sess, &exponent))
