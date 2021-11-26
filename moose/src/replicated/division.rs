@@ -14,7 +14,7 @@ impl FixedpointDivOp {
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, MirRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
-        ReplicatedPlacement: NewShapeFill<S, RepRingT, Result = MirRingT>,
+        ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirRingT>,
     {
         #![allow(clippy::many_single_char_names)]
 
@@ -46,7 +46,7 @@ impl FixedpointDivOp {
             value: 1.0,
             precision: 2 * frac_precision as usize,
         });
-        let rep_alpha = rep.new_shape_fill(sess, alpha, &x_st);
+        let rep_alpha = rep.shape_fill(sess, alpha, &x_st);
 
         let mut a = with_context!(rep, sess, rep_alpha - &rep.mul(sess, &y_st, &w));
         // max_bits(a) = max(2f, k)
@@ -81,12 +81,12 @@ impl<S: Session, RepRingT, MirRingT> SignFromMsb<S, RepRingT, RepRingT> for Repl
 where
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
-    ReplicatedPlacement: NewShapeFill<S, RepRingT, Result = MirRingT>,
+    ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirRingT>,
 {
     fn sign_from_msb(&self, sess: &S, msb_ring: &RepRingT) -> RepRingT {
         let rep = self;
         let double = rep.shl(sess, 1, msb_ring);
-        let ones = rep.new_shape_fill(sess, 1_u8, msb_ring);
+        let ones = rep.shape_fill(sess, 1_u8, msb_ring);
         rep.sub(sess, &ones, &double)
     }
 }
@@ -211,7 +211,7 @@ impl<S: Session, RepRingT, MirRingT> ApproximateReciprocal<S, RepRingT, RepRingT
     for ReplicatedPlacement
 where
     ReplicatedPlacement: DivNorm<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: NewShapeFill<S, RepRingT, Result = MirRingT>,
+    ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirRingT>,
     ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
@@ -230,7 +230,7 @@ where
         let (upshifted, signed_topmost) = rep.norm(sess, total_precision, x);
 
         // 2.9142 * 2^{total_precision}
-        let alpha = rep.new_shape_fill(
+        let alpha = rep.shape_fill(
             sess,
             Constant::Fixed(FixedpointConstant {
                 value: 2.9142,

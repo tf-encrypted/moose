@@ -255,17 +255,19 @@ impl ExpOp {
     ) -> Result<RepFixedT>
     where
         RepFixedT: FixedpointTensor,
-        ReplicatedPlacement: NewShapeFill<S, RepFixedT, Result = MirFixedT>,
+        ReplicatedPlacement: ShapeFill<S, RepFixedT, Result = MirFixedT>,
         ReplicatedPlacement: PlacementMul<S, MirFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementPow2<S, RepFixedT, RepFixedT>,
     {
-        let log2e = Constant::Fixed(FixedpointConstant {
-            value: 1.0_f64.exp().log2(),
-            precision: x.fractional_precision() as usize,
-        });
-
-        let log2e = rep.new_shape_fill(sess, log2e, &x);
+        let log2e = rep.shape_fill(
+            sess,
+            Constant::Fixed(FixedpointConstant {
+                value: 1.0_f64.exp().log2(),
+                precision: x.fractional_precision() as usize,
+            }),
+            &x,
+        );
         let shifted_exponent = rep.mul(sess, &log2e, &x);
         let exponent = rep.trunc_pr(sess, x.fractional_precision(), &shifted_exponent);
         Ok(rep.pow2(sess, &exponent))

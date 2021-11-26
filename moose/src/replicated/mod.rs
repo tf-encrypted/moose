@@ -39,40 +39,6 @@ pub trait ShapeFill<S, TenT> {
 
 impl<S: Session, TenT> ShapeFill<S, TenT> for ReplicatedPlacement
 where
-    TenT: Underlying,
-    Self: PlacementShape<S, TenT, m!(ReplicatedShape)>,
-    Self: PlacementFill<S, m!(ReplicatedShape), m!(c!(MirTen<TenT::TensorType>))>,
-
-    ReplicatedShape: KnownType<S>,
-    MirTen<TenT::TensorType>: CanonicalType,
-    <MirTen<TenT::TensorType> as CanonicalType>::Type: KnownType<S>,
-{
-    type Result = m!(c!(MirTen<TenT::TensorType>));
-
-    fn shape_fill<C: Into<Constant>>(
-        &self,
-        sess: &S,
-        fill_value: C,
-        shape_from: &TenT,
-    ) -> Self::Result {
-        let shape = self.shape(sess, shape_from);
-        self.fill(sess, fill_value.into(), &shape)
-    }
-}
-
-pub trait NewShapeFill<S, TenT> {
-    type Result;
-
-    fn new_shape_fill<C: Into<Constant>>(
-        &self,
-        sess: &S,
-        fill_value: C,
-        shape_from: &TenT,
-    ) -> Self::Result;
-}
-
-impl<S: Session, TenT> NewShapeFill<S, TenT> for ReplicatedPlacement
-where
     TenT: MirroredCounterpart,
     Self: PlacementShape<S, TenT, m!(ReplicatedShape)>,
     Self: PlacementFill<S, m!(ReplicatedShape), TenT::MirroredType>,
@@ -81,7 +47,7 @@ where
 {
     type Result = TenT::MirroredType;
 
-    fn new_shape_fill<C: Into<Constant>>(
+    fn shape_fill<C: Into<Constant>>(
         &self,
         sess: &S,
         fill_value: C,

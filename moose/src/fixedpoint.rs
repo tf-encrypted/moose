@@ -7,8 +7,8 @@ use crate::host::*;
 use crate::kernels::*;
 use crate::replicated::{
     AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor, Mirrored3Fixed128Tensor,
-    Mirrored3Fixed64Tensor, NewShapeFill, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
-    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
+    Mirrored3Fixed64Tensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
+    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape, ShapeFill,
 };
 use crate::symbolic::Symbolic;
 use macros::with_context;
@@ -1400,7 +1400,7 @@ where
     ReplicatedPlacement: PlacementTruncPr<S, RepFixedTensorT, RepFixedTensorT>,
     ReplicatedPlacement: PlacementAddN<S, RepFixedTensorT, RepFixedTensorT>,
     ReplicatedPlacement: PlacementAdd<S, RepFixedTensorT, MirFixedT, RepFixedTensorT>,
-    ReplicatedPlacement: NewShapeFill<S, RepFixedTensorT, Result = MirFixedT>,
+    ReplicatedPlacement: ShapeFill<S, RepFixedTensorT, Result = MirFixedT>,
     ReplicatedPlacement: PrefixMul<S, RepFixedTensorT>,
 {
     fn polynomial_eval(&self, sess: &S, coeffs: Vec<f64>, x: RepFixedTensorT) -> RepFixedTensorT {
@@ -1419,11 +1419,14 @@ where
         let coeffs_mir: Vec<_> = coeffs[0..degree + 1]
             .iter()
             .map(|coeff| {
-                let coeff_constant = Constant::Fixed(FixedpointConstant {
-                    value: *coeff,
-                    precision: x.fractional_precision() as usize,
-                });
-                self.new_shape_fill(sess, coeff_constant, &x)
+                self.shape_fill(
+                    sess,
+                    Constant::Fixed(FixedpointConstant {
+                        value: *coeff,
+                        precision: x.fractional_precision() as usize,
+                    }),
+                    &x,
+                )
             })
             .collect();
 
@@ -1431,7 +1434,7 @@ where
 
         let x_pre_mul = self.prefix_mul(sess, x_n);
 
-        // TODO [Yann] - this multiplication should be public/private instead
+        // TODO [Yann]
         // If x_pre_mul could be concatenated in one tensor, we could use a single
         // multiplication instead of doing a for loop.
         let x_mul_coeffs: Vec<RepFixedTensorT> = (0..x_pre_mul.len())
@@ -1465,7 +1468,6 @@ impl LessThanOp {
     where
         ReplicatedPlacement: PlacementLessThan<S, RepRingT, RepRingT, RepRingT>,
     {
-        // (Dragos) if fractional precision would be different than comparison would become a bit more difficult
         assert_eq!(x.fractional_precision, y.fractional_precision);
         Ok(plc.less_than(sess, &x.tensor, &y.tensor))
     }
