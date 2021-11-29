@@ -1247,8 +1247,8 @@ impl TryFrom<PyComputation> for Computation {
                     std_SliceOperation(op) => {
                         let typ = map_type(&op.output_type)?;
                         let plc = map_placement(&placements, &op.placement_name)?;
-                        match (&plc, typ) {
-                            (Placement::Replicated(_), Ty::HostShape) => {
+                        match &plc {
+                            Placement::Replicated(_) => {
                                 let typ = Ty::ReplicatedShape;
                                 Ok(Operation {
                                     kind: RepSliceOp {
@@ -1266,7 +1266,7 @@ impl TryFrom<PyComputation> for Computation {
                                     placement: plc,
                                 })
                             }
-                            (_, _) => Ok(Operation {
+                            _ => Ok(Operation {
                                 kind: SliceOp {
                                     sig: Signature::unary(typ, typ),
                                     slice: SliceInfo(vec![SliceInfoElem {
