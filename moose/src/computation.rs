@@ -11,7 +11,7 @@ use crate::replicated::*;
 use crate::symbolic::Symbolic;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
-use macros::ShortName;
+use macros::{AutoToTextual, ShortName};
 use paste::paste;
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::generichash;
@@ -1049,119 +1049,119 @@ pub trait HasShortName {
 
 // Top (logical) level ops:
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct IdentityOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct SendOp {
     pub sig: Signature,
     pub rendezvous_key: RendezvousKey,
     pub receiver: Role,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct ReceiveOp {
     pub sig: Signature,
     pub rendezvous_key: RendezvousKey,
     pub sender: Role,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct InputOp {
     pub sig: Signature,
     pub arg_name: String,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct OutputOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct LoadOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct CastOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct SaveOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct ConstantOp {
     pub sig: Signature,
     pub value: Constant, // TODO Box<Constant> or Box inside Constant?
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct AtLeast2DOp {
     pub sig: Signature,
     pub to_column_vector: bool,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct SliceOp {
     pub sig: Signature,
     pub slice: SliceInfo,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct OnesOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct ExpandDimsOp {
     pub sig: Signature,
     pub axis: Vec<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct ConcatOp {
     pub sig: Signature,
     pub axis: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct TransposeOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct InverseOp {
     pub sig: Signature,
 }
 
 // TODO(Morten) rename to LogicalAddOp?
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct AddOp {
     pub sig: Signature,
 }
 
 // TODO(Morten) rename to LogicalSubOp?
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct SubOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct MulOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct DivOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct DotOp {
     pub sig: Signature,
 }
@@ -1172,7 +1172,7 @@ pub struct MeanOp {
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct SigmoidOp {
     pub sig: Signature,
 }
@@ -1183,32 +1183,32 @@ pub struct SumOp {
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostAddOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostSubOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostMulOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostDivOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct SignOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostDotOp {
     pub sig: Signature,
 }
@@ -1219,29 +1219,29 @@ pub struct HostMeanOp {
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostSqrtOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostOnesOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostConcatOp {
     pub sig: Signature,
     pub axis: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostAtLeast2DOp {
     pub sig: Signature,
     pub to_column_vector: bool,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostExpandDimsOp {
     pub sig: Signature,
     pub axis: Vec<u32>,
@@ -1253,7 +1253,7 @@ pub struct HostSqueezeOp {
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostReshapeOp {
     pub sig: Signature,
 }
@@ -1264,111 +1264,111 @@ pub struct HostSumOp {
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostTransposeOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostInverseOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct ShapeOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostSliceOp {
     pub sig: Signature,
     pub slice: SliceInfo,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostDiagOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostIndexAxisOp {
     pub sig: Signature,
     pub axis: usize,
     pub index: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostShlDimOp {
     pub sig: Signature,
     pub amount: usize,
     pub bit_length: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostBitDecOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct BitFillOp {
     pub sig: Signature,
     pub value: Constant,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct BitToRingOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RingFillOp {
     pub sig: Signature,
     pub value: Constant,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct AdtFillOp {
     pub sig: Signature,
     pub value: Constant,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct PrimDeriveSeedOp {
     pub sig: Signature,
     pub sync_key: SyncKey,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct PrimPrfKeyGenOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct AesDecryptOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RingAddOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RingSubOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RingNegOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RingMulOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RingDotOp {
     pub sig: Signature,
 }
@@ -1399,114 +1399,114 @@ pub struct RingSampleSeededOp {
     pub max_value: Option<u64>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RingShlOp {
     pub sig: Signature,
     pub amount: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RingShrOp {
     pub sig: Signature,
     pub amount: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RingInjectOp {
     pub sig: Signature,
     pub bit_idx: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct BitExtractOp {
     pub sig: Signature,
     pub bit_idx: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct BitSampleOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct BitSampleSeededOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct BitXorOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct BitAndOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct BitNegOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct Pow2Op {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct ExpOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct LessThanOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct GreaterThanOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FixedpointEncodeOp {
     pub sig: Signature,
     pub fractional_precision: u32,
     pub integral_precision: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FixedpointDecodeOp {
     pub sig: Signature,
     pub fractional_precision: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FixedpointAddOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FixedpointSubOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FixedpointMulOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FixedpointDivOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FixedpointDotOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FixedpointTruncPrOp {
     pub sig: Signature,
     pub precision: u32, // TODO(Morten) rename to amount?
@@ -1524,65 +1524,65 @@ pub struct FixedpointSumOp {
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct NegOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FloatingpointAddOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FloatingpointSubOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FloatingpointMulOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FloatingpointDivOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FloatingpointDotOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FloatingpointAtLeast2DOp {
     pub sig: Signature,
     pub to_column_vector: bool,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FloatingpointOnesOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FloatingpointConcatOp {
     pub sig: Signature,
     pub axis: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FloatingpointExpandDimsOp {
     pub sig: Signature,
     pub axis: Vec<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FloatingpointTransposeOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct FloatingpointInverseOp {
     pub sig: Signature,
 }
@@ -1599,107 +1599,107 @@ pub struct FloatingpointSumOp {
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RingFixedpointEncodeOp {
     pub sig: Signature,
     pub scaling_base: u64,
     pub scaling_exp: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RingFixedpointDecodeOp {
     pub sig: Signature,
     pub scaling_base: u64,
     pub scaling_exp: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct AdtRevealOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct AdtAddOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct AdtSubOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct AdtMulOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct AdtShlOp {
     pub sig: Signature,
     pub amount: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct AdtToRepOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepAbsOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepMsbOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepSetupOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepShareOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepRevealOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepAddOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepSubOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepMulOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepDotOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepAndOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepXorOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepNegOp {
     pub sig: Signature,
 }
@@ -1712,7 +1712,7 @@ pub struct RepFixedpointMeanOp {
     pub scaling_exp: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct AddNOp {
     pub sig: Signature,
 }
@@ -1723,76 +1723,76 @@ pub struct RepSumOp {
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepTruncPrOp {
     pub sig: Signature,
     pub amount: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepToAdtOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepFillOp {
     pub sig: Signature,
     pub value: Constant,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepShlOp {
     pub sig: Signature,
     pub amount: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepShlDimOp {
     pub sig: Signature,
     pub amount: usize,
     pub bit_length: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepIndexAxisOp {
     pub sig: Signature,
     pub axis: usize,
     pub index: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct IndexOp {
     pub sig: Signature,
     pub index: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepDiagOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepSliceOp {
     pub sig: Signature,
     pub slice: SliceInfo,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepBitDecOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepBitComposeOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct RepEqualOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct IfElseOp {
     pub sig: Signature,
 }
