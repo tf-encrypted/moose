@@ -1,5 +1,7 @@
 //! Placements backed by replicated secret sharing
-use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor};
+use crate::additive::{
+    AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor, PlacementDaBitProvider,
+};
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
@@ -1760,12 +1762,12 @@ impl RepTruncPrOp {
         AdtTen<HostRingT>: CanonicalType,
         <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
 
-        RepTen<HostRingT>: TryInto<st!(RepTen<HostRingT>)>,
         RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
+        st!(AdtTen<HostRingT>): TryInto<AdtTen<HostRingT>>,
+        AdtTen<HostRingT>: Into<st!(AdtTen<HostRingT>)>,
 
         AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<HostRingT>), st!(AdtTen<HostRingT>)>,
-        AdditivePlacement:
-            PlacementTruncPrProvider<S, st!(AdtTen<HostRingT>), st!(AdtTen<HostRingT>)>,
+        AdditivePlacement: PlacementTruncPrProvider<S, AdtTen<HostRingT>, AdtTen<HostRingT>>,
         ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtTen<HostRingT>), st!(RepTen<HostRingT>)>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -1775,9 +1777,9 @@ impl RepTruncPrOp {
         };
         let provider = player2;
 
-        let x_adt = adt.rep_to_adt(sess, &xe.into());
+        let x_adt = adt.rep_to_adt(sess, &xe.into()).try_into().ok().unwrap();
         let y_adt = adt.trunc_pr(sess, amount as usize, &provider, &x_adt);
-        Ok(rep.adt_to_rep(sess, &y_adt))
+        Ok(rep.adt_to_rep(sess, &y_adt.into()))
     }
 }
 
@@ -2609,7 +2611,7 @@ where
 }
 
 impl RingInjectOp {
-    pub(crate) fn rep_kernel<S: Session, HostBitT, HostRingT, ShapeT, AdtRingT, AdtBitT, RepBitT>(
+    pub(crate) fn rep_kernel<S: Session, HostBitT, HostRingT, ShapeT, AdtRingT, AdtBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         bit_idx: usize,
@@ -2618,18 +2620,22 @@ impl RingInjectOp {
     where
         RepTen<HostRingT>: CanonicalType,
         <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-
         RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
         st!(RepTen<HostRingT>): TryInto<RepTen<HostRingT>>,
 
-        RepTen<HostBitT>: Into<RepBitT>,
+        RepTen<HostBitT>: CanonicalType,
+        <RepTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
+        RepTen<HostBitT>: Into<st!(RepTen<HostBitT>)>,
+
+        AdtTen<HostRingT>: Into<AdtRingT>,
+        AdtTen<HostBitT>: Into<AdtBitT>,
 
         HostPlacement: PlacementShape<S, HostBitT, ShapeT>,
         ReplicatedPlacement: PlacementAdtToRep<S, AdtRingT, st!(RepTen<HostRingT>)>,
         AdditivePlacement: PlacementFill<S, ShapeT, AdtRingT>,
         HostPlacement: PlacementFill<S, ShapeT, HostRingT>,
-        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtRingT, AdtBitT>,
-        AdditivePlacement: PlacementRepToAdt<S, RepBitT, AdtBitT>,
+        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtTen<HostRingT>, AdtTen<HostBitT>>,
+        AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<HostBitT>), AdtBitT>,
         AdditivePlacement: PlacementAdd<S, AdtBitT, AdtBitT, AdtBitT>,
         AdditivePlacement: PlacementAdd<S, AdtRingT, HostRingT, AdtRingT>,
         AdditivePlacement: PlacementMul<S, AdtRingT, HostRingT, AdtRingT>,
@@ -2649,16 +2655,18 @@ impl RingInjectOp {
             shares: [[x00, _x10], [_x11, _x21], [x22, _x02]],
         } = &x;
 
-        let s_provider = provider.shape(sess, x22);
-        let s0 = player0.shape(sess, x00);
+        let shape_provider = provider.shape(sess, x22);
+        let shape_player0 = player0.shape(sess, x00);
 
         // One could think to wrap this up into an additive shape for Hosts@(P0, P2)
         // but the additive placement that generates a dabit is Hosts@(P0, P1)
         // to avoid confusion the API corresponding gen_dabit takes two input shapes
-        // 1) s_provider - provider (dealer) shape
-        // 2) s_0 - shape that corresponds to the party expanding the seeds received from provider.
+        // 1) shape_provider - provider (dealer) shape
+        // 2) shape_player0 - shape that corresponds to the party expanding the seeds received from provider.
 
-        let (b_ring, b_bin) = adt.gen_dabit(sess, s_provider, s0, &provider);
+        let (b_ring, b_bin) = adt.gen_dabit(sess, shape_provider, shape_player0, &provider);
+        let b_ring = b_ring.into();
+        let b_bin = b_bin.into();
 
         let x_adt = adt.rep_to_adt(sess, &x.into());
 
@@ -3058,13 +3066,13 @@ impl ReplicatedPlacement {
 }
 
 impl SigmoidOp {
-    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, ShapeT, RepRingT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, ShapeT, RepRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepFixedT,
     ) -> Result<RepFixedT>
     where
-        ReplicatedShape: KnownType<S>,
+        RepRingT: Clone,
         RepFixedT: FixedpointTensor,
         AbstractReplicatedFixedTensor<RepRingT>: Into<RepFixedT>,
         ReplicatedPlacement: PlacementShape<S, RepFixedT, ShapeT>,
@@ -3073,6 +3081,9 @@ impl SigmoidOp {
         ReplicatedPlacement: PlacementDiv<S, RepFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementNeg<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementGreaterThan<S, RepFixedT, RepFixedT, RepBitT>,
+        ReplicatedPlacement: PlacementIfElse<S, RepRingT, RepFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
     {
         // TODO [Yann]: revisit once we support mixed arithmetic for division
         let ones = Constant::Fixed(FixedpointConstant {
@@ -3081,8 +3092,16 @@ impl SigmoidOp {
         });
 
         let ones_fill = rep.fill(sess, ones, &rep.shape(sess, &x));
+        let zeros_fill = rep.fill(sess, 0_u8.into(), &rep.shape(sess, &x));
+
         let ones_rep = AbstractReplicatedFixedTensor {
             tensor: ones_fill,
+            integral_precision: x.integral_precision(),
+            fractional_precision: x.fractional_precision(),
+        }
+        .into();
+        let zeros_rep = AbstractReplicatedFixedTensor {
+            tensor: zeros_fill,
             integral_precision: x.integral_precision(),
             fractional_precision: x.fractional_precision(),
         }
@@ -3091,106 +3110,129 @@ impl SigmoidOp {
         let denominator = rep.add(sess, &ones_rep, &rep.exp(sess, &rep.neg(sess, &x)));
         let output = rep.div(sess, &ones_rep, &denominator);
 
-        Ok(output)
+        // input sanitization
+        let max_val = Constant::Fixed(FixedpointConstant {
+            value: 2_f64.powf((x.integral_precision() - 1).into()).ln(),
+            precision: x.fractional_precision() as usize,
+        });
+        let max_val_fill = rep.fill(sess, max_val, &rep.shape(sess, &x));
+        let max_val_rep = AbstractReplicatedFixedTensor {
+            tensor: max_val_fill,
+            integral_precision: x.integral_precision(),
+            fractional_precision: x.fractional_precision(),
+        }
+        .into();
+
+        // compute upper bound
+        let upper = rep.greater_than(sess, &x, &max_val_rep); // x > max_val?
+        let upper_ring = rep.ring_inject(sess, 0, &upper);
+        let upper_wall = rep.if_else(sess, &upper_ring, &ones_rep, &output);
+
+        // compute lower bound
+        let lower = rep.greater_than(sess, &rep.neg(sess, &max_val_rep), &x); // -max_val > x?
+        let lower_ring = rep.ring_inject(sess, 0, &lower);
+        let res = rep.if_else(sess, &lower_ring, &zeros_rep, &upper_wall);
+
+        Ok(res)
     }
 }
 
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedBitTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedBitTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, LessThanOp);
 
 impl LessThanOp {
-    pub(crate) fn rep_kernel<S: Session, RepRingT>(
+    pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
         y: RepRingT,
-    ) -> Result<RepRingT>
+    ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepBitT>,
     {
         let z = rep.sub(sess, &x, &y);
         Ok(rep.msb(sess, &z))
     }
 
-    pub(crate) fn rep_mir_kernel<S: Session, RepRingT, MirroredT>(
+    pub(crate) fn rep_mir_kernel<S: Session, RepRingT, MirroredT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
         y: MirroredT,
-    ) -> Result<RepRingT>
+    ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementSub<S, RepRingT, MirroredT, RepRingT>,
-        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepBitT>,
     {
         let z = rep.sub(sess, &x, &y);
         Ok(rep.msb(sess, &z))
     }
 
-    pub(crate) fn mir_rep_kernel<S: Session, RepRingT, MirroredT>(
+    pub(crate) fn mir_rep_kernel<S: Session, RepRingT, MirroredT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: MirroredT,
         y: RepRingT,
-    ) -> Result<RepRingT>
+    ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepBitT>,
     {
         let z = rep.sub(sess, &x, &y);
         Ok(rep.msb(sess, &z))
     }
 }
 
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedBitTensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedBitTensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, GreaterThanOp);
 
 impl GreaterThanOp {
-    pub(crate) fn rep_kernel<S: Session, RepRingT>(
+    pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
         y: RepRingT,
-    ) -> Result<RepRingT>
+    ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepBitT>,
     {
         let z = rep.sub(sess, &y, &x);
         Ok(rep.msb(sess, &z))
     }
 
-    pub(crate) fn rep_mir_kernel<S: Session, RepRingT, MirroredT>(
+    pub(crate) fn rep_mir_kernel<S: Session, RepRingT, MirroredT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
         y: MirroredT,
-    ) -> Result<RepRingT>
+    ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepBitT>,
     {
         let z = rep.sub(sess, &y, &x);
         Ok(rep.msb(sess, &z))
     }
 
-    pub(crate) fn mir_rep_kernel<S: Session, RepRingT, MirroredT>(
+    pub(crate) fn mir_rep_kernel<S: Session, RepRingT, MirroredT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: MirroredT,
         y: RepRingT,
-    ) -> Result<RepRingT>
+    ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementSub<S, RepRingT, MirroredT, RepRingT>,
-        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepBitT>,
     {
         let z = rep.sub(sess, &y, &x);
         Ok(rep.msb(sess, &z))
@@ -3639,7 +3681,8 @@ mod tests {
                 let x_shared = rep.share(&sess, &x);
                 let y_shared = rep.share(&sess, &y);
 
-                let sum = rep.$test_func(&sess, &x_shared, &y_shared);
+                let sum: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
+                    rep.$test_func(&sess, &x_shared, &y_shared);
                 let opened_product = alice.reveal(&sess, &sum);
                 assert_eq!(
                     opened_product,
@@ -4350,8 +4393,37 @@ mod tests {
         test_rep_prefix_and(x, y_target);
     }
 
-    rep_binary_func_test!(test_rep_lt64, less_than<u64>);
-    rep_binary_func_test!(test_rep_lt128, less_than<u128>);
+    macro_rules! rep_binary_func_test_bit {
+        ($func_name:ident, $test_func: ident<$tt: ty>) => {
+            fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<u8>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+                let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
+
+                let sess = SyncSession::default();
+
+                let x_shared = rep.share(&sess, &x);
+                let y_shared = rep.share(&sess, &y);
+
+                let sum: AbstractReplicatedRingTensor<HostBitTensor> =
+                    rep.$test_func(&sess, &x_shared, &y_shared);
+                let opened_product = alice.reveal(&sess, &sum);
+                assert_eq!(
+                    opened_product,
+                    HostBitTensor::from_raw_plc(zs, alice.clone())
+                );
+            }
+        };
+    }
+
+    rep_binary_func_test_bit!(test_rep_lt64, less_than<u64>);
+    rep_binary_func_test_bit!(test_rep_lt128, less_than<u128>);
 
     #[test]
     fn test_rep_lt_64() {
@@ -4383,8 +4455,8 @@ mod tests {
         test_rep_lt128(x, y, target);
     }
 
-    rep_binary_func_test!(test_rep_gt64, greater_than<u64>);
-    rep_binary_func_test!(test_rep_gt128, greater_than<u128>);
+    rep_binary_func_test_bit!(test_rep_gt64, greater_than<u64>);
+    rep_binary_func_test_bit!(test_rep_gt128, greater_than<u128>);
 
     #[test]
     fn test_rep_gt_64() {

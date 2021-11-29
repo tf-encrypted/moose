@@ -1422,7 +1422,7 @@ impl ToTextual for Operator {
             RepSlice(op) => op.to_textual(),
             RepShlDim(op) => op.to_textual(),
             RepEqual(op) => op.to_textual(),
-            RepIfElse(op) => op.to_textual(),
+            IfElse(op) => op.to_textual(),
             Neg(op) => op.to_textual(),
             Pow2(op) => op.to_textual(),
             Exp(op) => op.to_textual(),
@@ -1620,7 +1620,7 @@ impl_to_textual!(RepDiagOp, "{op}: {}", sig);
 impl_to_textual!(RepBitDecOp, "{op}: {}", sig);
 impl_to_textual!(RepBitComposeOp, "{op}: {}", sig);
 impl_to_textual!(RepEqualOp, "{op}: {}", sig);
-impl_to_textual!(RepIfElseOp, "{op}: {}", sig);
+impl_to_textual!(IfElseOp, "{op}: {}", sig);
 impl_to_textual!(RepSliceOp, "{op}{{slice}}: {} {}", sig, slice);
 impl_to_textual!(RepShlDimOp, "{op}: {} {} {}", sig, amount, bit_length);
 

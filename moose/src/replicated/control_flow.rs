@@ -1,21 +1,13 @@
-use crate::computation::{KnownType, Placed, RepIfElseOp, ReplicatedPlacement};
+use crate::computation::{IfElseOp, ReplicatedPlacement};
 use crate::error::Result;
 use crate::kernels::*;
 use crate::replicated::{ReplicatedRing128Tensor, ReplicatedRing64Tensor};
 
-modelled!(PlacementIfElse::if_else, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepIfElseOp);
-modelled!(PlacementIfElse::if_else, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepIfElseOp);
+modelled!(PlacementIfElse::if_else, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, IfElseOp);
+modelled!(PlacementIfElse::if_else, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, IfElseOp);
 
-kernel! {
-    RepIfElseOp,
-    [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor  => [transparent] Self::rep_kernel),
-    ]
-}
-
-impl RepIfElseOp {
-    fn rep_kernel<S: Session, RepRingT>(
+impl IfElseOp {
+    pub(crate) fn rep_kernel<S: Session, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         s: RepRingT,

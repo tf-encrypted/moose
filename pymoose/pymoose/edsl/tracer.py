@@ -25,6 +25,7 @@ from pymoose.computation.standard import OutputOperation
 from pymoose.computation.standard import ReshapeOperation
 from pymoose.computation.standard import SaveOperation
 from pymoose.computation.standard import ShapeOperation
+from pymoose.computation.standard import SigmoidOperation
 from pymoose.computation.standard import SliceOperation
 from pymoose.computation.standard import SqueezeOperation
 from pymoose.computation.standard import SubOperation
@@ -52,6 +53,7 @@ from pymoose.edsl.base import ReplicatedPlacementExpression
 from pymoose.edsl.base import ReshapeExpression
 from pymoose.edsl.base import SaveExpression
 from pymoose.edsl.base import ShapeExpression
+from pymoose.edsl.base import SigmoidExpression
 from pymoose.edsl.base import SliceExpression
 from pymoose.edsl.base import SqueezeExpression
 from pymoose.edsl.base import SumExpression
@@ -308,6 +310,20 @@ class AstTracer:
             ExpOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("exp"),
+                output_type=exp_expression.vtype,
+                inputs={"x": x_operation.name},
+            )
+        )
+
+    def visit_SigmoidExpression(self, exp_expression):
+        assert isinstance(exp_expression, SigmoidExpression)
+        (x_expression,) = exp_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(exp_expression.placement)
+        return self.computation.add_operation(
+            SigmoidOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("sigmoid"),
                 output_type=exp_expression.vtype,
                 inputs={"x": x_operation.name},
             )

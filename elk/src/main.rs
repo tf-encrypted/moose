@@ -30,8 +30,6 @@ fn main() -> anyhow::Result<()> {
     let comp = verbose_parse_computation(&source)?;
     let passes = into_pass(&opt.passes.unwrap_or_else(all_passes))?;
     let comp = compile_passes(&comp, &passes)?;
-    // After all the passes are done, ensure the computation is a DAG and sort it.
-    let comp = comp.toposort()?;
     match opt.output {
         Some(path) => write(path, comp.to_textual())?,
         None => println!("{}", comp.to_textual()),
