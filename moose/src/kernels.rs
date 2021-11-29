@@ -287,6 +287,7 @@ impl Session for SyncSession {
             )?,
             HostReshape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            IndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Slice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Ones(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             ExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

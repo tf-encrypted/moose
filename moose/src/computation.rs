@@ -915,6 +915,7 @@ operators![
     PrimPrfKeyGen,
     AesDecrypt,
     AtLeast2D,
+    IndexAxis,
     Slice,
     Ones,
     ExpandDims,
@@ -1104,6 +1105,13 @@ pub struct ConstantOp {
 pub struct AtLeast2DOp {
     pub sig: Signature,
     pub to_column_vector: bool,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct IndexAxisOp {
+    pub sig: Signature,
+    pub index: usize,
+    pub axis: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

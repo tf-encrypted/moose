@@ -1305,6 +1305,7 @@ impl ToTextual for Operator {
             Constant(op) => op.to_textual(),
             Shape(op) => op.to_textual(),
             AtLeast2D(op) => op.to_textual(),
+            IndexAxis(op) => op.to_textual(),
             Slice(op) => op.to_textual(),
             Ones(op) => op.to_textual(),
             ExpandDims(op) => op.to_textual(),
@@ -1475,6 +1476,13 @@ impl_to_textual!(
     sig
 );
 
+impl_to_textual!(
+    IndexAxisOp,
+    "{op}{{axis={}, index={}}}: {}",
+    axis,
+    index,
+    sig
+);
 impl_to_textual!(SliceOp, "{op}{{slice={}}}: {} {}", slice, sig);
 impl_to_textual!(OnesOp, "{op}: {}", sig);
 impl_to_textual!(ExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);

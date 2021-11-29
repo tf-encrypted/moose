@@ -1339,6 +1339,61 @@ impl ExpOp {
     }
 }
 
+modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis:usize, index: usize] (Fixed64Tensor) -> Fixed64Tensor, IndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis:usize, index: usize] (Fixed128Tensor) -> Fixed128Tensor, IndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, IndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, IndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis:usize, index: usize] (crate::logical::Tensor) -> crate::logical::Tensor, IndexAxisOp);
+
+kernel! {
+    IndexAxisOp,
+    [
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis, index] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis, index] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] attributes[axis, index] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] attributes[axis, index] Self::repfixed_kernel),
+        (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] attributes[axis, index] Self::logical_kernel),
+    ]
+}
+
+impl IndexAxisOp {
+    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: usize,
+        index: usize,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementIndexAxis<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => unimplemented!(),
+            FixedTensor::Replicated(v) => v,
+        };
+        let z = plc.index_axis(sess, axis, index, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+
+    fn repfixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: usize,
+        index: usize,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementIndexAxis<S, RepRingT, RepRingT>,
+    {
+        let y = plc.index_axis(sess, axis, index, &x.tensor);
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: y,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+}
+
 modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor, SigmoidOp);
 modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor, SigmoidOp);
 modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, SigmoidOp);

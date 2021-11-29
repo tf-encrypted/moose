@@ -967,6 +967,45 @@ impl ExpandDimsOp {
     }
 }
 
+// modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement,attributes[axis:usize, index: usize] (Tensor) -> Tensor, IndexAxisOp);
+
+// kernel! {
+//     IndexAxisOp,
+//     [
+//         (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] attributes[axis, index] Self::logical_kernel),
+//     ]
+// }
+
+impl IndexAxisOp {
+    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: usize,
+        index: usize,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+    where
+        ReplicatedPlacement: PlacementIndexAxis<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementIndexAxis<S, Fixed128T, Fixed128T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = plc.index_axis(sess, axis, index, &x);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = plc.index_axis(sess, axis, index, &x);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated sigmoid for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+}
+
 modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
 
 kernel! {
