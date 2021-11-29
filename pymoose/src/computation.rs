@@ -1248,8 +1248,8 @@ impl TryFrom<PyComputation> for Computation {
                         let typ = map_type(&op.output_type)?;
                         let plc = map_placement(&placements, &op.placement_name)?;
                         match &plc {
-                            // TODO [kyle] Should all shape ops (HostShapeOp, RepShapeOp, ShapeOp)
-                            // be unified under the common ShapeOp?
+                            // TODO [kyle] Should all shape ops (HostSliceOp, RepSliceOp, SliceOp)
+                            // be unified under the common SliceOp?
                             Placement::Replicated(_) => {
                                 let typ = Ty::ReplicatedShape;
                                 Ok(Operation {
