@@ -37,6 +37,7 @@ enum PyOperation {
     std_SubOperation(PySubOperation),
     std_MulOperation(PyMulOperation),
     std_DotOperation(PyDotOperation),
+    std_LessOperation(PyLessOperation),
     std_AtLeast2DOperation(PyAtLeast2DOperation),
     std_ShapeOperation(PyShapeOperation),
     std_SliceOperation(PySliceOperation),
@@ -331,6 +332,14 @@ struct PyMulOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyDotOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyLessOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -1197,6 +1206,21 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_DotOperation(op) => Ok(Operation {
                         kind: DotOp {
+                            // we can use output type type to determine input type
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_LessOperation(op) => Ok(Operation {
+                        kind: LessThanOp {
                             // we can use output type type to determine input type
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,

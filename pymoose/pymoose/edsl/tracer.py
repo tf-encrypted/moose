@@ -17,6 +17,7 @@ from pymoose.computation.standard import ExpandDimsOperation
 from pymoose.computation.standard import ExpOperation
 from pymoose.computation.standard import InputOperation
 from pymoose.computation.standard import InverseOperation
+from pymoose.computation.standard import LessOperation
 from pymoose.computation.standard import LoadOperation
 from pymoose.computation.standard import MeanOperation
 from pymoose.computation.standard import MulOperation
@@ -229,6 +230,7 @@ class AstTracer:
             "mul": MulOperation,
             "div": DivOperation,
             "dot": DotOperation,
+            "less": LessOperation,
         }[op_name]
         # TODO(Morten) we should derive a type from lhs_operation and rhs_operation
         assert lhs_operation.output_type == rhs_operation.output_type, (

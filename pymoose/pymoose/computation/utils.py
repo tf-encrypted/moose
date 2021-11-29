@@ -94,6 +94,7 @@ SUPPORTED_TYPES = [
     std_dialect.IntConstant,
     std_dialect.IntType,
     std_dialect.InverseOperation,
+    std_dialect.LessOperation,
     std_dialect.LoadOperation,
     std_dialect.MeanOperation,
     std_dialect.MulOperation,

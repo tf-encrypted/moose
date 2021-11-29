@@ -29,6 +29,7 @@ _NUMPY_DTYPES_MAP = {
     np.int64: dtypes.int64,
     np.float32: dtypes.float32,
     np.float64: dtypes.float64,
+    np.bool_: dtypes.bool8,
 }
 
 
@@ -395,6 +396,18 @@ def div(lhs, rhs, placement=None):
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "div")
     return BinaryOpExpression(
         op_name="div", placement=placement, inputs=[lhs, rhs], vtype=vtype
+    )
+
+
+def less(lhs, rhs, placement=None):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
+    return BinaryOpExpression(
+        op_name="less",
+        placement=placement,
+        inputs=[lhs, rhs],
+        vtype=TensorType(dtype=dtypes.bool8),
     )
 
 
