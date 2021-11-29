@@ -1,3 +1,4 @@
+use crate::error::{Error, Result};
 // Returns the context-specific type for the given basic type.
 macro_rules! cs {
     ($canonical_type:ty) => {
@@ -1905,6 +1906,7 @@ macro_rules! modelled {
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? () -> $u:ty, $op:ident) => {
         // This automagically satisfy a trait for each of the kernels using this macro, regardless of input 
         // parameters. https://doc.rust-lang.org/reference/macros-by-example.html
+        // implements templated traits in kernels.
         impl crate::kernels::NullaryKernelCheck<crate::kernels::SyncSession, $plc, $u> for $op {}
 
         impl $t<crate::kernels::SyncSession, $u> for $plc {
@@ -2136,6 +2138,11 @@ macro_rules! modelled {
             <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
             <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
             <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+            // ^^^^^^
+            // |                                                                            |
+            // |                                                                            expected enum `std::result::Result`, found enum `AbstractTensor`
+            // |                                                                            help: change the output type to match the trait: `std::result::Result<AbstractTensor<FixedTensor<host::AbstractHostFixedTensor<host::AbstractHostRingTensor<u64>>, replicated::AbstractReplicatedFixedTensor<replicated::AbstractReplicatedRingTensor<host::AbstractHostRingTensor<u64>>>>, FixedTensor<host::AbstractHostFixedTensor<host::AbstractHostRingTensor<u128>>, replicated::AbstractReplicatedFixedTensor<replicated::AbstractReplicatedRingTensor<host::AbstractHostRingTensor<u128>>>>, FloatTensor<HostTensor<f32>>, FloatTensor<HostTensor<f64>>>, error::Error>`
+        
         > for $plc {
             fn $f(
                 &self,
@@ -2143,7 +2150,7 @@ macro_rules! modelled {
                 $($($attr_id:$attr_ty),*,)?
                 x0: &<$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
                 x1: &<$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type {
+            ) -> Ok(<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type) {
                 use crate::computation::{KnownType, BinarySignature};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession};

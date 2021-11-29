@@ -781,6 +781,7 @@ pub trait DispatchKernel<S: Session> {
 
 pub trait NullaryKernel<S: Session, P, Y> {
     #[allow(clippy::type_complexity)] // TODO
+    // For this, what is send? 
     fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P) -> Result<Y> + Send>>;
 }
 
@@ -843,11 +844,11 @@ pub trait PlacementShape<S: Session, T, ShapeT> {
 }
 
 pub trait PlacementReshape<S: Session, T, ShapeT, O> {
-    fn reshape(&self, sess: &S, x: &T, shape: &ShapeT) -> O;
+    fn reshape(&self, sess: &S, x: &T, shape: &ShapeT) -> Result<O>;
 }
 
 pub trait PlacementDecrypt<S: Session, KeyT, C, O> {
-    fn decrypt(&self, sess: &S, key: &KeyT, ciphertext: &C) -> O;
+    fn decrypt(&self, sess: &S, key: &KeyT, ciphertext: &C) -> Result<O>;
 }
 
 pub trait PlacementKeyGen<S: Session, KeyT> {
