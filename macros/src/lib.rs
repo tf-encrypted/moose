@@ -1,4 +1,5 @@
 extern crate proc_macro;
+use bae::FromAttributes;
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::parse::{Parse, ParseStream, Result};
@@ -192,6 +193,46 @@ pub fn to_textual_derive(input: TokenStream) -> TokenStream {
         impl crate::textual::ToTextual for #name {
             fn to_textual(&self) -> String {
                 #formatter
+            }
+        }
+    };
+    gen.into()
+}
+
+#[derive(Debug, Eq, PartialEq, FromAttributes)]
+struct OperationDetails {
+    arity: Expr,
+}
+
+#[proc_macro_derive(AutoFromTextual, attributes(operation_details))]
+pub fn from_textual_derive(input: TokenStream) -> TokenStream {
+    let item_struct = syn::parse::<syn::ItemStruct>(input).unwrap();
+    let details = OperationDetails::from_attributes(&item_struct.attrs).unwrap();
+
+    let name = &item_struct.ident;
+    let arity = &details.arity;
+    // Note, we only need to truncate the name by the charaters to get rid of the `Op` suffix.
+    // If we refactor to not have that suffix anymore we can just use `stringify!(#name)` inside `quote!` below.
+    let mut ident_string = name.to_string();
+    if ident_string.ends_with("Op") {
+        ident_string.truncate(ident_string.len() - 2);
+    }
+
+    let gen = quote! {
+        use nom::IResult;
+        use nom::error::{ContextError, ParseError};
+        use nom::sequence::preceded;
+        use nom::bytes::complete::tag;
+        use nom::combinator::cut;
+        impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> crate::textual::FromTextual<'a, E> for #name {
+            fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
+                let parser = |input: &'a str| {
+                    let (input, sig) = crate::textual::operator_signature(#arity)(input)?;
+                    Ok((input, #name {
+                        sig,
+                    }.into()))
+                };
+                preceded(tag(#ident_string), cut(parser))(input)
             }
         }
     };

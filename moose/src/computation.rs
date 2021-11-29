@@ -11,7 +11,7 @@ use crate::replicated::*;
 use crate::symbolic::Symbolic;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
-use macros::{AutoToTextual, ShortName};
+use macros::{AutoFromTextual, AutoToTextual, ShortName};
 use paste::paste;
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::generichash;
@@ -1049,7 +1049,10 @@ pub trait HasShortName {
 
 // Top (logical) level ops:
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
+#[derive(
+    Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
+)]
+#[operation_details(arity = 1)]
 pub struct IdentityOp {
     pub sig: Signature,
 }

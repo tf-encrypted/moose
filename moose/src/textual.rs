@@ -236,6 +236,10 @@ macro_rules! operation_on_axis {
     };
 }
 
+pub trait FromTextual<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> {
+    fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E>;
+}
+
 /// Parses operator - maps names to structs.
 fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
@@ -245,7 +249,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     // We get around this by nesting calls of `alt`, as recommended by the function docs:
     // https://docs.rs/nom/7.0.0/nom/branch/fn.alt.html
     let part1 = alt((
-        preceded(tag(IdentityOp::SHORT_NAME), cut(unary!(IdentityOp))),
+        IdentityOp::from_textual,
         preceded(tag(LoadOp::SHORT_NAME), cut(unary!(LoadOp))),
         preceded(tag(SendOp::SHORT_NAME), cut(send_operator)),
         preceded(tag(ReceiveOp::SHORT_NAME), cut(receive_operator)),
@@ -767,7 +771,7 @@ where
 /// `: ([Float32Tensor]) -> Float32Tensor`
 ///
 /// * `arg_count` - the number of required arguments
-fn operator_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+pub fn operator_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     arg_count: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Signature, E> {
     preceded(

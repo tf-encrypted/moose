@@ -11,6 +11,7 @@ proc-macro = true
 proc-macro2 = "~1.0"
 quote = "~1.0"
 syn = { version = "~1.0", features = ["full", "visit-mut"] }
+bae = "0.1.6"
 
 [dev-dependencies]
 trybuild = "~1.0"
