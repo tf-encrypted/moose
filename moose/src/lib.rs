@@ -1892,11 +1892,19 @@ macro_rules! kernel {
     };
 }
 
+// why is this not exported? what's the difference between different macro rules modelled? 
+// Should macro_rules! be updated to be macro 2.0 instead? https://github.com/rust-lang/rust/issues/39412 -> guess not ready
 macro_rules! modelled {
     /*
     Nullary
     */
+    // what are these indents? do they refer to the compiler indentation? -> macro rules
+    // so what are we matching in this branch? 
+    // ident -> identifyer, 
+    // modelled!(PlacementReshape::reshape, HostPlacement, (HostRing64Tensor, HostShape) -> HostRing64Tensor, HostReshapeOp);
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? () -> $u:ty, $op:ident) => {
+        // This automagically satisfy a trait for each of the kernels using this macro, regardless of input 
+        // parameters. https://doc.rust-lang.org/reference/macros-by-example.html
         impl crate::kernels::NullaryKernelCheck<crate::kernels::SyncSession, $plc, $u> for $op {}
 
         impl $t<crate::kernels::SyncSession, $u> for $plc {
