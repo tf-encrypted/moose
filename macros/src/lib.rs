@@ -218,18 +218,44 @@ pub fn from_textual_derive(input: TokenStream) -> TokenStream {
         ident_string.truncate(ident_string.len() - 2);
     }
 
+    // Grab all the field names as a comma-separated list
+    let attributes = match item_struct.fields {
+        Fields::Named(ref fields) => {
+            let names = fields.named.iter().map(|f| f.ident.as_ref());
+            quote! { #(#names ,)* }
+        }
+        _ => quote!(),
+    };
+
+    // Generate a parser for each attribute except `sig`.
+    let parsers = match item_struct.fields {
+        Fields::Named(ref fields) => {
+            let recurse = fields.named.iter().filter_map(|f| {
+                let id = &f.ident;
+                match id.as_ref().map(|i| i.to_string()) {
+                    Some(name) if name != "sig" => Some(quote_spanned! {f.span()=>
+                        let (input, #id) = crate::textual::attributes_single(#name, crate::textual::string)(input)?
+                    }),
+                    _ => None,
+                }
+            });
+            quote! { #(#recurse ;)* }
+        }
+        _ => quote!(),
+    };
+
     let gen = quote! {
-        use nom::IResult;
-        use nom::error::{ContextError, ParseError};
-        use nom::sequence::preceded;
-        use nom::bytes::complete::tag;
-        use nom::combinator::cut;
-        impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> crate::textual::FromTextual<'a, E> for #name {
-            fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
+        impl<'a, E: 'a + nom::error::ParseError<&'a str> + nom::error::ContextError<&'a str>> crate::textual::FromTextual<'a, E> for #name {
+            fn from_textual(input: &'a str) -> nom::IResult<&'a str, Operator, E> {
+                use nom::sequence::preceded;
+                use nom::bytes::complete::tag;
+                use nom::combinator::cut;
+
                 let parser = |input: &'a str| {
+                    #parsers
                     let (input, sig) = crate::textual::operator_signature(#arity)(input)?;
                     Ok((input, #name {
-                        sig,
+                        #attributes
                     }.into()))
                 };
                 preceded(tag(#ident_string), cut(parser))(input)

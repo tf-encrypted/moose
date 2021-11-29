@@ -253,7 +253,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(LoadOp::SHORT_NAME), cut(unary!(LoadOp))),
         preceded(tag(SendOp::SHORT_NAME), cut(send_operator)),
         preceded(tag(ReceiveOp::SHORT_NAME), cut(receive_operator)),
-        preceded(tag(InputOp::SHORT_NAME), cut(input_operator)),
+        InputOp::from_textual,
         preceded(tag(OutputOp::SHORT_NAME), cut(unary!(OutputOp))),
         preceded(tag(ConstantOp::SHORT_NAME), cut(constant)),
         preceded(tag(ShapeOp::SHORT_NAME), cut(unary!(ShapeOp))),
@@ -385,15 +385,6 @@ fn receive_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         }
         .into(),
     ))
-}
-
-/// Parses an Input operator
-fn input_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, arg_name) = attributes_single("arg_name", string)(input)?;
-    let (input, sig) = operator_signature(0)(input)?;
-    Ok((input, InputOp { sig, arg_name }.into()))
 }
 
 /// Parses a HostExpandDims operator
@@ -739,7 +730,7 @@ fn argument_list<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 /// Parses list of attributes when there is only one attribute.
 ///
 /// This is an optimization to avoid permutation cast for the simple case.
-fn attributes_single<'a, O, F: 'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+pub fn attributes_single<'a, O, F: 'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     name: &'a str,
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
@@ -1216,7 +1207,7 @@ where
 /// into an output string.
 ///
 /// From nom examples (MIT licesnse, so it is ok)
-fn string<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
+pub fn string<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
 where
     E: ParseError<&'a str>,
 {

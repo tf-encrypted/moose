@@ -1071,7 +1071,10 @@ pub struct ReceiveOp {
     pub sender: Role,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
+#[derive(
+    Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
+)]
+#[operation_details(arity = 0)]
 pub struct InputOp {
     pub sig: Signature,
     pub arg_name: String,
