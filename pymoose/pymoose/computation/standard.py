@@ -230,6 +230,11 @@ class ExpOperation(StandardOperation):
 
 
 @dataclass
+class SigmoidOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class SqrtOperation(StandardOperation):
     output_type: ValueType
 

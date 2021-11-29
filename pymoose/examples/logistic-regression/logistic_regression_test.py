@@ -8,52 +8,56 @@ from absl.testing import parameterized
 from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose.computation import utils
+from pymoose.computation.standard import TensorType
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(parameterized.TestCase):
-    def _setup_exp_comp(self):
+    def _setup_model_comp(self):
         alice = edsl.host_placement(name="alice")
         bob = edsl.host_placement(name="bob")
         carole = edsl.host_placement(name="carole")
         rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
         @edsl.computation
-        def my_exp_comp():
+        def my_model_comp(
+            x: edsl.Argument(bob, vtype=TensorType(edsl.float64)),
+            w: edsl.Argument(bob, vtype=TensorType(edsl.float64)),
+        ):
             with bob:
-                x = edsl.constant(np.array([2], dtype=np.float64))
                 x = edsl.cast(x, dtype=edsl.fixed(8, 27))
+                w = edsl.cast(w, dtype=edsl.fixed(8, 27))
 
             with rep:
-                y = edsl.exp(x)
+                y = edsl.sigmoid(edsl.dot(x, w))
 
             with alice:
                 res = edsl.save("y_uri", edsl.cast(y, edsl.float64))
 
             return res
 
-        return my_exp_comp
+        return my_model_comp
 
-    def test_exp_example_serde(self):
-        exp_comp = self._setup_exp_comp()
-        traced_exp_comp = edsl.trace(exp_comp)
-        comp_bin = utils.serialize_computation(traced_exp_comp)
-        deser_exp_comp = utils.deserialize_computation(comp_bin)
-        assert traced_exp_comp == deser_exp_comp
+    def test_logistic_regression_example_serde(self):
+        model_comp = self._setup_model_comp()
+        traced_model_comp = edsl.trace(model_comp)
+        comp_bin = utils.serialize_computation(traced_model_comp)
+        deser_model_comp = utils.deserialize_computation(comp_bin)
+        assert traced_model_comp == deser_model_comp
 
-    def test_exp_example_rust_serde(self):
-        exp_comp = self._setup_exp_comp()
-        traced_exp_comp = edsl.trace(exp_comp)
-        comp_bin = utils.serialize_computation(traced_exp_comp)
+    def test_logistic_regression_example_rust_serde(self):
+        model_comp = self._setup_model_comp()
+        traced_model_comp = edsl.trace(model_comp)
+        comp_bin = utils.serialize_computation(traced_model_comp)
         # Compile in Rust
         # If this does not error, rust was able to deserialize the pycomputation
         elk_compiler.compile_computation(comp_bin, [])
 
-    def test_exp_example_compile(self):
-        exp_comp = self._setup_exp_comp()
-        traced_exp_comp = edsl.trace(exp_comp)
-        comp_bin = utils.serialize_computation(traced_exp_comp)
+    def test_logistic_regression_example_compile(self):
+        model_comp = self._setup_model_comp()
+        traced_model_comp = edsl.trace(model_comp)
+        comp_bin = utils.serialize_computation(traced_model_comp)
         _ = elk_compiler.compile_computation(
             comp_bin,
             [
@@ -64,10 +68,12 @@ class ReplicatedExample(parameterized.TestCase):
             ],
         )
 
-    def test_exp_example_execute(self):
-        exp_comp = self._setup_exp_comp()
-        traced_exp_comp = edsl.trace(exp_comp)
-        comp_bin = utils.serialize_computation(traced_exp_comp)
+    def test_logistic_regression_example_execute(self):
+        input_x = np.array([2.0, 1.0], dtype=np.float64)
+        input_weights = np.array([0.5, 0.1], dtype=np.float64)
+        model_comp = self._setup_model_comp()
+        traced_model_comp = edsl.trace(model_comp)
+        comp_bin = utils.serialize_computation(traced_model_comp)
         compiled_comp = elk_compiler.compile_computation(
             comp_bin,
             [
@@ -88,14 +94,22 @@ class ReplicatedExample(parameterized.TestCase):
         _ = runtime.evaluate_compiled(
             comp_bin=compiled_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
-            arguments={},
+            arguments={"x": input_x, "w": input_weights},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
-        np.testing.assert_almost_equal(actual_result, np.exp([2]))
+
+        def logistic_regression(input, weights):
+            y = np.dot(input, weights)
+            sigmoid_out = 1 / (1 + np.exp(-y))
+            return sigmoid_out
+
+        np.testing.assert_almost_equal(
+            actual_result, logistic_regression(input_x, input_weights)
+        )
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Exp example")
+    parser = argparse.ArgumentParser(description="Logistic Regression example")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 

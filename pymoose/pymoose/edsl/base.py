@@ -185,6 +185,12 @@ class ExpExpression(Expression):
 
 
 @dataclass
+class SigmoidExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class SqrtExpression(Expression):
     def __hash__(self):
         return id(self)
@@ -460,6 +466,12 @@ def exp(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return ExpExpression(placement=placement, inputs=[x], vtype=x.vtype)
+
+
+def sigmoid(x, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return SigmoidExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def shape(x, placement=None):
