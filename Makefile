@@ -20,7 +20,7 @@ lint:
 	cd pymoose && flake8 .
 
 test:
-	cargo test --no-default-features
+	cargo test
 	cd pymoose && pytest -m "not slow"
 
 test-long:
