@@ -207,7 +207,21 @@ struct OperationDetails {
 fn parser_for_type(ty: &syn::Type) -> Option<proc_macro2::TokenStream> {
     match ty {
         syn::Type::Path(tp) if tp.path.is_ident("String") => Some(quote!(crate::textual::string)),
-        _ => None,
+        syn::Type::Path(tp) if tp.path.is_ident("Constant") => {
+            Some(quote!(crate::textual::constant_literal))
+        }
+        syn::Type::Path(tp) if tp.path.is_ident("RendezvousKey") => Some(quote!(map(
+            crate::textual::parse_hex,
+            RendezvousKey::from_bytes
+        ))),
+        syn::Type::Path(tp) if tp.path.is_ident("Role") => {
+            Some(quote!(map(crate::textual::string, Role::from)))
+        }
+        syn::Type::Path(tp) if tp.path.is_ident("Signature") => None, // One more clause to ignore the signature field.
+        _ => panic!(
+            "The from textual macro could not derive a parser for an attribute with the type {:?}",
+            ty
+        ),
     }
 }
 
@@ -225,7 +239,7 @@ pub fn from_textual_derive(input: TokenStream) -> TokenStream {
         ident_string.truncate(ident_string.len() - 2);
     }
 
-    // Grab all the field names (except `sig) as a comma-separated list
+    // Grab all the field names (except `sig`) as a comma-separated list
     let mut attr_count = 0;
     let attributes =
         match item_struct.fields {
@@ -271,7 +285,7 @@ pub fn from_textual_derive(input: TokenStream) -> TokenStream {
         1 => Some(quote! {
             let (input, #attributes) = delimited(ws(tag("{")), #attr_parsers, ws(tag("}")))(input)?;
         }),
-        // With more than one extra attribute we have to wrap the parsers in a `permutation` call.
+        // With more than one extra attribute we have to wrap the parsers in a `permutation` call to allow attributes in any order.
         _ => Some(quote! {
             let (input, (#attributes)) = delimited(ws(tag("{")), permutation((#attr_parsers)), ws(tag("}")))(input)?;
         }),
@@ -280,10 +294,10 @@ pub fn from_textual_derive(input: TokenStream) -> TokenStream {
     let gen = quote! {
         impl<'a, E: 'a + nom::error::ParseError<&'a str> + nom::error::ContextError<&'a str>> crate::textual::FromTextual<'a, E> for #name {
             fn from_textual(input: &'a str) -> nom::IResult<&'a str, Operator, E> {
-                use nom::sequence::{delimited, preceded};
-                use nom::bytes::complete::tag;
-                use nom::combinator::cut;
                 use nom::branch::permutation;
+                use nom::bytes::complete::tag;
+                use nom::combinator::{cut, map};
+                use nom::sequence::{delimited, preceded};
                 use crate::textual::ws;
 
                 let parser = |input: &'a str| {
@@ -298,6 +312,8 @@ pub fn from_textual_derive(input: TokenStream) -> TokenStream {
             }
         }
     };
+    // Uncomment the following line to see the generated code unrolled.
+    // println!("==========================\n{}\n", format_tokenstream(gen.clone()));
     gen.into()
 }
 

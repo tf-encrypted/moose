@@ -1057,14 +1057,20 @@ pub struct IdentityOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
+#[derive(
+    Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
+)]
+#[operation_details(arity = 1)]
 pub struct SendOp {
     pub sig: Signature,
     pub rendezvous_key: RendezvousKey,
     pub receiver: Role,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
+#[derive(
+    Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
+)]
+#[operation_details(arity = 0)]
 pub struct ReceiveOp {
     pub sig: Signature,
     pub rendezvous_key: RendezvousKey,
@@ -1106,7 +1112,10 @@ pub struct SaveOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
+#[derive(
+    Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
+)]
+#[operation_details(arity = 0)]
 pub struct ConstantOp {
     pub sig: Signature,
     pub value: Constant, // TODO Box<Constant> or Box inside Constant?
@@ -1286,7 +1295,10 @@ pub struct HostInverseOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
+#[derive(
+    Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
+)]
+#[operation_details(arity = 1)]
 pub struct ShapeOp {
     pub sig: Signature,
 }

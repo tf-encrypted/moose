@@ -251,12 +251,12 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let part1 = alt((
         IdentityOp::from_textual,
         LoadOp::from_textual,
-        preceded(tag(SendOp::SHORT_NAME), cut(send_operator)),
-        preceded(tag(ReceiveOp::SHORT_NAME), cut(receive_operator)),
+        SendOp::from_textual,
+        ReceiveOp::from_textual,
         InputOp::from_textual,
         OutputOp::from_textual,
-        preceded(tag(ConstantOp::SHORT_NAME), cut(constant)),
-        preceded(tag(ShapeOp::SHORT_NAME), cut(unary!(ShapeOp))),
+        ConstantOp::from_textual,
+        ShapeOp::from_textual,
         preceded(tag(BitFillOp::SHORT_NAME), cut(bit_fill)),
         preceded(tag(RingFillOp::SHORT_NAME), cut(ring_fill)),
         preceded(tag(SaveOp::SHORT_NAME), cut(save_operator)),
@@ -344,47 +344,6 @@ fn constant<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let sig = optional_type.unwrap_or_else(|| Signature::nullary(value.ty()));
 
     Ok((input, ConstantOp { sig, value }.into()))
-}
-
-/// Parses a Send operator
-fn send_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, (rendezvous_key, receiver)) = attributes!((
-        attributes_member("rendezvous_key", map(parse_hex, RendezvousKey::from_bytes)),
-        attributes_member("receiver", string)
-    ))(input)?;
-    let (input, optional_type) = opt(operator_signature(0))(input)?;
-    let sig = optional_type.unwrap_or_else(|| Signature::unary(Ty::Unknown, Ty::Unknown));
-    Ok((
-        input,
-        SendOp {
-            sig,
-            rendezvous_key,
-            receiver: Role::from(receiver),
-        }
-        .into(),
-    ))
-}
-
-/// Parses a Receive operator
-fn receive_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, (rendezvous_key, sender)) = attributes!((
-        attributes_member("rendezvous_key", map(parse_hex, RendezvousKey::from_bytes)),
-        attributes_member("sender", string)
-    ))(input)?;
-    let (input, sig) = operator_signature(0)(input)?;
-    Ok((
-        input,
-        ReceiveOp {
-            sig,
-            rendezvous_key,
-            sender: Role::from(sender),
-        }
-        .into(),
-    ))
 }
 
 /// Parses a HostExpandDims operator
@@ -903,7 +862,7 @@ where
 }
 
 /// Parses a literal for a constant (not a placed value).
-fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Constant, E> {
     alt((
@@ -1081,7 +1040,7 @@ where
 /// Parse sa hux dump, without any separators.
 ///
 /// Errors out if there is not enough data to fill an array of length N.
-fn parse_hex<'a, E, const N: usize>(input: &'a str) -> IResult<&'a str, [u8; N], E>
+pub fn parse_hex<'a, E, const N: usize>(input: &'a str) -> IResult<&'a str, [u8; N], E>
 where
     E: ParseError<&'a str>,
 {
@@ -2105,13 +2064,13 @@ z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
     #[test]
     fn test_send() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            r#"send = Send{rendezvous_key = 30313233343536373839616263646566, receiver = "bob"}() @Host(alice)"#,
+            r#"send = Send{rendezvous_key = 30313233343536373839616263646566, receiver = "bob"}: (Float32Tensor) -> Unit() @Host(alice)"#,
         )?;
         assert_eq!(op.name, "send");
         assert_eq!(
             op.kind,
             Operator::Send(SendOp {
-                sig: Signature::unary(Ty::Unknown, Ty::Unknown),
+                sig: Signature::unary(Ty::HostFloat32Tensor, Ty::Unit),
                 rendezvous_key: "0123456789abcdef".try_into()?,
                 receiver: Role::from("bob")
             })
