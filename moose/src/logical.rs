@@ -909,9 +909,9 @@ impl OnesOp {
     }
 
     fn rep_fixed_kernel<S: Session, HostFixedT, RepFixedT>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        shape: cs!(ReplicatedShape),
+        _sess: &S,
+        _plc: &ReplicatedPlacement,
+        _shape: cs!(ReplicatedShape),
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
         ReplicatedShape: KnownType<S>,
