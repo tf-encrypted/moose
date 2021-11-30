@@ -2609,7 +2609,7 @@ macro_rules! modelled_kernel {
                         // $($($attr_id),*)? TODO
                     };
 
-                    let x0 = Value::from(x0.clone());
+                    let x0 = x0.clone().into();
                     let y = sess.execute(
                         op.into(),
                         &self.into(),
@@ -2658,7 +2658,7 @@ macro_rules! modelled_kernel {
 
         // support for SymbolicSession (based on flavour)
         $(
-            modelled_kernel!(__unary $flavour, $trait, $trait_fn, $op, $plc, ($t0, $t1) -> $u => $($kp)+);
+            modelled_kernel!(__unary $flavour, $trait, $trait_fn, $op, $plc, ($t0) -> $u => $($kp)+);
         )+
     };
 
