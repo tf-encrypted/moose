@@ -21,9 +21,7 @@ class ReplicatedExample(parameterized.TestCase):
         rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
         @edsl.computation
-        def my_model_comp(
-            x: edsl.Argument(bob, vtype=TensorType(edsl.float64)),
-        ):
+        def my_model_comp(x: edsl.Argument(bob, vtype=TensorType(edsl.float64)),):
             with bob:
                 x = edsl.cast(x, dtype=edsl.fixed(8, 27))
 
@@ -97,9 +95,7 @@ class ReplicatedExample(parameterized.TestCase):
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
 
-        np.testing.assert_almost_equal(
-            actual_result, expected_result
-        )
+        np.testing.assert_almost_equal(actual_result, expected_result)
 
 
 if __name__ == "__main__":

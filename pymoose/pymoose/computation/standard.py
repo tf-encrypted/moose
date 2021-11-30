@@ -267,6 +267,7 @@ class IndexAxisOperation(StandardOperation):
     index: int
     output_type: ValueType
 
+
 @dataclass
 class SliceOperation(StandardOperation):
     begin: int
