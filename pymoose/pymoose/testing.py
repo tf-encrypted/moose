@@ -1,5 +1,6 @@
 from pymoose import LocalRuntime
 from pymoose import edsl
+from pymoose.computation import utils
 
 
 class LocalMooseRuntime(LocalRuntime):
@@ -20,19 +21,14 @@ class LocalMooseRuntime(LocalRuntime):
     ):
         if arguments is None:
             arguments = {}
-        concrete_comp_ref = edsl.trace_and_compile(computation)
-        comp_outputs = super().evaluate_compiled(
-            concrete_comp_ref, role_assignment, arguments
-        )
-        outputs = list(dict(sorted(comp_outputs.items())).values())
-        return outputs
+        logical_comp = edsl.trace(computation)
+        comp_bin = utils.serialize_computation(logical_comp)
+        return super().evaluate_computation(comp_bin, role_assignment, arguments)
 
-    def evaluate_compiled(self, comp_bin, role_assignment, arguments=None, ring=128):
+    def evaluate_compiled(self, comp_bin, role_assignment, arguments=None):
         if arguments is None:
             arguments = {}
-        comp_outputs = super().evaluate_compiled(comp_bin, role_assignment, arguments)
-        outputs = list(dict(sorted(comp_outputs.items())).values())
-        return outputs
+        return super().evaluate_compiled(comp_bin, role_assignment, arguments)
 
     def read_value_from_storage(self, identity, key):
         return super().read_value_from_storage(identity, key)
