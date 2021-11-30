@@ -16,7 +16,7 @@ fmt:
 
 lint:
 	cargo fmt --all -- --check
-	cargo clippy --all-targets -- -D warnings
+	cargo clippy --all-targets -- -D warnings --no-deps
 	cd pymoose && flake8 .
 
 test:
