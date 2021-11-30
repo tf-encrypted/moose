@@ -83,6 +83,32 @@ moose_type!(Mirrored3Ring64Tensor = Mirrored3RingTensor<HostRing64Tensor>);
 moose_type!(Mirrored3Ring128Tensor = Mirrored3RingTensor<HostRing128Tensor>);
 moose_type!(Mirrored3BitTensor = Mirrored3RingTensor<HostBitTensor>);
 
+/// TODO(Dragos) unify StandardTensor with FixedTensor
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum StandardTensor<HostT, RepT> {
+    Host(HostT),
+    Replicated(RepT),
+}
+
+moose_type!(BoolTensor = StandardTensor<HostBitTensor, ReplicatedBitTensor>);
+
+impl<HostT, RepT> Placed for StandardTensor<HostT, RepT>
+where
+    HostT: Placed,
+    HostT::Placement: Into<Placement>,
+    RepT: Placed,
+    RepT::Placement: Into<Placement>,
+{
+    type Placement = Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        match self {
+            StandardTensor::Host(x) => Ok(x.placement()?.into()),
+            StandardTensor::Replicated(x) => Ok(x.placement()?.into()),
+        }
+    }
+}
+
 pub trait Underlying {
     type TensorType;
 }
