@@ -262,10 +262,10 @@ impl ExpOp {
     {
         let log2e = rep.shape_fill(
             sess,
-            Constant::Fixed(FixedpointConstant {
-                value: 1.0_f64.exp().log2(),
-                precision: x.fractional_precision() as usize,
-            }),
+            1.0_f64
+                .exp()
+                .log2()
+                .as_fixedpoint(x.fractional_precision() as usize),
             &x,
         );
         let shifted_exponent = rep.mul(sess, &log2e, &x);

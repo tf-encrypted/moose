@@ -160,6 +160,19 @@ pub struct FixedpointConstant {
     pub precision: usize,
 }
 
+pub(crate) trait AsFixedpoint {
+    fn as_fixedpoint(&self, precision: usize) -> FixedpointConstant;
+}
+
+impl AsFixedpoint for f64 {
+    fn as_fixedpoint(&self, precision: usize) -> FixedpointConstant {
+        FixedpointConstant {
+            value: *self,
+            precision,
+        }
+    }
+}
+
 // Constants are trivial values. They are what can live on the nodes of the computation graph.
 // Constant can not be a Unit, an Unknown or a complex structure such as ReplicatedTensor.
 macro_rules! constants {

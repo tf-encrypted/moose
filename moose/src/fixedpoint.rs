@@ -1421,10 +1421,7 @@ where
             .map(|coeff| {
                 self.shape_fill(
                     sess,
-                    Constant::Fixed(FixedpointConstant {
-                        value: *coeff,
-                        precision: x.fractional_precision() as usize,
-                    }),
+                    coeff.as_fixedpoint(x.fractional_precision() as usize),
                     &x,
                 )
             })

@@ -3003,12 +3003,9 @@ impl SigmoidOp {
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
     {
         // TODO [Yann]: revisit once we support mixed arithmetic for division
-        let ones = Constant::Fixed(FixedpointConstant {
-            value: 1.0_f64,
-            precision: x.fractional_precision() as usize,
-        });
+        let ones = 1.0_f64.as_fixedpoint(x.fractional_precision() as usize);
 
-        let ones_fill = rep.fill(sess, ones, &rep.shape(sess, &x));
+        let ones_fill = rep.fill(sess, ones.into(), &rep.shape(sess, &x));
         let zeros_fill = rep.fill(sess, 0_u8.into(), &rep.shape(sess, &x));
 
         let ones_rep = AbstractReplicatedFixedTensor {
@@ -3028,11 +3025,11 @@ impl SigmoidOp {
         let output = rep.div(sess, &ones_rep, &denominator);
 
         // input sanitization
-        let max_val = Constant::Fixed(FixedpointConstant {
-            value: 2_f64.powf((x.integral_precision() - 1).into()).ln(),
-            precision: x.fractional_precision() as usize,
-        });
-        let max_val_fill = rep.fill(sess, max_val, &rep.shape(sess, &x));
+        let max_val = 2_f64
+            .powf((x.integral_precision() - 1).into())
+            .ln()
+            .as_fixedpoint(x.fractional_precision() as usize);
+        let max_val_fill = rep.fill(sess, max_val.into(), &rep.shape(sess, &x));
         let max_val_rep = AbstractReplicatedFixedTensor {
             tensor: max_val_fill,
             integral_precision: x.integral_precision(),
