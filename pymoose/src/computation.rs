@@ -440,14 +440,6 @@ struct PySqrtOperation {
 }
 
 #[derive(Deserialize, Debug)]
-struct PyAbsOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
 struct PySumOperation {
     name: String,
     inputs: Inputs,
