@@ -1812,7 +1812,31 @@ kernel! {
     FillOp,
     [
 
-        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] attributes[value] Self::bit_kernel),
+        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] custom |op| {
+            use std::convert::TryInto;
+            let value: u8 = match op.value {
+                Constant::Bit(v) => v,
+                Constant::Ring64(v) => v.try_into().map_err(|_| {
+                    Error::KernelError("Cannot fill HostBitTensor with non-binary value.".to_string())
+                })?,
+                Constant::Ring128(v) => v.try_into().map_err(|_| {
+                    Error::KernelError("Cannot fill HostBitTensor with non-binary value.".to_string())
+                })?,
+                _ => {
+                    return Err(Error::UnimplementedOperator(
+                        format!("Cannot fill from {:?} into a HostBitTensor", op.value.ty())))
+                }
+            };
+            if !(value == 0 || value == 1) {
+                return Err(Error::KernelError(
+                    "Cannot fill HostBitTensor with non-binary value.".to_string(),
+                ));
+            }
+            assert!(value == 0 || value == 1);
+            Ok(Box::new(move |sess, host, host_shape| {
+                Self::bit_kernel(sess, host, value, host_shape)
+            }))
+        }),
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [hybrid] custom |op| {
                 let value: u64 = match op.value {
                     Constant::Bit(v) => v as u64,
@@ -1824,7 +1848,7 @@ kernel! {
                         (value * ((1u64 << precision) as f64)) as u64
                     },
                     _ => return Err(Error::UnimplementedOperator(
-                    "Fill64 cannot convert from this type".to_string())),
+                        format!("Cannot fill from {:?} into a ReplicatedRing64Tensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::ring64_kernel(sess, rep, value, rep_shape)
@@ -1841,7 +1865,7 @@ kernel! {
                         (value * ((1u64 << precision) as f64)) as u64
                     },
                     _ => return Err(Error::UnimplementedOperator(
-                    "Fill64 cannot convert from this type".to_string())),
+                        format!("Cannot fill from {:?} into a Mirrored3Ring64Tensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::mir_ring64_kernel(sess, rep, value, rep_shape)
@@ -1857,7 +1881,7 @@ kernel! {
                             (value * ((1u128 << precision) as f64)) as u128
                     },
                     _ => return Err(Error::UnimplementedOperator(
-                        "Fill128 cannot convert from this type".to_string())),
+                        format!("Cannot fill from {:?} into a ReplicatedRing128Tensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::ring128_kernel(sess, rep, value, rep_shape)
@@ -1873,7 +1897,7 @@ kernel! {
                             (value * ((1u128 << precision) as f64)) as u128
                     },
                     _ => return Err(Error::UnimplementedOperator(
-                        "Fill128 cannot convert from this type".to_string())),
+                        format!("Cannot fill from {:?} into a Mirrored3RingTensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::mir_ring128_kernel(sess, rep, value, rep_shape)
@@ -1885,7 +1909,7 @@ kernel! {
                     Constant::Ring64(v) => v as u8,
                     Constant::Ring128(v) => v as u8,
                     _ => return Err(Error::UnimplementedOperator(
-                        "FillBit cannot convert from this type".to_string())),
+                        format!("Cannot fill from {:?} into a ReplicatedBitTensor", op.value.ty()))),
                 };
                 if value != 0 && value != 1 {
                     return Err(Error::InvalidArgument(format!("Could only support 0 and 1 for the bit tensor fill, got {}", value)));
@@ -1900,7 +1924,7 @@ kernel! {
                     Constant::Ring64(v) => v as u8,
                     Constant::Ring128(v) => v as u8,
                     _ => return Err(Error::UnimplementedOperator(
-                        "FillBit cannot convert from this type".to_string())),
+                        format!("Cannot fill from {:?} into a Mirrored3BitTensor", op.value.ty()))),
                 };
                 if value != 0 && value != 1 {
                     return Err(Error::InvalidArgument(format!("Could only support 0 and 1 for the bit tensor fill, got {}", value)));
@@ -1918,7 +1942,7 @@ kernel! {
                         (ring_value, fractional_precision, integral_precision)
                     },
                     _ => return Err(Error::UnimplementedOperator(
-                        "FillOp  cannot convert from this type".to_string())),
+                        format!("Cannot fill from {:?} into a Mirrored3Fixed64Tensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::mir_fixed_kernel(sess, rep, Constant::Ring64(ring_value), rep_shape, fractional_precision, integral_precision)
@@ -1933,7 +1957,7 @@ kernel! {
                         (ring_value, fractional_precision, integral_precision)
                     },
                     _ => return Err(Error::UnimplementedOperator(
-                        "FillOp  cannot convert from this type".to_string())),
+                        format!("Cannot fill from {:?} into a Mirrored3Fixed128Tensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::mir_fixed_kernel(sess, rep, Constant::Ring128(ring_value), rep_shape, fractional_precision, integral_precision)
