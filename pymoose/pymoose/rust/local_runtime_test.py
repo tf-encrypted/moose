@@ -7,21 +7,29 @@ from pymoose import edsl
 from pymoose.computation import utils
 from pymoose.computation.standard import StringType
 
-x_owner = edsl.host_placement(name="x_owner")
-y_owner = edsl.host_placement(name="y_owner")
-output_owner = edsl.host_placement("output_owner")
+_x_owner = edsl.host_placement(name="x_owner")
+_y_owner = edsl.host_placement(name="y_owner")
+_output_owner = edsl.host_placement("output_owner")
+
+_DEFAULT_PASSES = [
+    "typing",
+    "full",
+    "prune",
+    "networking",
+    "toposort",
+]
 
 
 @edsl.computation
 def add_full_storage(
-    x_key: edsl.Argument(x_owner, vtype=StringType()),
-    y_key: edsl.Argument(y_owner, vtype=StringType()),
+    x_key: edsl.Argument(_x_owner, vtype=StringType()),
+    y_key: edsl.Argument(_y_owner, vtype=StringType()),
 ):
-    with x_owner:
+    with _x_owner:
         x = edsl.load(x_key, dtype=edsl.float64)
-    with y_owner:
+    with _y_owner:
         y = edsl.load(y_key, dtype=edsl.float64)
-    with output_owner:
+    with _output_owner:
         out = edsl.add(x, y)
         res = edsl.save("output", out)
     return res
@@ -29,24 +37,24 @@ def add_full_storage(
 
 @edsl.computation
 def add_input_storage(
-    x_key: edsl.Argument(x_owner, vtype=StringType()),
-    y_key: edsl.Argument(y_owner, vtype=StringType()),
+    x_key: edsl.Argument(_x_owner, vtype=StringType()),
+    y_key: edsl.Argument(_y_owner, vtype=StringType()),
 ):
-    with x_owner:
+    with _x_owner:
         x = edsl.load(x_key, dtype=edsl.float64)
-    with y_owner:
+    with _y_owner:
         y = edsl.load(y_key, dtype=edsl.float64)
-    with output_owner:
+    with _output_owner:
         out = edsl.add(x, y)
     return out
 
 
 @edsl.computation
 def add_output_storage(
-    x: edsl.Argument(x_owner, dtype=edsl.float64),
-    y: edsl.Argument(y_owner, dtype=edsl.float64),
+    x: edsl.Argument(_x_owner, dtype=edsl.float64),
+    y: edsl.Argument(_y_owner, dtype=edsl.float64),
 ):
-    with output_owner:
+    with _output_owner:
         out = edsl.add(x, y)
         res = edsl.save("output", out)
     return res
@@ -54,20 +62,20 @@ def add_output_storage(
 
 @edsl.computation
 def add_no_storage(
-    x: edsl.Argument(x_owner, dtype=edsl.float64),
-    y: edsl.Argument(y_owner, dtype=edsl.float64),
+    x: edsl.Argument(_x_owner, dtype=edsl.float64),
+    y: edsl.Argument(_y_owner, dtype=edsl.float64),
 ):
-    with output_owner:
+    with _output_owner:
         out = edsl.add(x, y)
     return out
 
 
 @edsl.computation
 def add_multioutput(
-    x: edsl.Argument(x_owner, dtype=edsl.float64),
-    y: edsl.Argument(y_owner, dtype=edsl.float64),
+    x: edsl.Argument(_x_owner, dtype=edsl.float64),
+    y: edsl.Argument(_y_owner, dtype=edsl.float64),
 ):
-    with output_owner:
+    with _output_owner:
         out = edsl.add(x, y)
     return (out, x, y)
 
@@ -105,7 +113,7 @@ class RunComputation(parameterized.TestCase):
             add_full_storage, self.storage_dict
         )
         outputs = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.storage_args
+            comp_bin, self.role_assignment, self.storage_args, _DEFAULT_PASSES
         )
         assert len(outputs) == 0
         result = runtime.read_value_from_storage("output_owner", "output")
@@ -116,7 +124,7 @@ class RunComputation(parameterized.TestCase):
             add_input_storage, self.storage_dict
         )
         result = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.storage_args
+            comp_bin, self.role_assignment, self.storage_args, _DEFAULT_PASSES
         )
         np.testing.assert_array_equal(list(result.values())[0], np.array([3.0]))
 
@@ -125,7 +133,7 @@ class RunComputation(parameterized.TestCase):
             add_output_storage, self.empty_storage
         )
         outputs = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.actual_args
+            comp_bin, self.role_assignment, self.actual_args, _DEFAULT_PASSES
         )
         assert len(outputs) == 0
         result = runtime.read_value_from_storage("output_owner", "output")
@@ -136,7 +144,7 @@ class RunComputation(parameterized.TestCase):
             add_no_storage, self.storage_dict
         )
         result = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.actual_args
+            comp_bin, self.role_assignment, self.actual_args, _DEFAULT_PASSES
         )
         np.testing.assert_array_equal(list(result.values())[0], np.array([3.0]))
 
@@ -145,7 +153,7 @@ class RunComputation(parameterized.TestCase):
             add_multioutput, self.storage_dict
         )
         result = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.actual_args
+            comp_bin, self.role_assignment, self.actual_args, _DEFAULT_PASSES
         )
         result = sorted(result.values())
         expected = [np.array([1.0]), np.array([2.0]), np.array([3.0])]
