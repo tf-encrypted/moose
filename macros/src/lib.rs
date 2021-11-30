@@ -207,6 +207,7 @@ struct OperationDetails {
 fn parser_for_type(ty: &syn::Type) -> Option<proc_macro2::TokenStream> {
     match ty {
         syn::Type::Path(tp) if tp.path.is_ident("String") => Some(quote!(crate::textual::string)),
+        syn::Type::Path(tp) if tp.path.is_ident("bool") => Some(quote!(crate::textual::parse_bool)),
         syn::Type::Path(tp) if tp.path.is_ident("Constant") => {
             Some(quote!(crate::textual::constant_literal))
         }

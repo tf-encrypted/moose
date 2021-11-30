@@ -269,8 +269,8 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             cut(operation_on_axis!(HostMeanOp)),
         ),
         preceded(tag(HostExpandDimsOp::SHORT_NAME), cut(hostexpanddims)),
-        preceded(tag(HostReshapeOp::SHORT_NAME), cut(unary!(HostReshapeOp))),
-        preceded(tag(HostAtLeast2DOp::SHORT_NAME), cut(hostatleast2d)),
+        HostReshapeOp::from_textual,
+        HostAtLeast2DOp::from_textual,
         preceded(tag(HostSliceOp::SHORT_NAME), cut(hostslice)),
     ));
     let part2 = alt((
@@ -350,22 +350,6 @@ fn hostsqueeze<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, axis) = opt(attributes_single("axis", parse_int))(input)?;
     let (input, sig) = operator_signature(1)(input)?;
     Ok((input, HostSqueezeOp { sig, axis }.into()))
-}
-
-/// Parses a HostAtLeast2D operator.
-fn hostatleast2d<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, to_column_vector) = attributes_single("to_column_vector", parse_bool)(input)?;
-    let (input, sig) = operator_signature(1)(input)?;
-    Ok((
-        input,
-        HostAtLeast2DOp {
-            sig,
-            to_column_vector,
-        }
-        .into(),
-    ))
 }
 
 /// Parses a HostSlice operator.
@@ -1146,7 +1130,7 @@ where
 /// A very simple boolean parser.
 ///
 /// Only accepts literals `true` and `false`.
-fn parse_bool<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+pub fn parse_bool<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, bool, E> {
     alt((value(true, tag("true")), value(false, tag("false"))))(input)
