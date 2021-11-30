@@ -965,7 +965,7 @@ mod tests {
     #[case(false)]
     fn test_shape_slice(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value = Shape([2, 3, 4, 5])}: () -> Shape @Host(alice)
-        slice = HostSlice {start = 1, end = 3}: (Shape) -> Shape (x) @Host(alice)
+        slice = HostSlice {slice = {start = 1, end = 3}}: (Shape) -> Shape (x) @Host(alice)
         output = Output: (Shape) -> Shape (slice) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =

@@ -271,7 +271,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(HostExpandDimsOp::SHORT_NAME), cut(hostexpanddims)),
         HostReshapeOp::from_textual,
         HostAtLeast2DOp::from_textual,
-        preceded(tag(HostSliceOp::SHORT_NAME), cut(hostslice)),
+        HostSliceOp::from_textual,
     ));
     let part2 = alt((
         preceded(
@@ -350,29 +350,6 @@ fn hostsqueeze<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, axis) = opt(attributes_single("axis", parse_int))(input)?;
     let (input, sig) = operator_signature(1)(input)?;
     Ok((input, HostSqueezeOp { sig, axis }.into()))
-}
-
-/// Parses a HostSlice operator.
-fn hostslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, (start, end)) = attributes!((
-        attributes_member("start", parse_int),
-        attributes_member("end", parse_int)
-    ))(input)?;
-    let (input, sig) = operator_signature(1)(input)?;
-    Ok((
-        input,
-        HostSliceOp {
-            sig,
-            slice: SliceInfo(vec![SliceInfoElem {
-                start,
-                step: None,
-                end: Some(end),
-            }]),
-        }
-        .into(),
-    ))
 }
 
 /// Parses a HostConcat operator.
@@ -961,6 +938,21 @@ where
             .map(|a| (input, a))
             .map_err(|_: ndarray::ShapeError| Error(make_error(input, ErrorKind::MapRes)))
     }
+}
+
+/// Parses a literal for a Slice info (start, step, end)
+pub fn slice_info_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, SliceInfo, E> {
+    let (input, (start, step, end)) = attributes!((
+        attributes_member("start", parse_int),
+        opt(attributes_member("step", parse_int)),
+        opt(attributes_member("end", parse_int)),
+    ))(input)?;
+    println!("Got parsed {:?} {:?} {:?}", start, step, end);
+    println!("Remainder: {}", input);
+
+    Ok((input, SliceInfo(vec![SliceInfoElem { start, step, end }])))
 }
 
 /// Parses integer (or anything implementing FromStr from decimal digits)
@@ -2117,7 +2109,7 @@ z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
             "z = HostAtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostSlice {start = 1, end = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = HostSlice {slice = {start = 1, end = 2}}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = HostDiag: (Float32Tensor) -> Float32Tensor () @Host(alice)",

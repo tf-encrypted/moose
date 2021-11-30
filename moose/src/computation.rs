@@ -1339,7 +1339,10 @@ pub struct ShapeOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
+#[derive(
+    Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
+)]
+#[operation_details(arity = 1)]
 pub struct HostSliceOp {
     pub sig: Signature,
     pub slice: SliceInfo,
