@@ -204,6 +204,13 @@ struct OperationDetails {
     arity: Expr,
 }
 
+fn parser_for_type(ty: &syn::Type) -> Option<proc_macro2::TokenStream> {
+    match ty {
+        syn::Type::Path(tp) if tp.path.is_ident("String") => Some(quote!(crate::textual::string)),
+        _ => None,
+    }
+}
+
 #[proc_macro_derive(AutoFromTextual, attributes(operation_details))]
 pub fn from_textual_derive(input: TokenStream) -> TokenStream {
     let item_struct = syn::parse::<syn::ItemStruct>(input).unwrap();
@@ -218,43 +225,72 @@ pub fn from_textual_derive(input: TokenStream) -> TokenStream {
         ident_string.truncate(ident_string.len() - 2);
     }
 
-    // Grab all the field names as a comma-separated list
-    let attributes = match item_struct.fields {
-        Fields::Named(ref fields) => {
-            let names = fields.named.iter().map(|f| f.ident.as_ref());
-            quote! { #(#names ,)* }
-        }
-        _ => quote!(),
-    };
+    // Grab all the field names (except `sig) as a comma-separated list
+    let mut attr_count = 0;
+    let attributes =
+        match item_struct.fields {
+            Fields::Named(ref fields) => {
+                let names = fields.named.iter().filter_map(|f| {
+                    match f.ident.as_ref().map(|i| i.to_string()) {
+                        Some(name) if name != "sig" => {
+                            attr_count += 1;
+                            Some(f.ident.as_ref())
+                        }
+                        _ => None,
+                    }
+                });
+
+                quote! { #(#names ,)* }
+            }
+            _ => quote!(),
+        };
 
     // Generate a parser for each attribute except `sig`.
-    let parsers = match item_struct.fields {
+    let attr_parsers = match item_struct.fields {
         Fields::Named(ref fields) => {
-            let recurse = fields.named.iter().filter_map(|f| {
+            let members = fields.named.iter().filter_map(|f| {
                 let id = &f.ident;
+                let inner_parser = parser_for_type(&f.ty);
                 match id.as_ref().map(|i| i.to_string()) {
                     Some(name) if name != "sig" => Some(quote_spanned! {f.span()=>
-                        let (input, #id) = crate::textual::attributes_single(#name, crate::textual::string)(input)?
+                        crate::textual::attributes_member(#name, #inner_parser)
                     }),
                     _ => None,
                 }
             });
-            quote! { #(#recurse ;)* }
+            quote! { #(#members ),* }
         }
         _ => quote!(),
+    };
+
+    // We actually have 3 distinct cases here
+    let attr_parser = match attr_count {
+        // With 0 extra attributes we should just skip this block
+        0 => None,
+        // With one extra attribute we must call its parser directly
+        1 => Some(quote! {
+            let (input, #attributes) = delimited(ws(tag("{")), #attr_parsers, ws(tag("}")))(input)?;
+        }),
+        // With more than one extra attribute we have to wrap the parsers in a `permutation` call.
+        _ => Some(quote! {
+            let (input, (#attributes)) = delimited(ws(tag("{")), permutation((#attr_parsers)), ws(tag("}")))(input)?;
+        }),
     };
 
     let gen = quote! {
         impl<'a, E: 'a + nom::error::ParseError<&'a str> + nom::error::ContextError<&'a str>> crate::textual::FromTextual<'a, E> for #name {
             fn from_textual(input: &'a str) -> nom::IResult<&'a str, Operator, E> {
-                use nom::sequence::preceded;
+                use nom::sequence::{delimited, preceded};
                 use nom::bytes::complete::tag;
                 use nom::combinator::cut;
+                use nom::branch::permutation;
+                use crate::textual::ws;
 
                 let parser = |input: &'a str| {
-                    #parsers
+                    #attr_parser
                     let (input, sig) = crate::textual::operator_signature(#arity)(input)?;
                     Ok((input, #name {
+                        sig,
                         #attributes
                     }.into()))
                 };
@@ -263,6 +299,30 @@ pub fn from_textual_derive(input: TokenStream) -> TokenStream {
         }
     };
     gen.into()
+}
+
+/// Utility function to return a pretty-printed token stream, if it is valid enough Rust code.
+#[allow(dead_code)] // It is used in the tests, but is exceptionally helpful while debugging a macros
+fn format_tokenstream(code: proc_macro2::TokenStream) -> String {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    fn format(input: &str) -> Option<String> {
+        let mut rustfmt = Command::new("rustfmt")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .ok()?;
+        let child_stdin = rustfmt.stdin.as_mut()?;
+        child_stdin.write_all(input.as_bytes()).ok()?;
+        let output = rustfmt.wait_with_output().ok()?;
+        if output.status.success() {
+            String::from_utf8(output.stdout).ok()
+        } else {
+            None
+        }
+    }
+    let string_code = code.to_string();
+    format(&string_code).unwrap_or(string_code)
 }
 
 #[cfg(test)]
@@ -274,29 +334,6 @@ mod tests {
     fn test_normal() {
         let t = trybuild::TestCases::new();
         t.pass("tests/pass/*.rs");
-    }
-
-    /// Utility function to return a pretty-printed token stream, if it is valid enough Rust code.
-    fn format_tokenstream(code: proc_macro2::TokenStream) -> String {
-        use std::io::Write;
-        use std::process::{Command, Stdio};
-        fn format(input: &str) -> Option<String> {
-            let mut rustfmt = Command::new("rustfmt")
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .spawn()
-                .ok()?;
-            let child_stdin = rustfmt.stdin.as_mut()?;
-            child_stdin.write_all(input.as_bytes()).ok()?;
-            let output = rustfmt.wait_with_output().ok()?;
-            if output.status.success() {
-                String::from_utf8(output.stdout).ok()
-            } else {
-                None
-            }
-        }
-        let string_code = code.to_string();
-        format(&string_code).unwrap_or(string_code)
     }
 
     #[test]

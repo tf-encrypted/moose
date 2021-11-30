@@ -250,11 +250,11 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     // https://docs.rs/nom/7.0.0/nom/branch/fn.alt.html
     let part1 = alt((
         IdentityOp::from_textual,
-        preceded(tag(LoadOp::SHORT_NAME), cut(unary!(LoadOp))),
+        LoadOp::from_textual,
         preceded(tag(SendOp::SHORT_NAME), cut(send_operator)),
         preceded(tag(ReceiveOp::SHORT_NAME), cut(receive_operator)),
         InputOp::from_textual,
-        preceded(tag(OutputOp::SHORT_NAME), cut(unary!(OutputOp))),
+        OutputOp::from_textual,
         preceded(tag(ConstantOp::SHORT_NAME), cut(constant)),
         preceded(tag(ShapeOp::SHORT_NAME), cut(unary!(ShapeOp))),
         preceded(tag(BitFillOp::SHORT_NAME), cut(bit_fill)),
@@ -741,7 +741,7 @@ where
 }
 
 /// Parses a single attribute with an optional comma at the end.
-fn attributes_member<'a, O, F: 'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+pub fn attributes_member<'a, O, F: 'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     name1: &'a str,
     inner1: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
@@ -1093,7 +1093,7 @@ where
 /// Wraps the innner parser in optional spaces.
 ///
 /// From nom::recepies
-fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
+pub fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where
