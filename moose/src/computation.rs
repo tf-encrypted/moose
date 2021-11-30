@@ -1333,7 +1333,10 @@ pub struct HostBitDecOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
+#[derive(
+    Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
+)]
+#[operation_details(arity = 1)]
 pub struct BitFillOp {
     pub sig: Signature,
     pub value: Constant,
@@ -1344,7 +1347,10 @@ pub struct BitToRingOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
+#[derive(
+    Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
+)]
+#[operation_details(arity = 1)]
 pub struct RingFillOp {
     pub sig: Signature,
     pub value: Constant,

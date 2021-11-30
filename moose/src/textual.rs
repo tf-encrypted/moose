@@ -257,8 +257,8 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         OutputOp::from_textual,
         ConstantOp::from_textual,
         ShapeOp::from_textual,
-        preceded(tag(BitFillOp::SHORT_NAME), cut(bit_fill)),
-        preceded(tag(RingFillOp::SHORT_NAME), cut(ring_fill)),
+        BitFillOp::from_textual,
+        RingFillOp::from_textual,
         preceded(tag(SaveOp::SHORT_NAME), cut(save_operator)),
         preceded(tag(HostAddOp::SHORT_NAME), cut(binary!(HostAddOp))),
         preceded(tag(HostSubOp::SHORT_NAME), cut(binary!(HostSubOp))),
@@ -333,17 +333,6 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(MeanOp::SHORT_NAME), cut(operation_on_axis!(MeanOp))),
     ));
     alt((part1, part2, part3))(input)
-}
-
-/// Parses a Constant
-fn constant<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, value) = attributes_single("value", constant_literal)(input)?;
-    let (input, optional_type) = opt(operator_signature(0))(input)?;
-    let sig = optional_type.unwrap_or_else(|| Signature::nullary(value.ty()));
-
-    Ok((input, ConstantOp { sig, value }.into()))
 }
 
 /// Parses a HostExpandDims operator
@@ -2147,7 +2136,7 @@ z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
     #[test]
     fn test_underscore() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x_shape = Constant{value = Shape([2, 2])} () @Host(alice)",
+            "x_shape = Constant{value = Shape([2, 2])}: () -> Shape () @Host(alice)",
         )?;
         assert_eq!(op.name, "x_shape");
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
@@ -2224,7 +2213,7 @@ z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
     #[test]
     fn test_sample_computation() -> Result<(), anyhow::Error> {
         let (_, comp) = parse_computation::<(&str, ErrorKind)>(
-            "x = Constant{value = Float32Tensor([1.0])}() @Host(alice)
+            "x = Constant{value = Float32Tensor([1.0])}: () -> Float32Tensor() @Host(alice)
             y = Constant{value = Float32Tensor([2.0])}: () -> Float32Tensor () @Host(bob)
             // ignore = Constant([1.0]: Float32Tensor) @Host(alice)
             z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
@@ -2268,9 +2257,9 @@ z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
 
     #[test]
     fn test_sample_computation_err() {
-        let data = r#"a = Constant{value = "a"} () @Host(alice)
+        let data = r#"a = Constant{value = "a"}: () -> Float32Tensor () @Host(alice)
             err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
-            b = Constant{value = "b"} () @Host(alice)"#;
+            b = Constant{value = "b"}: () -> Float32Tensor () @Host(alice)"#;
         let emsg = r#"0: at line 2, in Tag:
             err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
                             ^
@@ -2289,10 +2278,11 @@ z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
     #[test]
     fn test_computation_try_into() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
-        let comp: Computation = "x = Constant{value = Float32Tensor([1.0])} @Host(alice)
+        let comp: Computation =
+            "x = Constant{value = Float32Tensor([1.0])}: () -> Float32Tensor @Host(alice)
             y = Constant{value = Float32Tensor([2.0])}: () -> Float32Tensor () @Host(bob)
             z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)"
-            .try_into()?;
+                .try_into()?;
         assert_eq!(comp.operations.len(), 3);
         Ok(())
     }
@@ -2309,9 +2299,9 @@ z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
     fn test_whitespace() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
         let source = r#"
-        x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
 
-        y = Constant {value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(bob)
+        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
 
         "#;
         let comp: Computation = source.try_into()?;
@@ -2322,11 +2312,11 @@ z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
     #[test]
     fn test_computation_into_text() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
-        let comp: Computation = "x = Constant{value = Float32Tensor([1.0])} @Host(alice)
+        let comp: Computation = "x = Constant{value = Float32Tensor([1.0])}: () -> Float32Tensor @Host(alice)
             y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
             z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, carole)
             seed = PrimDeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
-            seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)} @Host(alice)
+            seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)}: () -> Seed @Host(alice)
             o = Output: (Float32Tensor) -> Float32Tensor (z) @Host(alice)"
             .try_into()?;
         let textual = comp.to_textual();
