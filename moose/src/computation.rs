@@ -1363,10 +1363,7 @@ pub struct HostBitDecOp {
     pub sig: Signature,
 }
 
-#[derive(
-    Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
-)]
-#[operation_details(arity = 1)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct BitToRingOp {
     pub sig: Signature,
 }
