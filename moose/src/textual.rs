@@ -259,12 +259,12 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         ShapeOp::from_textual,
         BitFillOp::from_textual,
         RingFillOp::from_textual,
-        preceded(tag(SaveOp::SHORT_NAME), cut(save_operator)),
-        preceded(tag(HostAddOp::SHORT_NAME), cut(binary!(HostAddOp))),
-        preceded(tag(HostSubOp::SHORT_NAME), cut(binary!(HostSubOp))),
-        preceded(tag(HostMulOp::SHORT_NAME), cut(binary!(HostMulOp))),
-        preceded(tag(HostDivOp::SHORT_NAME), cut(binary!(HostDivOp))),
-        preceded(tag(HostDotOp::SHORT_NAME), cut(binary!(HostDotOp))),
+        SaveOp::from_textual,
+        HostAddOp::from_textual,
+        HostSubOp::from_textual,
+        HostMulOp::from_textual,
+        HostDivOp::from_textual,
+        HostDotOp::from_textual,
         preceded(
             tag(HostMeanOp::SHORT_NAME),
             cut(operation_on_axis!(HostMeanOp)),
@@ -570,14 +570,6 @@ fn fixed_point_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         }
         .into(),
     ))
-}
-
-/// Parses a Save operator.
-fn save_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, sig) = operator_signature(2)(input)?;
-    Ok((input, SaveOp { sig }.into()))
 }
 
 /// Parses a RingFixedpointMean operator.
