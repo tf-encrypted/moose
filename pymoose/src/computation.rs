@@ -1270,24 +1270,47 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    std_SliceOperation(op) => Ok(Operation {
-                        kind: SliceOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                            slice: SliceInfo(vec![SliceInfoElem {
-                                start: op.begin as isize,
-                                step: Some(1),
-                                end: Some(op.end as isize),
-                            }]),
+                    std_SliceOperation(op) => {
+                        let typ = map_type(&op.output_type)?;
+                        let plc = map_placement(&placements, &op.placement_name)?;
+                        match &plc {
+                            // TODO [kyle] Should all shape ops (HostSliceOp, RepSliceOp, SliceOp)
+                            // be unified under the common SliceOp?
+                            Placement::Replicated(_) => {
+                                let typ = Ty::ReplicatedShape;
+                                Ok(Operation {
+                                    kind: RepSliceOp {
+                                        sig: Signature::unary(typ, typ),
+                                        slice: SliceInfo(vec![SliceInfoElem {
+                                            start: op.begin as isize,
+                                            step: Some(1),
+                                            end: Some(op.end as isize),
+                                        }]),
+                                    }
+                                    .into(),
+                                    inputs: map_inputs(&op.inputs, &["x"])
+                                        .with_context(|| format!("Failed at op {:?}", op))?,
+                                    name: op.name.clone(),
+                                    placement: plc,
+                                })
+                            }
+                            _ => Ok(Operation {
+                                kind: SliceOp {
+                                    sig: Signature::unary(typ, typ),
+                                    slice: SliceInfo(vec![SliceInfoElem {
+                                        start: op.begin as isize,
+                                        step: Some(1),
+                                        end: Some(op.end as isize),
+                                    }]),
+                                }
+                                .into(),
+                                inputs: map_inputs(&op.inputs, &["x"])
+                                    .with_context(|| format!("Failed at op {:?}", op))?,
+                                name: op.name.clone(),
+                                placement: plc,
+                            }),
                         }
-                        .into(),
-                        inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        name: op.name.clone(),
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
+                    }
                     std_OnesOperation(op) => Ok(Operation {
                         kind: OnesOp {
                             sig: Signature::unary(Ty::HostShape, map_type(&op.output_type)?),
