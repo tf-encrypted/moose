@@ -1285,16 +1285,24 @@ impl TryFrom<PyComputation> for Computation {
                             }),
                         }
                     }
-                    std_OnesOperation(op) => Ok(Operation {
-                        kind: OnesOp {
-                            sig: Signature::unary(Ty::HostShape, map_type(&op.output_type)?),
-                        }
-                        .into(),
-                        inputs: map_inputs(&op.inputs, &["shape"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        name: op.name.clone(),
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
+                    std_OnesOperation(op) => {
+                        let plc = map_placement(&placements, &op.placement_name)?;
+                        let arg_type = match plc {
+                            Placement::Host(_) => Ty::HostShape,
+                            Placement::Replicated(_) => Ty::ReplicatedShape,
+                            Placement::Additive(_) => Ty::AdditiveShape,
+                        };
+                        Ok(Operation {
+                            kind: OnesOp {
+                                sig: Signature::unary(arg_type, map_type(&op.output_type)?),
+                            }
+                            .into(),
+                            inputs: map_inputs(&op.inputs, &["shape"])
+                                .with_context(|| format!("Failed at op {:?}", op))?,
+                            name: op.name.clone(),
+                            placement: map_placement(&placements, &op.placement_name)?,
+                        })
+                    }
                     std_ExpandDimsOperation(op) => Ok(Operation {
                         kind: ExpandDimsOp {
                             // assume input type is the same as the output type
