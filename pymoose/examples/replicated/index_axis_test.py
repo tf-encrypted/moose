@@ -14,7 +14,7 @@ from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(parameterized.TestCase):
-    def _setup_model_comp(self):
+    def _setup_index_comp(self):
         alice = edsl.host_placement(name="alice")
         bob = edsl.host_placement(name="bob")
         carole = edsl.host_placement(name="carole")
@@ -36,14 +36,14 @@ class ReplicatedExample(parameterized.TestCase):
         return my_model_comp
 
     def test_logistic_regression_example_serde(self):
-        model_comp = self._setup_model_comp()
+        model_comp = self._setup_index_comp()
         traced_model_comp = edsl.trace(model_comp)
         comp_bin = utils.serialize_computation(traced_model_comp)
         deser_model_comp = utils.deserialize_computation(comp_bin)
         assert traced_model_comp == deser_model_comp
 
     def test_logistic_regression_example_rust_serde(self):
-        model_comp = self._setup_model_comp()
+        model_comp = self._setup_index_comp()
         traced_model_comp = edsl.trace(model_comp)
         comp_bin = utils.serialize_computation(traced_model_comp)
         # Compile in Rust
@@ -51,7 +51,7 @@ class ReplicatedExample(parameterized.TestCase):
         elk_compiler.compile_computation(comp_bin, [])
 
     def test_logistic_regression_example_compile(self):
-        model_comp = self._setup_model_comp()
+        model_comp = self._setup_index_comp()
         traced_model_comp = edsl.trace(model_comp)
         comp_bin = utils.serialize_computation(traced_model_comp)
         _ = elk_compiler.compile_computation(
@@ -64,13 +64,13 @@ class ReplicatedExample(parameterized.TestCase):
             ],
         )
 
-    def test_logistic_regression_example_execute(self):
+    def test_index_axis_example_execute(self):
         input_x = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
         expected_result = np.array([3.0, 4.0])
 
-        model_comp = self._setup_model_comp()
-        traced_model_comp = edsl.trace(model_comp)
-        comp_bin = utils.serialize_computation(traced_model_comp)
+        index_comp = self._setup_index_comp()
+        traced_index_comp = edsl.trace(index_comp)
+        comp_bin = utils.serialize_computation(traced_index_comp)
         compiled_comp = elk_compiler.compile_computation(
             comp_bin,
             [

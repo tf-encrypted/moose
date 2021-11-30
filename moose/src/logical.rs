@@ -990,7 +990,7 @@ impl IndexAxisOp {
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             _ => Err(Error::UnimplementedOperator(format!(
-                "Missing replicated sigmoid for {:?}",
+                "Missing replicated index_axis for {:?}",
                 &x.ty_desc(),
             ))),
         }
