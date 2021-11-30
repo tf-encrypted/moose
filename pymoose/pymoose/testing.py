@@ -1,5 +1,4 @@
 from pymoose import LocalRuntime
-from pymoose import edsl
 from pymoose.computation import utils
 
 
@@ -17,13 +16,22 @@ class LocalMooseRuntime(LocalRuntime):
         return LocalRuntime.__new__(LocalMooseRuntime, storage_mapping=storage_mapping)
 
     def evaluate_computation(
-        self, computation, role_assignment, arguments=None, ring=128
+        self, computation, role_assignment, arguments=None, compiler_passes=None,
     ):
         if arguments is None:
             arguments = {}
-        logical_comp = edsl.trace(computation)
-        comp_bin = utils.serialize_computation(logical_comp)
-        return super().evaluate_computation(comp_bin, role_assignment, arguments)
+        if compiler_passes is None:
+            compiler_passes = [
+                "typing",
+                "full",
+                "prune",
+                "networking",
+                "toposort",
+            ]
+        comp_bin = utils.serialize_computation(computation)
+        return super().evaluate_computation(
+            comp_bin, role_assignment, arguments, compiler_passes
+        )
 
     def evaluate_compiled(self, comp_bin, role_assignment, arguments=None):
         if arguments is None:

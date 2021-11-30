@@ -7,6 +7,7 @@ import pytest
 from absl.testing import parameterized
 
 from pymoose import edsl
+from pymoose import elk_compiler
 from pymoose.computation import utils
 from pymoose.computation.standard import StringType
 from pymoose.logger import get_logger
@@ -125,7 +126,7 @@ class LinearRegressionExample(parameterized.TestCase):
         return my_comp, (x_owner, y_owner, model_owner, replicated_plc)
 
     def _linear_regression_eval(self, metric_name):
-        linear_comp, placements = self._build_linear_regression_example(metric_name)
+        linear_comp, _ = self._build_linear_regression_example(metric_name)
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
         executors_storage = {
@@ -134,8 +135,9 @@ class LinearRegressionExample(parameterized.TestCase):
             "model-owner": {},
         }
         runtime = LocalMooseRuntime(storage_mapping=executors_storage)
+        traced = edsl.trace(linear_comp)
         _ = runtime.evaluate_computation(
-            computation=linear_comp,
+            computation=traced,
             role_assignment={
                 "x-owner": "x-owner",
                 "y-owner": "y-owner",
@@ -165,8 +167,7 @@ class LinearRegressionExample(parameterized.TestCase):
         comp, _ = self._build_linear_regression_example()
         compiled_comp = edsl.trace(comp)
         serialized = utils.serialize_computation(compiled_comp)
-        deserialized = utils.deserialize_computation(serialized)
-        assert compiled_comp == deserialized
+        elk_compiler.compile_computation(serialized, [])
 
 
 if __name__ == "__main__":

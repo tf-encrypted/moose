@@ -143,23 +143,12 @@ impl LocalRuntime {
         computation: Vec<u8>,
         role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
-        compiler_passes: Option<Vec<String>>,
+        compiler_passes: Vec<String>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let computation = create_computation_graph_from_py_bytes(computation);
-        let passes: Vec<Pass> = match compiler_passes {
-            None => into_pass(&[
-                "typing".to_string(),
-                "full".to_string(),
-                "prune".to_string(),
-                "networking".to_string(),
-                "typing".to_string(),
-            ]),
-            Some(passes) => into_pass(&passes[..]),
-        }
-        .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        let passes: Vec<Pass> =
+            into_pass(&compiler_passes[..]).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         let computation = compile_passes(&computation, &passes[..])
-            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?
-            .toposort()
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         self.evaluate_compiled_computation(py, &computation, role_assignments, arguments)
     }
