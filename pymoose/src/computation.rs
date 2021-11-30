@@ -28,7 +28,6 @@ enum PyOperation {
     ring_RingShrOperation(PyRingShrOperation),
     bit_BitExtractOperation(PyBitExtractOperation),
     bit_BitSampleOperation(PyBitSampleOperation),
-    bit_BitFillTensorOperation(PyBitFillOperation),
     bit_BitXorOperation(PyBitXorOperation),
     bit_BitAndOperation(PyBitAndOperation),
     bit_RingInjectOperation(PyRingInjectOperation),
@@ -230,14 +229,6 @@ struct PyFillTensorOperation {
     inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyBitFillOperation {
-    name: String,
-    value: u8,
-    inputs: Inputs,
-    placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -1087,17 +1078,6 @@ impl TryFrom<PyComputation> for Computation {
                         .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape", "seed"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    bit_BitFillTensorOperation(op) => Ok(Operation {
-                        kind: BitFillOp {
-                            sig: Signature::unary(Ty::HostShape, Ty::HostBitTensor),
-                            value: Constant::Ring64(u64::from(op.value)),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["shape"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
