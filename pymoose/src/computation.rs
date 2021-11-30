@@ -1261,8 +1261,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                            axis: op.axis.clone(),
-                            index: op.index.clone(),
+                            axis: op.axis,
+                            index: op.index,
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])

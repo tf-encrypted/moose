@@ -2740,4 +2740,55 @@ mod tests {
         let targets: Vec<u128> = vec![1_u128, 0, 0, 0, 1];
         test_rep_less_than128(x, y, targets);
     }
+
+    macro_rules! rep_index_axis_fixed_test {
+        ($func_name:ident, $ti: ty, $tu: ty,$axis: expr, $index: expr, $i_precision: expr, $f_precision: expr) => {
+            fn $func_name(x: ArrayD<f64>, y_target: ArrayD<f64>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let sess = SyncSession::default();
+                let encode = |item: &f64| -> $tu {
+                    let tmp: $ti = (2f64.powf($f_precision as f64) * item) as $ti;
+                    tmp as $tu
+                };
+                let x_encoded = x.map(encode);
+
+                let x = FixedTensor::Host(new_host_fixed_tensor_with_precision(
+                    AbstractHostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()), $i_precision, $f_precision)
+                );
+
+                let exp_result = rep.index_axis(&sess, $axis, $index, &x);
+
+                let opened_exp = match exp_result {
+                    FixedTensor::Replicated(r) => alice.reveal(&sess, &r),
+                    _ => panic!("Should not produce an non-replicated tensor on a replicated placement"),
+                };
+
+                let result = Convert::decode(&opened_exp.tensor, (2 as $tu).pow($f_precision));
+                assert_eq!(result.0, y_target);
+            }
+        };
+    }
+
+    rep_index_axis_fixed_test!(test_rep_index_axis_fixed64, i64, u64, 1, 0, 10, 10);
+    rep_index_axis_fixed_test!(test_rep_index_axis_fixed128, i128, u128, 1, 0, 20, 20);
+
+    #[test]
+    fn test_index_axis_64() {
+        let x = array![[1f64, 2.5], [-3.0, 4.0]].into_dyn();
+        let y_targets = x.index_axis(Axis(1), 0).into_dyn().to_owned();
+        test_rep_index_axis_fixed64(x, y_targets);
+    }
+
+    #[test]
+    fn test_index_axis_128() {
+        let x = array![[1f64, 2.5], [-3.0, 4.0]].into_dyn();
+        let y_targets = x.index_axis(Axis(1), 0).into_dyn().to_owned();
+        test_rep_index_axis_fixed128(x, y_targets);
+    }
 }
