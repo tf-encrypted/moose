@@ -868,11 +868,13 @@ impl SumOp {
 }
 
 modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> Tensor, OnesOp);
+//modelled!(PlacementOnes::ones, ReplicatedPlacement, (ReplicatedShape) -> Tensor, OnesOp);
 
 kernel! {
     OnesOp,
     [
         (HostPlacement, (HostShape) -> Tensor => [hybrid] Self::host_kernel),
+        //(ReplicatedPlacement, (ReplicatedShape) -> Tensor => [hybrid] Self::rep_kernel),
         // We do not support the ReplicatedPlacement: PlacementFill yet, hence we do not support Ones.
         // Also, logical Tensor can only hold Host tensors at the moment.
         // (ReplicatedPlacement, (HostShape) -> Tensor => [hybrid] Self::rep_kernel),
@@ -904,6 +906,30 @@ impl OnesOp {
         let result = plc.ones(sess, &shape);
         Ok(AbstractTensor::Float64(result))
     }
+
+    //fn rep_kernel<S: Session>(
+    //    sess: &S,
+    //    plc: &ReplicatedPlacement,
+    //    shape: cs!(ReplicatedShape),
+    //) -> Result<
+    //    AbstractTensor<
+    //        cs!(Fixed64Tensor),
+    //        cs!(Fixed128Tensor),
+    //        cs!(Float32Tensor),
+    //        cs!(Float64Tensor),
+    //    >,
+    //>
+    //where
+    //    ReplicatedShape: KnownType<S>,
+    //    Fixed64Tensor: KnownType<S>,
+    //    Fixed128Tensor: KnownType<S>,
+    //    Float32Tensor: KnownType<S>,
+    //    Float64Tensor: KnownType<S>,
+    //    ReplicatedPlacement: PlacementOnes<S, cs!(ReplicatedShape), cs!(Float64Tensor)>,
+    //{
+    //    let result = plc.ones(sess, &shape);
+    //    Ok(AbstractTensor::Fixed128(result))
+    //}
 
     // fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
     //     sess: &S,
