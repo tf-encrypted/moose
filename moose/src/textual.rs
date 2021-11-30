@@ -257,7 +257,6 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         OutputOp::from_textual,
         ConstantOp::from_textual,
         ShapeOp::from_textual,
-        BitFillOp::from_textual,
         RingFillOp::from_textual,
         SaveOp::from_textual,
         HostAddOp::from_textual,
@@ -1238,7 +1237,6 @@ impl ToTextual for Operator {
             BitXor(op) => op.to_textual(),
             BitAnd(op) => op.to_textual(),
             BitNeg(op) => op.to_textual(),
-            BitFill(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
             HostAdd(op) => op.to_textual(),
             HostSub(op) => op.to_textual(),
@@ -1327,7 +1325,7 @@ impl ToTextual for Operator {
             AdtShl(op) => op.to_textual(),
             AdtToRep(op) => op.to_textual(),
             RepAbs(op) => op.to_textual(),
-            RepFill(op) => op.to_textual(),
+            Fill(op) => op.to_textual(),
             RepMsb(op) => op.to_textual(),
             RepShl(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
@@ -2169,9 +2167,6 @@ z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = BitSampleSeeded: (Shape, Seed) -> BitTensor (shape, seed) @Host(alice)",
-        )?;
-        parse_assignment::<(&str, ErrorKind)>(
-            "z = BitFill {value = Ring64(0)}: (Shape) -> BitTensor (s) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = BitXor: (BitTensor, BitTensor) -> BitTensor (x, y) @Host(alice)",
