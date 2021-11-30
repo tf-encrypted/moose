@@ -5,7 +5,8 @@ use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
 use syn::{
-    parse_macro_input, parse_quote, BinOp, Expr, ExprBinary, ExprCall, ExprPath, Ident, Token,
+    parse_macro_input, parse_quote, BinOp, Data, Expr, ExprBinary, ExprCall, ExprPath, Fields,
+    Ident, Token,
 };
 
 /// Macros to convert expression into player/context invocations.
@@ -124,6 +125,74 @@ pub fn short_name_derive(input: TokenStream) -> TokenStream {
         }
         impl #name {
             pub const SHORT_NAME: &'static str = #ident_string;
+        }
+    };
+    gen.into()
+}
+
+/// Derive macro to support textual format
+#[proc_macro_derive(AutoToTextual)]
+pub fn to_textual_derive(input: TokenStream) -> TokenStream {
+    let ast: syn::DeriveInput = syn::parse(input).unwrap();
+    let name = &ast.ident;
+    // Note, we only need to truncate the name by the charaters to get rid of the `Op` suffix.
+    // If we refactor to not have that suffix anymore we can just use `stringify!(#name)` inside `quote!` below.
+    let mut ident_string = name.to_string();
+    if ident_string.ends_with("Op") {
+        ident_string.truncate(ident_string.len() - 2);
+    }
+    let formatter = match ast.data {
+        Data::Struct(ref data) => match data.fields {
+            Fields::Named(ref fields) => {
+                // Building the format string in an old fashion way
+                let mut format_string = String::from("{op}");
+                let mut has_attributes = false;
+                for item in fields.named.iter() {
+                    match item.ident.as_ref().map(|i| i.to_string()) {
+                        // Member "sig" is special, since it is the op's signature, not an attribute.
+                        Some(ref name) if name != "sig" => {
+                            if !has_attributes {
+                                has_attributes = true;
+                                format_string.push_str("{{");
+                            } else {
+                                format_string.push_str(", ");
+                            }
+                            format_string.push_str(name);
+                            format_string.push_str(" = {");
+                            format_string.push_str(name);
+                            format_string.push('}');
+                        }
+                        _ => {}
+                    }
+                }
+                if has_attributes {
+                    format_string.push_str("}}");
+                }
+                format_string.push_str(": {sig}");
+
+                // Simply iterate over all the members converting each into "value = self.value.to_textual()" call.
+                let recurse = fields.named.iter().filter_map(|f| {
+                    let id = &f.ident;
+                    match id.as_ref().map(|i| i.to_string()) {
+                        Some(name) if name != "sig" => Some(quote_spanned! {f.span()=>
+                            #id = self.#id.to_textual()
+                        }),
+                        _ => None,
+                    }
+                });
+                quote! {
+                    format!(#format_string, op = #ident_string, #(#recurse ,)* sig = self.sig.to_textual())
+                }
+            }
+            _ => quote!(),
+        },
+        _ => quote!(),
+    };
+    let gen = quote! {
+        impl crate::textual::ToTextual for #name {
+            fn to_textual(&self) -> String {
+                #formatter
+            }
         }
     };
     gen.into()

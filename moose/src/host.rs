@@ -8,8 +8,8 @@ use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray::Slice;
-use ndarray_linalg::types::{Lapack, Scalar};
-use ndarray_linalg::*;
+#[cfg(feature = "blas")]
+use ndarray_linalg::{Inverse, Lapack, Scalar};
 use num_traits::Zero;
 use num_traits::{Float, FromPrimitive};
 use rand::prelude::*;
@@ -1235,6 +1235,7 @@ kernel! {
     ]
 }
 
+#[cfg(feature = "blas")]
 impl HostInverseOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
         sess: &S,
@@ -1248,6 +1249,18 @@ impl HostInverseOp {
     }
 }
 
+#[cfg(not(feature = "blas"))]
+impl HostInverseOp {
+    pub fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _x: HostTensor<T>,
+    ) -> Result<HostTensor<T>> {
+        unimplemented!("Please enable 'blas' feature");
+    }
+}
+
+#[cfg(feature = "blas")]
 impl<T> HostTensor<T>
 where
     T: Scalar + Lapack,
@@ -3175,6 +3188,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "blas")]
     #[test]
     fn test_inverse() {
         let x = HostTensor::<f32>::from(
@@ -3422,6 +3436,7 @@ mod tests {
         assert_eq!(z_2, z_2_exp);
     }
 
+    #[cfg(feature = "blas")]
     #[test]
     fn test_kernel_inverse() {
         use crate::kernels::PlacementInverse;

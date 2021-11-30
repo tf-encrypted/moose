@@ -1,18 +1,17 @@
 use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
-use crate::execution::{
-    map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Identity, Kernel,
-    SyncKernel,
-};
-use crate::fixedpoint::{Convert, Fixed128Tensor, Fixed64Tensor};
+use crate::execution::{Identity, SyncNetworkingImpl, SyncStorageImpl};
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::*;
+use crate::networking::LocalSyncNetworking;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::*;
-use crate::{closure_kernel, function_kernel};
+use crate::storage::LocalSyncStorage;
 use crate::{computation::*, for_all_values};
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::rc::Rc;
 use std::sync::Arc;
 
 /// General session trait determining basic properties for session objects.
@@ -48,6 +47,8 @@ pub struct SyncSession {
     replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<ReplicatedSetup>>>,
     arguments: HashMap<String, Value>,
     role_assignments: HashMap<Role, Identity>,
+    storage: SyncStorageImpl,
+    networking: SyncNetworkingImpl,
 }
 
 impl Default for SyncSession {
@@ -60,21 +61,68 @@ impl Default for SyncSession {
             replicated_keys: Default::default(),
             arguments: Default::default(),
             role_assignments: Default::default(),
+            storage: Rc::new(LocalSyncStorage::default()),
+            networking: Rc::new(LocalSyncNetworking::default()),
         }
     }
 }
 
 impl SyncSession {
-    pub fn new(
+    pub fn from_session_id(sid: SessionId) -> Self {
+        SyncSession {
+            session_id: sid,
+            replicated_keys: Default::default(),
+            arguments: Default::default(),
+            role_assignments: Default::default(),
+            storage: Rc::new(LocalSyncStorage::default()),
+            networking: Rc::new(LocalSyncNetworking::default()),
+        }
+    }
+
+    pub fn from_storage(
         sid: SessionId,
         arguments: HashMap<String, Value>,
         role_assignments: HashMap<Role, Identity>,
+        storage: SyncStorageImpl,
     ) -> Self {
         SyncSession {
             session_id: sid,
             replicated_keys: Default::default(),
             arguments,
             role_assignments,
+            storage,
+            networking: Rc::new(LocalSyncNetworking::default()),
+        }
+    }
+
+    pub fn from_networking(
+        sid: SessionId,
+        arguments: HashMap<String, Value>,
+        role_assignments: HashMap<Role, Identity>,
+        networking: SyncNetworkingImpl,
+    ) -> Self {
+        SyncSession {
+            session_id: sid,
+            replicated_keys: Default::default(),
+            arguments,
+            role_assignments,
+            storage: Rc::new(LocalSyncStorage::default()),
+            networking,
+        }
+    }
+
+    pub fn from_roles<'a>(roles: impl Iterator<Item = &'a Role>) -> Self {
+        let own_identity = Identity::from("tester");
+        let role_assignment = roles
+            .map(|role| (role.clone(), own_identity.clone()))
+            .collect();
+        SyncSession {
+            session_id: SessionId::random(),
+            replicated_keys: Default::default(),
+            arguments: Default::default(),
+            role_assignments: role_assignment,
+            storage: Rc::new(LocalSyncStorage::default()),
+            networking: Rc::new(LocalSyncNetworking::default()),
         }
     }
 }
@@ -148,8 +196,28 @@ impl Session for SyncSession {
             HostOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Input(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Output(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Load(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Save(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Load(op) => {
+                use std::convert::TryInto;
+                assert_eq!(operands.len(), 2);
+                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
+                let query: HostString = operands.get(1).unwrap().clone().try_into()?;
+                self.storage
+                    .load(&key.0, &self.session_id, Some(op.sig.ret()), &query.0)?
+            }
+            Save(_) => {
+                use std::convert::TryInto;
+                assert_eq!(operands.len(), 2);
+                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
+                let x = operands.get(1).unwrap().clone();
+                self.storage.save(&key.0, &self.session_id, &x)?;
+                let host = match plc {
+                    Placement::Host(host) => host,
+                    _ => unimplemented!(
+                        "SyncSession does not support running Save on non-host placements yet"
+                    ),
+                };
+                Unit(host.clone()).into()
+            }
             HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqrt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -195,8 +263,28 @@ impl Session for SyncSession {
             HostBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Identity(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Cast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Send(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Receive(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Send(op) => {
+                assert_eq!(operands.len(), 1);
+                let x = operands.get(0).unwrap();
+                self.networking.send(
+                    x,
+                    self.find_role_assignment(&op.receiver)?,
+                    &op.rendezvous_key,
+                    &self.session_id,
+                )?;
+                let host = match plc {
+                    Placement::Host(host) => host,
+                    _ => unimplemented!(
+                        "SyncSession does not support running Send on non-host placements yet"
+                    ),
+                };
+                Unit(host.clone()).into()
+            }
+            Receive(op) => self.networking.receive(
+                self.find_role_assignment(&op.sender)?,
+                &op.rendezvous_key,
+                &self.session_id,
+            )?,
             HostReshape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Slice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -214,7 +302,7 @@ impl Session for SyncSession {
             Sum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepIfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            IfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Pow2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Exp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -649,7 +737,7 @@ impl Session for AsyncSession {
             AddN(op) => DispatchKernel::compile(&op, plc)?,
             Exp(op) => DispatchKernel::compile(&op, plc)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?,
-            RepIfElse(op) => DispatchKernel::compile(&op, plc)?,
+            IfElse(op) => DispatchKernel::compile(&op, plc)?,
             LessThan(op) => DispatchKernel::compile(&op, plc)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
             _ => todo!(),
@@ -1024,16 +1112,6 @@ pub trait PlacementTruncPrProvider<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
 }
 
-pub trait PlacementDaBitProvider<S: Session, ShapeT, O1, O2> {
-    fn gen_dabit(
-        &self,
-        sess: &S,
-        shape_provider: ShapeT,
-        shape_a: ShapeT,
-        provider: &HostPlacement,
-    ) -> (O1, O2);
-}
-
 pub trait PlacementAbs<S: Session, T, O> {
     fn abs(&self, sess: &S, x: &T) -> O;
 }
@@ -1152,1118 +1230,6 @@ pub trait PlacementIndex<S: Session, T, O> {
 
 pub trait PlacementShlDim<S: Session, T, O> {
     fn shl_dim(&self, sess: &S, amount: usize, ring_size: usize, x: &T) -> O;
-}
-
-fn check_type(v: &Value, expected: Ty) -> Result<()> {
-    if v.ty() == expected {
-        Ok(())
-    } else {
-        Err(Error::TypeMismatch {
-            expected: format!("{:?}", expected),
-            found: v.ty(),
-        })
-    }
-}
-
-impl Compile<SyncKernel> for Operator {
-    fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
-        use Operator::*;
-        match self {
-            Identity(op) => Compile::<SyncKernel>::compile(op, ctx),
-            Load(op) => Compile::<SyncKernel>::compile(op, ctx),
-            Save(op) => Compile::<SyncKernel>::compile(op, ctx),
-            Send(op) => Compile::<SyncKernel>::compile(op, ctx),
-            Receive(op) => Compile::<SyncKernel>::compile(op, ctx),
-            Input(op) => Compile::<SyncKernel>::compile(op, ctx),
-            Output(op) => Compile::<SyncKernel>::compile(op, ctx),
-            Constant(op) => Compile::<SyncKernel>::compile(op, ctx),
-            Shape(op) => Compile::<SyncKernel>::compile(op, ctx),
-            BitFill(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingFill(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostSub(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostMul(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostDiv(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostDot(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostMean(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostOnes(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostExpandDims(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostReshape(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostAtLeast2D(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostSlice(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostSum(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostTranspose(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostInverse(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostConcat(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingNeg(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingSub(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingMul(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingDot(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingSum(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingFixedpointEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingFixedpointDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingFixedpointMean(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingSample(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingSampleSeeded(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingShl(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingShr(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingInject(op) => Compile::<SyncKernel>::compile(op, ctx),
-            BitExtract(op) => Compile::<SyncKernel>::compile(op, ctx),
-            BitSample(op) => Compile::<SyncKernel>::compile(op, ctx),
-            BitSampleSeeded(op) => Compile::<SyncKernel>::compile(op, ctx),
-            BitXor(op) => Compile::<SyncKernel>::compile(op, ctx),
-            BitAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
-            BitNeg(_) => unimplemented!(),
-            PrimDeriveSeed(op) => Compile::<SyncKernel>::compile(op, ctx),
-            PrimPrfKeyGen(op) => Compile::<SyncKernel>::compile(op, ctx),
-            FixedpointEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
-            FixedpointDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
-            FixedpointAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
-            FixedpointSub(op) => Compile::<SyncKernel>::compile(op, ctx),
-            FloatingpointAdd(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointSub(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointMul(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointDiv(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointDot(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointAtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointOnes(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointConcat(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointTranspose(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointInverse(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointMean(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointSum(op) => unimplemented!("Not done yet: {:?}", op),
-            AtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
-            Slice(op) => unimplemented!("Not done yet: {:?}", op),
-            Ones(op) => unimplemented!("Not done yet: {:?}", op),
-            ExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
-            Concat(op) => unimplemented!("Not done yet: {:?}", op),
-            Transpose(op) => unimplemented!("Not done yet: {:?}", op),
-            Dot(op) => unimplemented!("Not done yet: {:?}", op),
-            Inverse(op) => unimplemented!("Not done yet: {:?}", op),
-            Add(op) => unimplemented!("Not done yet: {:?}", op),
-            Sub(op) => unimplemented!("Not done yet: {:?}", op),
-            Mul(op) => unimplemented!("Not done yet: {:?}", op),
-            Mean(op) => unimplemented!("Not done yet: {:?}", op),
-            Neg(op) => unimplemented!("Not done yet: {:?}", op),
-            Sum(op) => unimplemented!("Not done yet: {:?}", op),
-            Div(op) => unimplemented!("Not done yet: {:?}", op),
-            Pow2(op) => unimplemented!("Not done yet: {:?}", op),
-            Exp(op) => unimplemented!("Not done yet: {:?}", op),
-            Sigmoid(op) => unimplemented!("Not done yet: {:?}", op),
-            LessThan(op) => unimplemented!("Not done yet: {:?}", op),
-            GreaterThan(op) => unimplemented!("Not done yet: {:?}", op),
-            // TODO
-            AesDecrypt(_) => unimplemented!(),
-            HostIndexAxis(_) => unimplemented!(),
-            HostBitDec(_) => unimplemented!(),
-            HostShlDim(_) => unimplemented!(),
-            HostSqrt(_) => unimplemented!(),
-            HostDiag(_) => unimplemented!(),
-            HostSqueeze(_) => unimplemented!(),
-            Cast(_) => unimplemented!("No implementation of Cast for the old framework"),
-            _ => {
-                unimplemented!("Not supported {:?}", self)
-            }
-        }
-    }
-}
-
-impl Compile<AsyncKernel> for Operator {
-    fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
-        use Operator::*;
-        match self {
-            Identity(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            Load(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            Save(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            Send(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            Receive(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            Input(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            Output(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            Constant(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            Shape(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            BitFill(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingFill(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostMul(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostDiv(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostMean(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostOnes(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostExpandDims(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostReshape(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostAtLeast2D(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostSlice(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostTranspose(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostInverse(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostConcat(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingNeg(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingMul(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingFixedpointEncode(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingFixedpointDecode(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingFixedpointMean(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingSample(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingSampleSeeded(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingShl(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingShr(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingInject(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            BitExtract(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            BitSample(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            BitSampleSeeded(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            BitXor(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            BitNeg(_) => unimplemented!(),
-            PrimDeriveSeed(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            PrimPrfKeyGen(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            AddN(op) => unimplemented!("Not done yet: {:?}", op),
-            AtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
-            Slice(op) => unimplemented!("Not done yet: {:?}", op),
-            Ones(op) => unimplemented!("Not done yet: {:?}", op),
-            ExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
-            Concat(op) => unimplemented!("Not done yet: {:?}", op),
-            Transpose(op) => unimplemented!("Not done yet: {:?}", op),
-            Dot(op) => unimplemented!("Not done yet: {:?}", op),
-            Inverse(op) => unimplemented!("Not done yet: {:?}", op),
-            Add(op) => unimplemented!("Not done yet: {:?}", op),
-            Sub(op) => unimplemented!("Not done yet: {:?}", op),
-            Mul(op) => unimplemented!("Not done yet: {:?}", op),
-            Mean(op) => unimplemented!("Not done yet: {:?}", op),
-            Neg(op) => unimplemented!("Not done yet: {:?}", op),
-            Sum(op) => unimplemented!("Not done yet: {:?}", op),
-            Div(op) => unimplemented!("Not done yet: {:?}", op),
-            Pow2(op) => unimplemented!("Not done yet: {:?}", op),
-            Exp(op) => unimplemented!("Not done yet: {:?}", op),
-            Sigmoid(op) => unimplemented!("Not done yet: {:?}", op),
-            LessThan(op) => unimplemented!("Not done yet: {:?}", op),
-            GreaterThan(op) => unimplemented!("Not done yet: {:?}", op),
-            // TODO implement below (needed until we switch to new framework for execution)
-            AesDecrypt(_) => unimplemented!(),
-            FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
-            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostShlDim(_) | HostSqrt(_)
-            | HostSqueeze(_) | HostDiag(_) | Cast(_) => {
-                unimplemented!("deprecated, not impl {:?}", self)
-            }
-            FloatingpointAdd(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointSub(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointMul(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointDiv(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointDot(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointAtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointOnes(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointConcat(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointTranspose(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointInverse(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointMean(op) => unimplemented!("Not done yet: {:?}", op),
-            FloatingpointSum(op) => unimplemented!("Not done yet: {:?}", op),
-            _ => {
-                unimplemented!("Not supported {:?}", self)
-            }
-        }
-    }
-}
-
-macro_rules! signature {
-    (() -> $ret: pat) => {
-        Signature::Nullary(NullarySignature { ret: $ret })
-    };
-    (($t0: pat) -> $ret: pat) => {
-        Signature::Unary(UnarySignature {
-            arg0: $t0,
-            ret: $ret,
-        })
-    };
-    (($t0: pat, $t1: pat) -> $ret: pat) => {
-        Signature::Binary(BinarySignature {
-            arg0: $t0,
-            arg1: $t1,
-            ret: $ret,
-        })
-    };
-    (($t0: pat, $t1: pat, $t2: pat) -> $ret: pat) => {
-        Signature::Ternary(TernarySignature {
-            arg0: $t0,
-            arg1: $t1,
-            arg2: $t2,
-            ret: $ret,
-        })
-    };
-    (vec[$ts: pat] -> $ret: pat) => {
-        Signature::Variadic(VariadicSignature {
-            args: $ts,
-            ret: $ret,
-        })
-    };
-}
-
-macro_rules! host_unary_kernel {
-    ($op:ty, $k:expr) => {
-        impl Compile<Kernel> for $op {
-            fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-                match self.sig {
-                    signature![(Ty::HostFloat32Tensor) -> _] => {
-                        function_kernel!(HostFloat32Tensor, $k)
-                    }
-                    signature![(Ty::HostFloat64Tensor) -> _] => {
-                        function_kernel!(HostFloat64Tensor, $k)
-                    }
-                    signature![(Ty::HostInt32Tensor) -> _] => {
-                        function_kernel!(HostInt32Tensor, $k)
-                    }
-                    signature![(Ty::HostInt64Tensor) -> _] => {
-                        function_kernel!(HostInt64Tensor, $k)
-                    }
-                    signature![(Ty::HostUint32Tensor) -> _] => {
-                        function_kernel!(HostUint32Tensor, $k)
-                    }
-                    signature![(Ty::HostUint64Tensor) -> _] => {
-                        function_kernel!(HostUint64Tensor, $k)
-                    }
-                    _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-                }
-            }
-        }
-    };
-}
-
-macro_rules! host_binary_kernel {
-    ($op:ident, $k:expr) => {
-        impl Compile<Kernel> for $op {
-            fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-                match self.sig {
-                    signature![(Ty::HostFloat32Tensor, Ty::HostFloat32Tensor) -> _] => {
-                        function_kernel!(HostFloat32Tensor, HostFloat32Tensor, $k)
-                    }
-                    signature![(Ty::HostFloat64Tensor, Ty::HostFloat64Tensor) -> _] => {
-                        function_kernel!(HostFloat64Tensor, HostFloat64Tensor, $k)
-                    }
-                    signature![(Ty::HostInt32Tensor, Ty::HostInt32Tensor) -> _] => {
-                        function_kernel!(HostInt32Tensor, HostInt32Tensor, $k)
-                    }
-                    signature![(Ty::HostInt64Tensor, Ty::HostInt64Tensor) -> _] => {
-                        function_kernel!(HostInt64Tensor, HostInt64Tensor, $k)
-                    }
-                    signature![(Ty::HostUint32Tensor, Ty::HostUint32Tensor) -> _] => {
-                        function_kernel!(HostUint32Tensor, HostUint32Tensor, $k)
-                    }
-                    signature![(Ty::HostUint64Tensor, Ty::HostUint64Tensor) -> _] => {
-                        function_kernel!(HostUint64Tensor, HostUint64Tensor, $k)
-                    }
-                    _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-                }
-            }
-        }
-    };
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-host_binary_kernel!(HostAddOp, |x, y| x + y);
-#[cfg(not(feature = "exclude_old_framework"))]
-host_binary_kernel!(HostSubOp, |x, y| x - y);
-#[cfg(not(feature = "exclude_old_framework"))]
-host_binary_kernel!(HostMulOp, |x, y| x * y);
-#[cfg(not(feature = "exclude_old_framework"))]
-host_binary_kernel!(HostDivOp, |x, y| x / y);
-#[cfg(not(feature = "exclude_old_framework"))]
-host_binary_kernel!(HostDotOp, |x, y| x.dot(y));
-#[cfg(not(feature = "exclude_old_framework"))]
-host_unary_kernel!(HostTransposeOp, |x| x.transpose());
-
-impl Compile<Kernel> for HostInverseOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        // Using a fake owner for the old kernel
-        match self.sig {
-            signature![(_) -> Ty::HostFloat32Tensor] => {
-                closure_kernel!(HostFloat32Tensor, |x| x.inv())
-            }
-            signature![(_) -> Ty::HostFloat64Tensor] => {
-                closure_kernel!(HostFloat64Tensor, |x| x.inv())
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-impl Compile<Kernel> for HostMeanOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let axis = self.axis.map(|x| x as usize);
-        match self.sig {
-            signature![(_) -> Ty::HostFloat32Tensor] => {
-                closure_kernel!(HostFloat32Tensor, |x| x.mean(axis).unwrap())
-            }
-            signature![(_) -> Ty::HostFloat64Tensor] => {
-                closure_kernel!(HostFloat64Tensor, |x| x.mean(axis).unwrap())
-            }
-            signature![(_) -> Ty::HostInt32Tensor] => {
-                closure_kernel!(HostInt32Tensor, |x| x.mean(axis).unwrap())
-            }
-            signature![(_) -> Ty::HostInt64Tensor] => {
-                closure_kernel!(HostInt64Tensor, |x| x.mean(axis).unwrap())
-            }
-            signature![(_) -> Ty::HostUint32Tensor] => {
-                closure_kernel!(HostUint32Tensor, |x| x.mean(axis).unwrap())
-            }
-            signature![(_) -> Ty::HostUint64Tensor] => {
-                closure_kernel!(HostUint64Tensor, |x| x.mean(axis).unwrap())
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-impl Compile<Kernel> for HostOnesOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(_) -> Ty::HostFloat32Tensor] => {
-                function_kernel!(HostShape, |shape| HostFloat32Tensor::ones(shape))
-            }
-            signature![(_) -> Ty::HostFloat64Tensor] => {
-                function_kernel!(HostShape, |shape| HostFloat64Tensor::ones(shape))
-            }
-            signature![(_) -> Ty::HostInt32Tensor] => {
-                function_kernel!(HostShape, |shape| HostInt32Tensor::ones(shape))
-            }
-            signature![(_) -> Ty::HostInt64Tensor] => {
-                function_kernel!(HostShape, |shape| HostInt64Tensor::ones(shape))
-            }
-            signature![(_) -> Ty::HostUint32Tensor] => {
-                function_kernel!(HostShape, |shape| HostUint32Tensor::ones(shape))
-            }
-            signature![(_) -> Ty::HostUint64Tensor] => {
-                function_kernel!(HostShape, |shape| HostUint64Tensor::ones(shape))
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-impl Compile<Kernel> for HostConcatOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let axis = self.axis as usize;
-        match self.sig {
-            signature![vec[_] -> Ty::HostFloat32Tensor] => {
-                closure_kernel!(vec[HostFloat32Tensor], |xs| concatenate(axis, &xs))
-            }
-            signature![vec[_] -> Ty::HostFloat64Tensor] => {
-                closure_kernel!(vec[HostFloat64Tensor], |xs| concatenate(axis, &xs))
-            }
-            signature![vec[_]  -> Ty::HostInt32Tensor] => {
-                closure_kernel!(vec[HostInt32Tensor], |xs| concatenate(axis, &xs))
-            }
-            signature![vec[_]  -> Ty::HostInt64Tensor] => {
-                closure_kernel!(vec[HostInt64Tensor], |xs| concatenate(axis, &xs))
-            }
-            signature![vec[_] -> Ty::HostUint32Tensor] => {
-                closure_kernel!(vec[HostUint32Tensor], |xs| concatenate(axis, &xs))
-            }
-            signature![vec[_]  -> Ty::HostUint64Tensor] => {
-                closure_kernel!(vec[HostUint64Tensor], |xs| concatenate(axis, &xs))
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-impl Compile<Kernel> for HostExpandDimsOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let axis: Vec<usize> = self.axis.iter().map(|a| *a as usize).collect();
-        match self.sig {
-            signature![(_) -> Ty::HostFloat32Tensor] => {
-                closure_kernel!(HostFloat32Tensor, |x| x.expand_dims(axis.clone()))
-            }
-            signature![(_) -> Ty::HostFloat64Tensor] => {
-                closure_kernel!(HostFloat64Tensor, |x| x.expand_dims(axis.clone()))
-            }
-            signature![(_) -> Ty::HostInt32Tensor] => {
-                closure_kernel!(HostInt32Tensor, |x| x.expand_dims(axis.clone()))
-            }
-            signature![(_) -> Ty::HostInt64Tensor] => {
-                closure_kernel!(HostInt64Tensor, |x| x.expand_dims(axis.clone()))
-            }
-            signature![(_) -> Ty::HostUint32Tensor] => {
-                closure_kernel!(HostUint32Tensor, |x| x.expand_dims(axis.clone()))
-            }
-            signature![(_) -> Ty::HostUint64Tensor] => {
-                closure_kernel!(HostUint64Tensor, |x| x.expand_dims(axis.clone()))
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-impl Compile<Kernel> for HostReshapeOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(_, _) -> Ty::HostFloat32Tensor] => {
-                function_kernel!(HostFloat32Tensor, HostShape, |x, newshape| x
-                    .reshape(newshape))
-            }
-            signature![(_, _) -> Ty::HostFloat64Tensor] => {
-                function_kernel!(HostFloat64Tensor, HostShape, |x, newshape| x
-                    .reshape(newshape))
-            }
-            signature![(_, _) -> Ty::HostInt32Tensor] => {
-                function_kernel!(HostInt32Tensor, HostShape, |x, newshape| x
-                    .reshape(newshape))
-            }
-            signature![(_, _) -> Ty::HostInt64Tensor] => {
-                function_kernel!(HostInt64Tensor, HostShape, |x, newshape| x
-                    .reshape(newshape))
-            }
-            signature![(_, _) -> Ty::HostUint32Tensor] => {
-                function_kernel!(HostUint32Tensor, HostShape, |x, newshape| x
-                    .reshape(newshape))
-            }
-            signature![(_, _) -> Ty::HostUint64Tensor] => {
-                function_kernel!(HostUint64Tensor, HostShape, |x, newshape| x
-                    .reshape(newshape))
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-impl Compile<Kernel> for HostAtLeast2DOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let tcv = self.to_column_vector;
-        match self.sig {
-            signature![(_) -> Ty::HostFloat32Tensor] => {
-                closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
-            }
-            signature![(_) -> Ty::HostFloat64Tensor] => {
-                closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
-            }
-            signature![(_) -> Ty::HostInt32Tensor] => {
-                closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
-            }
-            signature![(_) -> Ty::HostInt64Tensor] => {
-                closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
-            }
-            signature![(_) -> Ty::HostUint32Tensor] => {
-                closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
-            }
-            signature![(_) -> Ty::HostUint64Tensor] => {
-                closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-impl Compile<Kernel> for HostSliceOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        assert!(self.slice.0.len() == 1);
-        let start = self.slice.0[0].start as usize;
-        let end = self.slice.0[0].end;
-
-        if let Some(end) = end {
-            match self.sig {
-                signature![(_) -> Ty::HostShape] => {
-                    closure_kernel!(HostShape, |x| HostShape(
-                        x.0.slice(start, end as usize),
-                        x.1
-                    ))
-                }
-                _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-            }
-        } else {
-            Err(Error::UnimplementedOperator(format!("{:?}", self)))
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for HostSumOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let axis = self.axis.map(|a| a as usize);
-        match self.sig {
-            signature![(_) -> Ty::HostFloat32Tensor] => {
-                closure_kernel!(HostFloat32Tensor, |x| x.sum(axis).unwrap())
-            }
-            signature![(_) -> Ty::HostFloat64Tensor] => {
-                closure_kernel!(HostFloat64Tensor, |x| x.sum(axis).unwrap())
-            }
-            signature![(_) -> Ty::HostInt32Tensor] => {
-                closure_kernel!(HostInt32Tensor, |x| x.sum(axis).unwrap())
-            }
-            signature![(_) -> Ty::HostInt64Tensor] => {
-                closure_kernel!(HostInt64Tensor, |x| x.sum(axis).unwrap())
-            }
-            signature![(_) -> Ty::HostUint32Tensor] => {
-                closure_kernel!(HostUint32Tensor, |x| x.sum(axis).unwrap())
-            }
-            signature![(_) -> Ty::HostUint64Tensor] => {
-                closure_kernel!(HostUint64Tensor, |x| x.sum(axis).unwrap())
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-// This impl is only used by the old kernels, which are not aware of the placements. See PrimDeriveSeedOp::kernel for the new code
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for PrimDeriveSeedOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let sync_key = self.sync_key.clone();
-        closure_kernel!(PrfKey, |key| Seed(
-            RawSeed::from_prf(&key.0, &sync_key),
-            HostPlacement {
-                owner: "TODO".into() // Fake owner for the older kernels.
-            }
-        ))
-    }
-}
-
-// This impl is only used by the old kernels, which are not aware of the placements. See PrimPrfKeyGenOp::kernel for the new code
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for PrimPrfKeyGenOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(|| PrfKey(
-            RawPrfKey::generate(),
-            HostPlacement {
-                owner: "TODO".into() // Fake owner for the older kernels.
-            }
-        ))
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingAddOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::HostRing64Tensor, Ty::HostRing64Tensor) -> _] => {
-                function_kernel!(HostRing64Tensor, HostRing64Tensor, |x, y| x + y)
-            }
-            signature![(Ty::HostRing128Tensor, Ty::HostRing128Tensor) -> _] => {
-                function_kernel!(HostRing128Tensor, HostRing128Tensor, |x, y| x + y)
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingSubOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::HostRing64Tensor, Ty::HostRing64Tensor) -> _] => {
-                function_kernel!(HostRing64Tensor, HostRing64Tensor, |x, y| x - y)
-            }
-            signature![(Ty::HostRing128Tensor, Ty::HostRing128Tensor) -> _] => {
-                function_kernel!(HostRing128Tensor, HostRing128Tensor, |x, y| x - y)
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingMulOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::HostRing64Tensor, Ty::HostRing64Tensor) -> _] => {
-                function_kernel!(HostRing64Tensor, HostRing64Tensor, |x, y| x * y)
-            }
-            signature![(Ty::HostRing128Tensor, Ty::HostRing128Tensor) -> _] => {
-                function_kernel!(HostRing128Tensor, HostRing128Tensor, |x, y| x * y)
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingDotOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::HostRing64Tensor, Ty::HostRing64Tensor) -> _] => {
-                function_kernel!(HostRing64Tensor, HostRing64Tensor, |x, y| x.dot(y).unwrap())
-            }
-            signature![(Ty::HostRing128Tensor, Ty::HostRing128Tensor) -> _] => {
-                function_kernel!(HostRing128Tensor, HostRing128Tensor, |x, y| x
-                    .dot(y)
-                    .unwrap())
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingSumOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let axis = self.axis.map(|a| a as usize);
-        match self.sig {
-            signature![(_) -> Ty::HostRing64Tensor] => {
-                closure_kernel!(HostRing64Tensor, |x| x.sum(axis).unwrap())
-            }
-            signature![(_) -> Ty::HostRing128Tensor] => {
-                closure_kernel!(HostRing128Tensor, |x| x.sum(axis).unwrap())
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for ShapeOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::HostFloat32Tensor) -> Ty::HostShape] => {
-                function_kernel!(HostFloat32Tensor, |x| x.shape())
-            }
-            signature![(Ty::HostFloat64Tensor) -> Ty::HostShape] => {
-                function_kernel!(HostFloat64Tensor, |x| x.shape())
-            }
-            signature![(Ty::HostRing64Tensor) -> Ty::HostShape] => {
-                function_kernel!(HostRing64Tensor, |x| x.shape())
-            }
-            signature![(Ty::HostRing128Tensor) -> Ty::HostShape] => {
-                function_kernel!(HostRing128Tensor, |x| x.shape())
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for BitFillOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (&self.sig, self.value.clone()) {
-            (signature![(_) -> Ty::HostBitTensor], Constant::Ring64(value)) => {
-                closure_kernel!(HostShape, |shape| {
-                    assert!(value == 0 || value == 1);
-                    HostBitTensor::fill(&shape.0, value as u8)
-                })
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingFillOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (&self.sig, self.value.clone()) {
-            (signature![(_) -> Ty::HostRing64Tensor], Constant::Ring64(value)) => {
-                closure_kernel!(HostShape, |shape| HostRing64Tensor::fill(&shape.0, value))
-            }
-            (signature![(_) -> Ty::HostRing128Tensor], Constant::Ring64(value)) => {
-                closure_kernel!(HostShape, |shape| HostRing128Tensor::fill(
-                    &shape.0,
-                    value as u128
-                ))
-            }
-            (signature![(_) -> Ty::HostRing128Tensor], Constant::Ring128(value)) => {
-                closure_kernel!(HostShape, |shape| HostRing128Tensor::fill(&shape.0, value))
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingSampleOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (&self.sig, self.max_value) {
-            (signature![(_) -> Ty::HostRing64Tensor], None) => {
-                function_kernel!(HostShape, |shape| {
-                    HostRing64Tensor::sample_uniform(&shape.0)
-                })
-            }
-            (signature!((_) -> Ty::HostRing64Tensor), Some(max_value)) if max_value == 1 => {
-                function_kernel!(HostShape, |shape| HostRing64Tensor::sample_bits(&shape.0))
-            }
-            (signature![(_) -> Ty::HostRing128Tensor], None) => {
-                function_kernel!(HostShape, |shape| {
-                    HostRing128Tensor::sample_uniform(&shape.0)
-                })
-            }
-            (signature![(_) -> Ty::HostRing128Tensor], Some(max_value)) if max_value == 1 => {
-                function_kernel!(HostShape, |shape| {
-                    HostRing128Tensor::sample_bits(&shape.0)
-                })
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingSampleSeededOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (&self.sig, self.max_value) {
-            (signature![(_, _) -> Ty::HostRing64Tensor], None) => {
-                function_kernel!(HostShape, Seed, |shape, seed| {
-                    HostRing64Tensor::sample_uniform_seeded(&shape.0, &seed.0)
-                })
-            }
-            (signature!((_, _) -> Ty::HostRing64Tensor), Some(max_value)) if max_value == 1 => {
-                function_kernel!(HostShape, Seed, |shape, seed| {
-                    HostRing64Tensor::sample_bits_seeded(&shape.0, &seed.0)
-                })
-            }
-            (signature![(_, _) -> Ty::HostRing128Tensor], None) => {
-                function_kernel!(HostShape, Seed, |shape, seed| {
-                    HostRing128Tensor::sample_uniform_seeded(&shape.0, &seed.0)
-                })
-            }
-            (signature![(_, _) -> Ty::HostRing128Tensor], Some(max_value)) if max_value == 1 => {
-                function_kernel!(HostShape, Seed, |shape, seed| {
-                    HostRing128Tensor::sample_bits_seeded(&shape.0, &seed.0)
-                })
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingNegOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(_) -> Ty::HostRing64Tensor] => {
-                closure_kernel!(HostRing64Tensor, |x| AbstractHostRingTensor(-x.0, x.1))
-            }
-            signature![(_) -> Ty::HostRing128Tensor] => {
-                closure_kernel!(HostRing128Tensor, |x| AbstractHostRingTensor(-x.0, x.1))
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingShlOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let amount = self.amount;
-        match self.sig {
-            signature![(_) -> Ty::HostRing64Tensor] => {
-                closure_kernel!(HostRing64Tensor, |x| x << amount)
-            }
-            signature![(_) -> Ty::HostRing128Tensor] => {
-                closure_kernel!(HostRing128Tensor, |x| x << amount)
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingShrOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let amount = self.amount;
-        match self.sig {
-            signature![(_) -> Ty::HostRing64Tensor] => {
-                closure_kernel!(HostRing64Tensor, |x| x >> amount)
-            }
-            signature![(_) -> Ty::HostRing128Tensor] => {
-                closure_kernel!(HostRing128Tensor, |x| x >> amount)
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingInjectOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let bit_idx = self.bit_idx;
-        match self.sig {
-            signature![(_) -> Ty::HostRing64Tensor] => {
-                closure_kernel!(HostBitTensor, |x| HostRing64Tensor::from(x) << bit_idx)
-            }
-            signature![(_) -> Ty::HostRing128Tensor] => {
-                closure_kernel!(HostBitTensor, |x| HostRing128Tensor::from(x) << bit_idx)
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for BitExtractOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let bit_idx = self.bit_idx;
-        match self.sig {
-            signature![(Ty::HostRing64Tensor) -> _] => {
-                closure_kernel!(HostRing64Tensor, |x| x.bit_extract(bit_idx))
-            }
-            signature![(Ty::HostRing128Tensor) -> _] => {
-                closure_kernel!(HostRing128Tensor, |x| x.bit_extract(bit_idx))
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for BitSampleOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(HostShape, |shape| HostBitTensor::sample_uniform(&shape.0))
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for BitSampleSeededOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(HostShape, Seed, |shape, seed| {
-            HostBitTensor::sample_uniform_seeded(&shape.0, &seed.0)
-        })
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for BitXorOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(HostBitTensor, HostBitTensor, |x, y| x ^ y)
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for BitAndOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::HostRing64Tensor, Ty::HostRing64Tensor) -> _] => {
-                closure_kernel!(HostRing64Tensor, HostRing64Tensor, |x, y| x & y)
-            }
-            signature![(Ty::HostRing128Tensor, Ty::HostRing128Tensor) -> _] => {
-                closure_kernel!(HostRing128Tensor, HostRing128Tensor, |x, y| x & y)
-            }
-            signature![(Ty::HostBitTensor, Ty::HostBitTensor) -> _] => {
-                closure_kernel!(HostBitTensor, HostBitTensor, |x, y| x & y)
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingFixedpointEncodeOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::HostFloat64Tensor) -> Ty::HostRing64Tensor] => {
-                let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
-                closure_kernel!(HostFloat64Tensor, |x| HostRing64Tensor::encode(
-                    &x,
-                    scaling_factor
-                ))
-            }
-            signature![(Ty::HostFloat64Tensor) -> Ty::HostRing128Tensor] => {
-                let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
-                closure_kernel!(HostFloat64Tensor, |x| HostRing128Tensor::encode(
-                    &x,
-                    scaling_factor
-                ))
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingFixedpointDecodeOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::HostRing64Tensor) -> _] => {
-                let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
-                closure_kernel!(HostRing64Tensor, |x| HostRing64Tensor::decode(
-                    &x,
-                    scaling_factor
-                ))
-            }
-            signature![(Ty::HostRing128Tensor) -> _] => {
-                let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
-                closure_kernel!(HostRing128Tensor, |x| HostRing128Tensor::decode(
-                    &x,
-                    scaling_factor
-                ))
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for RingFixedpointMeanOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let axis = self.axis.map(|a| a as usize);
-        match self.sig {
-            signature![(_) -> Ty::HostRing64Tensor] => {
-                let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
-                closure_kernel!(HostRing64Tensor, |x| HostRing64Tensor::fixedpoint_mean(
-                    x,
-                    axis,
-                    scaling_factor
-                )
-                .unwrap())
-            }
-            signature![(_) -> Ty::HostRing128Tensor] => {
-                let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
-                closure_kernel!(HostRing128Tensor, |x| HostRing128Tensor::fixedpoint_mean(
-                    x,
-                    axis,
-                    scaling_factor
-                )
-                .unwrap())
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for FixedpointEncodeOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::HostFloat64Tensor) -> Ty::HostRing64Tensor] => {
-                let scaling_factor = u64::pow(2, self.fractional_precision);
-                closure_kernel!(HostFloat64Tensor, |x| HostRing64Tensor::encode(
-                    &x,
-                    scaling_factor
-                ))
-            }
-            signature![(Ty::HostFloat64Tensor) -> Ty::HostRing128Tensor] => {
-                let scaling_factor = u128::pow(2, self.fractional_precision);
-                closure_kernel!(HostFloat64Tensor, |x| HostRing128Tensor::encode(
-                    &x,
-                    scaling_factor
-                ))
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for FixedpointDecodeOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::HostRing64Tensor) -> _] => {
-                let scaling_factor = u64::pow(2, self.fractional_precision);
-                closure_kernel!(HostRing64Tensor, |x| HostRing64Tensor::decode(
-                    &x,
-                    scaling_factor
-                ))
-            }
-            signature![(Ty::HostRing128Tensor) -> _] => {
-                let scaling_factor = u128::pow(2, self.fractional_precision);
-                closure_kernel!(HostRing128Tensor, |x| HostRing128Tensor::decode(
-                    &x,
-                    scaling_factor
-                ))
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for FixedpointAddOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
-                function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
-                    assert_eq!(x.fractional_precision, y.fractional_precision);
-                    AbstractHostFixedTensor {
-                        tensor: x.tensor + y.tensor,
-                        fractional_precision: x.fractional_precision,
-                        integral_precision: u32::max(x.integral_precision, y.integral_precision),
-                    }
-                })
-            }
-            signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
-                function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
-                    assert_eq!(x.fractional_precision, y.fractional_precision);
-                    AbstractHostFixedTensor {
-                        tensor: x.tensor + y.tensor,
-                        fractional_precision: x.fractional_precision,
-                        integral_precision: u32::max(x.integral_precision, y.integral_precision),
-                    }
-                })
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for FixedpointSubOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
-                function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
-                    assert_eq!(x.fractional_precision, y.fractional_precision);
-                    AbstractHostFixedTensor {
-                        tensor: x.tensor - y.tensor,
-                        fractional_precision: x.fractional_precision,
-                        integral_precision: u32::max(x.integral_precision, y.integral_precision),
-                    }
-                })
-            }
-            signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
-                function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
-                    assert_eq!(x.fractional_precision, y.fractional_precision);
-                    AbstractHostFixedTensor {
-                        tensor: x.tensor - y.tensor,
-                        fractional_precision: x.fractional_precision,
-                        integral_precision: u32::max(x.integral_precision, y.integral_precision),
-                    }
-                })
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for FixedpointMulOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
-                function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
-                    assert_eq!(x.fractional_precision, y.fractional_precision);
-                    AbstractHostFixedTensor {
-                        tensor: x.tensor * y.tensor,
-                        fractional_precision: x.fractional_precision + y.fractional_precision,
-                        integral_precision: u32::max(x.integral_precision, y.integral_precision),
-                    }
-                })
-            }
-            signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
-                function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
-                    assert_eq!(x.fractional_precision, y.fractional_precision);
-                    AbstractHostFixedTensor {
-                        tensor: x.tensor * y.tensor,
-                        fractional_precision: x.fractional_precision + y.fractional_precision,
-                        integral_precision: u32::max(x.integral_precision, y.integral_precision),
-                    }
-                })
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-// This impl is only used by the old kernels, which are not aware of the placements. See ConstantOp::kernel for the new code
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for ConstantOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let value = self.value.clone();
-        Ok(Kernel::NullaryClosure(Arc::new(move || {
-            Ok(value.place(&HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
-            }))
-        })))
-    }
 }
 
 macro_rules! constant_kernels {
@@ -2388,67 +1354,6 @@ impl SendOp {
     }
 }
 
-// This impl is only used by the old kernels, which are not aware of the placements.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<SyncKernel> for SendOp {
-    fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
-        let rendezvous_key = self.rendezvous_key.clone();
-        let receiver_id = ctx
-            .role_assignment
-            .get(&self.receiver)
-            .cloned()
-            .ok_or_else(|| {
-                Error::Compilation(format!(
-                    "missing identity assignment for '{}'",
-                    &self.receiver
-                ))
-            })?;
-
-        Ok(SyncKernel::Unary(Box::new(move |sess, v| {
-            sess.networking
-                .send(&v, &receiver_id, &rendezvous_key, &sess.sid)?;
-            Ok(Value::Unit(Box::new(Unit(HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
-            }))))
-        })))
-    }
-}
-
-// This impl is only used by the old kernels, which are not aware of the placements.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<AsyncKernel> for SendOp {
-    fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
-        let rendezvous_key = Arc::new(self.rendezvous_key.clone());
-        let receiver_id = Arc::new(
-            ctx.role_assignment
-                .get(&self.receiver)
-                .cloned()
-                .ok_or_else(|| {
-                    Error::Compilation(format!(
-                        "missing identity assignment for '{}'",
-                        &self.receiver
-                    ))
-                })?,
-        );
-
-        Ok(AsyncKernel::Unary(Box::new(move |sess, v, sender| {
-            let sess = Arc::clone(sess);
-            let rendezvous_key = Arc::clone(&rendezvous_key);
-            let receiver_id = Arc::clone(&receiver_id);
-
-            tokio::spawn(async move {
-                let v: Value = v.await.map_err(map_receive_error)?;
-                sess.networking
-                    .send(&v, &receiver_id, &rendezvous_key, &sess.sid)
-                    .await?;
-                map_send_result(sender.send(Value::Unit(Box::new(Unit(HostPlacement {
-                    owner: "TODO".into(), // Fake owner for the older kernels.
-                })))))
-            })
-        })))
-    }
-}
-
 for_all_values! {( $($value:ty),* ) => (
     $(
         modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: RendezvousKey, sender: Role] () -> $value, ReceiveOp);
@@ -2515,65 +1420,6 @@ impl ReceiveOp {
     }
 }
 
-impl Compile<SyncKernel> for ReceiveOp {
-    fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
-        let expected_ty = self.sig.ret();
-        let rendezvous_key = self.rendezvous_key.clone();
-        let sender_id = ctx
-            .role_assignment
-            .get(&self.sender)
-            .cloned()
-            .ok_or_else(|| {
-                Error::Compilation(format!(
-                    "missing identity assignment for '{}'",
-                    &self.sender
-                ))
-            })?;
-
-        Ok(SyncKernel::Nullary(Box::new(move |sess| {
-            let v: Value = sess
-                .networking
-                .receive(&sender_id, &rendezvous_key, &sess.sid)?;
-            if expected_ty != Ty::Unknown {
-                check_type(&v, expected_ty)?;
-            }
-            Ok(v)
-        })))
-    }
-}
-
-impl Compile<AsyncKernel> for ReceiveOp {
-    fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
-        let expected_ty = self.sig.ret();
-        let rendezvous_key = Arc::new(self.rendezvous_key.clone());
-        let sender_id = Arc::new(ctx.role_assignment.get(&self.sender).cloned().ok_or_else(
-            || {
-                Error::Compilation(format!(
-                    "missing identity assignment for '{}'",
-                    &self.sender
-                ))
-            },
-        )?);
-
-        Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
-            let sess = Arc::clone(sess);
-            let rendezvous_key = Arc::clone(&rendezvous_key);
-            let sender_id = Arc::clone(&sender_id);
-
-            tokio::spawn(async move {
-                let v: Value = sess
-                    .networking
-                    .receive(&sender_id, &rendezvous_key, &sess.sid)
-                    .await?;
-                if expected_ty != Ty::Unknown {
-                    check_type(&v, expected_ty)?;
-                }
-                map_send_result(sender.send(v))
-            })
-        })))
-    }
-}
-
 for_all_values! {( $($value:ty),* ) => (
     $(
         modelled!(PlacementIdentity::identity, HostPlacement, ($value) -> $value, IdentityOp);
@@ -2623,31 +1469,6 @@ impl IdentityOp {
             "missing HostPlacement: PlacementPlace trait implementation for '{}'",
             &<T as KnownType<S>>::TY
         )))
-    }
-}
-
-impl Compile<SyncKernel> for IdentityOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
-        let expected_ty = self.sig.ret();
-
-        Ok(SyncKernel::Unary(Box::new(move |_sess, v| {
-            check_type(&v, expected_ty)?;
-            Ok(v)
-        })))
-    }
-}
-
-impl Compile<AsyncKernel> for IdentityOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
-        let expected_ty = self.sig.ret();
-
-        Ok(AsyncKernel::Unary(Box::new(move |_sess, v, sender| {
-            tokio::spawn(async move {
-                let v: Value = v.await.map_err(map_receive_error)?;
-                check_type(&v, expected_ty)?;
-                map_send_result(sender.send(v))
-            })
-        })))
     }
 }
 
@@ -2754,45 +1575,6 @@ impl InputOp {
     }
 }
 
-impl Compile<SyncKernel> for InputOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
-        let arg_name = self.arg_name.clone();
-        let expected_ty = self.sig.ret();
-
-        Ok(SyncKernel::Nullary(Box::new(move |sess| {
-            let arg = sess
-                .arguments
-                .get(&arg_name)
-                .cloned()
-                .ok_or_else(|| Error::MissingArgument(arg_name.clone()))?;
-            check_type(&arg, expected_ty)?;
-            Ok(arg)
-        })))
-    }
-}
-
-impl Compile<AsyncKernel> for InputOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
-        let expected_ty = self.sig.ret();
-        let arg_name = Arc::new(self.arg_name.clone());
-
-        Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
-            let sess = Arc::clone(sess);
-            let arg_name = Arc::clone(&arg_name);
-
-            tokio::spawn(async move {
-                let arg = sess
-                    .arguments
-                    .get(arg_name.as_ref())
-                    .cloned()
-                    .ok_or_else(|| Error::MissingArgument(arg_name.as_ref().clone()))?;
-                check_type(&arg, expected_ty)?;
-                map_send_result(sender.send(arg))
-            })
-        })))
-    }
-}
-
 for_all_values! {( $($value:ty),* ) => (
     $(
         modelled!(PlacementOutput::output, HostPlacement, ($value) -> $value, OutputOp);
@@ -2852,23 +1634,6 @@ impl OutputOp {
     }
 }
 
-impl Compile<SyncKernel> for OutputOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
-        Ok(SyncKernel::Unary(Box::new(move |_sess, x0| Ok(x0))))
-    }
-}
-
-impl Compile<AsyncKernel> for OutputOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
-        Ok(AsyncKernel::Unary(Box::new(move |_sess, x0, sender| {
-            tokio::spawn(async move {
-                let val = x0.await.map_err(map_receive_error)?;
-                map_send_result(sender.send(val))
-            })
-        })))
-    }
-}
-
 for_all_values! {( $($value:ty),* ) => (
     $(
         modelled!(PlacementSave::save, HostPlacement, (HostString, $value) -> Unit, SaveOp);
@@ -2923,53 +1688,6 @@ impl SaveOp {
         todo!()
     }
 }
-
-// This implementation is the old kernel.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<SyncKernel> for SaveOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
-        let expected_ty = self.sig.arg(1)?;
-
-        Ok(SyncKernel::Binary(Box::new(move |sess, key, val| {
-            let key = HostString::try_from(key)?;
-            check_type(&val, expected_ty)?;
-            sess.storage.save(&key.0, &sess.sid, &val)?;
-            Ok(Value::Unit(Box::new(Unit(HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernel
-            }))))
-        })))
-    }
-}
-
-// This implementation is the old kernel.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<AsyncKernel> for SaveOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
-        let expected_ty = self.sig.arg(1)?;
-
-        Ok(AsyncKernel::Binary(Box::new(
-            move |sess, key, val, sender| {
-                let sess = Arc::clone(sess);
-
-                tokio::spawn(async move {
-                    let key = HostString::try_from(key.await.map_err(map_receive_error)?)?;
-                    let val = val.await.map_err(map_receive_error)?;
-                    check_type(&val, expected_ty)?;
-                    sess.storage.save(&key.0, &sess.sid, &val).await?;
-                    map_send_result(sender.send(Value::Unit(Box::new(Unit(HostPlacement {
-                        owner: "TODO".into(), // Fake owner for the old kernel
-                    })))))
-                })
-            },
-        )))
-    }
-}
-
-// for_all_values! {( $($value:ty),* ) => (
-//     $(
-//         modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> $value, LoadOp);
-//     )*
-// )}
 
 modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> HostFloat64Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> Float64Tensor, LoadOp);
@@ -3053,18 +1771,18 @@ kernel! {
     [
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_mir_kernel),
-        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::mir_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_mir_kernel),
-        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::mir_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_fixed_kernel),
-        (ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_mir_fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_fixed_mir_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_fixed_kernel),
-        (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_mir_fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_fixed_mir_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
         // TODO(Dragos) these do not work now as they should output a boolean/ring type. makes no sense to output a fixed tensor
         // (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [transparent] Self::fixed_kernel),
         // instead it should be
@@ -3075,60 +1793,32 @@ kernel! {
 kernel! {
     GreaterThanOp,
     [
-        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_mir_kernel),
-        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::mir_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_mir_kernel),
-        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::mir_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_fixed_kernel),
-        (ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_mir_fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_fixed_mir_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_fixed_kernel),
-        (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_mir_fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_fixed_mir_kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::mir_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
     ]
 }
 
-impl Compile<SyncKernel> for LoadOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
-        let expected_ty = self.sig.ret();
+kernel! {
+    IfElseOp,
+    [
 
-        Ok(SyncKernel::Binary(Box::new(move |sess, key, query| {
-            let key = HostString::try_from(key)?;
-            let query = HostString::try_from(query)?;
-            let val = sess
-                .storage
-                .load(&key.0, &sess.sid, Some(expected_ty), &query.0)?;
-            check_type(&val, expected_ty)?;
-            Ok(val)
-        })))
-    }
-}
-
-impl Compile<AsyncKernel> for LoadOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
-        let expected_ty = self.sig.ret();
-
-        Ok(AsyncKernel::Binary(Box::new(
-            move |sess, key, query, sender| {
-                let sess = Arc::clone(sess);
-
-                tokio::spawn(async move {
-                    let key = HostString::try_from(key.await.map_err(map_receive_error)?)?;
-                    let query = HostString::try_from(query.await.map_err(map_receive_error)?)?;
-                    let val = sess
-                        .storage
-                        .load(&key.0, &sess.sid, Some(expected_ty), &query.0)
-                        .await?;
-                    check_type(&val, expected_ty)?;
-                    map_send_result(sender.send(val))
-                })
-            },
-        )))
-    }
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor  => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::rep_fixed_kernel),
+    ]
 }
 
 pub struct TestSyncExecutor {

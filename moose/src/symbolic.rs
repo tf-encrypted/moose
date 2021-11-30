@@ -251,7 +251,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepXor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepNeg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepIfElse(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            IfElse(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Index(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

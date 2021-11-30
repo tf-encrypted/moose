@@ -66,8 +66,8 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedShape => [concrete] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedShape => [hybrid] Self::rep_repfixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedShape => [hybrid] Self::rep_repfixed_kernel),
-        (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveShape => [runtime] Self::adt_kernel),
-        (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveShape => [runtime] Self::adt_kernel),
+        (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveShape => [hybrid] Self::adt_kernel),
+        (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveShape => [hybrid] Self::adt_kernel),
     ]
 }
 
