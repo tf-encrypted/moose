@@ -42,10 +42,7 @@ impl FixedpointDivOp {
         );
         // max_bits(w) = k
 
-        let alpha = Constant::Fixed(FixedpointConstant {
-            value: 1.0,
-            precision: 2 * frac_precision as usize,
-        });
+        let alpha = 1.0_f64.as_fixedpoint(2 * frac_precision as usize);
         let rep_alpha = rep.shape_fill(sess, alpha, &x_st);
 
         let mut a = with_context!(rep, sess, rep_alpha - &rep.mul(sess, &y_st, &w));
@@ -230,11 +227,7 @@ where
         let (upshifted, signed_topmost) = rep.norm(sess, total_precision, x);
 
         // 2.9142 * 2^{total_precision}
-        let alpha = Constant::Fixed(FixedpointConstant {
-            value: 2.9142,
-            precision: total_precision,
-        });
-        let alpha = rep.shape_fill(sess, alpha, x);
+        let alpha = rep.shape_fill(sess, 2.9142_f64.as_fixedpoint(total_precision), x);
 
         let d = with_context!(rep, sess, alpha - rep.shl(sess, 1, &upshifted));
         let w = rep.mul(sess, &d, &signed_topmost);
