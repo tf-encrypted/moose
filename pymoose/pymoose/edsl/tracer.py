@@ -78,18 +78,16 @@ def trace(abstract_computation):
     return logical_comp
 
 
-def trace_and_compile(abstract_computation, compiler_passes=None, ring=64):
+def trace_and_compile(abstract_computation, compiler_passes=None):
     logical_computation = trace(abstract_computation)
     comp_bin = utils.serialize_computation(logical_computation)
     if compiler_passes is None:
         compiler_passes = [
             "typing",
-            # All of the symbolic passes. Currently combines functionality of
-            # [ReplicatedOpsPass, HostRingLoweringPass, ReplicatedLoweringPass]
             "full",
             "prune",
             "networking",
-            "typing",
+            "toposort",
         ]
     physical_comp_ref = elk_compiler.compile_computation(comp_bin, compiler_passes)
     return physical_comp_ref
