@@ -967,15 +967,6 @@ impl ExpandDimsOp {
     }
 }
 
-// modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement,attributes[axis:usize, index: usize] (Tensor) -> Tensor, IndexAxisOp);
-
-// kernel! {
-//     IndexAxisOp,
-//     [
-//         (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] attributes[axis, index] Self::logical_kernel),
-//     ]
-// }
-
 impl IndexAxisOp {
     pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,

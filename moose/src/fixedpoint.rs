@@ -1365,10 +1365,11 @@ impl IndexAxisOp {
         x: FixedTensor<HostFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementIndexAxis<S, RepFixedT, RepFixedT>,
     {
         let x = match x {
-            FixedTensor::Host(v) => unimplemented!(),
+            FixedTensor::Host(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.index_axis(sess, axis, index, &x);

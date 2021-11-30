@@ -255,6 +255,15 @@ class ShapeExpression(Expression):
 
 
 @dataclass
+class IndexAxisExpression(Expression):
+    axis: int
+    index: int
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class SliceExpression(Expression):
     begin: int
     end: int
@@ -478,6 +487,16 @@ def shape(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return ShapeExpression(placement=placement, inputs=[x], vtype=ShapeType())
+
+
+def index_axis(x, axis, index, placement=None):
+    assert isinstance(x, Expression)
+    assert isinstance(axis, int)
+    assert isinstance(index, int)
+    placement = placement or get_current_placement()
+    return IndexAxisExpression(
+        placement=placement, inputs=[x], axis=axis, index=index, vtype=x.vtype
+    )
 
 
 def slice(x, begin, end, placement=None):

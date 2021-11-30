@@ -262,6 +262,12 @@ class ShapeOperation(StandardOperation):
 
 
 @dataclass
+class IndexAxisOperation(StandardOperation):
+    axis: int
+    index: int
+    output_type: ValueType
+
+@dataclass
 class SliceOperation(StandardOperation):
     begin: int
     end: int
