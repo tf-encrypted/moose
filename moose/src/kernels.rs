@@ -1607,6 +1607,7 @@ kernel! {
         (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [runtime] Self::non_placing_kernel),
         (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::non_placing_kernel),
         (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
+        (HostPlacement, (BoolTensor) -> BoolTensor => [hybrid] Self::bool_kernel),
         (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] Self::float_kernel),
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] Self::float_kernel),
     ]
@@ -1769,6 +1770,10 @@ kernel! {
 kernel! {
     LessThanOp,
     [
+        (HostPlacement, (Float32Tensor, Float32Tensor) -> BoolTensor => [hybrid] Self::float_kernel),
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> BoolTensor => [hybrid] Self::float_kernel),
+        (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostBitTensor => [runtime] Self::host_float_kernel),
+        (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostBitTensor => [runtime] Self::host_float_kernel),
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
         (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
@@ -1783,6 +1788,7 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_mir_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
+        (HostPlacement, (crate::logical::Tensor, crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_host_kernel),
         // TODO(Dragos) these do not work now as they should output a boolean/ring type. makes no sense to output a fixed tensor
         // (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [transparent] Self::fixed_kernel),
         // instead it should be

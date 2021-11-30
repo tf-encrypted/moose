@@ -243,6 +243,7 @@ class AstTracer:
                 name=self.get_fresh_name(f"{op_name}"),
                 inputs={"lhs": lhs_operation.name, "rhs": rhs_operation.name},
                 output_type=expression.vtype,
+                input_type=lhs_operation.output_type,
             )
         )
 

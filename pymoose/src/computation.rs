@@ -118,6 +118,7 @@ enum PyDType {
     int64,
     uint32,
     uint64,
+    bool_,
     fixed8_27,
     fixed14_23,
     fixed46_40,
@@ -853,6 +854,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_TensorType { dtype } => match dtype {
             PyDType::float32 => Ok(Ty::Tensor(TensorDType::Float32)),
             PyDType::float64 => Ok(Ty::Tensor(TensorDType::Float64)),
+            PyDType::bool_ => Ok(Ty::Tensor(TensorDType::Bool)),
             // PyDType::int32 => Ok(Ty::HostInt32Tensor),
             // PyDType::int64 => Ok(Ty::HostInt64Tensor),
             // PyDType::uint32 => Ok(Ty::HostUint32Tensor),

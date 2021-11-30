@@ -3265,6 +3265,24 @@ impl GreaterThanOp {
     }
 }
 
+modelled!(PlacementOutput::output, HostPlacement, (BoolTensor) -> BoolTensor, OutputOp);
+
+impl OutputOp {
+    pub(crate) fn bool_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: StandardTensor<HostT, RepT>,
+    ) -> Result<StandardTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementOutput<S, HostT, HostT>,
+    {
+        match x {
+            StandardTensor::Host(v) => Ok(StandardTensor::Host(plc.output(sess, &v))),
+            StandardTensor::Replicated(v) => unimplemented!(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

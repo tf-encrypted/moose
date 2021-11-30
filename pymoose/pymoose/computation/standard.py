@@ -171,6 +171,7 @@ class MulOperation(StandardOperation):
 
 @dataclass
 class LessOperation(StandardOperation):
+    input_type: ValueType
     output_type: ValueType
 
 

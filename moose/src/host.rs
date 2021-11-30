@@ -2679,6 +2679,9 @@ impl RingSampleSeededOp {
 modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, LessThanOp);
 modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, LessThanOp);
 
+modelled!(PlacementLessThan::less_than, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostBitTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostBitTensor, LessThanOp);
+
 impl LessThanOp {
     pub(crate) fn host_kernel<S: Session, HostRingT>(
         sess: &S,
@@ -2692,6 +2695,19 @@ impl LessThanOp {
     {
         let z = plc.sub(sess, &x, &y);
         Ok(plc.sign(sess, &z))
+    }
+
+    pub(crate) fn host_float_kernel<S: Session, T: LinalgScalar + FromPrimitive>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+        y: HostTensor<T>,
+    ) -> Result<HostBitTensor>
+    where
+        T: std::cmp::PartialOrd + Zero,
+    {
+        let result = (x.0 - y.0).mapv(|item| (item < T::zero()) as u8);
+        Ok(HostBitTensor(result, plc.clone()))
     }
 }
 
