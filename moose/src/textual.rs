@@ -449,24 +449,6 @@ fn bit_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((input, BitSampleSeededOp { sig }.into()))
 }
 
-/// Parses a BitFill operator.
-fn bit_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, value) = attributes_single("value", constant_literal)(input)?;
-    let (input, sig) = operator_signature(1)(input)?;
-    Ok((input, BitFillOp { sig, value }.into()))
-}
-
-/// Parses a RingFill operator.
-fn ring_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, value) = attributes_single("value", constant_literal)(input)?;
-    let (input, sig) = operator_signature(1)(input)?;
-    Ok((input, RingFillOp { sig, value }.into()))
-}
-
 /// Parses a RingShl operator.
 fn ring_shl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
