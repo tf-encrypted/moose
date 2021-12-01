@@ -131,7 +131,7 @@ pub fn short_name_derive(input: TokenStream) -> TokenStream {
 }
 
 /// Derive macro to support textual format
-#[proc_macro_derive(AutoToTextual)]
+#[proc_macro_derive(ToTextual)]
 pub fn to_textual_derive(input: TokenStream) -> TokenStream {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let name = &ast.ident;
@@ -223,7 +223,7 @@ fn parser_for_type(ty: &syn::Type) -> Option<proc_macro2::TokenStream> {
     }
 }
 
-#[proc_macro_derive(AutoFromTextual)]
+#[proc_macro_derive(FromTextual)]
 pub fn from_textual_derive(input: TokenStream) -> TokenStream {
     let item_struct = syn::parse::<syn::ItemStruct>(input).unwrap();
 
