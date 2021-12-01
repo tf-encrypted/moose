@@ -1064,7 +1064,6 @@ pub trait HasShortName {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 1)]
 pub struct IdentityOp {
     pub sig: Signature,
 }
@@ -1072,7 +1071,7 @@ pub struct IdentityOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 1)]
+
 pub struct SendOp {
     pub sig: Signature,
     pub rendezvous_key: RendezvousKey,
@@ -1082,7 +1081,7 @@ pub struct SendOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 0)]
+
 pub struct ReceiveOp {
     pub sig: Signature,
     pub rendezvous_key: RendezvousKey,
@@ -1092,7 +1091,7 @@ pub struct ReceiveOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 0)]
+
 pub struct InputOp {
     pub sig: Signature,
     pub arg_name: String,
@@ -1101,7 +1100,7 @@ pub struct InputOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 1)]
+
 pub struct OutputOp {
     pub sig: Signature,
 }
@@ -1109,7 +1108,7 @@ pub struct OutputOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 1)]
+
 pub struct LoadOp {
     pub sig: Signature,
 }
@@ -1122,7 +1121,7 @@ pub struct CastOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 2)]
+
 pub struct SaveOp {
     pub sig: Signature,
 }
@@ -1130,7 +1129,7 @@ pub struct SaveOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 0)]
+
 pub struct ConstantOp {
     pub sig: Signature,
     pub value: Constant, // TODO Box<Constant> or Box inside Constant?
@@ -1222,7 +1221,7 @@ pub struct SumOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 2)]
+
 pub struct HostAddOp {
     pub sig: Signature,
 }
@@ -1230,7 +1229,7 @@ pub struct HostAddOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 2)]
+
 pub struct HostSubOp {
     pub sig: Signature,
 }
@@ -1238,7 +1237,7 @@ pub struct HostSubOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 2)]
+
 pub struct HostMulOp {
     pub sig: Signature,
 }
@@ -1246,7 +1245,7 @@ pub struct HostMulOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 2)]
+
 pub struct HostDivOp {
     pub sig: Signature,
 }
@@ -1259,7 +1258,7 @@ pub struct SignOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 2)]
+
 pub struct HostDotOp {
     pub sig: Signature,
 }
@@ -1289,7 +1288,7 @@ pub struct HostConcatOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 1)]
+
 pub struct HostAtLeast2DOp {
     pub sig: Signature,
     pub to_column_vector: bool,
@@ -1310,7 +1309,7 @@ pub struct HostSqueezeOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 1)]
+
 pub struct HostReshapeOp {
     pub sig: Signature,
 }
@@ -1334,7 +1333,7 @@ pub struct HostInverseOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 1)]
+
 pub struct ShapeOp {
     pub sig: Signature,
 }
@@ -1342,7 +1341,7 @@ pub struct ShapeOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 1)]
+
 pub struct HostSliceOp {
     pub sig: Signature,
     pub slice: SliceInfo,
@@ -1380,7 +1379,7 @@ pub struct BitToRingOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual, AutoFromTextual,
 )]
-#[operation_details(arity = 1)]
+
 pub struct RingFillOp {
     pub sig: Signature,
     pub value: Constant,

@@ -1,5 +1,4 @@
 extern crate proc_macro;
-use bae::FromAttributes;
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::parse::{Parse, ParseStream, Result};
@@ -199,11 +198,6 @@ pub fn to_textual_derive(input: TokenStream) -> TokenStream {
     gen.into()
 }
 
-#[derive(Debug, Eq, PartialEq, FromAttributes)]
-struct OperationDetails {
-    arity: Expr,
-}
-
 fn parser_for_type(ty: &syn::Type) -> Option<proc_macro2::TokenStream> {
     match ty {
         syn::Type::Path(tp) if tp.path.is_ident("String") => Some(quote!(crate::textual::string)),
@@ -229,13 +223,11 @@ fn parser_for_type(ty: &syn::Type) -> Option<proc_macro2::TokenStream> {
     }
 }
 
-#[proc_macro_derive(AutoFromTextual, attributes(operation_details))]
+#[proc_macro_derive(AutoFromTextual)]
 pub fn from_textual_derive(input: TokenStream) -> TokenStream {
     let item_struct = syn::parse::<syn::ItemStruct>(input).unwrap();
-    let details = OperationDetails::from_attributes(&item_struct.attrs).unwrap();
 
     let name = &item_struct.ident;
-    let arity = &details.arity;
     // Note, we only need to truncate the name by the charaters to get rid of the `Op` suffix.
     // If we refactor to not have that suffix anymore we can just use `stringify!(#name)` inside `quote!` below.
     let mut ident_string = name.to_string();
@@ -306,7 +298,7 @@ pub fn from_textual_derive(input: TokenStream) -> TokenStream {
 
                 let parser = |input: &'a str| {
                     #attr_parser
-                    let (input, sig) = crate::textual::operator_signature(#arity)(input)?;
+                    let (input, sig) = crate::textual::operator_signature(0)(input)?;
                     Ok((input, #name {
                         sig,
                         #attributes

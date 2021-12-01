@@ -1955,27 +1955,6 @@ mod tests {
     }
 
     #[test]
-    fn test_stdadd_err() {
-        let data = "z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)";
-        let emsg = r#"0: at line 1, in Tag:
-z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
-              ^
-
-1: at line 1, in Alt:
-z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
-             ^
-
-"#;
-
-        let parsed: IResult<_, _, VerboseError<&str>> = parse_assignment(data);
-        if let Err(Failure(e)) = parsed {
-            assert_eq!(convert_error(data, e), emsg);
-        } else {
-            panic!("Type parsing should have given an error on an invalid type, but did not");
-        }
-    }
-
-    #[test]
     fn test_primprfkeygen() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>("key = PrimPrfKeyGen() @Host(alice)")?;
         assert_eq!(op.name, "key");
