@@ -4,9 +4,10 @@ use quote::{quote, quote_spanned};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
+use syn::PathArguments::AngleBracketed;
 use syn::{
     parse_macro_input, parse_quote, BinOp, Data, Expr, ExprBinary, ExprCall, ExprPath, Fields,
-    Ident, Token,
+    GenericArgument, Ident, Token, Type,
 };
 
 /// Macros to convert expression into player/context invocations.
@@ -198,30 +199,55 @@ pub fn to_textual_derive(input: TokenStream) -> TokenStream {
     gen.into()
 }
 
-fn parser_for_type(ty: &syn::Type) -> Option<proc_macro2::TokenStream> {
+fn parser_for_type(name: &Option<String>, ty: &Type) -> Option<proc_macro2::TokenStream> {
     match ty {
-        syn::Type::Path(tp) if tp.path.is_ident("String") => Some(quote!(crate::textual::string)),
-        syn::Type::Path(tp) if tp.path.is_ident("bool") => Some(quote!(crate::textual::parse_bool)),
-        syn::Type::Path(tp) if tp.path.is_ident("u32") => Some(quote!(crate::textual::parse_int)),
-        syn::Type::Path(tp) if tp.path.is_ident("u64") => Some(quote!(crate::textual::parse_int)),
-        syn::Type::Path(tp) if tp.path.is_ident("usize") => Some(quote!(crate::textual::parse_int)),
-        syn::Type::Path(tp) if tp.path.is_ident("SliceInfo") => {
-            Some(quote!(crate::textual::slice_info_literal))
+        Type::Path(tp) if tp.path.is_ident("String") => {
+            Some(quote!(crate::textual::attributes_member(#name, crate::textual::string)))
         }
-        syn::Type::Path(tp) if tp.path.is_ident("Constant") => {
-            Some(quote!(crate::textual::constant_literal))
+        Type::Path(tp) if tp.path.is_ident("bool") => {
+            Some(quote!(crate::textual::attributes_member(#name, crate::textual::parse_bool)))
         }
-        syn::Type::Path(tp) if tp.path.is_ident("RendezvousKey") => Some(quote!(map(
-            crate::textual::parse_hex,
-            RendezvousKey::from_bytes
-        ))),
-        syn::Type::Path(tp) if tp.path.is_ident("Role") => {
-            Some(quote!(map(crate::textual::string, Role::from)))
+        Type::Path(tp) if tp.path.is_ident("u32") => {
+            Some(quote!(crate::textual::attributes_member(#name, crate::textual::parse_int)))
         }
-        syn::Type::Path(tp) if tp.path.is_ident("Signature") => None, // One more clause to ignore the signature field.
+        Type::Path(tp) if tp.path.is_ident("u64") => {
+            Some(quote!(crate::textual::attributes_member(#name, crate::textual::parse_int)))
+        }
+        Type::Path(tp) if tp.path.is_ident("usize") => {
+            Some(quote!(crate::textual::attributes_member(#name, crate::textual::parse_int)))
+        }
+        Type::Path(tp) if tp.path.is_ident("SliceInfo") => Some(
+            quote!(crate::textual::attributes_member(#name, crate::textual::slice_info_literal)),
+        ),
+        Type::Path(tp) if tp.path.is_ident("Constant") => {
+            Some(quote!(crate::textual::attributes_member(#name, crate::textual::constant_literal)))
+        }
+        Type::Path(tp) if tp.path.is_ident("RendezvousKey") => {
+            Some(quote!(crate::textual::attributes_member(#name, map(
+                crate::textual::parse_hex,
+                RendezvousKey::from_bytes
+            ))))
+        }
+        Type::Path(tp) if tp.path.is_ident("Role") => Some(
+            quote!(crate::textual::attributes_member(#name, map(crate::textual::string, Role::from))),
+        ),
+        Type::Path(tp) if tp.path.is_ident("Signature") => None, // One more clause to ignore the signature field.
+        // Recursively recognizing the Option is a bit tough.
+        Type::Path(tp) if tp.path.segments.len() == 1 && tp.path.segments[0].ident == "Option" => {
+            match &tp.path.segments[0].arguments {
+                AngleBracketed(arg) => match arg.args.first().unwrap() {
+                    GenericArgument::Type(inner) => {
+                        let inner_parser = parser_for_type(name, inner);
+                        Some(quote!(opt(#inner_parser)))
+                    }
+                    _ => panic!("Expected a single type inside the Option"),
+                },
+                _ => panic!("Expected angled brackets after the Option"),
+            }
+        }
         _ => panic!(
             "The from textual macro could not derive a parser for an attribute with the type {:?}",
-            ty
+            ty,
         ),
     }
 }
@@ -262,14 +288,8 @@ pub fn from_textual_derive(input: TokenStream) -> TokenStream {
     let attr_parsers = match item_struct.fields {
         Fields::Named(ref fields) => {
             let members = fields.named.iter().filter_map(|f| {
-                let id = &f.ident;
-                let inner_parser = parser_for_type(&f.ty);
-                match id.as_ref().map(|i| i.to_string()) {
-                    Some(name) if name != "sig" => Some(quote_spanned! {f.span()=>
-                        crate::textual::attributes_member(#name, #inner_parser)
-                    }),
-                    _ => None,
-                }
+                let name = f.ident.as_ref().map(|i| i.to_string());
+                parser_for_type(&name, &f.ty)
             });
             quote! { #(#members ),* }
         }
@@ -295,7 +315,7 @@ pub fn from_textual_derive(input: TokenStream) -> TokenStream {
             fn from_textual(input: &'a str) -> nom::IResult<&'a str, Operator, E> {
                 use nom::branch::permutation;
                 use nom::bytes::complete::tag;
-                use nom::combinator::{cut, map};
+                use nom::combinator::{cut, opt, map};
                 use nom::sequence::{delimited, preceded};
                 use crate::textual::ws;
 

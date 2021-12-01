@@ -470,7 +470,7 @@ mod tests {
     #[case(false)]
     fn test_eager_executor(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let mut definition = String::from(
-            r#"key = PrimPrfKeyGen() @Host(alice)
+            r#"key = PrimPrfKeyGen: () -> PrfKey () @Host(alice)
         seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
         shape = Constant{value = Shape([2, 3])}: () -> Shape @Host(alice)
         "#,
@@ -478,7 +478,7 @@ mod tests {
         let body = (0..100)
             .map(|i| {
                 format!(
-                    "x{} = RingSampleSeeded: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
+                    "x{} = RingSampleSeeded{{}}: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
                     i
                 )
             })
@@ -541,7 +541,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"seed = Constant{value=Seed(00000000000000000000000000000000)}: () -> Seed @Host(alice)
         xshape = Constant{value=Shape([2, 2])}: () -> Shape @Host(alice)
-        sampled = RingSampleSeeded: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
+        sampled = RingSampleSeeded{}: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (sampled) @Host(alice)
         "#;
         let arguments: HashMap<String, Value> = hashmap!();
@@ -1086,7 +1086,7 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let axis_str: String =
-            axis_test.map_or_else(|| "".to_string(), |v| format!("{{axis={}}}", v));
+            axis_test.map_or_else(|| "{}".to_string(), |v| format!("{{axis={}}}", v));
 
         let source = format!(
             r#"

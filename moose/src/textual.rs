@@ -198,24 +198,6 @@ macro_rules! attributes {
     };
 }
 
-/// Constructs a parser for a simple binary operation.
-macro_rules! operation_on_axis {
-    ($sub:ident) => {
-        |input: &'a str| {
-            let (input, opt_axis) = opt(attributes_single("axis", parse_int))(input)?;
-            let (input, sig) = operator_signature(1)(input)?;
-            Ok((
-                input,
-                $sub {
-                    sig,
-                    axis: opt_axis,
-                }
-                .into(),
-            ))
-        }
-    };
-}
-
 pub trait FromTextual<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> {
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E>;
 }
@@ -244,44 +226,32 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         HostMulOp::from_textual,
         HostDivOp::from_textual,
         HostDotOp::from_textual,
-        preceded(
-            tag(HostMeanOp::SHORT_NAME),
-            cut(operation_on_axis!(HostMeanOp)),
-        ),
+        HostMeanOp::from_textual,
         preceded(tag(HostExpandDimsOp::SHORT_NAME), cut(hostexpanddims)),
         HostReshapeOp::from_textual,
         HostAtLeast2DOp::from_textual,
         HostSliceOp::from_textual,
     ));
     let part2 = alt((
-        preceded(
-            tag(HostSumOp::SHORT_NAME),
-            cut(operation_on_axis!(HostSumOp)),
-        ),
+        HostSumOp::from_textual,
         HostOnesOp::from_textual,
-        preceded(tag(HostConcatOp::SHORT_NAME), cut(hostconcat)),
+        HostConcatOp::from_textual,
         HostTransposeOp::from_textual,
         HostInverseOp::from_textual,
         RingAddOp::from_textual,
         RingSubOp::from_textual,
         RingMulOp::from_textual,
         RingDotOp::from_textual,
-        preceded(
-            tag(RingSumOp::SHORT_NAME),
-            cut(operation_on_axis!(RingSumOp)),
-        ),
-        preceded(tag(RingSampleSeededOp::SHORT_NAME), cut(ring_sample_seeded)),
-        preceded(tag(RingSampleOp::SHORT_NAME), cut(ring_sample)),
+        RingSumOp::from_textual,
+        RingSampleSeededOp::from_textual,
+        RingSampleOp::from_textual,
         RingShlOp::from_textual,
         RingShrOp::from_textual,
         preceded(tag(PrimDeriveSeedOp::SHORT_NAME), cut(prim_derive_seed)),
-        preceded(tag(PrimPrfKeyGenOp::SHORT_NAME), cut(prim_gen_prf_key)),
+        PrimPrfKeyGenOp::from_textual,
         RingFixedpointEncodeOp::from_textual,
         RingFixedpointDecodeOp::from_textual,
-        preceded(
-            tag(RingFixedpointMeanOp::SHORT_NAME),
-            cut(fixed_point_ring_mean),
-        ),
+        RingFixedpointMeanOp::from_textual,
         FixedpointEncodeOp::from_textual,
         FixedpointDecodeOp::from_textual,
     ));
@@ -294,13 +264,13 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         BitAndOp::from_textual,
         HostSqrtOp::from_textual,
         HostDiagOp::from_textual,
-        preceded(tag(HostSqueezeOp::SHORT_NAME), cut(hostsqueeze)),
+        HostSqueezeOp::from_textual,
         AddOp::from_textual,
         SubOp::from_textual,
         MulOp::from_textual,
         DivOp::from_textual,
         DotOp::from_textual,
-        preceded(tag(MeanOp::SHORT_NAME), cut(operation_on_axis!(MeanOp))),
+        MeanOp::from_textual,
     ));
     alt((part1, part2, part3))(input)
 }
@@ -312,69 +282,6 @@ fn hostexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, axis) = attributes_single("axis", vector(parse_int))(input)?;
     let (input, sig) = operator_signature(1)(input)?;
     Ok((input, HostExpandDimsOp { sig, axis }.into()))
-}
-
-/// Parses a HostExpandDims operator
-fn hostsqueeze<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, axis) = opt(attributes_single("axis", parse_int))(input)?;
-    let (input, sig) = operator_signature(1)(input)?;
-    Ok((input, HostSqueezeOp { sig, axis }.into()))
-}
-
-/// Parses a HostConcat operator.
-fn hostconcat<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, axis) = attributes_single("axis", parse_int)(input)?;
-    let (input, sig) = operator_signature(2)(input)?;
-    Ok((input, HostConcatOp { sig, axis }.into()))
-}
-
-/// Parses a RingSampleOp operator.
-fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, opt_max_value) = opt(attributes_single("max_value", parse_int))(input)?;
-    let (input, sig) = operator_signature(0)(input)?;
-    Ok((
-        input,
-        RingSampleOp {
-            sig,
-            max_value: opt_max_value,
-        }
-        .into(),
-    ))
-}
-
-/// Parses a RingSampleSeededOp operator.
-fn ring_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, opt_max_value) = opt(attributes_single("max_value", parse_int))(input)?;
-    let (input, sig) = operator_signature(0)(input)?;
-    Ok((
-        input,
-        RingSampleSeededOp {
-            sig,
-            max_value: opt_max_value,
-        }
-        .into(),
-    ))
-}
-
-/// Parses a PrimPrfKeyGen operator.
-fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    Ok((
-        input,
-        PrimPrfKeyGenOp {
-            sig: Signature::nullary(Ty::PrfKey),
-        }
-        .into(),
-    ))
 }
 
 /// Parses a PrimDeriveSeed operator.
@@ -389,29 +296,6 @@ fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, opt_sig) = opt(operator_signature(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
     Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
-}
-
-/// Parses a RingFixedpointMean operator.
-fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, (scaling_base, scaling_exp, axis)) = attributes!((
-        attributes_member("scaling_base", parse_int),
-        attributes_member("scaling_exp", parse_int),
-        opt(attributes_member("axis", parse_int))
-    ))(input)?;
-
-    let (input, sig) = operator_signature(0)(input)?;
-    Ok((
-        input,
-        RingFixedpointMeanOp {
-            sig,
-            axis,
-            scaling_base,
-            scaling_exp,
-        }
-        .into(),
-    ))
 }
 
 /// Parses list of arguments.
@@ -1779,7 +1663,9 @@ mod tests {
 
     #[test]
     fn test_primprfkeygen() -> Result<(), anyhow::Error> {
-        let (_, op) = parse_assignment::<(&str, ErrorKind)>("key = PrimPrfKeyGen() @Host(alice)")?;
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "key = PrimPrfKeyGen: () -> PrfKey () @Host(alice)",
+        )?;
         assert_eq!(op.name, "key");
         Ok(())
     }
@@ -1855,7 +1741,7 @@ mod tests {
     #[test]
     fn test_fixedpoint_ring_mean() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = RingFixedpointMean{scaling_base = 3, scaling_exp = 1, axis = 0} : () -> Float32Tensor () @Host(alice)",
+            "op = RingFixedpointMean{axis = 0, scaling_base = 3, scaling_exp = 1} : () -> Float32Tensor () @Host(alice)",
         )?;
         assert_eq!(
             op.kind,

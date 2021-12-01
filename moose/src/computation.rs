@@ -1185,7 +1185,7 @@ pub struct DotOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
 pub struct MeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -1237,7 +1237,7 @@ pub struct HostDotOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
 pub struct HostMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -1253,7 +1253,7 @@ pub struct HostOnesOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct HostConcatOp {
     pub sig: Signature,
     pub axis: u32,
@@ -1272,7 +1272,7 @@ pub struct HostExpandDimsOp {
     pub axis: Vec<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
 pub struct HostSqueezeOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -1284,7 +1284,7 @@ pub struct HostReshapeOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
 pub struct HostSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -1361,7 +1361,7 @@ pub struct PrimDeriveSeedOp {
     pub sync_key: SyncKey,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct PrimPrfKeyGenOp {
     pub sig: Signature,
 }
@@ -1396,13 +1396,13 @@ pub struct RingDotOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
 pub struct RingSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
 pub struct RingFixedpointMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -1410,13 +1410,13 @@ pub struct RingFixedpointMeanOp {
     pub scaling_exp: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
 pub struct RingSampleOp {
     pub sig: Signature,
     pub max_value: Option<u64>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
 pub struct RingSampleSeededOp {
     pub sig: Signature,
     pub max_value: Option<u64>,

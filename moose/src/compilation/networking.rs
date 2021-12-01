@@ -129,7 +129,7 @@ mod tests {
         y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        mean = HostMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
+        mean = HostMean{}: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
 
         let comp = NetworkingPass::pass(&source.try_into()?)?
             .unwrap()
@@ -154,7 +154,7 @@ mod tests {
         y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
         mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        mean = HostMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
+        mean = HostMean{}: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
         let comp = NetworkingPass::pass(&source.try_into()?)?
             .unwrap()
             .to_textual();

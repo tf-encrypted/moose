@@ -57,7 +57,7 @@ mod tests {
         y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        mean = HostMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)
+        mean = HostMean{}: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)
         constant_0 = Constant{value = String("regression_weights")}: () -> String () @Host(alice)
         save = Save: (String, Unknown) -> Unit (constant_0, mean) @Host(alice)
         "#;
