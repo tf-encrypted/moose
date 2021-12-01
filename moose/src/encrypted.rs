@@ -271,7 +271,7 @@ impl AesDecryptOp {
             AbstractAesKey::Host(host_key) => plc.share(sess, &host_key),
             AbstractAesKey::Replicated(replicated_key) => replicated_key,
         };
-        Ok(plc.decrypt(sess, &replicated_key, &ciphertext))
+        plc.decrypt(sess, &replicated_key, &ciphertext)
     }
 
     pub(crate) fn rep_key_kernel<

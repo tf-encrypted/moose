@@ -2051,7 +2051,7 @@ macro_rules! modelled {
                 sess: &crate::symbolic::SymbolicSession,
                 $($($attr_id:$attr_ty),*,)?
                 x0: &<$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type {
+            ) -> <$u as crate::computation::KnownType<crate::symbolic: :SymbolicSession>>::Type {
                 use crate::computation::{KnownType, UnarySignature};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession};
@@ -2138,11 +2138,6 @@ macro_rules! modelled {
             <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
             <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
             <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
-            // ^^^^^^
-            // |                                                                            |
-            // |                                                                            expected enum `std::result::Result`, found enum `AbstractTensor`
-            // |                                                                            help: change the output type to match the trait: `std::result::Result<AbstractTensor<FixedTensor<host::AbstractHostFixedTensor<host::AbstractHostRingTensor<u64>>, replicated::AbstractReplicatedFixedTensor<replicated::AbstractReplicatedRingTensor<host::AbstractHostRingTensor<u64>>>>, FixedTensor<host::AbstractHostFixedTensor<host::AbstractHostRingTensor<u128>>, replicated::AbstractReplicatedFixedTensor<replicated::AbstractReplicatedRingTensor<host::AbstractHostRingTensor<u128>>>>, FloatTensor<HostTensor<f32>>, FloatTensor<HostTensor<f64>>>, error::Error>`
-        
         > for $plc {
             fn $f(
                 &self,
@@ -2150,7 +2145,7 @@ macro_rules! modelled {
                 $($($attr_id:$attr_ty),*,)?
                 x0: &<$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
                 x1: &<$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> Ok(<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type) {
+            ) -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type {
                 use crate::computation::{KnownType, BinarySignature};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession};
