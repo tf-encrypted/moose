@@ -5,6 +5,7 @@ from pymoose.computation import dtypes
 from pymoose.computation import standard as standard_ops
 from pymoose.computation.base import Computation
 from pymoose.computation.host import HostPlacement
+from pymoose.computation.standard import ReshapeOperation
 from pymoose.computation.standard import TensorConstant
 from pymoose.computation.standard import TensorType
 from pymoose.edsl import base as edsl
@@ -177,25 +178,25 @@ class EdslTest(parameterized.TestCase):
             output_type=TensorType(dtype=dtypes.float32),
         )
 
-    # @parameterized.parameters(
-    #     (np.array([1.0, 2.0, 3.0]), (-1,), np.array([1.0, 2.0, 3.0])),
-    #     (np.array([1.0, 2.0, 3.0]), (-1, 1), np.array([[1.0], [2.0], [3.0]])),
-    #     (np.array([1.0, 2.0, 3.0, 4.0]), (1, 4), np.array([[1.0, 2.0, 3.0, 4.0]])),
-    #     (np.array([1.0, 2.0, 3.0, 4.0]), (2, 2), np.array([[1.0, 2.0], [3.0, 4.0]])),
-    # )
-    # def test_reshape(self, x, shape, expected):
-    #     player0 = edsl.host_placement(name="player0")
+    def test_reshape(self):
+        x = np.array([1.0, 2.0, 3.0, 4.0])
+        new_shape = (2, 2)
+        player0 = edsl.host_placement(name="player0")
 
-    #     @edsl.computation
-    #     def my_comp():
-    #         original = edsl.constant(x, placement=player0)
-    #         actual = edsl.reshape(original, shape, placement=player0)
-    #         return edsl.save("actual", actual, placement=player0)
+        @edsl.computation
+        def my_comp():
+            original = edsl.constant(x, placement=player0)
+            actual = edsl.reshape(original, new_shape, placement=player0)
+            return actual
 
-    #     concrete_comp = trace(my_comp)
-
-    #     results = run_test_computation(concrete_comp, [player0])
-    #     np.testing.assert_equal(results[player0]["actual"], expected)
+        concrete_comp = trace(my_comp)
+        op = concrete_comp.operation("reshape_0")
+        assert op == ReshapeOperation(
+            placement_name="player0",
+            name="reshape_0",
+            inputs={"x": "constant_0", "shape": "constant_1"},
+            output_type=TensorType(dtype=dtypes.float64),
+        )
 
     @parameterized.parameters((np.array(1), np.array([[1]])),)
     def test_atleast_2d(self, x, expected):
