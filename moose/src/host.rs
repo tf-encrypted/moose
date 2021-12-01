@@ -1202,8 +1202,19 @@ impl HostConcatOp {
         plc: &HostPlacement,
         axis: u32,
         xs: &[HostRingT],
-    ) -> Result<HostRingT> {
-        unimplemented!("HostConcatOp::ring_kernel TODO");
+    ) -> Result<HostRingT>
+    where
+        HostRingT: Debug,
+    {
+        println!("xs = {:?}", xs);
+        //let arrs = Vec::new();
+        //for x in xs {
+        //    arrs.push(x.0);
+        //}
+        //let ax = Axis(axis as usize);
+        //let ret = ndarray::concatenate(ax, arrs).unwrap();
+        //println!("ret = {:?}", ret);
+        unimplemented!("return value todo")
     }
 }
 
@@ -3309,6 +3320,33 @@ mod tests {
     }
 
     #[test]
+    fn test_ring_concatenate() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let sess = SyncSession::default();
+
+        let x_backing: ArrayD<u64> = array![[1, 4], [9, 16], [25, 36]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y_backing: ArrayD<u64> = array![[1, 3], [6, 10], [15, 21]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let z_backing: ArrayD<u64> = array![[1, 36], [1225, 41616], [1413721, 48024900]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let x = HostRing64Tensor::from(x_backing);
+        let y = HostRing64Tensor::from(y_backing);
+        let z = HostRing64Tensor::from(z_backing);
+        let expected_backing: ArrayD<u64> = array![[3, 43], [1240, 41642], [1413761, 48024957]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let expected = HostRing64Tensor::from_raw_plc(expected_backing, alice.clone());
+        let out = alice.concatenate(&sess, 0, &[x, y, z]);
+        //assert_eq!(out, expected);
+    }
+
+    #[test]
     fn test_atleast_2d() {
         let a = HostTensor::<f32>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
@@ -3689,7 +3727,7 @@ mod tests {
     }
 
     #[test]
-    fn ring_add_n() {
+    fn test_ring_add_n() {
         let alice = HostPlacement {
             owner: "alice".into(),
         };
