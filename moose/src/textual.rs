@@ -198,26 +198,6 @@ macro_rules! attributes {
     };
 }
 
-/// Constructs a parser for a simple unary operation.
-macro_rules! unary {
-    ($sub:ident) => {
-        |input: &'a str| {
-            let (input, sig) = operator_signature(1)(input)?;
-            Ok((input, $sub { sig }.into()))
-        }
-    };
-}
-
-/// Constructs a parser for a simple binary operation.
-macro_rules! binary {
-    ($sub:ident) => {
-        |input: &'a str| {
-            let (input, sig) = operator_signature(2)(input)?;
-            Ok((input, $sub { sig }.into()))
-        }
-    };
-}
-
 /// Constructs a parser for a simple binary operation.
 macro_rules! operation_on_axis {
     ($sub:ident) => {
@@ -278,17 +258,14 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             tag(HostSumOp::SHORT_NAME),
             cut(operation_on_axis!(HostSumOp)),
         ),
-        preceded(tag(HostOnesOp::SHORT_NAME), cut(unary!(HostOnesOp))),
+        HostOnesOp::from_textual,
         preceded(tag(HostConcatOp::SHORT_NAME), cut(hostconcat)),
-        preceded(
-            tag(HostTransposeOp::SHORT_NAME),
-            cut(unary!(HostTransposeOp)),
-        ),
-        preceded(tag(HostInverseOp::SHORT_NAME), cut(unary!(HostInverseOp))),
-        preceded(tag(RingAddOp::SHORT_NAME), cut(binary!(RingAddOp))),
-        preceded(tag(RingSubOp::SHORT_NAME), cut(binary!(RingSubOp))),
-        preceded(tag(RingMulOp::SHORT_NAME), cut(binary!(RingMulOp))),
-        preceded(tag(RingDotOp::SHORT_NAME), cut(binary!(RingDotOp))),
+        HostTransposeOp::from_textual,
+        HostInverseOp::from_textual,
+        RingAddOp::from_textual,
+        RingSubOp::from_textual,
+        RingMulOp::from_textual,
+        RingDotOp::from_textual,
         preceded(
             tag(RingSumOp::SHORT_NAME),
             cut(operation_on_axis!(RingSumOp)),
@@ -321,14 +298,14 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(BitSampleOp::SHORT_NAME), cut(bit_sample)),
         preceded(tag(BitXorOp::SHORT_NAME), cut(bit_xor)),
         preceded(tag(BitAndOp::SHORT_NAME), cut(bit_and)),
-        preceded(tag(HostSqrtOp::SHORT_NAME), cut(unary!(HostSqrtOp))),
-        preceded(tag(HostDiagOp::SHORT_NAME), cut(unary!(HostDiagOp))),
+        HostSqrtOp::from_textual,
+        HostDiagOp::from_textual,
         preceded(tag(HostSqueezeOp::SHORT_NAME), cut(hostsqueeze)),
-        preceded(tag(AddOp::SHORT_NAME), cut(binary!(AddOp))),
-        preceded(tag(SubOp::SHORT_NAME), cut(binary!(SubOp))),
-        preceded(tag(MulOp::SHORT_NAME), cut(binary!(MulOp))),
-        preceded(tag(DivOp::SHORT_NAME), cut(binary!(DivOp))),
-        preceded(tag(DotOp::SHORT_NAME), cut(binary!(DotOp))),
+        AddOp::from_textual,
+        SubOp::from_textual,
+        MulOp::from_textual,
+        DivOp::from_textual,
+        DotOp::from_textual,
         preceded(tag(MeanOp::SHORT_NAME), cut(operation_on_axis!(MeanOp))),
     ));
     alt((part1, part2, part3))(input)
