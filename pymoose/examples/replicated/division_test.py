@@ -5,8 +5,6 @@ import unittest
 import numpy as np
 
 from pymoose import edsl
-from pymoose import elk_compiler
-from pymoose.computation import utils
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
@@ -50,27 +48,9 @@ class ReplicatedExample(unittest.TestCase):
         }
         runtime = LocalMooseRuntime(storage_mapping=executors_storage)
 
-        concrete_comp = edsl.trace(my_comp)
-        comp_bin = utils.serialize_computation(concrete_comp)
-        # Compile in Rust
-        rust_compiled = elk_compiler.compile_computation(
-            comp_bin,
-            [
-                "typing",
-                # "dump",
-                # All of the symbolic passes. Currently combines functionality of
-                # [ReplicatedOpsPass, HostRingLoweringPass, ReplicatedLoweringPass]
-                "full",
-                "prune",
-                "networking",
-                "typing",
-                "toposort",
-                # "dump",
-                # "print",
-            ],
-        )
-        runtime.evaluate_compiled(
-            comp_bin=rust_compiled,
+        logical_comp = edsl.trace(my_comp)
+        runtime.evaluate_computation(
+            computation=logical_comp,
             role_assignment={
                 "alice": "alice",
                 "bob": "bob",
@@ -78,6 +58,14 @@ class ReplicatedExample(unittest.TestCase):
                 "dave": "dave",
             },
             arguments={},
+            compiler_passes=[
+                "typing",
+                "full",
+                "prune",
+                "networking",
+                "typing",
+                "toposort",
+            ],
         )
 
         print("Done", runtime.read_value_from_storage("dave", "res"))

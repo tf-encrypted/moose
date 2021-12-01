@@ -6,73 +6,18 @@ import numpy as np
 
 from pymoose.computation import dtypes
 from pymoose.computation import host as host_dialect
-from pymoose.computation import replicated as rep_placement
+from pymoose.computation import replicated as rep_dialect
 from pymoose.computation import standard as std_dialect
 from pymoose.computation.base import Computation
 from pymoose.computation.base import Operation
 from pymoose.computation.base import Placement
 from pymoose.computation.base import Value
 from pymoose.computation.base import ValueType
-from pymoose.deprecated.computation import bit as bit_dialect
-from pymoose.deprecated.computation import fixedpoint as fixed_dialect
-from pymoose.deprecated.computation import primitives as prim_dialect
-from pymoose.deprecated.computation import replicated as rep_dialect
-from pymoose.deprecated.computation import ring as ring_dialect
 from pymoose.logger import get_logger
 
 SUPPORTED_TYPES = [
-    bit_dialect.BitAndOperation,
-    bit_dialect.BitExtractOperation,
-    bit_dialect.BitFillTensorOperation,
-    bit_dialect.BitSampleOperation,
-    bit_dialect.BitShapeOperation,
-    bit_dialect.BitTensorType,
-    bit_dialect.BitXorOperation,
-    bit_dialect.RingInjectOperation,
-    fixed_dialect.AbsOperation,
-    fixed_dialect.AddOperation,
-    fixed_dialect.DecodeOperation,
-    fixed_dialect.DotOperation,
-    fixed_dialect.EncodeOperation,
-    fixed_dialect.EncodedTensorType,
-    fixed_dialect.MeanOperation,
-    fixed_dialect.MulOperation,
-    fixed_dialect.RingDecodeOperation,
-    fixed_dialect.RingEncodeOperation,
-    fixed_dialect.RingMeanOperation,
-    fixed_dialect.SubOperation,
-    fixed_dialect.SumOperation,
-    fixed_dialect.TruncPrOperation,
     host_dialect.HostPlacement,
-    prim_dialect.DeriveSeedOperation,
-    prim_dialect.PRFKeyType,
-    prim_dialect.SampleKeyOperation,
-    prim_dialect.SeedType,
-    rep_dialect.AbsOperation,
-    rep_dialect.AddOperation,
-    rep_dialect.DotOperation,
-    rep_dialect.MeanOperation,
-    rep_dialect.MulOperation,
-    rep_placement.ReplicatedPlacement,
-    rep_dialect.ReplicatedRingTensorType,
-    rep_dialect.ReplicatedSetupType,
-    rep_dialect.RevealOperation,
-    rep_dialect.SetupOperation,
-    rep_dialect.ShareOperation,
-    rep_dialect.SubOperation,
-    rep_dialect.SumOperation,
-    rep_dialect.TruncPrOperation,
-    ring_dialect.FillTensorOperation,
-    ring_dialect.RingAddOperation,
-    ring_dialect.RingDotOperation,
-    ring_dialect.RingMulOperation,
-    ring_dialect.RingSampleOperation,
-    ring_dialect.RingShapeOperation,
-    ring_dialect.RingShlOperation,
-    ring_dialect.RingShrOperation,
-    ring_dialect.RingSubOperation,
-    ring_dialect.RingSumOperation,
-    ring_dialect.RingTensorType,
+    rep_dialect.ReplicatedPlacement,
     std_dialect.AbsOperation,
     std_dialect.AddOperation,
     std_dialect.AesKeyType,
@@ -83,7 +28,6 @@ SUPPORTED_TYPES = [
     std_dialect.ConcatenateOperation,
     std_dialect.ConstantOperation,
     std_dialect.DecryptOperation,
-    std_dialect.DeserializeOperation,
     std_dialect.DivOperation,
     std_dialect.DotOperation,
     std_dialect.ExpandDimsOperation,
@@ -100,11 +44,8 @@ SUPPORTED_TYPES = [
     std_dialect.OnesOperation,
     std_dialect.OutputOperation,
     std_dialect.SigmoidOperation,
-    std_dialect.ReceiveOperation,
     std_dialect.ReshapeOperation,
     std_dialect.SaveOperation,
-    std_dialect.SendOperation,
-    std_dialect.SerializeOperation,
     std_dialect.ShapeConstant,
     std_dialect.ShapeOperation,
     std_dialect.ShapeType,
