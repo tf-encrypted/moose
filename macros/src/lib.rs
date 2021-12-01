@@ -246,8 +246,7 @@ fn parser_for_type(name: &Option<String>, ty: &Type) -> Option<proc_macro2::Toke
             }
         }
         _ => panic!(
-            "The from textual macro could not derive a parser for an attribute with the type {:?}",
-            ty,
+            "The from textual macro could not derive a parser for an attribute named {:?} due to unknown type", name,
         ),
     }
 }
