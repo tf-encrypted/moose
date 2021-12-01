@@ -1164,6 +1164,8 @@ modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32
 modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt16Tensor] -> HostInt16Tensor, HostConcatOp);
 modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt32Tensor] -> HostInt32Tensor, HostConcatOp);
 modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt64Tensor] -> HostInt64Tensor, HostConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostRing64Tensor] -> HostRing64Tensor, HostConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostRing128Tensor] -> HostRing128Tensor, HostConcatOp);
 
 kernel! {
     HostConcatOp, [
@@ -1173,6 +1175,8 @@ kernel! {
         (HostPlacement, vec[HostInt16Tensor] -> HostInt16Tensor => [runtime] attributes[axis] Self::kernel),
         (HostPlacement, vec[HostInt32Tensor] -> HostInt32Tensor => [runtime] attributes[axis] Self::kernel),
         (HostPlacement, vec[HostInt64Tensor] -> HostInt64Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor => [runtime] attributes[axis] Self::ring_kernel),
+        (HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor => [runtime] attributes[axis] Self::ring_kernel),
     ]
 }
 
@@ -1191,6 +1195,15 @@ impl HostConcatOp {
 
         let c = ndarray::concatenate(ax, &arr).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostTensor(c, plc.clone()))
+    }
+
+    pub fn ring_kernel<S: Session, HostRingT>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: u32,
+        xs: &[HostRingT],
+    ) -> Result<HostRingT> {
+        unimplemented!("HostConcatOp::ring_kernel TODO");
     }
 }
 

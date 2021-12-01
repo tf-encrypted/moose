@@ -366,7 +366,7 @@ where
 }
 
 // Type aliases to shorten out impl in replicated protocols
-type RepTen<T> = AbstractReplicatedRingTensor<T>;
+pub(crate) type RepTen<T> = AbstractReplicatedRingTensor<T>;
 type AdtTen<T> = AbstractAdditiveTensor<T>;
 type RepBits<N> = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
 type MirTen<T> = Mirrored3RingTensor<T>;

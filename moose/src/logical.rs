@@ -4,6 +4,8 @@ use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{HostShape, HostString};
 use crate::kernels::*;
+use crate::replicated::RepTen;
+use crate::replicated::ReplicatedRing128Tensor;
 use crate::replicated::ReplicatedShape;
 use crate::symbolic::Symbolic;
 use derive_more::Display;
@@ -968,10 +970,12 @@ impl ExpandDimsOp {
 }
 
 modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
+modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, ConcatOp);
 
 kernel! {
     ConcatOp, [
         (HostPlacement, vec[Tensor] -> Tensor => [hybrid] attributes[axis] Self::host_kernel),
+        (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [hybrid] attributes[axis] Self::rep_rep_kernel),
     ]
 }
 
@@ -1032,6 +1036,47 @@ impl ConcatOp {
                 "ConcatOp missing an implementation.".to_string(),
             )),
         }
+    }
+
+    fn rep_rep_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[RepTen<HostRingT>],
+    ) -> Result<RepTen<HostRingT>>
+    where
+        HostPlacement: PlacementConcatenate<S, HostRingT, HostRingT>,
+        HostRingT: Clone,
+    {
+        let mut z00s: Vec<HostRingT> = Vec::new();
+        let mut z10s: Vec<HostRingT> = Vec::new();
+        let mut z11s: Vec<HostRingT> = Vec::new();
+        let mut z21s: Vec<HostRingT> = Vec::new();
+        let mut z22s: Vec<HostRingT> = Vec::new();
+        let mut z02s: Vec<HostRingT> = Vec::new();
+
+        let (player0, player1, player2) = plc.host_placements();
+        for x in xs.iter() {
+            let RepTen {
+                shares: [[x00, x10], [x11, x21], [x22, x02]],
+            } = &x;
+
+            z00s.push(x00.clone());
+            z10s.push(x10.clone());
+            z11s.push(x11.clone());
+            z21s.push(x21.clone());
+            z22s.push(x22.clone());
+            z02s.push(x02.clone());
+        }
+        let z00 = player0.concatenate(sess, axis, &z00s);
+        let z10 = player0.concatenate(sess, axis, &z10s);
+        let z11 = player1.concatenate(sess, axis, &z11s);
+        let z21 = player1.concatenate(sess, axis, &z21s);
+        let z22 = player2.concatenate(sess, axis, &z22s);
+        let z02 = player2.concatenate(sess, axis, &z02s);
+        Ok(RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        })
     }
 }
 
