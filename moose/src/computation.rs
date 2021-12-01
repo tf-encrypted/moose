@@ -1422,46 +1422,46 @@ pub struct RingSampleSeededOp {
     pub max_value: Option<u64>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RingShlOp {
     pub sig: Signature,
     pub amount: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RingShrOp {
     pub sig: Signature,
     pub amount: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RingInjectOp {
     pub sig: Signature,
     pub bit_idx: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct BitExtractOp {
     pub sig: Signature,
     pub bit_idx: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct BitSampleOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct BitSampleSeededOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct BitXorOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct BitAndOp {
     pub sig: Signature,
 }
@@ -1491,14 +1491,14 @@ pub struct GreaterThanOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct FixedpointEncodeOp {
     pub sig: Signature,
     pub fractional_precision: u32,
     pub integral_precision: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct FixedpointDecodeOp {
     pub sig: Signature,
     pub fractional_precision: u32,
@@ -1622,14 +1622,14 @@ pub struct FloatingpointSumOp {
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RingFixedpointEncodeOp {
     pub sig: Signature,
     pub scaling_base: u64,
     pub scaling_exp: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RingFixedpointDecodeOp {
     pub sig: Signature,
     pub scaling_base: u64,

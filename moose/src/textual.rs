@@ -272,32 +272,26 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         ),
         preceded(tag(RingSampleSeededOp::SHORT_NAME), cut(ring_sample_seeded)),
         preceded(tag(RingSampleOp::SHORT_NAME), cut(ring_sample)),
-        preceded(tag(RingShlOp::SHORT_NAME), cut(ring_shl)),
-        preceded(tag(RingShrOp::SHORT_NAME), cut(ring_shr)),
+        RingShlOp::from_textual,
+        RingShrOp::from_textual,
         preceded(tag(PrimDeriveSeedOp::SHORT_NAME), cut(prim_derive_seed)),
         preceded(tag(PrimPrfKeyGenOp::SHORT_NAME), cut(prim_gen_prf_key)),
-        preceded(
-            tag(RingFixedpointEncodeOp::SHORT_NAME),
-            cut(fixed_point_ring_encode),
-        ),
-        preceded(
-            tag(RingFixedpointDecodeOp::SHORT_NAME),
-            cut(fixed_point_ring_decode),
-        ),
+        RingFixedpointEncodeOp::from_textual,
+        RingFixedpointDecodeOp::from_textual,
         preceded(
             tag(RingFixedpointMeanOp::SHORT_NAME),
             cut(fixed_point_ring_mean),
         ),
-        preceded(tag(FixedpointEncodeOp::SHORT_NAME), cut(fixed_point_encode)),
-        preceded(tag(FixedpointDecodeOp::SHORT_NAME), cut(fixed_point_decode)),
+        FixedpointEncodeOp::from_textual,
+        FixedpointDecodeOp::from_textual,
     ));
     let part3 = alt((
-        preceded(tag(RingInjectOp::SHORT_NAME), cut(ring_inject)),
-        preceded(tag(BitExtractOp::SHORT_NAME), cut(bit_extract)),
-        preceded(tag(BitSampleSeededOp::SHORT_NAME), cut(bit_sample_seeded)),
-        preceded(tag(BitSampleOp::SHORT_NAME), cut(bit_sample)),
-        preceded(tag(BitXorOp::SHORT_NAME), cut(bit_xor)),
-        preceded(tag(BitAndOp::SHORT_NAME), cut(bit_and)),
+        RingInjectOp::from_textual,
+        BitExtractOp::from_textual,
+        BitSampleSeededOp::from_textual,
+        BitSampleOp::from_textual,
+        BitXorOp::from_textual,
+        BitAndOp::from_textual,
         HostSqrtOp::from_textual,
         HostDiagOp::from_textual,
         preceded(tag(HostSqueezeOp::SHORT_NAME), cut(hostsqueeze)),
@@ -370,40 +364,6 @@ fn ring_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     ))
 }
 
-/// Parses a BitSampleOp operator.
-fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, sig) = operator_signature(0)(input)?;
-    Ok((input, BitSampleOp { sig }.into()))
-}
-
-/// Parses a BitSampleSeededOp operator.
-fn bit_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, sig) = operator_signature(0)(input)?;
-    Ok((input, BitSampleSeededOp { sig }.into()))
-}
-
-/// Parses a RingShl operator.
-fn ring_shl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, amount) = attributes_single("amount", parse_int)(input)?;
-    let (input, sig) = operator_signature(0)(input)?;
-    Ok((input, RingShlOp { sig, amount }.into()))
-}
-
-/// Parses a RingShr operator.
-fn ring_shr<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, amount) = attributes_single("amount", parse_int)(input)?;
-    let (input, sig) = operator_signature(0)(input)?;
-    Ok((input, RingShrOp { sig, amount }.into()))
-}
-
 /// Parses a PrimPrfKeyGen operator.
 fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
@@ -431,84 +391,6 @@ fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
 }
 
-/// Parses a RingFixedpointEncode operator.
-fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, (scaling_base, scaling_exp)) = attributes!((
-        attributes_member("scaling_base", parse_int),
-        attributes_member("scaling_exp", parse_int)
-    ))(input)?;
-    let (input, sig) = operator_signature(0)(input)?;
-    Ok((
-        input,
-        RingFixedpointEncodeOp {
-            sig,
-            scaling_base,
-            scaling_exp,
-        }
-        .into(),
-    ))
-}
-
-/// Parses a RingFixedpointDecode operator.
-fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, (scaling_base, scaling_exp)) = attributes!((
-        attributes_member("scaling_base", parse_int),
-        attributes_member("scaling_exp", parse_int)
-    ))(input)?;
-    let (input, sig) = operator_signature(1)(input)?;
-    Ok((
-        input,
-        RingFixedpointDecodeOp {
-            sig,
-            scaling_base,
-            scaling_exp,
-        }
-        .into(),
-    ))
-}
-
-/// Parses a FixedpointEncode operator.
-fn fixed_point_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, (fractional_precision, integral_precision)) = attributes!((
-        attributes_member("fractional_precision", parse_int),
-        attributes_member("integral_precision", parse_int)
-    ))(input)?;
-
-    let (input, sig) = operator_signature(0)(input)?;
-    Ok((
-        input,
-        FixedpointEncodeOp {
-            sig,
-            fractional_precision,
-            integral_precision,
-        }
-        .into(),
-    ))
-}
-
-/// Parses a FixedpointDecode operator.
-fn fixed_point_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, fractional_precision) =
-        attributes_single("fractional_precision", parse_int)(input)?;
-    let (input, sig) = operator_signature(1)(input)?;
-    Ok((
-        input,
-        FixedpointDecodeOp {
-            sig,
-            fractional_precision,
-        }
-        .into(),
-    ))
-}
-
 /// Parses a RingFixedpointMean operator.
 fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
@@ -530,42 +412,6 @@ fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>
         }
         .into(),
     ))
-}
-
-/// Parses a RingInject operator.
-fn ring_inject<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, bit_idx) = attributes_single("bit_idx", parse_int)(input)?;
-    let (input, sig) = operator_signature(1)(input)?;
-    Ok((input, RingInjectOp { sig, bit_idx }.into()))
-}
-
-/// Parses a BitExtract operator.
-fn bit_extract<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, bit_idx) = attributes_single("bit_idx", parse_int)(input)?;
-    let (input, sig) = operator_signature(1)(input)?;
-    Ok((input, BitExtractOp { sig, bit_idx }.into()))
-}
-
-/// Parses a BitXor operator.
-fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, opt_sig) = opt(operator_signature(0))(input)?;
-    let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
-    Ok((input, BitXorOp { sig }.into()))
-}
-
-/// Parses a BitAnd operator.
-fn bit_and<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, opt_sig) = opt(operator_signature(0))(input)?;
-    let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
-    Ok((input, BitAndOp { sig }.into()))
 }
 
 /// Parses list of arguments.
@@ -933,7 +779,7 @@ pub fn slice_info_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str
 }
 
 /// Parses integer (or anything implementing FromStr from decimal digits)
-fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+pub fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, O, E> {
     map_res(digit1, |s: &str| s.parse::<O>())(input)

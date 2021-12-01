@@ -202,6 +202,9 @@ fn parser_for_type(ty: &syn::Type) -> Option<proc_macro2::TokenStream> {
     match ty {
         syn::Type::Path(tp) if tp.path.is_ident("String") => Some(quote!(crate::textual::string)),
         syn::Type::Path(tp) if tp.path.is_ident("bool") => Some(quote!(crate::textual::parse_bool)),
+        syn::Type::Path(tp) if tp.path.is_ident("u32") => Some(quote!(crate::textual::parse_int)),
+        syn::Type::Path(tp) if tp.path.is_ident("u64") => Some(quote!(crate::textual::parse_int)),
+        syn::Type::Path(tp) if tp.path.is_ident("usize") => Some(quote!(crate::textual::parse_int)),
         syn::Type::Path(tp) if tp.path.is_ident("SliceInfo") => {
             Some(quote!(crate::textual::slice_info_literal))
         }
