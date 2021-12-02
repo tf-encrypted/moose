@@ -4,9 +4,10 @@ use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{HostShape, HostString};
 use crate::kernels::*;
-use crate::replicated::RepTen;
-use crate::replicated::ReplicatedRing128Tensor;
-use crate::replicated::ReplicatedShape;
+use crate::replicated::{
+    AbstractReplicatedFixedTensor, RepTen, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
+    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
+};
 use crate::symbolic::Symbolic;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -970,12 +971,18 @@ impl ExpandDimsOp {
 }
 
 modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
+modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, ConcatOp);
 modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, ConcatOp);
+modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor, ConcatOp);
+modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor, ConcatOp);
 
 kernel! {
     ConcatOp, [
         (HostPlacement, vec[Tensor] -> Tensor => [hybrid] attributes[axis] Self::host_kernel),
+        (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [hybrid] attributes[axis] Self::rep_rep_kernel),
         (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [hybrid] attributes[axis] Self::rep_rep_kernel),
+        (ReplicatedPlacement, vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor => [hybrid] attributes[axis] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor => [hybrid] attributes[axis] Self::rep_fixed_kernel),
     ]
 }
 
@@ -1077,6 +1084,19 @@ impl ConcatOp {
         Ok(RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
+    }
+
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[AbstractReplicatedFixedTensor<RepRingT>],
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementAddN<S, RepRingT, RepRingT>,
+        RepRingT: Clone,
+    {
+        unimplemented!("rep_fixed_kernel TODO")
     }
 }
 
