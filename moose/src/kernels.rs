@@ -1837,7 +1837,7 @@ kernel! {
                 Self::bit_kernel(sess, host, value, host_shape)
             }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [concrete] custom |op| {
                 let value: u64 = match op.value {
                     Constant::Bit(v) => v as u64,
                     Constant::Ring64(v) => v,
@@ -1854,7 +1854,7 @@ kernel! {
                     Self::ring64_kernel(sess, rep, value, rep_shape)
                 }))
             }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring64Tensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring64Tensor => [concrete] custom |op| {
                 let value: u64 = match op.value {
                     Constant::Bit(v) => v as u64,
                     Constant::Ring64(v) => v,
@@ -1871,7 +1871,7 @@ kernel! {
                     Self::mir_ring64_kernel(sess, rep, value, rep_shape)
                 }))
             }),
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [concrete] custom |op| {
                 let value: u128 = match op.value {
                     Constant::Bit(v) => v as u128,
                     Constant::Ring64(v) => v as u128,
@@ -1887,7 +1887,7 @@ kernel! {
                     Self::ring128_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring128Tensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring128Tensor => [concrete] custom |op| {
                 let value: u128 = match op.value {
                     Constant::Bit(v) => v as u128,
                     Constant::Ring64(v) => v as u128,
@@ -1903,7 +1903,7 @@ kernel! {
                     Self::mir_ring128_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => [concrete] custom |op| {
                 let value: u8 = match op.value {
                     Constant::Bit(v) => v,
                     Constant::Ring64(v) => v as u8,
@@ -1918,7 +1918,7 @@ kernel! {
                     Self::rep_bit_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3BitTensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3BitTensor => [concrete] custom |op| {
                 let value: u8 = match op.value {
                     Constant::Bit(v) => v,
                     Constant::Ring64(v) => v as u8,
