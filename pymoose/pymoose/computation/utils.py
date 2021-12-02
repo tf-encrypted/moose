@@ -10,6 +10,7 @@ from pymoose.computation import replicated as rep_dialect
 from pymoose.computation import standard as std_dialect
 from pymoose.computation.base import Computation
 from pymoose.computation.base import Operation
+from pymoose.computation.base import OpSignature
 from pymoose.computation.base import Placement
 from pymoose.computation.base import Value
 from pymoose.computation.base import ValueType
@@ -87,7 +88,16 @@ def _encode(val):
         assert type_name in TYPES_MAP, type_name
         d = {field.name: getattr(val, field.name) for field in fields(val)}
         d["__type__"] = type_name
+        # FIXME: for backwards compatibility with existing pymoose serde
+        if isinstance(val, Operation):
+            d["output_type"] = val.output_type
         return d
+    elif isinstance(val, OpSignature):
+        return {
+            "__type__": "OpSignature",
+            "input_types": val.input_types,
+            "return_type": val.return_type,
+        }
     elif isinstance(val, dtypes.DType):
         return {"__type__": "DType", "name": val.name}
     elif isinstance(val, np.ndarray):
@@ -121,6 +131,10 @@ def _decode(obj):
                 dtypes.float32.name: dtypes.float32,
                 dtypes.float64.name: dtypes.float64,
             }[dtype_name]
+        elif obj["__type__"] == "OpSignature":
+            return OpSignature(
+                input_types=obj["input_types"], return_type=obj["return_type"],
+            )
         elif obj["__type__"] == "ndarray":
             dtype = obj["dtype"]
             shape = obj["shape"]
@@ -129,5 +143,8 @@ def _decode(obj):
         else:
             ty = TYPES_MAP[obj["__type__"]]
             del obj["__type__"]
+            # FIXME: for backwards compatibility with existing pymoose serde
+            if "output_type" in obj:
+                del obj["output_type"]
             return ty(**obj)
     return obj

@@ -22,14 +22,30 @@ class Value:
 
 
 @dataclass
+class OpSignature:
+    input_types: Dict[str, ValueType]
+    return_type: ValueType
+
+
+@dataclass(init=False)
 class Operation:
     name: str
     inputs: Dict[str, str]
     placement_name: str
+    signature: OpSignature
 
     @classmethod
     def identifier(cls):
         return cls.__name__
+
+    @property
+    def return_type(self):
+        return self.signature.return_type
+
+    # FIXME: only for backwards compatibility with existing pymoose serde
+    @property
+    def output_type(self):
+        return self.signature.return_type
 
 
 @dataclass
