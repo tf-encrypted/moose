@@ -171,16 +171,9 @@ pub type Environment<V> = HashMap<String, V>;
 
 pub type RoleAssignment = HashMap<Role, Identity>;
 
+#[derive(Default)]
 pub struct AsyncExecutor {
     session_ids: HashSet<SessionId>,
-}
-
-impl Default for AsyncExecutor {
-    fn default() -> Self {
-        AsyncExecutor {
-            session_ids: HashSet::new(),
-        }
-    }
 }
 
 impl AsyncExecutor {
@@ -470,15 +463,15 @@ mod tests {
     #[case(false)]
     fn test_eager_executor(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let mut definition = String::from(
-            r#"key = PrimPrfKeyGen() @Host(alice)
+            r#"key = PrimPrfKeyGen: () -> PrfKey () @Host(alice)
         seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
-        shape = Constant{value = Shape([2, 3])} @Host(alice)
+        shape = Constant{value = Shape([2, 3])}: () -> Shape @Host(alice)
         "#,
         );
         let body = (0..100)
             .map(|i| {
                 format!(
-                    "x{} = RingSampleSeeded: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
+                    "x{} = RingSampleSeeded{{}}: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
                     i
                 )
             })
@@ -509,7 +502,7 @@ mod tests {
     fn test_constants_derive_seed(
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
+        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)
         seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
         output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
@@ -539,9 +532,9 @@ mod tests {
     fn test_constants_sample_ring(
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"seed = Constant{value=Seed(00000000000000000000000000000000)} @Host(alice)
-        xshape = Constant{value=Shape([2, 2])} @Host(alice)
-        sampled = RingSampleSeeded: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
+        let source = r#"seed = Constant{value=Seed(00000000000000000000000000000000)}: () -> Seed @Host(alice)
+        xshape = Constant{value=Shape([2, 2])}: () -> Shape @Host(alice)
+        sampled = RingSampleSeeded{}: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (sampled) @Host(alice)
         "#;
         let arguments: HashMap<String, Value> = hashmap!();
@@ -611,7 +604,7 @@ mod tests {
         let data_type_str = input_data.ty().to_textual();
         let source_template = r#"x_uri = Input {arg_name="x_uri"}: () -> String () @Host(alice)
         x_query = Input {arg_name="x_query"}: () -> String () @Host(alice)
-        saved_uri = Constant{value = String("saved_data")} () @Host(alice)
+        saved_uri = Constant{value = String("saved_data")}: () -> String () @Host(alice)
         x = Load: (String, String) -> TensorType (x_uri, x_query) @Host(alice)
         save = Save: (String, TensorType) -> Unit (saved_uri, x) @Host(alice)
         output = Output: (Unit) -> Unit (save) @Host(alice)
@@ -689,9 +682,9 @@ mod tests {
         #[case] expected_result: Value,
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source_template = r#"x_0 = Constant{value=Int64Tensor([[1,2], [3,4]])} @Host(alice)
-        x_1 = Constant{value=Int64Tensor([[5, 6], [7,8]])} @Host(alice)
-        concatenated = HostConcat {axis=test_axis}: ([Int64Tensor]) -> Int64Tensor (x_0, x_1) @Host(alice)
+        let source_template = r#"x_0 = Constant{value=Int64Tensor([[1,2], [3,4]])}: () -> Int64Tensor @Host(alice)
+        x_1 = Constant{value=Int64Tensor([[5, 6], [7,8]])}: () -> Int64Tensor @Host(alice)
+        concatenated = HostConcat {axis=test_axis}: [Int64Tensor] -> Int64Tensor (x_0, x_1) @Host(alice)
         output = Output: (Int64Tensor) -> Int64Tensor (concatenated) @Host(alice)
         "#;
         let source = source_template.replace("test_axis", &axis.to_string());
@@ -727,8 +720,9 @@ mod tests {
         #[case] expected_result: Value,
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source_template = r#"x0 = Constant{value=Int64Tensor([5])} @Host(alice)
-        x1 = Constant{value=Int64Tensor([3])} @Host(bob)
+        let source_template = r#"
+        x0 = Constant{value=Int64Tensor([5])}: () -> Int64Tensor @Host(alice)
+        x1 = Constant{value=Int64Tensor([3])}: () -> Int64Tensor @Host(bob)
         res = StdOp: (Int64Tensor, Int64Tensor) -> Int64Tensor (x0, x1) @Host(alice)
         output = Output: (Int64Tensor) -> Int64Tensor (res) @Host(alice)
         "#;
@@ -769,8 +763,9 @@ mod tests {
     #[case(true)]
     #[case(false)]
     fn test_standard_dot(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x0 = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        x1 = Constant{value=Float32Tensor([[1.0, 0.0], [0.0, 1.0]])} @Host(bob)
+        let source = r#"
+        x0 = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
+        x1 = Constant{value=Float32Tensor([[1.0, 0.0], [0.0, 1.0]])}: () -> Float32Tensor @Host(bob)
         res = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x0, x1) @Host(alice)
         output = Output: (Float32Tensor) -> Float32Tensor (res) @Host(alice)
         "#;
@@ -860,7 +855,8 @@ mod tests {
         #[case] dtype: String,
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let template = r#"s = Constant{value=Shape([2, 2])} @Host(alice)
+        let template = r#"
+        s = Constant{value=Shape([2, 2])}: () -> Shape @Host(alice)
         r = HostOnes : (Shape) -> dtype (s) @Host(alice)
         output = Output : (dtype) -> dtype (r) @Host(alice)
         "#;
@@ -932,7 +928,8 @@ mod tests {
     #[case(true)]
     #[case(false)]
     fn test_standard_shape(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        let source = r#"
+        x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         shape = Shape: (Float32Tensor) -> Shape (x) @Host(alice)
         output = Output: (Shape) -> Shape (shape) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
@@ -960,8 +957,8 @@ mod tests {
     #[case(true)]
     #[case(false)]
     fn test_shape_slice(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value = Shape([2, 3, 4, 5])} @Host(alice)
-        slice = HostSlice {start = 1, end = 3}: (Shape) -> Shape (x) @Host(alice)
+        let source = r#"x = Constant{value = Shape([2, 3, 4, 5])}: () -> Shape @Host(alice)
+        slice = HostSlice {slice = {start = 1, end = 3}}: (Shape) -> Shape (x) @Host(alice)
         output = Output: (Shape) -> Shape (slice) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -989,7 +986,8 @@ mod tests {
     fn test_standard_expand_dims(
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value = Int64Tensor([1, 2])} @Host(alice)
+        let source = r#"
+        x = Constant{value = Int64Tensor([1, 2])}: () -> Int64Tensor @Host(alice)
         expand_dims = HostExpandDims {axis = [1]}: (Int64Tensor) -> Int64Tensor (x) @Host(alice)
         output = Output: (Int64Tensor) -> Int64Tensor (expand_dims) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
@@ -1081,10 +1079,11 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let axis_str: String =
-            axis_test.map_or_else(|| "".to_string(), |v| format!("{{axis={}}}", v));
+            axis_test.map_or_else(|| "{}".to_string(), |v| format!("{{axis={}}}", v));
 
         let source = format!(
-            r#"s = Constant{{value=Float32Tensor([[1, 2], [3, 4]])}} @Host(alice)
+            r#"
+            s = Constant{{value=Float32Tensor([[1, 2], [3, 4]])}}: () -> Float32Tensor @Host(alice)
             r = {} {}: (Float32Tensor) -> Float32Tensor (s) @Host(alice)
             output = Output : (Float32Tensor) -> Float32Tensor (r) @Host(alice)
         "#,
@@ -1135,7 +1134,8 @@ mod tests {
         #[case] expected_result: Value,
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"s = Constant{value=Int64Tensor([[1,2], [3, 4]])} @Host(alice)
+        let source = r#"
+        s = Constant{value=Int64Tensor([[1,2], [3, 4]])}: () -> Int64Tensor @Host(alice)
         r = HostTranspose : (Int64Tensor) -> Int64Tensor (s) @Host(alice)
         output = Output : (Int64Tensor) -> Int64Tensor (r) @Host(alice)
         "#;
@@ -1168,7 +1168,8 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"x =  Constant{{value=Float64Tensor([1.0, 1.0, 1.0])}} @Host(alice)
+            r#"
+            x = Constant{{value=Float64Tensor([1.0, 1.0, 1.0])}}: () -> Float64Tensor @Host(alice)
         res = HostAtLeast2D {{ to_column_vector = {} }} : (Float64Tensor) -> Float64Tensor (x) @Host(alice)
         output = Output : (Float64Tensor) -> Float64Tensor (res) @Host(alice)
         "#,
@@ -1205,11 +1206,12 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"x =  Constant{{value=Ring64Tensor([3])}} @Host(alice)
-        y = Constant{{value=Ring64Tensor([2])}} @Host(alice)
-        res = {} : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor (x, y) @Host(alice)
-        output = Output : (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
-        "#,
+            r#"
+            x =  Constant{{value=Ring64Tensor([3])}}: () -> Ring64Tensor @Host(alice)
+            y = Constant{{value=Ring64Tensor([2])}}: () -> Ring64Tensor @Host(alice)
+            res = {} : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor (x, y) @Host(alice)
+            output = Output : (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
+            "#,
             test_op
         );
         let arguments: HashMap<String, Value> = hashmap!();
@@ -1281,8 +1283,8 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"x = Constant{{value={}}} @Host(alice)
-        y = Constant{{value={}}} @Host(alice)
+            r#"x = Constant{{value={}}}: () -> Ring64Tensor @Host(alice)
+        y = Constant{{value={}}}: () -> Ring64Tensor @Host(alice)
         res = RingDot : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor (x, y) @Host(alice)
         output = Output : (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
         "#,
@@ -1348,7 +1350,7 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"shape = Constant{{value=Shape([{shape}])}} @Host(alice)
+            r#"shape = Constant{{value=Shape([{shape}])}}: () -> Shape @Host(alice)
         res = RingFill {{value = {t}(1)}} : (Shape) -> {t}Tensor (shape) @Host(alice)
         output = Output : ({t}Tensor) -> {t}Tensor (res) @Host(alice)
         "#,
@@ -1392,7 +1394,7 @@ mod tests {
         #[case] expected_result: Value,
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value=Ring64Tensor([[1, 2], [3, 4]])} @Host(alice)
+        let source = r#"x = Constant{value=Ring64Tensor([[1, 2], [3, 4]])}: () -> Ring64Tensor @Host(alice)
         r = RingSum {axis = 0}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (r) @Host(alice)
         "#;
@@ -1424,7 +1426,7 @@ mod tests {
         #[case] expected_result: Value,
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let template_source = r#"x = Constant{value=Ring64Tensor([4, 4])} @Host(alice)
+        let template_source = r#"x = Constant{value=Ring64Tensor([4, 4])}: () -> Ring64Tensor @Host(alice)
         res = RingShr {amount = 1}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
         "#;
@@ -1478,7 +1480,7 @@ mod tests {
 
     #[test]
     fn test_duplicate_session_ids() {
-        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
+        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)
         seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
         output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
 
@@ -1551,7 +1553,7 @@ mod tests {
 
     #[test]
     fn test_new_async_session() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
+        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)
         seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
         output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();

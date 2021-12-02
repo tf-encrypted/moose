@@ -85,6 +85,7 @@ where
 }
 
 #[derive(Debug)]
+#[allow(dead_code)] // Not all the fields are used by our code, but we still want to have access to them.
 pub struct Circuit {
     num_gates: usize,
     num_wires: usize,

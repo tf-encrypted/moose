@@ -94,6 +94,7 @@ type Inputs = HashMap<String, String>;
 #[derive(Deserialize, Debug)]
 struct PyConstantOperation {
     name: String,
+    #[allow(dead_code)]
     inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
@@ -146,6 +147,7 @@ struct PyShapeOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
+    #[allow(dead_code)]
     output_type: PyValueType,
 }
 
@@ -270,6 +272,7 @@ struct PyCastOperation {
 #[derive(Deserialize, Debug)]
 struct PyInputOperation {
     name: String,
+    #[allow(dead_code)]
     inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
@@ -296,6 +299,7 @@ struct PySaveOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
+    #[allow(dead_code)]
     output_type: PyValueType,
 }
 
@@ -314,6 +318,7 @@ struct PyHostPlacement {
 
 #[derive(Deserialize, Debug)]
 struct PyReplicatedPlacement {
+    #[allow(dead_code)]
     name: String,
     player_names: Vec<String>,
 }
