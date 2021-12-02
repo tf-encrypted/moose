@@ -1454,8 +1454,17 @@ use_debug_to_textual!(bool);
 
 impl ToTextual for SliceInfo {
     fn to_textual(&self) -> String {
-        // TODO: Find a good textual format for the SliceInfo
-        format!("{:?}", self.0)
+        match self.0.first() {
+            Some(e) => {
+                let end_string = e.end.map(|v| format!(", end = {}", v)).unwrap_or_default();
+                let step_string = e
+                    .step
+                    .map(|v| format!(", step = {}", v))
+                    .unwrap_or_default();
+                format!("{{start = {}{}{}}}", e.start, end_string, step_string)
+            }
+            _ => format!("{:?}", self.0), // Fallback to debug print
+        }
     }
 }
 
@@ -1735,6 +1744,26 @@ mod tests {
             "x10 = RingSampleSeeded{max_value = 1}: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
         )?;
         assert_eq!(op.name, "x10");
+        Ok(())
+    }
+
+    #[test]
+    fn test_slice() -> Result<(), anyhow::Error> {
+        let input = "x10 = HostSlice{slice = {start = 1, end = 10}}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)";
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(input)?;
+        assert_eq!(op.name, "x10");
+        assert_eq!(
+            op.kind,
+            Operator::HostSlice(HostSliceOp {
+                sig: Signature::unary(Ty::HostRing64Tensor, Ty::HostRing64Tensor),
+                slice: SliceInfo(vec![SliceInfoElem {
+                    start: 1,
+                    end: Some(10),
+                    step: None
+                }])
+            })
+        );
+        assert_eq!(op.to_textual(), input);
         Ok(())
     }
 
