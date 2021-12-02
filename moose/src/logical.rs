@@ -1087,16 +1087,17 @@ impl ConcatOp {
     }
 
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        axis: u32,
-        xs: &[AbstractReplicatedFixedTensor<RepRingT>],
+        _sess: &S,
+        _plc: &ReplicatedPlacement,
+        _axis: u32,
+        _xs: &[AbstractReplicatedFixedTensor<RepRingT>],
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
-        ReplicatedPlacement: PlacementAddN<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementConcatenate<S, RepRingT, RepRingT>,
         RepRingT: Clone,
     {
-        unimplemented!("rep_fixed_kernel TODO")
+        //plc.concatenate(sess, axis, xs)
+        unimplemented!("TODO")
     }
 }
 
