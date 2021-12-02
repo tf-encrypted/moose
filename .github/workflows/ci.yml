@@ -61,11 +61,6 @@ jobs:
           . venv/bin/activate
           make lint
 
-      - name: Build the runtime.
-        run: |
-          . venv/bin/activate
-          make build
-
       - name: Test the runtime.
         run: |
           . venv/bin/activate

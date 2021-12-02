@@ -39,13 +39,6 @@ class ReplicatedExample(parameterized.TestCase):
         exp_comp = self._setup_exp_comp()
         traced_exp_comp = edsl.trace(exp_comp)
         comp_bin = utils.serialize_computation(traced_exp_comp)
-        deser_exp_comp = utils.deserialize_computation(comp_bin)
-        assert traced_exp_comp == deser_exp_comp
-
-    def test_exp_example_rust_serde(self):
-        exp_comp = self._setup_exp_comp()
-        traced_exp_comp = edsl.trace(exp_comp)
-        comp_bin = utils.serialize_computation(traced_exp_comp)
         # Compile in Rust
         # If this does not error, rust was able to deserialize the pycomputation
         elk_compiler.compile_computation(comp_bin, [])
@@ -67,26 +60,14 @@ class ReplicatedExample(parameterized.TestCase):
     def test_exp_example_execute(self):
         exp_comp = self._setup_exp_comp()
         traced_exp_comp = edsl.trace(exp_comp)
-        comp_bin = utils.serialize_computation(traced_exp_comp)
-        compiled_comp = elk_compiler.compile_computation(
-            comp_bin,
-            [
-                "typing",
-                "full",
-                "prune",
-                "networking",
-                "toposort",
-                # "print",
-            ],
-        )
         storage = {
             "alice": {},
             "bob": {},
             "carole": {},
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
-        _ = runtime.evaluate_compiled(
-            comp_bin=compiled_comp,
+        _ = runtime.evaluate_computation(
+            computation=traced_exp_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )

@@ -8,8 +8,8 @@ use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray::Slice;
-use ndarray_linalg::types::{Lapack, Scalar};
-use ndarray_linalg::*;
+#[cfg(feature = "blas")]
+use ndarray_linalg::{Inverse, Lapack, Scalar};
 use num_traits::Zero;
 use num_traits::{Float, FromPrimitive};
 use rand::prelude::*;
@@ -1235,6 +1235,7 @@ kernel! {
     ]
 }
 
+#[cfg(feature = "blas")]
 impl HostInverseOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
         sess: &S,
@@ -1248,6 +1249,18 @@ impl HostInverseOp {
     }
 }
 
+#[cfg(not(feature = "blas"))]
+impl HostInverseOp {
+    pub fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _x: HostTensor<T>,
+    ) -> Result<HostTensor<T>> {
+        unimplemented!("Please enable 'blas' feature");
+    }
+}
+
+#[cfg(feature = "blas")]
 impl<T> HostTensor<T>
 where
     T: Scalar + Lapack,
@@ -1616,46 +1629,17 @@ impl HostReshapeOp {
     }
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostBitTensor, BitFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostBitTensor, FillOp);
 
-kernel! {
-    BitFillOp,
-    [
-        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] attributes[value] Self::kernel),
-    ]
-}
-
-impl BitFillOp {
-    fn kernel<S: RuntimeSession>(
+impl FillOp {
+    pub(crate) fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        value: Constant,
+        value: u8,
         shape: HostShape,
     ) -> Result<HostBitTensor> {
-        use std::convert::TryInto;
-        let value: u8 = match value {
-            Constant::Bit(v) => v,
-            Constant::Ring64(v) => v.try_into().map_err(|_| {
-                Error::KernelError("Cannot fill HostBitTensor with non-binary value.".to_string())
-            })?,
-            Constant::Ring128(v) => v.try_into().map_err(|_| {
-                Error::KernelError("Cannot fill HostBitTensor with non-binary value.".to_string())
-            })?,
-            _ => {
-                return Err(Error::TypeMismatch {
-                    expected: "Bit".to_string(),
-                    found: value.ty(),
-                })
-            }
-        };
-        if !(value == 0 || value == 1) {
-            return Err(Error::KernelError(
-                "Cannot fill HostBitTensor with non-binary value.".to_string(),
-            ));
-        }
-        assert!(value == 0 || value == 1);
         let raw_shape = shape.0 .0;
-        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value as u8);
+        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value);
         Ok(HostBitTensor(raw_tensor, plc.clone()))
     }
 }
@@ -3191,6 +3175,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "blas")]
     #[test]
     fn test_inverse() {
         let x = HostTensor::<f32>::from(
@@ -3438,6 +3423,7 @@ mod tests {
         assert_eq!(z_2, z_2_exp);
     }
 
+    #[cfg(feature = "blas")]
     #[test]
     fn test_kernel_inverse() {
         use crate::kernels::PlacementInverse;

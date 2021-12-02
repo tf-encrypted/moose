@@ -253,7 +253,6 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(OutputOp::SHORT_NAME), cut(unary!(OutputOp))),
         preceded(tag(ConstantOp::SHORT_NAME), cut(constant)),
         preceded(tag(ShapeOp::SHORT_NAME), cut(unary!(ShapeOp))),
-        preceded(tag(BitFillOp::SHORT_NAME), cut(bit_fill)),
         preceded(tag(RingFillOp::SHORT_NAME), cut(ring_fill)),
         preceded(tag(SaveOp::SHORT_NAME), cut(save_operator)),
         preceded(tag(HostAddOp::SHORT_NAME), cut(binary!(HostAddOp))),
@@ -504,15 +503,6 @@ fn bit_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, sig) = operator_signature(0)(input)?;
     Ok((input, BitSampleSeededOp { sig }.into()))
-}
-
-/// Parses a BitFill operator.
-fn bit_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, value) = attributes_single("value", constant_literal)(input)?;
-    let (input, sig) = operator_signature(1)(input)?;
-    Ok((input, BitFillOp { sig, value }.into()))
 }
 
 /// Parses a RingFill operator.
@@ -1322,7 +1312,6 @@ impl ToTextual for Operator {
             BitXor(op) => op.to_textual(),
             BitAnd(op) => op.to_textual(),
             BitNeg(op) => op.to_textual(),
-            BitFill(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
             HostAdd(op) => op.to_textual(),
             HostSub(op) => op.to_textual(),
@@ -1399,8 +1388,8 @@ impl ToTextual for Operator {
             RepAdd(op) => op.to_textual(),
             RepSub(op) => op.to_textual(),
             RepMul(op) => op.to_textual(),
-            RepAnd(_) => unimplemented!(),
-            RepXor(_) => unimplemented!(),
+            RepAnd(op) => op.to_textual(),
+            RepXor(op) => op.to_textual(),
             RepNeg(op) => op.to_textual(),
             RepTruncPr(op) => op.to_textual(),
             AdtReveal(op) => op.to_textual(),
@@ -1411,7 +1400,7 @@ impl ToTextual for Operator {
             AdtShl(op) => op.to_textual(),
             AdtToRep(op) => op.to_textual(),
             RepAbs(op) => op.to_textual(),
-            RepFill(op) => op.to_textual(),
+            Fill(op) => op.to_textual(),
             RepMsb(op) => op.to_textual(),
             RepShl(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
@@ -1433,197 +1422,6 @@ impl ToTextual for Operator {
         }
     }
 }
-
-macro_rules! impl_to_textual {
-    ($op:ty, $format:expr, $($member:tt),* ) => {
-        impl ToTextual for $op {
-            fn to_textual(&self) -> String {
-                format!(
-                    $format,
-                    $(self.$member.to_textual(),)*
-                    op = self.short_name(),
-                )
-            }
-        }
-    };
-}
-
-impl_to_textual!(ConstantOp, "{op}{{value = {}}}: {}", value, sig);
-impl_to_textual!(IdentityOp, "{op}: {}", sig);
-impl_to_textual!(CastOp, "{op}: {}", sig);
-impl_to_textual!(LoadOp, "{op}: {}", sig);
-impl_to_textual!(SaveOp, "{op}: {}", sig);
-impl_to_textual!(
-    SendOp,
-    "{op} {{rendezvous_key={}, receiver={}}}: {}",
-    rendezvous_key,
-    receiver,
-    sig
-);
-impl_to_textual!(
-    ReceiveOp,
-    "{op} {{rendezvous_key={}, sender={}}} : {}",
-    rendezvous_key,
-    sender,
-    sig
-);
-impl_to_textual!(InputOp, "{op} {{arg_name={}}}: {}", arg_name, sig);
-impl_to_textual!(OutputOp, "{op}: {}", sig);
-impl_to_textual!(
-    AtLeast2DOp,
-    "{op}{{to_column_vector={}}}: {}",
-    to_column_vector,
-    sig
-);
-
-impl_to_textual!(SliceOp, "{op}{{slice={}}}: {} {}", slice, sig);
-impl_to_textual!(OnesOp, "{op}: {}", sig);
-impl_to_textual!(ExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
-impl_to_textual!(ConcatOp, "{op}{{axis={}}}: {}", axis, sig);
-
-impl_to_textual!(TransposeOp, "{op}: {}", sig);
-impl_to_textual!(DotOp, "{op}: {}", sig);
-impl_to_textual!(InverseOp, "{op}: {}", sig);
-impl_to_textual!(AddOp, "{op}: {}", sig);
-impl_to_textual!(SubOp, "{op}: {}", sig);
-impl_to_textual!(MulOp, "{op}: {}", sig);
-impl_to_textual!(DivOp, "{op}: {}", sig);
-
-impl_to_textual!(HostAddOp, "{op}: {}", sig);
-impl_to_textual!(HostSubOp, "{op}: {}", sig);
-impl_to_textual!(HostMulOp, "{op}: {}", sig);
-impl_to_textual!(HostDivOp, "{op}: {}", sig);
-impl_to_textual!(HostDotOp, "{op}: {}", sig);
-impl_to_textual!(HostOnesOp, "{op}: {}", sig);
-impl_to_textual!(HostConcatOp, "{op}{{axis={}}}: {}", axis, sig);
-impl_to_textual!(HostExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
-impl_to_textual!(HostReshapeOp, "{op}: {}", sig);
-impl_to_textual!(RingFillOp, "{op}{{value={}}}: {}", value, sig);
-impl_to_textual!(
-    HostAtLeast2DOp,
-    "{op}{{to_column_vector={}}}: {}",
-    to_column_vector,
-    sig
-);
-impl_to_textual!(HostSliceOp, "{op}{{slice={}}}: {} {}", slice, sig);
-impl_to_textual!(HostDiagOp, "{op}: {}", sig);
-impl_to_textual!(
-    HostIndexAxisOp,
-    "{op}{{axis={}, index={}}}: {}",
-    axis,
-    index,
-    sig
-);
-impl_to_textual!(
-    HostShlDimOp,
-    "{op}{{amount={},bit_length={}}}: {}",
-    amount,
-    bit_length,
-    sig
-);
-impl_to_textual!(HostTransposeOp, "{op}: {}", sig);
-impl_to_textual!(HostBitDecOp, "{op}: {}", sig);
-impl_to_textual!(HostInverseOp, "{op}: {}", sig);
-impl_to_textual!(HostSqrtOp, "{op}: {}", sig);
-impl_to_textual!(HostSqueezeOp, "{op}: {}", sig);
-impl_to_textual!(SignOp, "{op}: {}", sig);
-impl_to_textual!(ShapeOp, "{op}: {}", sig);
-impl_to_textual!(RingNegOp, "{op}: {}", sig);
-impl_to_textual!(RingAddOp, "{op}: {}", sig);
-impl_to_textual!(RingSubOp, "{op}: {}", sig);
-impl_to_textual!(RingMulOp, "{op}: {}", sig);
-impl_to_textual!(RingDotOp, "{op}: {}", sig);
-impl_to_textual!(RingShlOp, "{op}{{amount={}}}: {}", amount, sig);
-impl_to_textual!(RingShrOp, "{op}{{amount={}}}: {}", amount, sig);
-impl_to_textual!(RingInjectOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
-impl_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
-impl_to_textual!(BitXorOp, "{op}: {}", sig);
-impl_to_textual!(BitAndOp, "{op}: {}", sig);
-impl_to_textual!(BitNegOp, "{op}: {}", sig);
-impl_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
-impl_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
-impl_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
-impl_to_textual!(AesDecryptOp, "{op}: {}", sig);
-impl_to_textual!(
-    FixedpointEncodeOp,
-    "{op}{{fractional_precision={}, integral_precision={}}}: {}",
-    fractional_precision,
-    integral_precision,
-    sig
-);
-impl_to_textual!(
-    FixedpointDecodeOp,
-    "{op}{{precision={}}}: {}",
-    fractional_precision,
-    sig
-);
-impl_to_textual!(FixedpointAddOp, "{op}: {}", sig);
-impl_to_textual!(FixedpointSubOp, "{op}: {}", sig);
-impl_to_textual!(FixedpointMulOp, "{op}: {}", sig);
-impl_to_textual!(FixedpointDotOp, "{op}: {}", sig);
-impl_to_textual!(NegOp, "{op}: {}", sig);
-impl_to_textual!(
-    FixedpointTruncPrOp,
-    "{op}{{precision={}}}: {}",
-    precision,
-    sig
-);
-
-impl_to_textual!(
-    RingFixedpointEncodeOp,
-    "{op}{{scaling_base={}, scaling_exp={}}}: {}",
-    scaling_base,
-    scaling_exp,
-    sig
-);
-impl_to_textual!(
-    RingFixedpointDecodeOp,
-    "{op}{{scaling_base={}, scaling_exp={}}}: {}",
-    scaling_base,
-    scaling_exp,
-    sig
-);
-impl_to_textual!(RepSetupOp, "{op}: {}", sig);
-impl_to_textual!(RepShareOp, "{op}: {}", sig);
-impl_to_textual!(RepRevealOp, "{op}: {}", sig);
-impl_to_textual!(RepDotOp, "{op}: {}", sig);
-impl_to_textual!(RepAddOp, "{op}: {}", sig);
-impl_to_textual!(RepSubOp, "{op}: {}", sig);
-impl_to_textual!(RepMulOp, "{op}: {}", sig);
-impl_to_textual!(RepTruncPrOp, "{op}{{amount={}}}: {}", amount, sig);
-impl_to_textual!(AdtRevealOp, "{op}: {}", sig);
-impl_to_textual!(AdtFillOp, "{op}{{value={}}}: {}", value, sig);
-impl_to_textual!(AdtAddOp, "{op}: {}", sig);
-impl_to_textual!(AdtSubOp, "{op}: {}", sig);
-impl_to_textual!(AdtMulOp, "{op}: {}", sig);
-impl_to_textual!(AdtShlOp, "{op}: {}", sig);
-impl_to_textual!(AdtToRepOp, "{op}: {}", sig);
-impl_to_textual!(RepAbsOp, "{op}: {}", sig);
-impl_to_textual!(RepFillOp, "{op}{{value={}}}: {}", value, sig);
-impl_to_textual!(RepMsbOp, "{op}: {}", sig);
-impl_to_textual!(RepNegOp, "{op}: {}", sig);
-impl_to_textual!(RepShlOp, "{op}: {}", sig);
-impl_to_textual!(Pow2Op, "{op}: {}", sig);
-impl_to_textual!(ExpOp, "{op}: {}", sig);
-impl_to_textual!(SigmoidOp, "{op}: {}", sig);
-impl_to_textual!(LessThanOp, "{op}: {}", sig);
-impl_to_textual!(GreaterThanOp, "{op}: {}", sig);
-impl_to_textual!(RepToAdtOp, "{op}: {}", sig);
-impl_to_textual!(
-    RepIndexAxisOp,
-    "{op}{{axis={}, index={}}}: {}",
-    axis,
-    index,
-    sig
-);
-impl_to_textual!(IndexOp, "{op}{{index={}}}: {}", index, sig);
-impl_to_textual!(RepDiagOp, "{op}: {}", sig);
-impl_to_textual!(RepBitDecOp, "{op}: {}", sig);
-impl_to_textual!(RepBitComposeOp, "{op}: {}", sig);
-impl_to_textual!(RepEqualOp, "{op}: {}", sig);
-impl_to_textual!(IfElseOp, "{op}: {}", sig);
-impl_to_textual!(RepSliceOp, "{op}{{slice}}: {} {}", sig, slice);
-impl_to_textual!(RepShlDimOp, "{op}: {} {} {}", sig, amount, bit_length);
 
 macro_rules! op_with_axis_to_textual {
     ($op:tt) => {
@@ -1654,26 +1452,9 @@ op_with_axis_to_textual!(HostSumOp);
 op_with_axis_to_textual!(RingSumOp);
 op_with_axis_to_textual!(RepSumOp);
 op_with_axis_to_textual!(FixedpointSumOp);
-
-impl_to_textual!(AddNOp, "{op}: {}", sig);
-impl_to_textual!(FloatingpointAddOp, "{op}: {}", sig);
-impl_to_textual!(FloatingpointSubOp, "{op}: {}", sig);
-impl_to_textual!(FloatingpointMulOp, "{op}: {}", sig);
-impl_to_textual!(FloatingpointDivOp, "{op}: {}", sig);
-impl_to_textual!(FloatingpointDotOp, "{op}: {}", sig);
-impl_to_textual!(
-    FloatingpointAtLeast2DOp,
-    "{op}{{to_column_vector={}}}: {}",
-    to_column_vector,
-    sig
-);
-impl_to_textual!(FloatingpointOnesOp, "{op}: {}", sig);
-impl_to_textual!(FloatingpointConcatOp, "{op}: {}", sig);
-impl_to_textual!(FloatingpointExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
-impl_to_textual!(FloatingpointTransposeOp, "{op}: {}", sig);
-impl_to_textual!(FloatingpointInverseOp, "{op}: {}", sig);
 op_with_axis_to_textual!(FloatingpointMeanOp);
 op_with_axis_to_textual!(FloatingpointSumOp);
+op_with_axis_to_textual!(HostSqueezeOp);
 
 impl ToTextual for FixedpointMeanOp {
     fn to_textual(&self) -> String {
@@ -1752,8 +1533,6 @@ impl ToTextual for RepFixedpointMeanOp {
     }
 }
 
-impl_to_textual!(FixedpointDivOp, "{op}: {}", sig);
-
 impl ToTextual for RingSampleOp {
     fn to_textual(&self) -> String {
         match self {
@@ -1787,9 +1566,6 @@ impl ToTextual for RingSampleSeededOp {
         }
     }
 }
-
-impl_to_textual!(BitSampleOp, "{op}: {}", sig);
-impl_to_textual!(BitSampleSeededOp, "{op}: {}", sig);
 
 impl ToTextual for Ty {
     fn to_textual(&self) -> String {
@@ -2468,9 +2244,6 @@ z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = BitSampleSeeded: (Shape, Seed) -> BitTensor (shape, seed) @Host(alice)",
-        )?;
-        parse_assignment::<(&str, ErrorKind)>(
-            "z = BitFill {value = Ring64(0)}: (Shape) -> BitTensor (s) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = BitXor: (BitTensor, BitTensor) -> BitTensor (x, y) @Host(alice)",
