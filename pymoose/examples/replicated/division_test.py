@@ -8,6 +8,8 @@ from pymoose import edsl
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
+FIXED = edsl.fixed(14, 23)
+
 
 class ReplicatedExample(unittest.TestCase):
     def test_replicated_example(self):
@@ -16,7 +18,6 @@ class ReplicatedExample(unittest.TestCase):
         bob = edsl.host_placement(name="bob")
         carole = edsl.host_placement(name="carole")
         dave = edsl.host_placement(name="dave")
-        eric = edsl.host_placement(name="eric")
         rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
         @edsl.computation
@@ -24,52 +25,50 @@ class ReplicatedExample(unittest.TestCase):
 
             with alice:
                 x = edsl.constant(np.array([1, 2], dtype=np.float64))
-                x = edsl.cast(x, dtype=edsl.fixed(8, 27))
+                x = edsl.cast(x, dtype=FIXED)
 
             with bob:
-                y = edsl.constant(np.array([1, 1], dtype=np.float64))
-                y = edsl.cast(y, dtype=edsl.fixed(8, 27))
+                y = edsl.constant(np.array([2, 2], dtype=np.float64))
+                y = edsl.cast(y, dtype=FIXED)
 
             with rep:
-                z1 = edsl.mul(x, y)
-                z2 = edsl.dot(x, y)
-                c = edsl.abs(z2)
+                z1 = edsl.div(x, y)
 
             with dave:
                 z1 = edsl.cast(z1, dtype=edsl.float64)
-                c = edsl.cast(c, dtype=edsl.float64)
-                v = edsl.add(z1, z1)
-                res_dave = edsl.save("res", v)
-                abs_dave = edsl.save("abs", c)
+                res_dave = edsl.save("res", z1)
 
-            with eric:
-                z2 = edsl.cast(z2, dtype=edsl.float64)
-                w = edsl.add(z2, z2)
-                res_eric = edsl.save("res", w)
-
-            return (res_dave, abs_dave, res_eric)
+            return res_dave
 
         executors_storage = {
             "alice": {},
             "bob": {},
             "carole": {},
             "dave": {},
-            "eric": {},
         }
         runtime = LocalMooseRuntime(storage_mapping=executors_storage)
+
+        logical_comp = edsl.trace(my_comp)
         runtime.evaluate_computation(
-            computation=my_comp,
+            computation=logical_comp,
             role_assignment={
                 "alice": "alice",
                 "bob": "bob",
                 "carole": "carole",
                 "dave": "dave",
-                "eric": "eric",
             },
             arguments={},
+            compiler_passes=[
+                "typing",
+                "full",
+                "prune",
+                "networking",
+                "typing",
+                "toposort",
+            ],
         )
 
-        print("Done")
+        print("Done", runtime.read_value_from_storage("dave", "res"))
 
 
 if __name__ == "__main__":

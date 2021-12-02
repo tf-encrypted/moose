@@ -13,25 +13,6 @@ use std::convert::{TryFrom, TryInto};
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
 enum PyOperation {
-    prim_SampleKeyOperation(PySampleKeyOperation),
-    prim_DeriveSeedOperation(PyDeriveSeedOperation),
-    ring_RingAddOperation(PyRingAddOperation),
-    ring_RingSubOperation(PyRingSubOperation),
-    ring_RingMulOperation(PyRingMulOperation),
-    ring_RingDotOperation(PyRingDotOperation),
-    ring_RingShapeOperation(PyRingShapeOperation),
-    ring_RingSampleOperation(PyRingSampleOperation),
-    ring_RingSumOperation(PyRingSumOperation),
-    ring_RingMeanOperation(PyRingMeanOperation),
-    ring_FillTensorOperation(PyFillTensorOperation),
-    ring_RingShlOperation(PyRingShlOperation),
-    ring_RingShrOperation(PyRingShrOperation),
-    bit_BitExtractOperation(PyBitExtractOperation),
-    bit_BitSampleOperation(PyBitSampleOperation),
-    bit_BitFillTensorOperation(PyBitFillOperation),
-    bit_BitXorOperation(PyBitXorOperation),
-    bit_BitAndOperation(PyBitAndOperation),
-    bit_RingInjectOperation(PyRingInjectOperation),
     std_ConstantOperation(PyConstantOperation),
     std_AddOperation(PyAddOperation),
     std_SubOperation(PySubOperation),
@@ -52,36 +33,11 @@ enum PyOperation {
     std_SqrtOperation(PySqrtOperation),
     std_SumOperation(PySumOperation),
     std_DivOperation(PyDivOperation),
-    std_SerializeOperation(PySerializeOperation),
-    std_DeserializeOperation(PyDeserializeOperation),
-    std_SendOperation(PySendOperation),
     std_InputOperation(PyInputOperation),
     std_OutputOperation(PyOutputOperation),
     std_SaveOperation(PySaveOperation),
     std_LoadOperation(PyLoadOperation),
-    std_ReceiveOperation(PyReceiveOperation),
     std_CastOperation(PyCastOperation),
-    fixed_EncodeOperation(PyFixedEncodeOperation),
-    fixed_DecodeOperation(PyFixedDecodeOperation),
-    fixed_AddOperation(PyFixedAddOperation),
-    fixed_SubOperation(PyFixedSubOperation),
-    fixed_MulOperation(PyFixedMulOperation),
-    fixed_DotOperation(PyFixedDotOperation),
-    fixed_TruncPrOperation(PyFixedTruncPrOperation),
-    fixed_MeanOperation(PyFixedMeanOperation),
-    fixed_SumOperation(PyFixedSumOperation),
-    fixed_RingEncodeOperation(PyFixedRingEncodeOperation),
-    fixed_RingDecodeOperation(PyFixedRingDecodeOperation),
-    fixed_RingMeanOperation(PyFixedRingMeanOperation),
-    rep_SetupOperation(PyRepSetupOperation),
-    rep_ShareOperation(PyRepShareOperation),
-    rep_DotOperation(PyRepDotOperation),
-    rep_TruncPrOperation(PyRepTruncPrOperation),
-    rep_SubOperation(PyRepSubOperation),
-    rep_MulOperation(PyRepMulOperation),
-    rep_MeanOperation(PyRepMeanOperation),
-    rep_SumOperation(PyRepSumOperation),
-    rep_RevealOperation(PyRepRevealOperation),
 }
 
 #[derive(Deserialize, Debug)]
@@ -90,8 +46,6 @@ enum PyOperation {
 #[allow(clippy::enum_variant_names)]
 #[allow(clippy::upper_case_acronyms)]
 enum PyValueType {
-    prim_PRFKeyType,
-    prim_SeedType,
     std_BytesType,
     std_ShapeType,
     std_StringType,
@@ -100,11 +54,6 @@ enum PyValueType {
     std_AesTensorType { dtype: PyDType },
     std_UnitType,
     std_UnknownType,
-    ring_RingTensorType,
-    bit_BitTensorType,
-    rep_ReplicatedSetupType,
-    rep_ReplicatedRingTensorType,
-    fixed_EncodedTensorType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -140,161 +89,7 @@ enum PyNdarray {
     float64 { items: Vec<f64>, shape: Vec<u8> },
 }
 
-#[derive(Deserialize, Debug)]
-struct PySampleKeyOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-}
-
 type Inputs = HashMap<String, String>;
-
-#[derive(Deserialize, Debug)]
-struct PyDeriveSeedOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    #[serde(with = "serde_bytes")]
-    nonce: Vec<u8>,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingAddOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingSubOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingMulOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingDotOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingShapeOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingSampleOperation {
-    name: String,
-    max_value: Option<u64>,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingSumOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    axis: Option<u32>,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingMeanOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    axis: Option<u32>,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyFillTensorOperation {
-    name: String,
-    value: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyBitFillOperation {
-    name: String,
-    value: u8,
-    inputs: Inputs,
-    placement_name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingShlOperation {
-    name: String,
-    amount: u64,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingShrOperation {
-    name: String,
-    amount: u64,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyBitExtractOperation {
-    name: String,
-    bit_idx: u64,
-    inputs: Inputs,
-    placement_name: String,
-    ring_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyBitSampleOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyBitXorOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-}
-#[derive(Deserialize, Debug)]
-struct PyBitAndOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingInjectOperation {
-    name: String,
-    inputs: Inputs,
-    bit_idx: u64,
-    placement_name: String,
-    output_type: PyValueType,
-}
 
 #[derive(Deserialize, Debug)]
 struct PyConstantOperation {
@@ -464,43 +259,6 @@ struct PyDivOperation {
     placement_name: String,
     output_type: PyValueType,
 }
-
-#[derive(Deserialize, Debug)]
-struct PySerializeOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyDeserializeOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PySendOperation {
-    name: String,
-    sender: String,
-    receiver: String,
-    rendezvous_key: String,
-    inputs: Inputs,
-    placement_name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyReceiveOperation {
-    name: String,
-    sender: String,
-    receiver: String,
-    rendezvous_key: String,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
 #[derive(Deserialize, Debug)]
 struct PyCastOperation {
     name: String,
@@ -539,195 +297,6 @@ struct PySaveOperation {
     inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyFixedEncodeOperation {
-    name: String,
-    precision: u32,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyFixedDecodeOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-    precision: u32,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyFixedAddOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyFixedSubOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyFixedMulOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyFixedDotOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyFixedTruncPrOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-    precision: u32,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyFixedMeanOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-    axis: Option<u32>,
-    precision: u32,
-    scaling_base: u64,
-    scaling_exp: u32,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyFixedSumOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-    axis: Option<u32>,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyFixedRingEncodeOperation {
-    name: String,
-    scaling_base: u64,
-    scaling_exp: u32,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyFixedRingMeanOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    axis: Option<u32>,
-    scaling_base: u64,
-    scaling_exp: u32,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyFixedRingDecodeOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-    input_type: PyValueType,
-    scaling_base: u64,
-    scaling_exp: u32,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRepSetupOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRepShareOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRepDotOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRepTruncPrOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    precision: u32,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRepSubOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRepMulOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRepMeanOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-    axis: Option<u32>,
-    precision: u64,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRepSumOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-    axis: Option<u32>,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRepRevealOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    output_type: PyValueType,
-    recipient_name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -836,8 +405,6 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
 
 fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
     match py_type {
-        PyValueType::prim_PRFKeyType => Ok(Ty::PrfKey),
-        PyValueType::prim_SeedType => Ok(Ty::Seed),
         PyValueType::std_ShapeType => Ok(Ty::HostShape),
         PyValueType::std_UnitType => Ok(Ty::Unit),
         PyValueType::std_StringType => Ok(Ty::HostString),
@@ -871,11 +438,6 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_AesKeyType => Ok(Ty::AesKey),
         PyValueType::std_UnknownType => Ok(Ty::Unknown),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
-        PyValueType::ring_RingTensorType => Ok(Ty::HostRing128Tensor),
-        PyValueType::bit_BitTensorType => Ok(Ty::HostBitTensor),
-        PyValueType::rep_ReplicatedSetupType => Ok(Ty::ReplicatedSetup),
-        PyValueType::rep_ReplicatedRingTensorType => Ok(Ty::ReplicatedRing128Tensor),
-        PyValueType::fixed_EncodedTensorType => Ok(Ty::Fixed128Tensor),
     }
 }
 
@@ -894,252 +456,8 @@ impl TryFrom<PyComputation> for Computation {
             .values()
             .map(|op| {
                 use anyhow::Context;
-                use std::str::FromStr;
                 use PyOperation::*;
                 match op {
-                    prim_SampleKeyOperation(op) => Ok(Operation {
-                        kind: PrimPrfKeyGenOp {
-                            sig: Signature::nullary(Ty::PrfKey),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: Vec::new(),
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    prim_DeriveSeedOperation(op) => Ok(Operation {
-                        kind: PrimDeriveSeedOp {
-                            sig: Signature::unary(Ty::PrfKey, Ty::Seed),
-                            sync_key: op.nonce.clone().try_into()?,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["key"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    ring_RingAddOperation(op) => Ok(Operation {
-                        kind: RingAddOp {
-                            sig: Signature::binary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    ring_RingSubOperation(op) => Ok(Operation {
-                        kind: RingSubOp {
-                            sig: Signature::binary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    ring_RingMulOperation(op) => Ok(Operation {
-                        kind: RingMulOp {
-                            sig: Signature::binary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    ring_RingDotOperation(op) => Ok(Operation {
-                        kind: RingDotOp {
-                            sig: Signature::binary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    ring_RingShapeOperation(op) => Ok(Operation {
-                        kind: ShapeOp {
-                            sig: Signature::unary(Ty::HostRing128Tensor, Ty::HostShape),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["tensor"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    ring_RingSampleOperation(op) => Ok(Operation {
-                        // NOTE(Morten) the old Python op was RingSampleOp, ie without Seeded
-                        kind: RingSampleSeededOp {
-                            sig: Signature::binary(
-                                Ty::HostShape,
-                                Ty::Seed,
-                                map_type(&op.output_type)?,
-                            ),
-                            max_value: op.max_value,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["shape", "seed"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    ring_RingSumOperation(op) => Ok(Operation {
-                        kind: RingSumOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                            axis: op.axis,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    ring_RingMeanOperation(op) => {
-                        Err(anyhow::anyhow!("unsupported operation: {:?}", op))
-                    }
-                    ring_FillTensorOperation(op) => {
-                        let ty = map_type(&op.output_type)?;
-                        let value = match ty {
-                            Ty::HostRing64Tensor => Constant::Ring64(u64::from_str(&op.value)?),
-                            Ty::HostRing128Tensor => Constant::Ring128(u128::from_str(&op.value)?),
-                            _ => {
-                                return Err(anyhow::anyhow!(
-                                    "unsupported return type for ring fill: {:?}",
-                                    ty
-                                ));
-                            }
-                        };
-                        Ok(Operation {
-                            kind: RingFillOp {
-                                sig: Signature::unary(Ty::HostShape, ty),
-                                value,
-                            }
-                            .into(),
-                            name: op.name.clone(),
-                            inputs: map_inputs(&op.inputs, &["shape"])
-                                .with_context(|| format!("Failed at op {:?}", op))?,
-                            placement: map_placement(&placements, &op.placement_name)?,
-                        })
-                    }
-                    ring_RingShlOperation(op) => Ok(Operation {
-                        kind: RingShlOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                            amount: op.amount as usize,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    ring_RingShrOperation(op) => Ok(Operation {
-                        kind: RingShrOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                            amount: op.amount as usize,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    bit_BitExtractOperation(op) => Ok(Operation {
-                        kind: BitExtractOp {
-                            sig: Signature::unary(map_type(&op.ring_type)?, Ty::HostBitTensor),
-                            bit_idx: op.bit_idx as usize,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["tensor"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    bit_BitSampleOperation(op) => Ok(Operation {
-                        // NOTE(Morten) mapping from BitSample in Python to BitSampleSeeded in Rust
-                        kind: BitSampleSeededOp {
-                            sig: Signature::binary(Ty::HostShape, Ty::Seed, Ty::HostBitTensor),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["shape", "seed"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    bit_BitFillTensorOperation(op) => Ok(Operation {
-                        kind: BitFillOp {
-                            sig: Signature::unary(Ty::HostShape, Ty::HostBitTensor),
-                            value: Constant::Ring64(u64::from(op.value)),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["shape"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    bit_BitXorOperation(op) => Ok(Operation {
-                        kind: BitXorOp {
-                            sig: Signature::binary(
-                                Ty::HostBitTensor,
-                                Ty::HostBitTensor,
-                                Ty::HostBitTensor,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    bit_BitAndOperation(op) => Ok(Operation {
-                        kind: BitAndOp {
-                            sig: Signature::binary(
-                                Ty::HostBitTensor,
-                                Ty::HostBitTensor,
-                                Ty::HostBitTensor,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    bit_RingInjectOperation(op) => Ok(Operation {
-                        kind: RingInjectOp {
-                            sig: Signature::unary(Ty::HostBitTensor, map_type(&op.output_type)?),
-                            bit_idx: op.bit_idx as usize,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["tensor"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
                     std_ConstantOperation(op) => Ok(Operation {
                         kind: ConstantOp {
                             sig: Signature::nullary(map_type(&op.output_type)?),
@@ -1244,24 +562,47 @@ impl TryFrom<PyComputation> for Computation {
                             placement: plc,
                         })
                     }
-                    std_SliceOperation(op) => Ok(Operation {
-                        kind: SliceOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                            slice: SliceInfo(vec![SliceInfoElem {
-                                start: op.begin as isize,
-                                step: Some(1),
-                                end: Some(op.end as isize),
-                            }]),
+                    std_SliceOperation(op) => {
+                        let typ = map_type(&op.output_type)?;
+                        let plc = map_placement(&placements, &op.placement_name)?;
+                        match &plc {
+                            // TODO [kyle] Should all shape ops (HostSliceOp, RepSliceOp, SliceOp)
+                            // be unified under the common SliceOp?
+                            Placement::Replicated(_) => {
+                                let typ = Ty::ReplicatedShape;
+                                Ok(Operation {
+                                    kind: RepSliceOp {
+                                        sig: Signature::unary(typ, typ),
+                                        slice: SliceInfo(vec![SliceInfoElem {
+                                            start: op.begin as isize,
+                                            step: Some(1),
+                                            end: Some(op.end as isize),
+                                        }]),
+                                    }
+                                    .into(),
+                                    inputs: map_inputs(&op.inputs, &["x"])
+                                        .with_context(|| format!("Failed at op {:?}", op))?,
+                                    name: op.name.clone(),
+                                    placement: plc,
+                                })
+                            }
+                            _ => Ok(Operation {
+                                kind: SliceOp {
+                                    sig: Signature::unary(typ, typ),
+                                    slice: SliceInfo(vec![SliceInfoElem {
+                                        start: op.begin as isize,
+                                        step: Some(1),
+                                        end: Some(op.end as isize),
+                                    }]),
+                                }
+                                .into(),
+                                inputs: map_inputs(&op.inputs, &["x"])
+                                    .with_context(|| format!("Failed at op {:?}", op))?,
+                                name: op.name.clone(),
+                                placement: plc,
+                            }),
                         }
-                        .into(),
-                        inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        name: op.name.clone(),
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
+                    }
                     std_OnesOperation(op) => Ok(Operation {
                         kind: OnesOp {
                             sig: Signature::unary(Ty::HostShape, map_type(&op.output_type)?),
@@ -1434,55 +775,6 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    std_SendOperation(op) => Ok(Operation {
-                        kind: SendOp {
-                            sig: Signature::unary(Ty::Unknown, Ty::Unit),
-                            rendezvous_key: op.rendezvous_key.clone().try_into()?,
-                            receiver: Role::from(&op.receiver),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    std_ReceiveOperation(op) => Ok(Operation {
-                        kind: ReceiveOp {
-                            sig: Signature::nullary(map_type(&op.output_type)?),
-                            rendezvous_key: op.rendezvous_key.clone().try_into()?,
-                            sender: Role::from(&op.sender),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: Vec::new(),
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    std_SerializeOperation(op) => Ok(Operation {
-                        kind: IdentityOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    std_DeserializeOperation(op) => Ok(Operation {
-                        kind: IdentityOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
                     std_InputOperation(op) => Ok(Operation {
                         kind: InputOp {
                             sig: Signature::nullary(map_type(&op.output_type)?),
@@ -1538,301 +830,6 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    fixed_EncodeOperation(op) => Ok(Operation {
-                        kind: FixedpointEncodeOp {
-                            sig: Signature::unary(Ty::Unknown, map_type(&op.output_type)?),
-                            fractional_precision: op.precision,
-                            integral_precision: 8, // just because
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    fixed_DecodeOperation(op) => Ok(Operation {
-                        kind: FixedpointDecodeOp {
-                            sig: Signature::unary(
-                                Ty::Fixed128Tensor, // TODO: Derive from the output type
-                                map_type(&op.output_type)?,
-                            ),
-                            fractional_precision: op.precision,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    fixed_AddOperation(op) => Ok(Operation {
-                        kind: FixedpointAddOp {
-                            sig: Signature::binary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    fixed_SubOperation(op) => Ok(Operation {
-                        kind: FixedpointSubOp {
-                            sig: Signature::binary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    fixed_MulOperation(op) => Ok(Operation {
-                        kind: FixedpointMulOp {
-                            sig: Signature::binary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    fixed_DotOperation(op) => Ok(Operation {
-                        kind: FixedpointDotOp {
-                            sig: Signature::binary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    fixed_TruncPrOperation(op) => Ok(Operation {
-                        kind: FixedpointTruncPrOp {
-                            sig: Signature::unary(
-                                Ty::Fixed128Tensor, // TODO: Derive from the output type
-                                map_type(&op.output_type)?,
-                            ),
-                            precision: op.precision,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    fixed_MeanOperation(op) => Ok(Operation {
-                        kind: FixedpointMeanOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                            axis: op.axis,
-                            // TODO(Morten) fix on Python side as needed due to removing the two below
-                            // scaling_base: op.scaling_base,
-                            // scaling_exp: op.scaling_exp,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    fixed_SumOperation(op) => Ok(Operation {
-                        kind: FixedpointSumOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                            axis: op.axis,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    fixed_RingEncodeOperation(op) => Ok(Operation {
-                        kind: RingFixedpointEncodeOp {
-                            sig: Signature::unary(Ty::Unknown, map_type(&op.output_type)?),
-                            scaling_base: op.scaling_base,
-                            scaling_exp: op.scaling_exp,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    fixed_RingDecodeOperation(op) => Ok(Operation {
-                        kind: RingFixedpointDecodeOp {
-                            sig: Signature::unary(
-                                map_type(&op.input_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                            scaling_base: op.scaling_base,
-                            scaling_exp: op.scaling_exp,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    fixed_RingMeanOperation(op) => Ok(Operation {
-                        kind: RingFixedpointMeanOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                            axis: op.axis,
-                            scaling_base: op.scaling_base,
-                            scaling_exp: op.scaling_exp,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    rep_TruncPrOperation(op) => Ok(Operation {
-                        kind: RepTruncPrOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                            amount: op.precision,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    rep_RevealOperation(op) => Ok(Operation {
-                        kind: RepRevealOp {
-                            sig: Signature::unary(
-                                Ty::ReplicatedRing128Tensor, // TODO: deduct from the output type
-                                Ty::HostRing128Tensor,
-                                // map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.recipient_name)?,
-                    }),
-                    rep_ShareOperation(op) => Ok(Operation {
-                        kind: RepShareOp {
-                            sig: Signature::binary(
-                                Ty::ReplicatedSetup,
-                                Ty::HostRing128Tensor, // TODO: should actually deduct from the output type
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["setup", "value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    rep_MulOperation(op) => Ok(Operation {
-                        kind: RepMulOp {
-                            sig: Signature::ternary(
-                                Ty::ReplicatedSetup,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["setup", "lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    rep_SubOperation(op) => Ok(Operation {
-                        kind: RepSubOp {
-                            sig: Signature::binary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    rep_DotOperation(op) => Ok(Operation {
-                        kind: RepDotOp {
-                            sig: Signature::ternary(
-                                Ty::ReplicatedSetup,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["setup", "lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    rep_MeanOperation(op) => Ok(Operation {
-                        kind: RepFixedpointMeanOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                            axis: op.axis,
-                            scaling_base: 2,
-                            scaling_exp: op.precision as u32, // TODO avoid cast
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    rep_SumOperation(op) => Ok(Operation {
-                        kind: RepSumOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
-                            axis: op.axis,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    rep_SetupOperation(op) => Ok(Operation {
-                        kind: RepSetupOp {
-                            sig: Signature::nullary(map_type(&op.output_type)?),
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                 }

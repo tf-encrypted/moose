@@ -43,13 +43,6 @@ class ReplicatedExample(parameterized.TestCase):
         model_comp = self._setup_model_comp()
         traced_model_comp = edsl.trace(model_comp)
         comp_bin = utils.serialize_computation(traced_model_comp)
-        deser_model_comp = utils.deserialize_computation(comp_bin)
-        assert traced_model_comp == deser_model_comp
-
-    def test_logistic_regression_example_rust_serde(self):
-        model_comp = self._setup_model_comp()
-        traced_model_comp = edsl.trace(model_comp)
-        comp_bin = utils.serialize_computation(traced_model_comp)
         # Compile in Rust
         # If this does not error, rust was able to deserialize the pycomputation
         elk_compiler.compile_computation(comp_bin, [])
@@ -73,26 +66,14 @@ class ReplicatedExample(parameterized.TestCase):
         input_weights = np.array([0.5, 0.1], dtype=np.float64)
         model_comp = self._setup_model_comp()
         traced_model_comp = edsl.trace(model_comp)
-        comp_bin = utils.serialize_computation(traced_model_comp)
-        compiled_comp = elk_compiler.compile_computation(
-            comp_bin,
-            [
-                "typing",
-                "full",
-                "prune",
-                "networking",
-                "toposort",
-                # "print",
-            ],
-        )
         storage = {
             "alice": {},
             "bob": {},
             "carole": {},
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
-        _ = runtime.evaluate_compiled(
-            comp_bin=compiled_comp,
+        _ = runtime.evaluate_computation(
+            computation=traced_model_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x": input_x, "w": input_weights},
         )

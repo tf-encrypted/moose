@@ -1,6 +1,5 @@
 from pymoose import LocalRuntime
-from pymoose import edsl
-from pymoose.computation.utils import serialize_computation
+from pymoose.computation import utils
 
 
 class LocalMooseRuntime(LocalRuntime):
@@ -17,24 +16,27 @@ class LocalMooseRuntime(LocalRuntime):
         return LocalRuntime.__new__(LocalMooseRuntime, storage_mapping=storage_mapping)
 
     def evaluate_computation(
-        self, computation, role_assignment, arguments=None, ring=128
+        self, computation, role_assignment, arguments=None, compiler_passes=None,
     ):
         if arguments is None:
             arguments = {}
-        concrete_comp = edsl.trace_and_compile(computation, ring=ring)
-        comp_bin = serialize_computation(concrete_comp)
-        comp_outputs = super().evaluate_computation(
-            comp_bin, role_assignment, arguments
+        if compiler_passes is None:
+            compiler_passes = [
+                "typing",
+                "full",
+                "prune",
+                "networking",
+                "toposort",
+            ]
+        comp_bin = utils.serialize_computation(computation)
+        return super().evaluate_computation(
+            comp_bin, role_assignment, arguments, compiler_passes
         )
-        outputs = list(dict(sorted(comp_outputs.items())).values())
-        return outputs
 
-    def evaluate_compiled(self, comp_bin, role_assignment, arguments=None, ring=128):
+    def evaluate_compiled(self, comp_bin, role_assignment, arguments=None):
         if arguments is None:
             arguments = {}
-        comp_outputs = super().evaluate_compiled(comp_bin, role_assignment, arguments)
-        outputs = list(dict(sorted(comp_outputs.items())).values())
-        return outputs
+        return super().evaluate_compiled(comp_bin, role_assignment, arguments)
 
     def read_value_from_storage(self, identity, key):
         return super().read_value_from_storage(identity, key)

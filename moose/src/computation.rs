@@ -185,6 +185,19 @@ pub struct FixedpointConstant {
     pub precision: usize,
 }
 
+pub(crate) trait AsFixedpoint {
+    fn as_fixedpoint(&self, precision: usize) -> FixedpointConstant;
+}
+
+impl AsFixedpoint for f64 {
+    fn as_fixedpoint(&self, precision: usize) -> FixedpointConstant {
+        FixedpointConstant {
+            value: *self,
+            precision,
+        }
+    }
+}
+
 // Constants are trivial values. They are what can live on the nodes of the computation graph.
 // Constant can not be a Unit, an Unknown or a complex structure such as ReplicatedTensor.
 macro_rules! constants {
@@ -991,7 +1004,6 @@ operators![
     RingShr,
     RingInject,
     RingFill,
-    BitFill,
     BitExtract,
     BitSample,
     BitSampleSeeded,
@@ -1042,7 +1054,7 @@ operators![
     RepSetup,
     RepShare,
     RepReveal,
-    RepFill,
+    Fill,
     RepAdd,
     RepSub,
     RepMul,
@@ -1332,12 +1344,6 @@ pub struct HostShlDimOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct HostBitDecOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
-pub struct BitFillOp {
-    pub sig: Signature,
-    pub value: Constant,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
@@ -1760,7 +1766,7 @@ pub struct RepToAdtOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
-pub struct RepFillOp {
+pub struct FillOp {
     pub sig: Signature,
     pub value: Constant,
 }
