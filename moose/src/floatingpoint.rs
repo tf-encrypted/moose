@@ -297,15 +297,15 @@ kernel! {
 }
 
 impl FloatingpointOnesOp {
-    fn float_host_kernel<S: Session>(
+    fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
         shape: cs!(HostShape),
-    ) -> Result<FloatTensor<cs!(HostFloat64Tensor)>>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostShape: KnownType<S>,
         HostFloat64Tensor: KnownType<S>,
-        HostPlacement: PlacementOnes<S, cs!(HostShape), cs!(HostFloat64Tensor)>,
+        HostPlacement: PlacementOnes<S, cs!(HostShape), HostFloatT>,
     {
         let z = plc.ones(sess, &shape);
         Ok(FloatTensor::Host(z))
