@@ -117,6 +117,16 @@ kernel! {
     ]
 }
 
+// modelled_kernel! {
+//     PlacementFill::fill(value: Constant), AdtFillOp,
+//     [
+//         (AdditivePlacement, (HostShape) -> AdditiveRing64Tensor => [hybrid] Self::host_kernel),
+//         (AdditivePlacement, (HostShape) -> AdditiveRing128Tensor => [hybrid] Self::host_kernel),
+//         (AdditivePlacement, (AdditiveShape) -> AdditiveRing64Tensor => [concrete] Self::adt_kernel),
+//         (AdditivePlacement, (AdditiveShape) -> AdditiveRing128Tensor => [concrete] Self::adt_kernel),
+//     ]
+// }
+
 impl AdtFillOp {
     fn host_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
@@ -420,6 +430,14 @@ kernel! {
         (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] attributes[amount] Self::kernel),
     ]
 }
+
+// modelled_kernel! {
+//     PlacementShl::shl(amount: usize), AdtShlOp,
+//     [
+//         (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::kernel),
+//         (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::kernel),
+//     ]
+// }
 
 impl AdtShlOp {
     fn kernel<S: Session, RingT>(
