@@ -1211,7 +1211,8 @@ impl HostConcatOp {
         let arr: Vec<ArrayBase<ViewRepr<&std::num::Wrapping<T>>, Dim<IxDynImpl>>> =
             xs.iter().map(|x| x.0.view()).collect();
         let ax = Axis(axis as usize);
-        let concatenated = ndarray::concatenate(ax, &arr).unwrap();
+        let concatenated =
+            ndarray::concatenate(ax, &arr).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(AbstractHostRingTensor(concatenated, plc.clone()))
     }
 }
