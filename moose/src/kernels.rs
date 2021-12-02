@@ -141,6 +141,7 @@ impl Session for SyncSession {
             BitXor(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitAnd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            BitOr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitExtract(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingSample(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -620,6 +621,7 @@ impl Session for AsyncSession {
             BitXor(op) => DispatchKernel::compile(&op, plc)?,
             BitAnd(op) => DispatchKernel::compile(&op, plc)?,
             BitNeg(op) => DispatchKernel::compile(&op, plc)?,
+            BitOr(op) => DispatchKernel::compile(&op, plc)?,
             BitExtract(op) => DispatchKernel::compile(&op, plc)?,
             RingSample(op) => DispatchKernel::compile(&op, plc)?,
             RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)?,
@@ -898,6 +900,10 @@ pub trait PlacementXor<S: Session, T, U, O> {
 
 pub trait PlacementAnd<S: Session, T, U, O> {
     fn and(&self, sess: &S, x: &T, y: &U) -> O;
+}
+
+pub trait PlacementOr<S: Session, T, U, O> {
+    fn or(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementBitExtract<S: Session, T, O> {
@@ -1983,6 +1989,14 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::rep_fixed_kernel),
+    ]
+}
+
+kernel! {
+    BitOrOp,
+    [
+        (HostPlacement, (crate::logical::Tensor, crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_host_kernel),
+        (HostPlacement, (BooleanTensor, BooleanTensor) -> BooleanTensor => [hybrid] Self::bool_kernel),
     ]
 }
 

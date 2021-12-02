@@ -986,6 +986,7 @@ operators![
     BitXor,
     BitAnd,
     BitNeg,
+    BitOr,
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
@@ -1452,6 +1453,11 @@ pub struct BitAndOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
 pub struct BitNegOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, AutoToTextual)]
+pub struct BitOrOp {
     pub sig: Signature,
 }
 

@@ -81,7 +81,7 @@ moose_type!(Mirrored3Ring64Tensor = Mirrored3RingTensor<HostRing64Tensor>);
 moose_type!(Mirrored3Ring128Tensor = Mirrored3RingTensor<HostRing128Tensor>);
 moose_type!(Mirrored3BitTensor = Mirrored3RingTensor<HostBitTensor>);
 
-/// TODO(Dragos) unify BoolTensor with FixedTensor
+/// TODO(Dragos) perhaps we can unify BoolTensor with FixedTensor
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum BoolTensor<HostT, RepT> {
     Host(HostT),
@@ -3194,6 +3194,34 @@ impl OutputOp {
             BoolTensor::Host(v) => Ok(BoolTensor::Host(plc.output(sess, &v))),
             BoolTensor::Replicated(_) => unimplemented!(),
         }
+    }
+}
+
+modelled!(PlacementOr::or, HostPlacement, (BooleanTensor, BooleanTensor) -> BooleanTensor, BitOrOp);
+
+impl BitOrOp {
+    pub(crate) fn bool_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: BoolTensor<HostT, RepT>,
+        y: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementAnd<S, HostT, HostT, HostT>,
+        HostPlacement: PlacementXor<S, HostT, HostT, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+    {
+        let x = match x {
+            BoolTensor::Host(v) => v,
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let y = match y {
+            BoolTensor::Host(v) => v,
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let xor = plc.xor(sess, &x, &y);
+        let and = plc.and(sess, &x, &y);
+        Ok(BoolTensor::Host(plc.xor(sess, &xor, &and)))
     }
 }
 

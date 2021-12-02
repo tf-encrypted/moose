@@ -18,6 +18,7 @@ enum PyOperation {
     std_SubOperation(PySubOperation),
     std_MulOperation(PyMulOperation),
     std_DotOperation(PyDotOperation),
+    std_BitwiseOrOperation(PyBitwiseOrOperation),
     std_LessOperation(PyLessOperation),
     std_AtLeast2DOperation(PyAtLeast2DOperation),
     std_ShapeOperation(PyShapeOperation),
@@ -140,6 +141,14 @@ struct PyLessOperation {
     inputs: Inputs,
     placement_name: String,
     input_type: PyValueType,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyBitwiseOrOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
     output_type: PyValueType,
 }
 
@@ -546,6 +555,21 @@ impl TryFrom<PyComputation> for Computation {
                             sig: Signature::binary(
                                 map_type(&op.input_type)?,
                                 map_type(&op.input_type)?,
+                                map_type(&op.output_type)?,
+                            ),
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_BitwiseOrOperation(op) => Ok(Operation {
+                        kind: BitOrOp {
+                            // we can use output type type to determine input type
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
                         }

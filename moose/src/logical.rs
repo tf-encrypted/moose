@@ -1490,3 +1490,30 @@ impl SigmoidOp {
         }
     }
 }
+
+modelled!(PlacementOr::or, HostPlacement, (Tensor, Tensor) -> Tensor, BitOrOp);
+
+impl BitOrOp {
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        HostPlacement: PlacementOr<S, BoolT, BoolT, BoolT>,
+    {
+        match (x, y) {
+            (AbstractTensor::Bool(x), AbstractTensor::Bool(y)) => {
+                let result = plc.or(sess, &x, &y);
+                Ok(AbstractTensor::Bool(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing host less op for {:?} and {:?}",
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
+        }
+    }
+}
