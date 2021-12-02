@@ -50,7 +50,7 @@ def r_squared(ss_res, ss_tot):
 
 
 class LinearRegressionExample(parameterized.TestCase):
-    def _build_linear_regression_example(self, metric_name="mse", compiler_passes=None):
+    def _build_linear_regression_example(self, metric_name="mse"):
         x_owner = edsl.host_placement(name="x-owner")
         y_owner = edsl.host_placement(name="y-owner")
         model_owner = edsl.host_placement(name="model-owner")
@@ -126,7 +126,7 @@ class LinearRegressionExample(parameterized.TestCase):
         return my_comp, (x_owner, y_owner, model_owner, replicated_plc)
 
     def _linear_regression_eval(self, metric_name):
-        linear_comp, placements = self._build_linear_regression_example(metric_name)
+        linear_comp, _ = self._build_linear_regression_example(metric_name)
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
         executors_storage = {
@@ -135,8 +135,9 @@ class LinearRegressionExample(parameterized.TestCase):
             "model-owner": {},
         }
         runtime = LocalMooseRuntime(storage_mapping=executors_storage)
+        traced = edsl.trace(linear_comp)
         _ = runtime.evaluate_computation(
-            computation=linear_comp,
+            computation=traced,
             role_assignment={
                 "x-owner": "x-owner",
                 "y-owner": "y-owner",
@@ -158,67 +159,15 @@ class LinearRegressionExample(parameterized.TestCase):
     def test_linear_regression_mse(self):
         self._linear_regression_eval("mse")
 
-    def test_linear_regression_rust_compiler(self):
-        linear_comp, placements = self._build_linear_regression_example("mse")
-        concrete_comp = edsl.trace(linear_comp)
-        comp_bin = utils.serialize_computation(concrete_comp)
-        # Compile in Rust
-        rust_compiled = elk_compiler.compile_computation(
-            comp_bin,
-            [
-                "typing",
-                # "dump",
-                # All of the symbolic passes. Currently combines functionality of
-                # [ReplicatedOpsPass, HostRingLoweringPass, ReplicatedLoweringPass]
-                "full",
-                "prune",
-                "networking",
-                "typing",
-                "toposort",
-                # "dump",
-                # "print",
-            ],
-        )
-
-        x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
-        executors_storage = {
-            "x-owner": {"x_data": x_data},
-            "y-owner": {"y_data": y_data},
-            "model-owner": {},
-        }
-        runtime = LocalMooseRuntime(storage_mapping=executors_storage)
-        _ = runtime.evaluate_compiled(
-            comp_bin=rust_compiled,
-            role_assignment={
-                "x-owner": "x-owner",
-                "y-owner": "y-owner",
-                "model-owner": "model-owner",
-            },
-            arguments={
-                "x_uri": "x_data",
-                "y_uri": "y_data",
-                "w_uri": "regression_weights",
-                "metric_uri": "metric_result",
-                "rsquared_uri": "rsquared_result",
-            },
-        )
-        print(
-            "Done: \n",
-            runtime.read_value_from_storage("model-owner", "regression_weights"),
-        )
-
     @pytest.mark.slow
     def test_linear_regression_mape(self):
         self._linear_regression_eval("mape")
 
-    @parameterized.parameters(True, False)
-    def test_linear_regression_serde(self, compiled):
-        passes_arg = None if compiled else []
-        comp, _ = self._build_linear_regression_example(compiler_passes=passes_arg)
-        compiled_comp = edsl.trace_and_compile(comp)
+    def test_linear_regression_serde(self):
+        comp, _ = self._build_linear_regression_example()
+        compiled_comp = edsl.trace(comp)
         serialized = utils.serialize_computation(compiled_comp)
-        deserialized = utils.deserialize_computation(serialized)
-        assert compiled_comp == deserialized
+        elk_compiler.compile_computation(serialized, [])
 
 
 if __name__ == "__main__":

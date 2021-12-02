@@ -31,7 +31,7 @@ class SerdeTest(parameterized.TestCase):
 
     def test_serde(self):
         my_comp = self._build_comp_fixture()
-        original = tracer.trace_and_compile(my_comp, compiler_passes=[])
+        original = tracer.trace(my_comp)
         serialized = serialize_computation(original)
         deserialized = deserialize_computation(serialized)
 

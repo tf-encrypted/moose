@@ -171,16 +171,9 @@ pub type Environment<V> = HashMap<String, V>;
 
 pub type RoleAssignment = HashMap<Role, Identity>;
 
+#[derive(Default)]
 pub struct AsyncExecutor {
     session_ids: HashSet<SessionId>,
-}
-
-impl Default for AsyncExecutor {
-    fn default() -> Self {
-        AsyncExecutor {
-            session_ids: HashSet::new(),
-        }
-    }
 }
 
 impl AsyncExecutor {
