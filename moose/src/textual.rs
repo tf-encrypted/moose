@@ -403,17 +403,12 @@ fn fixed_arrity_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str
 ///
 /// Accepts input in the form of
 ///
-/// `([Float32Tensor]) -> Float32Tensor`
+/// `[Float32Tensor] -> Float32Tensor`
 fn variadic_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Signature, E> {
     move |input: &'a str| {
-        let (input, (_, _, args_type, _, _)) = tuple((
-            ws(tag("(")),
-            ws(tag("[")),
-            ws(parse_type),
-            ws(tag("]")),
-            ws(tag(")")),
-        ))(input)?;
+        let (input, (_, args_type, _)) =
+            tuple((ws(tag("[")), ws(parse_type), ws(tag("]"))))(input)?;
 
         let (input, _) = ws(tag("->"))(input)?;
         let (input, result_type) = ws(parse_type)(input)?;
@@ -1585,7 +1580,7 @@ mod tests {
         );
 
         let (_, parsed) =
-            operator_signature::<(&str, ErrorKind)>(0)(": ([Float32Tensor]) -> Float32Tensor")?;
+            operator_signature::<(&str, ErrorKind)>(0)(": [Float32Tensor] -> Float32Tensor")?;
         assert_eq!(
             parsed,
             Signature::variadic(Ty::HostFloat32Tensor, Ty::HostFloat32Tensor),
