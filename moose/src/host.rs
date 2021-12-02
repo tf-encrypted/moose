@@ -1197,24 +1197,22 @@ impl HostConcatOp {
         Ok(HostTensor(c, plc.clone()))
     }
 
-    pub fn ring_kernel<S: Session, HostRingT>(
+    pub fn ring_kernel<S: Session, T>(
         _sess: &S,
         plc: &HostPlacement,
         axis: u32,
-        xs: &[HostRingT],
-    ) -> Result<HostRingT>
+        xs: &[AbstractHostRingTensor<T>],
+    ) -> Result<AbstractHostRingTensor<T>>
     where
-        HostRingT: Debug,
+        T: Clone,
     {
-        println!("xs = {:?}", xs);
-        //let arrs = Vec::new();
-        //for x in xs {
-        //    arrs.push(x.0);
-        //}
-        //let ax = Axis(axis as usize);
-        //let ret = ndarray::concatenate(ax, arrs).unwrap();
-        //println!("ret = {:?}", ret);
-        unimplemented!("return value todo")
+        use ndarray::IxDynImpl;
+        use ndarray::ViewRepr;
+        let arr: Vec<ArrayBase<ViewRepr<&std::num::Wrapping<T>>, Dim<IxDynImpl>>> =
+            xs.iter().map(|x| x.0.view()).collect();
+        let ax = Axis(axis as usize);
+        let concatenated = ndarray::concatenate(ax, &arr).unwrap();
+        Ok(AbstractHostRingTensor(concatenated, plc.clone()))
     }
 }
 
@@ -3338,12 +3336,22 @@ mod tests {
         let x = HostRing64Tensor::from(x_backing);
         let y = HostRing64Tensor::from(y_backing);
         let z = HostRing64Tensor::from(z_backing);
-        let expected_backing: ArrayD<u64> = array![[3, 43], [1240, 41642], [1413761, 48024957]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
+        let expected_backing: ArrayD<u64> = array![
+            [1, 4],
+            [9, 16],
+            [25, 36],
+            [1, 3],
+            [6, 10],
+            [15, 21],
+            [1, 36],
+            [1225, 41616],
+            [1413721, 48024900]
+        ]
+        .into_dimensionality::<IxDyn>()
+        .unwrap();
         let expected = HostRing64Tensor::from_raw_plc(expected_backing, alice.clone());
         let out = alice.concatenate(&sess, 0, &[x, y, z]);
-        //assert_eq!(out, expected);
+        assert_eq!(out, expected);
     }
 
     #[test]
