@@ -305,6 +305,9 @@ impl MulOp {
         HostPlacement: PlacementMul<S, Float32T, Float32T, Float32T>,
         HostPlacement: PlacementMul<S, Float64T, Float64T, Float64T>,
     {
+        // TODO(Morten)
+        // we should probably use a trait bound on Fixed64T 
+        // and Fixed128T to extract precision instead
         let precision = match sig.arg(0) {
             Ok(Ty::Tensor(TensorDType::Fixed64 {
                 fractional_precision: precision,
@@ -495,6 +498,7 @@ impl DotOp {
         HostPlacement: PlacementDot<S, Float32T, Float32T, Float32T>,
         HostPlacement: PlacementDot<S, Float64T, Float64T, Float64T>,
     {
+        // TODO(Morten) same, use trait bound to extract
         let precision = match sig.arg(0) {
             Ok(Ty::Tensor(TensorDType::Fixed64 {
                 fractional_precision: precision,
