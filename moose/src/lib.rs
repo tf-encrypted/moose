@@ -2565,7 +2565,7 @@ macro_rules! modelled {
 }
 
 macro_rules! modelled_kernel {
-    
+
 
     /*
     Unary
@@ -2599,7 +2599,7 @@ macro_rules! modelled_kernel {
                     use crate::computation::{KnownType, UnarySignature};
                     use crate::kernels::{Session, SyncSession};
                     use std::convert::TryInto;
-    
+
                     let sig = UnarySignature {
                         arg0: <$t0 as KnownType<SyncSession>>::TY,
                         ret: <$u as KnownType<SyncSession>>::TY,
@@ -2800,6 +2800,7 @@ macro_rules! modelled_kernel {
                 use crate::computation::{KnownType, UnarySignature, SymbolicValue};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
+                use std::convert::TryFrom;
 
                 let sig = UnarySignature {
                     arg0: <$t0 as KnownType<SymbolicSession>>::TY,
@@ -2834,6 +2835,7 @@ macro_rules! modelled_kernel {
                 use crate::computation::{KnownType, UnarySignature, SymbolicValue};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
+                use std::convert::TryFrom;
 
                 let sig = UnarySignature {
                     arg0: <$t0 as KnownType<SymbolicSession>>::TY,
@@ -3000,7 +3002,7 @@ macro_rules! modelled_kernel {
                     use crate::computation::{KnownType, BinarySignature};
                     use crate::kernels::{Session, SyncSession};
                     use std::convert::TryInto;
-    
+
                     let sig = BinarySignature {
                         arg0: <$t0 as KnownType<SyncSession>>::TY,
                         arg1: <$t1 as KnownType<SyncSession>>::TY,
@@ -3218,6 +3220,7 @@ macro_rules! modelled_kernel {
                 use crate::computation::{KnownType, BinarySignature, SymbolicValue};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
+                use std::convert::TryFrom;
 
                 let sig = BinarySignature {
                     arg0: <$t0 as KnownType<SymbolicSession>>::TY,
@@ -3256,6 +3259,7 @@ macro_rules! modelled_kernel {
                 use crate::computation::{KnownType, BinarySignature, SymbolicValue};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
+                use std::convert::TryFrom;
 
                 let sig = BinarySignature {
                     arg0: <$t0 as KnownType<SymbolicSession>>::TY,

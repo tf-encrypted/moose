@@ -2634,7 +2634,8 @@ impl RingInjectOp {
         ReplicatedPlacement: PlacementAdtToRep<S, AdtRingT, st!(RepTen<HostRingT>)>,
         AdditivePlacement: PlacementFill<S, HostShapeT, AdtRingT>,
         HostPlacement: PlacementFill<S, HostShapeT, HostRingT>,
-        AdditivePlacement: PlacementDaBitProvider<S, HostShapeT, AdtTen<HostRingT>, AdtTen<HostBitT>>,
+        AdditivePlacement:
+            PlacementDaBitProvider<S, HostShapeT, AdtTen<HostRingT>, AdtTen<HostBitT>>,
         AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<HostBitT>), AdtBitT>,
         AdditivePlacement: PlacementAdd<S, AdtBitT, AdtBitT, AdtBitT>,
         AdditivePlacement: PlacementAdd<S, AdtRingT, HostRingT, AdtRingT>,
