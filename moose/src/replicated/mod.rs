@@ -3192,7 +3192,7 @@ impl OutputOp {
     {
         match x {
             StandardTensor::Host(v) => Ok(StandardTensor::Host(plc.output(sess, &v))),
-            StandardTensor::Replicated(v) => unimplemented!(),
+            StandardTensor::Replicated(_) => unimplemented!(),
         }
     }
 }

@@ -6,9 +6,10 @@ use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::*;
 use crate::kernels::*;
 use crate::replicated::{
-    AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor, Mirrored3Fixed128Tensor,
-    Mirrored3Fixed64Tensor, ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
-    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape, ShapeFill,
+    AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor, BoolTensor,
+    Mirrored3Fixed128Tensor, Mirrored3Fixed64Tensor, ReplicatedBitTensor, ReplicatedFixed128Tensor,
+    ReplicatedFixed64Tensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
+    ShapeFill, StandardTensor,
 };
 use crate::symbolic::Symbolic;
 use macros::with_context;
@@ -1446,14 +1447,65 @@ where
     }
 }
 
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> BoolTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> BoolTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> BoolTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> BoolTensor, LessThanOp);
 modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, LessThanOp);
 modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedBitTensor, LessThanOp);
 modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedBitTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, LessThanOp);
+
+
 
 impl LessThanOp {
+    pub(crate) fn fixed_kernel<S: Session, HostFixedT, RepFixedT, HostBitT, RepBitT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<StandardTensor<HostBitT, RepBitT>>
+    where
+        HostPlacement: PlacementLessThan<S, HostFixedT, HostFixedT, HostBitT>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => v,
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let y = match y {
+            FixedTensor::Host(v) => v,
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let z = plc.less_than(sess, &x, &y);
+        Ok(StandardTensor::Host(z))
+    }
+
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT, HostBitT, RepBitT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<StandardTensor<HostBitT, RepBitT>>
+    where
+        ReplicatedPlacement: PlacementLessThan<S, RepFixedT, RepFixedT, RepBitT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let y = match y {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let z = plc.less_than(sess, &x, &y);
+        Ok(StandardTensor::Replicated(z))
+    }
+
+
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         plc: &ReplicatedPlacement,

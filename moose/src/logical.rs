@@ -593,7 +593,7 @@ impl DotOp {
 }
 
 modelled!(PlacementLessThan::less_than, HostPlacement, (Tensor, Tensor) -> Tensor, LessThanOp);
-// modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Tensor, Tensor) -> Tensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Tensor, Tensor) -> Tensor, LessThanOp);
 
 impl LessThanOp {
     pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
@@ -603,20 +603,20 @@ impl LessThanOp {
         y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
-        // HostPlacement: PlacementLessThan<S, Fixed64T, Fixed64T, BoolT>,
-        // HostPlacement: PlacementLessThan<S, Fixed128T, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementLessThan<S, Fixed64T, Fixed64T, BoolT>,
+        HostPlacement: PlacementLessThan<S, Fixed128T, Fixed128T, BoolT>,
         HostPlacement: PlacementLessThan<S, Float32T, Float32T, BoolT>,
         HostPlacement: PlacementLessThan<S, Float64T, Float64T, BoolT>,
     {
         match (x, y) {
-            // (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
-            //     let result = plc.less_than(sess, &x, &y);
-            //     Ok(AbstractTensor::BoolT(result))
-            // }
-            // (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
-            //     let result = plc.less_than(sess, &x, &y);
-            //     Ok(AbstractTensor::BoolT(result))
-            // }
+            (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let result = plc.less_than(sess, &x, &y);
+                Ok(AbstractTensor::Bool(result))
+            }
+            (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let result = plc.less_than(sess, &x, &y);
+                Ok(AbstractTensor::Bool(result))
+            }
             (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
                 let result = plc.less_than(sess, &x, &y);
                 Ok(AbstractTensor::Bool(result))
@@ -633,6 +633,35 @@ impl LessThanOp {
             ))),
         }
     }
+
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        ReplicatedPlacement: PlacementLessThan<S, Fixed64T, Fixed64T, BoolT>,
+        ReplicatedPlacement: PlacementLessThan<S, Fixed128T, Fixed128T, BoolT>,
+    {
+        match (x, y) {
+            (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let result = plc.less_than(sess, &x, &y);
+                Ok(AbstractTensor::Bool(result))
+            }
+            (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let result = plc.less_than(sess, &x, &y);
+                Ok(AbstractTensor::Bool(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing host less op for {:?} and {:?}",
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
+        }
+    }
+
 }
 
 modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);

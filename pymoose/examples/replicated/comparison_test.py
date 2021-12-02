@@ -24,16 +24,28 @@ class ReplicatedExample(parameterized.TestCase):
         def my_less_comp():
             with bob:
                 x = edsl.constant(np.array([1.5, 2.3, 3, 3], dtype=np.float64))
-                y = edsl.constant(np.array([-1.0, 4.0, 3, 2], dtype=np.float64))
-                z1 = edsl.less(x, y)
+                x = edsl.cast(x, dtype=edsl.fixed(8, 27))
 
-            return z1
+                y = edsl.constant(np.array([-1.0, 4.0, 3, 2], dtype=np.float64))
+                y = edsl.cast(y, dtype=edsl.fixed(8, 27))
+
+                # z_host = edsl.less(x, y)
+
+            with rep:
+                z_rep = edsl.less(x, y)
+
+            with alice:
+                z_host = z_rep
+                # zr = edsl.add(z_host, z_host)
+
+            return z_host
 
         return my_less_comp
 
     def test_less_example_serde(self):
         less_comp = self._setup_less_comp()
         traced_less_comp = edsl.trace(less_comp)
+        print(traced_less_comp)
         comp_bin = utils.serialize_computation(traced_less_comp)
         deser_less_comp = utils.deserialize_computation(comp_bin)
         assert traced_less_comp == deser_less_comp
