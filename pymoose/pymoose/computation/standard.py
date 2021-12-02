@@ -137,6 +137,12 @@ class BytesConstant(StandardConstant):
 class TensorConstant(StandardConstant):
     value: np.ndarray
 
+    def __hash__(self):
+        return hash(self.value.tobytes())
+
+    def __eq__(self, other):
+        return isinstance(other, TensorConstant) and np.all(self.value == other.value)
+
 
 @dataclass
 class IntConstant(StandardConstant):

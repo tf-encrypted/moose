@@ -31,7 +31,6 @@ class ReplicatedExample(parameterized.TestCase):
 
         return my_less_comp
 
-    # TODO(Dragos) see why this fails
     def test_less_example_serde(self):
         less_comp = self._setup_less_comp()
         traced_less_comp = edsl.trace(less_comp)
@@ -87,10 +86,8 @@ class ReplicatedExample(parameterized.TestCase):
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
-        real = [np.array([1.5, 2.3, 3, 3] < np.array([-1.0, 4.0, 3, 2]))]
-        print(comp_result)
-
-        np.testing.assert_equal(comp_result, real)
+        real = np.array([1.5, 2.3, 3, 3] < np.array([-1.0, 4.0, 3, 2]))
+        np.testing.assert_equal(list(comp_result.values())[0], real)
 
 
 if __name__ == "__main__":
