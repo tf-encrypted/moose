@@ -1910,7 +1910,7 @@ macro_rules! modelled {
         impl crate::kernels::NullaryKernelCheck<crate::kernels::SyncSession, $plc, $u> for $op {}
 
         impl $t<crate::kernels::SyncSession, $u> for $plc {
-            fn $f(&self, sess: &crate::kernels::SyncSession, $($($attr_id:$attr_ty),*)?) -> $u {
+            fn $f(&self, sess: &crate::kernels::SyncSession, $($($attr_id:$attr_ty),*)?) -> error::Result<$u> {
                 use crate::computation::{KnownType, NullarySignature};
                 use crate::kernels::{Session, SyncSession};
                 use std::convert::TryInto;
@@ -1922,10 +1922,10 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![])
+                Ok(sess.execute(op.into(), &self.into(), vec![])
                     .unwrap()
                     .try_into()
-                    .unwrap()
+                    .unwrap())
             }
         }
 
@@ -1959,7 +1959,7 @@ macro_rules! modelled {
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
                 $($($attr_id:$attr_ty),*)?
-            ) -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type {
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> {
                 use crate::computation::{KnownType, NullarySignature};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession};
@@ -1972,10 +1972,8 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![])
-                    .unwrap()
-                    .try_into()
-                    .unwrap()
+                Ok(sess.execute(op.into(), &self.into(), vec![])?
+                    .try_into()?)
             }
         }
     };

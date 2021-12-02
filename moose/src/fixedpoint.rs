@@ -1142,7 +1142,7 @@ impl FixedpointMeanOp {
         };
 
         let result = plc.mean(sess, axis, &x_shared);
-        Ok(FixedTensor::Replicated(result))
+        Ok(FixedTensor::Replicated(result?))
     }
 
     fn hostfixed_kernel<S: Session, HostRingT>(
