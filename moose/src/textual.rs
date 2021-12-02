@@ -868,7 +868,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "AdditiveShape" => Ok((i, Ty::AdditiveShape)),
         "Fixed64Tensor" => Ok((i, Ty::Fixed64Tensor)),
         "Fixed128Tensor" => Ok((i, Ty::Fixed128Tensor)),
-        "BoolTensor" => Ok((i, Ty::BoolTensor)),
+        "BooleanTensor" => Ok((i, Ty::BooleanTensor)),
         "Unit" => Ok((i, Ty::Unit)),
         "Float32" => Ok((i, Ty::Float32)),
         "Float64" => Ok((i, Ty::Float64)),
@@ -1616,7 +1616,7 @@ impl ToTextual for Ty {
             Ty::AdditiveRing64Tensor => "Additive64Tensor".to_string(),
             Ty::AdditiveRing128Tensor => "Additive128Tensor".to_string(),
             Ty::AdditiveShape => "AdditiveShape".to_string(),
-            Ty::BoolTensor => "BooleanTensor".to_string(),
+            Ty::BooleanTensor => "BooleanTensor".to_string(),
             Ty::Fixed64Tensor => "Fixed64Tensor".to_string(),
             Ty::Fixed128Tensor => "Fixed128Tensor".to_string(),
             Ty::Float32Tensor => "Float32Tensor".to_string(),
@@ -1674,7 +1674,7 @@ impl ToTextual for Value {
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)
             | Value::Fixed128Tensor(_)
-            | Value::BoolTensor(_)
+            | Value::BooleanTensor(_)
             | Value::Float32Tensor(_)
             | Value::Float64Tensor(_)
             | Value::ReplicatedShape(_)

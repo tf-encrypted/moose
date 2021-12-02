@@ -4,7 +4,7 @@ use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{HostShape, HostString};
 use crate::kernels::*;
-use crate::replicated::{BoolTensor, ReplicatedShape};
+use crate::replicated::{BooleanTensor, ReplicatedShape};
 use crate::symbolic::Symbolic;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -43,7 +43,7 @@ pub enum AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT> {
 }
 
 pub type Tensor =
-    AbstractTensor<Fixed64Tensor, Fixed128Tensor, Float32Tensor, Float64Tensor, BoolTensor>;
+    AbstractTensor<Fixed64Tensor, Fixed128Tensor, Float32Tensor, Float64Tensor, BooleanTensor>;
 
 impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>
     AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>
@@ -95,7 +95,7 @@ impl SymbolicType for Tensor {
             <Fixed128Tensor as SymbolicType>::Type,
             <Float32Tensor as SymbolicType>::Type,
             <Float64Tensor as SymbolicType>::Type,
-            <BoolTensor as SymbolicType>::Type,
+            <BooleanTensor as SymbolicType>::Type,
         >,
     >;
 }
@@ -661,7 +661,6 @@ impl LessThanOp {
             ))),
         }
     }
-
 }
 
 modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);
@@ -982,7 +981,7 @@ impl OnesOp {
             cs!(Fixed128Tensor),
             cs!(Float32Tensor),
             cs!(Float64Tensor),
-            cs!(BoolTensor),
+            cs!(BooleanTensor),
         >,
     >
     where
@@ -991,7 +990,7 @@ impl OnesOp {
         Fixed128Tensor: KnownType<S>,
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
-        BoolTensor: KnownType<S>,
+        BooleanTensor: KnownType<S>,
         HostPlacement: PlacementOnes<S, cs!(HostShape), cs!(Float64Tensor)>,
     {
         let result = plc.ones(sess, &shape);
@@ -1234,7 +1233,7 @@ impl LoadOp {
             cs!(Fixed128Tensor),
             cs!(Float32Tensor),
             cs!(Float64Tensor),
-            cs!(BoolTensor),
+            cs!(BooleanTensor),
         >,
     >
     where
@@ -1243,7 +1242,7 @@ impl LoadOp {
         Fixed128Tensor: KnownType<S>,
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
-        BoolTensor: KnownType<S>,
+        BooleanTensor: KnownType<S>,
         HostPlacement: PlacementLoad<S, cs!(HostString), cs!(HostString), cs!(Float64Tensor)>,
     {
         let z = plc.load(sess, &key, &query);
@@ -1340,7 +1339,7 @@ impl ConstantOp {
             m!(Fixed128Tensor),
             m!(Float32Tensor),
             m!(Float64Tensor),
-            m!(BoolTensor),
+            m!(BooleanTensor),
         >,
     >
     where
@@ -1348,7 +1347,7 @@ impl ConstantOp {
         Fixed128Tensor: KnownType<S>,
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
-        BoolTensor: KnownType<S>,
+        BooleanTensor: KnownType<S>,
         HostPlacement: PlacementConstant<S, m!(Float32Tensor)>,
         HostPlacement: PlacementConstant<S, m!(Float64Tensor)>,
     {
@@ -1382,7 +1381,7 @@ impl InputOp {
             m!(Fixed128Tensor),
             m!(Float32Tensor),
             m!(Float64Tensor),
-            m!(BoolTensor),
+            m!(BooleanTensor),
         >,
     >
     where
@@ -1390,7 +1389,7 @@ impl InputOp {
         Fixed128Tensor: KnownType<S>,
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
-        BoolTensor: KnownType<S>,
+        BooleanTensor: KnownType<S>,
         HostPlacement: PlacementInput<S, m!(Float64Tensor)>,
         HostPlacement: PlacementInput<S, m!(Float32Tensor)>,
     {

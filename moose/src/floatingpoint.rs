@@ -2,7 +2,7 @@ use crate::computation::*;
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape, HostString};
 use crate::kernels::*;
-use crate::replicated::{BoolTensor, StandardTensor};
+use crate::replicated::{BoolTensor, BooleanTensor};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -288,8 +288,8 @@ impl FloatingpointDotOp {
     }
 }
 
-modelled!(PlacementLessThan::less_than, HostPlacement, (Float32Tensor, Float32Tensor) -> BoolTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, HostPlacement, (Float64Tensor, Float64Tensor) -> BoolTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, HostPlacement, (Float32Tensor, Float32Tensor) -> BooleanTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, HostPlacement, (Float64Tensor, Float64Tensor) -> BooleanTensor, LessThanOp);
 
 impl LessThanOp {
     pub(crate) fn float_kernel<S: Session, HostFloatT, HostBitT, RepBitT>(
@@ -297,7 +297,7 @@ impl LessThanOp {
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT>,
         y: FloatTensor<HostFloatT>,
-    ) -> Result<StandardTensor<HostBitT, RepBitT>>
+    ) -> Result<BoolTensor<HostBitT, RepBitT>>
     where
         HostPlacement: PlacementLessThan<S, HostFloatT, HostFloatT, HostBitT>,
     {
@@ -305,7 +305,7 @@ impl LessThanOp {
         let FloatTensor::Host(y) = y;
 
         let z = plc.less_than(sess, &x, &y);
-        Ok(StandardTensor::Host(z))
+        Ok(BoolTensor::Host(z))
     }
 }
 

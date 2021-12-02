@@ -6,10 +6,10 @@ use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::*;
 use crate::kernels::*;
 use crate::replicated::{
-    AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor, BoolTensor,
+    AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor, BoolTensor, BooleanTensor,
     Mirrored3Fixed128Tensor, Mirrored3Fixed64Tensor, ReplicatedBitTensor, ReplicatedFixed128Tensor,
     ReplicatedFixed64Tensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
-    ShapeFill, StandardTensor,
+    ShapeFill,
 };
 use crate::symbolic::Symbolic;
 use macros::with_context;
@@ -1447,10 +1447,10 @@ where
     }
 }
 
-modelled!(PlacementLessThan::less_than, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> BoolTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> BoolTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> BoolTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> BoolTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> BooleanTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> BooleanTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> BooleanTensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> BooleanTensor, LessThanOp);
 modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor, LessThanOp);
 modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, LessThanOp);
 modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedBitTensor, LessThanOp);
@@ -1458,15 +1458,13 @@ modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed64T
 modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedBitTensor, LessThanOp);
 modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, LessThanOp);
 
-
-
 impl LessThanOp {
     pub(crate) fn fixed_kernel<S: Session, HostFixedT, RepFixedT, HostBitT, RepBitT>(
         sess: &S,
         plc: &HostPlacement,
         x: FixedTensor<HostFixedT, RepFixedT>,
         y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<StandardTensor<HostBitT, RepBitT>>
+    ) -> Result<BoolTensor<HostBitT, RepBitT>>
     where
         HostPlacement: PlacementLessThan<S, HostFixedT, HostFixedT, HostBitT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
@@ -1480,7 +1478,7 @@ impl LessThanOp {
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let z = plc.less_than(sess, &x, &y);
-        Ok(StandardTensor::Host(z))
+        Ok(BoolTensor::Host(z))
     }
 
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT, HostBitT, RepBitT>(
@@ -1488,7 +1486,7 @@ impl LessThanOp {
         plc: &ReplicatedPlacement,
         x: FixedTensor<HostFixedT, RepFixedT>,
         y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<StandardTensor<HostBitT, RepBitT>>
+    ) -> Result<BoolTensor<HostBitT, RepBitT>>
     where
         ReplicatedPlacement: PlacementLessThan<S, RepFixedT, RepFixedT, RepBitT>,
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
@@ -1502,9 +1500,8 @@ impl LessThanOp {
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.less_than(sess, &x, &y);
-        Ok(StandardTensor::Replicated(z))
+        Ok(BoolTensor::Replicated(z))
     }
-
 
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,

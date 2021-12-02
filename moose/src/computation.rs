@@ -476,7 +476,7 @@ values![
     HostUint64Tensor,
     HostFixed128AesTensor,
     HostAesKey,
-    BoolTensor,
+    BooleanTensor,
     Fixed64Tensor,
     Fixed128Tensor,
     Float32Tensor,

@@ -81,16 +81,16 @@ moose_type!(Mirrored3Ring64Tensor = Mirrored3RingTensor<HostRing64Tensor>);
 moose_type!(Mirrored3Ring128Tensor = Mirrored3RingTensor<HostRing128Tensor>);
 moose_type!(Mirrored3BitTensor = Mirrored3RingTensor<HostBitTensor>);
 
-/// TODO(Dragos) unify StandardTensor with FixedTensor
+/// TODO(Dragos) unify BoolTensor with FixedTensor
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum StandardTensor<HostT, RepT> {
+pub enum BoolTensor<HostT, RepT> {
     Host(HostT),
     Replicated(RepT),
 }
 
-moose_type!(BoolTensor = StandardTensor<HostBitTensor, ReplicatedBitTensor>);
+moose_type!(BooleanTensor = BoolTensor<HostBitTensor, ReplicatedBitTensor>);
 
-impl<HostT, RepT> Placed for StandardTensor<HostT, RepT>
+impl<HostT, RepT> Placed for BoolTensor<HostT, RepT>
 where
     HostT: Placed,
     HostT::Placement: Into<Placement>,
@@ -101,8 +101,8 @@ where
 
     fn placement(&self) -> Result<Self::Placement> {
         match self {
-            StandardTensor::Host(x) => Ok(x.placement()?.into()),
-            StandardTensor::Replicated(x) => Ok(x.placement()?.into()),
+            BoolTensor::Host(x) => Ok(x.placement()?.into()),
+            BoolTensor::Replicated(x) => Ok(x.placement()?.into()),
         }
     }
 }
@@ -3179,20 +3179,20 @@ impl GreaterThanOp {
     }
 }
 
-modelled!(PlacementOutput::output, HostPlacement, (BoolTensor) -> BoolTensor, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (BooleanTensor) -> BooleanTensor, OutputOp);
 
 impl OutputOp {
     pub(crate) fn bool_kernel<S: Session, HostT, RepT>(
         sess: &S,
         plc: &HostPlacement,
-        x: StandardTensor<HostT, RepT>,
-    ) -> Result<StandardTensor<HostT, RepT>>
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
     where
         HostPlacement: PlacementOutput<S, HostT, HostT>,
     {
         match x {
-            StandardTensor::Host(v) => Ok(StandardTensor::Host(plc.output(sess, &v))),
-            StandardTensor::Replicated(_) => unimplemented!(),
+            BoolTensor::Host(v) => Ok(BoolTensor::Host(plc.output(sess, &v))),
+            BoolTensor::Replicated(_) => unimplemented!(),
         }
     }
 }
