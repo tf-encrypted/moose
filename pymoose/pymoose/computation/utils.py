@@ -180,6 +180,7 @@ def _decode(obj):
                 dtypes.uint64.name: dtypes.uint64,
                 dtypes.float32.name: dtypes.float32,
                 dtypes.float64.name: dtypes.float64,
+                dtypes.bool8.name: dtypes.bool8,
             }[dtype_name]
         elif obj["__type__"] == "ndarray":
             dtype = obj["dtype"]

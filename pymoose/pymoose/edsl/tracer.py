@@ -47,6 +47,7 @@ from pymoose.edsl.base import ExpExpression
 from pymoose.edsl.base import Expression
 from pymoose.edsl.base import HostPlacementExpression
 from pymoose.edsl.base import InverseExpression
+from pymoose.edsl.base import LessExpression
 from pymoose.edsl.base import LoadExpression
 from pymoose.edsl.base import MeanExpression
 from pymoose.edsl.base import OnesExpression
@@ -241,6 +242,29 @@ class AstTracer:
             op_type(
                 placement_name=placement.name,
                 name=self.get_fresh_name(f"{op_name}"),
+                inputs={"lhs": lhs_operation.name, "rhs": rhs_operation.name},
+                output_type=expression.vtype,
+            )
+        )
+
+    # TODO(Dragos) merge this with visit_BinaryExpression as soon as we have more type information
+    # about the BinaryExpression such as input types.
+    def visit_LessExpression(self, expression):
+        assert isinstance(expression, LessExpression)
+        lhs_expression, rhs_expression = expression.inputs
+        lhs_operation = self.visit(lhs_expression)
+        rhs_operation = self.visit(rhs_expression)
+        placement = self.visit_placement_expression(expression.placement)
+
+        assert lhs_operation.output_type == rhs_operation.output_type, (
+            lhs_operation,
+            rhs_operation,
+        )
+
+        return self.computation.add_operation(
+            LessOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("less"),
                 inputs={"lhs": lhs_operation.name, "rhs": rhs_operation.name},
                 output_type=expression.vtype,
                 input_type=lhs_operation.output_type,

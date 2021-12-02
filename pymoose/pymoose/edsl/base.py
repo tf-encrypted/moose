@@ -264,6 +264,12 @@ class SliceExpression(Expression):
         return id(self)
 
 
+@dataclass
+class LessExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
 def concatenate(arrays, axis=0, placement=None):
     placement = placement or get_current_placement()
     input_vtype = arrays[0].vtype
@@ -403,11 +409,8 @@ def less(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-    return BinaryOpExpression(
-        op_name="less",
-        placement=placement,
-        inputs=[lhs, rhs],
-        vtype=TensorType(dtype=dtypes.bool8),
+    return LessExpression(
+        placement=placement, inputs=[lhs, rhs], vtype=TensorType(dtype=dtypes.bool8),
     )
 
 

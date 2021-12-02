@@ -8,6 +8,7 @@ from absl.testing import parameterized
 from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose.computation import utils
+from pymoose.edsl.tracer import trace
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
@@ -22,22 +23,21 @@ class ReplicatedExample(parameterized.TestCase):
         @edsl.computation
         def my_less_comp():
             with bob:
-                x = edsl.constant(np.array([2], dtype=np.float64))
-                y = edsl.constant(np.array([3], dtype=np.float64))
+                x = edsl.constant(np.array([1.5, 2.3, 3, 3], dtype=np.float64))
+                y = edsl.constant(np.array([-1.0, 4.0, 3, 2], dtype=np.float64))
                 z1 = edsl.less(x, y)
-                z2 = edsl.less(x, y)
 
-            return z1, z2
+            return z1
 
         return my_less_comp
 
     # TODO(Dragos) see why this fails
-    # def test_less_example_serde(self):
-    #     less_comp = self._setup_less_comp()
-    #     traced_less_comp = edsl.trace(less_comp)
-    #     comp_bin = utils.serialize_computation(traced_less_comp)
-    #     deser_less_comp = utils.deserialize_computation(comp_bin)
-    #     assert traced_less_comp == deser_less_comp
+    def test_less_example_serde(self):
+        less_comp = self._setup_less_comp()
+        traced_less_comp = edsl.trace(less_comp)
+        comp_bin = utils.serialize_computation(traced_less_comp)
+        deser_less_comp = utils.deserialize_computation(comp_bin)
+        assert traced_less_comp == deser_less_comp
 
     def test_less_example_rust_serde(self):
         less_comp = self._setup_less_comp()
@@ -82,12 +82,15 @@ class ReplicatedExample(parameterized.TestCase):
             "carole": {},
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
-        outputs = runtime.evaluate_compiled(
+        comp_result = runtime.evaluate_compiled(
             comp_bin=compiled_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
-        print("outputs = ", outputs)
+        real = [np.array([1.5, 2.3, 3, 3] < np.array([-1.0, 4.0, 3, 2]))]
+        print(comp_result)
+
+        np.testing.assert_equal(comp_result, real)
 
 
 if __name__ == "__main__":
