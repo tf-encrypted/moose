@@ -3192,7 +3192,9 @@ impl OutputOp {
     {
         match x {
             BoolTensor::Host(v) => Ok(BoolTensor::Host(plc.output(sess, &v))),
-            BoolTensor::Replicated(_) => unimplemented!(),
+            BoolTensor::Replicated(_) => Err(Error::UnimplementedOperator(
+                "OutputOp missing a replicated boolean tensor implementation.".to_string(),
+            )),
         }
     }
 }
