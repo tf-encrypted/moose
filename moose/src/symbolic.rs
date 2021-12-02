@@ -338,14 +338,9 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
     }
 }
 
+#[derive(Default)]
 pub struct SymbolicExecutor {
     // Placeholder for the future state we want to keep (symbolic strategy pointer, replicated setup cache, etc).
-}
-
-impl Default for SymbolicExecutor {
-    fn default() -> Self {
-        SymbolicExecutor {}
-    }
 }
 
 impl SymbolicExecutor {

@@ -1977,14 +1977,9 @@ kernel! {
     ]
 }
 
+#[derive(Default)]
 pub struct TestSyncExecutor {
     // Placeholder for the future state we want to keep
-}
-
-impl Default for TestSyncExecutor {
-    fn default() -> Self {
-        TestSyncExecutor {}
-    }
 }
 
 impl TestSyncExecutor {
