@@ -306,7 +306,7 @@ impl MulOp {
         HostPlacement: PlacementMul<S, Float64T, Float64T, Float64T>,
     {
         // TODO(Morten)
-        // we should probably use a trait bound on Fixed64T 
+        // we should probably use a trait bound on Fixed64T
         // and Fixed128T to extract precision instead
         let precision = match sig.arg(0) {
             Ok(Ty::Tensor(TensorDType::Fixed64 {

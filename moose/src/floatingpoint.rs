@@ -28,12 +28,12 @@ where
     }
 }
 
-impl<HostT> SymbolicType for FloatTensor<HostT>
+impl<HostT> PartiallySymbolicType for FloatTensor<HostT>
 where
     HostT: SymbolicType,
     <HostT as SymbolicType>::Type: Placed<Placement = HostPlacement>,
 {
-    type Type = Symbolic<FloatTensor<<HostT as SymbolicType>::Type>>;
+    type Type = FloatTensor<<HostT as SymbolicType>::Type>;
 }
 
 // TODO(lvorona): Not sure why we need this one separately... But the moose_type macro is coming!
