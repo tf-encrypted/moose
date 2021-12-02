@@ -29,14 +29,11 @@ class ReplicatedExample(parameterized.TestCase):
                 y = edsl.constant(np.array([-1.0, 4.0, 3, 2], dtype=np.float64))
                 y = edsl.cast(y, dtype=edsl.fixed(8, 27))
 
-                # z_host = edsl.less(x, y)
-
             with rep:
                 z_rep = edsl.less(x, y)
 
             with alice:
-                z_host = z_rep
-                # zr = edsl.add(z_host, z_host)
+                z_host = edsl.bitwise_or(z_rep, z_rep)
 
             return z_host
 

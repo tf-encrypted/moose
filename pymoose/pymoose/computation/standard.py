@@ -281,6 +281,11 @@ class SliceOperation(StandardOperation):
 
 
 @dataclass
+class BitwiseOrOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class LoadOperation(StandardOperation):
     output_type: ValueType
 

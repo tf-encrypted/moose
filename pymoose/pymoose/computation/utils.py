@@ -23,6 +23,7 @@ SUPPORTED_TYPES = [
     std_dialect.AesKeyType,
     std_dialect.AesTensorType,
     std_dialect.AtLeast2DOperation,
+    std_dialect.BitwiseOrOperation,
     std_dialect.BytesType,
     std_dialect.CastOperation,
     std_dialect.ConcatenateOperation,

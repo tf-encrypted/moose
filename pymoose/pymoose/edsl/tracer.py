@@ -9,6 +9,7 @@ from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import AbsOperation
 from pymoose.computation.standard import AddOperation
 from pymoose.computation.standard import AtLeast2DOperation
+from pymoose.computation.standard import BitwiseOrOperation
 from pymoose.computation.standard import CastOperation
 from pymoose.computation.standard import ConcatenateOperation
 from pymoose.computation.standard import ConstantOperation
@@ -39,6 +40,7 @@ from pymoose.edsl.base import AbsExpression
 from pymoose.edsl.base import ArgumentExpression
 from pymoose.edsl.base import AtLeast2DExpression
 from pymoose.edsl.base import BinaryOpExpression
+from pymoose.edsl.base import BitwiseOrExpression
 from pymoose.edsl.base import CastExpression
 from pymoose.edsl.base import ConcatenateExpression
 from pymoose.edsl.base import ConstantExpression
@@ -238,7 +240,7 @@ class AstTracer:
             "mul": MulOperation,
             "div": DivOperation,
             "dot": DotOperation,
-            "less": LessOperation,
+            "or": BitwiseOrOperation,
         }[op_name]
         # TODO(Morten) we should derive a type from lhs_operation and rhs_operation
         assert lhs_operation.output_type == rhs_operation.output_type, (

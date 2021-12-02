@@ -270,6 +270,12 @@ class LessExpression(Expression):
         return id(self)
 
 
+@dataclass
+class BitwiseOrExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
 def concatenate(arrays, axis=0, placement=None):
     placement = placement or get_current_placement()
     input_vtype = arrays[0].vtype
@@ -411,6 +417,16 @@ def less(lhs, rhs, placement=None):
     placement = placement or get_current_placement()
     return LessExpression(
         placement=placement, inputs=[lhs, rhs], vtype=TensorType(dtype=dtypes.bool8),
+    )
+
+
+def bitwise_or(lhs, rhs, placement=None):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
+    vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "or")
+    return BinaryOpExpression(
+        op_name="or", placement=placement, inputs=[lhs, rhs], vtype=vtype
     )
 
 
