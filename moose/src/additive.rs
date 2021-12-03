@@ -103,7 +103,7 @@ impl ShapeOp {
 }
 
 modelled_kernel! {
-    PlacementFill::fill{value: Constant}, AdtFillOp,
+    PlacementFill::fill, AdtFillOp{value: Constant},
     [
         (AdditivePlacement, (HostShape) -> AdditiveRing64Tensor => [hybrid] Self::host_kernel),
         (AdditivePlacement, (HostShape) -> AdditiveRing128Tensor => [hybrid] Self::host_kernel),
