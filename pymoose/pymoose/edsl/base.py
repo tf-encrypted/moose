@@ -491,8 +491,15 @@ def shape(x, placement=None):
 
 def index_axis(x, axis, index, placement=None):
     assert isinstance(x, Expression)
-    assert isinstance(axis, int)
-    assert isinstance(index, int)
+    if not isinstance(axis, int) or index<0:
+        raise ValueError(
+            "`axis` argument must be int greater or equal to 0, found "
+            f"{axis} of type {type(axis)}")
+    if not isinstance(index, int) or index<0:
+        raise ValueError(
+            "`index` argument must be int greater or equal to 0, found "
+            f"{index} of type {type(index)}")
+            
     placement = placement or get_current_placement()
     return IndexAxisExpression(
         placement=placement, inputs=[x], axis=axis, index=index, vtype=x.vtype
