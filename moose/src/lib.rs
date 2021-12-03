@@ -1972,8 +1972,10 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                Ok(sess.execute(op.into(), &self.into(), vec![])?
-                    .try_into()?)
+                Ok(sess.execute(op.into(), &self.into(), vec![])
+                    .unwrap()
+                    .try_into()
+                    .unwrap())
             }
         }
     };
@@ -2048,8 +2050,8 @@ macro_rules! modelled {
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
                 $($($attr_id:$attr_ty),*,)?
-                x0: &<$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as crate::computation::KnownType<crate::symbolic: :SymbolicSession>>::Type {
+                x0: &<$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> {
                 use crate::computation::{KnownType, UnarySignature};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession};
@@ -2063,10 +2065,10 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into()])
+                Ok(sess.execute(op.into(), &self.into(), vec![x0.clone().into()])
                     .unwrap()
                     .try_into()
-                    .unwrap()
+                    .unwrap())
             }
         }
     };

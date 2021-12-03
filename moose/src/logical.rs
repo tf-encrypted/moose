@@ -151,19 +151,19 @@ impl AddOp {
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
-                let result = plc.add(sess, &x, &y);
+                let result = plc.add(sess, &x, &y)?;
                 Ok(AbstractTensor::Fixed64(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
-                let result = plc.add(sess, &x, &y);
+                let result = plc.add(sess, &x, &y)?;
                 Ok(AbstractTensor::Fixed128(result))
             }
             (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-                let result = plc.add(sess, &x, &y);
+                let result = plc.add(sess, &x, &y)?;
                 Ok(AbstractTensor::Float32(result))
             }
             (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-                let result = plc.add(sess, &x, &y);
+                let result = plc.add(sess, &x, &y)?;
                 Ok(AbstractTensor::Float64(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
@@ -187,11 +187,11 @@ impl AddOp {
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
-                let result = plc.add(sess, &x, &y);
+                let result = plc.add(sess, &x, &y)?;
                 Ok(AbstractTensor::Fixed64(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
-                let result = plc.add(sess, &x, &y);
+                let result = plc.add(sess, &x, &y)?;
                 Ok(AbstractTensor::Fixed128(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
@@ -229,19 +229,19 @@ impl SubOp {
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
-                let result = plc.sub(sess, &x, &y);
+                let result = plc.sub(sess, &x, &y)?;
                 Ok(AbstractTensor::Fixed64(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
-                let result = plc.sub(sess, &x, &y);
+                let result = plc.sub(sess, &x, &y)?;
                 Ok(AbstractTensor::Fixed128(result))
             }
             (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-                let result = plc.sub(sess, &x, &y);
+                let result = plc.sub(sess, &x, &y)?;
                 Ok(AbstractTensor::Float32(result))
             }
             (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-                let result = plc.sub(sess, &x, &y);
+                let result = plc.sub(sess, &x, &y)?;
                 Ok(AbstractTensor::Float64(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
@@ -265,11 +265,11 @@ impl SubOp {
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
-                let result = plc.sub(sess, &x, &y);
+                let result = plc.sub(sess, &x, &y)?;
                 Ok(AbstractTensor::Fixed64(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
-                let result = plc.sub(sess, &x, &y);
+                let result = plc.sub(sess, &x, &y)?;
                 Ok(AbstractTensor::Fixed128(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
