@@ -647,12 +647,7 @@ impl TryFrom<PyComputation> for Computation {
                                 // assume input type is the same as output type
                                 sig: Signature::variadic(
                                     // TODO[jason] input_types should actually just be a single type, not one for each array
-                                    map_type(
-                                        op.signature
-                                            .input_types
-                                            .get(&sorted_input_names[0])
-                                            .unwrap(),
-                                    )?,
+                                    map_type(op.signature.input_types.get("array0").unwrap())?,
                                     map_type(&op.signature.return_type)?,
                                 ),
                                 axis: op.axis,
@@ -805,7 +800,7 @@ impl TryFrom<PyComputation> for Computation {
                         kind: LoadOp {
                             sig: Signature::binary(
                                 map_type(op.signature.input_types.get("key").unwrap())?,
-                                map_type(op.signature.input_types.get("value").unwrap())?,
+                                map_type(op.signature.input_types.get("query").unwrap())?,
                                 map_type(&op.signature.return_type)?,
                             ),
                         }
