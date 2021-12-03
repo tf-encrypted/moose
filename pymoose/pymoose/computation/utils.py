@@ -88,9 +88,6 @@ def _encode(val):
         assert type_name in TYPES_MAP, type_name
         d = {field.name: getattr(val, field.name) for field in fields(val)}
         d["__type__"] = type_name
-        # FIXME: for backwards compatibility with existing pymoose serde
-        if isinstance(val, Operation):
-            d["output_type"] = val.output_type
         return d
     elif isinstance(val, OpSignature):
         return {
@@ -143,8 +140,5 @@ def _decode(obj):
         else:
             ty = TYPES_MAP[obj["__type__"]]
             del obj["__type__"]
-            # FIXME: for backwards compatibility with existing pymoose serde
-            if "output_type" in obj:
-                del obj["output_type"]
             return ty(**obj)
     return obj

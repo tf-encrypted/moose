@@ -42,11 +42,6 @@ class Operation:
     def return_type(self):
         return self.signature.return_type
 
-    # FIXME: only for backwards compatibility with existing pymoose serde
-    @property
-    def output_type(self):
-        return self.signature.return_type
-
 
 @dataclass
 class Computation:

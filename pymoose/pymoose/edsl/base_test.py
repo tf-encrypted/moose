@@ -365,12 +365,13 @@ class EdslTest(parameterized.TestCase):
             ),
         )
 
-    def test_arguments(self):
+    @parameterized.parameters(*_MOOSE_DTYPES)
+    def test_tensor_arguments(self, tensor_dtype):
         player0 = edsl.host_placement(name="player0")
 
         @edsl.computation
-        def my_comp(x: edsl.Argument(placement=player0, dtype=dtypes.float64)):
-            y = edsl.constant(1.0, dtype=dtypes.float64, placement=player0)
+        def my_comp(x: edsl.Argument(placement=player0, dtype=tensor_dtype)):
+            y = edsl.constant(1.0, dtype=tensor_dtype, placement=player0)
             z = edsl.add(x, y, placement=player0)
             return z
 
@@ -382,14 +383,14 @@ class EdslTest(parameterized.TestCase):
                     placement_name="player0",
                     name="x",
                     inputs={},
-                    signature=OpSignature({}, TensorType(dtypes.float64)),
+                    signature=OpSignature({}, TensorType(tensor_dtype)),
                 ),
                 "constant_0": standard_ops.ConstantOperation(
                     placement_name="player0",
                     name="constant_0",
                     inputs={},
                     value=TensorConstant(value=[1.0]),
-                    signature=OpSignature({}, TensorType(dtypes.float64)),
+                    signature=OpSignature({}, TensorType(tensor_dtype)),
                 ),
                 "add_0": standard_ops.AddOperation(
                     placement_name="player0",
@@ -397,10 +398,10 @@ class EdslTest(parameterized.TestCase):
                     inputs={"lhs": "x", "rhs": "constant_0"},
                     signature=OpSignature(
                         {
-                            "lhs": TensorType(dtypes.float64),
-                            "rhs": TensorType(dtypes.float64),
+                            "lhs": TensorType(tensor_dtype),
+                            "rhs": TensorType(tensor_dtype),
                         },
-                        TensorType(dtypes.float64),
+                        TensorType(tensor_dtype),
                     ),
                 ),
                 "output_0": standard_ops.OutputOperation(
@@ -408,8 +409,7 @@ class EdslTest(parameterized.TestCase):
                     name="output_0",
                     inputs={"value": "add_0"},
                     signature=OpSignature(
-                        {"value": TensorType(dtypes.float64)},
-                        TensorType(dtypes.float64),
+                        {"value": TensorType(tensor_dtype)}, TensorType(tensor_dtype),
                     ),
                 ),
             },
