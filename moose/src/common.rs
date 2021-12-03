@@ -2,8 +2,8 @@ use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape
 use crate::computation::SymbolicValue;
 use crate::computation::Value;
 use crate::computation::{
-    AddNOp, AdditivePlacement, HostPlacement, HostReshapeOp, KnownType, Placed,
-    ReplicatedPlacement, RingInjectOp, ShapeOp,
+    AddN, AdditivePlacement, HostPlacement, HostReshape, KnownType, Placed,
+    ReplicatedPlacement, RingInject, Shape,
 };
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
@@ -21,7 +21,7 @@ use crate::replicated::{
 };
 
 modelled_kernel! {
-    PlacementShape::shape, ShapeOp,
+    PlacementShape::shape, Shape,
     [
         (HostPlacement, (Tensor) -> HostShape => [hybrid] Self::host_logical_kernel),
         (HostPlacement, (Float32Tensor) -> HostShape => [hybrid] Self::float_kernel),
@@ -49,7 +49,7 @@ modelled_kernel! {
 }
 
 modelled_kernel! {
-    PlacementReshape::reshape, HostReshapeOp,
+    PlacementReshape::reshape, HostReshape,
     [
         (HostPlacement, (HostRing64Tensor, HostShape) -> HostRing64Tensor => [runtime] Self::ring_kernel),
         (HostPlacement, (HostRing128Tensor, HostShape) -> HostRing128Tensor => [runtime] Self::ring_kernel),
@@ -68,7 +68,7 @@ modelled_kernel! {
 }
 
 modelled_kernel! {
-    PlacementRingInject::ring_inject, RingInjectOp{bit_idx: usize},
+    PlacementRingInject::ring_inject, RingInject{bit_idx: usize},
     [
         (HostPlacement, (HostBitTensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostBitTensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
@@ -77,15 +77,15 @@ modelled_kernel! {
     ]
 }
 
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor, AddNOp);
+modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor, AddN);
+modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor, AddN);
+modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, AddN);
+modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, AddN);
+modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor, AddN);
+modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor, AddN);
 
 kernel! {
-    AddNOp,
+    AddN,
     [
         (HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor => [runtime] Self::host_kernel),
         (HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor => [runtime] Self::host_kernel),

@@ -547,7 +547,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_AddOperation(op) => Ok(Operation {
-                        kind: AddOp {
+                        kind: Add {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
                         }
@@ -558,7 +558,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SubOperation(op) => Ok(Operation {
-                        kind: SubOp {
+                        kind: Sub {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
                         }
@@ -569,7 +569,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_MulOperation(op) => Ok(Operation {
-                        kind: MulOp {
+                        kind: Mul {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
                         }
@@ -580,7 +580,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_DotOperation(op) => Ok(Operation {
-                        kind: DotOp {
+                        kind: Dot {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
                         }
@@ -591,7 +591,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_AtLeast2DOperation(op) => Ok(Operation {
-                        kind: AtLeast2DOp {
+                        kind: AtLeast2D {
                             // we can use output type type to determine input type
                             sig: Signature::from_unary(&op.signature, "x")?,
                             to_column_vector: op.to_column_vector,
@@ -603,7 +603,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
-                        kind: ShapeOp {
+                        kind: Shape {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
                         .into(),
@@ -613,7 +613,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_IndexAxisOperation(op) => Ok(Operation {
-                        kind: IndexAxisOp {
+                        kind: IndexAxis {
                             sig: Signature::from_unary(&op.signature, "x")?,
                             axis: op.axis,
                             index: op.index,
@@ -625,7 +625,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SliceOperation(op) => Ok(Operation {
-                        kind: SliceOp {
+                        kind: Slice {
                             sig: Signature::from_unary(&op.signature, "x")?,
                             slice: SliceInfo(vec![SliceInfoElem {
                                 start: op.begin as isize,
@@ -640,7 +640,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_OnesOperation(op) => Ok(Operation {
-                        kind: OnesOp {
+                        kind: Ones {
                             sig: Signature::from_unary(&op.signature, "shape")?,
                         }
                         .into(),
@@ -650,7 +650,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ExpandDimsOperation(op) => Ok(Operation {
-                        kind: ExpandDimsOp {
+                        kind: ExpandDims {
                             // assume input type is the same as the output type
                             sig: Signature::from_unary(&op.signature, "x")?,
                             axis: op.axis.clone(),
@@ -662,7 +662,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ExpOperation(op) => Ok(Operation {
-                        kind: ExpOp {
+                        kind: Exp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
                         .into(),
@@ -672,7 +672,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SigmoidOperation(op) => Ok(Operation {
-                        kind: SigmoidOp {
+                        kind: Sigmoid {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
                         .into(),
@@ -687,7 +687,7 @@ impl TryFrom<PyComputation> for Computation {
                         let sorted_input_names: Vec<String> =
                             inputs.into_iter().map(|(_k, v)| v.clone()).collect();
                         Ok(Operation {
-                            kind: ConcatOp {
+                            kind: Concat {
                                 // TODO[jason] input_types should actually just be a single type, not one for each array
                                 sig: Signature::from_variadic(&op.signature, "array0")?,
                                 axis: op.axis,
@@ -699,7 +699,7 @@ impl TryFrom<PyComputation> for Computation {
                         })
                     }
                     std_DecryptOperation(op) => Ok(Operation {
-                        kind: AesDecryptOp {
+                        kind: AesDecrypt {
                             sig: Signature::from_binary(&op.signature, "key", "ciphertext")?,
                         }
                         .into(),
@@ -709,7 +709,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_TransposeOperation(op) => Ok(Operation {
-                        kind: TransposeOp {
+                        kind: Transpose {
                             // we can use output type type to determine input type
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
@@ -721,7 +721,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
 
                     std_InverseOperation(op) => Ok(Operation {
-                        kind: InverseOp {
+                        kind: Inverse {
                             // we can use output type type to determine input type
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
@@ -732,7 +732,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_MeanOperation(op) => Ok(Operation {
-                        kind: MeanOp {
+                        kind: Mean {
                             // we can use output type type to determine input type
                             sig: Signature::from_unary(&op.signature, "x")?,
                             axis: op.axis,
@@ -744,7 +744,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SqrtOperation(op) => Ok(Operation {
-                        kind: HostSqrtOp {
+                        kind: HostSqrt {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
                         .into(),
@@ -754,7 +754,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SumOperation(op) => Ok(Operation {
-                        kind: SumOp {
+                        kind: Sum {
                             // we can use output type type to determine input type
                             sig: Signature::from_unary(&op.signature, "x")?,
                             axis: op.axis,
@@ -766,7 +766,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_DivOperation(op) => Ok(Operation {
-                        kind: DivOp {
+                        kind: Div {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
                         }
@@ -777,7 +777,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_InputOperation(op) => Ok(Operation {
-                        kind: InputOp {
+                        kind: Input {
                             sig: Signature::from_nullary(&op.signature)?,
                             arg_name: op.name.clone(),
                         }
@@ -787,7 +787,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_OutputOperation(op) => Ok(Operation {
-                        kind: OutputOp {
+                        kind: Output {
                             sig: Signature::from_unary(&op.signature, "value")?,
                         }
                         .into(),
@@ -797,7 +797,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SaveOperation(op) => Ok(Operation {
-                        kind: SaveOp {
+                        kind: Save {
                             sig: Signature::from_binary(&op.signature, "key", "value")?,
                         }
                         .into(),
@@ -807,7 +807,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_LoadOperation(op) => Ok(Operation {
-                        kind: LoadOp {
+                        kind: Load {
                             sig: Signature::from_binary(&op.signature, "key", "query")?,
                         }
                         .into(),
@@ -817,7 +817,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_CastOperation(op) => Ok(Operation {
-                        kind: CastOp {
+                        kind: Cast {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
                         .into(),

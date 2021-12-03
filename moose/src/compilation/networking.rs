@@ -72,7 +72,7 @@ impl NetworkingPass {
 
         let send_operation = Operation {
             name: format!("send_{}", index),
-            kind: SendOp {
+            kind: Send {
                 sig: Signature::unary(src_op.kind.sig().ret(), Ty::Unit),
                 rendezvous_key: rendezvous_key.clone(),
                 receiver: Role::from(dst),
@@ -85,7 +85,7 @@ impl NetworkingPass {
 
         let receive_operation = Operation {
             name: format!("receive_{}", index),
-            kind: ReceiveOp {
+            kind: Receive {
                 sig: Signature::nullary(src_op.kind.sig().ret()),
                 rendezvous_key,
                 sender: Role::from(src),

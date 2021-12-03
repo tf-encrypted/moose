@@ -1,11 +1,11 @@
 use super::*;
-use crate::computation::{HostPlacement, InputOp, ReplicatedPlacement, Signature, Ty};
+use crate::computation::{HostPlacement, Input, ReplicatedPlacement, Signature, Ty};
 use crate::error::{Error, Result};
 use crate::kernels::{PlacementInput, Session};
 use crate::replicated::aes::AbstractReplicatedAesKey;
 use std::marker::PhantomData;
 
-impl InputOp {
+impl Input {
     pub(crate) fn replicated_ring_kernel<S: Session, HostTensorT>(
         sess: &S,
         plc: &ReplicatedPlacement,

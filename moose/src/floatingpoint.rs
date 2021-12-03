@@ -59,14 +59,14 @@ where
 }
 
 modelled_kernel! {
-    PlacementMean::mean, FloatingpointMeanOp{axis: Option<u32>},
+    PlacementMean::mean, FloatingpointMean{axis: Option<u32>},
     [
         (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
-impl FloatingpointMeanOp {
+impl FloatingpointMean {
     fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -84,14 +84,14 @@ impl FloatingpointMeanOp {
 }
 
 modelled_kernel! {
-    PlacementSum::sum, FloatingpointSumOp{axis: Option<u32>},
+    PlacementSum::sum, FloatingpointSum{axis: Option<u32>},
     [
         (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
-impl FloatingpointSumOp {
+impl FloatingpointSum {
     fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -109,14 +109,14 @@ impl FloatingpointSumOp {
 }
 
 modelled_kernel! {
-    PlacementAtLeast2D::at_least_2d, FloatingpointAtLeast2DOp{to_column_vector: bool},
+    PlacementAtLeast2D::at_least_2d, FloatingpointAtLeast2D{to_column_vector: bool},
     [
         (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
-impl FloatingpointAtLeast2DOp {
+impl FloatingpointAtLeast2D {
     fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -134,14 +134,14 @@ impl FloatingpointAtLeast2DOp {
 }
 
 modelled_kernel! {
-    PlacementAdd::add, FloatingpointAddOp,
+    PlacementAdd::add, FloatingpointAdd,
     [
         (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
-impl FloatingpointAddOp {
+impl FloatingpointAdd {
     fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -160,14 +160,14 @@ impl FloatingpointAddOp {
 }
 
 modelled_kernel! {
-    PlacementSub::sub, FloatingpointSubOp,
+    PlacementSub::sub, FloatingpointSub,
     [
         (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
-impl FloatingpointSubOp {
+impl FloatingpointSub {
     fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -186,14 +186,14 @@ impl FloatingpointSubOp {
 }
 
 modelled_kernel! {
-    PlacementMul::mul, FloatingpointMulOp,
+    PlacementMul::mul, FloatingpointMul,
     [
         (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
-impl FloatingpointMulOp {
+impl FloatingpointMul {
     fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -212,14 +212,14 @@ impl FloatingpointMulOp {
 }
 
 modelled_kernel! {
-    PlacementDiv::div, FloatingpointDivOp,
+    PlacementDiv::div, FloatingpointDiv,
     [
         (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
-impl FloatingpointDivOp {
+impl FloatingpointDiv {
     fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -238,14 +238,14 @@ impl FloatingpointDivOp {
 }
 
 modelled_kernel! {
-    PlacementDot::dot, FloatingpointDotOp,
+    PlacementDot::dot, FloatingpointDot,
     [
         (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
-impl FloatingpointDotOp {
+impl FloatingpointDot {
     fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -264,13 +264,13 @@ impl FloatingpointDotOp {
 }
 
 modelled_kernel! {
-    PlacementOnes::ones, FloatingpointOnesOp,
+    PlacementOnes::ones, FloatingpointOnes,
     [
         (HostPlacement, (HostShape) -> Float64Tensor => [hybrid] Self::float_host_kernel),
     ]
 }
 
-impl FloatingpointOnesOp {
+impl FloatingpointOnes {
     fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -286,10 +286,10 @@ impl FloatingpointOnesOp {
     }
 }
 
-modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis: usize, index:usize] (Float32Tensor) -> Float32Tensor, IndexAxisOp);
-modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis: usize,  index:usize] (Float64Tensor) -> Float64Tensor, IndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis: usize, index:usize] (Float32Tensor) -> Float32Tensor, IndexAxis);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis: usize,  index:usize] (Float64Tensor) -> Float64Tensor, IndexAxis);
 
-impl IndexAxisOp {
+impl IndexAxis {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -307,14 +307,14 @@ impl IndexAxisOp {
 }
 
 modelled_kernel! {
-    PlacementExpandDims::expand_dims, FloatingpointExpandDimsOp{axis: Vec<u32>},
+    PlacementExpandDims::expand_dims, FloatingpointExpandDims{axis: Vec<u32>},
     [
         (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
-impl FloatingpointExpandDimsOp {
+impl FloatingpointExpandDims {
     fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -330,18 +330,18 @@ impl FloatingpointExpandDimsOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Float32Tensor] -> Float32Tensor, FloatingpointConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Float64Tensor] -> Float64Tensor, FloatingpointConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Float32Tensor] -> Float32Tensor, FloatingpointConcat);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Float64Tensor] -> Float64Tensor, FloatingpointConcat);
 
 kernel! {
-    FloatingpointConcatOp,
+    FloatingpointConcat,
     [
         (HostPlacement, vec[Float32Tensor] -> Float32Tensor => [concrete] attributes[axis] Self::float_host_kernel),
         (HostPlacement, vec[Float64Tensor] -> Float64Tensor => [concrete] attributes[axis] Self::float_host_kernel),
     ]
 }
 
-impl FloatingpointConcatOp {
+impl FloatingpointConcat {
     fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -365,14 +365,14 @@ impl FloatingpointConcatOp {
 }
 
 modelled_kernel! {
-    PlacementTranspose::transpose, FloatingpointTransposeOp,
+    PlacementTranspose::transpose, FloatingpointTranspose,
     [
         // (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::kernel),
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::kernel),
     ]
 }
 
-impl FloatingpointTransposeOp {
+impl FloatingpointTranspose {
     pub fn kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -388,14 +388,14 @@ impl FloatingpointTransposeOp {
 }
 
 modelled_kernel! {
-    PlacementInverse::inverse, FloatingpointInverseOp,
+    PlacementInverse::inverse, FloatingpointInverse,
     [
         // (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::kernel),
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::kernel),
     ]
 }
 
-impl FloatingpointInverseOp {
+impl FloatingpointInverse {
     pub fn kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -410,7 +410,7 @@ impl FloatingpointInverseOp {
     }
 }
 
-impl LoadOp {
+impl Load {
     pub fn float_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
@@ -428,7 +428,7 @@ impl LoadOp {
     }
 }
 
-impl SaveOp {
+impl Save {
     pub fn float_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -445,7 +445,7 @@ impl SaveOp {
     }
 }
 
-impl ShapeOp {
+impl Shape {
     pub(crate) fn float_kernel<S: Session, HostFloatT, HostShapeT>(
         sess: &S,
         plc: &HostPlacement,
@@ -473,7 +473,7 @@ impl ConstantOp {
     }
 }
 
-impl InputOp {
+impl Input {
     pub fn float_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
@@ -487,7 +487,7 @@ impl InputOp {
     }
 }
 
-impl OutputOp {
+impl Output {
     pub fn float_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,

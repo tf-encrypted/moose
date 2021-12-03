@@ -84,7 +84,7 @@ where
     }
 }
 
-impl InputOp {
+impl Input {
     pub(crate) fn aestensor<S: Session, Fixed128AesTensorT>(
         sess: &S,
         plc: &HostPlacement,
@@ -165,7 +165,7 @@ impl InputOp {
 }
 
 modelled_kernel! {
-    PlacementDecrypt::decrypt, AesDecryptOp,
+    PlacementDecrypt::decrypt, AesDecrypt,
     [
         (HostPlacement, (AesKey, AesTensor) -> Tensor => [hybrid] Self::host_kernel),
         (HostPlacement, (HostAesKey, AesTensor) -> Tensor => [hybrid] Self::host_key_kernel),
@@ -178,7 +178,7 @@ modelled_kernel! {
     ]
 }
 
-impl AesDecryptOp {
+impl AesDecrypt {
     pub(crate) fn host_kernel<S: Session, HostAesKeyT, ReplicatedAesKeyT, AesTensorT>(
         sess: &S,
         plc: &HostPlacement,

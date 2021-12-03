@@ -1,18 +1,18 @@
-use crate::computation::{KnownType, Placed, RepEqualOp, ReplicatedPlacement};
+use crate::computation::{KnownType, Placed, RepEqual, ReplicatedPlacement};
 use crate::error::Result;
 use crate::kernels::*;
 use crate::replicated::{ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor};
 use crate::{Const, Ring};
 
 modelled_kernel! {
-    PlacementEqual::equal, RepEqualOp,
+    PlacementEqual::equal, RepEqual,
     [
         (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
     ]
 }
 
-impl RepEqualOp {
+impl RepEqual {
     fn rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,

@@ -112,8 +112,6 @@ fn unsugar(player: Expr, context: Ident, expr: &'_ mut Expr) {
 pub fn short_name_derive(input: TokenStream) -> TokenStream {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let name = &ast.ident;
-    // Note, we only need to truncate the name by the charaters to get rid of the `Op` suffix.
-    // If we refactor to not have that suffix anymore we can just use `stringify!(#name)` inside `quote!` below.
     let mut ident_string = name.to_string();
     if ident_string.ends_with("Op") {
         ident_string.truncate(ident_string.len() - 2);
@@ -146,7 +144,7 @@ pub fn to_textual_derive(input: TokenStream) -> TokenStream {
         Data::Struct(ref data) => match data.fields {
             Fields::Named(ref fields) => {
                 // Building the format string in an old fashion way
-                let mut format_string = String::from("{op}");
+                let mut format_string = String::from("{}");
                 let mut has_attributes = false;
                 for item in fields.named.iter() {
                     match item.ident.as_ref().map(|i| i.to_string()) {

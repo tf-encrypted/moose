@@ -24,7 +24,7 @@ fn lower_op(op: &Operation) -> Operation {
     match (&op.placement, &op.kind) {
         (Placement::Host(_), Operator::AtLeast2D(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostAtLeast2DOp {
+            kind: HostAtLeast2D {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 to_column_vector: i.to_column_vector,
             }
@@ -34,7 +34,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Mean(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostMeanOp {
+            kind: HostMean {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 axis: i.axis,
             }
@@ -44,7 +44,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Sum(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostSumOp {
+            kind: HostSum {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 axis: i.axis,
             }
@@ -54,7 +54,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Concat(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostConcatOp {
+            kind: HostConcat {
                 sig: Signature::variadic(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 axis: i.axis,
             }
@@ -64,7 +64,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Add(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostAddOp {
+            kind: HostAdd {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -77,7 +77,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Sub(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostSubOp {
+            kind: HostSub {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -90,7 +90,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Mul(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostMulOp {
+            kind: HostMul {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -103,7 +103,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Dot(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostDotOp {
+            kind: HostDot {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -116,7 +116,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Div(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostDivOp {
+            kind: HostDiv {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -129,7 +129,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::ExpandDims(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostExpandDimsOp {
+            kind: HostExpandDims {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 axis: i.axis.clone(),
             }
@@ -139,7 +139,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::RingFixedpointEncode(ref i)) => Operation {
             name: op.name.clone(),
-            kind: RingFixedpointEncodeOp {
+            kind: RingFixedpointEncode {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 scaling_base: i.scaling_base,
                 scaling_exp: i.scaling_exp,
@@ -150,7 +150,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::RingFixedpointDecode(ref i)) => Operation {
             name: op.name.clone(),
-            kind: RingFixedpointDecodeOp {
+            kind: RingFixedpointDecode {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 scaling_base: i.scaling_base,
                 scaling_exp: i.scaling_exp,
@@ -161,7 +161,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Shape(ref i)) => Operation {
             name: op.name.clone(),
-            kind: ShapeOp {
+            kind: crate::computation::Shape {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
             }
             .into(),
@@ -170,7 +170,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Slice(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostSliceOp {
+            kind: HostSlice {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 slice: i.slice.clone(),
             }
@@ -180,7 +180,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Ones(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostOnesOp {
+            kind: HostOnes {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
             }
             .into(),
@@ -189,7 +189,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Identity(ref i)) => Operation {
             name: op.name.clone(),
-            kind: IdentityOp {
+            kind: Identity {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
             }
             .into(),
@@ -198,7 +198,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Transpose(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostTransposeOp {
+            kind: HostTranspose {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
             }
             .into(),
@@ -207,7 +207,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Inverse(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostInverseOp {
+            kind: HostInverse {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
             }
             .into(),
@@ -216,7 +216,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Load(ref i)) => Operation {
             name: op.name.clone(),
-            kind: LoadOp {
+            kind: Load {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -229,7 +229,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Save(ref i)) => Operation {
             name: op.name.clone(),
-            kind: SaveOp {
+            kind: Save {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -242,7 +242,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Send(ref i)) => Operation {
             name: op.name.clone(),
-            kind: SendOp {
+            kind: Send {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 rendezvous_key: i.rendezvous_key.clone(),
                 receiver: i.receiver.clone(),
@@ -253,7 +253,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Receive(ref i)) => Operation {
             name: op.name.clone(),
-            kind: ReceiveOp {
+            kind: Receive {
                 sig: Signature::nullary(lower_ty(i.sig.ret())),
                 rendezvous_key: i.rendezvous_key.clone(),
                 sender: i.sender.clone(),
@@ -264,7 +264,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Input(ref i)) => Operation {
             name: op.name.clone(),
-            kind: InputOp {
+            kind: Input {
                 sig: Signature::nullary(lower_ty(i.sig.ret())),
                 arg_name: i.arg_name.clone(),
             }
@@ -274,16 +274,16 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Output(ref i)) => Operation {
             name: op.name.clone(),
-            kind: OutputOp {
+            kind: Output {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
             }
             .into(),
             inputs: op.inputs.clone(),
             placement: op.placement.clone(),
         },
-        (Placement::Host(_), Operator::Constant(ref i)) => Operation {
+        (Placement::Host(_), Operator::ConstantOp(ref i)) => Operation {
             name: op.name.clone(),
-            kind: ConstantOp {
+            kind: crate::computation::ConstantOp {
                 sig: Signature::nullary(lower_ty(i.sig.ret())),
                 value: i.value.clone(),
             }

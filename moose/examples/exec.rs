@@ -6,7 +6,7 @@ use std::convert::TryFrom;
 fn main() {
     let key_op = Operation {
         name: "key".into(),
-        kind: PrimPrfKeyGenOp {
+        kind: PrimPrfKeyGen {
             sig: Signature::nullary(Ty::PrfKey),
         }
         .into(),
@@ -18,7 +18,7 @@ fn main() {
 
     let x_seed_op = Operation {
         name: "x_seed".into(),
-        kind: PrimDeriveSeedOp {
+        kind: PrimDeriveSeed {
             sig: Signature::unary(Ty::PrfKey, Ty::Seed),
             sync_key: SyncKey::try_from(vec![1, 2, 3]).unwrap(),
         }
@@ -44,7 +44,7 @@ fn main() {
 
     let x_op = Operation {
         name: "x".into(),
-        kind: RingSampleSeededOp {
+        kind: RingSampleSeeded {
             sig: Signature::binary(Ty::HostShape, Ty::Seed, Ty::HostRing64Tensor),
             max_value: None,
         }
@@ -59,7 +59,7 @@ fn main() {
     for i in 0..10_000_000 {
         operations.push(Operation {
             name: format!("y{}", i),
-            kind: RingMulOp {
+            kind: RingMul {
                 sig: Signature::binary(
                     Ty::HostRing64Tensor,
                     Ty::HostRing64Tensor,

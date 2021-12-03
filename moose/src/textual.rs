@@ -211,66 +211,66 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     // We get around this by nesting calls of `alt`, as recommended by the function docs:
     // https://docs.rs/nom/7.0.0/nom/branch/fn.alt.html
     let part1 = alt((
-        IdentityOp::from_textual,
-        LoadOp::from_textual,
-        SendOp::from_textual,
-        ReceiveOp::from_textual,
-        InputOp::from_textual,
-        OutputOp::from_textual,
+        Identity::from_textual,
+        Load::from_textual,
+        Send::from_textual,
+        Receive::from_textual,
+        Input::from_textual,
+        Output::from_textual,
         ConstantOp::from_textual,
-        ShapeOp::from_textual,
-        RingFillOp::from_textual,
-        SaveOp::from_textual,
-        HostAddOp::from_textual,
-        HostSubOp::from_textual,
-        HostMulOp::from_textual,
-        HostDivOp::from_textual,
-        HostDotOp::from_textual,
-        HostMeanOp::from_textual,
-        preceded(tag(HostExpandDimsOp::SHORT_NAME), cut(hostexpanddims)),
-        HostReshapeOp::from_textual,
-        HostAtLeast2DOp::from_textual,
-        HostSliceOp::from_textual,
+        Shape::from_textual,
+        RingFill::from_textual,
+        Save::from_textual,
+        HostAdd::from_textual,
+        HostSub::from_textual,
+        HostMul::from_textual,
+        HostDiv::from_textual,
+        HostDot::from_textual,
+        HostMean::from_textual,
+        preceded(tag(HostExpandDims::SHORT_NAME), cut(hostexpanddims)),
+        HostReshape::from_textual,
+        HostAtLeast2D::from_textual,
+        HostSlice::from_textual,
     ));
     let part2 = alt((
-        HostSumOp::from_textual,
-        HostOnesOp::from_textual,
-        HostConcatOp::from_textual,
-        HostTransposeOp::from_textual,
-        HostInverseOp::from_textual,
-        RingAddOp::from_textual,
-        RingSubOp::from_textual,
-        RingMulOp::from_textual,
-        RingDotOp::from_textual,
-        RingSumOp::from_textual,
-        RingSampleSeededOp::from_textual,
-        RingSampleOp::from_textual,
-        RingShlOp::from_textual,
-        RingShrOp::from_textual,
-        preceded(tag(PrimDeriveSeedOp::SHORT_NAME), cut(prim_derive_seed)),
-        PrimPrfKeyGenOp::from_textual,
-        RingFixedpointEncodeOp::from_textual,
-        RingFixedpointDecodeOp::from_textual,
-        RingFixedpointMeanOp::from_textual,
-        FixedpointEncodeOp::from_textual,
-        FixedpointDecodeOp::from_textual,
+        HostSum::from_textual,
+        HostOnes::from_textual,
+        HostConcat::from_textual,
+        HostTranspose::from_textual,
+        HostInverse::from_textual,
+        RingAdd::from_textual,
+        RingSub::from_textual,
+        RingMul::from_textual,
+        RingDot::from_textual,
+        RingSum::from_textual,
+        RingSampleSeeded::from_textual,
+        RingSample::from_textual,
+        RingShl::from_textual,
+        RingShr::from_textual,
+        preceded(tag(PrimDeriveSeed::SHORT_NAME), cut(prim_derive_seed)),
+        PrimPrfKeyGen::from_textual,
+        RingFixedpointEncode::from_textual,
+        RingFixedpointDecode::from_textual,
+        RingFixedpointMean::from_textual,
+        FixedpointEncode::from_textual,
+        FixedpointDecode::from_textual,
     ));
     let part3 = alt((
-        RingInjectOp::from_textual,
-        BitExtractOp::from_textual,
-        BitSampleSeededOp::from_textual,
-        BitSampleOp::from_textual,
-        BitXorOp::from_textual,
-        BitAndOp::from_textual,
-        HostSqrtOp::from_textual,
-        HostDiagOp::from_textual,
-        HostSqueezeOp::from_textual,
-        AddOp::from_textual,
-        SubOp::from_textual,
-        MulOp::from_textual,
-        DivOp::from_textual,
-        DotOp::from_textual,
-        MeanOp::from_textual,
+        RingInject::from_textual,
+        BitExtract::from_textual,
+        BitSampleSeeded::from_textual,
+        BitSample::from_textual,
+        BitXor::from_textual,
+        BitAnd::from_textual,
+        HostSqrt::from_textual,
+        HostDiag::from_textual,
+        HostSqueeze::from_textual,
+        Add::from_textual,
+        Sub::from_textual,
+        Mul::from_textual,
+        Div::from_textual,
+        Dot::from_textual,
+        Mean::from_textual,
     ));
     alt((part1, part2, part3))(input)
 }
@@ -281,7 +281,7 @@ fn hostexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, axis) = attributes_single("axis", vector(parse_int))(input)?;
     let (input, sig) = operator_signature(1)(input)?;
-    Ok((input, HostExpandDimsOp { sig, axis }.into()))
+    Ok((input, HostExpandDims { sig, axis }.into()))
 }
 
 /// Parses a PrimDeriveSeed operator.
@@ -295,7 +295,7 @@ fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             })?;
     let (input, opt_sig) = opt(operator_signature(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
-    Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
+    Ok((input, PrimDeriveSeed { sig, sync_key }.into()))
 }
 
 /// Parses list of arguments.
@@ -896,7 +896,7 @@ impl ToTextual for Operator {
             Receive(op) => op.to_textual(),
             Input(op) => op.to_textual(),
             Output(op) => op.to_textual(),
-            Constant(op) => op.to_textual(),
+            ConstantOp(op) => op.to_textual(),
             Shape(op) => op.to_textual(),
             AtLeast2D(op) => op.to_textual(),
             IndexAxis(op) => op.to_textual(),
@@ -1049,34 +1049,34 @@ macro_rules! op_with_axis_to_textual {
     };
 }
 
-op_with_axis_to_textual!(MeanOp);
-op_with_axis_to_textual!(SumOp);
-op_with_axis_to_textual!(HostMeanOp);
-op_with_axis_to_textual!(HostSumOp);
-op_with_axis_to_textual!(RingSumOp);
-op_with_axis_to_textual!(RepSumOp);
-op_with_axis_to_textual!(FixedpointSumOp);
-op_with_axis_to_textual!(FloatingpointMeanOp);
-op_with_axis_to_textual!(FloatingpointSumOp);
-op_with_axis_to_textual!(HostSqueezeOp);
+op_with_axis_to_textual!(Mean);
+op_with_axis_to_textual!(Sum);
+op_with_axis_to_textual!(HostMean);
+op_with_axis_to_textual!(HostSum);
+op_with_axis_to_textual!(RingSum);
+op_with_axis_to_textual!(RepSum);
+op_with_axis_to_textual!(FixedpointSum);
+op_with_axis_to_textual!(FloatingpointMean);
+op_with_axis_to_textual!(FloatingpointSum);
+op_with_axis_to_textual!(HostSqueeze);
 
-impl ToTextual for FixedpointMeanOp {
+impl ToTextual for FixedpointMean {
     fn to_textual(&self) -> String {
         match self {
-            FixedpointMeanOp { sig, axis: Some(a) } => {
+            FixedpointMean { sig, axis: Some(a) } => {
                 format!("FixedpointMean{{axis = {}}}: {}", a, sig.to_textual())
             }
-            FixedpointMeanOp { sig, axis: None } => {
+            FixedpointMean { sig, axis: None } => {
                 format!("FixedpointMean{{}}: {}", sig.to_textual())
             }
         }
     }
 }
 
-impl ToTextual for RingFixedpointMeanOp {
+impl ToTextual for RingFixedpointMean {
     fn to_textual(&self) -> String {
         match self {
-            RingFixedpointMeanOp {
+            RingFixedpointMean {
                 sig,
                 axis: Some(a),
                 scaling_base,
@@ -1090,7 +1090,7 @@ impl ToTextual for RingFixedpointMeanOp {
                     sig.to_textual()
                 )
             }
-            RingFixedpointMeanOp {
+            RingFixedpointMean {
                 sig,
                 axis: None,
                 scaling_base,
@@ -1105,10 +1105,10 @@ impl ToTextual for RingFixedpointMeanOp {
     }
 }
 
-impl ToTextual for RepFixedpointMeanOp {
+impl ToTextual for RepFixedpointMean {
     fn to_textual(&self) -> String {
         match self {
-            RepFixedpointMeanOp {
+            RepFixedpointMean {
                 sig,
                 axis: Some(a),
                 scaling_base,
@@ -1122,7 +1122,7 @@ impl ToTextual for RepFixedpointMeanOp {
                     sig.to_textual()
                 )
             }
-            RepFixedpointMeanOp {
+            RepFixedpointMean {
                 sig,
                 axis: None,
                 scaling_base,
@@ -1137,14 +1137,14 @@ impl ToTextual for RepFixedpointMeanOp {
     }
 }
 
-impl ToTextual for RingSampleOp {
+impl ToTextual for RingSample {
     fn to_textual(&self) -> String {
         match self {
-            RingSampleOp {
+            RingSample {
                 sig,
                 max_value: Some(a),
             } => format!("RingSample{{max_value = {}}}: {}", a, sig.to_textual()),
-            RingSampleOp {
+            RingSample {
                 sig,
                 max_value: None,
             } => format!("RingSample: {}", sig.to_textual()),
@@ -1152,10 +1152,10 @@ impl ToTextual for RingSampleOp {
     }
 }
 
-impl ToTextual for RingSampleSeededOp {
+impl ToTextual for RingSampleSeeded {
     fn to_textual(&self) -> String {
         match self {
-            RingSampleSeededOp {
+            RingSampleSeeded {
                 sig,
                 max_value: Some(a),
             } => format!(
@@ -1163,7 +1163,7 @@ impl ToTextual for RingSampleSeededOp {
                 a,
                 sig.to_textual()
             ),
-            RingSampleSeededOp {
+            RingSampleSeeded {
                 sig,
                 max_value: None,
             } => format!("RingSampleSeeded: {}", sig.to_textual()),
@@ -1607,7 +1607,7 @@ mod tests {
         assert_eq!(op.name, "x");
         assert_eq!(
             op.kind,
-            Operator::Constant(ConstantOp {
+            Operator::ConstantOp(ConstantOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
                 value: Constant::HostFloat32Tensor(vec![1.0].into())
             })
@@ -1625,7 +1625,7 @@ mod tests {
         )?;
         assert_eq!(
             op.kind,
-            Operator::Constant(ConstantOp {
+            Operator::ConstantOp(ConstantOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
                 value: Constant::HostFloat32Tensor(x)
             })
@@ -1641,7 +1641,7 @@ mod tests {
         assert_eq!(op.name, "z");
         assert_eq!(
             op.kind,
-            Operator::HostAdd(HostAddOp {
+            Operator::HostAdd(HostAdd {
                 sig: Signature::binary(
                     Ty::HostFloat32Tensor,
                     Ty::HostFloat32Tensor,
@@ -1655,7 +1655,7 @@ mod tests {
         assert_eq!(op.name, "z");
         assert_eq!(
             op.kind,
-            Operator::HostMul(HostMulOp {
+            Operator::HostMul(HostMul {
                 sig: Signature::binary(
                     Ty::HostFloat32Tensor,
                     Ty::HostFloat32Tensor,
@@ -1683,7 +1683,7 @@ mod tests {
         assert_eq!(op.name, "seed");
         assert_eq!(
             op.kind,
-            Operator::PrimDeriveSeed(PrimDeriveSeedOp {
+            Operator::PrimDeriveSeed(PrimDeriveSeed {
                 sig: Signature::nullary(Ty::Seed),
                 sync_key: SyncKey::try_from(vec![1, 2, 3])?
             })
@@ -1699,7 +1699,7 @@ mod tests {
         assert_eq!(op.name, "send");
         assert_eq!(
             op.kind,
-            Operator::Send(SendOp {
+            Operator::Send(Send {
                 sig: Signature::unary(Ty::HostFloat32Tensor, Ty::Unit),
                 rendezvous_key: "0123456789abcdef".try_into()?,
                 receiver: Role::from("bob")
@@ -1716,7 +1716,7 @@ mod tests {
         assert_eq!(op.name, "receive");
         assert_eq!(
             op.kind,
-            Operator::Receive(ReceiveOp {
+            Operator::Receive(Receive {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
                 rendezvous_key: "0123456789abcdef".try_into()?,
                 sender: Role::from("bob"),
@@ -1750,7 +1750,7 @@ mod tests {
         assert_eq!(op.name, "x10");
         assert_eq!(
             op.kind,
-            Operator::HostSlice(HostSliceOp {
+            Operator::HostSlice(HostSlice {
                 sig: Signature::unary(Ty::HostRing64Tensor, Ty::HostRing64Tensor),
                 slice: SliceInfo(vec![SliceInfoElem {
                     start: 1,
@@ -1770,7 +1770,7 @@ mod tests {
         )?;
         assert_eq!(
             op.kind,
-            Operator::RingFixedpointMean(RingFixedpointMeanOp {
+            Operator::RingFixedpointMean(RingFixedpointMean {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
                 axis: Some(0),
                 scaling_base: 3,
@@ -1783,7 +1783,7 @@ mod tests {
         )?;
         assert_eq!(
             op.kind,
-            Operator::RingFixedpointMean(RingFixedpointMeanOp {
+            Operator::RingFixedpointMean(RingFixedpointMean {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
                 axis: None,
                 scaling_base: 3,
@@ -1880,14 +1880,14 @@ mod tests {
         assert_eq!(comp.operations.len(), 3);
         assert_eq!(
             comp.operations[0].kind,
-            Operator::Constant(ConstantOp {
+            Operator::ConstantOp(ConstantOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
                 value: Constant::HostFloat32Tensor(vec![1.0].into())
             })
         );
         assert_eq!(
             comp.operations[1].kind,
-            Operator::Constant(ConstantOp {
+            Operator::ConstantOp(ConstantOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
                 value: Constant::HostFloat32Tensor(vec![2.0].into())
             })
@@ -1895,7 +1895,7 @@ mod tests {
         assert_eq!(comp.operations[2].name, "z");
         assert_eq!(
             comp.operations[2].kind,
-            Operator::HostAdd(HostAddOp {
+            Operator::HostAdd(HostAdd {
                 sig: Signature::binary(
                     Ty::HostFloat32Tensor,
                     Ty::HostFloat32Tensor,

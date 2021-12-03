@@ -7,7 +7,7 @@ use crate::symbolic::Symbolic;
 use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
-use ndarray::Slice;
+use ndarray::Slice as Sl;
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack, Scalar};
 use num_traits::Zero;
@@ -19,8 +19,7 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::num::Wrapping;
-use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
-use std::ops::{BitAnd, BitXor, Neg, Shl, Shr};
+use std::ops::{Add, Div, Mul, Sub, Neg}; // related to TODOs
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostString(pub String, pub HostPlacement);
@@ -137,7 +136,7 @@ impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, 
         let all_slices: Vec<ndarray::SliceInfoElem> = s
             .0
             .iter()
-            .map(|x| ndarray::SliceInfoElem::from(Slice::new(x.start, x.end, x.step.unwrap_or(1))))
+            .map(|x| ndarray::SliceInfoElem::from(Sl::new(x.start, x.end, x.step.unwrap_or(1))))
             .collect();
         ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::try_from(all_slices)
             .unwrap()
@@ -184,7 +183,7 @@ impl<S: Session> PlacementPlace<S, Unit> for HostPlacement {
     }
 }
 
-impl InputOp {
+impl Input {
     pub(crate) fn host_bitarray64<S: Session, HostBitTensorT>(
         sess: &S,
         plc: &HostPlacement,
@@ -226,14 +225,14 @@ impl InputOp {
 }
 
 modelled_kernel! {
-    PlacementMeanAsFixedpoint::mean_as_fixedpoint, RingFixedpointMeanOp{axis: Option<u32>, scaling_base: u64, scaling_exp: u32},
+    PlacementMeanAsFixedpoint::mean_as_fixedpoint, RingFixedpointMean{axis: Option<u32>, scaling_base: u64, scaling_exp: u32},
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
     ]
 }
 
-impl RingFixedpointMeanOp {
+impl RingFixedpointMean {
     fn ring64_kernel<S: RuntimeSession>(
         sess: &S,
         plc: &HostPlacement,
@@ -270,7 +269,7 @@ impl RingFixedpointMeanOp {
 }
 
 modelled_kernel! {
-    PlacementAdd::add, HostAddOp,
+    PlacementAdd::add, HostAdd,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
@@ -281,7 +280,7 @@ modelled_kernel! {
     ]
 }
 
-impl HostAddOp {
+impl HostAdd {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -296,7 +295,7 @@ impl HostAddOp {
 }
 
 modelled_kernel! {
-    PlacementSub::sub, HostSubOp,
+    PlacementSub::sub, HostSub,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
@@ -307,7 +306,7 @@ modelled_kernel! {
     ]
 }
 
-impl HostSubOp {
+impl HostSub {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -322,7 +321,7 @@ impl HostSubOp {
 }
 
 modelled_kernel! {
-    PlacementMul::mul, HostMulOp,
+    PlacementMul::mul, HostMul,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
@@ -333,7 +332,7 @@ modelled_kernel! {
     ]
 }
 
-impl HostMulOp {
+impl HostMul {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -348,7 +347,7 @@ impl HostMulOp {
 }
 
 modelled_kernel! {
-    PlacementDiv::div, HostDivOp,
+    PlacementDiv::div, HostDiv,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
@@ -361,7 +360,7 @@ modelled_kernel! {
     ]
 }
 
-impl HostDivOp {
+impl HostDiv {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -389,14 +388,14 @@ impl HostDivOp {
 }
 
 modelled_kernel! {
-    PlacementDot::dot, HostDotOp,
+    PlacementDot::dot, HostDot,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
     ]
 }
 
-impl HostDotOp {
+impl HostDot {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -410,7 +409,7 @@ impl HostDotOp {
     }
 }
 
-impl HostOnesOp {
+impl HostOnes {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar>(
         sess: &S,
         plc: &HostPlacement,
@@ -423,7 +422,7 @@ impl HostOnesOp {
     }
 }
 
-impl ShapeOp {
+impl Shape {
     pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -435,7 +434,7 @@ impl ShapeOp {
 }
 
 modelled_kernel! {
-    PlacementAtLeast2D::at_least_2d, HostAtLeast2DOp{to_column_vector: bool},
+    PlacementAtLeast2D::at_least_2d, HostAtLeast2D{to_column_vector: bool},
     [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
@@ -446,7 +445,7 @@ modelled_kernel! {
     ]
 }
 
-impl HostAtLeast2DOp {
+impl HostAtLeast2D {
     fn kernel<S: RuntimeSession, T: LinalgScalar>(
         sess: &S,
         plc: &HostPlacement,
@@ -461,10 +460,10 @@ impl HostAtLeast2DOp {
     }
 }
 
-unmodelled!(HostPlacement, attributes[slice: SliceInfo] (HostShape) -> HostShape, SliceOp);
+unmodelled!(HostPlacement, attributes[slice: SliceInfo] (HostShape) -> HostShape, Slice);
 
 kernel! {
-    SliceOp,
+    crate::computation::Slice,
     [
         (HostPlacement, (HostShape) -> HostShape => [hybrid] attributes[slice] Self::kernel),
         // (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [hybrid] attributes[slice] Self::kernel),
@@ -472,7 +471,7 @@ kernel! {
     ]
 }
 
-impl SliceOp {
+impl crate::computation::Slice {
     // TODO(lvorona): type inferring fails if I try to make it more generic and have one kernel work for all the types
     pub fn kernel<S: Session>(
         sess: &S,
@@ -489,7 +488,7 @@ impl SliceOp {
 }
 
 modelled_kernel! {
-    PlacementSlice::slice, HostSliceOp{slice: SliceInfo},
+    PlacementSlice::slice, HostSlice{slice: SliceInfo},
     [
         (HostPlacement, (HostShape) -> HostShape => [runtime] Self::shape_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
@@ -497,7 +496,7 @@ modelled_kernel! {
     ]
 }
 
-impl HostSliceOp {
+impl HostSlice {
     pub fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -528,7 +527,7 @@ impl HostSliceOp {
 }
 
 modelled_kernel! {
-    PlacementDiag::diag, HostDiagOp,
+    PlacementDiag::diag, HostDiag,
     [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
@@ -545,7 +544,7 @@ modelled_kernel! {
     ]
 }
 
-impl HostDiagOp {
+impl HostDiag {
     pub fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -584,7 +583,7 @@ impl HostDiagOp {
 }
 
 modelled_kernel! {
-    PlacementIndexAxis::index_axis, HostIndexAxisOp{axis: usize, index: usize},
+    PlacementIndexAxis::index_axis, HostIndexAxis{axis: usize, index: usize},
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
@@ -592,7 +591,7 @@ modelled_kernel! {
     ]
 }
 
-impl HostIndexAxisOp {
+impl HostIndexAxis {
     pub fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -621,11 +620,11 @@ impl HostIndexAxisOp {
     }
 }
 
-// TODO (Yann): HostIndexAxisOp should be merged with IndexAxisOp once we remove placement prefix fron op's name
-modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostFloat32Tensor) -> HostFloat32Tensor, IndexAxisOp);
-modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostFloat64Tensor) -> HostFloat64Tensor, IndexAxisOp);
+// TODO (Yann): HostIndexAxis should be merged with IndexAxis once we remove placement prefix fron op's name
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostFloat32Tensor) -> HostFloat32Tensor, IndexAxis);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostFloat64Tensor) -> HostFloat64Tensor, IndexAxis);
 
-impl IndexAxisOp {
+impl IndexAxis {
     pub fn host_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
@@ -642,7 +641,7 @@ impl IndexAxisOp {
     }
 }
 
-impl IndexOp {
+impl Index {
     pub(crate) fn host_kernel<S: Session, HostBitT, N>(
         sess: &S,
         plc: &HostPlacement,
@@ -657,13 +656,13 @@ impl IndexOp {
 }
 
 modelled_kernel! {
-    PlacementShlDim::shl_dim, HostShlDimOp{amount: usize, bit_length: usize},
+    PlacementShlDim::shl_dim, HostShlDim{amount: usize, bit_length: usize},
     [
         (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::bit_kernel),
     ]
 }
 
-impl HostShlDimOp {
+impl HostShlDim {
     pub fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -697,7 +696,7 @@ impl HostShlDimOp {
 }
 
 modelled_kernel! {
-    PlacementBitDec::bit_decompose, HostBitDecOp,
+    PlacementBitDec::bit_decompose, HostBitDec,
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
@@ -706,7 +705,7 @@ modelled_kernel! {
     ]
 }
 
-impl HostBitDecOp {
+impl HostBitDec {
     fn ring64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -925,14 +924,14 @@ where
 }
 
 modelled_kernel! {
-    PlacementMean::mean, HostMeanOp{axis: Option<u32>},
+    PlacementMean::mean, HostMean{axis: Option<u32>},
     [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
     ]
 }
 
-impl HostMeanOp {
+impl HostMean {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
@@ -969,14 +968,14 @@ impl HostMeanOp {
 }
 
 modelled_kernel! {
-    PlacementSqrt::sqrt, HostSqrtOp,
+    PlacementSqrt::sqrt, HostSqrt,
     [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
     ]
 }
 
-impl HostSqrtOp {
+impl HostSqrt {
     pub fn kernel<S: RuntimeSession, T: 'static + Float>(
         _sess: &S,
         plc: &HostPlacement,
@@ -991,13 +990,13 @@ impl HostSqrtOp {
 }
 
 modelled_kernel! {
-    PlacementSum::sum, HostSumOp{axis: Option<u32>}, [
+    PlacementSum::sum, HostSum{axis: Option<u32>}, [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
     ]
 }
 
-impl HostSumOp {
+impl HostSum {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -1012,7 +1011,7 @@ impl HostSumOp {
     }
 }
 
-impl AddNOp {
+impl AddN {
     pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1035,7 +1034,7 @@ impl AddNOp {
 }
 
 modelled_kernel! {
-    PlacementExpandDims::expand_dims, HostExpandDimsOp{axis: Vec<u32>}, [
+    PlacementExpandDims::expand_dims, HostExpandDims{axis: Vec<u32>}, [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::kernel),
@@ -1045,7 +1044,7 @@ modelled_kernel! {
     ]
 }
 
-impl HostExpandDimsOp {
+impl HostExpandDims {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -1061,7 +1060,7 @@ impl HostExpandDimsOp {
 }
 
 modelled_kernel! {
-    PlacementSqueeze::squeeze, HostSqueezeOp{axis: Option<u32>}, [
+    PlacementSqueeze::squeeze, HostSqueeze{axis: Option<u32>}, [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
@@ -1071,7 +1070,7 @@ modelled_kernel! {
     ]
 }
 
-impl HostSqueezeOp {
+impl HostSqueeze {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -1086,15 +1085,15 @@ impl HostSqueezeOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat32Tensor] -> HostFloat32Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat64Tensor] -> HostFloat64Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt8Tensor] -> HostInt8Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt16Tensor] -> HostInt16Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt32Tensor] -> HostInt32Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt64Tensor] -> HostInt64Tensor, HostConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat32Tensor] -> HostFloat32Tensor, HostConcat);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat64Tensor] -> HostFloat64Tensor, HostConcat);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt8Tensor] -> HostInt8Tensor, HostConcat);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt16Tensor] -> HostInt16Tensor, HostConcat);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt32Tensor] -> HostInt32Tensor, HostConcat);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt64Tensor] -> HostInt64Tensor, HostConcat);
 
 kernel! {
-    HostConcatOp, [
+    HostConcat, [
         (HostPlacement, vec[HostFloat32Tensor] -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
         (HostPlacement, vec[HostFloat64Tensor] -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
         (HostPlacement, vec[HostInt8Tensor] -> HostInt8Tensor => [runtime] attributes[axis] Self::kernel),
@@ -1104,7 +1103,7 @@ kernel! {
     ]
 }
 
-impl HostConcatOp {
+impl HostConcat {
     pub fn kernel<S: Session, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1123,7 +1122,7 @@ impl HostConcatOp {
 }
 
 modelled_kernel! {
-    PlacementTranspose::transpose, HostTransposeOp,
+    PlacementTranspose::transpose, HostTranspose,
     [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
@@ -1134,7 +1133,7 @@ modelled_kernel! {
     ]
 }
 
-impl HostTransposeOp {
+impl HostTranspose {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -1148,7 +1147,7 @@ impl HostTransposeOp {
 }
 
 modelled_kernel! {
-    PlacementInverse::inverse, HostInverseOp,
+    PlacementInverse::inverse, HostInverse,
     [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
@@ -1156,7 +1155,7 @@ modelled_kernel! {
 }
 
 #[cfg(feature = "blas")]
-impl HostInverseOp {
+impl HostInverse {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
         sess: &S,
         plc: &HostPlacement,
@@ -1170,7 +1169,7 @@ impl HostInverseOp {
 }
 
 #[cfg(not(feature = "blas"))]
-impl HostInverseOp {
+impl HostInverse {
     pub fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         _plc: &HostPlacement,
@@ -1207,14 +1206,14 @@ where
 }
 
 modelled_kernel! {
-    PlacementRingFixedpointEncode::fixedpoint_ring_encode, RingFixedpointEncodeOp{scaling_base: u64, scaling_exp: u32},
+    PlacementRingFixedpointEncode::fixedpoint_ring_encode, RingFixedpointEncode{scaling_base: u64, scaling_exp: u32},
     [
         (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] Self::float64_kernel),
         (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] Self::float32_kernel),
     ]
 }
 
-impl RingFixedpointEncodeOp {
+impl RingFixedpointEncode {
     fn float32_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1245,14 +1244,14 @@ impl RingFixedpointEncodeOp {
 }
 
 modelled_kernel! {
-    PlacementRingFixedpointDecode::fixedpoint_ring_decode, RingFixedpointDecodeOp{scaling_base: u64, scaling_exp: u32},
+    PlacementRingFixedpointDecode::fixedpoint_ring_decode, RingFixedpointDecode{scaling_base: u64, scaling_exp: u32},
     [
         (HostPlacement, (HostRing128Tensor) -> HostFloat64Tensor => [runtime] Self::float64_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostFloat32Tensor => [runtime] Self::float32_kernel),
     ]
 }
 
-impl RingFixedpointDecodeOp {
+impl RingFixedpointDecode {
     fn float32_kernel<S: RuntimeSession, ST, TT>(
         _sess: &S,
         _plc: &HostPlacement,
@@ -1278,14 +1277,14 @@ impl RingFixedpointDecodeOp {
 }
 
 modelled_kernel! {
-    PlacementSign::sign, SignOp,
+    PlacementSign::sign, Sign,
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
     ]
 }
 
-impl SignOp {
+impl Sign {
     fn ring64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1501,7 +1500,7 @@ impl HostBitTensor {
     }
 }
 
-impl ShapeOp {
+impl Shape {
     pub(crate) fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1512,7 +1511,7 @@ impl ShapeOp {
     }
 }
 
-impl HostReshapeOp {
+impl HostReshape {
     pub(crate) fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1526,7 +1525,7 @@ impl HostReshapeOp {
     }
 }
 
-impl HostReshapeOp {
+impl HostReshape {
     pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1543,9 +1542,9 @@ impl HostReshapeOp {
     }
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostBitTensor, FillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostBitTensor, Fill);
 
-impl FillOp {
+impl Fill {
     pub(crate) fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1558,16 +1557,16 @@ impl FillOp {
     }
 }
 
-modelled!(PlacementSampleUniform::sample_uniform, HostPlacement, (HostShape) -> HostBitTensor, BitSampleOp);
+modelled!(PlacementSampleUniform::sample_uniform, HostPlacement, (HostShape) -> HostBitTensor, BitSample);
 
 kernel! {
-    BitSampleOp,
+    BitSample,
     [
         (HostPlacement, (HostShape) -> HostBitTensor => [runtime] Self::kernel),
     ]
 }
 
-impl BitSampleOp {
+impl BitSample {
     fn kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1583,16 +1582,16 @@ impl BitSampleOp {
     }
 }
 
-modelled!(PlacementSampleUniformSeeded::sample_uniform_seeded, HostPlacement, (HostShape, Seed) -> HostBitTensor, BitSampleSeededOp);
+modelled!(PlacementSampleUniformSeeded::sample_uniform_seeded, HostPlacement, (HostShape, Seed) -> HostBitTensor, BitSampleSeeded);
 
 kernel! {
-    BitSampleSeededOp,
+    BitSampleSeeded,
     [
         (HostPlacement, (HostShape, Seed) -> HostBitTensor => [runtime] Self::kernel),
     ]
 }
 
-impl BitSampleSeededOp {
+impl BitSampleSeeded {
     fn kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1609,18 +1608,18 @@ impl BitSampleSeededOp {
     }
 }
 
-modelled!(PlacementXor::xor, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor, BitXorOp);
+modelled!(PlacementXor::xor, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor, BitXor);
 modelled_alias!(PlacementAdd::add, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => PlacementXor::xor); // add = xor in Z2
 modelled_alias!(PlacementSub::sub, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => PlacementXor::xor); // sub = xor in Z2
 
 kernel! {
-    BitXorOp,
+    crate::computation::BitXor,
     [
         (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => [runtime] Self::kernel),
     ]
 }
 
-impl BitXorOp {
+impl crate::computation::BitXor {
     fn kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1631,16 +1630,16 @@ impl BitXorOp {
     }
 }
 
-modelled!(PlacementNeg::neg, HostPlacement, (HostBitTensor) -> HostBitTensor, BitNegOp);
+modelled!(PlacementNeg::neg, HostPlacement, (HostBitTensor) -> HostBitTensor, BitNeg);
 
 kernel! {
-    BitNegOp,
+    BitNeg,
     [
         (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::kernel),
     ]
 }
 
-impl BitNegOp {
+impl BitNeg {
     fn kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1650,14 +1649,14 @@ impl BitNegOp {
     }
 }
 
-modelled!(PlacementAnd::and, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor, BitAndOp);
-modelled!(PlacementAnd::and, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, BitAndOp);
-modelled!(PlacementAnd::and, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, BitAndOp);
+modelled!(PlacementAnd::and, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor, BitAnd);
+modelled!(PlacementAnd::and, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, BitAnd);
+modelled!(PlacementAnd::and, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, BitAnd);
 
 modelled_alias!(PlacementMul::mul, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => PlacementAnd::and); // mul = and in Z2
 
 kernel! {
-    BitAndOp,
+    BitAnd,
     [
         (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => [runtime] Self::bit_kernel),
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring_kernel),
@@ -1665,7 +1664,7 @@ kernel! {
     ]
 }
 
-impl BitAndOp {
+impl BitAnd {
     fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1683,7 +1682,7 @@ impl BitAndOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         Wrapping<T>: Clone,
-        Wrapping<T>: BitAnd<Wrapping<T>, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::BitAnd<Wrapping<T>, Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(x.0 & y.0, plc.clone()))
     }
@@ -1825,7 +1824,7 @@ impl From<HostBitTensor> for ArrayD<u8> {
     }
 }
 
-impl BitXor for HostBitTensor {
+impl std::ops::BitXor for HostBitTensor {
     type Output = HostBitTensor;
     fn bitxor(self, other: Self) -> Self::Output {
         assert_eq!(self.1, other.1);
@@ -1833,7 +1832,7 @@ impl BitXor for HostBitTensor {
     }
 }
 
-impl BitAnd for HostBitTensor {
+impl std::ops::BitAnd for HostBitTensor {
     type Output = HostBitTensor;
     fn bitand(self, other: Self) -> Self::Output {
         assert_eq!(self.1, other.1);
@@ -1841,18 +1840,18 @@ impl BitAnd for HostBitTensor {
     }
 }
 
-modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (HostRing64Tensor) -> HostBitTensor, BitExtractOp);
-modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (HostRing128Tensor) -> HostBitTensor, BitExtractOp);
+modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (HostRing64Tensor) -> HostBitTensor, BitExtract);
+modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (HostRing128Tensor) -> HostBitTensor, BitExtract);
 
 kernel! {
-    BitExtractOp,
+    BitExtract,
     [
         (HostPlacement, (HostRing64Tensor) -> HostBitTensor => [runtime] attributes[bit_idx] Self::kernel64),
         (HostPlacement, (HostRing128Tensor) -> HostBitTensor => [runtime] attributes[bit_idx] Self::kernel128),
     ]
 }
 
-impl BitExtractOp {
+impl BitExtract {
     fn kernel64<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1877,7 +1876,7 @@ impl BitExtractOp {
     }
 }
 
-impl RingInjectOp {
+impl RingInject {
     pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1886,7 +1885,7 @@ impl RingInjectOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         T: From<u8>,
-        Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Shl<usize, Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(
             x.0.mapv(|ai| Wrapping(T::from(ai)) << bit_idx),
@@ -2108,18 +2107,18 @@ impl<T> AbstractHostRingTensor<T> {
     }
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing64Tensor, RingFillOp);
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing128Tensor, RingFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing64Tensor, RingFill);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing128Tensor, RingFill);
 
 kernel! {
-    RingFillOp,
+    RingFill,
     [
         (HostPlacement, (HostShape) -> HostRing64Tensor => [runtime] attributes[value: Ring64] Self::ring64_kernel),
         (HostPlacement, (HostShape) -> HostRing128Tensor => [runtime] attributes[value: Ring128] Self::ring128_kernel),
     ]
 }
 
-impl RingFillOp {
+impl RingFill {
     fn ring64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -2143,7 +2142,7 @@ impl RingFillOp {
     }
 }
 
-impl ShapeOp {
+impl Shape {
     pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -2154,7 +2153,7 @@ impl ShapeOp {
     }
 }
 
-impl HostReshapeOp {
+impl HostReshape {
     pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -2168,18 +2167,18 @@ impl HostReshapeOp {
     }
 }
 
-modelled!(PlacementAdd::add, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingAddOp);
-modelled!(PlacementAdd::add, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingAdd);
+modelled!(PlacementAdd::add, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingAdd);
 
 kernel! {
-    RingAddOp,
+    RingAdd,
     [
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
     ]
 }
 
-impl RingAddOp {
+impl RingAdd {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -2194,18 +2193,18 @@ impl RingAddOp {
     }
 }
 
-modelled!(PlacementSub::sub, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingSubOp);
-modelled!(PlacementSub::sub, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingSub);
+modelled!(PlacementSub::sub, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingSub);
 
 kernel! {
-    RingSubOp,
+    RingSub,
     [
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
     ]
 }
 
-impl RingSubOp {
+impl RingSub {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -2220,18 +2219,18 @@ impl RingSubOp {
     }
 }
 
-modelled!(PlacementNeg::neg, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, RingNegOp);
-modelled!(PlacementNeg::neg, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, RingNegOp);
+modelled!(PlacementNeg::neg, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, RingNeg);
+modelled!(PlacementNeg::neg, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, RingNeg);
 
 kernel! {
-    RingNegOp,
+    RingNeg,
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
     ]
 }
 
-impl RingNegOp {
+impl RingNeg {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -2239,24 +2238,24 @@ impl RingNegOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         Wrapping<T>: Clone,
-        Wrapping<T>: Neg<Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Neg<Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(x.0.neg(), plc.clone()))
     }
 }
 
-modelled!(PlacementMul::mul, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingMulOp);
-modelled!(PlacementMul::mul, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingMul);
+modelled!(PlacementMul::mul, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingMul);
 
 kernel! {
-    RingMulOp,
+    RingMul,
     [
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
     ]
 }
 
-impl RingMulOp {
+impl RingMul {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -2271,18 +2270,18 @@ impl RingMulOp {
     }
 }
 
-modelled!(PlacementDot::dot, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingDotOp);
-modelled!(PlacementDot::dot, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingDotOp);
+modelled!(PlacementDot::dot, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingDot);
+modelled!(PlacementDot::dot, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingDot);
 
 kernel! {
-    RingDotOp,
+    RingDot,
     [
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
     ]
 }
 
-impl RingDotOp {
+impl RingDot {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -2299,18 +2298,18 @@ impl RingDotOp {
     }
 }
 
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostRing64Tensor) -> HostRing64Tensor, RingSumOp);
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostRing128Tensor) -> HostRing128Tensor, RingSumOp);
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostRing64Tensor) -> HostRing64Tensor, RingSum);
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostRing128Tensor) -> HostRing128Tensor, RingSum);
 
 kernel! {
-    RingSumOp,
+    RingSum,
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] attributes[axis] Self::kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] attributes[axis] Self::kernel),
     ]
 }
 
-impl RingSumOp {
+impl RingSum {
     fn kernel<S: RuntimeSession, T>(
         sess: &S,
         plc: &HostPlacement,
@@ -2328,18 +2327,18 @@ impl RingSumOp {
     }
 }
 
-modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (HostRing64Tensor) -> HostRing64Tensor, RingShlOp);
-modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (HostRing128Tensor) -> HostRing128Tensor, RingShlOp);
+modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (HostRing64Tensor) -> HostRing64Tensor, RingShl);
+modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (HostRing128Tensor) -> HostRing128Tensor, RingShl);
 
 kernel! {
-    RingShlOp,
+    RingShl,
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] attributes[amount] Self::kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] attributes[amount] Self::kernel),
     ]
 }
 
-impl RingShlOp {
+impl RingShl {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -2348,24 +2347,24 @@ impl RingShlOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         Wrapping<T>: Clone,
-        Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Shl<usize, Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(x.0 << amount, plc.clone()))
     }
 }
 
-modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (HostRing64Tensor) -> HostRing64Tensor, RingShrOp);
-modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (HostRing128Tensor) -> HostRing128Tensor, RingShrOp);
+modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (HostRing64Tensor) -> HostRing64Tensor, RingShr);
+modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (HostRing128Tensor) -> HostRing128Tensor, RingShr);
 
 kernel! {
-    RingShrOp,
+    RingShr,
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] attributes[amount] Self::kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] attributes[amount] Self::kernel),
     ]
 }
 
-impl RingShrOp {
+impl RingShr {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -2374,17 +2373,17 @@ impl RingShrOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         Wrapping<T>: Clone,
-        Wrapping<T>: Shr<usize, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Shr<usize, Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(x.0 >> amount, plc.clone()))
     }
 }
 
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape) -> HostRing64Tensor, RingSampleOp);
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape) -> HostRing128Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape) -> HostRing64Tensor, RingSample);
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape) -> HostRing128Tensor, RingSample);
 
 kernel! {
-    RingSampleOp,
+    RingSample,
     [
         (HostPlacement, (HostShape) -> HostRing64Tensor => [runtime] custom |op| {
             match op.max_value {
@@ -2415,7 +2414,7 @@ kernel! {
     ]
 }
 
-impl RingSampleOp {
+impl RingSample {
     fn kernel_uniform_u64<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -2475,11 +2474,11 @@ impl RingSampleOp {
     }
 }
 
-modelled!(PlacementSampleSeeded::sample_seeded, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing64Tensor, RingSampleSeededOp);
-modelled!(PlacementSampleSeeded::sample_seeded, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing128Tensor, RingSampleSeededOp);
+modelled!(PlacementSampleSeeded::sample_seeded, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing64Tensor, RingSampleSeeded);
+modelled!(PlacementSampleSeeded::sample_seeded, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing128Tensor, RingSampleSeeded);
 
 kernel! {
-    RingSampleSeededOp,
+    RingSampleSeeded,
     [
         (HostPlacement, (HostShape, Seed) -> HostRing64Tensor => [runtime] custom |op| {
             match op.max_value {
@@ -2510,7 +2509,7 @@ kernel! {
     ]
 }
 
-impl RingSampleSeededOp {
+impl RingSampleSeeded {
     fn kernel_uniform_u64<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -2574,10 +2573,10 @@ impl RingSampleSeededOp {
     }
 }
 
-modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, LessThanOp);
+modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, LessThan);
+modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, LessThan);
 
-impl LessThanOp {
+impl LessThan {
     pub(crate) fn host_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &HostPlacement,
@@ -2593,10 +2592,10 @@ impl LessThanOp {
     }
 }
 
-modelled!(PlacementGreaterThan::greater_than, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, GreaterThan);
+modelled!(PlacementGreaterThan::greater_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, GreaterThan);
 
-impl GreaterThanOp {
+impl GreaterThan {
     pub(crate) fn host_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &HostPlacement,
@@ -2914,10 +2913,10 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> Shl<usize> for AbstractHostRingTensor<T>
+impl<T> std::ops::Shl<usize> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
-    Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
+    Wrapping<T>: std::ops::Shl<usize, Output = Wrapping<T>>,
 {
     type Output = AbstractHostRingTensor<T>;
     fn shl(self, other: usize) -> Self::Output {
@@ -2926,10 +2925,10 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> Shr<usize> for AbstractHostRingTensor<T>
+impl<T> std::ops::Shr<usize> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
-    Wrapping<T>: Shr<usize, Output = Wrapping<T>>,
+    Wrapping<T>: std::ops::Shr<usize, Output = Wrapping<T>>,
 {
     type Output = AbstractHostRingTensor<T>;
     fn shr(self, other: usize) -> Self::Output {
@@ -2938,10 +2937,10 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> BitAnd<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
+impl<T> std::ops::BitAnd<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
-    Wrapping<T>: BitAnd<Wrapping<T>, Output = Wrapping<T>>,
+    Wrapping<T>: std::ops::BitAnd<Wrapping<T>, Output = Wrapping<T>>,
 {
     type Output = AbstractHostRingTensor<T>;
     fn bitand(self, other: AbstractHostRingTensor<T>) -> Self::Output {

@@ -1,6 +1,6 @@
 use super::*;
 
-impl FixedpointDivOp {
+impl FixedpointDiv {
     pub(crate) fn rep_rep_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,

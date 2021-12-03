@@ -6,7 +6,7 @@ use num_traits::{FromPrimitive, One, ToPrimitive};
 use super::*;
 use lazy_static::lazy_static;
 
-impl Pow2Op {
+impl Pow2 {
     pub(crate) fn rep_rep_kernel<
         S: Session,
         RepRingT,
@@ -246,7 +246,7 @@ where
     }
 }
 
-impl ExpOp {
+impl Exp {
     pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, MirFixedT>(
         sess: &S,
         rep: &ReplicatedPlacement,

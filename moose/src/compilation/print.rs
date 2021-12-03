@@ -1,4 +1,4 @@
-use crate::computation::{Computation, Operation, Operator, ReceiveOp};
+use crate::computation::{Computation, Operation, Operator, Receive};
 use crate::textual::ToTextual;
 use petgraph::dot::Config::{EdgeNoLabel, NodeNoLabel};
 use petgraph::dot::Dot;
@@ -38,7 +38,7 @@ pub fn print_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
                 match (&source.kind, &target.kind) {
                     (
                         Operator::Send(_),
-                        Operator::Receive(ReceiveOp {
+                        Operator::Receive(Receive {
                             rendezvous_key: key,
                             ..
                         }),

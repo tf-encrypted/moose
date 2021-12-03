@@ -1,6 +1,6 @@
 use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
-use crate::execution::{Identity, SyncNetworkingImpl, SyncStorageImpl};
+use crate::execution::{SyncNetworkingImpl, SyncStorageImpl};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::*;
@@ -9,6 +9,7 @@ use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::*;
 use crate::storage::LocalSyncStorage;
 use crate::{computation::*, for_all_values};
+use paste::paste;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::rc::Rc;
@@ -38,7 +39,7 @@ pub trait Session {
 pub trait RuntimeSession: Session {
     fn session_id(&self) -> &SessionId;
     fn find_argument(&self, key: &str) -> Option<Value>;
-    fn find_role_assignment(&self, role: &Role) -> Result<&Identity>;
+    fn find_role_assignment(&self, role: &Role) -> Result<&crate::execution::Identity>;
 }
 
 /// Session object for synchronous/eager execution (in new framework).
@@ -46,7 +47,7 @@ pub struct SyncSession {
     session_id: SessionId,
     replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<ReplicatedSetup>>>,
     arguments: HashMap<String, Value>,
-    role_assignments: HashMap<Role, Identity>,
+    role_assignments: HashMap<Role, crate::execution::Identity>,
     storage: SyncStorageImpl,
     networking: SyncNetworkingImpl,
 }
@@ -82,7 +83,7 @@ impl SyncSession {
     pub fn from_storage(
         sid: SessionId,
         arguments: HashMap<String, Value>,
-        role_assignments: HashMap<Role, Identity>,
+        role_assignments: HashMap<Role, crate::execution::Identity>,
         storage: SyncStorageImpl,
     ) -> Self {
         SyncSession {
@@ -98,7 +99,7 @@ impl SyncSession {
     pub fn from_networking(
         sid: SessionId,
         arguments: HashMap<String, Value>,
-        role_assignments: HashMap<Role, Identity>,
+        role_assignments: HashMap<Role, crate::execution::Identity>,
         networking: SyncNetworkingImpl,
     ) -> Self {
         SyncSession {
@@ -112,7 +113,7 @@ impl SyncSession {
     }
 
     pub fn from_roles<'a>(roles: impl Iterator<Item = &'a Role>) -> Self {
-        let own_identity = Identity::from("tester");
+        let own_identity = crate::execution::Identity::from("tester");
         let role_assignment = roles
             .map(|role| (role.clone(), own_identity.clone()))
             .collect();
@@ -191,7 +192,7 @@ impl Session for SyncSession {
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AesDecrypt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Constant(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            ConstantOp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Input(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Output(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -331,7 +332,7 @@ impl RuntimeSession for SyncSession {
         self.arguments.get(key).cloned()
     }
 
-    fn find_role_assignment(&self, role: &Role) -> Result<&Identity> {
+    fn find_role_assignment(&self, role: &Role) -> Result<&crate::execution::Identity> {
         self.role_assignments
             .get(role)
             .ok_or_else(|| Error::Networking(format!("Missing role assignemnt for {}", role)))
@@ -343,9 +344,9 @@ impl RuntimeSession for SyncSession {
 pub struct AsyncSession {
     pub session_id: SessionId,
     pub arguments: Arc<HashMap<String, Value>>,
-    pub role_assignments: Arc<HashMap<Role, Identity>>,
-    pub networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
-    pub storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
+    pub role_assignments: Arc<HashMap<Role, crate::execution::Identity>>,
+    pub networking: Arc<dyn core::marker::Send + Sync + crate::networking::AsyncNetworking>,
+    pub storage: Arc<dyn core::marker::Send + Sync + crate::storage::AsyncStorage>,
     pub host: Arc<Placement>,
     // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
     pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
@@ -415,9 +416,9 @@ impl AsyncSession {
     pub fn new(
         session_id: SessionId,
         arguments: HashMap<String, Value>,
-        role_assignments: HashMap<Role, Identity>,
-        networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
-        storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
+        role_assignments: HashMap<Role, crate::execution::Identity>,
+        networking: Arc<dyn core::marker::Send + Sync + crate::networking::AsyncNetworking>,
+        storage: Arc<dyn core::marker::Send + Sync + crate::storage::AsyncStorage>,
         host: Arc<Placement>,
     ) -> Self {
         AsyncSession {
@@ -433,7 +434,7 @@ impl AsyncSession {
 
     fn storage_load(
         &self,
-        op: &LoadOp,
+        op: &Load,
         _plc: &HostPlacement,
         operands: Vec<AsyncValue>,
     ) -> Result<AsyncValue> {
@@ -480,7 +481,7 @@ impl AsyncSession {
 
     fn storage_save(
         &self,
-        _op: &SaveOp,
+        _op: &Save,
         plc: &HostPlacement,
         operands: Vec<AsyncValue>,
     ) -> Result<AsyncValue> {
@@ -521,7 +522,7 @@ impl AsyncSession {
 
     fn networking_receive(
         &self,
-        op: &ReceiveOp,
+        op: &Receive,
         _plc: &HostPlacement,
         operands: Vec<AsyncValue>,
     ) -> Result<AsyncValue> {
@@ -551,7 +552,7 @@ impl AsyncSession {
 
     fn networking_send(
         &self,
-        op: &SendOp,
+        op: &Send,
         plc: &HostPlacement,
         operands: Vec<AsyncValue>,
     ) -> Result<AsyncValue> {
@@ -665,7 +666,7 @@ impl Session for AsyncSession {
             AdtReveal(op) => DispatchKernel::compile(&op, plc)?,
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?,
             PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)?,
-            Constant(op) => DispatchKernel::compile(&op, plc)?,
+            ConstantOp(op) => DispatchKernel::compile(&op, plc)?,
             HostOnes(op) => DispatchKernel::compile(&op, plc)?,
             Input(op) => DispatchKernel::compile(&op, plc)?,
             Output(op) => DispatchKernel::compile(&op, plc)?,
@@ -759,7 +760,7 @@ impl RuntimeSession for AsyncSession {
         self.arguments.get(key).cloned()
     }
 
-    fn find_role_assignment(&self, role: &Role) -> Result<&Identity> {
+    fn find_role_assignment(&self, role: &Role) -> Result<&crate::execution::Identity> {
         self.role_assignments
             .get(role)
             .ok_or_else(|| Error::Networking(format!("Missing role assignemnt for {}", role)))
@@ -771,7 +772,7 @@ pub trait DispatchKernel<S: Session> {
     fn compile(
         &self,
         plc: &Placement,
-    ) -> Result<Box<dyn Fn(&S, Vec<S::Value>) -> Result<S::Value> + Send>>;
+    ) -> Result<Box<dyn Fn(&S, Vec<S::Value>) -> Result<S::Value> + core::marker::Send>>;
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
@@ -780,27 +781,27 @@ pub trait DispatchKernel<S: Session> {
 
 pub trait NullaryKernel<S: Session, P, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P) -> Result<Y> + Send>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P) -> Result<Y> + core::marker::Send>>;
 }
 
 pub trait UnaryKernel<S: Session, P, X0, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0) -> Result<Y> + core::marker::Send>>;
 }
 
 pub trait BinaryKernel<S: Session, P, X0, X1, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + core::marker::Send>>;
 }
 
 pub trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + core::marker::Send>>;
 }
 
 pub trait VariadicKernel<S: Session, P, XS, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send>>;
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + core::marker::Send>>;
 }
 
 pub(crate) trait NullaryKernelCheck<S: Session, P, Y>
@@ -1000,15 +1001,15 @@ where
     }
 }
 
-modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostFloat32Tensor, HostOnesOp);
-modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostFloat64Tensor, HostOnesOp);
-modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostInt8Tensor, HostOnesOp);
-modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostInt16Tensor, HostOnesOp);
-modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostInt32Tensor, HostOnesOp);
-modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostInt64Tensor, HostOnesOp);
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostFloat32Tensor, HostOnes);
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostFloat64Tensor, HostOnes);
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostInt8Tensor, HostOnes);
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostInt16Tensor, HostOnes);
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostInt32Tensor, HostOnes);
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostInt64Tensor, HostOnes);
 
 kernel! {
-    HostOnesOp, [
+    HostOnes, [
         (HostPlacement, (HostShape) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostShape) -> HostFloat64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostShape) -> HostInt8Tensor => [runtime] Self::kernel),
@@ -1306,12 +1307,12 @@ impl ConstantOp {
 
 for_all_values! {( $($value:ty),* ) => (
     $(
-        modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: RendezvousKey, receiver: Role] ($value) -> Unit, SendOp);
+        modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: RendezvousKey, receiver: Role] ($value) -> Unit, Send);
     )*
 )}
 
 kernel! {
-    SendOp, [
+    Send, [
         (HostPlacement, (HostString) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
         (HostPlacement, (Unit) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
         (HostPlacement, (HostShape) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
@@ -1335,7 +1336,7 @@ kernel! {
     ]
 }
 
-impl SendOp {
+impl Send {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         _plc: &HostPlacement,
@@ -1355,12 +1356,12 @@ impl SendOp {
 
 for_all_values! {( $($value:ty),* ) => (
     $(
-        modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: RendezvousKey, sender: Role] () -> $value, ReceiveOp);
+        modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: RendezvousKey, sender: Role] () -> $value, Receive);
     )*
 )}
 
 kernel! {
-    ReceiveOp, [
+    Receive, [
         (HostPlacement, () -> HostString => [runtime] attributes[rendezvous_key, sender] Self::kernel),
         (HostPlacement, () -> Unit => [runtime] attributes[rendezvous_key, sender] Self::missing_kernel),
         (HostPlacement, () -> HostShape => [runtime] attributes[rendezvous_key, sender] Self::kernel),
@@ -1385,7 +1386,7 @@ kernel! {
     ]
 }
 
-impl ReceiveOp {
+impl Receive {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         _plc: &HostPlacement,
@@ -1420,13 +1421,15 @@ impl ReceiveOp {
 }
 
 for_all_values! {( $($value:ty),* ) => (
-    $(
-        modelled!(PlacementIdentity::identity, HostPlacement, ($value) -> $value, IdentityOp);
-    )*
+    paste! {
+        $(
+            modelled!(PlacementIdentity::identity, HostPlacement, ($value) -> $value, Identity);
+        )*
+    }
 )}
 
 kernel! {
-    IdentityOp, [
+    Identity, [
         (HostPlacement, (HostString) -> HostString => [runtime] Self::kernel),
         (HostPlacement, (Unit) -> Unit => [runtime] Self::missing_kernel),
         (HostPlacement, (HostShape) -> HostShape => [runtime] Self::kernel),
@@ -1451,7 +1454,7 @@ kernel! {
     ]
 }
 
-impl IdentityOp {
+impl Identity {
     fn kernel<S: RuntimeSession, T>(sess: &S, plc: &HostPlacement, x: T) -> Result<T>
     where
         HostPlacement: PlacementPlace<S, T>,
@@ -1473,34 +1476,34 @@ impl IdentityOp {
 
 for_all_values! {( $($value:ty),* ) => (
     $(
-        modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> $value, InputOp);
+        modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> $value, Input);
     )*
 )}
 
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> crate::logical::Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Float32Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Float64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitArray64, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitArray128, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitArray224, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostAesKey, InputOp);
-modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedBitTensor, InputOp);
-modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedRing64Tensor, InputOp);
-modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedRing128Tensor, InputOp);
-modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedFixed64Tensor, InputOp);
-modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedFixed128Tensor, InputOp);
-modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedBitArray64, InputOp);
-modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedBitArray128, InputOp);
-modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedBitArray224, InputOp);
-modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedAesKey, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> AesKey, InputOp);
-modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> AesKey, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> AesTensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Fixed128AesTensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFixed128AesTensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> crate::logical::Tensor, Input);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Float32Tensor, Input);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Float64Tensor, Input);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitArray64, Input);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitArray128, Input);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitArray224, Input);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostAesKey, Input);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedBitTensor, Input);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedRing64Tensor, Input);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedRing128Tensor, Input);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedFixed64Tensor, Input);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedFixed128Tensor, Input);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedBitArray64, Input);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedBitArray128, Input);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedBitArray224, Input);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> ReplicatedAesKey, Input);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> AesKey, Input);
+modelled!(PlacementInput::input, ReplicatedPlacement, attributes[arg_name: String] () -> AesKey, Input);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> AesTensor, Input);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Fixed128AesTensor, Input);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFixed128AesTensor, Input);
 
 kernel! {
-    InputOp, [
+    Input, [
         (HostPlacement, () -> HostString => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Unit => [runtime] attributes[arg_name] Self::missing_kernel),
         (HostPlacement, () -> HostShape => [runtime] attributes[arg_name] Self::kernel),
@@ -1545,7 +1548,7 @@ kernel! {
     ]
 }
 
-impl InputOp {
+impl Input {
     fn kernel<S: RuntimeSession, O>(sess: &S, plc: &HostPlacement, arg_name: String) -> Result<O>
     where
         O: TryFrom<Value, Error = Error>,
@@ -1576,15 +1579,15 @@ impl InputOp {
 
 for_all_values! {( $($value:ty),* ) => (
     $(
-        modelled!(PlacementOutput::output, HostPlacement, ($value) -> $value, OutputOp);
+        modelled!(PlacementOutput::output, HostPlacement, ($value) -> $value, Output);
     )*
 )}
-modelled!(PlacementOutput::output, HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Float32Tensor) -> Float32Tensor, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Float64Tensor) -> Float64Tensor, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor, Output);
+modelled!(PlacementOutput::output, HostPlacement, (Float32Tensor) -> Float32Tensor, Output);
+modelled!(PlacementOutput::output, HostPlacement, (Float64Tensor) -> Float64Tensor, Output);
 
 kernel! {
-    OutputOp, [
+    Output, [
         (HostPlacement, (Unit) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (HostShape) -> HostShape => [runtime] Self::kernel),
         (HostPlacement, (Seed) -> Seed => [runtime] Self::kernel),
@@ -1611,7 +1614,7 @@ kernel! {
     ]
 }
 
-impl OutputOp {
+impl Output {
     fn kernel<S: RuntimeSession, O>(sess: &S, plc: &HostPlacement, x: O) -> Result<O>
     where
         HostPlacement: PlacementPlace<S, O>,
@@ -1635,16 +1638,16 @@ impl OutputOp {
 
 for_all_values! {( $($value:ty),* ) => (
     $(
-        modelled!(PlacementSave::save, HostPlacement, (HostString, $value) -> Unit, SaveOp);
+        modelled!(PlacementSave::save, HostPlacement, (HostString, $value) -> Unit, Save);
     )*
 )}
 
-modelled!(PlacementSave::save, HostPlacement, (HostString, crate::logical::Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (HostString, Float32Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (HostString, Float64Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (HostString, crate::logical::Tensor) -> Unit, Save);
+modelled!(PlacementSave::save, HostPlacement, (HostString, Float32Tensor) -> Unit, Save);
+modelled!(PlacementSave::save, HostPlacement, (HostString, Float64Tensor) -> Unit, Save);
 
 kernel! {
-    SaveOp, [
+    Save, [
         (HostPlacement, (HostString, Unit) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostShape) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (HostString, Seed) -> Unit => [runtime] Self::kernel),
@@ -1671,7 +1674,7 @@ kernel! {
     ]
 }
 
-impl SaveOp {
+impl Save {
     fn kernel<S: RuntimeSession, O>(
         _sess: &S,
         _plc: &HostPlacement,
@@ -1688,12 +1691,12 @@ impl SaveOp {
     }
 }
 
-modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> HostFloat64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> Float64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> crate::logical::Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> HostFloat64Tensor, Load);
+modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> Float64Tensor, Load);
+modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> crate::logical::Tensor, Load);
 
 kernel! {
-    LoadOp, [
+    Load, [
         (HostPlacement, (HostString, HostString) -> Unit => [runtime] Self::missing_kernel),
         (HostPlacement, (HostString, HostString) -> HostShape => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostString) -> Seed => [runtime] Self::kernel),
@@ -1719,7 +1722,7 @@ kernel! {
     ]
 }
 
-impl LoadOp {
+impl Load {
     fn kernel<S: RuntimeSession, O>(
         _sess: &S,
         _plc: &HostPlacement,
@@ -1755,7 +1758,7 @@ impl LoadOp {
 }
 
 kernel! {
-    SigmoidOp,
+    Sigmoid,
     [
         (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
@@ -1766,7 +1769,7 @@ kernel! {
 }
 
 kernel! {
-    LessThanOp,
+    LessThan,
     [
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
@@ -1790,7 +1793,7 @@ kernel! {
 }
 
 kernel! {
-    GreaterThanOp,
+    GreaterThan,
     [
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
@@ -1810,7 +1813,7 @@ kernel! {
 }
 
 kernel! {
-    FillOp,
+    Fill,
     [
 
         (HostPlacement, (HostShape) -> HostBitTensor => [runtime] custom |op| {
@@ -1968,7 +1971,7 @@ kernel! {
 }
 
 kernel! {
-    IfElseOp,
+    IfElse,
     [
 
         (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor  => [transparent] Self::rep_kernel),

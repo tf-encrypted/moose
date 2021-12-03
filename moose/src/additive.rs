@@ -1,7 +1,7 @@
 //! Placements backed by additive secret sharing
 use crate::computation::{
-    AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp,
-    CanonicalType, Constant, HostPlacement, KnownType, Placed, RepToAdtOp, ShapeOp,
+    AdditivePlacement, AdtAdd, AdtFill, AdtMul, AdtReveal, AdtShl, AdtSub, CanonicalType, Constant,
+    HostPlacement, KnownType, Placed, RepToAdt
 };
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};
@@ -85,7 +85,8 @@ where
     }
 }
 
-impl ShapeOp {
+/// Shape is full-pathed here because of name conflict
+impl crate::computation::Shape {
     pub(crate) fn adt_kernel<S: Session, HostT, ShapeT>(
         sess: &S,
         adt: &AdditivePlacement,
@@ -103,7 +104,7 @@ impl ShapeOp {
 }
 
 modelled_kernel! {
-    PlacementFill::fill, AdtFillOp{value: Constant},
+    PlacementFill::fill, AdtFill{value: Constant},
     [
         (AdditivePlacement, (HostShape) -> AdditiveRing64Tensor => [hybrid] Self::host_kernel),
         (AdditivePlacement, (HostShape) -> AdditiveRing128Tensor => [hybrid] Self::host_kernel),
@@ -112,7 +113,7 @@ modelled_kernel! {
     ]
 }
 
-impl AdtFillOp {
+impl AdtFill {
     fn host_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         plc: &AdditivePlacement,
@@ -159,7 +160,7 @@ impl AdtFillOp {
 }
 
 modelled_kernel! {
-    PlacementReveal::reveal, AdtRevealOp,
+    PlacementReveal::reveal, AdtReveal,
     [
         (HostPlacement, (AdditiveRing64Tensor) -> HostRing64Tensor => [hybrid] Self::kernel),
         (HostPlacement, (AdditiveRing128Tensor) -> HostRing128Tensor => [hybrid] Self::kernel),
@@ -167,7 +168,7 @@ modelled_kernel! {
     ]
 }
 
-impl AdtRevealOp {
+impl AdtReveal {
     fn kernel<S: Session, RingT>(
         sess: &S,
         plc: &HostPlacement,
@@ -182,7 +183,7 @@ impl AdtRevealOp {
 }
 
 modelled_kernel! {
-    PlacementAdd::add, AdtAddOp,
+    PlacementAdd::add, AdtAdd,
     [
         (AdditivePlacement, (AdditiveRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::adt_adt_kernel),
         (AdditivePlacement, (AdditiveRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::adt_adt_kernel),
@@ -196,7 +197,7 @@ modelled_kernel! {
     ]
 }
 
-impl AdtAddOp {
+impl AdtAdd {
     fn adt_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
@@ -267,7 +268,7 @@ impl AdtAddOp {
 }
 
 modelled_kernel! {
-    PlacementSub::sub, AdtSubOp,
+    PlacementSub::sub, AdtSub,
     [
         (AdditivePlacement, (AdditiveRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::adt_adt_kernel),
         (AdditivePlacement, (AdditiveRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::adt_adt_kernel),
@@ -279,7 +280,7 @@ modelled_kernel! {
     ]
 }
 
-impl AdtSubOp {
+impl AdtSub {
     fn adt_adt_kernel<S: Session, R>(
         sess: &S,
         adt: &AdditivePlacement,
@@ -351,7 +352,7 @@ impl AdtSubOp {
 }
 
 modelled_kernel! {
-    PlacementMul::mul, AdtMulOp,
+    PlacementMul::mul, AdtMul,
     [
         (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::ring_adt_kernel),
         (AdditivePlacement, (AdditiveRing64Tensor, HostRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::adt_ring_kernel),
@@ -363,7 +364,7 @@ modelled_kernel! {
     ]
 }
 
-impl AdtMulOp {
+impl AdtMul {
     fn ring_adt_kernel<S: Session, R>(
         sess: &S,
         adt: &AdditivePlacement,
@@ -406,14 +407,14 @@ impl AdtMulOp {
 }
 
 modelled_kernel! {
-    PlacementShl::shl, AdtShlOp{amount: usize},
+    PlacementShl::shl, AdtShl{amount: usize},
     [
         (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::kernel),
         (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::kernel),
     ]
 }
 
-impl AdtShlOp {
+impl AdtShl {
     fn kernel<S: Session, RingT>(
         sess: &S,
         plc: &AdditivePlacement,
@@ -669,7 +670,7 @@ where
 }
 
 modelled_kernel! {
-    PlacementRepToAdt::rep_to_adt, RepToAdtOp,
+    PlacementRepToAdt::rep_to_adt, RepToAdt,
     [
         (AdditivePlacement, (ReplicatedRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::rep_to_adt_kernel),
         (AdditivePlacement, (ReplicatedRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::rep_to_adt_kernel),
@@ -677,7 +678,7 @@ modelled_kernel! {
     ]
 }
 
-impl RepToAdtOp {
+impl RepToAdt {
     fn rep_to_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
@@ -821,7 +822,7 @@ where
 mod tests {
     use super::*;
     use crate::{
-        computation::{Operation, Operator, Placement, RingAddOp},
+        computation::{Operation, Operator, Placement, RingAdd},
         host::AbstractHostRingTensor,
         symbolic::{Symbolic, SymbolicHandle, SymbolicSession},
     };
@@ -1054,7 +1055,7 @@ mod tests {
             Some(op) => assert!(matches!(
                 op,
                 Operation {
-                    kind: Operator::AdtAdd(AdtAddOp { sig: _ }),
+                    kind: Operator::AdtAdd(AdtAdd { sig: _ }),
                     ..
                 }
             )),
@@ -1129,7 +1130,7 @@ mod tests {
             assert!(iter.any(|o| matches!(o,
                 Operation {
                     name,
-                    kind: Operator::RingAdd(RingAddOp { sig: _ }),
+                    kind: Operator::RingAdd(RingAdd { sig: _ }),
                     inputs,
                     placement: Placement::Host(HostPlacement { owner }),
                     ..
@@ -1142,7 +1143,7 @@ mod tests {
             assert!(iter.any(|o| matches!(o,
                 Operation {
                     name,
-                    kind: Operator::RingAdd(RingAddOp { sig: _ }),
+                    kind: Operator::RingAdd(RingAdd { sig: _ }),
                     inputs,
                     placement: Placement::Host(HostPlacement { owner }),
                     ..

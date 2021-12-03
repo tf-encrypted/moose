@@ -124,14 +124,14 @@ where
 }
 
 modelled_kernel! {
-    PlacementAdd::add, AddOp,
+    PlacementAdd::add, Add,
     [
         (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::host_kernel),
         (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::rep_kernel),
     ]
 }
 
-impl AddOp {
+impl Add {
     fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -200,14 +200,14 @@ impl AddOp {
 }
 
 modelled_kernel! {
-    PlacementSub::sub, SubOp,
+    PlacementSub::sub, Sub,
     [
         (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::host_kernel),
         (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::rep_kernel),
     ]
 }
 
-impl SubOp {
+impl Sub {
     fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -275,17 +275,17 @@ impl SubOp {
     }
 }
 
-modelled!(PlacementMul::mul, HostPlacement, (Tensor, Tensor) -> Tensor, MulOp);
+modelled!(PlacementMul::mul, HostPlacement, (Tensor, Tensor) -> Tensor, Mul);
 
 kernel! {
-    MulOp,
+    Mul,
     [
         (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] attributes[sig] Self::host_kernel),
         (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] attributes[sig] Self::rep_kernel),
     ]
 }
 
-impl MulOp {
+impl Mul {
     fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -390,14 +390,14 @@ impl MulOp {
 }
 
 modelled_kernel! {
-    PlacementDiv::div, DivOp,
+    PlacementDiv::div, Div,
     [
         (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::host_kernel),
         (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::rep_kernel),
     ]
 }
 
-impl DivOp {
+impl Div {
     fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -465,17 +465,17 @@ impl DivOp {
     }
 }
 
-modelled!(PlacementDot::dot, HostPlacement, (Tensor, Tensor) -> Tensor, DotOp);
+modelled!(PlacementDot::dot, HostPlacement, (Tensor, Tensor) -> Tensor, Dot);
 
 kernel! {
-    DotOp,
+    Dot,
     [
         (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] attributes[sig] Self::host_kernel),
         (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] attributes[sig] Self::rep_kernel),
     ]
 }
 
-impl DotOp {
+impl Dot {
     fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -576,16 +576,16 @@ impl DotOp {
     }
 }
 
-modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);
+modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, Cast);
 
 kernel! {
-    CastOp,
+    Cast,
     [
         (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::kernel),
     ]
 }
 
-impl CastOp {
+impl Cast {
     fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -653,13 +653,13 @@ impl CastOp {
 }
 
 kernel! {
-    AtLeast2DOp, [
+    AtLeast2D, [
         (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[to_column_vector] Self::host_kernel),
         // (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] attributes[to_column_vector] Self::rep_kernel),
     ]
 }
 
-impl AtLeast2DOp {
+impl AtLeast2D {
     fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -696,13 +696,13 @@ impl AtLeast2DOp {
 }
 
 kernel! {
-    MeanOp, [
+    Mean, [
         (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig, axis] Self::host_kernel),
         (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] attributes[sig, axis] Self::rep_kernel),
     ]
 }
 
-impl MeanOp {
+impl Mean {
     fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -795,13 +795,13 @@ impl MeanOp {
 }
 
 kernel! {
-    SumOp, [
+    Sum, [
         (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[axis] Self::host_kernel),
         (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] attributes[axis] Self::rep_kernel),
     ]
 }
 
-impl SumOp {
+impl Sum {
     fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -862,7 +862,7 @@ impl SumOp {
 }
 
 modelled_kernel! {
-    PlacementOnes::ones, OnesOp,
+    PlacementOnes::ones, Ones,
     [
         (HostPlacement, (HostShape) -> Tensor => [hybrid] Self::host_kernel),
         // We do not support the ReplicatedPlacement: PlacementFill yet, hence we do not support Ones.
@@ -871,7 +871,7 @@ modelled_kernel! {
     ]
 }
 
-impl OnesOp {
+impl Ones {
     #[allow(clippy::type_complexity)]
     fn host_kernel<S: Session>(
         sess: &S,
@@ -916,16 +916,16 @@ impl OnesOp {
     // }
 }
 
-modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Tensor) -> Tensor, ExpandDimsOp);
+modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Tensor) -> Tensor, ExpandDims);
 
 kernel! {
-    ExpandDimsOp,
+    ExpandDims,
     [
         (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[axis] Self::host_kernel),
     ]
 }
 
-impl ExpandDimsOp {
+impl ExpandDims {
     fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -959,9 +959,9 @@ impl ExpandDimsOp {
     }
 }
 
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (Tensor) -> Tensor, IndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (Tensor) -> Tensor, IndexAxis);
 
-impl IndexAxisOp {
+impl IndexAxis {
     pub fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -991,7 +991,7 @@ impl IndexAxisOp {
     }
 }
 
-impl IndexAxisOp {
+impl IndexAxis {
     pub fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -1021,16 +1021,16 @@ impl IndexAxisOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, Concat);
 
 kernel! {
-    ConcatOp,
+    Concat,
     [
         (HostPlacement, vec[Tensor] -> Tensor => [concrete] attributes[axis] Self::host_kernel),
     ]
 }
 
-impl ConcatOp {
+impl Concat {
     fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -1090,15 +1090,15 @@ impl ConcatOp {
     }
 }
 
-modelled!(PlacementTranspose::transpose, HostPlacement, (Tensor) -> Tensor, TransposeOp);
+modelled!(PlacementTranspose::transpose, HostPlacement, (Tensor) -> Tensor, Transpose);
 
 kernel! {
-    TransposeOp, [
+    Transpose, [
         (HostPlacement, (Tensor) -> Tensor => [concrete] Self::kernel),
     ]
 }
 
-impl TransposeOp {
+impl Transpose {
     pub fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -1133,13 +1133,13 @@ impl TransposeOp {
 }
 
 modelled_kernel! {
-    PlacementInverse::inverse, InverseOp,
+    PlacementInverse::inverse, Inverse,
     [
         (HostPlacement, (Tensor) -> Tensor => [concrete] Self::kernel),
     ]
 }
 
-impl InverseOp {
+impl Inverse {
     pub fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -1173,7 +1173,7 @@ impl InverseOp {
     }
 }
 
-impl LoadOp {
+impl Load {
     #[allow(clippy::type_complexity)]
     pub fn logical_kernel<S: Session>(
         sess: &S,
@@ -1201,7 +1201,7 @@ impl LoadOp {
     }
 }
 
-impl SaveOp {
+impl Save {
     pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -1231,7 +1231,7 @@ impl SaveOp {
     }
 }
 
-impl ShapeOp {
+impl Shape {
     pub(crate) fn host_logical_kernel<
         S: Session,
         Fixed64T,
@@ -1312,7 +1312,7 @@ impl ConstantOp {
     }
 }
 
-impl InputOp {
+impl Input {
     pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -1340,7 +1340,7 @@ impl InputOp {
     }
 }
 
-impl OutputOp {
+impl Output {
     pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
@@ -1363,7 +1363,7 @@ impl OutputOp {
     }
 }
 
-impl ExpOp {
+impl Exp {
     pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -1391,7 +1391,7 @@ impl ExpOp {
     }
 }
 
-impl SigmoidOp {
+impl Sigmoid {
     pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &ReplicatedPlacement,

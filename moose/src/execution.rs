@@ -18,11 +18,11 @@ use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
 pub enum Kernel {
-    NullaryClosure(Arc<dyn Fn() -> Result<Value> + Send + Sync>),
-    UnaryClosure(Arc<dyn Fn(Value) -> Result<Value> + Send + Sync>),
-    BinaryClosure(Arc<dyn Fn(Value, Value) -> Result<Value> + Send + Sync>),
-    TernaryClosure(Arc<dyn Fn(Value, Value, Value) -> Result<Value> + Send + Sync>),
-    VariadicClosure(Arc<dyn Fn(Vec<Value>) -> Result<Value> + Send + Sync>),
+    NullaryClosure(Arc<dyn Fn() -> Result<Value> + core::marker::Send + Sync>),
+    UnaryClosure(Arc<dyn Fn(Value) -> Result<Value> + core::marker::Send + Sync>),
+    BinaryClosure(Arc<dyn Fn(Value, Value) -> Result<Value> + core::marker::Send + Sync>),
+    TernaryClosure(Arc<dyn Fn(Value, Value, Value) -> Result<Value> + core::marker::Send + Sync>),
+    VariadicClosure(Arc<dyn Fn(Vec<Value>) -> Result<Value> + core::marker::Send + Sync>),
 
     NullaryFunction(fn() -> Result<Value>),
     UnaryFunction(fn(Value) -> Result<Value>),
@@ -144,7 +144,7 @@ impl Computation {
     }
 }
 
-pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
+pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + core::marker::Send + Sync>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Display)]
 pub struct Identity(pub String);
@@ -169,7 +169,7 @@ impl From<String> for Identity {
 
 pub type Environment<V> = HashMap<String, V>;
 
-pub type RoleAssignment = HashMap<Role, Identity>;
+pub type RoleAssignment = HashMap<Role, self::Identity>;
 
 #[derive(Default)]
 pub struct AsyncExecutor {
@@ -182,7 +182,7 @@ impl AsyncExecutor {
         &mut self,
         computation: &Computation,
         role_assignment: &RoleAssignment,
-        own_identity: &Identity,
+        own_identity: &self::Identity,
         session: &crate::kernels::AsyncSession,
     ) -> Result<HashMap<String, AsyncReceiver>> {
         if !self.session_ids.insert(session.session_id.clone()) {
@@ -250,17 +250,19 @@ impl AsyncExecutor {
 pub struct AsyncTestRuntime {
     pub identities: Vec<Identity>,
     pub executors: HashMap<Identity, AsyncExecutor>,
-    pub runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>>,
+    pub runtime_storage: HashMap<Identity, Arc<dyn core::marker::Send + Sync + AsyncStorage>>,
     pub networking: AsyncNetworkingImpl,
 }
 
 impl AsyncTestRuntime {
     pub fn new(storage_mapping: HashMap<String, HashMap<String, Value>>) -> Self {
         let mut executors: HashMap<Identity, AsyncExecutor> = HashMap::new();
-        let networking: Arc<dyn Send + Sync + AsyncNetworking> =
+        let networking: Arc<dyn core::marker::Send + Sync + AsyncNetworking> =
             Arc::new(LocalAsyncNetworking::default());
-        let mut runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>> =
-            HashMap::new();
+        let mut runtime_storage: HashMap<
+            Identity,
+            Arc<dyn core::marker::Send + Sync + AsyncStorage>,
+        > = HashMap::new();
         let mut identities = Vec::new();
         for (identity_str, storage) in storage_mapping {
             let identity = Identity::from(identity_str.clone()).clone();
@@ -271,7 +273,7 @@ impl AsyncTestRuntime {
                 .map(|arg| (arg.0.to_owned(), arg.1.to_owned()))
                 .collect::<HashMap<String, Value>>();
 
-            let exec_storage: Arc<dyn Send + Sync + AsyncStorage> =
+            let exec_storage: Arc<dyn core::marker::Send + Sync + AsyncStorage> =
                 Arc::new(LocalAsyncStorage::from_hashmap(storage));
             runtime_storage.insert(identity.clone(), exec_storage);
 
@@ -445,8 +447,8 @@ mod tests {
             true => {
                 let valid_role_assignments = role_assignments
                     .into_iter()
-                    .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
-                    .collect::<HashMap<Role, Identity>>();
+                    .map(|arg| (Role::from(arg.1), crate::execution::Identity::from(arg.0)))
+                    .collect::<HashMap<Role, crate::execution::Identity>>();
                 let mut executor = AsyncTestRuntime::new(storage_mapping);
                 let outputs = executor.evaluate_computation(
                     &computation,
@@ -624,8 +626,8 @@ mod tests {
                     hashmap!("alice".to_string() => "alice".to_string());
                 let valid_role_assignments = role_assignments
                     .into_iter()
-                    .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
-                    .collect::<HashMap<Role, Identity>>();
+                    .map(|arg| (Role::from(arg.1), crate::execution::Identity::from(arg.0)))
+                    .collect::<HashMap<Role, crate::execution::Identity>>();
                 let mut executor = AsyncTestRuntime::new(storage_mapping);
                 let _outputs = executor.evaluate_computation(
                     &source.try_into()?,
@@ -634,7 +636,7 @@ mod tests {
                 )?;
 
                 executor.read_value_from_storage(
-                    Identity::from("alice".to_string()),
+                    crate::execution::Identity::from("alice".to_string()),
                     "saved_data".to_string(),
                 )?
             }
@@ -1462,9 +1464,9 @@ mod tests {
     }
 
     fn _create_async_session(
-        networking: &Arc<dyn Send + Sync + AsyncNetworking>,
-        exec_storage: &Arc<dyn Send + Sync + AsyncStorage>,
-        role_assignments: HashMap<Role, Identity>,
+        networking: &Arc<dyn core::marker::Send + Sync + AsyncNetworking>,
+        exec_storage: &Arc<dyn core::marker::Send + Sync + AsyncStorage>,
+        role_assignments: HashMap<Role, crate::execution::Identity>,
     ) -> crate::kernels::AsyncSession {
         crate::kernels::AsyncSession::new(
             SessionId::try_from("foobar").unwrap(),
@@ -1484,15 +1486,15 @@ mod tests {
         seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
         output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
 
-        let networking: Arc<dyn Send + Sync + AsyncNetworking> =
+        let networking: Arc<dyn core::marker::Send + Sync + AsyncNetworking> =
             Arc::new(LocalAsyncNetworking::default());
 
-        let identity = Identity::from("alice");
+        let identity = crate::execution::Identity::from("alice");
 
-        let exec_storage: Arc<dyn Send + Sync + AsyncStorage> =
+        let exec_storage: Arc<dyn core::marker::Send + Sync + AsyncStorage> =
             Arc::new(LocalAsyncStorage::default());
 
-        let valid_role_assignments: HashMap<Role, Identity> =
+        let valid_role_assignments: HashMap<Role, crate::execution::Identity> =
             hashmap!(Role::from("alice") => identity.clone());
 
         let mut executor = AsyncExecutor::default();
@@ -1543,8 +1545,8 @@ mod tests {
     ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
         let valid_role_assignments = role_assignments
             .into_iter()
-            .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
-            .collect::<HashMap<Role, Identity>>();
+            .map(|arg| (Role::from(arg.1), crate::execution::Identity::from(arg.0)))
+            .collect::<HashMap<Role, crate::execution::Identity>>();
         let mut executor = AsyncTestRuntime::new(storage_mapping);
         let outputs =
             executor.evaluate_computation(&computation, valid_role_assignments, arguments)?;
