@@ -685,6 +685,27 @@ impl HostIndexAxisOp {
     }
 }
 
+// TODO (Yann): HostIndexAxisOp should be merged with IndexAxisOp once we remove placement prefix fron op's name
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostFloat32Tensor) -> HostFloat32Tensor, IndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostFloat64Tensor) -> HostFloat64Tensor, IndexAxisOp);
+
+impl IndexAxisOp {
+    pub fn host_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: usize,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        T: Clone,
+    {
+        let axis = Axis(axis);
+        let result = x.0.index_axis(axis, index);
+        Ok(HostTensor(result.to_owned(), plc.clone()))
+    }
+}
+
 impl IndexOp {
     pub(crate) fn host_kernel<S: Session, HostBitT, N>(
         sess: &S,
