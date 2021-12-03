@@ -365,9 +365,7 @@ class EdslTest(parameterized.TestCase):
             ),
         )
 
-    @parameterized.parameters(
-        *_MOOSE_DTYPES
-    )
+    @parameterized.parameters(*_MOOSE_DTYPES)
     def test_tensor_arguments(self, tensor_dtype):
         player0 = edsl.host_placement(name="player0")
 
@@ -411,8 +409,7 @@ class EdslTest(parameterized.TestCase):
                     name="output_0",
                     inputs={"value": "add_0"},
                     signature=OpSignature(
-                        {"value": TensorType(tensor_dtype)},
-                        TensorType(tensor_dtype),
+                        {"value": TensorType(tensor_dtype)}, TensorType(tensor_dtype),
                     ),
                 ),
             },
