@@ -102,30 +102,15 @@ impl ShapeOp {
     }
 }
 
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> AdditiveRing64Tensor, AdtFillOp);
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> AdditiveRing128Tensor, AdtFillOp);
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (AdditiveShape) -> AdditiveRing64Tensor, AdtFillOp);
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (AdditiveShape) -> AdditiveRing128Tensor, AdtFillOp);
-
-kernel! {
-    AdtFillOp,
+modelled_kernel! {
+    PlacementFill::fill, AdtFillOp,
     [
-        (AdditivePlacement, (HostShape) -> AdditiveRing64Tensor => [hybrid] attributes[value] Self::host_kernel),
-        (AdditivePlacement, (HostShape) -> AdditiveRing128Tensor => [hybrid] attributes[value] Self::host_kernel),
-        (AdditivePlacement, (AdditiveShape) -> AdditiveRing64Tensor => [concrete] attributes[value] Self::adt_kernel),
-        (AdditivePlacement, (AdditiveShape) -> AdditiveRing128Tensor => [concrete] attributes[value] Self::adt_kernel),
+        (AdditivePlacement, [value: Constant] (HostShape) -> AdditiveRing64Tensor => [hybrid] Self::host_kernel),
+        (AdditivePlacement, [value: Constant] (HostShape) -> AdditiveRing128Tensor => [hybrid] Self::host_kernel),
+        (AdditivePlacement, [value: Constant] (AdditiveShape) -> AdditiveRing64Tensor => [concrete] Self::adt_kernel),
+        (AdditivePlacement, [value: Constant] (AdditiveShape) -> AdditiveRing128Tensor => [concrete] Self::adt_kernel),
     ]
 }
-
-// modelled_kernel! {
-//     PlacementFill::fill(value: Constant), AdtFillOp,
-//     [
-//         (AdditivePlacement, (HostShape) -> AdditiveRing64Tensor => [hybrid] Self::host_kernel),
-//         (AdditivePlacement, (HostShape) -> AdditiveRing128Tensor => [hybrid] Self::host_kernel),
-//         (AdditivePlacement, (AdditiveShape) -> AdditiveRing64Tensor => [concrete] Self::adt_kernel),
-//         (AdditivePlacement, (AdditiveShape) -> AdditiveRing128Tensor => [concrete] Self::adt_kernel),
-//     ]
-// }
 
 impl AdtFillOp {
     fn host_kernel<S: Session, ShapeT, RingT>(
