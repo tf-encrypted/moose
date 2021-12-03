@@ -32,4 +32,3 @@ version = "~0.14"
 
 [features]
 extension-module = ["pyo3/extension-module"]
-default = ["extension-module"]

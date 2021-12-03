@@ -32,8 +32,9 @@ mod tests {
 
     #[test]
     fn test_nothing_to_prune() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        let source = r#"
+        x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
+        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         z = Output: (Float32Tensor) -> Float32Tensor (mul) @Host(alice)"#;
 
@@ -56,7 +57,8 @@ mod tests {
 
     #[test]
     fn test_simple_prune() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        let source = r#"
+        x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         add = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
@@ -82,11 +84,12 @@ mod tests {
 
     #[test]
     fn test_network_prune() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        y = Constant {value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(bob)
-        send_mul = Send {rendezvous_key=30303030303030303030303030303031, receiver="alice"} (y) @Host(bob)
+        let source = r#"
+        x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
+        y = Constant {value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
+        send_mul = Send {rendezvous_key=30303030303030303030303030303031, receiver="alice"}: (Float32Tensor) -> Unit (y) @Host(bob)
         recv_mul = Receive {rendezvous_key=30303030303030303030303030303031, sender="bob"} : () -> Float32Tensor () @Host(alice)
-        send_add = Send {rendezvous_key=30303030303030303030303030303032, receiver="alice"} (y) @Host(bob)
+        send_add = Send {rendezvous_key=30303030303030303030303030303032, receiver="alice"}: (Float32Tensor) -> Unit (y) @Host(bob)
         recv_add = Receive {rendezvous_key=30303030303030303030303030303032, sender="bob"} : () -> Float32Tensor () @Host(alice)
         mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_mul) @Host(alice)
         add = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_add) @Host(alice)
@@ -106,7 +109,7 @@ mod tests {
             "mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_mul) @Host(alice)"
         ));
         assert!(comp.contains(
-            r#"send_mul = Send{rendezvous_key = 30303030303030303030303030303031, receiver = "alice"}: (Unknown) -> Unknown (y) @Host(bob)"#
+            r#"send_mul = Send{rendezvous_key = 30303030303030303030303030303031, receiver = "alice"}: (Float32Tensor) -> Unit (y) @Host(bob)"#
         ));
         assert!(comp.contains(
             r#"recv_mul = Receive{rendezvous_key = 30303030303030303030303030303031, sender = "bob"}: () -> Float32Tensor () @Host(alice)"#
@@ -120,8 +123,9 @@ mod tests {
 
     #[test]
     fn test_multiple_output_prune() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        let source = r#"
+        x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
+        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         add = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)

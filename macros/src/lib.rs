@@ -4,9 +4,10 @@ use quote::{quote, quote_spanned};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
+use syn::PathArguments::AngleBracketed;
 use syn::{
     parse_macro_input, parse_quote, BinOp, Data, Expr, ExprBinary, ExprCall, ExprPath, Fields,
-    Ident, Token,
+    GenericArgument, Ident, Token, Type,
 };
 
 /// Macros to convert expression into player/context invocations.
@@ -131,7 +132,7 @@ pub fn short_name_derive(input: TokenStream) -> TokenStream {
 }
 
 /// Derive macro to support textual format
-#[proc_macro_derive(AutoToTextual)]
+#[proc_macro_derive(ToTextual)]
 pub fn to_textual_derive(input: TokenStream) -> TokenStream {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let name = &ast.ident;
@@ -198,6 +199,166 @@ pub fn to_textual_derive(input: TokenStream) -> TokenStream {
     gen.into()
 }
 
+fn parser_for_type(name: &Option<String>, ty: &Type) -> Option<proc_macro2::TokenStream> {
+    match ty {
+        Type::Path(tp) if tp.path.is_ident("String") => {
+            Some(quote!(crate::textual::attributes_member(#name, crate::textual::string)))
+        }
+        Type::Path(tp) if tp.path.is_ident("bool") => {
+            Some(quote!(crate::textual::attributes_member(#name, crate::textual::parse_bool)))
+        }
+        Type::Path(tp) if tp.path.is_ident("u32") => {
+            Some(quote!(crate::textual::attributes_member(#name, crate::textual::parse_int)))
+        }
+        Type::Path(tp) if tp.path.is_ident("u64") => {
+            Some(quote!(crate::textual::attributes_member(#name, crate::textual::parse_int)))
+        }
+        Type::Path(tp) if tp.path.is_ident("usize") => {
+            Some(quote!(crate::textual::attributes_member(#name, crate::textual::parse_int)))
+        }
+        Type::Path(tp) if tp.path.is_ident("SliceInfo") => Some(
+            quote!(crate::textual::attributes_member(#name, crate::textual::slice_info_literal)),
+        ),
+        Type::Path(tp) if tp.path.is_ident("Constant") => {
+            Some(quote!(crate::textual::attributes_member(#name, crate::textual::constant_literal)))
+        }
+        Type::Path(tp) if tp.path.is_ident("RendezvousKey") => {
+            Some(quote!(crate::textual::attributes_member(#name, map(
+                crate::textual::parse_hex,
+                RendezvousKey::from_bytes
+            ))))
+        }
+        Type::Path(tp) if tp.path.is_ident("Role") => Some(
+            quote!(crate::textual::attributes_member(#name, map(crate::textual::string, Role::from))),
+        ),
+        Type::Path(tp) if tp.path.is_ident("Signature") => None, // One more clause to ignore the signature field.
+        // Recursively recognizing the Option is a bit tough.
+        Type::Path(tp) if tp.path.segments.len() == 1 && tp.path.segments[0].ident == "Option" => {
+            match &tp.path.segments[0].arguments {
+                AngleBracketed(arg) => match arg.args.first().unwrap() {
+                    GenericArgument::Type(inner) => {
+                        let inner_parser = parser_for_type(name, inner);
+                        Some(quote!(opt(#inner_parser)))
+                    }
+                    _ => panic!("Expected a single type inside the Option"),
+                },
+                _ => panic!("Expected angled brackets after the Option"),
+            }
+        }
+        _ => panic!(
+            "The from textual macro could not derive a parser for an attribute named {:?} due to unknown type", name,
+        ),
+    }
+}
+
+#[proc_macro_derive(FromTextual)]
+pub fn from_textual_derive(input: TokenStream) -> TokenStream {
+    let item_struct = syn::parse::<syn::ItemStruct>(input).unwrap();
+
+    let name = &item_struct.ident;
+    // Note, we only need to truncate the name by the charaters to get rid of the `Op` suffix.
+    // If we refactor to not have that suffix anymore we can just use `stringify!(#name)` inside `quote!` below.
+    let mut ident_string = name.to_string();
+    if ident_string.ends_with("Op") {
+        ident_string.truncate(ident_string.len() - 2);
+    }
+
+    // Grab all the field names (except `sig`) as a comma-separated list
+    let mut attr_count = 0;
+    let attributes =
+        match item_struct.fields {
+            Fields::Named(ref fields) => {
+                let names = fields.named.iter().filter_map(|f| {
+                    match f.ident.as_ref().map(|i| i.to_string()) {
+                        Some(name) if name != "sig" => {
+                            attr_count += 1;
+                            Some(f.ident.as_ref())
+                        }
+                        _ => None,
+                    }
+                });
+
+                quote! { #(#names ,)* }
+            }
+            _ => quote!(),
+        };
+
+    // Generate a parser for each attribute except `sig`.
+    let attr_parsers = match item_struct.fields {
+        Fields::Named(ref fields) => {
+            let members = fields.named.iter().filter_map(|f| {
+                let name = f.ident.as_ref().map(|i| i.to_string());
+                parser_for_type(&name, &f.ty)
+            });
+            quote! { #(#members ),* }
+        }
+        _ => quote!(),
+    };
+
+    // We actually have 3 distinct cases here
+    let attr_parser = match attr_count {
+        // With 0 extra attributes we should just skip this block
+        0 => None,
+        // With one extra attribute we must call its parser directly
+        1 => Some(quote! {
+            let (input, #attributes) = delimited(ws(tag("{")), #attr_parsers, ws(tag("}")))(input)?;
+        }),
+        // With more than one extra attribute we have to wrap the parsers in a `permutation` call to allow attributes in any order.
+        _ => Some(quote! {
+            let (input, (#attributes)) = delimited(ws(tag("{")), permutation((#attr_parsers)), ws(tag("}")))(input)?;
+        }),
+    };
+
+    let gen = quote! {
+        impl<'a, E: 'a + nom::error::ParseError<&'a str> + nom::error::ContextError<&'a str>> crate::textual::FromTextual<'a, E> for #name {
+            fn from_textual(input: &'a str) -> nom::IResult<&'a str, Operator, E> {
+                use nom::branch::permutation;
+                use nom::bytes::complete::tag;
+                use nom::combinator::{cut, opt, map};
+                use nom::sequence::{delimited, preceded};
+                use crate::textual::ws;
+
+                let parser = |input: &'a str| {
+                    #attr_parser
+                    let (input, sig) = crate::textual::operator_signature(0)(input)?;
+                    Ok((input, #name {
+                        sig,
+                        #attributes
+                    }.into()))
+                };
+                preceded(tag(#ident_string), cut(parser))(input)
+            }
+        }
+    };
+    // Uncomment the following line to see the generated code unrolled.
+    // println!("==========================\n{}\n", format_tokenstream(gen.clone()));
+    gen.into()
+}
+
+/// Utility function to return a pretty-printed token stream, if it is valid enough Rust code.
+#[allow(dead_code)] // It is used in the tests, but is exceptionally helpful while debugging a macros
+fn format_tokenstream(code: proc_macro2::TokenStream) -> String {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    fn format(input: &str) -> Option<String> {
+        let mut rustfmt = Command::new("rustfmt")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .ok()?;
+        let child_stdin = rustfmt.stdin.as_mut()?;
+        child_stdin.write_all(input.as_bytes()).ok()?;
+        let output = rustfmt.wait_with_output().ok()?;
+        if output.status.success() {
+            String::from_utf8(output.stdout).ok()
+        } else {
+            None
+        }
+    }
+    let string_code = code.to_string();
+    format(&string_code).unwrap_or(string_code)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -207,29 +368,6 @@ mod tests {
     fn test_normal() {
         let t = trybuild::TestCases::new();
         t.pass("tests/pass/*.rs");
-    }
-
-    /// Utility function to return a pretty-printed token stream, if it is valid enough Rust code.
-    fn format_tokenstream(code: proc_macro2::TokenStream) -> String {
-        use std::io::Write;
-        use std::process::{Command, Stdio};
-        fn format(input: &str) -> Option<String> {
-            let mut rustfmt = Command::new("rustfmt")
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .spawn()
-                .ok()?;
-            let child_stdin = rustfmt.stdin.as_mut()?;
-            child_stdin.write_all(input.as_bytes()).ok()?;
-            let output = rustfmt.wait_with_output().ok()?;
-            if output.status.success() {
-                String::from_utf8(output.stdout).ok()
-            } else {
-                None
-            }
-        }
-        let string_code = code.to_string();
-        format(&string_code).unwrap_or(string_code)
     }
 
     #[test]

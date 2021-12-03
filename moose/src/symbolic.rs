@@ -208,9 +208,8 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Load(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Save(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Shape(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            BitFill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingFill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepFill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Fill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AesDecrypt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitXor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -340,14 +339,9 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
     }
 }
 
+#[derive(Default)]
 pub struct SymbolicExecutor {
     // Placeholder for the future state we want to keep (symbolic strategy pointer, replicated setup cache, etc).
-}
-
-impl Default for SymbolicExecutor {
-    fn default() -> Self {
-        SymbolicExecutor {}
-    }
 }
 
 impl SymbolicExecutor {

@@ -1629,46 +1629,17 @@ impl HostReshapeOp {
     }
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostBitTensor, BitFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostBitTensor, FillOp);
 
-kernel! {
-    BitFillOp,
-    [
-        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] attributes[value] Self::kernel),
-    ]
-}
-
-impl BitFillOp {
-    fn kernel<S: RuntimeSession>(
+impl FillOp {
+    pub(crate) fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        value: Constant,
+        value: u8,
         shape: HostShape,
     ) -> Result<HostBitTensor> {
-        use std::convert::TryInto;
-        let value: u8 = match value {
-            Constant::Bit(v) => v,
-            Constant::Ring64(v) => v.try_into().map_err(|_| {
-                Error::KernelError("Cannot fill HostBitTensor with non-binary value.".to_string())
-            })?,
-            Constant::Ring128(v) => v.try_into().map_err(|_| {
-                Error::KernelError("Cannot fill HostBitTensor with non-binary value.".to_string())
-            })?,
-            _ => {
-                return Err(Error::TypeMismatch {
-                    expected: "Bit".to_string(),
-                    found: value.ty(),
-                })
-            }
-        };
-        if !(value == 0 || value == 1) {
-            return Err(Error::KernelError(
-                "Cannot fill HostBitTensor with non-binary value.".to_string(),
-            ));
-        }
-        assert!(value == 0 || value == 1);
         let raw_shape = shape.0 .0;
-        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value as u8);
+        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value);
         Ok(HostBitTensor(raw_tensor, plc.clone()))
     }
 }

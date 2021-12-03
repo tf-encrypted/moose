@@ -283,29 +283,3 @@ class LoadOperation(StandardOperation):
 @dataclass
 class SaveOperation(StandardOperation):
     output_type: ValueType = UnitType()
-
-
-@dataclass
-class SerializeOperation(StandardOperation):
-    output_type: ValueType = BytesType()
-
-
-@dataclass
-class DeserializeOperation(StandardOperation):
-    output_type: ValueType
-
-
-@dataclass
-class SendOperation(StandardOperation):
-    sender: str
-    receiver: str
-    rendezvous_key: str
-    output_type: ValueType = UnitType()
-
-
-@dataclass
-class ReceiveOperation(StandardOperation):
-    sender: str
-    receiver: str
-    rendezvous_key: str
-    output_type: ValueType
