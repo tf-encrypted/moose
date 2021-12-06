@@ -978,30 +978,23 @@ impl IndexAxisOp {
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
-        // HostPlacement: PlacementIndexAxis<S, Fixed64T, Fixed64T>,
-        // HostPlacement: PlacementIndexAxis<S, Fixed128T, Fixed128T>,
         HostPlacement: PlacementIndexAxis<S, Float32T, Float32T>,
         HostPlacement: PlacementIndexAxis<S, Float64T, Float64T>,
     {
         match x {
-            AbstractTensor::Fixed64(_x) => {
-                // let z = plc.sum(sess, axis, &x);
-                // Ok(AbstractTensor::Fixed64(z))
-                unimplemented!()
-            }
-            AbstractTensor::Fixed128(_x) => {
-                // let z = plc.sum(sess, axis, &x);
-                // Ok(AbstractTensor::Fixed128(z))
-                unimplemented!()
-            }
             AbstractTensor::Float32(x) => {
                 let z = plc.index_axis(sess, axis, index, &x);
                 Ok(AbstractTensor::Float32(z))
             }
             AbstractTensor::Float64(x) => {
                 let z = plc.index_axis(sess, axis, index, &x);
+
                 Ok(AbstractTensor::Float64(z))
             }
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated index_axis for {:?}",
+                &x.ty_desc(),
+            ))),
         }
     }
 }
