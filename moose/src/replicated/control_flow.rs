@@ -1,10 +1,12 @@
 use crate::computation::{MuxOp, ReplicatedPlacement};
 use crate::error::Result;
 use crate::kernels::*;
-use crate::replicated::{ReplicatedRing128Tensor, ReplicatedRing64Tensor};
+use crate::replicated::{ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor};
 
 modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, MuxOp);
 modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, MuxOp);
+modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, MuxOp);
+modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, MuxOp);
 
 impl MuxOp {
     pub(crate) fn rep_kernel<S: Session, RepRingT>(
@@ -25,6 +27,27 @@ impl MuxOp {
 
         Ok(rep.add(sess, &s_diff, &y))
     }
+
+    pub(crate) fn rep_bit_selector_kernel<S: Session, RepRingT, RepBitT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        s: RepBitT,
+        x: RepRingT,
+        y: RepRingT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
+        ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+    {
+        let s_ring = rep.ring_inject(sess, 0, &s);
+        // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
+        let diff = rep.sub(sess, &x, &y);
+        let s_diff = rep.mul(sess, &s_ring, &diff);
+
+        Ok(rep.add(sess, &s_diff, &y))
+    }
 }
 
 #[cfg(test)]
@@ -32,7 +55,7 @@ mod tests {
     use crate::computation::{HostPlacement, ReplicatedPlacement};
     use crate::host::FromRawPlc;
     use crate::kernels::*;
-    use crate::replicated::AbstractReplicatedRingTensor;
+    use crate::replicated::ReplicatedRing128Tensor;
     use ndarray::{array, IxDyn};
 
     #[test]
@@ -74,7 +97,7 @@ mod tests {
         );
 
         let a = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &a);
-        let a_shared = rep.share(&sess, &a);
+        let a_shared: ReplicatedRing128Tensor = rep.share(&sess, &a);
 
         let x = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &x);
         let x_shared = rep.share(&sess, &x);
@@ -84,8 +107,8 @@ mod tests {
 
         // simulate to a less than zero calculation to get some good values
         // to pass into if else
-        let msb: AbstractReplicatedRingTensor<_> = rep.msb(&sess, &a_shared);
-        let ones: AbstractReplicatedRingTensor<_> =
+        let msb: ReplicatedRing128Tensor = rep.msb(&sess, &a_shared);
+        let ones: ReplicatedRing128Tensor =
             rep.fill(&sess, 1u64.into(), &rep.shape(&sess, &a_shared));
         let s = rep.sub(&sess, &ones, &msb);
 
