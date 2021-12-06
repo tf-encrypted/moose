@@ -82,7 +82,10 @@ macro_rules! derive_runtime_kernel {
         }
     };
 
-    (nullary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr $(=> capturing($sig:ident))?, $self:ident) => {
+    // The `Self::` would be gone from here and all the kernels definitions. This change is just to demonstrate the idea
+    //                                                         ______
+    (nullary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] Self::$k:ident $(($sig:ident))?, $self:ident) => {
+    //                                                         ^^^^^^
         {
             $(
             let $attr = $self.$attr.clone();
@@ -99,7 +102,10 @@ macro_rules! derive_runtime_kernel {
             )+
             $(let $sig = $self.$sig.clone();)?
             crate::error::Result::<Box<dyn Fn(&_, &_) -> _ + Send>>::Ok(Box::new(move |sess, plc| {
-                $k(sess, plc, $($sig,)? $($attr.clone()),+)
+    // Instead, the `Self::` portion is assumed here
+    //          ______
+                Self::$k(sess, plc, $($sig,)? $($attr.clone()),+)
+    //          ^^^^^^
             }))
         }
     };
