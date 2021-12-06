@@ -20,6 +20,7 @@ enum PyOperation {
     std_DotOperation(PyDotOperation),
     std_AtLeast2DOperation(PyAtLeast2DOperation),
     std_ShapeOperation(PyShapeOperation),
+    std_IndexAxisOperation(PyIndexAxisOperation),
     std_SliceOperation(PySliceOperation),
     std_OnesOperation(PyOnesOperation),
     std_ConcatenateOperation(PyConcatenateOperation),
@@ -212,6 +213,16 @@ struct PyShapeOperation {
     inputs: Inputs,
     placement_name: String,
     signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyIndexAxisOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+    axis: usize,
+    index: usize,
 }
 
 #[derive(Deserialize, Debug)]
@@ -594,6 +605,18 @@ impl TryFrom<PyComputation> for Computation {
                     std_ShapeOperation(op) => Ok(Operation {
                         kind: ShapeOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_IndexAxisOperation(op) => Ok(Operation {
+                        kind: IndexAxisOp {
+                            sig: Signature::from_unary(&op.signature, "x")?,
+                            axis: op.axis,
+                            index: op.index,
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])

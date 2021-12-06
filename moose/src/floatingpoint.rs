@@ -312,6 +312,26 @@ impl FloatingpointOnesOp {
     }
 }
 
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis: usize, index:usize] (Float32Tensor) -> Float32Tensor, IndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis: usize,  index:usize] (Float64Tensor) -> Float64Tensor, IndexAxisOp);
+
+impl IndexAxisOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: usize,
+        x: FloatTensor<HostFloatT>,
+    ) -> Result<FloatTensor<HostFloatT>>
+    where
+        HostPlacement: PlacementIndexAxis<S, HostFloatT, HostFloatT>,
+    {
+        let FloatTensor::Host(x) = x;
+        let z = plc.index_axis(sess, axis, index, &x);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
 modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Float32Tensor) -> Float32Tensor, FloatingpointExpandDimsOp);
 modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Float64Tensor) -> Float64Tensor, FloatingpointExpandDimsOp);
 
