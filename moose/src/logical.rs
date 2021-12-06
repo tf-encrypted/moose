@@ -975,6 +975,7 @@ modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axi
 modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, ConcatOp);
 modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor, ConcatOp);
 modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor, ConcatOp);
+//modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
 
 kernel! {
     ConcatOp, [
@@ -983,6 +984,7 @@ kernel! {
         (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [hybrid] attributes[axis] Self::rep_rep_kernel),
         (ReplicatedPlacement, vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor => [hybrid] attributes[axis] Self::rep_fixed_kernel),
         (ReplicatedPlacement, vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor => [hybrid] attributes[axis] Self::rep_fixed_kernel),
+        //(ReplicatedPlacement, vec[Tensor] -> Tensor => [hybrid] attributes[axis] Self::rep_logical_kernel),
     ]
 }
 
@@ -1122,6 +1124,34 @@ impl ConcatOp {
             })
         }
     }
+
+    //pub(crate) fn rep_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+    //    sess: &S,
+    //    plc: &ReplicatedPlacement,
+    //    axis: u32,
+    //    x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    //) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+    //where
+    //    ReplicatedPlacement: PlacementExp<S, Fixed64T, Fixed64T>,
+    //    ReplicatedPlacement: PlacementExp<S, Fixed128T, Fixed128T>,
+
+    //{
+    //    //match x {
+    //    //    AbstractTensor::Fixed64(x) => {
+    //    //        let result = plc.exp(sess, &x);
+    //    //        Ok(AbstractTensor::Fixed64(result))
+    //    //    }
+    //    //    AbstractTensor::Fixed128(x) => {
+    //    //        let result = plc.exp(sess, &x);
+    //    //        Ok(AbstractTensor::Fixed128(result))
+    //    //    }
+    //    //    _ => Err(Error::UnimplementedOperator(format!(
+    //    //        "Missing replicated concat for {:?}",
+    //    //        &x.ty_desc(),
+    //    //    ))),
+    //    //}
+    //    unimplemented!("rep_logical_kernel TODO")
+    //}
 }
 
 modelled!(PlacementTranspose::transpose, HostPlacement, (Tensor) -> Tensor, TransposeOp);
