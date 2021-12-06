@@ -2570,7 +2570,7 @@ macro_rules! modelled_kernel {
     Nullary
     */
 
-    ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? () -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
+    ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
         concrete_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
 
@@ -2656,7 +2656,7 @@ macro_rules! modelled_kernel {
     };
 
 
-    (__nullary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? () -> $u:ty => $($kp:tt)+) => {
+    (__nullary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::NullaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2717,7 +2717,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__nullary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? () -> $u:ty => $($kp:tt)+) => {
+    (__nullary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::NullaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2806,7 +2806,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__nullary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? () -> $u:ty => $($kp:tt)+) => {
+    (__nullary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::NullaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2851,7 +2851,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__nullary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? () -> $u:ty => $($kp:tt)+) => {
+    (__nullary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::NullaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2909,7 +2909,7 @@ macro_rules! modelled_kernel {
     Unary
     */
 
-    ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
+    ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
         concrete_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
 
@@ -3000,7 +3000,7 @@ macro_rules! modelled_kernel {
         )+
     };
 
-    (__unary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+    (__unary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3082,7 +3082,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__unary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+    (__unary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3191,7 +3191,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__unary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+    (__unary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3241,7 +3241,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__unary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+    (__unary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3311,7 +3311,7 @@ macro_rules! modelled_kernel {
     Binary
     */
 
-    ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty, $t1:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
+    ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
         concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
 
@@ -3407,7 +3407,7 @@ macro_rules! modelled_kernel {
         )+
     };
 
-    (__binary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3496,7 +3496,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__binary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3617,7 +3617,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__binary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3672,7 +3672,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__binary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3748,7 +3748,7 @@ macro_rules! modelled_kernel {
     // Can work for any arity and kind of kernel, but needs a rule per attribute count.
 
     // Any arity kernel, 1 attribute op
-    ($trait:ident::$trait_fn:ident, $op:ident{$attr1_id:ident: $attr1_ty:ident}, [$( ($plc:ty, $($tail:tt)+), )+]) => {
+    ($trait:ident::$trait_fn:ident, $op:ident{$attr1_id:ident: $attr1_ty:ty}, [$( ($plc:ty, $($tail:tt)+), )+]) => {
         modelled_kernel! {
             $trait::$trait_fn, $op,
             [
@@ -3760,7 +3760,7 @@ macro_rules! modelled_kernel {
     };
 
     // Any arity kernel, 2 attributes op
-    ($trait:ident::$trait_fn:ident, $op:ident{$attr1_id:ident: $attr1_ty:ident, $attr2_id:ident: $attr2_ty:ident}, [$( ($plc:ty, $($tail:tt)+), )+]) => {
+    ($trait:ident::$trait_fn:ident, $op:ident{$attr1_id:ident: $attr1_ty:ty, $attr2_id:ident: $attr2_ty:ty}, [$( ($plc:ty, $($tail:tt)+), )+]) => {
         modelled_kernel! {
             $trait::$trait_fn, $op,
             [
