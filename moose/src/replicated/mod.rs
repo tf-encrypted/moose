@@ -2570,8 +2570,8 @@ where
 modelled_kernel! {
     PlacementBitDec::bit_decompose, RepBitDecOp,
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedBitArray64 => [transparent] Self::ring_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedBitArray128 => [transparent] Self::ring_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedBitArray64 => [hybrid] Self::ring_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedBitArray128 => [hybrid] Self::ring_kernel),
     ]
 }
 
@@ -2580,21 +2580,15 @@ impl RepBitDecOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
-    ) -> Result<m!(c!(AbstractReplicatedBitArray<RepBitT, N>))>
+    ) -> Result<AbstractReplicatedBitArray<RepBitT, N>>
     where
         RepRingT: Ring<BitLength = N>,
         ReplicatedPlacement: PlacementSplit<S, RepRingT, RepBitT, RepBitT>,
         ReplicatedPlacement: BinaryAdder<S, RepBitT>,
-
-        AbstractReplicatedBitArray<RepBitT, N>: CanonicalType,
-        <AbstractReplicatedBitArray<RepBitT, N> as CanonicalType>::Type: KnownType<S>,
-
-        AbstractReplicatedBitArray<RepBitT, N>:
-            Into<m!(c!(AbstractReplicatedBitArray<RepBitT, N>))>,
     {
         let (x0, x1) = rep.split(sess, &x);
         let res = rep.binary_adder(sess, &x0, &x1, RepRingT::BitLength::VALUE);
-        Ok(AbstractReplicatedBitArray(res, PhantomData).into())
+        Ok(AbstractReplicatedBitArray(res, PhantomData))
     }
 }
 
