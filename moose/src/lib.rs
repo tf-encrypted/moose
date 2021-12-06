@@ -82,7 +82,7 @@ macro_rules! derive_runtime_kernel {
         }
     };
 
-    (nullary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
+    (nullary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr $(=> capturing($sig:ident))?, $self:ident) => {
         {
             $(
             let $attr = $self.$attr.clone();
@@ -97,8 +97,9 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
+            $(let $sig = $self.$sig.clone();)?
             crate::error::Result::<Box<dyn Fn(&_, &_) -> _ + Send>>::Ok(Box::new(move |sess, plc| {
-                $k(sess, plc, $($attr.clone()),+)
+                $k(sess, plc, $($sig,)? $($attr.clone()),+)
             }))
         }
     };
@@ -2729,7 +2730,7 @@ macro_rules! modelled_kernel {
                 &$plc
             ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -2756,7 +2757,7 @@ macro_rules! modelled_kernel {
                 sess: &crate::symbolic::SymbolicSession,
                 $($($attr_id:$attr_ty),*)?
             ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
-                use crate::computation::{KnownType, NullarySignature, SymbolicValue};
+                use crate::computation::{KnownType, NullarySignature};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
@@ -2787,7 +2788,7 @@ macro_rules! modelled_kernel {
                 sess: &crate::symbolic::SymbolicSession,
                 $($($attr_id:$attr_ty),*)?
             ) -> <$u as crate::computation::SymbolicType>::Type {
-                use crate::computation::{KnownType, NullarySignature, SymbolicValue};
+                use crate::computation::{KnownType, NullarySignature};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
