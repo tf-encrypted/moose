@@ -186,7 +186,6 @@ impl AesDecryptOp {
         ciphertext: AesTensorT,
     ) -> Result<m!(Tensor)>
     where
-        AesTensor: KnownType<S>,
         Tensor: KnownType<S>,
         HostPlacement: PlacementDecrypt<S, HostAesKeyT, AesTensorT, m!(Tensor)>,
         HostPlacement: PlacementReveal<S, ReplicatedAesKeyT, HostAesKeyT>,
