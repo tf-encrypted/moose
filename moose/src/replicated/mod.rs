@@ -2255,15 +2255,14 @@ impl RepMsbOp {
         Ok(rep.index(sess, N::VALUE - 1, &bits))
     }
 
-    fn ring_kernel<S: Session, RepRingT>(
+    fn ring_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
     ) -> Result<RepRingT>
     where
-        ReplicatedBitTensor: KnownType<S>,
-        ReplicatedPlacement: PlacementMsb<S, RepRingT, m!(ReplicatedBitTensor)>,
-        ReplicatedPlacement: PlacementRingInject<S, m!(ReplicatedBitTensor), RepRingT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepBitT>,
+        ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
     {
         let x_bin = rep.msb(sess, &x);
         Ok(rep.ring_inject(sess, 0, &x_bin))
@@ -2753,21 +2752,20 @@ trait ZeroShareGen<S: Session, ShapeT, RingT> {
     ) -> AbstractReplicatedZeroShare<RingT>;
 }
 
-impl<S: Session, RingT, ShapeT> ZeroShareGen<S, ShapeT, RingT> for ReplicatedPlacement
+impl<S: Session, RingT, HostShapeT> ZeroShareGen<S, HostShapeT, RingT> for ReplicatedPlacement
 where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
-    HostShape: KnownType<S>,
     <S as Session>::ReplicatedSetup: Clone,
     <S as Session>::ReplicatedSetup: TryInto<AbstractReplicatedSetup<m!(PrfKey)>>,
-    HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, m!(Seed), RingT>,
+    HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(Seed), RingT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
     ReplicatedPlacement: ReplicatedSeedsGen<S, m!(PrfKey), m!(Seed)>,
 {
     fn gen_zero_share(
         &self,
         sess: &S,
-        shape: &AbstractReplicatedShape<ShapeT>,
+        shape: &AbstractReplicatedShape<HostShapeT>,
     ) -> AbstractReplicatedZeroShare<RingT> {
         let setup = match (*sess.replicated_setup(self)).clone().try_into() {
             Ok(setup) => setup,
