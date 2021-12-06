@@ -491,15 +491,14 @@ pub trait TruncMaskGen<S: Session, ShapeT, RingT> {
     );
 }
 
-impl<S: Session, HostRingT> TruncMaskGen<S, m!(HostShape), HostRingT> for HostPlacement
+impl<S: Session, HostShapeT, HostRingT> TruncMaskGen<S, HostShapeT, HostRingT> for HostPlacement
 where
     PrfKey: KnownType<S>,
-    HostShape: KnownType<S>,
     Seed: KnownType<S>,
     HostRingT: Ring + Clone,
     HostPlacement: PlacementDeriveSeed<S, m!(PrfKey), m!(Seed)>,
-    HostPlacement: PlacementSampleUniform<S, m!(HostShape), HostRingT>,
-    HostPlacement: PlacementSampleUniformSeeded<S, m!(HostShape), m!(Seed), HostRingT>,
+    HostPlacement: PlacementSampleUniform<S, HostShapeT, HostRingT>,
+    HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(Seed), HostRingT>,
     HostPlacement: PlacementKeyGen<S, m!(PrfKey)>,
     HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
     HostPlacement: PlacementShr<S, HostRingT, HostRingT>,
@@ -509,7 +508,7 @@ where
         &self,
         sess: &S,
         amount: usize,
-        shape: &m!(HostShape), // TODO(Morten) take AdditiveShape instead?
+        shape: &HostShapeT, // TODO(Morten) take AdditiveShape instead?
     ) -> (
         AbstractAdditiveTensor<HostRingT>,
         AbstractAdditiveTensor<HostRingT>,
