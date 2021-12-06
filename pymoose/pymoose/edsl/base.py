@@ -24,11 +24,17 @@ from pymoose.computation.standard import ValueType
 CURRENT_PLACEMENT: List = []
 _NUMPY_DTYPES_MAP = {
     np.uint32: dtypes.uint32,
+    np.dtype("uint32"): dtypes.uint32,
     np.uint64: dtypes.uint64,
+    np.dtype("uint64"): dtypes.uint64,
     np.int32: dtypes.int32,
+    np.dtype("int32"): dtypes.int32,
     np.int64: dtypes.int64,
+    np.dtype("int64"): dtypes.int64,
     np.float32: dtypes.float32,
+    np.dtype("float32"): dtypes.float32,
     np.float64: dtypes.float64,
+    np.dtype("float64"): dtypes.float64,
 }
 
 
@@ -250,6 +256,15 @@ class SaveExpression(Expression):
 
 @dataclass
 class ShapeExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class IndexAxisExpression(Expression):
+    axis: int
+    index: int
+
     def __hash__(self):
         return id(self)
 
@@ -480,6 +495,25 @@ def shape(x, placement=None):
     return ShapeExpression(placement=placement, inputs=[x], vtype=ShapeType())
 
 
+def index_axis(x, axis, index, placement=None):
+    assert isinstance(x, Expression)
+    if not isinstance(axis, int) or index < 0:
+        raise ValueError(
+            "`axis` argument must be int greater or equal to 0, found "
+            f"{axis} of type {type(axis)}"
+        )
+    if not isinstance(index, int) or index < 0:
+        raise ValueError(
+            "`index` argument must be int greater or equal to 0, found "
+            f"{index} of type {type(index)}"
+        )
+
+    placement = placement or get_current_placement()
+    return IndexAxisExpression(
+        placement=placement, inputs=[x], axis=axis, index=index, vtype=x.vtype
+    )
+
+
 def slice(x, begin, end, placement=None):
     assert isinstance(x, Expression)
     assert isinstance(begin, int)
@@ -512,7 +546,9 @@ def atleast_2d(x, to_column_vector=False, placement=None):
 def reshape(x, shape, placement=None):
     assert isinstance(x, Expression)
     if isinstance(shape, (list, tuple)):
-        shape = constant(ShapeConstant(value=shape), placement=placement)
+        shape = constant(
+            ShapeConstant(value=shape), vtype=ShapeType(), placement=placement
+        )
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
     return ReshapeExpression(placement=placement, inputs=[x, shape], vtype=x.vtype)

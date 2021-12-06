@@ -17,6 +17,7 @@ from pymoose.edsl.base import dot
 from pymoose.edsl.base import exp
 from pymoose.edsl.base import expand_dims
 from pymoose.edsl.base import host_placement
+from pymoose.edsl.base import index_axis
 from pymoose.edsl.base import inverse
 from pymoose.edsl.base import load
 from pymoose.edsl.base import mean
@@ -55,6 +56,7 @@ __all__ = [
     fixed,
     float32,
     float64,
+    index_axis,
     int32,
     int64,
     inverse,
