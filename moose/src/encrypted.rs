@@ -164,17 +164,8 @@ impl InputOp {
     }
 }
 
-modelled!(PlacementDecrypt::decrypt, HostPlacement, (AesKey, AesTensor) -> Tensor, AesDecryptOp);
-modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostAesKey, AesTensor) -> Tensor, AesDecryptOp);
-modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostAesKey, Fixed128AesTensor) -> Fixed128Tensor, AesDecryptOp);
-modelled!(PlacementDecrypt::decrypt, HostPlacement, (HostAesKey, HostFixed128AesTensor) -> HostFixed128Tensor, AesDecryptOp);
-modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (AesKey, AesTensor) -> Tensor, AesDecryptOp);
-modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (ReplicatedAesKey, AesTensor) -> Tensor, AesDecryptOp);
-modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (ReplicatedAesKey, Fixed128AesTensor) -> Fixed128Tensor, AesDecryptOp);
-modelled!(PlacementDecrypt::decrypt, ReplicatedPlacement, (ReplicatedAesKey, HostFixed128AesTensor) -> ReplicatedFixed128Tensor, AesDecryptOp);
-
-kernel! {
-    AesDecryptOp,
+modelled_kernel! {
+    PlacementDecrypt::decrypt, AesDecryptOp,
     [
         (HostPlacement, (AesKey, AesTensor) -> Tensor => [hybrid] Self::host_kernel),
         (HostPlacement, (HostAesKey, AesTensor) -> Tensor => [hybrid] Self::host_key_kernel),
