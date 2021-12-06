@@ -405,24 +405,13 @@ impl AdtMulOp {
     }
 }
 
-modelled!(PlacementShl::shl, AdditivePlacement, attributes[amount: usize] (AdditiveRing64Tensor) -> AdditiveRing64Tensor, AdtShlOp);
-modelled!(PlacementShl::shl, AdditivePlacement, attributes[amount: usize] (AdditiveRing128Tensor) -> AdditiveRing128Tensor, AdtShlOp);
-
-kernel! {
-    AdtShlOp,
+modelled_kernel! {
+    PlacementShl::shl, AdtShlOp{amount: usize},
     [
-        (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] attributes[amount] Self::kernel),
-        (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] attributes[amount] Self::kernel),
+        (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::kernel),
+        (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::kernel),
     ]
 }
-
-// modelled_kernel! {
-//     PlacementShl::shl(amount: usize), AdtShlOp,
-//     [
-//         (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::kernel),
-//         (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::kernel),
-//     ]
-// }
 
 impl AdtShlOp {
     fn kernel<S: Session, RingT>(
@@ -656,7 +645,7 @@ where
             .try_into()
             .ok()
             .unwrap();
-        let masked: AbstractAdditiveTensor<HostRingT> = self.add(sess, &x_positive, &r);
+        let masked = self.add(sess, &x_positive, &r);
         let c = player0.reveal(sess, &masked.into());
         let c_no_msb = player0.shl(sess, 1, &c);
         // also called shifted
