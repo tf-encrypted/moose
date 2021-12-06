@@ -959,8 +959,6 @@ impl ExpandDimsOp {
     }
 }
 
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (Tensor) -> Tensor, IndexAxisOp);
-
 impl IndexAxisOp {
     pub fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,

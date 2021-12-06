@@ -948,11 +948,6 @@ impl FixedpointSumOp {
     }
 }
 
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis:usize, index: usize] (Fixed64Tensor) -> Fixed64Tensor, IndexAxisOp);
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis:usize, index: usize] (Fixed128Tensor) -> Fixed128Tensor, IndexAxisOp);
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, IndexAxisOp);
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, IndexAxisOp);
-
 impl IndexAxisOp {
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
         sess: &S,
@@ -1272,12 +1267,6 @@ impl ExpOp {
     }
 }
 
-modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor, SigmoidOp);
-modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor, SigmoidOp);
-modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, SigmoidOp);
-modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, SigmoidOp);
-modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor, SigmoidOp);
-
 impl SigmoidOp {
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
         sess: &S,
@@ -1377,13 +1366,6 @@ where
     }
 }
 
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor, LessThanOp);
-
 impl LessThanOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
@@ -1424,13 +1406,6 @@ impl LessThanOp {
         Ok(plc.less_than(sess, &x.tensor, &y.tensor))
     }
 }
-
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedBitTensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedBitTensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor, GreaterThanOp);
 
 impl GreaterThanOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT, RepBitT>(

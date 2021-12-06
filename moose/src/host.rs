@@ -621,10 +621,6 @@ impl HostIndexAxisOp {
     }
 }
 
-// TODO (Yann): HostIndexAxisOp should be merged with IndexAxisOp once we remove placement prefix fron op's name
-modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostFloat32Tensor) -> HostFloat32Tensor, IndexAxisOp);
-modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostFloat64Tensor) -> HostFloat64Tensor, IndexAxisOp);
-
 impl IndexAxisOp {
     pub fn host_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
@@ -2574,9 +2570,6 @@ impl RingSampleSeededOp {
     }
 }
 
-modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, LessThanOp);
-
 impl LessThanOp {
     pub(crate) fn host_kernel<S: Session, HostRingT>(
         sess: &S,
@@ -2592,9 +2585,6 @@ impl LessThanOp {
         Ok(plc.sign(sess, &z))
     }
 }
-
-modelled!(PlacementGreaterThan::greater_than, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, GreaterThanOp);
 
 impl GreaterThanOp {
     pub(crate) fn host_kernel<S: Session, HostRingT>(

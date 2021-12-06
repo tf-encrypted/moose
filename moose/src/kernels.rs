@@ -1754,8 +1754,8 @@ impl LoadOp {
     }
 }
 
-kernel! {
-    SigmoidOp,
+modelled_kernel! {
+    PlacementSigmoid::sigmoid, SigmoidOp,
     [
         (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
@@ -1765,8 +1765,8 @@ kernel! {
     ]
 }
 
-kernel! {
-    LessThanOp,
+modelled_kernel! {
+    PlacementLessThan::less_than, LessThanOp,
     [
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
@@ -1789,8 +1789,8 @@ kernel! {
     ]
 }
 
-kernel! {
-    GreaterThanOp,
+modelled_kernel! {
+    PlacementGreaterThan::greater_than, GreaterThanOp,
     [
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
@@ -1978,19 +1978,19 @@ kernel! {
     ]
 }
 
-kernel! {
-    IndexAxisOp,
+modelled_kernel! {
+    PlacementIndexAxis::index_axis, IndexAxisOp{axis: usize, index: usize},
     [
-        (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] attributes[axis, index] Self::logical_host_kernel),
-        (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] attributes[axis, index] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] attributes[axis, index] Self::float_host_kernel),
-        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[axis, index] Self::host_float_kernel),
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis, index] Self::host_float_kernel),
-        (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] attributes[axis, index] Self::logical_rep_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis, index] Self::fixed_rep_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis, index] Self::fixed_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] attributes[axis, index] Self::repfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] attributes[axis, index] Self::repfixed_kernel),
+        (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::host_float_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::host_float_kernel),
+        (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_rep_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::repfixed_kernel),
     ]
 }
 

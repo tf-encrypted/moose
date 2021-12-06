@@ -2913,13 +2913,6 @@ impl SigmoidOp {
     }
 }
 
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, LessThanOp);
-
 impl LessThanOp {
     pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
@@ -2963,13 +2956,6 @@ impl LessThanOp {
         Ok(rep.msb(sess, &z))
     }
 }
-
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedBitTensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedBitTensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, GreaterThanOp);
 
 impl GreaterThanOp {
     pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT>(
