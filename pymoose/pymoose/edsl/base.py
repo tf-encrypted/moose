@@ -104,160 +104,115 @@ class Expression:
 class ArgumentExpression(Expression):
     arg_name: str
 
-    def __hash__(self):
-        return id(self)
-
 
 @dataclass
 class ConcatenateExpression(Expression):
     axis: Optional[int]
 
-    def __hash__(self):
-        return id(self)
-
 
 @dataclass
 class DecryptExpression(Expression):
-    def __hash__(self):
-        return id(self)
+    pass
 
 
 @dataclass
 class ConstantExpression(Expression):
     value: Union[int, float]
 
-    def __hash__(self):
-        return id(self)
-
 
 @dataclass
 class BinaryOpExpression(Expression):
     op_name: str
-
-    def __hash__(self):
-        return id(self)
 
 
 @dataclass
 class ExpandDimsExpression(Expression):
     axis: Tuple[int]
 
-    def __hash__(self):
-        return id(self)
-
 
 @dataclass
 class SqueezeExpression(Expression):
     axis: Optional[Union[int, Tuple[int]]]
-
-    def __hash__(self):
-        return id(self)
 
 
 @dataclass
 class OnesExpression(Expression):
     dtype: dtypes.DType
 
-    def __hash__(self):
-        return id(self)
-
 
 @dataclass
 class SquareExpression(Expression):
-    def __hash__(self):
-        return id(self)
+    pass
 
 
 @dataclass
 class SumExpression(Expression):
     axis: Optional[Union[int, Tuple[int]]]
 
-    def __hash__(self):
-        return id(self)
-
 
 @dataclass
 class MeanExpression(Expression):
     axis: Optional[Union[int, Tuple[int]]]
 
-    def __hash__(self):
-        return id(self)
-
 
 @dataclass
 class ExpExpression(Expression):
-    def __hash__(self):
-        return id(self)
+    pass
 
 
 @dataclass
 class SigmoidExpression(Expression):
-    def __hash__(self):
-        return id(self)
+    pass
 
 
 @dataclass
 class SqrtExpression(Expression):
-    def __hash__(self):
-        return id(self)
+    pass
 
 
 @dataclass
 class TransposeExpression(Expression):
     axes: Optional[Tuple[int]]
 
-    def __hash__(self):
-        return id(self)
-
 
 @dataclass
 class ReshapeExpression(Expression):
-    def __hash__(self):
-        return id(self)
+    pass
 
 
 @dataclass
 class AtLeast2DExpression(Expression):
     to_column_vector: bool
 
-    def __hash__(self):
-        return id(self)
-
 
 @dataclass
 class LoadExpression(Expression):
-    def __hash__(self):
-        return id(self)
+    pass
 
 
 @dataclass
 class InverseExpression(Expression):
-    def __hash__(self):
-        return id(self)
+    pass
 
 
 @dataclass
 class AbsExpression(Expression):
-    def __hash__(self):
-        return id(self)
+    pass
 
 
 @dataclass
 class CastExpression(Expression):
-    def __hash__(self):
-        return id(self)
+    pass
 
 
 @dataclass
 class SaveExpression(Expression):
-    def __hash__(self):
-        return id(self)
+    pass
 
 
 @dataclass
 class ShapeExpression(Expression):
-    def __hash__(self):
-        return id(self)
+    pass
 
 
 @dataclass
@@ -265,17 +220,11 @@ class IndexAxisExpression(Expression):
     axis: int
     index: int
 
-    def __hash__(self):
-        return id(self)
-
 
 @dataclass
 class SliceExpression(Expression):
     begin: int
     end: int
-
-    def __hash__(self):
-        return id(self)
 
 
 def concatenate(arrays, axis=0, placement=None):
