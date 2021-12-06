@@ -2566,7 +2566,6 @@ macro_rules! modelled {
 
 macro_rules! modelled_kernel {
 
-
     /*
     Unary
     */
@@ -3406,31 +3405,32 @@ macro_rules! modelled_kernel {
         }
     };
 
-    // The rules rewriting attributes into each kernel line. Can work for any arrity and kind of a kernel, but needs a rule per attribute's count
+    // The rules rewriting attributes into each kernel line.
+    // Can work for any arity and kind of kernel, but needs a rule per attribute count.
+
     // Any arity kernel, 1 attribute op
-    ($trait:ident::$trait_fn:ident, $op:ident{$attr_id:ident: $attr_ty:ident}, [$( ($plc:ty, $($tail:tt)+), )+]) => {
+    ($trait:ident::$trait_fn:ident, $op:ident{$attr1_id:ident: $attr1_ty:ident}, [$( ($plc:ty, $($tail:tt)+), )+]) => {
         modelled_kernel! {
             $trait::$trait_fn, $op,
             [
                 $(
-                    ($plc, [$attr_id: $attr_ty] $($tail)+),
+                    ($plc, [$attr1_id: $attr1_ty] $($tail)+),
                 )+
             ]
         }
     };
 
-    // Any arity kernel, 2 attribute op
-    ($trait:ident::$trait_fn:ident, $op:ident{$attr_id:ident: $attr_ty:ident, $attr2_id:ident: $attr2_ty:ident}, [$( ($plc:ty, $($tail:tt)+), )+]) => {
+    // Any arity kernel, 2 attributes op
+    ($trait:ident::$trait_fn:ident, $op:ident{$attr1_id:ident: $attr1_ty:ident, $attr2_id:ident: $attr2_ty:ident}, [$( ($plc:ty, $($tail:tt)+), )+]) => {
         modelled_kernel! {
             $trait::$trait_fn, $op,
             [
                 $(
-                    ($plc, [$attr_id: $attr_ty, $attr2_id: $attr2_ty] $($tail)+),
+                    ($plc, [$attr1_id: $attr1_ty, $attr2_id: $attr2_ty] $($tail)+),
                 )+
             ]
         }
     };
-
 
 }
 
