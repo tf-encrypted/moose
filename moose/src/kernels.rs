@@ -301,7 +301,7 @@ impl Session for SyncSession {
             Sum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            IfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Mux(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Pow2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Exp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -735,7 +735,7 @@ impl Session for AsyncSession {
             AddN(op) => DispatchKernel::compile(&op, plc)?,
             Exp(op) => DispatchKernel::compile(&op, plc)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?,
-            IfElse(op) => DispatchKernel::compile(&op, plc)?,
+            Mux(op) => DispatchKernel::compile(&op, plc)?,
             LessThan(op) => DispatchKernel::compile(&op, plc)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
             _ => todo!(),
@@ -963,8 +963,8 @@ pub trait PlacementEqual<S: Session, T, U, O> {
     fn equal(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
-pub trait PlacementIfElse<S: Session, T, U, V, O> {
-    fn if_else(&self, sess: &S, s: &T, x: &U, y: &V) -> O;
+pub trait PlacementMux<S: Session, T, U, V, O> {
+    fn mux(&self, sess: &S, s: &T, x: &U, y: &V) -> O;
 }
 
 pub trait PlacementPow2<S: Session, T, O> {
@@ -1967,7 +1967,7 @@ kernel! {
 }
 
 kernel! {
-    IfElseOp,
+    MuxOp,
     [
 
         (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor  => [transparent] Self::rep_kernel),

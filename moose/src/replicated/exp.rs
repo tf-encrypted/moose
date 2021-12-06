@@ -37,7 +37,7 @@ impl Pow2Op {
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
 
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
-        ReplicatedPlacement: PlacementIfElse<S, RepRingT, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMux<S, RepRingT, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementNeg<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
         ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
@@ -72,7 +72,7 @@ impl Pow2Op {
         let msb_bit = rep.index(sess, RepRingT::BitLength::VALUE - 1, &x_bits);
         let msb = rep.ring_inject(sess, 0, &msb_bit);
 
-        let abs_x = rep.if_else(sess, &msb, &rep.neg(sess, &x.tensor), &x.tensor);
+        let abs_x = rep.mux(sess, &msb, &rep.neg(sess, &x.tensor), &x.tensor);
 
         let absolute_bits = rep.bit_decompose(sess, &abs_x);
         let x_bits_vec: Vec<_> = (0..RepRingT::BitLength::VALUE)
@@ -129,7 +129,7 @@ impl Pow2Op {
         let inverse = rep.div(sess, &one_fixed, &g_fixed).try_into().ok().unwrap();
 
         // oblivious branching depending on the exponent sign, choose 1/2^x or 2^x
-        let switch = rep.if_else(sess, &msb, &inverse.tensor, &g);
+        let switch = rep.mux(sess, &msb, &inverse.tensor, &g);
 
         Ok(AbstractReplicatedFixedTensor {
             tensor: switch,

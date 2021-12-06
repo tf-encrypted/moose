@@ -1015,7 +1015,7 @@ impl ToTextual for Operator {
             RepSlice(op) => op.to_textual(),
             RepShlDim(op) => op.to_textual(),
             RepEqual(op) => op.to_textual(),
-            IfElse(op) => op.to_textual(),
+            Mux(op) => op.to_textual(),
             Neg(op) => op.to_textual(),
             Pow2(op) => op.to_textual(),
             Exp(op) => op.to_textual(),
