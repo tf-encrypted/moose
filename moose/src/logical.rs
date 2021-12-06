@@ -1087,17 +1087,40 @@ impl ConcatOp {
     }
 
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
-        _sess: &S,
-        _plc: &ReplicatedPlacement,
-        _axis: u32,
-        _xs: &[AbstractReplicatedFixedTensor<RepRingT>],
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[AbstractReplicatedFixedTensor<RepRingT>],
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementConcatenate<S, RepRingT, RepRingT>,
         RepRingT: Clone,
     {
-        //plc.concatenate(sess, axis, xs)
-        unimplemented!("TODO")
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot concat on empty array of tensors".to_string(),
+            ))
+        } else {
+            let mut tensors = Vec::new();
+            let fractional_precision = xs[0].fractional_precision;
+            let integral_precision = xs[0].integral_precision;
+            for x in xs.iter() {
+                if (x.integral_precision != integral_precision)
+                    || (x.fractional_precision != fractional_precision)
+                {
+                    return Err(Error::InvalidArgument(
+                        "precisions of tensors must match when concatenating".to_string(),
+                    ));
+                }
+                tensors.push(x.tensor.clone());
+            }
+            let tensor = plc.concatenate(sess, axis, &tensors);
+            Ok(AbstractReplicatedFixedTensor {
+                tensor,
+                fractional_precision,
+                integral_precision,
+            })
+        }
     }
 }
 
