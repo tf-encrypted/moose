@@ -2852,7 +2852,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__unary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+    (__unary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2866,7 +2866,7 @@ macro_rules! modelled_kernel {
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
-                derive_runtime_kernel![unary, $($kp)+, self]
+                derive_runtime_kernel![unary, $(attributes[$($attr_id),+])? $($kp)+, self]
             }
         }
 
@@ -2878,7 +2878,7 @@ macro_rules! modelled_kernel {
             fn $trait_fn(
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
-                // $($($attr_id:$attr_ty),*,)? TODO
+                $($($attr_id:$attr_ty),*,)?
                 x0: &<$t0 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature};
@@ -2892,7 +2892,7 @@ macro_rules! modelled_kernel {
                 };
                 let op = $op {
                     sig: sig.into(),
-                    // $($($attr_id),*)? TODO
+                    $($($attr_id),*)?
                 };
                 sess.execute(op.into(), &self.into(), vec![x0.clone().into()])
                     .unwrap()
@@ -2902,7 +2902,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__unary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+    (__unary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2944,7 +2944,7 @@ macro_rules! modelled_kernel {
             fn $trait_fn(
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
-                // $($($attr_id:$attr_ty),*,)? TODO
+                $($($attr_id:$attr_ty),*,)?
                 x0: &<$t0 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature};
@@ -2958,7 +2958,7 @@ macro_rules! modelled_kernel {
                 };
                 let op = $op {
                     sig: sig.into(),
-                    // $($($attr_id),*)? TODO
+                    $($($attr_id),*)?
                 };
                 sess.execute(op.into(), &self.into(), vec![x0.clone().into()])
                     .unwrap()
@@ -2972,7 +2972,7 @@ macro_rules! modelled_kernel {
     Binary
     */
 
-    ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
+    ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty, $t1:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
         concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
 
@@ -2992,12 +2992,12 @@ macro_rules! modelled_kernel {
                 ) -> crate::error::Result<
                     Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1) -> crate::error::Result<$u> + Send>
                 > {
-                    derive_runtime_kernel![binary, $($kp)+, self]
+                    derive_runtime_kernel![binary, $(attributes[$($attr_id),+])? $($kp)+, self]
                 }
             }
 
             impl $trait<crate::kernels::SyncSession, $t0, $t1, $u> for $plc {
-                fn $trait_fn(&self, sess: &crate::kernels::SyncSession, /*$($($attr_id:$attr_ty),*,)? TODO*/ x0: &$t0, x1: &$t1) -> $u {
+                fn $trait_fn(&self, sess: &crate::kernels::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
                     use crate::computation::{KnownType, BinarySignature};
                     use crate::kernels::{Session, SyncSession};
                     use std::convert::TryInto;
@@ -3009,7 +3009,7 @@ macro_rules! modelled_kernel {
                     };
                     let op = $op {
                         sig: sig.into(),
-                        // $($($attr_id),*)? TODO
+                        $($($attr_id),*)?
                     };
                     sess.execute(
                         op.into(),
@@ -3039,7 +3039,7 @@ macro_rules! modelled_kernel {
                 ) -> crate::error::Result<
                     Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, $t0, $t1) -> crate::error::Result<$u> + Send>
                 > {
-                    derive_runtime_kernel![binary, $($kp)+, self]
+                    derive_runtime_kernel![binary, $(attributes[$($attr_id),+])? $($kp)+, self]
                 }
             }
 
@@ -3053,7 +3053,7 @@ macro_rules! modelled_kernel {
                 fn $trait_fn(
                     &self,
                     sess: &crate::kernels::AsyncSession,
-                    // $($($attr_id:$attr_ty),*,)? TODO
+                    $($($attr_id:$attr_ty),*,)?
                     x0: &$t0,
                     x1: &$t1,
                 ) -> $u {
@@ -3064,11 +3064,11 @@ macro_rules! modelled_kernel {
 
         // support for SymbolicSession (based on flavour)
         $(
-            modelled_kernel!(__binary $flavour, $trait, $trait_fn, $op, $plc, ($t0, $t1) -> $u => $($kp)+);
+            modelled_kernel!(__binary $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? ($t0, $t1) -> $u => $($kp)+);
         )+
     };
 
-    (__binary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3098,7 +3098,7 @@ macro_rules! modelled_kernel {
                     // Magic by Morten
                     let op = &op;
 
-                    let k = derive_runtime_kernel![binary, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
+                    let k = derive_runtime_kernel![binary, $(attributes[$($attr_id),+])? $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
 
                     let v0 = x0.clone().try_into();
                     let v1 = x1.clone().try_into();
@@ -3131,7 +3131,7 @@ macro_rules! modelled_kernel {
             fn $trait_fn(
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
-                // $($($attr_id:$attr_ty),*,)? TODO
+                $($($attr_id:$attr_ty),*,)?
                 x0: &<$t0 as crate::computation::SymbolicType>::Type,
                 x1: &<$t1 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
@@ -3147,7 +3147,7 @@ macro_rules! modelled_kernel {
                 };
                 let op = $op {
                     sig: sig.into(),
-                    // $($($attr_id),*)? TODO
+                    $($($attr_id),*)?
                 };
                 sess.execute(op.into(), &self.into(), vec![x0.clone().into(), x1.clone().into()])
                     .unwrap()
@@ -3157,7 +3157,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__binary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3186,7 +3186,7 @@ macro_rules! modelled_kernel {
                     // Magic by Morten
                     let op = &op;
 
-                    let k = derive_runtime_kernel![binary, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
+                    let k = derive_runtime_kernel![binary, $(attributes[$($attr_id),+])? $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
 
                     match (x0, x1) {
                         (Symbolic::Concrete(v0), Symbolic::Concrete(v1)) => {
@@ -3212,7 +3212,7 @@ macro_rules! modelled_kernel {
             fn $trait_fn(
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
-                // $($($attr_id:$attr_ty),*,)? TODO
+                $($($attr_id:$attr_ty),*,)?
                 x0: &<$t0 as crate::computation::PartiallySymbolicType>::Type,
                 x1: &<$t1 as crate::computation::PartiallySymbolicType>::Type
             ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
@@ -3228,7 +3228,7 @@ macro_rules! modelled_kernel {
                 };
                 let op = $op {
                     sig: sig.into(),
-                    // $($($attr_id),*)? TODO
+                    $($($attr_id),*)?
                 };
 
                 let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
@@ -3251,7 +3251,7 @@ macro_rules! modelled_kernel {
             fn $trait_fn(
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
-                // $($($attr_id:$attr_ty),*,)? TODO
+                $($($attr_id:$attr_ty),*,)?
                 x0: &<$t0 as crate::computation::SymbolicType>::Type,
                 x1: &<$t1 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
@@ -3267,7 +3267,7 @@ macro_rules! modelled_kernel {
                 };
                 let op = $op {
                     sig: sig.into(),
-                    // $($($attr_id),*)? TODO
+                    $($($attr_id),*)?
                 };
 
                 let x0 = SymbolicValue::from(x0.clone());
@@ -3278,7 +3278,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__binary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3294,7 +3294,7 @@ macro_rules! modelled_kernel {
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
-                derive_runtime_kernel![binary, $($kp)+, self]
+                derive_runtime_kernel![binary, $(attributes[$($attr_id),+])? $($kp)+, self]
             }
         }
 
@@ -3307,7 +3307,7 @@ macro_rules! modelled_kernel {
             fn $trait_fn(
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
-                // $($($attr_id:$attr_ty),*,)? TODO
+                $($($attr_id:$attr_ty),*,)?
                 x0: &<$t0 as crate::computation::SymbolicType>::Type,
                 x1: &<$t1 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
@@ -3323,7 +3323,7 @@ macro_rules! modelled_kernel {
                 };
                 let op = $op {
                     sig: sig.into(),
-                    // $($($attr_id),*)? TODO
+                    $($($attr_id),*)?
                 };
                 sess.execute(op.into(), &self.into(), vec![x0.clone().into(), x1.clone().into()])
                     .unwrap()
@@ -3333,7 +3333,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__binary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ident),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3379,7 +3379,7 @@ macro_rules! modelled_kernel {
             fn $trait_fn(
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
-                // $($($attr_id:$attr_ty),*,)? TODO
+                $($($attr_id:$attr_ty),*,)?
                 x0: &<$t0 as crate::computation::SymbolicType>::Type,
                 x1: &<$t1 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
@@ -3395,7 +3395,7 @@ macro_rules! modelled_kernel {
                 };
                 let op = $op {
                     sig: sig.into(),
-                    // $($($attr_id),*)? TODO
+                    $($($attr_id),*)?
                 };
                 sess.execute(op.into(), &self.into(), vec![x0.clone().into(), x1.clone().into()])
                     .unwrap()
