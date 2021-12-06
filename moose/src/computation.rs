@@ -1129,8 +1129,8 @@ pub struct AtLeast2DOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct IndexAxisOp {
     pub sig: Signature,
-    pub index: usize,
     pub axis: usize,
+    pub index: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]

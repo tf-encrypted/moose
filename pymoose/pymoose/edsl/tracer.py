@@ -4,6 +4,7 @@ from collections import defaultdict
 from pymoose import elk_compiler
 from pymoose.computation import utils
 from pymoose.computation.base import Computation
+from pymoose.computation.base import OpSignature
 from pymoose.computation.host import HostPlacement
 from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import AbsOperation
@@ -34,6 +35,7 @@ from pymoose.computation.standard import SqueezeOperation
 from pymoose.computation.standard import SubOperation
 from pymoose.computation.standard import SumOperation
 from pymoose.computation.standard import TransposeOperation
+from pymoose.computation.standard import UnitType
 from pymoose.computation.standard import UnknownType
 from pymoose.edsl.base import AbsExpression
 from pymoose.edsl.base import ArgumentExpression
@@ -113,7 +115,10 @@ class AstTracer:
                     name=output_name,
                     inputs={"value": op.name},
                     placement_name=op.placement_name,
-                    output_type=op.output_type,
+                    signature=OpSignature(
+                        input_types={"value": op.return_type},
+                        return_type=op.return_type,
+                    ),
                 )
             )
         return self.computation
@@ -168,24 +173,28 @@ class AstTracer:
                 placement_name=placement.name,
                 name=argument_expression.arg_name,
                 inputs={},
-                output_type=output_type,
+                signature=OpSignature(input_types={}, return_type=output_type,),
             )
         )
 
     def visit_ConcatenateExpression(self, concatenate_expression):
         assert isinstance(concatenate_expression, ConcatenateExpression)
-        arrays = {
-            f"array{i}": self.visit(expr).name
-            for i, expr in enumerate(concatenate_expression.inputs)
-        }
+        array_inputs, array_types = {}, {}
+        for i, expr in enumerate(concatenate_expression.inputs):
+            array_op = self.visit(expr)
+            array_inputs[f"array{i}"] = array_op.name
+            array_types[f"array{i}"] = array_op.return_type
+
         placement = self.visit_placement_expression(concatenate_expression.placement)
         return self.computation.add_operation(
             ConcatenateOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("concatenate"),
-                output_type=concatenate_expression.vtype,
                 axis=concatenate_expression.axis,
-                inputs=arrays,
+                inputs=array_inputs,
+                signature=OpSignature(
+                    input_types=array_types, return_type=concatenate_expression.vtype,
+                ),
             )
         )
 
@@ -200,8 +209,14 @@ class AstTracer:
             DecryptOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("decrypt"),
-                output_type=decrypt_expression.vtype,
                 inputs={"key": aes_key_op.name, "ciphertext": aes_ciphertext_op.name},
+                signature=OpSignature(
+                    input_types={
+                        "key": aes_key_op.return_type,
+                        "ciphertext": aes_ciphertext_op.return_type,
+                    },
+                    return_type=decrypt_expression.vtype,
+                ),
             )
         )
 
@@ -219,9 +234,9 @@ class AstTracer:
             ConstantOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("constant"),
-                output_type=output_type,
                 value=value,
                 inputs={},
+                signature=OpSignature(input_types={}, return_type=output_type),
             )
         )
 
@@ -239,8 +254,10 @@ class AstTracer:
             "div": DivOperation,
             "dot": DotOperation,
         }[op_name]
+        lhs_type = lhs_operation.return_type
+        rhs_type = rhs_operation.return_type
         # TODO(Morten) we should derive a type from lhs_operation and rhs_operation
-        assert lhs_operation.output_type == rhs_operation.output_type, (
+        assert lhs_type == rhs_type, (
             lhs_operation,
             rhs_operation,
         )
@@ -249,7 +266,10 @@ class AstTracer:
                 placement_name=placement.name,
                 name=self.get_fresh_name(f"{op_name}"),
                 inputs={"lhs": lhs_operation.name, "rhs": rhs_operation.name},
-                output_type=expression.vtype,
+                signature=OpSignature(
+                    input_types={"lhs": lhs_type, "rhs": rhs_type},
+                    return_type=expression.vtype,
+                ),
             )
         )
 
@@ -262,8 +282,11 @@ class AstTracer:
             InverseOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("inverse"),
-                output_type=inverse_expression.vtype,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=inverse_expression.vtype,
+                ),
             )
         )
 
@@ -276,8 +299,11 @@ class AstTracer:
             AbsOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("abs"),
-                output_type=abs_expression.vtype,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=abs_expression.vtype,
+                ),
             )
         )
 
@@ -290,8 +316,11 @@ class AstTracer:
             CastOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("cast"),
-                output_type=cast_expression.vtype,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=cast_expression.vtype,
+                ),
             )
         )
 
@@ -304,9 +333,12 @@ class AstTracer:
             ExpandDimsOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("expand_dims"),
-                output_type=expand_dims_expression.vtype,
                 axis=expand_dims_expression.axis,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=expand_dims_expression.vtype,
+                ),
             )
         )
 
@@ -319,8 +351,11 @@ class AstTracer:
             ExpOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("exp"),
-                output_type=exp_expression.vtype,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=exp_expression.vtype,
+                ),
             )
         )
 
@@ -333,8 +368,11 @@ class AstTracer:
             SigmoidOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("sigmoid"),
-                output_type=exp_expression.vtype,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=exp_expression.vtype,
+                ),
             )
         )
 
@@ -347,9 +385,12 @@ class AstTracer:
             SqueezeOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("squeeze"),
-                output_type=squeeze_expression.vtype,
                 axis=squeeze_expression.axis,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=squeeze_expression.vtype,
+                ),
             )
         )
 
@@ -363,9 +404,12 @@ class AstTracer:
             OnesOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("ones"),
-                output_type=ones_expression.vtype,
                 dtype=dtype,
                 inputs={"shape": shape_operation.name},
+                signature=OpSignature(
+                    input_types={"shape": shape_operation.return_type},
+                    return_type=ones_expression.vtype,
+                ),
             )
         )
 
@@ -378,9 +422,12 @@ class AstTracer:
             SumOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("sum"),
-                output_type=sum_expression.vtype,
                 axis=sum_expression.axis,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=sum_expression.vtype,
+                ),
             )
         )
 
@@ -393,9 +440,12 @@ class AstTracer:
             MeanOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("mean"),
-                output_type=mean_expression.vtype,
                 axis=mean_expression.axis,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=mean_expression.vtype,
+                ),
             )
         )
 
@@ -408,9 +458,12 @@ class AstTracer:
             TransposeOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("transpose"),
-                output_type=transpose_expression.vtype,
                 axes=transpose_expression.axes,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=transpose_expression.vtype,
+                ),
             )
         )
 
@@ -424,8 +477,14 @@ class AstTracer:
             ReshapeOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("reshape"),
-                output_type=reshape_expression.vtype,
                 inputs={"x": x_operation.name, "shape": shape_operation.name},
+                signature=OpSignature(
+                    input_types={
+                        "x": x_operation.return_type,
+                        "shape": shape_operation.return_type,
+                    },
+                    return_type=reshape_expression.vtype,
+                ),
             )
         )
 
@@ -438,9 +497,12 @@ class AstTracer:
             AtLeast2DOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("atleast_2d"),
-                output_type=atleast_2d_expression.vtype,
                 to_column_vector=atleast_2d_expression.to_column_vector,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=atleast_2d_expression.vtype,
+                ),
             )
         )
 
@@ -453,10 +515,13 @@ class AstTracer:
             IndexAxisOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("index_axis"),
-                output_type=index_axis_expression.vtype,
                 axis=index_axis_expression.axis,
                 index=index_axis_expression.index,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=index_axis_expression.vtype,
+                ),
             )
         )
 
@@ -469,10 +534,13 @@ class AstTracer:
             SliceOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("slice"),
-                output_type=slice_expression.vtype,
                 begin=slice_expression.begin,
                 end=slice_expression.end,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=slice_expression.vtype,
+                ),
             )
         )
 
@@ -485,8 +553,11 @@ class AstTracer:
             ShapeOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("shape"),
-                output_type=shape_expression.vtype,
                 inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=shape_expression.vtype,
+                ),
             )
         )
 
@@ -502,7 +573,13 @@ class AstTracer:
                 placement_name=placement.name,
                 name=self.get_fresh_name("load"),
                 inputs={"key": key_operation.name, "query": query_operation.name},
-                output_type=output_type,
+                signature=OpSignature(
+                    input_types={
+                        "key": key_operation.return_type,
+                        "query": query_operation.return_type,
+                    },
+                    return_type=output_type,
+                ),
             )
         )
 
@@ -517,5 +594,12 @@ class AstTracer:
                 placement_name=placement.name,
                 name=self.get_fresh_name("save"),
                 inputs={"key": key_operation.name, "value": value_operation.name},
+                signature=OpSignature(
+                    input_types={
+                        "key": key_operation.return_type,
+                        "value": value_operation.return_type,
+                    },
+                    return_type=UnitType(),
+                ),
             )
         )
