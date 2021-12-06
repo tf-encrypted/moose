@@ -142,7 +142,7 @@ impl SessionId {
 }
 
 /// Type map used to compute the symbolic version of a Moose type.
-/// 
+///
 /// Note that this trait is typically not implemented directly, but
 /// rather through an implemention of the PartiallySymbolicType map.
 pub trait SymbolicType {
@@ -158,7 +158,7 @@ where
 }
 
 /// Type map used to compute the almost symbolic version of a Moose type.
-/// 
+///
 /// Concretely, this map computes the symbolic version, except for the top-most
 /// type. As an example, RepTensor<Symbolic<HostTensor>> is partially symbolic
 /// as opposed to the (fully) symbolic type Symbolic<RepTensor<Symbolic<HostTensor>.
@@ -167,7 +167,7 @@ pub trait PartiallySymbolicType {
 }
 
 /// Type map used to compute the (fully) concrete version of a Moose type.
-/// 
+///
 /// For example, Symbolic<RepTensor<Symbolic<HostTensor>>> and RepTensor<HostTensor>
 /// are both mapped to RepTensor<HostTensor>.
 pub trait CanonicalType {

@@ -141,8 +141,7 @@ impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTenso
 }
 
 impl<N> PartiallySymbolicType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
-    type Type =
-        AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>;
+    type Type = AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>;
 }
 
 impl<N> CanonicalType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
