@@ -123,10 +123,8 @@ where
     }
 }
 
-modelled!(PlacementAdd::add, HostPlacement, (Tensor, Tensor) -> Tensor, AddOp);
-
-kernel! {
-    AddOp,
+modelled_kernel! {
+    PlacementAdd::add, AddOp,
     [
         (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::host_kernel),
         (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::rep_kernel),
@@ -201,10 +199,8 @@ impl AddOp {
     }
 }
 
-modelled!(PlacementSub::sub, HostPlacement, (Tensor, Tensor) -> Tensor, SubOp);
-
-kernel! {
-    SubOp,
+modelled_kernel! {
+    PlacementSub::sub, SubOp,
     [
         (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::host_kernel),
         (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::rep_kernel),
@@ -393,11 +389,8 @@ impl MulOp {
     }
 }
 
-modelled!(PlacementDiv::div, HostPlacement, (Tensor, Tensor) -> Tensor, DivOp);
-modelled!(PlacementDiv::div, ReplicatedPlacement, (Tensor, Tensor) -> Tensor, DivOp);
-
-kernel! {
-    DivOp,
+modelled_kernel! {
+    PlacementDiv::div, DivOp,
     [
         (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::host_kernel),
         (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::rep_kernel),
@@ -868,10 +861,8 @@ impl SumOp {
     }
 }
 
-modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> Tensor, OnesOp);
-
-kernel! {
-    OnesOp,
+modelled_kernel! {
+    PlacementOnes::ones, OnesOp,
     [
         (HostPlacement, (HostShape) -> Tensor => [hybrid] Self::host_kernel),
         // We do not support the ReplicatedPlacement: PlacementFill yet, hence we do not support Ones.
@@ -971,7 +962,8 @@ impl ExpandDimsOp {
 modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
 
 kernel! {
-    ConcatOp, [
+    ConcatOp,
+    [
         (HostPlacement, vec[Tensor] -> Tensor => [concrete] attributes[axis] Self::host_kernel),
     ]
 }
@@ -1078,10 +1070,9 @@ impl TransposeOp {
     }
 }
 
-modelled!(PlacementInverse::inverse, HostPlacement, (Tensor) -> Tensor, InverseOp);
-
-kernel! {
-    InverseOp, [
+modelled_kernel! {
+    PlacementInverse::inverse, InverseOp,
+    [
         (HostPlacement, (Tensor) -> Tensor => [concrete] Self::kernel),
     ]
 }

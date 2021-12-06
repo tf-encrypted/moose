@@ -20,31 +20,8 @@ use crate::replicated::{
     ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
 };
 
-modelled!(PlacementShape::shape, HostPlacement, (Tensor) -> HostShape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (Float32Tensor) -> HostShape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (Float64Tensor) -> HostShape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (Fixed64Tensor) -> HostShape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (Fixed128Tensor) -> HostShape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (HostFixed64Tensor) -> HostShape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (HostFixed128Tensor) -> HostShape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (HostRing64Tensor) -> HostShape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (HostRing128Tensor) -> HostShape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (HostBitTensor) -> HostShape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (HostFloat32Tensor) -> HostShape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (HostFloat64Tensor) -> HostShape, ShapeOp);
-modelled!(PlacementShape::shape, ReplicatedPlacement, (Tensor) -> ReplicatedShape, ShapeOp);
-modelled!(PlacementShape::shape, ReplicatedPlacement, (Fixed64Tensor) -> ReplicatedShape, ShapeOp);
-modelled!(PlacementShape::shape, ReplicatedPlacement, (Fixed128Tensor) -> ReplicatedShape, ShapeOp);
-modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape, ShapeOp);
-modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedShape, ShapeOp);
-modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedShape, ShapeOp);
-modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedShape, ShapeOp);
-modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedShape, ShapeOp);
-modelled!(PlacementShape::shape, AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveShape, ShapeOp);
-modelled!(PlacementShape::shape, AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveShape, ShapeOp);
-
-kernel! {
-    ShapeOp,
+modelled_kernel! {
+    PlacementShape::shape, ShapeOp,
     [
         (HostPlacement, (Tensor) -> HostShape => [hybrid] Self::host_logical_kernel),
         (HostPlacement, (Float32Tensor) -> HostShape => [hybrid] Self::float_kernel),
@@ -71,22 +48,9 @@ kernel! {
     ]
 }
 
-modelled!(PlacementReshape::reshape, HostPlacement, (HostRing64Tensor, HostShape) -> HostRing64Tensor, HostReshapeOp);
-modelled!(PlacementReshape::reshape, HostPlacement, (HostRing128Tensor, HostShape) -> HostRing128Tensor, HostReshapeOp);
-modelled!(PlacementReshape::reshape, HostPlacement, (HostBitTensor, HostShape) -> HostBitTensor, HostReshapeOp);
-modelled!(PlacementReshape::reshape, HostPlacement, (HostFloat32Tensor, HostShape) -> HostFloat32Tensor, HostReshapeOp);
-modelled!(PlacementReshape::reshape, HostPlacement, (HostFloat64Tensor, HostShape) -> HostFloat64Tensor, HostReshapeOp);
-modelled!(PlacementReshape::reshape, HostPlacement, (HostInt8Tensor, HostShape) -> HostInt8Tensor, HostReshapeOp);
-modelled!(PlacementReshape::reshape, HostPlacement, (HostInt16Tensor, HostShape) -> HostInt16Tensor, HostReshapeOp);
-modelled!(PlacementReshape::reshape, HostPlacement, (HostInt32Tensor, HostShape) -> HostInt32Tensor, HostReshapeOp);
-modelled!(PlacementReshape::reshape, HostPlacement, (HostInt64Tensor, HostShape) -> HostInt64Tensor, HostReshapeOp);
-modelled!(PlacementReshape::reshape, HostPlacement, (HostUint8Tensor, HostShape) -> HostUint8Tensor, HostReshapeOp);
-modelled!(PlacementReshape::reshape, HostPlacement, (HostUint16Tensor, HostShape) -> HostUint16Tensor, HostReshapeOp);
-modelled!(PlacementReshape::reshape, HostPlacement, (HostUint32Tensor, HostShape) -> HostUint32Tensor, HostReshapeOp);
-modelled!(PlacementReshape::reshape, HostPlacement, (HostUint64Tensor, HostShape) -> HostUint64Tensor, HostReshapeOp);
-
-kernel! {
-    HostReshapeOp, [
+modelled_kernel! {
+    PlacementReshape::reshape, HostReshapeOp,
+    [
         (HostPlacement, (HostRing64Tensor, HostShape) -> HostRing64Tensor => [runtime] Self::ring_kernel),
         (HostPlacement, (HostRing128Tensor, HostShape) -> HostRing128Tensor => [runtime] Self::ring_kernel),
         (HostPlacement, (HostBitTensor, HostShape) -> HostBitTensor => [runtime] Self::bit_kernel),
@@ -103,18 +67,13 @@ kernel! {
     ]
 }
 
-modelled!(PlacementRingInject::ring_inject, HostPlacement, attributes[bit_idx: usize] (HostBitTensor) -> HostRing64Tensor, RingInjectOp);
-modelled!(PlacementRingInject::ring_inject, HostPlacement, attributes[bit_idx: usize] (HostBitTensor) -> HostRing128Tensor, RingInjectOp);
-modelled!(PlacementRingInject::ring_inject, ReplicatedPlacement, attributes[bit_idx: usize] (ReplicatedBitTensor) -> ReplicatedRing64Tensor, RingInjectOp);
-modelled!(PlacementRingInject::ring_inject, ReplicatedPlacement, attributes[bit_idx: usize] (ReplicatedBitTensor) -> ReplicatedRing128Tensor, RingInjectOp);
-
-kernel! {
-    RingInjectOp,
+modelled_kernel! {
+    PlacementRingInject::ring_inject, RingInjectOp{bit_idx: usize},
     [
-        (HostPlacement, (HostBitTensor) -> HostRing64Tensor => [runtime] attributes[bit_idx] Self::host_kernel),
-        (HostPlacement, (HostBitTensor) -> HostRing128Tensor => [runtime] attributes[bit_idx] Self::host_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing64Tensor => [hybrid] attributes[bit_idx] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing128Tensor => [hybrid] attributes[bit_idx] Self::rep_kernel),
+        (HostPlacement, (HostBitTensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostBitTensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_kernel),
     ]
 }
 
