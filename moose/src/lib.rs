@@ -3771,6 +3771,18 @@ macro_rules! modelled_kernel {
         }
     };
 
+    // Any arity kernel, 3 attributes op
+    ($trait:ident::$trait_fn:ident, $op:ident{$attr1_id:ident: $attr1_ty:ty, $attr2_id:ident: $attr2_ty:ty, $attr3_id:ident: $attr3_ty:ty}, [$( ($plc:ty, $($tail:tt)+), )+]) => {
+        modelled_kernel! {
+            $trait::$trait_fn, $op,
+            [
+                $(
+                    ($plc, [$attr1_id: $attr1_ty, $attr2_id: $attr2_ty, $attr3_id: $attr3_ty] $($tail)+),
+                )+
+            ]
+        }
+    };
+
 }
 
 macro_rules! modelled_alias {

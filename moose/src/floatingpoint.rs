@@ -58,14 +58,11 @@ where
     }
 }
 
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float32Tensor) -> Float32Tensor, FloatingpointMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, FloatingpointMeanOp);
-
-kernel! {
-    FloatingpointMeanOp,
+modelled_kernel! {
+    PlacementMean::mean, FloatingpointMeanOp{axis: Option<u32>},
     [
-        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] attributes[axis] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
@@ -86,14 +83,11 @@ impl FloatingpointMeanOp {
     }
 }
 
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Float32Tensor) -> Float32Tensor, FloatingpointSumOp);
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, FloatingpointSumOp);
-
-kernel! {
-    FloatingpointSumOp,
+modelled_kernel! {
+    PlacementSum::sum, FloatingpointSumOp{axis: Option<u32>},
     [
-        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] attributes[axis] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
@@ -292,14 +286,11 @@ impl FloatingpointOnesOp {
     }
 }
 
-modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Float32Tensor) -> Float32Tensor, FloatingpointExpandDimsOp);
-modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Float64Tensor) -> Float64Tensor, FloatingpointExpandDimsOp);
-
-kernel! {
-    FloatingpointExpandDimsOp,
+modelled_kernel! {
+    PlacementExpandDims::expand_dims, FloatingpointExpandDimsOp{axis: Vec<u32>},
     [
-        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] attributes[axis] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
