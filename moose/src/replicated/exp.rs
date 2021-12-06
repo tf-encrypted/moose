@@ -50,9 +50,9 @@ impl Pow2Op {
         ReplicatedPlacement: ExpFromParts<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementDiv<
             S,
-            m!(c!(AbstractReplicatedFixedTensor<RepRingT>)),
-            m!(c!(AbstractReplicatedFixedTensor<RepRingT>)),
-            m!(c!(AbstractReplicatedFixedTensor<RepRingT>)),
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
+            AbstractReplicatedFixedTensor<RepRingT>,
         >,
         ReplicatedPlacement: PlacementTruncPr<
             S,
@@ -115,18 +115,16 @@ impl Pow2Op {
             tensor: rep.shl(sess, x.fractional_precision as usize, &one),
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
-        }
-        .into();
+        };
 
         let g_fixed = AbstractReplicatedFixedTensor {
             tensor: g.clone(),
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
-        }
-        .into();
+        };
 
         // compute 1/2^x
-        let inverse = rep.div(sess, &one_fixed, &g_fixed).try_into().ok().unwrap();
+        let inverse = rep.div(sess, &one_fixed, &g_fixed);
 
         // oblivious branching depending on the exponent sign, choose 1/2^x or 2^x
         let switch = rep.if_else(sess, &msb, &inverse.tensor, &g);
@@ -201,6 +199,7 @@ lazy_static! {
 pub(crate) trait ExpFromParts<S: Session, T, O> {
     fn exp_from_parts(&self, sess: &S, e_int: &T, e_frac: &T, f: u32, k: u32) -> O;
 }
+
 impl<S: Session, RepRingT> ExpFromParts<S, RepRingT, RepRingT> for ReplicatedPlacement
 where
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
