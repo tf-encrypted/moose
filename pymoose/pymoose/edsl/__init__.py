@@ -8,7 +8,6 @@ from pymoose.edsl.base import Argument
 from pymoose.edsl.base import abs
 from pymoose.edsl.base import add
 from pymoose.edsl.base import atleast_2d
-from pymoose.edsl.base import logical_or
 from pymoose.edsl.base import cast
 from pymoose.edsl.base import computation
 from pymoose.edsl.base import concatenate
@@ -23,6 +22,7 @@ from pymoose.edsl.base import index_axis
 from pymoose.edsl.base import inverse
 from pymoose.edsl.base import less
 from pymoose.edsl.base import load
+from pymoose.edsl.base import logical_or
 from pymoose.edsl.base import mean
 from pymoose.edsl.base import mul
 from pymoose.edsl.base import ones
