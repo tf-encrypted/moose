@@ -39,28 +39,6 @@ class ReplicatedExample(parameterized.TestCase):
 
         return my_less_comp
 
-    def test_less_example_serde(self):
-        less_comp = self._setup_less_comp()
-        traced_less_comp = edsl.trace(less_comp)
-        comp_bin = utils.serialize_computation(traced_less_comp)
-        # Compile in Rust
-        # If this does not error, rust was able to deserialize the pycomputation
-        elk_compiler.compile_computation(comp_bin, [])
-
-    def test_less_example_compile(self):
-        less_comp = self._setup_less_comp()
-        traced_less_comp = edsl.trace(less_comp)
-        comp_bin = utils.serialize_computation(traced_less_comp)
-        _ = elk_compiler.compile_computation(
-            comp_bin,
-            [
-                "typing",
-                "full",
-                "toposort",
-                # "print",
-            ],
-        )
-
     def test_less_example_execute(self):
         less_comp = self._setup_less_comp()
         traced_less_comp = edsl.trace(less_comp)
