@@ -123,6 +123,39 @@ where
     }
 }
 
+impl IdentityOp {
+    pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+    where
+        HostPlacement: PlacementIdentity<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementIdentity<S, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementIdentity<S, Float32T, Float32T>,
+        HostPlacement: PlacementIdentity<S, Float64T, Float64T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = plc.identity(sess, &x);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = plc.identity(sess, &x);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            AbstractTensor::Float32(x) => {
+                let result = plc.identity(sess, &x);
+                Ok(AbstractTensor::Float32(result))
+            }
+            AbstractTensor::Float64(x) => {
+                let result = plc.identity(sess, &x);
+                Ok(AbstractTensor::Float64(result))
+            }
+        }
+    }
+}
+
 modelled_kernel! {
     PlacementAdd::add, AddOp,
     [

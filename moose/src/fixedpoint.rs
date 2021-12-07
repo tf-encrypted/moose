@@ -111,6 +111,22 @@ where
     }
 }
 
+impl IdentityOp {
+    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementIdentity<S, HostFixedT, HostFixedT>,
+    {
+        match x {
+            FixedTensor::Host(x) => Ok(FixedTensor::Host(plc.identity(sess, &x))),
+            FixedTensor::Replicated(_) => unimplemented!("hey hi hello"),
+        }
+    }
+}
+
 modelled_kernel! {
     PlacementFixedpointEncode::fixedpoint_encode, FixedpointEncodeOp{fractional_precision: u32, integral_precision: u32},
     [

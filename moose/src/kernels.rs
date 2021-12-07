@@ -1424,6 +1424,11 @@ for_all_values! {( $($value:ty),* ) => (
         modelled!(PlacementIdentity::identity, HostPlacement, ($value) -> $value, IdentityOp);
     )*
 )}
+modelled!(PlacementIdentity::identity, HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (Float32Tensor) -> Float32Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (Float64Tensor) -> Float64Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (Fixed64Tensor) -> Fixed64Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (Fixed128Tensor) -> Fixed128Tensor, IdentityOp);
 
 kernel! {
     IdentityOp, [
@@ -1447,6 +1452,13 @@ kernel! {
         (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [runtime] Self::missing_kernel),
         (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::missing_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_host_kernel),
+        // (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [transparent] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_host_kernel),
+        // (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [transparent] Self::fixed_host_kernel),
+        (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_kernel),
 
     ]
 }

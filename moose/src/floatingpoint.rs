@@ -58,6 +58,20 @@ where
     }
 }
 
+impl IdentityOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT>,
+    ) -> Result<FloatTensor<HostFloatT>>
+    where
+        HostPlacement: PlacementIdentity<S, HostFloatT, HostFloatT>,
+    {
+        let FloatTensor::Host(x) = x;
+        Ok(FloatTensor::Host(plc.identity(sess, &x)))
+    }
+}
+
 modelled_kernel! {
     PlacementMean::mean, FloatingpointMeanOp{axis: Option<u32>},
     [

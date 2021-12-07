@@ -1401,7 +1401,7 @@ macro_rules! kernel {
                             let op_name = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
                             Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
-                        _ => unimplemented!()
+                        _ => unimplemented!("unimplemented in unary runtime {:?}", x0)
                     }
                 }))
             }

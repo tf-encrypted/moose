@@ -174,7 +174,9 @@ class AstTracer:
                 placement_name=placement.name,
                 name=self.get_fresh_name("identity"),
                 inputs={"x": input_op.name},
-                signature=OpSignature(input_types={"x": input_type}, return_type=output_type),
+                signature=OpSignature(
+                    input_types={"x": input_type}, return_type=output_type
+                ),
             )
         )
 

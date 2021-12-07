@@ -99,9 +99,11 @@ class Expression:
     def __hash__(self):
         return id(self)
 
+
 @dataclass
 class IdentityExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
@@ -285,9 +287,8 @@ class SliceExpression(Expression):
 def identity(x, placement=None):
     placement = placement or get_current_placement()
 
-    return IdentityExpression(
-        placement=placement, inputs=[x], vtype=x.vtype,
-    )
+    return IdentityExpression(placement=placement, inputs=[x], vtype=x.vtype)
+
 
 def concatenate(arrays, axis=0, placement=None):
     placement = placement or get_current_placement()
