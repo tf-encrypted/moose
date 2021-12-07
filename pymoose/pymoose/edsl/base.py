@@ -228,8 +228,12 @@ class SliceExpression(Expression):
 
 
 def concatenate(arrays, axis=0, placement=None):
-    # TODO: check array-like for arrays param
     placement = placement or get_current_placement()
+    if not isinstance(arrays, (tuple, list)):
+        raise ValueError(
+            "Inputs to `concatenate` must be array-like, found argument "
+            f"of type {type(arrays)}."
+        )
     input_vtype = arrays[0].vtype
     if isinstance(input_vtype, TensorType):
         expected_vtype = input_vtype
