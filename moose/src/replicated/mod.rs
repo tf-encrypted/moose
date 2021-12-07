@@ -2913,14 +2913,14 @@ impl SigmoidOp {
     }
 }
 
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, LessThanOp);
+modelled!(PlacementLessThan::less, ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, LessOp);
+modelled!(PlacementLessThan::less, ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, LessOp);
+modelled!(PlacementLessThan::less, ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedBitTensor, LessOp);
+modelled!(PlacementLessThan::less, ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedBitTensor, LessOp);
+modelled!(PlacementLessThan::less, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor, LessOp);
+modelled!(PlacementLessThan::less, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor, LessOp);
 
-impl LessThanOp {
+impl LessOp {
     pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -4198,8 +4198,8 @@ mod tests {
         };
     }
 
-    rep_binary_func_test_bit!(test_rep_lt64, less_than<u64>);
-    rep_binary_func_test_bit!(test_rep_lt128, less_than<u128>);
+    rep_binary_func_test_bit!(test_rep_lt64, less<u64>);
+    rep_binary_func_test_bit!(test_rep_lt128, less<u128>);
 
     #[test]
     fn test_rep_lt_64() {

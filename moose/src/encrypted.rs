@@ -205,12 +205,13 @@ impl AesDecryptOp {
         Fixed128T,
         Float32T,
         Float64T,
+        BoolT,
     >(
         sess: &S,
         plc: &HostPlacement,
         key: HostAesKeyT,
         ciphertext: AbstractAesTensor<Fixed128AesT>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
         HostPlacement: PlacementDecrypt<S, HostAesKeyT, Fixed128AesT, Fixed128T>,
     {
@@ -272,12 +273,13 @@ impl AesDecryptOp {
         Fixed128T,
         Float32T,
         Float64T,
+        BoolT,
     >(
         sess: &S,
         plc: &ReplicatedPlacement,
         key: ReplicatedAesKeyT,
         ciphertext: AbstractAesTensor<Fixed128AesT>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
         ReplicatedPlacement: PlacementDecrypt<S, ReplicatedAesKeyT, Fixed128AesT, Fixed128T>,
     {

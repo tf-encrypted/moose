@@ -10,6 +10,7 @@ from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import AbsOperation
 from pymoose.computation.standard import AddOperation
 from pymoose.computation.standard import AtLeast2DOperation
+from pymoose.computation.standard import BitwiseOrOperation
 from pymoose.computation.standard import CastOperation
 from pymoose.computation.standard import ConcatenateOperation
 from pymoose.computation.standard import ConstantOperation
@@ -21,6 +22,7 @@ from pymoose.computation.standard import ExpOperation
 from pymoose.computation.standard import IndexAxisOperation
 from pymoose.computation.standard import InputOperation
 from pymoose.computation.standard import InverseOperation
+from pymoose.computation.standard import LessOperation
 from pymoose.computation.standard import LoadOperation
 from pymoose.computation.standard import MeanOperation
 from pymoose.computation.standard import MulOperation
@@ -41,6 +43,7 @@ from pymoose.edsl.base import AbsExpression
 from pymoose.edsl.base import ArgumentExpression
 from pymoose.edsl.base import AtLeast2DExpression
 from pymoose.edsl.base import BinaryOpExpression
+from pymoose.edsl.base import BitwiseOrExpression
 from pymoose.edsl.base import CastExpression
 from pymoose.edsl.base import ConcatenateExpression
 from pymoose.edsl.base import ConstantExpression
@@ -51,6 +54,7 @@ from pymoose.edsl.base import Expression
 from pymoose.edsl.base import HostPlacementExpression
 from pymoose.edsl.base import IndexAxisExpression
 from pymoose.edsl.base import InverseExpression
+from pymoose.edsl.base import LessExpression
 from pymoose.edsl.base import LoadExpression
 from pymoose.edsl.base import MeanExpression
 from pymoose.edsl.base import OnesExpression
@@ -253,6 +257,8 @@ class AstTracer:
             "mul": MulOperation,
             "div": DivOperation,
             "dot": DotOperation,
+            "or": BitwiseOrOperation,
+            "less": LessOperation,
         }[op_name]
         lhs_type = lhs_operation.return_type
         rhs_type = rhs_operation.return_type
