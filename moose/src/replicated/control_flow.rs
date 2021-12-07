@@ -1,3 +1,5 @@
+use macros::with_context;
+
 use crate::computation::{MuxOp, ReplicatedPlacement};
 use crate::error::Result;
 use crate::kernels::*;
@@ -22,10 +24,8 @@ impl MuxOp {
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     {
         // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
-        let diff = rep.sub(sess, &x, &y);
-        let s_diff = rep.mul(sess, &s, &diff);
-
-        Ok(rep.add(sess, &s_diff, &y))
+        let res = with_context!(rep, sess, s * (x - y) + y);
+        Ok(res)
     }
 
     pub(crate) fn rep_bit_selector_kernel<S: Session, RepRingT, RepBitT>(
@@ -43,10 +43,8 @@ impl MuxOp {
     {
         let s_ring = rep.ring_inject(sess, 0, &s);
         // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
-        let diff = rep.sub(sess, &x, &y);
-        let s_diff = rep.mul(sess, &s_ring, &diff);
-
-        Ok(rep.add(sess, &s_diff, &y))
+        let res = with_context!(rep, sess, s_ring * (x - y) + y);
+        Ok(res)
     }
 }
 

@@ -1590,15 +1590,16 @@ impl MuxOp {
         })
     }
 
-    pub(crate) fn rep_bit_selector_fixed_kernel<S: Session, RepRingT, RepBitT>(
+    pub(crate) fn rep_bit_selector_fixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        s: RepBitT,
+        s: m!(ReplicatedBitTensor),
         x: AbstractReplicatedFixedTensor<RepRingT>,
         y: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
-        ReplicatedPlacement: PlacementMux<S, RepBitT, RepRingT, RepRingT, RepRingT>,
+        ReplicatedBitTensor: KnownType<S>,
+        ReplicatedPlacement: PlacementMux<S, m!(ReplicatedBitTensor), RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         Ok(AbstractReplicatedFixedTensor {
