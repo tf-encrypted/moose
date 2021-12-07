@@ -128,4 +128,65 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn test_bit_selector_mux() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let sess = SyncSession::default();
+
+        let scaling_base = 2;
+        let scaling_exp = 24;
+
+        let s = crate::host::HostBitTensor::from_raw_plc(
+            array![1, 0, 1, 0].into_dimensionality::<IxDyn>().unwrap(),
+            alice.clone(),
+        );
+
+        let x = crate::host::HostFloat64Tensor::from_raw_plc(
+            array![1.0, 2.0, 3.0, 4.0]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+            alice.clone(),
+        );
+        let y = crate::host::HostFloat64Tensor::from_raw_plc(
+            array![4.0, 5.0, 6.0, -1.0]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+            bob.clone(),
+        );
+
+        let s_shared: crate::replicated::ReplicatedBitTensor = rep.share(&sess, &s);
+
+        let x = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &x);
+        let x_shared = rep.share(&sess, &x);
+
+        let y = bob.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &y);
+        let y_shared = rep.share(&sess, &y);
+
+        let res = rep.mux(&sess, &s_shared, &x_shared, &y_shared);
+
+        let opened_result = alice.reveal(&sess, &res);
+        let decoded_result =
+            alice.fixedpoint_ring_decode(&sess, scaling_base, scaling_exp, &opened_result);
+
+        assert_eq!(
+            decoded_result,
+            crate::host::HostFloat64Tensor::from_raw_plc(
+                array![1.0, 5.0, 3.0, -1.0]
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap(),
+                alice
+            )
+        );
+    }
 }
