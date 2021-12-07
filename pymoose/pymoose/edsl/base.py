@@ -35,8 +35,8 @@ _NUMPY_DTYPES_MAP = {
     np.dtype("float32"): dtypes.float32,
     np.float64: dtypes.float64,
     np.dtype("float64"): dtypes.float64,
-    np.bool_: dtypes.bool8,
-    np.dtype("bool_"): dtypes.bool8,
+    np.bool_: dtypes.bool_,
+    np.dtype("bool_"): dtypes.bool_,
 }
 
 
@@ -388,7 +388,7 @@ def less(lhs, rhs, placement=None):
         op_name="less",
         placement=placement,
         inputs=[lhs, rhs],
-        vtype=TensorType(dtype=dtypes.bool8),
+        vtype=TensorType(dtype=dtypes.bool_),
     )
 
 

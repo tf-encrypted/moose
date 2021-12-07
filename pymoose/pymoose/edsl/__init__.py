@@ -1,4 +1,4 @@
-from pymoose.computation.dtypes import bool8
+from pymoose.computation.dtypes import bool_
 from pymoose.computation.dtypes import fixed
 from pymoose.computation.dtypes import float32
 from pymoose.computation.dtypes import float64
@@ -58,7 +58,7 @@ __all__ = [
     exp,
     expand_dims,
     fixed,
-    bool8,
+    bool_,
     float32,
     float64,
     index_axis,

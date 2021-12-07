@@ -184,7 +184,7 @@ float64 = _ConcreteDType(
     is_signed=True,
     is_boolean=False,
 )
-bool8 = _ConcreteDType(
+bool_ = _ConcreteDType(
     "bool_",
     "bool",
     numpy_dtype=np.bool_,

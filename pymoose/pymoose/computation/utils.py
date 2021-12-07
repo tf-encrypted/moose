@@ -130,7 +130,7 @@ def _decode(obj):
                 dtypes.uint64.name: dtypes.uint64,
                 dtypes.float32.name: dtypes.float32,
                 dtypes.float64.name: dtypes.float64,
-                dtypes.bool8.name: dtypes.bool8,
+                dtypes.bool_.name: dtypes.bool_,
             }[dtype_name]
         elif obj["__type__"] == "OpSignature":
             return OpSignature(
