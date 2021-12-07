@@ -13,7 +13,7 @@ from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 
-class ReplicatedExample(parameterized.TestCase):
+class BooleanLogicExample(parameterized.TestCase):
     def _setup_less_comp(self):
         alice = edsl.host_placement(name="alice")
         bob = edsl.host_placement(name="bob")
