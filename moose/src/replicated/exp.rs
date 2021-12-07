@@ -189,8 +189,9 @@ where
     m!(c!(AbstractReplicatedFixedTensor<RepRingT>)):
         TryInto<AbstractReplicatedFixedTensor<RepRingT>>,
     AbstractReplicatedFixedTensor<RepRingT>:
-        TryInto<m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
+        Into<m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
 
+    // TODO(Morten) Good chance we can remove macros here after complete switch to modelled_kernel
     ReplicatedPlacement: PolynomialEval<S, m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
 
     ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
@@ -210,7 +211,7 @@ where
             integral_precision: 2,
             fractional_precision: k - 2,
         };
-        let e_approx = self.polynomial_eval(sess, P_1045.to_vec(), x.try_into().ok().unwrap());
+        let e_approx = self.polynomial_eval(sess, P_1045.to_vec(), x.into());
 
         // convert replicated fixed tensor to concrete value in order to grab the replicated ring tensor
         let e_approx_f: AbstractReplicatedFixedTensor<RepRingT> = e_approx.try_into().ok().unwrap();
