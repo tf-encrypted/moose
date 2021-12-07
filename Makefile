@@ -26,11 +26,11 @@ lint:
 
 test:
 	cargo test
-	cd pymoose && pytest -m "not slow"
+	pytest -m "not slow" ./pymoose
 
 test-long:
 	$(MAKE) test
-	cd pymoose && pytest -m "slow"
+	pytest -m "slow" ./pymoose
 
 test-ci:
 	$(MAKE) test
