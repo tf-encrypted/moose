@@ -1982,7 +1982,7 @@ kernel! {
 }
 
 kernel! {
-    IndexAxisOp,
+    IndexAxis,
     [
         (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] attributes[axis, index] Self::logical_host_kernel),
         (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] attributes[axis, index] Self::float_host_kernel),

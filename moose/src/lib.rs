@@ -1146,7 +1146,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc
             ) -> crate::error::Result<
-                <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+                <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + core::marker::Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession};
 
@@ -1321,7 +1321,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + core::marker::Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
@@ -1530,7 +1530,7 @@ macro_rules! kernel {
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + core::marker::Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
@@ -1979,7 +1979,7 @@ macro_rules! kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 Vec<<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + core::marker::Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
@@ -2926,7 +2926,7 @@ macro_rules! modelled_kernel {
                     &self,
                     _plc: &$plc
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0) -> crate::error::Result<$u> + Send>
+                    Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0) -> crate::error::Result<$u> + core::marker::Send>
                 > {
                     derive_runtime_kernel![unary, $(attributes[$($attr_id),+])? $($kp)+, self]
                 }
@@ -2971,7 +2971,7 @@ macro_rules! modelled_kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, $t0) -> crate::error::Result<$u> + Send>
+                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, $t0) -> crate::error::Result<$u> + core::marker::Send>
                 > {
                     derive_runtime_kernel![unary, $(attributes[$($attr_id),+])? $($kp)+, self]
                 }
@@ -3012,7 +3012,7 @@ macro_rules! modelled_kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + core::marker::Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -3094,7 +3094,7 @@ macro_rules! modelled_kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + core::marker::Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
@@ -3203,7 +3203,7 @@ macro_rules! modelled_kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + core::marker::Send>>
             {
                 derive_runtime_kernel![unary, $(attributes[$($attr_id),+])? $($kp)+, self]
             }
@@ -3253,7 +3253,7 @@ macro_rules! modelled_kernel {
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + core::marker::Send>>
             {
                 use crate::computation::{KnownType};
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
@@ -3329,7 +3329,7 @@ macro_rules! modelled_kernel {
                     &self,
                     _plc: &$plc
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1) -> crate::error::Result<$u> + Send>
+                    Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1) -> crate::error::Result<$u> + core::marker::Send>
                 > {
                     derive_runtime_kernel![binary, $(attributes[$($attr_id),+])? $($kp)+, self]
                 }
@@ -3376,7 +3376,7 @@ macro_rules! modelled_kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, $t0, $t1) -> crate::error::Result<$u> + Send>
+                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, $t0, $t1) -> crate::error::Result<$u> + core::marker::Send>
                 > {
                     derive_runtime_kernel![binary, $(attributes[$($attr_id),+])? $($kp)+, self]
                 }
@@ -3421,7 +3421,7 @@ macro_rules! modelled_kernel {
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + core::marker::Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -3510,7 +3510,7 @@ macro_rules! modelled_kernel {
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + core::marker::Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
@@ -3631,7 +3631,7 @@ macro_rules! modelled_kernel {
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + core::marker::Send>>
             {
                 derive_runtime_kernel![binary, $(attributes[$($attr_id),+])? $($kp)+, self]
             }
@@ -3686,7 +3686,7 @@ macro_rules! modelled_kernel {
                 &$plc,
                 <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
                 <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + core::marker::Send>>
             {
                 use crate::computation::{KnownType};
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
