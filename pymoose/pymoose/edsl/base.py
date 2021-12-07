@@ -231,8 +231,7 @@ class SliceExpression(Expression):
 
 @dataclass
 class LessExpression(Expression):
-    def __hash__(self):
-        return id(self)
+    pass
 
 
 @dataclass
