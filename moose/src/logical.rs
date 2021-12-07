@@ -89,14 +89,12 @@ where
 
 impl PartiallySymbolicType for Tensor {
     #[allow(clippy::type_complexity)]
-    type Type = Symbolic<
-        AbstractTensor<
-            <Fixed64Tensor as SymbolicType>::Type,
-            <Fixed128Tensor as SymbolicType>::Type,
-            <Float32Tensor as SymbolicType>::Type,
-            <Float64Tensor as SymbolicType>::Type,
-            <BooleanTensor as SymbolicType>::Type,
-        >,
+    type Type = AbstractTensor<
+        <Fixed64Tensor as SymbolicType>::Type,
+        <Fixed128Tensor as SymbolicType>::Type,
+        <Float32Tensor as SymbolicType>::Type,
+        <Float64Tensor as SymbolicType>::Type,
+        <BooleanTensor as SymbolicType>::Type,
     >;
 }
 
