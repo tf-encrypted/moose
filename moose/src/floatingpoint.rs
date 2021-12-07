@@ -1,8 +1,8 @@
+use crate::boolean::{BoolTensor, BooleanTensor};
 use crate::computation::*;
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape, HostString};
 use crate::kernels::*;
-use crate::replicated::{BoolTensor, BooleanTensor};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;

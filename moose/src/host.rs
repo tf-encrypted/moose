@@ -2595,15 +2595,14 @@ modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing64Tensor, HostRi
 modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostBitTensor, LessThanOp);
 
 impl LessThanOp {
-    pub(crate) fn host_fixed_kernel<S: Session, HostRingT>(
+    pub(crate) fn host_fixed_kernel<S: Session, HostRingT, HostBitT>(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractHostFixedTensor<HostRingT>,
         y: AbstractHostFixedTensor<HostRingT>,
-    ) -> Result<cs!(HostBitTensor)>
+    ) -> Result<HostBitT>
     where
-        HostBitTensor: KnownType<S>,
-        HostPlacement: PlacementLessThan<S, HostRingT, HostRingT, cs!(HostBitTensor)>,
+        HostPlacement: PlacementLessThan<S, HostRingT, HostRingT, HostBitT>,
     {
         Ok(plc.less_than(sess, &x.tensor, &y.tensor))
     }

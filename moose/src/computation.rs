@@ -1,4 +1,5 @@
 use crate::additive::*;
+use crate::boolean::*;
 use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
