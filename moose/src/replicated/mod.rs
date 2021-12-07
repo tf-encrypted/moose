@@ -268,8 +268,8 @@ moose_type!(ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRi
 moose_type!(ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractMirroredFixedTensor<MirroredT> {
-    pub tensor: MirroredT,
+pub struct AbstractMirroredFixedTensor<MirRingT> {
+    pub tensor: MirRingT,
     pub fractional_precision: u32,
     pub integral_precision: u32,
 }
@@ -2277,17 +2277,17 @@ modelled_kernel! {
 }
 
 impl RepAbsOp {
-    fn kernel<S: Session, RepT, MirroredT>(
+    fn kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepT,
-    ) -> Result<RepT>
+        x: RepRingT,
+    ) -> Result<RepRingT>
     where
-        ReplicatedPlacement: PlacementMsb<S, RepT, RepT>,
-        ReplicatedPlacement: PlacementMul<S, RepT, RepT, RepT>,
-        ReplicatedPlacement: PlacementShl<S, RepT, RepT>,
-        ReplicatedPlacement: PlacementSub<S, MirroredT, RepT, RepT>,
-        ReplicatedPlacement: ShapeFill<S, RepT, Result = MirroredT>,
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirRingT>,
     {
         let msb_ring = rep.msb(sess, &x);
         let double = rep.shl(sess, 1, &msb_ring);
@@ -2934,28 +2934,28 @@ impl LessThanOp {
         Ok(rep.msb(sess, &z))
     }
 
-    pub(crate) fn rep_mir_kernel<S: Session, RepRingT, MirroredT, RepBitT>(
+    pub(crate) fn rep_mir_kernel<S: Session, RepRingT, MirRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
-        y: MirroredT,
+        y: MirRingT,
     ) -> Result<RepBitT>
     where
-        ReplicatedPlacement: PlacementSub<S, RepRingT, MirroredT, RepRingT>,
+        ReplicatedPlacement: PlacementSub<S, RepRingT, MirRingT, RepRingT>,
         ReplicatedPlacement: PlacementMsb<S, RepRingT, RepBitT>,
     {
         let z = rep.sub(sess, &x, &y);
         Ok(rep.msb(sess, &z))
     }
 
-    pub(crate) fn mir_rep_kernel<S: Session, RepRingT, MirroredT, RepBitT>(
+    pub(crate) fn mir_rep_kernel<S: Session, RepRingT, MirRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: MirroredT,
+        x: MirRingT,
         y: RepRingT,
     ) -> Result<RepBitT>
     where
-        ReplicatedPlacement: PlacementSub<S, MirroredT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementMsb<S, RepRingT, RepBitT>,
     {
         let z = rep.sub(sess, &x, &y);
