@@ -52,7 +52,7 @@ jobs:
       - name: Install runtime package.
         run: |
           . venv/bin/activate
-          make pylib
+          make pylib-dev
 
       - name: Lint check the runtime package.
         run: |
