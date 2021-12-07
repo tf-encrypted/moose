@@ -8,7 +8,7 @@ from pymoose.edsl.base import Argument
 from pymoose.edsl.base import abs
 from pymoose.edsl.base import add
 from pymoose.edsl.base import atleast_2d
-from pymoose.edsl.base import bit_or
+from pymoose.edsl.base import logical_or
 from pymoose.edsl.base import cast
 from pymoose.edsl.base import computation
 from pymoose.edsl.base import concatenate
@@ -45,7 +45,7 @@ __all__ = [
     add,
     Argument,
     atleast_2d,
-    bit_or,
+    logical_or,
     cast,
     computation,
     concatenate,

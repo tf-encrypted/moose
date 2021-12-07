@@ -392,7 +392,7 @@ def less(lhs, rhs, placement=None):
     )
 
 
-def bit_or(lhs, rhs, placement=None):
+def logical_or(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
