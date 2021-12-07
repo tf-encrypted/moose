@@ -4,7 +4,6 @@ use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{HostShape, HostString};
 use crate::kernels::*;
-use crate::replicated::ReplicatedShape;
 use crate::symbolic::Symbolic;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -80,15 +79,13 @@ where
     }
 }
 
-impl SymbolicType for Tensor {
+impl PartiallySymbolicType for Tensor {
     #[allow(clippy::type_complexity)]
-    type Type = Symbolic<
-        AbstractTensor<
-            <Fixed64Tensor as SymbolicType>::Type,
-            <Fixed128Tensor as SymbolicType>::Type,
-            <Float32Tensor as SymbolicType>::Type,
-            <Float64Tensor as SymbolicType>::Type,
-        >,
+    type Type = AbstractTensor<
+        <Fixed64Tensor as SymbolicType>::Type,
+        <Fixed128Tensor as SymbolicType>::Type,
+        <Float32Tensor as SymbolicType>::Type,
+        <Float64Tensor as SymbolicType>::Type,
     >;
 }
 
@@ -126,13 +123,11 @@ where
     }
 }
 
-modelled!(PlacementAdd::add, HostPlacement, (Tensor, Tensor) -> Tensor, AddOp);
-
-kernel! {
-    AddOp,
+modelled_kernel! {
+    PlacementAdd::add, AddOp,
     [
-        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::rep_kernel),
+        (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::rep_kernel),
     ]
 }
 
@@ -204,13 +199,11 @@ impl AddOp {
     }
 }
 
-modelled!(PlacementSub::sub, HostPlacement, (Tensor, Tensor) -> Tensor, SubOp);
-
-kernel! {
-    SubOp,
+modelled_kernel! {
+    PlacementSub::sub, SubOp,
     [
-        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::rep_kernel),
+        (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::rep_kernel),
     ]
 }
 
@@ -287,8 +280,8 @@ modelled!(PlacementMul::mul, HostPlacement, (Tensor, Tensor) -> Tensor, MulOp);
 kernel! {
     MulOp,
     [
-        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] attributes[sig] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] attributes[sig] Self::rep_kernel),
+        (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] attributes[sig] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] attributes[sig] Self::rep_kernel),
     ]
 }
 
@@ -308,6 +301,9 @@ impl MulOp {
         HostPlacement: PlacementMul<S, Float32T, Float32T, Float32T>,
         HostPlacement: PlacementMul<S, Float64T, Float64T, Float64T>,
     {
+        // TODO(Morten)
+        // we should probably use a trait bound on Fixed64T
+        // and Fixed128T to extract precision instead
         let precision = match sig.arg(0) {
             Ok(Ty::Tensor(TensorDType::Fixed64 {
                 fractional_precision: precision,
@@ -393,14 +389,11 @@ impl MulOp {
     }
 }
 
-modelled!(PlacementDiv::div, HostPlacement, (Tensor, Tensor) -> Tensor, DivOp);
-modelled!(PlacementDiv::div, ReplicatedPlacement, (Tensor, Tensor) -> Tensor, DivOp);
-
-kernel! {
-    DivOp,
+modelled_kernel! {
+    PlacementDiv::div, DivOp,
     [
-        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::rep_kernel),
+        (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::rep_kernel),
     ]
 }
 
@@ -477,8 +470,8 @@ modelled!(PlacementDot::dot, HostPlacement, (Tensor, Tensor) -> Tensor, DotOp);
 kernel! {
     DotOp,
     [
-        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] attributes[sig] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] attributes[sig] Self::rep_kernel),
+        (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] attributes[sig] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] attributes[sig] Self::rep_kernel),
     ]
 }
 
@@ -498,6 +491,7 @@ impl DotOp {
         HostPlacement: PlacementDot<S, Float32T, Float32T, Float32T>,
         HostPlacement: PlacementDot<S, Float64T, Float64T, Float64T>,
     {
+        // TODO(Morten) same, use trait bound to extract
         let precision = match sig.arg(0) {
             Ok(Ty::Tensor(TensorDType::Fixed64 {
                 fractional_precision: precision,
@@ -587,7 +581,7 @@ modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);
 kernel! {
     CastOp,
     [
-        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[sig] Self::kernel),
+        (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::kernel),
     ]
 }
 
@@ -660,7 +654,7 @@ impl CastOp {
 
 kernel! {
     AtLeast2DOp, [
-        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[to_column_vector] Self::host_kernel),
+        (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[to_column_vector] Self::host_kernel),
         // (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] attributes[to_column_vector] Self::rep_kernel),
     ]
 }
@@ -703,8 +697,8 @@ impl AtLeast2DOp {
 
 kernel! {
     MeanOp, [
-        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[sig, axis] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] attributes[sig, axis] Self::rep_kernel),
+        (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig, axis] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] attributes[sig, axis] Self::rep_kernel),
     ]
 }
 
@@ -802,8 +796,8 @@ impl MeanOp {
 
 kernel! {
     SumOp, [
-        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[axis] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] attributes[axis] Self::rep_kernel),
+        (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[axis] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] attributes[axis] Self::rep_kernel),
     ]
 }
 
@@ -867,10 +861,8 @@ impl SumOp {
     }
 }
 
-modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> Tensor, OnesOp);
-
-kernel! {
-    OnesOp,
+modelled_kernel! {
+    PlacementOnes::ones, OnesOp,
     [
         (HostPlacement, (HostShape) -> Tensor => [hybrid] Self::host_kernel),
         // We do not support the ReplicatedPlacement: PlacementFill yet, hence we do not support Ones.
@@ -929,7 +921,7 @@ modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<
 kernel! {
     ExpandDimsOp,
     [
-        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[axis] Self::host_kernel),
+        (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[axis] Self::host_kernel),
     ]
 }
 
@@ -967,11 +959,74 @@ impl ExpandDimsOp {
     }
 }
 
+modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (Tensor) -> Tensor, IndexAxisOp);
+
+impl IndexAxisOp {
+    pub fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: usize,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+    where
+        HostPlacement: PlacementIndexAxis<S, Float32T, Float32T>,
+        HostPlacement: PlacementIndexAxis<S, Float64T, Float64T>,
+    {
+        match x {
+            AbstractTensor::Float32(x) => {
+                let z = plc.index_axis(sess, axis, index, &x);
+                Ok(AbstractTensor::Float32(z))
+            }
+            AbstractTensor::Float64(x) => {
+                let z = plc.index_axis(sess, axis, index, &x);
+
+                Ok(AbstractTensor::Float64(z))
+            }
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated index_axis for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+}
+
+impl IndexAxisOp {
+    pub fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: usize,
+        index: usize,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+    where
+        ReplicatedPlacement: PlacementIndexAxis<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementIndexAxis<S, Fixed128T, Fixed128T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = plc.index_axis(sess, axis, index, &x);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = plc.index_axis(sess, axis, index, &x);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated index_axis for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+}
+
 modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
 
 kernel! {
-    ConcatOp, [
-        (HostPlacement, vec[Tensor] -> Tensor => [hybrid] attributes[axis] Self::host_kernel),
+    ConcatOp,
+    [
+        (HostPlacement, vec[Tensor] -> Tensor => [concrete] attributes[axis] Self::host_kernel),
     ]
 }
 
@@ -1039,7 +1094,7 @@ modelled!(PlacementTranspose::transpose, HostPlacement, (Tensor) -> Tensor, Tran
 
 kernel! {
     TransposeOp, [
-        (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::kernel),
+        (HostPlacement, (Tensor) -> Tensor => [concrete] Self::kernel),
     ]
 }
 
@@ -1077,11 +1132,10 @@ impl TransposeOp {
     }
 }
 
-modelled!(PlacementInverse::inverse, HostPlacement, (Tensor) -> Tensor, InverseOp);
-
-kernel! {
-    InverseOp, [
-        (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::kernel),
+modelled_kernel! {
+    PlacementInverse::inverse, InverseOp,
+    [
+        (HostPlacement, (Tensor) -> Tensor => [concrete] Self::kernel),
     ]
 }
 
@@ -1178,17 +1232,23 @@ impl SaveOp {
 }
 
 impl ShapeOp {
-    pub(crate) fn host_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+    pub(crate) fn host_logical_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        HostShapeT,
+    >(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-    ) -> Result<m!(HostShape)>
+    ) -> Result<HostShapeT>
     where
-        HostShape: KnownType<S>,
-        HostPlacement: PlacementShape<S, Float32T, m!(HostShape)>,
-        HostPlacement: PlacementShape<S, Float64T, m!(HostShape)>,
-        HostPlacement: PlacementShape<S, Fixed64T, m!(HostShape)>,
-        HostPlacement: PlacementShape<S, Fixed128T, m!(HostShape)>,
+        HostPlacement: PlacementShape<S, Float32T, HostShapeT>,
+        HostPlacement: PlacementShape<S, Float64T, HostShapeT>,
+        HostPlacement: PlacementShape<S, Fixed64T, HostShapeT>,
+        HostPlacement: PlacementShape<S, Fixed128T, HostShapeT>,
     {
         match x {
             AbstractTensor::Float32(x) => Ok(plc.shape(sess, &x)),
@@ -1198,15 +1258,21 @@ impl ShapeOp {
         }
     }
 
-    pub(crate) fn rep_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+    pub(crate) fn rep_logical_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        RepShapeT,
+    >(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-    ) -> Result<m!(ReplicatedShape)>
+    ) -> Result<RepShapeT>
     where
-        ReplicatedShape: KnownType<S>,
-        ReplicatedPlacement: PlacementShape<S, Fixed64T, m!(ReplicatedShape)>,
-        ReplicatedPlacement: PlacementShape<S, Fixed128T, m!(ReplicatedShape)>,
+        ReplicatedPlacement: PlacementShape<S, Fixed64T, RepShapeT>,
+        ReplicatedPlacement: PlacementShape<S, Fixed128T, RepShapeT>,
     {
         match x {
             AbstractTensor::Fixed64(x) => Ok(plc.shape(sess, &x)),
@@ -1219,22 +1285,15 @@ impl ShapeOp {
 }
 
 impl ConstantOp {
-    #[allow(clippy::type_complexity)]
-    pub fn logical_kernel<S: Session>(
+    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
         value: Constant,
-    ) -> Result<
-        AbstractTensor<m!(Fixed64Tensor), m!(Fixed128Tensor), m!(Float32Tensor), m!(Float64Tensor)>,
-    >
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
-        Fixed64Tensor: KnownType<S>,
-        Fixed128Tensor: KnownType<S>,
-        Float32Tensor: KnownType<S>,
-        Float64Tensor: KnownType<S>,
-        HostPlacement: PlacementConstant<S, m!(Float32Tensor)>,
-        HostPlacement: PlacementConstant<S, m!(Float64Tensor)>,
+        HostPlacement: PlacementConstant<S, Float32T>,
+        HostPlacement: PlacementConstant<S, Float64T>,
     {
         match sig.ret() {
             Ty::Tensor(TensorDType::Float32) => {
@@ -1254,22 +1313,15 @@ impl ConstantOp {
 }
 
 impl InputOp {
-    #[allow(clippy::type_complexity)]
-    pub fn logical_kernel<S: Session>(
+    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
         arg_name: String,
-    ) -> Result<
-        AbstractTensor<m!(Fixed64Tensor), m!(Fixed128Tensor), m!(Float32Tensor), m!(Float64Tensor)>,
-    >
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
-        Fixed64Tensor: KnownType<S>,
-        Fixed128Tensor: KnownType<S>,
-        Float32Tensor: KnownType<S>,
-        Float64Tensor: KnownType<S>,
-        HostPlacement: PlacementInput<S, m!(Float64Tensor)>,
-        HostPlacement: PlacementInput<S, m!(Float32Tensor)>,
+        HostPlacement: PlacementInput<S, Float32T>,
+        HostPlacement: PlacementInput<S, Float64T>,
     {
         match sig.ret() {
             Ty::Tensor(TensorDType::Float32) => {
@@ -1295,7 +1347,6 @@ impl OutputOp {
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
-        HostString: KnownType<S>,
         HostPlacement: PlacementOutput<S, Float32T, Float32T>,
         HostPlacement: PlacementOutput<S, Float64T, Float64T>,
     {

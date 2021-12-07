@@ -141,10 +141,35 @@ impl SessionId {
     }
 }
 
+/// Type map used to compute the symbolic version of a Moose type.
+///
+/// Note that this trait is typically not implemented directly, but
+/// rather through an implemention of the PartiallySymbolicType map.
 pub trait SymbolicType {
     type Type;
 }
 
+impl<T> SymbolicType for T
+where
+    T: PartiallySymbolicType,
+    <T as PartiallySymbolicType>::Type: Placed,
+{
+    type Type = Symbolic<<T as PartiallySymbolicType>::Type>;
+}
+
+/// Type map used to compute the almost symbolic version of a Moose type.
+///
+/// Concretely, this map computes the symbolic version, except for the top-most
+/// type. As an example, RepTensor<Symbolic<HostTensor>> is partially symbolic
+/// as opposed to the (fully) symbolic type Symbolic<RepTensor<Symbolic<HostTensor>.
+pub trait PartiallySymbolicType {
+    type Type;
+}
+
+/// Type map used to compute the (fully) concrete version of a Moose type.
+///
+/// For example, Symbolic<RepTensor<Symbolic<HostTensor>>> and RepTensor<HostTensor>
+/// are both mapped to RepTensor<HostTensor>.
 pub trait CanonicalType {
     type Type;
 }
@@ -537,8 +562,8 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Unit(pub HostPlacement);
 
-impl SymbolicType for Unit {
-    type Type = Symbolic<Unit>;
+impl PartiallySymbolicType for Unit {
+    type Type = Unit;
 }
 
 impl Placed for Unit {
@@ -928,6 +953,7 @@ operators![
     PrimPrfKeyGen,
     AesDecrypt,
     AtLeast2D,
+    IndexAxis,
     Slice,
     Ones,
     ExpandDims,
@@ -1123,6 +1149,13 @@ pub struct ConstantOp {
 pub struct AtLeast2DOp {
     pub sig: Signature,
     pub to_column_vector: bool,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+pub struct IndexAxisOp {
+    pub sig: Signature,
+    pub axis: usize,
+    pub index: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]

@@ -1,7 +1,7 @@
 use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, TAG_BYTES};
 use crate::error::{Error, Result};
 use crate::kernels::{
-    NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession, Session,
+    PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession, Session,
 };
 use crate::prng::AesRng;
 use crate::prng::{RngSeed, SEED_SIZE};
@@ -112,10 +112,8 @@ impl TryFrom<&[u8]> for SyncKey {
     }
 }
 
-modelled!(PlacementKeyGen::gen_key, HostPlacement, () -> PrfKey, PrimPrfKeyGenOp);
-
-kernel! {
-    PrimPrfKeyGenOp,
+modelled_kernel! {
+    PlacementKeyGen::gen_key, PrimPrfKeyGenOp,
     [
         (HostPlacement, () -> PrfKey => [runtime] Self::kernel),
     ]
@@ -128,12 +126,10 @@ impl PrimPrfKeyGenOp {
     }
 }
 
-modelled!(PlacementDeriveSeed::derive_seed, HostPlacement, attributes[sync_key: SyncKey] (PrfKey) -> Seed, PrimDeriveSeedOp);
-
-kernel! {
-    PrimDeriveSeedOp,
+modelled_kernel! {
+    PlacementDeriveSeed::derive_seed, PrimDeriveSeedOp{sync_key: SyncKey},
     [
-        (HostPlacement, (PrfKey) -> Seed => [runtime] attributes[sync_key] Self::kernel),
+        (HostPlacement, (PrfKey) -> Seed => [runtime] Self::kernel),
     ]
 }
 

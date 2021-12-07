@@ -18,6 +18,7 @@ from pymoose.computation.standard import DivOperation
 from pymoose.computation.standard import DotOperation
 from pymoose.computation.standard import ExpandDimsOperation
 from pymoose.computation.standard import ExpOperation
+from pymoose.computation.standard import IndexAxisOperation
 from pymoose.computation.standard import InputOperation
 from pymoose.computation.standard import InverseOperation
 from pymoose.computation.standard import LoadOperation
@@ -48,6 +49,7 @@ from pymoose.edsl.base import ExpandDimsExpression
 from pymoose.edsl.base import ExpExpression
 from pymoose.edsl.base import Expression
 from pymoose.edsl.base import HostPlacementExpression
+from pymoose.edsl.base import IndexAxisExpression
 from pymoose.edsl.base import InverseExpression
 from pymoose.edsl.base import LoadExpression
 from pymoose.edsl.base import MeanExpression
@@ -500,6 +502,25 @@ class AstTracer:
                 signature=OpSignature(
                     input_types={"x": x_operation.return_type},
                     return_type=atleast_2d_expression.vtype,
+                ),
+            )
+        )
+
+    def visit_IndexAxisExpression(self, index_axis_expression):
+        assert isinstance(index_axis_expression, IndexAxisExpression)
+        (x_expression,) = index_axis_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(index_axis_expression.placement)
+        return self.computation.add_operation(
+            IndexAxisOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("index_axis"),
+                axis=index_axis_expression.axis,
+                index=index_axis_expression.index,
+                inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=index_axis_expression.vtype,
                 ),
             )
         )
