@@ -367,7 +367,6 @@ where
 // Type aliases to shorten out impl in replicated protocols
 type RepTen<T> = AbstractReplicatedRingTensor<T>;
 type AdtTen<T> = AbstractAdditiveTensor<T>;
-type RepBits<N> = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
 type MirTen<T> = Mirrored3RingTensor<T>;
 
 modelled!(PlacementSetupGen::gen_setup, ReplicatedPlacement, () -> ReplicatedSetup, RepSetupOp);
@@ -2240,16 +2239,16 @@ modelled_kernel! {
 }
 
 impl RepMsbOp {
-    fn bit_kernel<S: Session, RepRingT, RepBitT, N: Const>(
+    fn bit_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
     ) -> Result<RepBitT>
     where
         RepRingT: Ring<BitLength = N>,
-        RepBits<N>: KnownType<S>,
-        ReplicatedPlacement: PlacementBitDec<S, RepRingT, m!(RepBits<N>)>,
-        ReplicatedPlacement: PlacementIndex<S, m!(RepBits<N>), RepBitT>,
+        RepBitArrayT: BitArray<Len = N>,
+        ReplicatedPlacement: PlacementBitDec<S, RepRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
     {
         let bits = rep.bit_decompose(sess, &x);
         Ok(rep.index(sess, N::VALUE - 1, &bits))
