@@ -33,7 +33,7 @@ class ReplicatedExample(parameterized.TestCase):
                 z_rep = edsl.less(x, y)
 
             with alice:
-                z_host = edsl.bitwise_or(z_rep, z_rep)
+                z_host = edsl.bit_or(z_rep, z_rep)
 
             return z_host
 
