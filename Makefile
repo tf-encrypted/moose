@@ -5,9 +5,14 @@ pydep:
 	pip install -r pymoose/requirements-dev.txt
 
 pylib:
-	cd pymoose && python setup.py develop
+	cd pymoose && python setup.py install
 
 install: pydep pylib
+
+pylib-dev:
+	cd pymoose && python setup.py develop
+
+install-dev: pydep pylib-dev
 
 fmt:
 	cargo fmt
