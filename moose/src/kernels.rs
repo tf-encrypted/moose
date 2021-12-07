@@ -1998,6 +1998,7 @@ kernel! {
     [
         (HostPlacement, (crate::logical::Tensor, crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_host_kernel),
         (HostPlacement, (BooleanTensor, BooleanTensor) -> BooleanTensor => [hybrid] Self::bool_kernel),
+        (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => [runtime] Self::host_kernel),
     ]
 }
 

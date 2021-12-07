@@ -431,8 +431,11 @@ def less(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-    return LessExpression(
-        placement=placement, inputs=[lhs, rhs], vtype=TensorType(dtype=dtypes.bool8),
+    return BinaryOpExpression(
+        op_name="less",
+        placement=placement,
+        inputs=[lhs, rhs],
+        vtype=TensorType(dtype=dtypes.bool8),
     )
 
 

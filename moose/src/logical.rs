@@ -1549,7 +1549,6 @@ impl BitOrOp {
                 let result = plc.or(sess, &x, &y);
                 Ok(AbstractTensor::Bool(result))
             }
-            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
                 "Missing host less op for {:?} and {:?}",
                 &x.ty_desc(),

@@ -3071,8 +3071,7 @@ impl BitOrOp {
         y: BoolTensor<HostT, RepT>,
     ) -> Result<BoolTensor<HostT, RepT>>
     where
-        HostPlacement: PlacementAnd<S, HostT, HostT, HostT>,
-        HostPlacement: PlacementXor<S, HostT, HostT, HostT>,
+        HostPlacement: PlacementOr<S, HostT, HostT, HostT>,
         HostPlacement: PlacementReveal<S, RepT, HostT>,
     {
         let x = match x {
@@ -3083,9 +3082,7 @@ impl BitOrOp {
             BoolTensor::Host(v) => v,
             BoolTensor::Replicated(v) => plc.reveal(sess, &v),
         };
-        let xor = plc.xor(sess, &x, &y);
-        let and = plc.and(sess, &x, &y);
-        Ok(BoolTensor::Host(plc.xor(sess, &xor, &and)))
+        Ok(BoolTensor::Host(plc.or(sess, &x, &y)))
     }
 }
 

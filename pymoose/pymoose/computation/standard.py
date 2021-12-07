@@ -175,8 +175,7 @@ class MulOperation(StandardOperation):
 
 @dataclass
 class LessOperation(StandardOperation):
-    input_type: ValueType
-    output_type: ValueType
+    pass
 
 
 @dataclass
@@ -278,7 +277,7 @@ class SliceOperation(StandardOperation):
 
 @dataclass
 class BitwiseOrOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass

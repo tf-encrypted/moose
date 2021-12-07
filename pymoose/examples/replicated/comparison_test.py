@@ -42,7 +42,6 @@ class ReplicatedExample(parameterized.TestCase):
     def test_less_example_serde(self):
         less_comp = self._setup_less_comp()
         traced_less_comp = edsl.trace(less_comp)
-        print(traced_less_comp)
         comp_bin = utils.serialize_computation(traced_less_comp)
         deser_less_comp = utils.deserialize_computation(comp_bin)
         assert traced_less_comp == deser_less_comp

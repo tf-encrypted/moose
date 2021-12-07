@@ -206,8 +206,7 @@ struct PyLessOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
-    input_type: PyValueType,
-    output_type: PyValueType,
+    signature: PyOpSignature,
 }
 
 #[derive(Deserialize, Debug)]
@@ -215,7 +214,7 @@ struct PyBitwiseOrOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
-    output_type: PyValueType,
+    signature: PyOpSignature,
 }
 
 #[derive(Deserialize, Debug)]
@@ -614,11 +613,7 @@ impl TryFrom<PyComputation> for Computation {
                     std_LessOperation(op) => Ok(Operation {
                         kind: LessThanOp {
                             // we can use output type type to determine input type
-                            sig: Signature::binary(
-                                map_type(&op.input_type)?,
-                                map_type(&op.input_type)?,
-                                map_type(&op.output_type)?,
-                            ),
+                            sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -629,11 +624,7 @@ impl TryFrom<PyComputation> for Computation {
                     std_BitwiseOrOperation(op) => Ok(Operation {
                         kind: BitOrOp {
                             // we can use output type type to determine input type
-                            sig: Signature::binary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
-                            ),
+                            sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])

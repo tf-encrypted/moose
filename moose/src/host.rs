@@ -1689,6 +1689,19 @@ impl BitAndOp {
     }
 }
 
+modelled!(PlacementOr::or, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor, BitOrOp);
+
+impl BitOrOp {
+    pub(crate) fn host_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostBitTensor,
+        y: HostBitTensor,
+    ) -> Result<HostBitTensor> {
+        Ok(HostBitTensor(x.0 | y.0, plc.clone()))
+    }
+}
+
 impl HostBitTensor {
     #[cfg_attr(
         feature = "exclude_old_framework",
