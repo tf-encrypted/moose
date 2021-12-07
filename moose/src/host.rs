@@ -2587,14 +2587,14 @@ impl RingSampleSeededOp {
     }
 }
 
-modelled!(PlacementLessThan::less_than, HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostBitTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostBitTensor, LessThanOp);
+modelled!(PlacementLessThan::less, HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostBitTensor, LessOp);
+modelled!(PlacementLessThan::less, HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostBitTensor, LessOp);
+modelled!(PlacementLessThan::less, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostBitTensor, LessOp);
+modelled!(PlacementLessThan::less, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostBitTensor, LessOp);
+modelled!(PlacementLessThan::less, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostBitTensor, LessOp);
+modelled!(PlacementLessThan::less, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostBitTensor, LessOp);
 
-impl LessThanOp {
+impl LessOp {
     pub(crate) fn host_fixed_kernel<S: Session, HostRingT, HostBitT>(
         sess: &S,
         plc: &HostPlacement,
@@ -2604,7 +2604,7 @@ impl LessThanOp {
     where
         HostPlacement: PlacementLessThan<S, HostRingT, HostRingT, HostBitT>,
     {
-        Ok(plc.less_than(sess, &x.tensor, &y.tensor))
+        Ok(plc.less(sess, &x.tensor, &y.tensor))
     }
 
     pub(crate) fn host_ring64_kernel<S: Session>(

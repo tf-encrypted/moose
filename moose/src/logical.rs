@@ -587,10 +587,10 @@ impl DotOp {
     }
 }
 
-modelled!(PlacementLessThan::less_than, HostPlacement, (Tensor, Tensor) -> Tensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, ReplicatedPlacement, (Tensor, Tensor) -> Tensor, LessThanOp);
+modelled!(PlacementLessThan::less, HostPlacement, (Tensor, Tensor) -> Tensor, LessOp);
+modelled!(PlacementLessThan::less, ReplicatedPlacement, (Tensor, Tensor) -> Tensor, LessOp);
 
-impl LessThanOp {
+impl LessOp {
     pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
@@ -605,19 +605,19 @@ impl LessThanOp {
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
-                let result = plc.less_than(sess, &x, &y);
+                let result = plc.less(sess, &x, &y);
                 Ok(AbstractTensor::Bool(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
-                let result = plc.less_than(sess, &x, &y);
+                let result = plc.less(sess, &x, &y);
                 Ok(AbstractTensor::Bool(result))
             }
             (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-                let result = plc.less_than(sess, &x, &y);
+                let result = plc.less(sess, &x, &y);
                 Ok(AbstractTensor::Bool(result))
             }
             (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-                let result = plc.less_than(sess, &x, &y);
+                let result = plc.less(sess, &x, &y);
                 Ok(AbstractTensor::Bool(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
@@ -641,11 +641,11 @@ impl LessThanOp {
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
-                let result = plc.less_than(sess, &x, &y);
+                let result = plc.less(sess, &x, &y);
                 Ok(AbstractTensor::Bool(result))
             }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
-                let result = plc.less_than(sess, &x, &y);
+                let result = plc.less(sess, &x, &y);
                 Ok(AbstractTensor::Bool(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!

@@ -308,7 +308,7 @@ impl Session for SyncSession {
             Pow2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Exp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            LessThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Less(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
@@ -740,7 +740,7 @@ impl Session for AsyncSession {
             Exp(op) => DispatchKernel::compile(&op, plc)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?,
             IfElse(op) => DispatchKernel::compile(&op, plc)?,
-            LessThan(op) => DispatchKernel::compile(&op, plc)?,
+            Less(op) => DispatchKernel::compile(&op, plc)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
             _ => todo!(),
         };
@@ -987,7 +987,7 @@ pub trait PlacementSigmoid<S: Session, T, O> {
     fn sigmoid(&self, sess: &S, x: &T) -> O;
 }
 pub trait PlacementLessThan<S: Session, T, U, O> {
-    fn less_than(&self, sess: &S, x: &T, y: &U) -> O;
+    fn less(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementGreaterThan<S: Session, T, U, O> {
@@ -1774,7 +1774,7 @@ kernel! {
 }
 
 kernel! {
-    LessThanOp,
+    LessOp,
     [
         (HostPlacement, (crate::logical::Tensor, crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_host_kernel),
         (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> BooleanTensor => [concrete] Self::fixed_kernel),

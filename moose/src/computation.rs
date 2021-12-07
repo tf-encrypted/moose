@@ -1029,7 +1029,7 @@ operators![
     Exp,
     Sigmoid,
     Neg,
-    LessThan,
+    Less,
     GreaterThan,
     // Floating-point operators
     FloatingpointAdd,
@@ -1523,7 +1523,7 @@ pub struct ExpOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct LessThanOp {
+pub struct LessOp {
     pub sig: Signature,
 }
 

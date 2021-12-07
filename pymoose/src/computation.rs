@@ -611,7 +611,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_LessOperation(op) => Ok(Operation {
-                        kind: LessThanOp {
+                        kind: LessOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
                         }

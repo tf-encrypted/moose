@@ -264,10 +264,10 @@ impl FloatingpointDotOp {
     }
 }
 
-modelled!(PlacementLessThan::less_than, HostPlacement, (Float32Tensor, Float32Tensor) -> BooleanTensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, HostPlacement, (Float64Tensor, Float64Tensor) -> BooleanTensor, LessThanOp);
+modelled!(PlacementLessThan::less, HostPlacement, (Float32Tensor, Float32Tensor) -> BooleanTensor, LessOp);
+modelled!(PlacementLessThan::less, HostPlacement, (Float64Tensor, Float64Tensor) -> BooleanTensor, LessOp);
 
-impl LessThanOp {
+impl LessOp {
     pub(crate) fn float_kernel<S: Session, HostFloatT, HostBitT, RepBitT>(
         sess: &S,
         plc: &HostPlacement,
@@ -280,7 +280,7 @@ impl LessThanOp {
         let FloatTensor::Host(x) = x;
         let FloatTensor::Host(y) = y;
 
-        let z = plc.less_than(sess, &x, &y);
+        let z = plc.less(sess, &x, &y);
         Ok(BoolTensor::Host(z))
     }
 }
