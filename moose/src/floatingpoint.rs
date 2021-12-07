@@ -29,12 +29,12 @@ where
     }
 }
 
-impl<HostT> SymbolicType for FloatTensor<HostT>
+impl<HostT> PartiallySymbolicType for FloatTensor<HostT>
 where
     HostT: SymbolicType,
     <HostT as SymbolicType>::Type: Placed<Placement = HostPlacement>,
 {
-    type Type = Symbolic<FloatTensor<<HostT as SymbolicType>::Type>>;
+    type Type = FloatTensor<<HostT as SymbolicType>::Type>;
 }
 
 // TODO(lvorona): Not sure why we need this one separately... But the moose_type macro is coming!
@@ -59,14 +59,11 @@ where
     }
 }
 
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float32Tensor) -> Float32Tensor, FloatingpointMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, FloatingpointMeanOp);
-
-kernel! {
-    FloatingpointMeanOp,
+modelled_kernel! {
+    PlacementMean::mean, FloatingpointMeanOp{axis: Option<u32>},
     [
-        (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
@@ -87,14 +84,11 @@ impl FloatingpointMeanOp {
     }
 }
 
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Float32Tensor) -> Float32Tensor, FloatingpointSumOp);
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, FloatingpointSumOp);
-
-kernel! {
-    FloatingpointSumOp,
+modelled_kernel! {
+    PlacementSum::sum, FloatingpointSumOp{axis: Option<u32>},
     [
-        (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
@@ -115,14 +109,11 @@ impl FloatingpointSumOp {
     }
 }
 
-modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float32Tensor) -> Float32Tensor, FloatingpointAtLeast2DOp);
-modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float64Tensor) -> Float64Tensor, FloatingpointAtLeast2DOp);
-
-kernel! {
-    FloatingpointAtLeast2DOp,
+modelled_kernel! {
+    PlacementAtLeast2D::at_least_2d, FloatingpointAtLeast2DOp{to_column_vector: bool},
     [
-        (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] attributes[to_column_vector] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] attributes[to_column_vector] Self::float_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
@@ -143,14 +134,11 @@ impl FloatingpointAtLeast2DOp {
     }
 }
 
-modelled!(PlacementAdd::add, HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor, FloatingpointAddOp);
-modelled!(PlacementAdd::add, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, FloatingpointAddOp);
-
-kernel! {
-    FloatingpointAddOp,
+modelled_kernel! {
+    PlacementAdd::add, FloatingpointAddOp,
     [
-        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [hybrid] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
@@ -172,14 +160,11 @@ impl FloatingpointAddOp {
     }
 }
 
-modelled!(PlacementSub::sub, HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor, FloatingpointSubOp);
-modelled!(PlacementSub::sub, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, FloatingpointSubOp);
-
-kernel! {
-    FloatingpointSubOp,
+modelled_kernel! {
+    PlacementSub::sub, FloatingpointSubOp,
     [
-        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [hybrid] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
@@ -201,14 +186,11 @@ impl FloatingpointSubOp {
     }
 }
 
-modelled!(PlacementMul::mul, HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor, FloatingpointMulOp);
-modelled!(PlacementMul::mul, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, FloatingpointMulOp);
-
-kernel! {
-    FloatingpointMulOp,
+modelled_kernel! {
+    PlacementMul::mul, FloatingpointMulOp,
     [
-        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [hybrid] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
@@ -230,14 +212,11 @@ impl FloatingpointMulOp {
     }
 }
 
-modelled!(PlacementDiv::div, HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor, FloatingpointDivOp);
-modelled!(PlacementDiv::div, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, FloatingpointDivOp);
-
-kernel! {
-    FloatingpointDivOp,
+modelled_kernel! {
+    PlacementDiv::div, FloatingpointDivOp,
     [
-        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [hybrid] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
@@ -259,14 +238,11 @@ impl FloatingpointDivOp {
     }
 }
 
-modelled!(PlacementDot::dot, HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor, FloatingpointDotOp);
-modelled!(PlacementDot::dot, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, FloatingpointDotOp);
-
-kernel! {
-    FloatingpointDotOp,
+modelled_kernel! {
+    PlacementDot::dot, FloatingpointDotOp,
     [
-        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [hybrid] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
@@ -309,39 +285,54 @@ impl LessThanOp {
     }
 }
 
-modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> Float64Tensor, FloatingpointOnesOp);
-
-kernel! {
-    FloatingpointOnesOp,
+modelled_kernel! {
+    PlacementOnes::ones, FloatingpointOnesOp,
     [
         (HostPlacement, (HostShape) -> Float64Tensor => [hybrid] Self::float_host_kernel),
     ]
 }
 
 impl FloatingpointOnesOp {
-    fn float_host_kernel<S: Session>(
+    fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
         shape: cs!(HostShape),
-    ) -> Result<FloatTensor<cs!(HostFloat64Tensor)>>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
         HostShape: KnownType<S>,
         HostFloat64Tensor: KnownType<S>,
-        HostPlacement: PlacementOnes<S, cs!(HostShape), cs!(HostFloat64Tensor)>,
+        HostPlacement: PlacementOnes<S, cs!(HostShape), HostFloatT>,
     {
         let z = plc.ones(sess, &shape);
         Ok(FloatTensor::Host(z))
     }
 }
 
-modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Float32Tensor) -> Float32Tensor, FloatingpointExpandDimsOp);
-modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Float64Tensor) -> Float64Tensor, FloatingpointExpandDimsOp);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis: usize, index:usize] (Float32Tensor) -> Float32Tensor, IndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis: usize,  index:usize] (Float64Tensor) -> Float64Tensor, IndexAxisOp);
 
-kernel! {
-    FloatingpointExpandDimsOp,
+impl IndexAxisOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: usize,
+        x: FloatTensor<HostFloatT>,
+    ) -> Result<FloatTensor<HostFloatT>>
+    where
+        HostPlacement: PlacementIndexAxis<S, HostFloatT, HostFloatT>,
+    {
+        let FloatTensor::Host(x) = x;
+        let z = plc.index_axis(sess, axis, index, &x);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
+modelled_kernel! {
+    PlacementExpandDims::expand_dims, FloatingpointExpandDimsOp{axis: Vec<u32>},
     [
-        (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
     ]
 }
 
@@ -367,8 +358,8 @@ modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32
 kernel! {
     FloatingpointConcatOp,
     [
-        (HostPlacement, vec[Float32Tensor] -> Float32Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
-        (HostPlacement, vec[Float64Tensor] -> Float64Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, vec[Float32Tensor] -> Float32Tensor => [concrete] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, vec[Float64Tensor] -> Float64Tensor => [concrete] attributes[axis] Self::float_host_kernel),
     ]
 }
 
@@ -395,13 +386,11 @@ impl FloatingpointConcatOp {
     }
 }
 
-// modelled!(PlacementTranspose::transpose, HostPlacement, (Float32Tensor) -> Float32Tensor, FloatingpointTransposeOp);
-modelled!(PlacementTranspose::transpose, HostPlacement, (Float64Tensor) -> Float64Tensor, FloatingpointTransposeOp);
-
-kernel! {
-    FloatingpointTransposeOp, [
-        // (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] Self::kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] Self::kernel),
+modelled_kernel! {
+    PlacementTranspose::transpose, FloatingpointTransposeOp,
+    [
+        // (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::kernel),
     ]
 }
 
@@ -420,13 +409,11 @@ impl FloatingpointTransposeOp {
     }
 }
 
-// modelled!(PlacementInverse::inverse, HostPlacement, (Float32Tensor) -> Float32Tensor, FloatingpointInverseOp);
-modelled!(PlacementInverse::inverse, HostPlacement, (Float64Tensor) -> Float64Tensor, FloatingpointInverseOp);
-
-kernel! {
-    FloatingpointInverseOp, [
-        // (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] Self::kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] Self::kernel),
+modelled_kernel! {
+    PlacementInverse::inverse, FloatingpointInverseOp,
+    [
+        // (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::kernel),
     ]
 }
 
@@ -481,14 +468,13 @@ impl SaveOp {
 }
 
 impl ShapeOp {
-    pub(crate) fn float_kernel<S: Session, HostFloatT>(
+    pub(crate) fn float_kernel<S: Session, HostFloatT, HostShapeT>(
         sess: &S,
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT>,
-    ) -> Result<m!(HostShape)>
+    ) -> Result<HostShapeT>
     where
-        HostShape: KnownType<S>,
-        HostPlacement: PlacementShape<S, HostFloatT, m!(HostShape)>,
+        HostPlacement: PlacementShape<S, HostFloatT, HostShapeT>,
     {
         let FloatTensor::Host(x) = x;
         Ok(plc.shape(sess, &x))
@@ -496,27 +482,13 @@ impl ShapeOp {
 }
 
 impl ConstantOp {
-    pub fn float32_kernel<S: Session>(
+    pub fn float_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
         value: Constant,
-    ) -> Result<FloatTensor<m!(HostFloat32Tensor)>>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
-        HostFloat32Tensor: KnownType<S>,
-        HostPlacement: PlacementConstant<S, m!(HostFloat32Tensor)>,
-    {
-        let z = plc.constant(sess, value);
-        Ok(FloatTensor::Host(z))
-    }
-
-    pub fn float64_kernel<S: Session>(
-        sess: &S,
-        plc: &HostPlacement,
-        value: Constant,
-    ) -> Result<FloatTensor<m!(HostFloat64Tensor)>>
-    where
-        HostFloat64Tensor: KnownType<S>,
-        HostPlacement: PlacementConstant<S, m!(HostFloat64Tensor)>,
+        HostPlacement: PlacementConstant<S, HostFloatT>,
     {
         let z = plc.constant(sess, value);
         Ok(FloatTensor::Host(z))
@@ -524,27 +496,13 @@ impl ConstantOp {
 }
 
 impl InputOp {
-    pub fn float64_kernel<S: Session>(
+    pub fn float_kernel<S: Session, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
         arg_name: String,
-    ) -> Result<FloatTensor<m!(HostFloat64Tensor)>>
+    ) -> Result<FloatTensor<HostFloatT>>
     where
-        HostFloat64Tensor: KnownType<S>,
-        HostPlacement: PlacementInput<S, m!(HostFloat64Tensor)>,
-    {
-        let z = plc.input(sess, arg_name);
-        Ok(FloatTensor::Host(z))
-    }
-
-    pub fn float32_kernel<S: Session>(
-        sess: &S,
-        plc: &HostPlacement,
-        arg_name: String,
-    ) -> Result<FloatTensor<m!(HostFloat32Tensor)>>
-    where
-        HostFloat32Tensor: KnownType<S>,
-        HostPlacement: PlacementInput<S, m!(HostFloat32Tensor)>,
+        HostPlacement: PlacementInput<S, HostFloatT>,
     {
         let z = plc.input(sess, arg_name);
         Ok(FloatTensor::Host(z))
@@ -558,7 +516,6 @@ impl OutputOp {
         x: FloatTensor<HostFloatT>,
     ) -> Result<FloatTensor<HostFloatT>>
     where
-        HostString: KnownType<S>,
         HostPlacement: PlacementOutput<S, HostFloatT, HostFloatT>,
     {
         let FloatTensor::Host(x) = x;

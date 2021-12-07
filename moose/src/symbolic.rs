@@ -319,6 +319,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FloatingpointSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            IndexAxis(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Slice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Ones(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             ExpandDims(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -339,14 +340,9 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
     }
 }
 
+#[derive(Default)]
 pub struct SymbolicExecutor {
     // Placeholder for the future state we want to keep (symbolic strategy pointer, replicated setup cache, etc).
-}
-
-impl Default for SymbolicExecutor {
-    fn default() -> Self {
-        SymbolicExecutor {}
-    }
 }
 
 impl SymbolicExecutor {
