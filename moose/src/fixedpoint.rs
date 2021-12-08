@@ -119,10 +119,32 @@ impl IdentityOp {
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
         HostPlacement: PlacementIdentity<S, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
     {
         match x {
             FixedTensor::Host(x) => Ok(FixedTensor::Host(plc.identity(sess, &x))),
-            FixedTensor::Replicated(_) => unimplemented!("hey hi hello"),
+            FixedTensor::Replicated(x) => {
+                let x = plc.reveal(sess, &x);
+                Ok(FixedTensor::Host(plc.identity(sess, &x)))
+            }
+        }
+    }
+
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementIdentity<S, RepFixedT, RepFixedT>,
+    {
+        match x {
+            FixedTensor::Host(x) => {
+                let x = plc.share(sess, &x);
+                Ok(FixedTensor::Replicated(plc.identity(sess, &x)))
+            }
+            FixedTensor::Replicated(x) => Ok(FixedTensor::Replicated(plc.identity(sess, &x))),
         }
     }
 }

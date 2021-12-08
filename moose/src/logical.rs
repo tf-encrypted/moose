@@ -124,16 +124,16 @@ where
 }
 
 impl IdentityOp {
-    pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+    pub(crate) fn logical_kernel<S: Session, P, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
-        plc: &HostPlacement,
+        plc: &P,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
     where
-        HostPlacement: PlacementIdentity<S, Fixed64T, Fixed64T>,
-        HostPlacement: PlacementIdentity<S, Fixed128T, Fixed128T>,
-        HostPlacement: PlacementIdentity<S, Float32T, Float32T>,
-        HostPlacement: PlacementIdentity<S, Float64T, Float64T>,
+        P: PlacementIdentity<S, Fixed64T, Fixed64T>,
+        P: PlacementIdentity<S, Fixed128T, Fixed128T>,
+        P: PlacementIdentity<S, Float32T, Float32T>,
+        P: PlacementIdentity<S, Float64T, Float64T>,
     {
         match x {
             AbstractTensor::Fixed64(x) => {

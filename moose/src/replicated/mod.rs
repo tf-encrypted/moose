@@ -672,6 +672,47 @@ impl RepRevealOp {
     }
 }
 
+impl IdentityOp {
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementIdentity<S, RepRingT, RepRingT>,
+    {
+        let tensor = rep.identity(sess, &x.tensor);
+        Ok(AbstractReplicatedFixedTensor {
+            tensor,
+            integral_precision: x.integral_precision,
+            fractional_precision: x.fractional_precision,
+        })
+    }
+
+    pub(crate) fn rep_ring_kernel<S: Session, HostRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepTen<HostRingT>,
+    ) -> Result<RepTen<HostRingT>>
+    where
+        HostPlacement: PlacementIdentity<S, HostRingT, HostRingT>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+        let AbstractReplicatedRingTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+        let y00 = player0.identity(sess, x00);
+        let y10 = player0.identity(sess, x10);
+        let y11 = player1.identity(sess, x11);
+        let y21 = player1.identity(sess, x21);
+        let y22 = player1.identity(sess, x22);
+        let y02 = player1.identity(sess, x02);
+        Ok(AbstractReplicatedRingTensor {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        })
+    }
+}
+
 modelled_kernel! {
     PlacementAnd::and, RepAndOp,
     [
