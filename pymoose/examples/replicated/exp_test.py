@@ -25,19 +25,13 @@ class ReplicatedExample(parameterized.TestCase):
                 x = edsl.constant(np.array([2], dtype=np.float64))
                 x_enc = edsl.cast(x, dtype=edsl.fixed(8, 27))
 
-            with alice:
-                x = edsl.identity(x)
-                x_enc = edsl.identity(x_enc)
-
             with rep:
-                xe = edsl.identity(x_enc)
                 y = edsl.exp(x_enc)
 
             with alice:
-                xe = edsl.cast(xe, edsl.float64)
                 res = edsl.save("y_uri", edsl.cast(y, edsl.float64))
 
-            return res, xe
+            return res
 
         return my_exp_comp
 
