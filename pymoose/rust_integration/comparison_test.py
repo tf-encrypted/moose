@@ -52,6 +52,7 @@ class BooleanLogicExample(parameterized.TestCase):
             arguments={},
         )
         real = np.array([1.5, 2.3, 3, 3] < np.array([-1.0, 4.0, 3, 2]))
+        print(comp_result)
         np.testing.assert_equal(list(comp_result.values())[0], real)
 
 
