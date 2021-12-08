@@ -8,6 +8,7 @@ import numpy as np
 
 from pymoose.computation import dtypes
 from pymoose.computation.standard import AesKeyType
+from pymoose.computation.standard import AddNOperation
 from pymoose.computation.standard import AesTensorType
 from pymoose.computation.standard import FloatConstant
 from pymoose.computation.standard import FloatType
@@ -100,6 +101,11 @@ class Expression:
 
     def __hash__(self):
         return id(self)
+
+
+@dataclass
+class AddNExpression(Expression):
+    pass
 
 
 @dataclass
@@ -289,6 +295,11 @@ class LessExpression(Expression):
 class BitwiseOrExpression(Expression):
     def __hash__(self):
         return id(self)
+
+
+def add_n(x, placement=None):
+    placement = placement or get_current_placement()
+    return AddNOperation(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def concatenate(arrays, axis=0, placement=None):

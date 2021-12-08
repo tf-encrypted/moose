@@ -19,6 +19,7 @@ from pymoose.computation.standard import DivOperation
 from pymoose.computation.standard import DotOperation
 from pymoose.computation.standard import ExpandDimsOperation
 from pymoose.computation.standard import ExpOperation
+from pymoose.computation.standard import AddNOperation
 from pymoose.computation.standard import IndexAxisOperation
 from pymoose.computation.standard import InputOperation
 from pymoose.computation.standard import InverseOperation
@@ -40,6 +41,7 @@ from pymoose.computation.standard import TransposeOperation
 from pymoose.computation.standard import UnitType
 from pymoose.computation.standard import UnknownType
 from pymoose.edsl.base import AbsExpression
+from pymoose.edsl.base import AddNExpression
 from pymoose.edsl.base import ArgumentExpression
 from pymoose.edsl.base import AtLeast2DExpression
 from pymoose.edsl.base import BinaryOpExpression
@@ -50,6 +52,7 @@ from pymoose.edsl.base import DecryptExpression
 from pymoose.edsl.base import ExpandDimsExpression
 from pymoose.edsl.base import ExpExpression
 from pymoose.edsl.base import Expression
+from pymoose.edsl.base import AddNOperation
 from pymoose.edsl.base import HostPlacementExpression
 from pymoose.edsl.base import IndexAxisExpression
 from pymoose.edsl.base import InverseExpression
@@ -143,6 +146,24 @@ class AstTracer:
             placement = visit_fn(placement_expression)
             self.placement_cache[placement_expression] = placement
         return self.placement_cache[placement_expression]
+
+    def visit_AddNExpression(self, add_n_expression):
+        assert isinstance(add_n_expression, AddNExpression)
+        placement = self.visit_placement_expression(add_n_expression.placement)
+        input_expression = add_n_expression.inputs[0]
+        input_op = self.visit(input_expression)
+        input_type = input_op.return_type
+        output_type = input_expression.vtype
+        return self.computation.add_operation(
+            AddNExpression(
+                placement_name=placement.name,
+                name=self.get_fresh_name("add_n"),
+                inputs={"x": input_op.name},
+                signature=OpSignature(
+                    input_types={"x": input_type}, return_type=output_type
+                ),
+            )
+        )
 
     def visit_HostPlacementExpression(self, host_placement_expression):
         assert isinstance(host_placement_expression, HostPlacementExpression)
