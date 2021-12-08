@@ -705,8 +705,8 @@ impl IdentityOp {
         let y10 = player0.identity(sess, x10);
         let y11 = player1.identity(sess, x11);
         let y21 = player1.identity(sess, x21);
-        let y22 = player1.identity(sess, x22);
-        let y02 = player1.identity(sess, x02);
+        let y22 = player2.identity(sess, x22);
+        let y02 = player2.identity(sess, x02);
         Ok(AbstractReplicatedRingTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         })
