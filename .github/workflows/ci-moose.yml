@@ -27,11 +27,18 @@ jobs:
 
       - uses: Swatinem/rust-cache@v1
 
-      - name: Lint check the runtime.
+      - name: Formatting.
         run: |
           cargo fmt --all -- --check
+
+      - name: Linting.
+        run: |
           cargo clippy --all-targets -- -D warnings --no-deps
 
-      - name: Test the runtime.
+      - name: Build tests.
+        run: |
+          cargo test --no-run
+
+      - name: Run tests.
         run: |
           cargo test
