@@ -1022,15 +1022,27 @@ impl AddNOp {
     where
         HostPlacement: PlacementIdentity<S, HostFixedT, HostFixedT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostFixedT: Clone,
     {
-        //match x {
-        //    FixedTensor::Host(x) => Ok(FixedTensor::Host(plc.identity(sess, &x))),
-        //    FixedTensor::Replicated(x) => {
-        //        let x = plc.reveal(sess, &x);
-        //        Ok(FixedTensor::Host(plc.identity(sess, &x)))
-        //    }
-        //}
-        unimplemented!("TODO")
+        let first = &xs[0];
+        match first {
+            FixedTensor::Host(_) => {
+                let vec: Vec<HostFixedT> = xs
+                    .iter()
+                    .map(|abstract_tensor| match abstract_tensor {
+                        FixedTensor::Host(x) => (*x).clone(),
+                        _ => unimplemented!("mixed types in tensor"),
+                    })
+                    .collect();
+                let result = plc.add_n(sess, &vec);
+                Ok(FixedTensor::Host(result))
+            }
+            FixedTensor::Replicated(_) => {
+                //let x = plc.reveal(sess, &x);
+                //Ok(FixedTensor::Host(plc.identity(sess, &x)))
+                unimplemented!("doesn't work yet for replicated")
+            }
+        }
     }
 
     pub(crate) fn host_kernel<S: RuntimeSession, T>(
