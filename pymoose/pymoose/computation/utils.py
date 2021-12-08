@@ -45,6 +45,7 @@ SUPPORTED_TYPES = [
     std_dialect.LoadOperation,
     std_dialect.MeanOperation,
     std_dialect.MulOperation,
+    std_dialect.MuxOperation,
     std_dialect.OnesOperation,
     std_dialect.OutputOperation,
     std_dialect.SigmoidOperation,
