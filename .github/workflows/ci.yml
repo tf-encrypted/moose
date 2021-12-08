@@ -36,6 +36,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
+      - uses: Swatinem/rust-cache@v1
+
       - name: Install OpenBLAS.
         run: |
           sudo apt install libopenblas-dev
