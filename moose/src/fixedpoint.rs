@@ -1193,6 +1193,17 @@ impl AddNOp {
     {
         unimplemented!("TODO: AddNOp::host_fixed_kernel")
     }
+
+    //pub(crate) fn host_fixed_kernel<S: Session, HostRingT>(
+    //    sess: &S,
+    //    plc: &HostPlacement,
+    //    x: AbstractHostFixedTensor<HostRingT>,
+    //) -> Result<AbstractHostFixedTensor<HostRingT>>
+    //where
+    //    HostPlacement: PlacementIdentity<S, HostRingT, HostRingT>,
+    //{
+    //    unimplemented!("TODO AddNOp::host_fixed_kernel")
+    //}
 }
 
 pub trait FixedpointTensor {

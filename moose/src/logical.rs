@@ -217,10 +217,10 @@ impl AddNOp {
         xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>],
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
-        HostPlacement: PlacementAdd<S, Fixed64T, Fixed64T, Fixed64T>,
-        HostPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
-        HostPlacement: PlacementAdd<S, Float32T, Float32T, Float32T>,
-        HostPlacement: PlacementAdd<S, Float64T, Float64T, Float64T>,
+        HostPlacement: PlacementAddN<S, Fixed64T, Fixed64T>,
+        //HostPlacement: PlacementAddN<S, Fixed128T, Fixed128T>,
+        //HostPlacement: PlacementAddN<S, Float32T, Float32T>,
+        //HostPlacement: PlacementAddN<S, Float64T, Float64T>,
         Fixed64T: Clone,
     {
         let x = &xs[0];

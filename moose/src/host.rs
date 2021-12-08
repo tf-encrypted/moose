@@ -1,5 +1,6 @@
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::fixedpoint::FixedTensor;
 use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -1013,6 +1014,25 @@ impl HostSumOp {
 }
 
 impl AddNOp {
+    pub(crate) fn fixed_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        xs: &[FixedTensor<HostFixedT, RepFixedT>],
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementIdentity<S, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+    {
+        //match x {
+        //    FixedTensor::Host(x) => Ok(FixedTensor::Host(plc.identity(sess, &x))),
+        //    FixedTensor::Replicated(x) => {
+        //        let x = plc.reveal(sess, &x);
+        //        Ok(FixedTensor::Host(plc.identity(sess, &x)))
+        //    }
+        //}
+        unimplemented!("TODO")
+    }
+
     pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
