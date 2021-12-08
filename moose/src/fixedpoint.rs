@@ -1181,6 +1181,18 @@ impl AddNOp {
             integral_precision,
         })
     }
+
+    pub(crate) fn host_fixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        xs: &[AbstractHostFixedTensor<HostRingT>],
+    ) -> Result<AbstractHostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementAddN<S, HostRingT, HostRingT>,
+        HostRingT: Clone,
+    {
+        unimplemented!("TODO: AddNOp::host_fixed_kernel")
+    }
 }
 
 pub trait FixedpointTensor {
