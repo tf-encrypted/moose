@@ -7,46 +7,25 @@ use super::*;
 use lazy_static::lazy_static;
 
 impl Pow2Op {
-    pub(crate) fn rep_rep_kernel<
-        S: Session,
-        RepRingT,
-        RepBitT,
-        RingT,
-        BitT,
-        RepBitArrayT,
-        N: Const,
-    >(
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, RepShapeT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
-        ReplicatedShape: KnownType<S>,
-        AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
-        <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
-
-        AbstractReplicatedFixedTensor<RepRingT>:
-            Into<m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
-        m!(c!(AbstractReplicatedFixedTensor<RepRingT>)):
-            TryInto<AbstractReplicatedFixedTensor<RepRingT>>,
-
         RepRingT: Ring<BitLength = N>,
         RepRingT: Clone,
-
         ReplicatedPlacement: PlacementBitDec<S, RepRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
-
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
         ReplicatedPlacement: PlacementIfElse<S, RepRingT, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementNeg<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
-        ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
-
+        ReplicatedPlacement: PlacementShape<S, RepRingT, RepShapeT>,
+        ReplicatedPlacement: PlacementFill<S, RepShapeT, RepRingT>,
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
         ReplicatedPlacement: Pow2FromBits<S, RepRingT>,
-
         ReplicatedPlacement: ExpFromParts<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementDiv<
             S,
@@ -54,14 +33,6 @@ impl Pow2Op {
             AbstractReplicatedFixedTensor<RepRingT>,
             AbstractReplicatedFixedTensor<RepRingT>,
         >,
-        ReplicatedPlacement: PlacementTruncPr<
-            S,
-            m!(c!(AbstractReplicatedFixedTensor<RepRingT>)),
-            m!(c!(AbstractReplicatedFixedTensor<RepRingT>)),
-        >,
-
-        HostPlacement: PlacementReveal<S, RepRingT, RingT>,
-        HostPlacement: PlacementReveal<S, RepBitT, BitT>,
     {
         let integral_precision = x.integral_precision as usize;
         let fractional_precision = x.fractional_precision as usize;
@@ -97,7 +68,7 @@ impl Pow2Op {
         let fractional_part = rep.sub(sess, &abs_x, &higher_composed);
 
         // computes 2^{integral_part}
-        let d = rep.pow2_from_bits(sess, &higher_bits.as_slice()[0..integral_precision]);
+        let d = rep.pow2_from_bits(sess, &higher_bits[0..integral_precision]);
 
         // computes the 2^x from 2^{int(x)} and frac(x)
         let g = rep.exp_from_parts(
@@ -210,9 +181,9 @@ where
 
     m!(c!(AbstractReplicatedFixedTensor<RepRingT>)):
         TryInto<AbstractReplicatedFixedTensor<RepRingT>>,
-    AbstractReplicatedFixedTensor<RepRingT>:
-        TryInto<m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
+    AbstractReplicatedFixedTensor<RepRingT>: Into<m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
 
+    // TODO(Morten) Good chance we can remove macros here after complete switch to modelled_kernel
     ReplicatedPlacement: PolynomialEval<S, m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
 
     ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
@@ -232,7 +203,7 @@ where
             integral_precision: 2,
             fractional_precision: k - 2,
         };
-        let e_approx = self.polynomial_eval(sess, P_1045.to_vec(), x.try_into().ok().unwrap());
+        let e_approx = self.polynomial_eval(sess, P_1045.to_vec(), x.into());
 
         // convert replicated fixed tensor to concrete value in order to grab the replicated ring tensor
         let e_approx_f: AbstractReplicatedFixedTensor<RepRingT> = e_approx.try_into().ok().unwrap();

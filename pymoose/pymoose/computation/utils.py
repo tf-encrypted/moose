@@ -24,6 +24,7 @@ SUPPORTED_TYPES = [
     std_dialect.AesKeyType,
     std_dialect.AesTensorType,
     std_dialect.AtLeast2DOperation,
+    std_dialect.BitwiseOrOperation,
     std_dialect.BytesType,
     std_dialect.CastOperation,
     std_dialect.ConcatenateOperation,
@@ -41,6 +42,7 @@ SUPPORTED_TYPES = [
     std_dialect.IntConstant,
     std_dialect.IntType,
     std_dialect.InverseOperation,
+    std_dialect.LessOperation,
     std_dialect.LoadOperation,
     std_dialect.MeanOperation,
     std_dialect.MulOperation,
@@ -129,6 +131,7 @@ def _decode(obj):
                 dtypes.uint64.name: dtypes.uint64,
                 dtypes.float32.name: dtypes.float32,
                 dtypes.float64.name: dtypes.float64,
+                dtypes.bool_.name: dtypes.bool_,
             }[dtype_name]
         elif obj["__type__"] == "OpSignature":
             return OpSignature(

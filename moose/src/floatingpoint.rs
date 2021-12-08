@@ -1,3 +1,4 @@
+use crate::boolean::{BoolTensor, BooleanTensor};
 use crate::computation::*;
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape, HostString};
@@ -274,6 +275,27 @@ impl FloatingpointDotOp {
 
         let z = plc.dot(sess, &x, &y);
         Ok(FloatTensor::Host(z))
+    }
+}
+
+modelled!(PlacementLessThan::less, HostPlacement, (Float32Tensor, Float32Tensor) -> BooleanTensor, LessOp);
+modelled!(PlacementLessThan::less, HostPlacement, (Float64Tensor, Float64Tensor) -> BooleanTensor, LessOp);
+
+impl LessOp {
+    pub(crate) fn float_kernel<S: Session, HostFloatT, HostBitT, RepBitT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT>,
+        y: FloatTensor<HostFloatT>,
+    ) -> Result<BoolTensor<HostBitT, RepBitT>>
+    where
+        HostPlacement: PlacementLessThan<S, HostFloatT, HostFloatT, HostBitT>,
+    {
+        let FloatTensor::Host(x) = x;
+        let FloatTensor::Host(y) = y;
+
+        let z = plc.less(sess, &x, &y);
+        Ok(BoolTensor::Host(z))
     }
 }
 

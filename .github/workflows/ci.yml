@@ -36,6 +36,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
+      - uses: Swatinem/rust-cache@v1
+
       - name: Install OpenBLAS.
         run: |
           sudo apt install libopenblas-dev
@@ -52,7 +54,7 @@ jobs:
       - name: Install runtime package.
         run: |
           . venv/bin/activate
-          make pylib
+          make pylib-dev
 
       - name: Lint check the runtime package.
         run: |

@@ -187,6 +187,7 @@ modelled_kernel! {
         (AdditivePlacement, (AdditiveRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::adt_adt_kernel),
         (AdditivePlacement, (AdditiveRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::adt_adt_kernel),
         (AdditivePlacement, (AdditiveBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [concrete] Self::adt_adt_kernel),
+        // TODO(Morten) replace host tensors with mirrored tensors in the below
         (AdditivePlacement, (AdditiveRing64Tensor, HostRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::adt_ring_kernel),
         (AdditivePlacement, (AdditiveRing128Tensor, HostRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::adt_ring_kernel),
         (AdditivePlacement, (AdditiveBitTensor, HostBitTensor) -> AdditiveBitTensor => [hybrid] Self::adt_ring_kernel),
@@ -272,6 +273,7 @@ modelled_kernel! {
         (AdditivePlacement, (AdditiveRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::adt_adt_kernel),
         (AdditivePlacement, (AdditiveRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::adt_adt_kernel),
         (AdditivePlacement, (AdditiveBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [concrete] Self::adt_adt_kernel),
+        // TODO(Morten) replace host tensors with mirrored tensors in the below
         (AdditivePlacement, (AdditiveRing64Tensor, HostRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::adt_ring_kernel),
         (AdditivePlacement, (AdditiveRing128Tensor, HostRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::adt_ring_kernel),
         (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::ring_adt_kernel),
@@ -353,6 +355,7 @@ impl AdtSubOp {
 modelled_kernel! {
     PlacementMul::mul, AdtMulOp,
     [
+        // TODO(Morten) replace host tensors with mirrored tensors in the below
         (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::ring_adt_kernel),
         (AdditivePlacement, (AdditiveRing64Tensor, HostRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::adt_ring_kernel),
         (AdditivePlacement, (AdditiveRing128Tensor, HostRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::adt_ring_kernel),
@@ -639,6 +642,7 @@ where
         let upshifter = player0.shl(sess, k - 1, &ones);
         let downshifter = player0.shl(sess, k - amount - 1, &ones);
 
+        // TODO(Morten) think the rest of this would clean up nicely if we instead revealed to a mirrored placement
         let x_positive: AbstractAdditiveTensor<HostRingT> = self
             .add(sess, &x.clone().into(), &upshifter)
             .try_into()

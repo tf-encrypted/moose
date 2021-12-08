@@ -136,6 +136,12 @@ class BytesConstant(StandardConstant):
 class TensorConstant(StandardConstant):
     value: np.ndarray
 
+    def __hash__(self):
+        return hash(self.value.tobytes())
+
+    def __eq__(self, other):
+        return isinstance(other, TensorConstant) and np.all(self.value == other.value)
+
 
 @dataclass
 class IntConstant(StandardConstant):
@@ -169,6 +175,11 @@ class SubOperation(StandardOperation):
 
 @dataclass
 class MulOperation(StandardOperation):
+    pass
+
+
+@dataclass
+class LessOperation(StandardOperation):
     pass
 
 
@@ -267,6 +278,11 @@ class IndexAxisOperation(StandardOperation):
 class SliceOperation(StandardOperation):
     begin: int
     end: int
+
+
+@dataclass
+class BitwiseOrOperation(StandardOperation):
+    pass
 
 
 @dataclass

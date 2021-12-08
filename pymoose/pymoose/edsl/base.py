@@ -35,6 +35,8 @@ _NUMPY_DTYPES_MAP = {
     np.dtype("float32"): dtypes.float32,
     np.float64: dtypes.float64,
     np.dtype("float64"): dtypes.float64,
+    np.bool_: dtypes.bool_,
+    np.dtype("bool_"): dtypes.bool_,
 }
 
 
@@ -284,14 +286,30 @@ class SliceExpression(Expression):
         return id(self)
 
 
+@dataclass
+class LessExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class BitwiseOrExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
 def identity(x, placement=None):
     placement = placement or get_current_placement()
-
     return IdentityExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def concatenate(arrays, axis=0, placement=None):
     placement = placement or get_current_placement()
+    if not isinstance(arrays, (tuple, list)):
+        raise ValueError(
+            "Inputs to `concatenate` must be array-like, found argument "
+            f"of type {type(arrays)}."
+        )
     input_vtype = arrays[0].vtype
     if isinstance(input_vtype, TensorType):
         expected_vtype = input_vtype
@@ -422,6 +440,28 @@ def div(lhs, rhs, placement=None):
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "div")
     return BinaryOpExpression(
         op_name="div", placement=placement, inputs=[lhs, rhs], vtype=vtype
+    )
+
+
+def less(lhs, rhs, placement=None):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
+    return BinaryOpExpression(
+        op_name="less",
+        placement=placement,
+        inputs=[lhs, rhs],
+        vtype=TensorType(dtype=dtypes.bool_),
+    )
+
+
+def logical_or(lhs, rhs, placement=None):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
+    vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "or")
+    return BinaryOpExpression(
+        op_name="or", placement=placement, inputs=[lhs, rhs], vtype=vtype
     )
 
 

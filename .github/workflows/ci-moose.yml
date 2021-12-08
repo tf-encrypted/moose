@@ -25,11 +25,20 @@ jobs:
         run: |
           sudo apt install libopenblas-dev
 
-      - name: Lint check the runtime.
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Formatting.
         run: |
           cargo fmt --all -- --check
+
+      - name: Linting.
+        run: |
           cargo clippy --all-targets -- -D warnings --no-deps
 
-      - name: Test the runtime.
+      - name: Build tests.
+        run: |
+          cargo test --no-run
+
+      - name: Run tests.
         run: |
           cargo test

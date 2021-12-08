@@ -19,6 +19,8 @@ enum PyOperation {
     std_SubOperation(PySubOperation),
     std_MulOperation(PyMulOperation),
     std_DotOperation(PyDotOperation),
+    std_BitwiseOrOperation(PyBitwiseOrOperation),
+    std_LessOperation(PyLessOperation),
     std_AtLeast2DOperation(PyAtLeast2DOperation),
     std_ShapeOperation(PyShapeOperation),
     std_IndexAxisOperation(PyIndexAxisOperation),
@@ -68,6 +70,7 @@ enum PyDType {
     int64,
     uint32,
     uint64,
+    bool_,
     fixed8_27,
     fixed14_23,
     fixed46_40,
@@ -201,6 +204,22 @@ struct PyMulOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyDotOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyLessOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyBitwiseOrOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -498,6 +517,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_TensorType { dtype } => match dtype {
             PyDType::float32 => Ok(Ty::Tensor(TensorDType::Float32)),
             PyDType::float64 => Ok(Ty::Tensor(TensorDType::Float64)),
+            PyDType::bool_ => Ok(Ty::Tensor(TensorDType::Bool)),
             // PyDType::int32 => Ok(Ty::HostInt32Tensor),
             // PyDType::int64 => Ok(Ty::HostInt64Tensor),
             // PyDType::uint32 => Ok(Ty::HostUint32Tensor),
@@ -600,6 +620,28 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_DotOperation(op) => Ok(Operation {
                         kind: DotOp {
+                            // we can use output type type to determine input type
+                            sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_LessOperation(op) => Ok(Operation {
+                        kind: LessOp {
+                            // we can use output type type to determine input type
+                            sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_BitwiseOrOperation(op) => Ok(Operation {
+                        kind: BitOrOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
                         }

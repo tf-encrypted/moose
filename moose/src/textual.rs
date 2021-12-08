@@ -457,6 +457,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "AdditiveShape" => Ok((i, Ty::AdditiveShape)),
         "Fixed64Tensor" => Ok((i, Ty::Fixed64Tensor)),
         "Fixed128Tensor" => Ok((i, Ty::Fixed128Tensor)),
+        "BooleanTensor" => Ok((i, Ty::BooleanTensor)),
         "Unit" => Ok((i, Ty::Unit)),
         "Float32" => Ok((i, Ty::Float32)),
         "Float64" => Ok((i, Ty::Float64)),
@@ -916,6 +917,7 @@ impl ToTextual for Operator {
             BitXor(op) => op.to_textual(),
             BitAnd(op) => op.to_textual(),
             BitNeg(op) => op.to_textual(),
+            BitOr(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
             HostAdd(op) => op.to_textual(),
             HostSub(op) => op.to_textual(),
@@ -1021,7 +1023,7 @@ impl ToTextual for Operator {
             Pow2(op) => op.to_textual(),
             Exp(op) => op.to_textual(),
             Sigmoid(op) => op.to_textual(),
-            LessThan(op) => op.to_textual(),
+            Less(op) => op.to_textual(),
             GreaterThan(op) => op.to_textual(),
         }
     }
@@ -1220,6 +1222,7 @@ impl ToTextual for Ty {
             Ty::AdditiveRing64Tensor => "Additive64Tensor".to_string(),
             Ty::AdditiveRing128Tensor => "Additive128Tensor".to_string(),
             Ty::AdditiveShape => "AdditiveShape".to_string(),
+            Ty::BooleanTensor => "BooleanTensor".to_string(),
             Ty::Fixed64Tensor => "Fixed64Tensor".to_string(),
             Ty::Fixed128Tensor => "Fixed128Tensor".to_string(),
             Ty::Float32Tensor => "Float32Tensor".to_string(),
@@ -1277,6 +1280,7 @@ impl ToTextual for Value {
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)
             | Value::Fixed128Tensor(_)
+            | Value::BooleanTensor(_)
             | Value::Float32Tensor(_)
             | Value::Float64Tensor(_)
             | Value::ReplicatedShape(_)
