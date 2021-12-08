@@ -642,7 +642,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_MuxOperation(op) => Ok(Operation {
-                        kind: MulOp {
+                        kind: MuxOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_ternary(&op.signature, "selector", "x", "y")?,
                         }
