@@ -2612,6 +2612,24 @@ impl GreaterThanOp {
     }
 }
 
+impl IdentityOp {
+    pub(crate) fn host_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractHostFixedTensor<HostRingT>,
+    ) -> Result<AbstractHostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementIdentity<S, HostRingT, HostRingT>,
+    {
+        let tensor = plc.identity(sess, &x.tensor);
+        Ok(AbstractHostFixedTensor::<HostRingT>{
+            tensor,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+}
+
 #[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing64Tensor {
     pub fn sample_uniform(shape: &RawShape) -> HostRing64Tensor {
