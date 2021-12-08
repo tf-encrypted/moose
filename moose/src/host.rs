@@ -1689,6 +1689,19 @@ impl BitAndOp {
     }
 }
 
+modelled!(PlacementOr::or, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor, BitOrOp);
+
+impl BitOrOp {
+    pub(crate) fn host_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostBitTensor,
+        y: HostBitTensor,
+    ) -> Result<HostBitTensor> {
+        Ok(HostBitTensor(x.0 | y.0, plc.clone()))
+    }
+}
+
 impl HostBitTensor {
     #[cfg_attr(
         feature = "exclude_old_framework",
@@ -2574,22 +2587,66 @@ impl RingSampleSeededOp {
     }
 }
 
-modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, LessThanOp);
-modelled!(PlacementLessThan::less_than, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, LessThanOp);
+modelled!(PlacementLessThan::less, HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostBitTensor, LessOp);
+modelled!(PlacementLessThan::less, HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostBitTensor, LessOp);
+modelled!(PlacementLessThan::less, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostBitTensor, LessOp);
+modelled!(PlacementLessThan::less, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostBitTensor, LessOp);
+modelled!(PlacementLessThan::less, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostBitTensor, LessOp);
+modelled!(PlacementLessThan::less, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostBitTensor, LessOp);
 
-impl LessThanOp {
-    pub(crate) fn host_kernel<S: Session, HostRingT>(
+impl LessOp {
+    pub(crate) fn host_fixed_kernel<S: Session, HostRingT, HostBitT>(
         sess: &S,
         plc: &HostPlacement,
-        x: HostRingT,
-        y: HostRingT,
-    ) -> Result<HostRingT>
+        x: AbstractHostFixedTensor<HostRingT>,
+        y: AbstractHostFixedTensor<HostRingT>,
+    ) -> Result<HostBitT>
     where
-        HostPlacement: PlacementSign<S, HostRingT, HostRingT>,
-        HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
+        HostPlacement: PlacementLessThan<S, HostRingT, HostRingT, HostBitT>,
     {
-        let z = plc.sub(sess, &x, &y);
-        Ok(plc.sign(sess, &z))
+        Ok(plc.less(sess, &x.tensor, &y.tensor))
+    }
+
+    pub(crate) fn host_ring64_kernel<S: Session>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing64Tensor,
+        y: HostRing64Tensor,
+    ) -> Result<HostBitTensor> {
+        let result = (x.0 - y.0).mapv(|Wrapping(item)| if (item as i64) < 0 { 1_u8 } else { 0_u8 });
+        Ok(HostBitTensor(result, plc.clone()))
+    }
+
+    pub(crate) fn host_ring128_kernel<S: Session>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing128Tensor,
+        y: HostRing128Tensor,
+    ) -> Result<HostBitTensor> {
+        let result = (x.0 - y.0).mapv(
+            |Wrapping(item)| {
+                if (item as i128) < 0 {
+                    1_u8
+                } else {
+                    0_u8
+                }
+            },
+        );
+
+        Ok(HostBitTensor(result, plc.clone()))
+    }
+
+    pub(crate) fn host_float_kernel<S: Session, T: LinalgScalar + FromPrimitive>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+        y: HostTensor<T>,
+    ) -> Result<HostBitTensor>
+    where
+        T: std::cmp::PartialOrd + Zero,
+    {
+        let result = (x.0 - y.0).mapv(|item| (item < T::zero()) as u8);
+        Ok(HostBitTensor(result, plc.clone()))
     }
 }
 

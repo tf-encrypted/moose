@@ -1,4 +1,5 @@
 use crate::additive::*;
+use crate::boolean::*;
 use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
@@ -501,6 +502,7 @@ values![
     HostUint64Tensor,
     HostFixed128AesTensor,
     HostAesKey,
+    BooleanTensor,
     Fixed64Tensor,
     Fixed128Tensor,
     Float32Tensor,
@@ -1011,6 +1013,7 @@ operators![
     BitXor,
     BitAnd,
     BitNeg,
+    BitOr,
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
@@ -1026,7 +1029,7 @@ operators![
     Exp,
     Sigmoid,
     Neg,
-    LessThan,
+    Less,
     GreaterThan,
     // Floating-point operators
     FloatingpointAdd,
@@ -1505,6 +1508,11 @@ pub struct BitNegOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+pub struct BitOrOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct Pow2Op {
     pub sig: Signature,
 }
@@ -1515,7 +1523,7 @@ pub struct ExpOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct LessThanOp {
+pub struct LessOp {
     pub sig: Signature,
 }
 

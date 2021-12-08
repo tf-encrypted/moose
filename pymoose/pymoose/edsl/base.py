@@ -35,6 +35,8 @@ _NUMPY_DTYPES_MAP = {
     np.dtype("float32"): dtypes.float32,
     np.float64: dtypes.float64,
     np.dtype("float64"): dtypes.float64,
+    np.bool_: dtypes.bool_,
+    np.dtype("bool_"): dtypes.bool_,
 }
 
 
@@ -104,115 +106,160 @@ class Expression:
 class ArgumentExpression(Expression):
     arg_name: str
 
+    def __hash__(self):
+        return id(self)
+
 
 @dataclass
 class ConcatenateExpression(Expression):
     axis: Optional[int]
 
+    def __hash__(self):
+        return id(self)
+
 
 @dataclass
 class DecryptExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
 class ConstantExpression(Expression):
     value: Union[int, float]
 
+    def __hash__(self):
+        return id(self)
+
 
 @dataclass
 class BinaryOpExpression(Expression):
     op_name: str
+
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
 class ExpandDimsExpression(Expression):
     axis: Tuple[int]
 
+    def __hash__(self):
+        return id(self)
+
 
 @dataclass
 class SqueezeExpression(Expression):
     axis: Optional[Union[int, Tuple[int]]]
+
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
 class OnesExpression(Expression):
     dtype: dtypes.DType
 
+    def __hash__(self):
+        return id(self)
+
 
 @dataclass
 class SquareExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
 class SumExpression(Expression):
     axis: Optional[Union[int, Tuple[int]]]
 
+    def __hash__(self):
+        return id(self)
+
 
 @dataclass
 class MeanExpression(Expression):
     axis: Optional[Union[int, Tuple[int]]]
 
+    def __hash__(self):
+        return id(self)
+
 
 @dataclass
 class ExpExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
 class SigmoidExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
 class SqrtExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
 class TransposeExpression(Expression):
     axes: Optional[Tuple[int]]
 
+    def __hash__(self):
+        return id(self)
+
 
 @dataclass
 class ReshapeExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
 class AtLeast2DExpression(Expression):
     to_column_vector: bool
 
+    def __hash__(self):
+        return id(self)
+
 
 @dataclass
 class LoadExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
 class InverseExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
 class AbsExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
 class CastExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
 class SaveExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
 class ShapeExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
@@ -220,11 +267,28 @@ class IndexAxisExpression(Expression):
     axis: int
     index: int
 
+    def __hash__(self):
+        return id(self)
+
 
 @dataclass
 class SliceExpression(Expression):
     begin: int
     end: int
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class LessExpression(Expression):
+    pass
+
+
+@dataclass
+class BitwiseOrExpression(Expression):
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
@@ -369,6 +433,28 @@ def div(lhs, rhs, placement=None):
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "div")
     return BinaryOpExpression(
         op_name="div", placement=placement, inputs=[lhs, rhs], vtype=vtype
+    )
+
+
+def less(lhs, rhs, placement=None):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
+    return BinaryOpExpression(
+        op_name="less",
+        placement=placement,
+        inputs=[lhs, rhs],
+        vtype=TensorType(dtype=dtypes.bool_),
+    )
+
+
+def logical_or(lhs, rhs, placement=None):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
+    vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "or")
+    return BinaryOpExpression(
+        op_name="or", placement=placement, inputs=[lhs, rhs], vtype=vtype
     )
 
 

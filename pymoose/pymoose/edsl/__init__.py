@@ -1,3 +1,4 @@
+from pymoose.computation.dtypes import bool_
 from pymoose.computation.dtypes import fixed
 from pymoose.computation.dtypes import float32
 from pymoose.computation.dtypes import float64
@@ -19,7 +20,9 @@ from pymoose.edsl.base import expand_dims
 from pymoose.edsl.base import host_placement
 from pymoose.edsl.base import index_axis
 from pymoose.edsl.base import inverse
+from pymoose.edsl.base import less
 from pymoose.edsl.base import load
+from pymoose.edsl.base import logical_or
 from pymoose.edsl.base import mean
 from pymoose.edsl.base import mul
 from pymoose.edsl.base import ones
@@ -42,6 +45,7 @@ __all__ = [
     add,
     Argument,
     atleast_2d,
+    logical_or,
     cast,
     computation,
     concatenate,
@@ -54,12 +58,14 @@ __all__ = [
     exp,
     expand_dims,
     fixed,
+    bool_,
     float32,
     float64,
     index_axis,
     int32,
     int64,
     inverse,
+    less,
     load,
     mul,
     mean,

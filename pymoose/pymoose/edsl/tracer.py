@@ -10,6 +10,7 @@ from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import AbsOperation
 from pymoose.computation.standard import AddOperation
 from pymoose.computation.standard import AtLeast2DOperation
+from pymoose.computation.standard import BitwiseOrOperation
 from pymoose.computation.standard import CastOperation
 from pymoose.computation.standard import ConcatenateOperation
 from pymoose.computation.standard import ConstantOperation
@@ -21,6 +22,7 @@ from pymoose.computation.standard import ExpOperation
 from pymoose.computation.standard import IndexAxisOperation
 from pymoose.computation.standard import InputOperation
 from pymoose.computation.standard import InverseOperation
+from pymoose.computation.standard import LessOperation
 from pymoose.computation.standard import LoadOperation
 from pymoose.computation.standard import MeanOperation
 from pymoose.computation.standard import MulOperation
@@ -255,6 +257,8 @@ class AstTracer:
             "mul": MulOperation,
             "div": DivOperation,
             "dot": DotOperation,
+            "or": BitwiseOrOperation,
+            "less": LessOperation,
         }[op_name]
         lhs_type = lhs_operation.return_type
         rhs_type = rhs_operation.return_type
