@@ -31,14 +31,17 @@ class BooleanLogicExample(parameterized.TestCase):
 
             with alice:
                 z_alice = edsl.logical_or(z_rep, z_rep)
-                res = (
+                y_alice = edsl.constant(np.array([-1.0, 4.0, 3, 2], dtype=np.float64))
+
+                r_alice = (
                     edsl.save("z0", edsl.index_axis(z_alice, axis=0, index=0)),
                     edsl.save("z1", edsl.index_axis(z_alice, axis=0, index=1)),
                     edsl.save("z2", edsl.index_axis(z_alice, axis=0, index=2)),
                     edsl.save("less_result", z_alice),
+                    edsl.save("y0", edsl.index_axis(y_alice, axis=0, index=2)),
                 )
 
-            return res
+            return r_alice
 
         return my_comp
 
@@ -70,6 +73,8 @@ class BooleanLogicExample(parameterized.TestCase):
         np.testing.assert_equal(
             runtime.read_value_from_storage("alice", "less_result"), z
         )
+
+        np.testing.assert_equal(runtime.read_value_from_storage("alice", "y0"), 3)
 
 
 if __name__ == "__main__":
