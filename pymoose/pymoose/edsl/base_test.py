@@ -324,6 +324,35 @@ class EdslTest(parameterized.TestCase):
             ),
         )
 
+    def test_mux(self):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            x0 = edsl.mux(
+                edsl.constant(np.array([True]), placement=player0),
+                edsl.constant(np.array([1.0]), placement=player0),
+                edsl.constant(np.array([0.0]), placement=player0),
+                placement=player0,
+            )
+            return x0
+
+        concrete_comp = trace(my_comp)
+        op = concrete_comp.operation("mux_0")
+        assert op == standard_ops.MuxOperation(
+            placement_name="player0",
+            name="mux_0",
+            inputs={"selector": "constant_0", "x": "constant_1", "y": "constant_2"},
+            signature=OpSignature(
+                {
+                    "selector": TensorType(dtypes.bool_),
+                    "x": TensorType(dtypes.float64),
+                    "y": TensorType(dtypes.float64),
+                },
+                TensorType(dtypes.float64),
+            ),
+        )
+
     def test_constant(self):
         player0 = edsl.host_placement(name="player0")
 
