@@ -2039,38 +2039,38 @@ where
 }
 
 impl RingInjectOp {
-    pub(crate) fn rep_kernel<S: Session, HostBitT, HostRingT, HostShapeT, AdtRingT, AdtBitT>(
+    pub(crate) fn rep_kernel<S: Session, HostBitT, HostRingT, HostShapeT, AdtRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         bit_idx: usize,
         x: RepTen<HostBitT>,
     ) -> Result<RepTen<HostRingT>>
     where
-        RepTen<HostRingT>: CanonicalType,
-        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-        RepTen<HostRingT>: Into<st!(RepTen<HostRingT>)>,
-        st!(RepTen<HostRingT>): TryInto<RepTen<HostRingT>>,
+        AdtTen<HostRingT>: CanonicalType,
+        <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+        AdtTen<HostRingT>: Into<st!(AdtTen<HostRingT>)>,
 
-        RepTen<HostBitT>: CanonicalType,
-        <RepTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
-        RepTen<HostBitT>: Into<st!(RepTen<HostBitT>)>,
+        AdtTen<HostBitT>: CanonicalType,
+        <AdtTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
+        AdtTen<HostBitT>: Into<st!(AdtTen<HostBitT>)>,
 
         AdtTen<HostRingT>: Into<AdtRingT>,
-        AdtTen<HostBitT>: Into<AdtBitT>,
+        st!(AdtTen<HostRingT>): TryInto<AdtTen<HostRingT>>,
+        AdtRingT: TryInto<AdtTen<HostRingT>>,
 
         HostPlacement: PlacementShape<S, HostBitT, HostShapeT>,
-        ReplicatedPlacement: PlacementAdtToRep<S, AdtRingT, st!(RepTen<HostRingT>)>,
+        ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<HostRingT>, RepTen<HostRingT>>,
         AdditivePlacement: PlacementFill<S, HostShapeT, AdtRingT>,
         HostPlacement: PlacementFill<S, HostShapeT, HostRingT>,
         AdditivePlacement:
             PlacementDaBitProvider<S, HostShapeT, AdtTen<HostRingT>, AdtTen<HostBitT>>,
-        AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<HostBitT>), AdtBitT>,
-        AdditivePlacement: PlacementAdd<S, AdtBitT, AdtBitT, AdtBitT>,
+        AdditivePlacement: PlacementRepToAdt<S, RepTen<HostBitT>, AdtTen<HostBitT>>,
+        AdditivePlacement: PlacementAdd<S, AdtTen<HostBitT>, AdtTen<HostBitT>, AdtTen<HostBitT>>,
         AdditivePlacement: PlacementAdd<S, AdtRingT, HostRingT, AdtRingT>,
         AdditivePlacement: PlacementMul<S, AdtRingT, HostRingT, AdtRingT>,
         AdditivePlacement: PlacementSub<S, AdtRingT, AdtRingT, AdtRingT>,
         AdditivePlacement: PlacementShl<S, AdtRingT, AdtRingT>,
-        HostPlacement: PlacementReveal<S, AdtBitT, HostBitT>,
+        HostPlacement: PlacementReveal<S, st!(AdtTen<HostBitT>), HostBitT>,
         HostPlacement: PlacementRingInject<S, HostBitT, HostRingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -2094,28 +2094,23 @@ impl RingInjectOp {
         // 2) shape_player0 - shape that corresponds to the party expanding the seeds received from provider.
 
         let (b_ring, b_bin) = adt.gen_dabit(sess, shape_provider, shape_player0, &provider);
-        let b_ring = b_ring.into();
-        let b_bin = b_bin.into();
-
-        let x_adt = adt.rep_to_adt(sess, &x.into());
+        let x_adt = adt.rep_to_adt(sess, &x);
 
         // TODO(Morten) the following block would likely clean up nicely if we instead
         // revealed to a mirrored-2 placement, which would use only concrete kernels
         let c = with_context!(adt, sess, x_adt + b_bin);
-        let c_open = player0.reveal(sess, &c);
+        let c_open = player0.reveal(sess, &c.into());
         let c_ring = player0.ring_inject(sess, 0, &c_open);
+        let b_ring = b_ring.into();
         let x_adt_ring = with_context!(
             adt,
             sess,
             b_ring + c_ring - b_ring * c_ring - b_ring * c_ring
         );
         let shifted_x_adt = adt.shl(sess, bit_idx, &x_adt_ring);
+        let shifted_x_adt = shifted_x_adt.try_into().ok().unwrap();
 
-        Ok(rep
-            .adt_to_rep(sess, &shifted_x_adt)
-            .try_into()
-            .ok()
-            .unwrap())
+        Ok(rep.adt_to_rep(sess, &shifted_x_adt))
     }
 }
 
