@@ -77,6 +77,7 @@ modelled_kernel! {
     ]
 }
 
+modelled!(PlacementAddN::add_n, HostPlacement, vec[Tensor] -> Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, AddNOp);
@@ -87,6 +88,7 @@ modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedFixed128Tenso
 kernel! {
     AddNOp,
     [
+        (HostPlacement, vec[Tensor] -> Tensor => [concrete] Self::host_logical_kernel),
         (HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor => [runtime] Self::host_kernel),
         (HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor => [runtime] Self::host_kernel),
         (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),

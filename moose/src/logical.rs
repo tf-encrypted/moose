@@ -210,6 +210,22 @@ impl AddOp {
     }
 }
 
+impl AddNOp {
+    pub(crate) fn host_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>],
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        HostPlacement: PlacementAdd<S, Fixed64T, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementAdd<S, Float32T, Float32T, Float32T>,
+        HostPlacement: PlacementAdd<S, Float64T, Float64T, Float64T>,
+    {
+        unimplemented!("AddNOp::host_logical_kernel TODO")
+    }
+}
+
 modelled_kernel! {
     PlacementSub::sub, SubOp,
     [
