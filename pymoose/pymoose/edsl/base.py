@@ -227,6 +227,11 @@ class SliceExpression(Expression):
     end: int
 
 
+@dataclass
+class MuxExpression(Expression):
+    pass
+
+
 def concatenate(arrays, axis=0, placement=None):
     placement = placement or get_current_placement()
     if not isinstance(arrays, (tuple, list)):
@@ -512,6 +517,15 @@ def abs(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return AbsExpression(placement=placement, inputs=[x], vtype=x.vtype)
+
+
+def mux(selector, x, y, placement=None):
+    assert isinstance(selector, Expression)
+    assert isinstance(x, Expression)
+    assert isinstance(y, Expression)
+    placement = placement or get_current_placement()
+    vtype = _assimilate_arg_vtypes(x.vtype, y.vtype, "mux")
+    return MuxExpression(placement=placement, inputs=[selector, x, y], vtype=vtype)
 
 
 def cast(x, dtype, placement=None):
