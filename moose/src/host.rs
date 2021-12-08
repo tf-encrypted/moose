@@ -583,13 +583,6 @@ impl HostDiagOp {
     }
 }
 
-// modelled_kernel! {
-//     PlacementIndexAxis::index_axis, HostIndexAxisOp{axis: usize, index: usize},
-//     [
-//         // (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::bit_kernel),
-//     ]
-// }
-
 impl IndexAxisOp {
     pub(crate) fn host_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
