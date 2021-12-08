@@ -126,6 +126,7 @@ impl IdentityOp {
             FixedTensor::Host(x) => Ok(FixedTensor::Host(plc.identity(sess, &x))),
             FixedTensor::Replicated(x) => {
                 let x = plc.reveal(sess, &x);
+                // TODO: Shound we simply reveal and be done?
                 Ok(FixedTensor::Host(plc.identity(sess, &x)))
             }
         }
@@ -143,6 +144,7 @@ impl IdentityOp {
         match x {
             FixedTensor::Host(x) => {
                 let x = plc.share(sess, &x);
+                // TODO: Shound we simply share and be done?
                 Ok(FixedTensor::Replicated(plc.identity(sess, &x)))
             }
             FixedTensor::Replicated(x) => Ok(FixedTensor::Replicated(plc.identity(sess, &x))),

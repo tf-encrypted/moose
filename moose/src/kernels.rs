@@ -1436,12 +1436,15 @@ modelled!(PlacementIdentity::identity, HostPlacement, (Float32Tensor) -> Float32
 modelled!(PlacementIdentity::identity, HostPlacement, (Float64Tensor) -> Float64Tensor, IdentityOp);
 modelled!(PlacementIdentity::identity, HostPlacement, (Fixed64Tensor) -> Fixed64Tensor, IdentityOp);
 modelled!(PlacementIdentity::identity, HostPlacement, (Fixed128Tensor) -> Fixed128Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (BooleanTensor) -> BooleanTensor, IdentityOp);
 modelled!(PlacementIdentity::identity, ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor, IdentityOp);
 modelled!(PlacementIdentity::identity, ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor, IdentityOp);
 modelled!(PlacementIdentity::identity, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, IdentityOp);
 modelled!(PlacementIdentity::identity, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, IdentityOp);
 modelled!(PlacementIdentity::identity, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, IdentityOp);
 modelled!(PlacementIdentity::identity, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor, IdentityOp);
+modelled!(PlacementIdentity::identity, ReplicatedPlacement, (BooleanTensor) -> BooleanTensor, IdentityOp);
 
 kernel! {
     IdentityOp, [
@@ -1469,12 +1472,15 @@ kernel! {
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_host_kernel),
         (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_host_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_ring_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_ring_kernel),
+        (HostPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::boolean_host_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_inner_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_inner_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::rep_inner_kernel),
+        (ReplicatedPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::boolean_rep_kernel),
         (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_host_kernel),
         (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_rep_kernel),
 

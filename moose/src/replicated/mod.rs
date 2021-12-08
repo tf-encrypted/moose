@@ -688,13 +688,13 @@ impl IdentityOp {
         })
     }
 
-    pub(crate) fn rep_ring_kernel<S: Session, HostRingT>(
+    pub(crate) fn rep_inner_kernel<S: Session, HostT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<HostRingT>,
-    ) -> Result<RepTen<HostRingT>>
+        x: RepTen<HostT>,
+    ) -> Result<RepTen<HostT>>
     where
-        HostPlacement: PlacementIdentity<S, HostRingT, HostRingT>,
+        HostPlacement: PlacementIdentity<S, HostT, HostT>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let AbstractReplicatedRingTensor {
@@ -2704,6 +2704,51 @@ mod tests {
     };
     use ndarray::array;
     use proptest::prelude::*;
+
+    #[test]
+    fn test_ring_identity() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
+        let expected = x.clone();
+
+        let sess = SyncSession::default();
+
+        let x_shared = rep.share(&sess, &x);
+
+        let iden = rep.identity(&sess, &x_shared);
+        let opened_result = alice.reveal(&sess, &iden);
+        assert_eq!(opened_result, expected);
+    }
+
+    #[test]
+    fn test_identity_diff_plc() {
+        let alice0 = HostPlacement {
+            owner: "alice-0".into(),
+        };
+        let rep0 = ReplicatedPlacement {
+            owners: ["alice-0".into(), "bob-0".into(), "carole-0".into()],
+        };
+        let rep1 = ReplicatedPlacement {
+            owners: ["alice-1".into(), "bob-1".into(), "carole-1".into()],
+        };
+
+        let x = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice0.clone());
+        let expected = x.clone();
+
+        let sess = SyncSession::default();
+
+        let x_shared = rep0.share(&sess, &x);
+
+        let iden = rep1.identity(&sess, &x_shared);
+        let opened_result = alice0.reveal(&sess, &iden);
+        assert_eq!(opened_result, expected);
+    }
 
     #[test]
     fn test_adt_to_rep() {

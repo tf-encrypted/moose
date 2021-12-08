@@ -135,16 +135,17 @@ where
 }
 
 impl IdentityOp {
-    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
         HostPlacement: PlacementIdentity<S, Fixed64T, Fixed64T>,
         HostPlacement: PlacementIdentity<S, Fixed128T, Fixed128T>,
         HostPlacement: PlacementIdentity<S, Float32T, Float32T>,
         HostPlacement: PlacementIdentity<S, Float64T, Float64T>,
+        HostPlacement: PlacementIdentity<S, BoolT, BoolT>,
     {
         match x {
             AbstractTensor::Fixed64(x) => {
@@ -163,14 +164,18 @@ impl IdentityOp {
                 let result = plc.identity(sess, &x);
                 Ok(AbstractTensor::Float64(result))
             }
+            AbstractTensor::Bool(x) => {
+                let result = plc.identity(sess, &x);
+                Ok(AbstractTensor::Bool(result))
+            }
         }
     }
 
-    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
         ReplicatedPlacement: PlacementIdentity<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementIdentity<S, Fixed128T, Fixed128T>,

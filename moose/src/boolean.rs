@@ -31,6 +31,46 @@ where
     }
 }
 
+impl IdentityOp {
+    pub(crate) fn boolean_host_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementIdentity<S, HostT, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+    {
+        match x {
+            BoolTensor::Host(v) => Ok(BoolTensor::Host(plc.identity(sess, &v))),
+            BoolTensor::Replicated(v) => {
+                let v = plc.reveal(sess, &v);
+                // TODO: Shound we simply reveal and be done?
+                Ok(BoolTensor::Host(plc.identity(sess, &v)))
+            }
+        }
+    }
+
+    pub(crate) fn boolean_rep_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        ReplicatedPlacement: PlacementIdentity<S, RepT, RepT>,
+        ReplicatedPlacement: PlacementShare<S, HostT, RepT>,
+    {
+        match x {
+            BoolTensor::Host(v) => {
+                let v = plc.share(sess, &v);
+                // TODO: Shound we simply share and be done?
+                Ok(BoolTensor::Replicated(plc.identity(sess, &v)))
+            }
+            BoolTensor::Replicated(v) => Ok(BoolTensor::Replicated(plc.identity(sess, &v))),
+        }
+    }
+}
+
 modelled!(PlacementOutput::output, HostPlacement, (BooleanTensor) -> BooleanTensor, OutputOp);
 
 impl OutputOp {
