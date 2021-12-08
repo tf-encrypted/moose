@@ -76,8 +76,6 @@ impl BitOrOp {
     }
 }
 
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (BooleanTensor) -> BooleanTensor, IndexAxisOp);
-
 impl IndexAxisOp {
     pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
         sess: &S,
