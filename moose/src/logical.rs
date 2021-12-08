@@ -989,24 +989,6 @@ impl OnesOp {
         let result = plc.ones(sess, &shape);
         Ok(AbstractTensor::Float64(result))
     }
-
-    // fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
-    //     sess: &S,
-    //     plc: &ReplicatedPlacement,
-    //     shape: m!(HostShape),
-    // ) -> Result<AbstractTensor<m!(Fixed64Tensor), m!(Fixed128Tensor), m!(Float32Tensor), m!(Float64Tensor)>>
-    // where
-    //     HostShape: KnownType<S>,
-    //     Fixed64Tensor: KnownType<S>,
-    //     Fixed128Tensor: KnownType<S>,
-    //     Float32Tensor: KnownType<S>,
-    //     Float64Tensor: KnownType<S>,
-    //     crate::replicated::ReplicatedRing128Tensor: KnownType<S>,
-    //     ReplicatedPlacement: PlacementOnes<S, m!(HostShape), m!(crate::replicated::ReplicatedRing128Tensor)>,
-    // {
-    //     let result = plc.ones(sess, &shape);
-    //     Ok(AbstractTensor::Fixed128(result))
-    // }
 }
 
 modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Tensor) -> Tensor, ExpandDimsOp);
