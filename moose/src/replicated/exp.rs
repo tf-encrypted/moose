@@ -7,14 +7,7 @@ use super::*;
 use lazy_static::lazy_static;
 
 impl Pow2Op {
-    pub(crate) fn rep_rep_kernel<
-        S: Session,
-        RepRingT,
-        RepBitT,
-        RepBitArrayT,
-        RepShapeT,
-        N: Const,
-    >(
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, RepShapeT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
@@ -188,8 +181,7 @@ where
 
     m!(c!(AbstractReplicatedFixedTensor<RepRingT>)):
         TryInto<AbstractReplicatedFixedTensor<RepRingT>>,
-    AbstractReplicatedFixedTensor<RepRingT>:
-        Into<m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
+    AbstractReplicatedFixedTensor<RepRingT>: Into<m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
 
     // TODO(Morten) Good chance we can remove macros here after complete switch to modelled_kernel
     ReplicatedPlacement: PolynomialEval<S, m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,

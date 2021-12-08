@@ -639,6 +639,7 @@ where
         let upshifter = player0.shl(sess, k - 1, &ones);
         let downshifter = player0.shl(sess, k - amount - 1, &ones);
 
+        // TODO(Morten) think the rest of this would clean up nicely if we instead revealed to a mirrored placement
         let x_positive: AbstractAdditiveTensor<HostRingT> = self
             .add(sess, &x.clone().into(), &upshifter)
             .try_into()

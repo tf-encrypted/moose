@@ -1363,29 +1363,23 @@ modelled_kernel! {
 }
 
 impl AdtToRepOp {
-    fn kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
+    fn kernel<S: Session, ShapeT, SeedT, KeyT, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AdtTen<RingT>,
-    ) -> Result<RepTen<RingT>>
+        x: AdtTen<HostRingT>,
+    ) -> Result<RepTen<HostRingT>>
     where
-        RingT: Placed<Placement = HostPlacement> + Clone,
-        AdtTen<RingT>: CanonicalType,
-        <AdtTen<RingT> as CanonicalType>::Type: KnownType<S>,
-
-        RepTen<RingT>: CanonicalType,
-        <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
-        RepTen<RingT>: Into<st!(RepTen<RingT>)>,
-
-        HostPlacement: PlacementShape<S, RingT, ShapeT>,
+        HostRingT: Placed<Placement = HostPlacement> + Clone,
+        AdtTen<HostRingT>: CanonicalType,
+        <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+        HostPlacement: PlacementShape<S, HostRingT, ShapeT>,
         HostPlacement: PlacementKeyGen<S, KeyT>,
-        HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, RingT>,
+        HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, HostRingT>,
         HostPlacement: PlacementDeriveSeed<S, KeyT, SeedT>,
-        AdditivePlacement:
-            PlacementSub<S, st!(AdtTen<RingT>, S), st!(AdtTen<RingT>, S), st!(AdtTen<RingT>, S)>,
-        AdtTen<RingT>: Into<st!(AdtTen<RingT>, S)>,
-        HostPlacement: PlacementReveal<S, st!(AdtTen<RingT>, S), RingT>,
-        ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
+        AdditivePlacement: PlacementSub<S, AdtTen<HostRingT>, AdtTen<HostRingT>, AdtTen<HostRingT>>,
+        AdtTen<HostRingT>: Into<st!(AdtTen<HostRingT>, S)>,
+        HostPlacement: PlacementReveal<S, st!(AdtTen<HostRingT>, S), HostRingT>,
+        ReplicatedPlacement: PlacementPlace<S, RepTen<HostRingT>>,
     {
         let AdtTen { shares: [x0, x1] } = &x;
 
@@ -1424,7 +1418,7 @@ impl AdtToRepOp {
         let y = AdtTen {
             shares: [y0.clone(), y1.clone()],
         };
-        let c = adt_player0.reveal(sess, &adt.sub(sess, &x.into(), &y.into()));
+        let c = adt_player0.reveal(sess, &adt.sub(sess, &x, &y).into());
 
         let shares = match () {
             _ if provider_index == 0 => {
@@ -2105,6 +2099,8 @@ impl RingInjectOp {
 
         let x_adt = adt.rep_to_adt(sess, &x.into());
 
+        // TODO(Morten) the following block would likely clean up nicely if we instead
+        // revealed to a mirrored-2 placement, which would use only concrete kernels
         let c = with_context!(adt, sess, x_adt + b_bin);
         let c_open = player0.reveal(sess, &c);
         let c_ring = player0.ring_inject(sess, 0, &c_open);
