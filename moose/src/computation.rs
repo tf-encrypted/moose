@@ -980,7 +980,6 @@ operators![
     HostExpandDims,
     HostSlice,
     HostDiag,
-    HostIndexAxis,
     HostBitDec,
     HostReshape,
     HostSqueeze,
@@ -1352,13 +1351,6 @@ pub struct HostSliceOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct HostDiagOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct HostIndexAxisOp {
-    pub sig: Signature,
-    pub axis: usize,
-    pub index: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]

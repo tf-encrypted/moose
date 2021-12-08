@@ -935,7 +935,6 @@ impl ToTextual for Operator {
             HostSlice(op) => op.to_textual(),
             HostDiag(op) => op.to_textual(),
             HostShlDim(op) => op.to_textual(),
-            HostIndexAxis(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
             HostSum(op) => op.to_textual(),
             HostTranspose(op) => op.to_textual(),
