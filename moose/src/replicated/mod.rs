@@ -1800,7 +1800,7 @@ impl AdtToRepOp {
             _ if rep_player2 != adt_player0 && rep_player2 != adt_player1 => {
                 (rep_player2, 2, [rep_player0, rep_player1])
             }
-            _ => unimplemented!(), // something is wrong in the protocol otherwise
+            _ => unimplemented!("protocol error in AdtToRep kernel"), // something is wrong in the protocol otherwise
         };
 
         let sync_key0 = SyncKey::random();
@@ -2552,7 +2552,9 @@ where
     ) -> (Symbolic<RepTen<HostBitT>>, Symbolic<RepTen<HostBitT>>) {
         let concrete_x = match x {
             Symbolic::Concrete(x) => x,
-            Symbolic::Symbolic(_) => unimplemented!(),
+            Symbolic::Symbolic(_) => {
+                unimplemented!("PlacementSplit found non-Concrete inner value in input")
+            }
         };
         let (a, b) = Self::split(self, sess, concrete_x);
         (a.into(), b.into())
@@ -2690,7 +2692,9 @@ where
     ) -> Symbolic<RepTen<HostRingT>> {
         let concrete_x = match x {
             Symbolic::Concrete(x) => x,
-            Symbolic::Symbolic(_) => unimplemented!(),
+            Symbolic::Symbolic(_) => {
+                unimplemented!("PlacementShrRaw found non-Concrete inner value in input")
+            }
         };
         let concrete_y = Self::shr_raw(self, sess, amount, concrete_x);
         concrete_y.into()

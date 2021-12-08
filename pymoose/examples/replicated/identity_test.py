@@ -91,7 +91,7 @@ class TensorIdentityExample(parameterized.TestCase):
         identity_comp = self._setup_identity_comp(f, t, e)
         traced_identity_comp = edsl.trace(identity_comp)
         comp_bin = utils.serialize_computation(traced_identity_comp)
-        _ = elk_compiler.compile_computation(comp_bin, ["typing", "full", "toposort",],)
+        _ = elk_compiler.compile_computation(comp_bin, ["typing", "full", "toposort"])
 
     @parameterized.parameters(
         ("alice-0", "alice-1", True),

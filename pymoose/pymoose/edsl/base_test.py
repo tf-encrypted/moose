@@ -6,6 +6,7 @@ from pymoose.computation import standard as standard_ops
 from pymoose.computation.base import Computation
 from pymoose.computation.base import OpSignature
 from pymoose.computation.host import HostPlacement
+from pymoose.computation.standard import IdentityOperation
 from pymoose.computation.standard import ReshapeOperation
 from pymoose.computation.standard import TensorConstant
 from pymoose.computation.standard import TensorType
@@ -31,6 +32,31 @@ _NUMPY_DTYPES = [
 
 
 class EdslTest(parameterized.TestCase):
+    def test_identity(self):
+        alice = edsl.host_placement("alice")
+        bob = edsl.host_placement("bob")
+
+        @edsl.computation
+        def my_comp():
+            with alice:
+                c = edsl.constant(np.array([1.0, 2.0, 3.0], dtype=np.float64))
+
+            with bob:
+                c = edsl.identity(c)
+
+            return c
+
+        logical_comp = trace(my_comp)
+        identity_op = logical_comp.operation("identity_0")
+        assert identity_op == IdentityOperation(
+            placement_name="bob",
+            name="identity_0",
+            inputs={"x": "constant_0"},
+            signature=OpSignature(
+                {"x": TensorType(dtypes.float64)}, TensorType(dtypes.float64),
+            ),
+        )
+
     @parameterized.parameters(
         {"op": op, "OP": OP, "op_name": op_name}
         for (op, OP, op_name) in zip(

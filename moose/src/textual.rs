@@ -601,7 +601,7 @@ fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, (v, p)) = tuple((constant_literal, ws(parse_placement)))(input)?;
     match p {
         Placement::Host(h) => Ok((input, v.place(&h))),
-        _ => unimplemented!(), // TODO (lvorona) return parsing error that we do not support other placements in the textual form
+        _ => unimplemented!("textual form only parses HostPlacement, found other placement"), // TODO (lvorona) return parsing error that we do not support other placements in the textual form
     }
 }
 
@@ -1271,9 +1271,9 @@ impl ToTextual for Value {
             | Value::HostFixed128Tensor(_)
             | Value::HostBitArray64(_)
             | Value::Tensor(_)
-            | Value::HostBitArray128(_) => unimplemented!(),
-            Value::HostBitArray224(_) => unimplemented!(),
-            Value::HostBitArray256(_) => unimplemented!(),
+            | Value::HostBitArray128(_) => unimplemented!("textual form TODO"),
+            Value::HostBitArray224(_) => unimplemented!("textual form HostBitArray224 TODO"),
+            Value::HostBitArray256(_) => unimplemented!("textual form HostBitArray256 TODO"),
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)
             | Value::Fixed128Tensor(_)
@@ -1300,12 +1300,14 @@ impl ToTextual for Value {
             | Value::AdditiveRing128Tensor(_) => {
                 unimplemented!("Unsupported Value variant: {:?}", self)
             }
-            Value::HostFixed128AesTensor(_) => unimplemented!(),
-            Value::HostAesKey(_) => unimplemented!(),
-            Value::ReplicatedAesKey(_) => unimplemented!(),
-            Value::Fixed128AesTensor(_) => unimplemented!(),
-            Value::AesTensor(_) => unimplemented!(),
-            Value::AesKey(_) => unimplemented!(),
+            Value::HostFixed128AesTensor(_) => {
+                unimplemented!("textual form HostFixed128AesTensor TODO")
+            }
+            Value::HostAesKey(_) => unimplemented!("textual form HostAesKey TODO"),
+            Value::ReplicatedAesKey(_) => unimplemented!("textual form ReplicatedAesKey TODO"),
+            Value::Fixed128AesTensor(_) => unimplemented!("textual form Fixed128AesTensor TODO"),
+            Value::AesTensor(_) => unimplemented!("textual form AesTensor TODO"),
+            Value::AesKey(_) => unimplemented!("textual form AesKey TODO"),
         }
     }
 }
@@ -1368,7 +1370,7 @@ impl<T: std::fmt::Debug> ToTextual for ndarray::ArrayD<T> {
                 buffer.push(']');
                 buffer
             }
-            _ => unimplemented!(),
+            _ => unimplemented!("ArrayD.to_textual() unimplemented for tensors of rank > 3"),
         }
     }
 }

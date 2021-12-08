@@ -1301,7 +1301,7 @@ macro_rules! kernel {
                                 let op_name = sess.add_operation(op, &[&h0.op], &plc.clone().into());
                                 Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                             }
-                            _ => unimplemented!() // ok
+                            _ => unimplemented!("unimpl in unary hybrid") // ok
                         }
                     }
                 }))
@@ -2059,7 +2059,7 @@ macro_rules! kernel {
                         return Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }));
                     }
 
-                    unimplemented!()
+                    unimplemented!("unimpl in variadic runtime")
                 }))
             }
         }
