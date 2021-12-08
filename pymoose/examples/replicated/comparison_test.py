@@ -28,9 +28,10 @@ class BooleanLogicExample(parameterized.TestCase):
 
             with rep:
                 z_rep = edsl.less(x, y)
+                z_idx = edsl.index_axis(z_rep, axis=0, index=1)
 
             with alice:
-                z_host = edsl.logical_or(z_rep, z_rep)
+                z_host = edsl.logical_or(z_idx, z_idx)
 
             return z_host
 

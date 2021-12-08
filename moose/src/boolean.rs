@@ -75,3 +75,26 @@ impl BitOrOp {
         Ok(BoolTensor::Host(plc.or(sess, &x, &y)))
     }
 }
+
+modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (BooleanTensor) -> BooleanTensor, IndexAxisOp);
+
+impl IndexAxisOp {
+    pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: usize,
+        index: usize,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        ReplicatedPlacement: PlacementIndexAxis<S, RepT, RepT>,
+        ReplicatedPlacement: PlacementShare<S, HostT, RepT>,
+    {
+        let x = match x {
+            BoolTensor::Host(v) => plc.share(sess, &v),
+            BoolTensor::Replicated(v) => v,
+        };
+        let result = plc.index_axis(sess, axis, index, &x);
+        Ok(BoolTensor::Replicated(result))
+    }
+}

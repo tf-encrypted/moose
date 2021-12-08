@@ -2056,12 +2056,45 @@ modelled_kernel! {
     [
         (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::kernel),
+        // (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::kernel),
     ]
 }
 
 impl RepIndexAxisOp {
     fn kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: usize,
+        index: usize,
+        x: RepTen<HostRingT>,
+    ) -> Result<RepTen<HostRingT>>
+    where
+        HostPlacement: PlacementIndexAxis<S, HostRingT, HostRingT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let z00 = player0.index_axis(sess, axis, index, x00);
+        let z10 = player0.index_axis(sess, axis, index, x10);
+
+        let z11 = player1.index_axis(sess, axis, index, x11);
+        let z21 = player1.index_axis(sess, axis, index, x21);
+
+        let z22 = player2.index_axis(sess, axis, index, x22);
+        let z02 = player2.index_axis(sess, axis, index, x02);
+
+        Ok(RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        })
+    }
+}
+
+modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedBitTensor) -> ReplicatedBitTensor, IndexAxisOp);
+
+impl IndexAxisOp {
+    pub(crate) fn rep_bit_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: usize,

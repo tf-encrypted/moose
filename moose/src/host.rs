@@ -588,7 +588,7 @@ modelled_kernel! {
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::bit_kernel),
+        // (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::bit_kernel),
     ]
 }
 
@@ -608,22 +608,23 @@ impl HostIndexAxisOp {
         Ok(AbstractHostRingTensor(result.to_owned(), plc.clone()))
     }
 
-    pub fn bit_kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        axis: usize,
-        index: usize,
-        x: HostBitTensor,
-    ) -> Result<HostBitTensor> {
-        let axis = Axis(axis);
-        let result = x.0.index_axis(axis, index);
-        Ok(HostBitTensor(result.to_owned(), plc.clone()))
-    }
+    // pub fn bit_kernel<S: RuntimeSession>(
+    //     _sess: &S,
+    //     plc: &HostPlacement,
+    //     axis: usize,
+    //     index: usize,
+    //     x: HostBitTensor,
+    // ) -> Result<HostBitTensor> {
+    //     let axis = Axis(axis);
+    //     let result = x.0.index_axis(axis, index);
+    //     Ok(HostBitTensor(result.to_owned(), plc.clone()))
+    // }
 }
 
 // TODO (Yann): HostIndexAxisOp should be merged with IndexAxisOp once we remove placement prefix fron op's name
 modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostFloat32Tensor) -> HostFloat32Tensor, IndexAxisOp);
 modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostFloat64Tensor) -> HostFloat64Tensor, IndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis: usize, index: usize] (HostBitTensor) -> HostBitTensor, IndexAxisOp);
 
 impl IndexAxisOp {
     pub fn host_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
@@ -639,6 +640,18 @@ impl IndexAxisOp {
         let axis = Axis(axis);
         let result = x.0.index_axis(axis, index);
         Ok(HostTensor(result.to_owned(), plc.clone()))
+    }
+
+    pub(crate) fn host_bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: usize,
+        x: HostBitTensor,
+    ) -> Result<HostBitTensor> {
+        let axis = Axis(axis);
+        let result = x.0.index_axis(axis, index);
+        Ok(HostBitTensor(result.to_owned(), plc.clone()))
     }
 }
 

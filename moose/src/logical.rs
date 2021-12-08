@@ -1056,6 +1056,7 @@ impl ExpandDimsOp {
 }
 
 modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (Tensor) -> Tensor, IndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis: usize, index: usize] (Tensor) -> Tensor, IndexAxisOp);
 
 impl IndexAxisOp {
     pub fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
@@ -1098,6 +1099,7 @@ impl IndexAxisOp {
     where
         ReplicatedPlacement: PlacementIndexAxis<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementIndexAxis<S, Fixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementIndexAxis<S, BoolT, BoolT>,
     {
         match x {
             AbstractTensor::Fixed64(x) => {
@@ -1107,6 +1109,10 @@ impl IndexAxisOp {
             AbstractTensor::Fixed128(x) => {
                 let result = plc.index_axis(sess, axis, index, &x);
                 Ok(AbstractTensor::Fixed128(result))
+            }
+            AbstractTensor::Bool(x) => {
+                let result = plc.index_axis(sess, axis, index, &x);
+                Ok(AbstractTensor::Bool(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             _ => Err(Error::UnimplementedOperator(format!(
