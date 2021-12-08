@@ -1066,6 +1066,7 @@ impl IndexAxisOp {
     where
         HostPlacement: PlacementIndexAxis<S, Float32T, Float32T>,
         HostPlacement: PlacementIndexAxis<S, Float64T, Float64T>,
+        HostPlacement: PlacementIndexAxis<S, BoolT, BoolT>,
     {
         match x {
             AbstractTensor::Float32(x) => {
@@ -1074,11 +1075,14 @@ impl IndexAxisOp {
             }
             AbstractTensor::Float64(x) => {
                 let z = plc.index_axis(sess, axis, index, &x);
-
                 Ok(AbstractTensor::Float64(z))
             }
+            AbstractTensor::Bool(x) => {
+                let z = plc.index_axis(sess, axis, index, &x);
+                Ok(AbstractTensor::Bool(z))
+            }
             _ => Err(Error::UnimplementedOperator(format!(
-                "Missing replicated index_axis for {:?}",
+                "Missing host index_axis for {:?}",
                 &x.ty_desc(),
             ))),
         }
@@ -1322,6 +1326,7 @@ impl SaveOp {
         // HostPlacement: PlacementSave<S, cs!(HostString), Fixed128T, cs!(Unit)>,
         HostPlacement: PlacementSave<S, cs!(HostString), Float32T, cs!(Unit)>,
         HostPlacement: PlacementSave<S, cs!(HostString), Float64T, cs!(Unit)>,
+        HostPlacement: PlacementSave<S, cs!(HostString), BoolT, cs!(Unit)>,
     {
         match x {
             AbstractTensor::Fixed64(_x) => {
@@ -1332,10 +1337,7 @@ impl SaveOp {
                 unimplemented!()
                 // plc.save(sess, &key, &x)
             }
-            AbstractTensor::Bool(_x) => {
-                unimplemented!()
-                // plc.save(sess, &key, &x)
-            }
+            AbstractTensor::Bool(x) => Ok(plc.save(sess, &key, &x)),
             AbstractTensor::Float32(x) => Ok(plc.save(sess, &key, &x)),
             AbstractTensor::Float64(x) => Ok(plc.save(sess, &key, &x)),
         }

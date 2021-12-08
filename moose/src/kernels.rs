@@ -1647,6 +1647,7 @@ for_all_values! {( $($value:ty),* ) => (
 modelled!(PlacementSave::save, HostPlacement, (HostString, crate::logical::Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (HostString, Float32Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (HostString, Float64Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (HostString, BooleanTensor) -> Unit, SaveOp);
 
 kernel! {
     SaveOp, [
@@ -1673,6 +1674,7 @@ kernel! {
         (HostPlacement, (HostString, crate::logical::Tensor) -> Unit => [hybrid] Self::logical_kernel),
         (HostPlacement, (HostString, Float32Tensor) -> Unit => [hybrid] Self::float_kernel),
         (HostPlacement, (HostString, Float64Tensor) -> Unit => [hybrid] Self::float_kernel),
+        (HostPlacement, (HostString, BooleanTensor) -> Unit => [hybrid] Self::bool_kernel),
     ]
 }
 
@@ -2003,6 +2005,8 @@ kernel! {
 modelled_kernel! {
     PlacementIndexAxis::index_axis, IndexAxisOp{axis: usize, index: usize},
     [
+
+        (HostPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::bool_host_kernel),
         (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_host_kernel),
         (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
