@@ -293,7 +293,8 @@ class BitwiseOrExpression(Expression):
 
 @dataclass
 class MuxExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 def concatenate(arrays, axis=0, placement=None):
