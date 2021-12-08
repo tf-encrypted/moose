@@ -43,7 +43,8 @@ class BooleanLogicExample(parameterized.TestCase):
 
     @parameterized.parameters(
         (False, np.array([1.5, 2.3, 3, 3]) < np.array([-1.0, 4.0, 3, 2])),
-        (True, np.array([-1.0, 2.3, 3, 2])))
+        (True, np.array([-1.0, 2.3, 3, 2])),
+    )
     def test_boolean_execute(self, include_mux, expected):
         boolean_comp = self._setup_less_comp(include_mux)
         traced_bool_comp = edsl.trace(boolean_comp)
