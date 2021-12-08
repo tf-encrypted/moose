@@ -1986,6 +1986,7 @@ kernel! {
 kernel! {
     MuxOp,
     [
+        (ReplicatedPlacement, (crate::logical::Tensor, crate::logical::Tensor, crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_rep_kernel),
         (ReplicatedPlacement, (BooleanTensor, Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (BooleanTensor, Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor  => [transparent] Self::rep_kernel),
