@@ -222,6 +222,7 @@ impl AddNOp {
         //HostPlacement: PlacementAddN<S, Float32T, Float32T>,
         //HostPlacement: PlacementAddN<S, Float64T, Float64T>,
         Fixed64T: Clone,
+        //Fixed128T: Clone,
     {
         let x = &xs[0];
         match x {
@@ -236,11 +237,9 @@ impl AddNOp {
                 let result = plc.add_n(sess, &vec);
                 Ok(AbstractTensor::Fixed64(result))
             }
-            //(AbstractTensor::Fixed128(x)) => {
+            //AbstractTensor::Float32(x) => {
             //}
-            //(AbstractTensor::Float32(x)) => {
-            //}
-            //(AbstractTensor::Float64(x)) => {
+            //AbstractTensor::Float64(x) => {
             //}
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             x => Err(Error::UnimplementedOperator(format!(
@@ -252,14 +251,32 @@ impl AddNOp {
 
     pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
-        rep: &ReplicatedPlacement,
+        plc: &ReplicatedPlacement,
         xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>],
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
         ReplicatedPlacement: PlacementAddN<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementAddN<S, Fixed128T, Fixed128T>,
+        Fixed64T: Clone,
     {
-        unimplemented!("working on logical_rep_kernel")
+        let x = &xs[0];
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let vec: Vec<Fixed64T> = xs
+                    .iter()
+                    .map(|abstract_tensor| match abstract_tensor {
+                        AbstractTensor::Fixed64(x) => (*x).clone(),
+                        _ => unimplemented!("mixed types in tensor"),
+                    })
+                    .collect();
+                let result = plc.add_n(sess, &vec);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            x => Err(Error::UnimplementedOperator(format!(
+                "Missing host add_n op for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
     }
 }
 
