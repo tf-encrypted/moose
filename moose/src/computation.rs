@@ -896,7 +896,6 @@ impl Ty {
         }
     }
 }
-/// Macro to
 macro_rules! operators {
     ($($t:ident,)+) => {
 

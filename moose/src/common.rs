@@ -23,7 +23,7 @@ use crate::replicated::{
 modelled_kernel! {
     PlacementShape::shape, Shape,
     [
-        (HostPlacement, (Tensor) -> HostShape => [hybrid] Self::host_fixed_kernel),
+        (HostPlacement, (Tensor) -> HostShape => [hybrid] Self::host_logical_kernel),
         (HostPlacement, (Float32Tensor) -> HostShape => [hybrid] Self::float_kernel),
         (HostPlacement, (Float64Tensor) -> HostShape => [hybrid] Self::float_kernel),
         (HostPlacement, (Fixed64Tensor) -> HostShape => [hybrid] Self::host_fixed_kernel),
@@ -35,7 +35,7 @@ modelled_kernel! {
         (HostPlacement, (HostBitTensor) -> HostShape => [runtime] Self::bit_kernel),
         (HostPlacement, (HostFloat32Tensor) -> HostShape => [runtime] Self::host_kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostShape => [runtime] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor) -> ReplicatedShape => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (Tensor) -> ReplicatedShape => [hybrid] Self::rep_logical_kernel),
         (ReplicatedPlacement, (Fixed64Tensor) -> ReplicatedShape => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> ReplicatedShape => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => [concrete] Self::rep_kernel),
