@@ -322,6 +322,7 @@ impl AddNOp {
         ReplicatedPlacement: PlacementAddN<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementAddN<S, Fixed128T, Fixed128T>,
         Fixed64T: Clone,
+        Fixed128T: Clone,
     {
         let x = &xs[0];
         match x {
@@ -335,6 +336,17 @@ impl AddNOp {
                     .collect();
                 let result = plc.add_n(sess, &vec);
                 Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(_) => {
+                let vec: Vec<Fixed128T> = xs
+                    .iter()
+                    .map(|abstract_tensor| match abstract_tensor {
+                        AbstractTensor::Fixed128(x) => (*x).clone(),
+                        _ => unimplemented!("mixed types in tensor"),
+                    })
+                    .collect();
+                let result = plc.add_n(sess, &vec);
+                Ok(AbstractTensor::Fixed128(result))
             }
             x => Err(Error::UnimplementedOperator(format!(
                 "Missing host add_n op for {:?}",
