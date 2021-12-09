@@ -44,6 +44,7 @@ from pymoose.edsl.tracer import trace_and_compile
 __all__ = [
     abs,
     add,
+    add_n,
     Argument,
     atleast_2d,
     logical_or,

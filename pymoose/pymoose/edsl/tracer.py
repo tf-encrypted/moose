@@ -154,7 +154,7 @@ class AstTracer:
         input_type = input_op.return_type
         output_type = input_expression.vtype
         return self.computation.add_operation(
-            AddNExpression(
+            AddNOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("add_n"),
                 inputs={"x": input_op.name},
