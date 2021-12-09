@@ -1401,7 +1401,7 @@ macro_rules! kernel {
                             let op_name = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
                             Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
-                        _ => Err(crate::error::Error::Unexpected(Some(format!("Unary runtime kernel encountered Concrete argument: {:?}.", x0))))
+                        x0 => Err(crate::error::Error::Unexpected(Some(format!("Unary runtime kernel encountered Concrete argument: {:?}.", x0))))
                     }
                 }))
             }
@@ -1796,7 +1796,7 @@ macro_rules! kernel {
                             let op_name = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
                             Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
-                        _ => Err(crate::error::Error::Unexpected(Some(format!("Ternary concrete kernel flavor encountered mixed Symbolic/Concrete arguments during compilation: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
+                        (x0, x1, x2) => Err(crate::error::Error::Unexpected(Some(format!("Ternary concrete kernel flavor encountered mixed Symbolic/Concrete arguments during compilation: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
                     }
                 }))
             }
