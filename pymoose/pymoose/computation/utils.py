@@ -7,6 +7,7 @@ import numpy as np
 from pymoose.computation import dtypes
 from pymoose.computation import host as host_dialect
 from pymoose.computation import replicated as rep_dialect
+from pymoose.computation import mirrored as mirrored_dialect
 from pymoose.computation import standard as std_dialect
 from pymoose.computation.base import Computation
 from pymoose.computation.base import Operation
@@ -19,6 +20,7 @@ from pymoose.logger import get_logger
 SUPPORTED_TYPES = [
     host_dialect.HostPlacement,
     rep_dialect.ReplicatedPlacement,
+    mirrored_dialect.MirroredPlacement,
     std_dialect.AbsOperation,
     std_dialect.AddOperation,
     std_dialect.AesKeyType,

@@ -6,6 +6,7 @@ from pymoose.computation import utils
 from pymoose.computation.base import Computation
 from pymoose.computation.base import OpSignature
 from pymoose.computation.host import HostPlacement
+from pymoose.computation.mirrored import MirroredPlacement
 from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import AbsOperation
 from pymoose.computation.standard import AddOperation
@@ -56,6 +57,7 @@ from pymoose.edsl.base import IndexAxisExpression
 from pymoose.edsl.base import InverseExpression
 from pymoose.edsl.base import LoadExpression
 from pymoose.edsl.base import MeanExpression
+from pymoose.edsl.base import MirroredPlacementExpression
 from pymoose.edsl.base import MuxExpression
 from pymoose.edsl.base import OnesExpression
 from pymoose.edsl.base import ReplicatedPlacementExpression
@@ -161,6 +163,17 @@ class AstTracer:
         ]
         placement = ReplicatedPlacement(
             name=replicated_placement_expression.name, player_names=player_placements
+        )
+        return self.computation.add_placement(placement)
+
+    def visit_MirroredPlacementExpression(self, mirrored_placement_expression):
+        assert isinstance(mirrored_placement_expression, MirroredPlacementExpression)
+        player_placements = [
+            self.visit_placement_expression(player_placement_expression).name
+            for player_placement_expression in mirrored_placement_expression.players
+        ]
+        placement = MirroredPlacement(
+            name=mirrored_placement_expression.name, player_names=player_placements
         )
         return self.computation.add_placement(placement)
 
