@@ -163,11 +163,9 @@ impl FromPyOpSignature for Signature {
 #[derive(Deserialize, Debug)]
 struct PyAddNOperation {
     name: String,
-    #[allow(dead_code)]
     inputs: Inputs,
     placement_name: String,
     signature: PyOpSignature,
-    value: PyOpSignature,
 }
 
 #[derive(Deserialize, Debug)]
