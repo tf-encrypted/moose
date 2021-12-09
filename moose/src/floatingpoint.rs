@@ -6,6 +6,7 @@ use crate::kernels::*;
 use crate::mirrored::Mirrored3Tensor;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+use std::convert::TryInto;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FloatTensor<HostT, MirroredT> {
@@ -538,19 +539,32 @@ impl ConstantOp {
     }
 }
 
-// impl ConstantOp {
-//     pub fn mir3_float_kernel<S: Session, HostFloatT>(
-//         sess: &S,
-//         plc: &Mirrored3Placement,
-//         value: Constant,
-//     ) -> Result<FloatTensor<HostFloatT>>
-//     where
-//         HostPlacement: PlacementConstant<S, HostFloatT>,
-//     {
-//         let z = plc.constant(sess, value);
-//         Ok(FloatTensor::Host(z))
-//     }
-// }
+impl ConstantOp {
+    pub fn mir3_float_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        value: Constant,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementConstant<S, HostFloatT>,
+        Mirrored3Tensor<HostFloatT>: TryInto<MirroredT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+
+        let z0 = player0.constant(sess, value.clone());
+        let z1 = player1.constant(sess, value.clone());
+        let z2 = player2.constant(sess, value);
+
+        Ok(FloatTensor::Mirrored3(
+            Mirrored3Tensor {
+                values: [z0, z1, z2],
+            }
+            .try_into()
+            .ok()
+            .unwrap(),
+        ))
+    }
+}
 
 impl InputOp {
     pub fn float_kernel<S: Session, HostFloatT, MirroredT>(
