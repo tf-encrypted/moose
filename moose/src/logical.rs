@@ -237,16 +237,10 @@ impl AddNOp {
                 Ok(AbstractTensor::Fixed64(result))
             }
             //(AbstractTensor::Fixed128(x)) => {
-            //    let result = plc.add_n(sess, &xs);
-            //    Ok(AbstractTensor::Fixed128(result))
             //}
             //(AbstractTensor::Float32(x)) => {
-            //    let result = plc.add_n(sess, &xs);
-            //    Ok(AbstractTensor::Float32(result))
             //}
             //(AbstractTensor::Float64(x)) => {
-            //    let result = plc.add_n(sess, &xs);
-            //    Ok(AbstractTensor::Float64(result))
             //}
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             x => Err(Error::UnimplementedOperator(format!(
@@ -254,6 +248,18 @@ impl AddNOp {
                 &x.ty_desc(),
             ))),
         }
+    }
+
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>],
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        ReplicatedPlacement: PlacementAddN<S, Fixed64T, Fixed64T>,
+        //    ReplicatedPlacement: PlacementAddN<S, Fixed128T, Fixed128T>,
+    {
+        unimplemented!("working on logical_rep_kernel")
     }
 }
 

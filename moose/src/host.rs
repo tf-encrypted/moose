@@ -1034,12 +1034,33 @@ impl AddNOp {
                         _ => unimplemented!("mixed types in tensor"),
                     })
                     .collect();
-                let result = plc.add_n(sess, &vec);
-                Ok(FixedTensor::Host(result))
+                unimplemented!("why can't it find the next lowering?")
+                //let result = plc.add_n(sess, &vec);
+                //Ok(FixedTensor::Host(result))
             }
             FixedTensor::Replicated(_) => {
                 //let x = plc.reveal(sess, &x);
                 //Ok(FixedTensor::Host(plc.identity(sess, &x)))
+                unimplemented!("doesn't work yet for replicated")
+            }
+        }
+    }
+
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        xs: &[FixedTensor<HostFixedT, RepFixedT>],
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementAddN<S, RepFixedT, RepFixedT>,
+    {
+        let first = &xs[0];
+        match first {
+            FixedTensor::Host(_) => {
+                unimplemented!("doesn't work yet for host")
+            }
+            FixedTensor::Replicated(_) => {
                 unimplemented!("doesn't work yet for replicated")
             }
         }
