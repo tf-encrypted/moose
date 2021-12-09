@@ -282,11 +282,7 @@ impl AddNOp {
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
         HostPlacement: PlacementAddN<S, Fixed64T, Fixed64T>,
-        //HostPlacement: PlacementAddN<S, Fixed128T, Fixed128T>,
-        //HostPlacement: PlacementAddN<S, Float32T, Float32T>,
-        //HostPlacement: PlacementAddN<S, Float64T, Float64T>,
         Fixed64T: Clone,
-        //Fixed128T: Clone,
     {
         if xs.is_empty() {
             Err(Error::InvalidArgument(
@@ -306,22 +302,6 @@ impl AddNOp {
                     let result = plc.add_n(sess, &vec);
                     Ok(AbstractTensor::Fixed64(result))
                 }
-                //AbstractTensor::Fixed128(_) => {
-                //    let vec: Vec<Fixed128T> = xs
-                //        .iter()
-                //        .map(|abstract_tensor| match abstract_tensor {
-                //            AbstractTensor::Fixed128(x) => (*x).clone(),
-                //            _ => unimplemented!("mixed types in tensor"),
-                //        })
-                //        .collect();
-                //    let result = plc.add_n(sess, &vec);
-                //    Ok(AbstractTensor::Fixed128(result))
-                //}
-                //AbstractTensor::Float32(x) => {
-                //}
-                //AbstractTensor::Float64(x) => {
-                //}
-                // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
                 x => Err(Error::UnimplementedOperator(format!(
                     "Missing host add_n op for {:?}",
                     &x.ty_desc(),
@@ -341,34 +321,40 @@ impl AddNOp {
         Fixed64T: Clone,
         Fixed128T: Clone,
     {
-        let x = &xs[0];
-        match x {
-            AbstractTensor::Fixed64(_) => {
-                let vec: Vec<Fixed64T> = xs
-                    .iter()
-                    .map(|abstract_tensor| match abstract_tensor {
-                        AbstractTensor::Fixed64(x) => (*x).clone(),
-                        _ => unimplemented!("mixed types in tensor"),
-                    })
-                    .collect();
-                let result = plc.add_n(sess, &vec);
-                Ok(AbstractTensor::Fixed64(result))
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot concat on empty array of tensors".to_string(),
+            ))
+        } else {
+            let x = &xs[0];
+            match x {
+                AbstractTensor::Fixed64(_) => {
+                    let vec: Vec<Fixed64T> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            AbstractTensor::Fixed64(x) => (*x).clone(),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    let result = plc.add_n(sess, &vec);
+                    Ok(AbstractTensor::Fixed64(result))
+                }
+                AbstractTensor::Fixed128(_) => {
+                    let vec: Vec<Fixed128T> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            AbstractTensor::Fixed128(x) => (*x).clone(),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    let result = plc.add_n(sess, &vec);
+                    Ok(AbstractTensor::Fixed128(result))
+                }
+                x => Err(Error::UnimplementedOperator(format!(
+                    "Missing host add_n op for {:?}",
+                    &x.ty_desc(),
+                ))),
             }
-            AbstractTensor::Fixed128(_) => {
-                let vec: Vec<Fixed128T> = xs
-                    .iter()
-                    .map(|abstract_tensor| match abstract_tensor {
-                        AbstractTensor::Fixed128(x) => (*x).clone(),
-                        _ => unimplemented!("mixed types in tensor"),
-                    })
-                    .collect();
-                let result = plc.add_n(sess, &vec);
-                Ok(AbstractTensor::Fixed128(result))
-            }
-            x => Err(Error::UnimplementedOperator(format!(
-                "Missing host add_n op for {:?}",
-                &x.ty_desc(),
-            ))),
         }
     }
 }
