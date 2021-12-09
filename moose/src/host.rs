@@ -1054,14 +1054,29 @@ impl AddNOp {
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementAddN<S, RepFixedT, RepFixedT>,
+        RepFixedT: Clone,
     {
         let first = &xs[0];
         match first {
             FixedTensor::Host(_) => {
-                unimplemented!("doesn't work yet for host")
+                let vec: Vec<RepFixedT> = xs
+                    .iter()
+                    .map(|t| match t {
+                        FixedTensor::Host(x) => plc.share(sess, x),
+                        _ => unimplemented!("mixed types in tensor"),
+                    })
+                    .collect();
+                Ok(FixedTensor::Replicated(plc.add_n(sess, &vec)))
             }
             FixedTensor::Replicated(_) => {
-                unimplemented!("doesn't work yet for replicated")
+                let vec: Vec<RepFixedT> = xs
+                    .iter()
+                    .map(|t| match t {
+                        FixedTensor::Replicated(x) => (*x).clone(),
+                        _ => unimplemented!("mixed types in tensor"),
+                    })
+                    .collect();
+                Ok(FixedTensor::Replicated(plc.add_n(sess, &vec)))
             }
         }
     }
