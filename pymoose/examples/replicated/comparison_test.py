@@ -11,14 +11,14 @@ from pymoose.testing import LocalMooseRuntime
 
 
 class BooleanLogicExample(parameterized.TestCase):
-    def _setup_less_comp(self):
+    def _setup_less_comp(self, include_mux):
         alice = edsl.host_placement(name="alice")
         bob = edsl.host_placement(name="bob")
         carole = edsl.host_placement(name="carole")
         rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
         @edsl.computation
-        def my_less_comp():
+        def my_bool_comp():
             with bob:
                 x = edsl.constant(np.array([1.5, 2.3, 3, 3], dtype=np.float64))
                 x = edsl.cast(x, dtype=edsl.fixed(8, 27))
@@ -28,17 +28,26 @@ class BooleanLogicExample(parameterized.TestCase):
 
             with rep:
                 z_rep = edsl.less(x, y)
+                if include_mux:
+                    z_rep = edsl.mux(z_rep, x, y)
 
             with alice:
-                z_host = edsl.logical_or(z_rep, z_rep)
+                if include_mux:
+                    z_host = edsl.cast(z_rep, dtype=edsl.float64)
+                else:
+                    z_host = edsl.logical_or(z_rep, z_rep)
 
             return z_host
 
-        return my_less_comp
+        return my_bool_comp
 
-    def test_less_example_execute(self):
-        less_comp = self._setup_less_comp()
-        traced_less_comp = edsl.trace(less_comp)
+    @parameterized.parameters(
+        (False, np.array([1.5, 2.3, 3, 3]) < np.array([-1.0, 4.0, 3, 2])),
+        (True, np.array([-1.0, 2.3, 3, 2])),
+    )
+    def test_boolean_execute(self, include_mux, expected):
+        boolean_comp = self._setup_less_comp(include_mux)
+        traced_bool_comp = edsl.trace(boolean_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -46,12 +55,11 @@ class BooleanLogicExample(parameterized.TestCase):
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
         comp_result = runtime.evaluate_computation(
-            computation=traced_less_comp,
+            computation=traced_bool_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
-        real = np.array([1.5, 2.3, 3, 3] < np.array([-1.0, 4.0, 3, 2]))
-        np.testing.assert_equal(list(comp_result.values())[0], real)
+        np.testing.assert_almost_equal(list(comp_result.values())[0], expected)
 
 
 if __name__ == "__main__":

@@ -1081,7 +1081,7 @@ operators![
     RepBitCompose,
     RepShlDim,
     RepEqual,
-    IfElse,
+    Mux,
 ];
 
 pub trait HasShortName {
@@ -1857,7 +1857,7 @@ pub struct RepEqualOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct IfElseOp {
+pub struct MuxOp {
     pub sig: Signature,
 }
 
