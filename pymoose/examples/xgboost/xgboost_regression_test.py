@@ -22,7 +22,7 @@ def map_tree(tree, nb_features, learning_rate, x):
     split_conditions = tree["split_conditions"]
     split_indices = tree["split_indices"]
 
-    features = [edsl.index(x, i, axis=1) for i in range(nb_features)]
+    features = [edsl.index_axis(x, axis=1, index=i) for i in range(nb_features)]
 
     # Adjust weights based on learning rate
     base_weights = [learning_rate * w for w in base_weights]
@@ -117,7 +117,7 @@ class XGBoostReplicatedExample(parameterized.TestCase):
 
     def test_xgboost_regression_example_execute(self):
         input_x = np.array([[0, 1, 0, 0], [1, 0, 0, 1]], dtype=np.float64)
-        json_file = open("xgboost_regression_2_trees.json")
+        json_file = open("./xgboost_regression_2_trees.json")
         model_json = json.load(json_file)
         model_comp = self._setup_model_comp(model_json)
         traced_model_comp = edsl.trace(model_comp)
