@@ -1423,24 +1423,32 @@ impl ReceiveOp {
     }
 }
 
-for_all_values! {( $($value:ty),* ) => (
-    $(
-        modelled!(PlacementIdentity::identity, HostPlacement, ($value) -> $value, IdentityOp);
-    )*
-)}
-
-kernel! {
-    IdentityOp, [
-        (HostPlacement, (HostString) -> HostString => [runtime] Self::kernel),
-        (HostPlacement, (Unit) -> Unit => [runtime] Self::missing_kernel),
-        (HostPlacement, (HostShape) -> HostShape => [runtime] Self::kernel),
-        (HostPlacement, (Seed) -> Seed => [runtime] Self::kernel),
-        (HostPlacement, (PrfKey) -> PrfKey => [runtime] Self::kernel),
-        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::kernel),
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
+modelled_kernel! {
+    PlacementIdentity::identity, IdentityOp,
+    [
+        (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_host_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [concrete] Self::host_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::host_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
+        (HostPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::boolean_host_kernel),
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::kernel),
+        (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_rep_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_inner_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_inner_kernel),
+        (ReplicatedPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::boolean_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::rep_inner_kernel),
+        // TODO higher-level kernels for these
         (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
@@ -1449,9 +1457,11 @@ kernel! {
         (HostPlacement, (HostUint16Tensor) -> HostUint16Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [runtime] Self::missing_kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::missing_kernel),
-
+        (HostPlacement, (HostString) -> HostString => [runtime] Self::kernel),
+        (HostPlacement, (Unit) -> Unit => [runtime] Self::missing_kernel),
+        (HostPlacement, (HostShape) -> HostShape => [runtime] Self::kernel),
+        (HostPlacement, (Seed) -> Seed => [runtime] Self::kernel),
+        (HostPlacement, (PrfKey) -> PrfKey => [runtime] Self::kernel),
     ]
 }
 

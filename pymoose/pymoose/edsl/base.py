@@ -103,6 +103,12 @@ class Expression:
 
 
 @dataclass
+class IdentityExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class ArgumentExpression(Expression):
     arg_name: str
 
@@ -282,7 +288,8 @@ class SliceExpression(Expression):
 
 @dataclass
 class LessExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
@@ -295,6 +302,11 @@ class BitwiseOrExpression(Expression):
 class MuxExpression(Expression):
     def __hash__(self):
         return id(self)
+
+
+def identity(x, placement=None):
+    placement = placement or get_current_placement()
+    return IdentityExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def concatenate(arrays, axis=0, placement=None):

@@ -671,6 +671,47 @@ impl RepRevealOp {
     }
 }
 
+impl IdentityOp {
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementIdentity<S, RepRingT, RepRingT>,
+    {
+        let tensor = rep.identity(sess, &x.tensor);
+        Ok(AbstractReplicatedFixedTensor {
+            tensor,
+            integral_precision: x.integral_precision,
+            fractional_precision: x.fractional_precision,
+        })
+    }
+
+    pub(crate) fn rep_inner_kernel<S: Session, HostT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepTen<HostT>,
+    ) -> Result<RepTen<HostT>>
+    where
+        HostPlacement: PlacementIdentity<S, HostT, HostT>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+        let AbstractReplicatedRingTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+        let y00 = player0.identity(sess, x00);
+        let y10 = player0.identity(sess, x10);
+        let y11 = player1.identity(sess, x11);
+        let y21 = player1.identity(sess, x21);
+        let y22 = player2.identity(sess, x22);
+        let y02 = player2.identity(sess, x02);
+        Ok(AbstractReplicatedRingTensor {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        })
+    }
+}
+
 modelled_kernel! {
     PlacementAnd::and, RepAndOp,
     [
@@ -1396,7 +1437,7 @@ impl AdtToRepOp {
             _ if rep_player2 != adt_player0 && rep_player2 != adt_player1 => {
                 (rep_player2, 2, [rep_player0, rep_player1])
             }
-            _ => unimplemented!(), // something is wrong in the protocol otherwise
+            _ => unimplemented!("protocol error in AdtToRep kernel"), // something is wrong in the protocol otherwise
         };
 
         let sync_key0 = SyncKey::random();
@@ -2136,7 +2177,9 @@ where
     ) -> (Symbolic<RepTen<HostBitT>>, Symbolic<RepTen<HostBitT>>) {
         let concrete_x = match x {
             Symbolic::Concrete(x) => x,
-            Symbolic::Symbolic(_) => unimplemented!(),
+            Symbolic::Symbolic(_) => {
+                unimplemented!()
+            }
         };
         let (a, b) = Self::split(self, sess, concrete_x);
         (a.into(), b.into())
@@ -2274,7 +2317,9 @@ where
     ) -> Symbolic<RepTen<HostRingT>> {
         let concrete_x = match x {
             Symbolic::Concrete(x) => x,
-            Symbolic::Symbolic(_) => unimplemented!(),
+            Symbolic::Symbolic(_) => {
+                unimplemented!()
+            }
         };
         let concrete_y = Self::shr_raw(self, sess, amount, concrete_x);
         concrete_y.into()
@@ -2650,6 +2695,51 @@ mod tests {
     };
     use ndarray::array;
     use proptest::prelude::*;
+
+    #[test]
+    fn test_ring_identity() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
+        let expected = x.clone();
+
+        let sess = SyncSession::default();
+
+        let x_shared = rep.share(&sess, &x);
+
+        let iden = rep.identity(&sess, &x_shared);
+        let opened_result = alice.reveal(&sess, &iden);
+        assert_eq!(opened_result, expected);
+    }
+
+    #[test]
+    fn test_identity_diff_plc() {
+        let alice0 = HostPlacement {
+            owner: "alice-0".into(),
+        };
+        let rep0 = ReplicatedPlacement {
+            owners: ["alice-0".into(), "bob-0".into(), "carole-0".into()],
+        };
+        let rep1 = ReplicatedPlacement {
+            owners: ["alice-1".into(), "bob-1".into(), "carole-1".into()],
+        };
+
+        let x = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice0.clone());
+        let expected = x.clone();
+
+        let sess = SyncSession::default();
+
+        let x_shared = rep0.share(&sess, &x);
+
+        let iden = rep1.identity(&sess, &x_shared);
+        let opened_result = alice0.reveal(&sess, &iden);
+        assert_eq!(opened_result, expected);
+    }
 
     #[test]
     fn test_adt_to_rep() {
