@@ -42,7 +42,6 @@ from pymoose.computation.standard import UnitType
 from pymoose.computation.standard import UnknownType
 from pymoose.edsl.base import AbsExpression
 from pymoose.edsl.base import AddNExpression
-from pymoose.edsl.base import AddNOperation
 from pymoose.edsl.base import ArgumentExpression
 from pymoose.edsl.base import AtLeast2DExpression
 from pymoose.edsl.base import BinaryOpExpression
