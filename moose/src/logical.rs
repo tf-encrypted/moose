@@ -257,7 +257,7 @@ impl AddNOp {
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
         ReplicatedPlacement: PlacementAddN<S, Fixed64T, Fixed64T>,
-        //    ReplicatedPlacement: PlacementAddN<S, Fixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementAddN<S, Fixed128T, Fixed128T>,
     {
         unimplemented!("working on logical_rep_kernel")
     }
