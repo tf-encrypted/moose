@@ -2187,7 +2187,7 @@ where
         let concrete_x = match x {
             Symbolic::Concrete(x) => x,
             Symbolic::Symbolic(_) => {
-                unimplemented!("PlacementSplit found non-Concrete inner value in input")
+                unimplemented!()
             }
         };
         let (a, b) = Self::split(self, sess, concrete_x);
@@ -2327,7 +2327,7 @@ where
         let concrete_x = match x {
             Symbolic::Concrete(x) => x,
             Symbolic::Symbolic(_) => {
-                unimplemented!("PlacementShrRaw found non-Concrete inner value in input")
+                unimplemented!()
             }
         };
         let concrete_y = Self::shr_raw(self, sess, amount, concrete_x);

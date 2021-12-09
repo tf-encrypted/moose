@@ -1274,9 +1274,9 @@ impl ToTextual for Value {
             | Value::HostFixed128Tensor(_)
             | Value::HostBitArray64(_)
             | Value::Tensor(_)
-            | Value::HostBitArray128(_) => unimplemented!("textual form TODO"),
-            Value::HostBitArray224(_) => unimplemented!("textual form HostBitArray224 TODO"),
-            Value::HostBitArray256(_) => unimplemented!("textual form HostBitArray256 TODO"),
+            | Value::HostBitArray128(_) => unimplemented!(),
+            Value::HostBitArray224(_) => unimplemented!(),
+            Value::HostBitArray256(_) => unimplemented!(),
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)
             | Value::Fixed128Tensor(_)
@@ -1305,13 +1305,13 @@ impl ToTextual for Value {
                 unimplemented!("Unsupported Value variant: {:?}", self)
             }
             Value::HostFixed128AesTensor(_) => {
-                unimplemented!("textual form HostFixed128AesTensor TODO")
+                unimplemented!()
             }
-            Value::HostAesKey(_) => unimplemented!("textual form HostAesKey TODO"),
-            Value::ReplicatedAesKey(_) => unimplemented!("textual form ReplicatedAesKey TODO"),
-            Value::Fixed128AesTensor(_) => unimplemented!("textual form Fixed128AesTensor TODO"),
-            Value::AesTensor(_) => unimplemented!("textual form AesTensor TODO"),
-            Value::AesKey(_) => unimplemented!("textual form AesKey TODO"),
+            Value::HostAesKey(_) => unimplemented!(),
+            Value::ReplicatedAesKey(_) => unimplemented!(),
+            Value::Fixed128AesTensor(_) => unimplemented!(),
+            Value::AesTensor(_) => unimplemented!(),
+            Value::AesKey(_) => unimplemented!(),
         }
     }
 }

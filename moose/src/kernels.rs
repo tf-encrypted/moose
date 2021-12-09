@@ -749,7 +749,7 @@ impl Session for AsyncSession {
 
     type ReplicatedSetup = ReplicatedSetup;
     fn replicated_setup(&self, _plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
-        unimplemented!("replicated setup unimplemented")
+        unimplemented!()
     }
 }
 

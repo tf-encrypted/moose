@@ -126,7 +126,6 @@ impl IdentityOp {
             FixedTensor::Host(x) => Ok(FixedTensor::Host(plc.identity(sess, &x))),
             FixedTensor::Replicated(x) => {
                 let x = plc.reveal(sess, &x);
-                // TODO: Shound we simply reveal and be done?
                 Ok(FixedTensor::Host(plc.identity(sess, &x)))
             }
         }
@@ -144,7 +143,6 @@ impl IdentityOp {
         match x {
             FixedTensor::Host(x) => {
                 let x = plc.share(sess, &x);
-                // TODO: Shound we simply share and be done?
                 Ok(FixedTensor::Replicated(plc.identity(sess, &x)))
             }
             FixedTensor::Replicated(x) => Ok(FixedTensor::Replicated(plc.identity(sess, &x))),
@@ -1241,14 +1239,14 @@ impl<RepRingT> FixedpointTensor for AbstractReplicatedFixedTensor<RepRingT> {
 impl<RepRingT: Placed> FixedpointTensor for Symbolic<AbstractReplicatedFixedTensor<RepRingT>> {
     fn fractional_precision(&self) -> u32 {
         match self {
-            Symbolic::Symbolic(_) => unimplemented!("ouch"), // TODO(Dragos) extract from underlying op signature
+            Symbolic::Symbolic(_) => unimplemented!(), // TODO(Dragos) extract from underlying op signature
             Symbolic::Concrete(x) => x.fractional_precision,
         }
     }
 
     fn integral_precision(&self) -> u32 {
         match self {
-            Symbolic::Symbolic(_) => unimplemented!("oof"), // TODO(Dragos) extract from underlying op signature
+            Symbolic::Symbolic(_) => unimplemented!(), // TODO(Dragos) extract from underlying op signature
             Symbolic::Concrete(x) => x.integral_precision,
         }
     }

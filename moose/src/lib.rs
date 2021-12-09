@@ -1301,7 +1301,7 @@ macro_rules! kernel {
                                 let op_name = sess.add_operation(op, &[&h0.op], &plc.clone().into());
                                 Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                             }
-                            _ => unimplemented!("unimpl in unary hybrid") // ok
+                            x0 => Err(crate::error::Error::Unexpected(Some(format!("Unary hybrid kernel flavor encountered Concrete argument in Symbolic-only case {:?}.", x0))))
                         }
                     }
                 }))
@@ -1401,7 +1401,7 @@ macro_rules! kernel {
                             let op_name = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
                             Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
-                        _ => unimplemented!("unimplemented in unary runtime {:?}", x0)
+                        _ => Err(crate::error::Error::Unexpected(Some(format!("Unary runtime kernel encountered Concrete argument: {:?}.", x0))))
                     }
                 }))
             }
@@ -1615,7 +1615,7 @@ macro_rules! kernel {
                             let op_name = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
                             Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
-                        _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
+                        (x0, x1) => Err(crate::error::Error::Unexpected(Some(format!("Binary runtime kernel flavor encountered Concrete arguments: {:?} and {:?}", x0, x1))))
                     }
                 }))
             }
@@ -1745,7 +1745,7 @@ macro_rules! kernel {
                                 let op_name = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
                                 Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                             }
-                            _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
+                            (x0, x1, x2) => Err(crate::error::Error::Unexpected(Some(format!("Ternary hybrid kernel flavor encountered Concrete arguments in Symbolic-only case: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
                         }
                     }
                 }))
@@ -1796,7 +1796,7 @@ macro_rules! kernel {
                             let op_name = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
                             Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
-                        _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
+                        _ => Err(crate::error::Error::Unexpected(Some(format!("Ternary concrete kernel flavor encountered mixed Symbolic/Concrete arguments during compilation: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
                     }
                 }))
             }
@@ -1838,7 +1838,7 @@ macro_rules! kernel {
                             let op_name = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
                             Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         }
-                        _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
+                        (x0, x1, x2) => Err(crate::error::Error::Unexpected(Some(format!("Ternary runtime kernel flavor encountered Concrete arguments during compilation: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
                     }
                 })
             }
@@ -1959,7 +1959,7 @@ macro_rules! kernel {
                             let op_name = sess.add_operation(op, &handles, &plc.clone().into());
                             Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         } else {
-                            Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
+                            Err(crate::error::Error::Unexpected(Some("Variadic hybrid kernel flavor found mixed symbolic and concrete values during compilation.".to_string())))
                         }
                     }
                 }))
@@ -2013,7 +2013,7 @@ macro_rules! kernel {
                             let op_name = sess.add_operation(op, &handles, &plc.clone().into());
                             Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
                         } else {
-                            Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
+                            Err(crate::error::Error::Unexpected(Some("Variadic concrete flavor found mixed symbolic and concrete value during compilation.".to_string())))
                         }
                     }
                 }))
@@ -2059,7 +2059,7 @@ macro_rules! kernel {
                         return Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }));
                     }
 
-                    unimplemented!("unimpl in variadic runtime")
+                    Err(crate::error::Error::Unexpected(Some(format!("Variadic runtime kernel found non-Symbolic arguments for {:?}", op))))
                 }))
             }
         }

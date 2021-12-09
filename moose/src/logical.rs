@@ -820,12 +820,12 @@ impl AtLeast2DOp {
     {
         match x {
             AbstractTensor::Fixed64(_x) => {
-                unimplemented!("atleast2d fixed64 @ host unimplemented")
+                unimplemented!()
                 // let z = plc.at_least_2d(sess, to_column_vector, &x);
                 // Ok(AbstractTensor::Fixed64(z))
             }
             AbstractTensor::Fixed128(_x) => {
-                unimplemented!("atleast2d fixed128 @ host unimplemented")
+                unimplemented!()
                 // let z = plc.at_least_2d(sess, to_column_vector, &x);
                 // AbstractTensor::Fixed128(z)
             }
@@ -1077,12 +1077,12 @@ impl ExpandDimsOp {
     {
         match x {
             AbstractTensor::Fixed64(_x) => {
-                unimplemented!("expanddims fixed64 @ host unimpl")
+                unimplemented!()
                 // let z = plc.expand_dims(sess, axis, &x);
                 // AbstractTensor::Fixed64(z)
             }
             AbstractTensor::Fixed128(_x) => {
-                unimplemented!("expanddims fixed128 @ host unimpl")
+                unimplemented!()
                 // let z = plc.expand_dims(sess, axis, &x);
                 // AbstractTensor::Fixed128(z)
             }
@@ -1252,17 +1252,17 @@ impl TransposeOp {
     {
         match x {
             AbstractTensor::Fixed64(_x) => {
-                unimplemented!("transpose fixed64 @ host unimpl")
+                unimplemented!()
                 // let z = plc.transpose(sess, &x);
                 // AbstractTensor::Fixed64(z)
             }
             AbstractTensor::Fixed128(_x) => {
-                unimplemented!("transpose fixed128 @ host unimpl")
+                unimplemented!()
                 // let z = plc.transpose(sess, &x);
                 // AbstractTensor::Fixed128(z)
             }
             AbstractTensor::Float32(_x) => {
-                unimplemented!("transpose float32 @ host unimpl")
+                unimplemented!()
                 // let z = plc.transpose(sess, &x);
                 // AbstractTensor::Float32(z)
             }
@@ -1296,17 +1296,17 @@ impl InverseOp {
     {
         match x {
             AbstractTensor::Fixed64(_x) => {
-                unimplemented!("inverse fixed64 @ host unimpl")
+                unimplemented!()
                 // let z = plc.inverse(sess, &x);
                 // AbstractTensor::Fixed64(z)
             }
             AbstractTensor::Fixed128(_x) => {
-                unimplemented!("transpose fixed128 @ host unimpl")
+                unimplemented!()
                 // let z = plc.inverse(sess, &x);
                 // AbstractTensor::Fixed128(z)
             }
             AbstractTensor::Float32(_x) => {
-                unimplemented!("transpose float32 @ host unimpl")
+                unimplemented!()
                 // let z = plc.inverse(sess, &x);
                 // AbstractTensor::Float32(z)
             }
@@ -1368,11 +1368,11 @@ impl SaveOp {
     {
         match x {
             AbstractTensor::Fixed64(_x) => {
-                unimplemented!("save fixed64 @ host unimpl")
+                unimplemented!()
                 // plc.save(sess, &key, &x)
             }
             AbstractTensor::Fixed128(_x) => {
-                unimplemented!("save fixed128 @ host unimpl")
+                unimplemented!()
                 // plc.save(sess, &key, &x)
             }
             AbstractTensor::Bool(_x) => {

@@ -45,7 +45,6 @@ impl IdentityOp {
             BoolTensor::Host(v) => Ok(BoolTensor::Host(plc.identity(sess, &v))),
             BoolTensor::Replicated(v) => {
                 let v = plc.reveal(sess, &v);
-                // TODO: Shound we simply reveal and be done?
                 Ok(BoolTensor::Host(plc.identity(sess, &v)))
             }
         }
@@ -63,7 +62,6 @@ impl IdentityOp {
         match x {
             BoolTensor::Host(v) => {
                 let v = plc.share(sess, &v);
-                // TODO: Shound we simply share and be done?
                 Ok(BoolTensor::Replicated(plc.identity(sess, &v)))
             }
             BoolTensor::Replicated(v) => Ok(BoolTensor::Replicated(plc.identity(sess, &v))),

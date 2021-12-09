@@ -1260,7 +1260,7 @@ impl RingFixedpointDecodeOp {
         _scaling_exp: u32,
         _x: AbstractHostRingTensor<ST>,
     ) -> Result<HostTensor<TT>> {
-        unimplemented!("RingFixedPointDecodeOp float32 unimplemented")
+        unimplemented!()
     }
 
     fn float64_kernel<S: RuntimeSession>(
