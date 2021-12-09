@@ -6,6 +6,7 @@ from pymoose.computation import standard as standard_ops
 from pymoose.computation.base import Computation
 from pymoose.computation.base import OpSignature
 from pymoose.computation.host import HostPlacement
+from pymoose.computation.standard import IdentityOperation
 from pymoose.computation.standard import ReshapeOperation
 from pymoose.computation.standard import TensorConstant
 from pymoose.computation.standard import TensorType
@@ -31,6 +32,31 @@ _NUMPY_DTYPES = [
 
 
 class EdslTest(parameterized.TestCase):
+    def test_identity(self):
+        alice = edsl.host_placement("alice")
+        bob = edsl.host_placement("bob")
+
+        @edsl.computation
+        def my_comp():
+            with alice:
+                c = edsl.constant(np.array([1.0, 2.0, 3.0], dtype=np.float64))
+
+            with bob:
+                c = edsl.identity(c)
+
+            return c
+
+        logical_comp = trace(my_comp)
+        identity_op = logical_comp.operation("identity_0")
+        assert identity_op == IdentityOperation(
+            placement_name="bob",
+            name="identity_0",
+            inputs={"x": "constant_0"},
+            signature=OpSignature(
+                {"x": TensorType(dtypes.float64)}, TensorType(dtypes.float64),
+            ),
+        )
+
     @parameterized.parameters(
         {"op": op, "OP": OP, "op_name": op_name}
         for (op, OP, op_name) in zip(
@@ -321,6 +347,44 @@ class EdslTest(parameterized.TestCase):
             axis=[1],
             signature=OpSignature(
                 {"x": TensorType(dtypes.float64)}, TensorType(dtypes.float64),
+            ),
+        )
+
+    def test_mux(self):
+        player0 = edsl.host_placement(name="player0")
+        player1 = edsl.host_placement(name="player1")
+        player2 = edsl.host_placement(name="player2")
+        replicated = edsl.replicated_placement(
+            name="replicated", players=[player0, player1, player2]
+        )
+
+        @edsl.computation
+        def my_comp():
+            x0 = edsl.mux(
+                edsl.constant(np.array([True]), placement=player0),
+                edsl.constant(
+                    np.array([1.0]), placement=player0, dtype=dtypes.fixed(8, 27)
+                ),
+                edsl.constant(
+                    np.array([0.0]), placement=player0, dtype=dtypes.fixed(8, 27)
+                ),
+                placement=replicated,
+            )
+            return x0
+
+        concrete_comp = trace(my_comp)
+        op = concrete_comp.operation("mux_0")
+        assert op == standard_ops.MuxOperation(
+            placement_name="replicated",
+            name="mux_0",
+            inputs={"selector": "constant_0", "x": "cast_0", "y": "cast_1"},
+            signature=OpSignature(
+                {
+                    "selector": TensorType(dtypes.bool_),
+                    "x": TensorType(dtypes.fixed(8, 27)),
+                    "y": TensorType(dtypes.fixed(8, 27)),
+                },
+                TensorType(dtypes.fixed(8, 27)),
             ),
         )
 

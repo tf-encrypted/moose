@@ -43,8 +43,8 @@ modelled_kernel! {
         (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedShape => [concrete] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedShape => [hybrid] Self::rep_repfixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedShape => [hybrid] Self::rep_repfixed_kernel),
-        (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveShape => [hybrid] Self::adt_kernel),
-        (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveShape => [hybrid] Self::adt_kernel),
+        (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveShape => [concrete] Self::adt_kernel),
+        (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveShape => [concrete] Self::adt_kernel),
     ]
 }
 
@@ -72,8 +72,8 @@ modelled_kernel! {
     [
         (HostPlacement, (HostBitTensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostBitTensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing128Tensor => [hybrid] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_kernel),
     ]
 }
 

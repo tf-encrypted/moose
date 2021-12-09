@@ -109,6 +109,12 @@ class AddNExpression(Expression):
 
 
 @dataclass
+class IdentityExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class ArgumentExpression(Expression):
     arg_name: str
 
@@ -288,7 +294,8 @@ class SliceExpression(Expression):
 
 @dataclass
 class LessExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
@@ -297,9 +304,20 @@ class BitwiseOrExpression(Expression):
         return id(self)
 
 
+@dataclass
+class MuxExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
 def add_n(x, placement=None):
     placement = placement or get_current_placement()
     return AddNOperation(placement=placement, inputs=[x], vtype=x.vtype)
+
+
+def identity(x, placement=None):
+    placement = placement or get_current_placement()
+    return IdentityExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def concatenate(arrays, axis=0, placement=None):
@@ -609,6 +627,22 @@ def abs(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return AbsExpression(placement=placement, inputs=[x], vtype=x.vtype)
+
+
+def mux(selector, x, y, placement=None):
+    assert isinstance(selector, Expression)
+    assert isinstance(selector.vtype, TensorType)
+    assert selector.vtype.dtype.is_boolean, selector.vtype.dtype
+    assert isinstance(x, Expression)
+    assert isinstance(x.vtype, TensorType), x.vtype
+    assert x.vtype.dtype.is_fixedpoint, x.vtype.dtype
+    assert isinstance(y, Expression)
+    assert isinstance(y.vtype, TensorType), y.vtype
+    assert y.vtype.dtype.is_fixedpoint, y.vtype.dtype
+    placement = placement or get_current_placement()
+    assert isinstance(placement, ReplicatedPlacementExpression)
+    vtype = _assimilate_arg_vtypes(x.vtype, y.vtype, "mux")
+    return MuxExpression(placement=placement, inputs=[selector, x, y], vtype=vtype)
 
 
 def cast(x, dtype, placement=None):

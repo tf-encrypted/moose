@@ -20,6 +20,7 @@ from pymoose.computation.standard import DivOperation
 from pymoose.computation.standard import DotOperation
 from pymoose.computation.standard import ExpandDimsOperation
 from pymoose.computation.standard import ExpOperation
+from pymoose.computation.standard import IdentityOperation
 from pymoose.computation.standard import IndexAxisOperation
 from pymoose.computation.standard import InputOperation
 from pymoose.computation.standard import InverseOperation
@@ -27,6 +28,7 @@ from pymoose.computation.standard import LessOperation
 from pymoose.computation.standard import LoadOperation
 from pymoose.computation.standard import MeanOperation
 from pymoose.computation.standard import MulOperation
+from pymoose.computation.standard import MuxOperation
 from pymoose.computation.standard import OnesOperation
 from pymoose.computation.standard import OutputOperation
 from pymoose.computation.standard import ReshapeOperation
@@ -53,10 +55,12 @@ from pymoose.edsl.base import ExpandDimsExpression
 from pymoose.edsl.base import ExpExpression
 from pymoose.edsl.base import Expression
 from pymoose.edsl.base import HostPlacementExpression
+from pymoose.edsl.base import IdentityExpression
 from pymoose.edsl.base import IndexAxisExpression
 from pymoose.edsl.base import InverseExpression
 from pymoose.edsl.base import LoadExpression
 from pymoose.edsl.base import MeanExpression
+from pymoose.edsl.base import MuxExpression
 from pymoose.edsl.base import OnesExpression
 from pymoose.edsl.base import ReplicatedPlacementExpression
 from pymoose.edsl.base import ReshapeExpression
@@ -181,6 +185,24 @@ class AstTracer:
             name=replicated_placement_expression.name, player_names=player_placements
         )
         return self.computation.add_placement(placement)
+
+    def visit_IdentityExpression(self, identity_expression):
+        assert isinstance(identity_expression, IdentityExpression)
+        placement = self.visit_placement_expression(identity_expression.placement)
+        input_expression = identity_expression.inputs[0]
+        input_op = self.visit(input_expression)
+        input_type = input_op.return_type
+        output_type = input_expression.vtype
+        return self.computation.add_operation(
+            IdentityOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("identity"),
+                inputs={"x": input_op.name},
+                signature=OpSignature(
+                    input_types={"x": input_type}, return_type=output_type
+                ),
+            )
+        )
 
     def visit_ArgumentExpression(self, argument_expression):
         assert isinstance(argument_expression, ArgumentExpression)
@@ -581,6 +603,33 @@ class AstTracer:
                 signature=OpSignature(
                     input_types={"x": x_operation.return_type},
                     return_type=shape_expression.vtype,
+                ),
+            )
+        )
+
+    def visit_MuxExpression(self, mux_expression):
+        assert isinstance(mux_expression, MuxExpression)
+        (selector_expression, x_expression, y_expression) = mux_expression.inputs
+        selector_operation = self.visit(selector_expression)
+        x_operation = self.visit(x_expression)
+        y_operation = self.visit(y_expression)
+        placement = self.visit_placement_expression(mux_expression.placement)
+        return self.computation.add_operation(
+            MuxOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("mux"),
+                inputs={
+                    "selector": selector_operation.name,
+                    "x": x_operation.name,
+                    "y": y_operation.name,
+                },
+                signature=OpSignature(
+                    input_types={
+                        "selector": selector_operation.return_type,
+                        "x": x_operation.return_type,
+                        "y": y_operation.return_type,
+                    },
+                    return_type=mux_expression.vtype,
                 ),
             )
         )

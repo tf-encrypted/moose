@@ -19,6 +19,7 @@ from pymoose.edsl.base import dot
 from pymoose.edsl.base import exp
 from pymoose.edsl.base import expand_dims
 from pymoose.edsl.base import host_placement
+from pymoose.edsl.base import identity
 from pymoose.edsl.base import index_axis
 from pymoose.edsl.base import inverse
 from pymoose.edsl.base import less
@@ -26,6 +27,7 @@ from pymoose.edsl.base import load
 from pymoose.edsl.base import logical_or
 from pymoose.edsl.base import mean
 from pymoose.edsl.base import mul
+from pymoose.edsl.base import mux
 from pymoose.edsl.base import ones
 from pymoose.edsl.base import replicated_placement
 from pymoose.edsl.base import reshape
@@ -63,6 +65,7 @@ __all__ = [
     bool_,
     float32,
     float64,
+    identity,
     index_axis,
     int32,
     int64,
@@ -70,6 +73,7 @@ __all__ = [
     less,
     load,
     mul,
+    mux,
     mean,
     ones,
     reshape,

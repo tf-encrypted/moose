@@ -14,6 +14,7 @@ use std::convert::{TryFrom, TryInto};
 #[allow(clippy::enum_variant_names)]
 enum PyOperation {
     std_AddNOperation(PyAddNOperation),
+    std_IdentityOperation(PyIdentityOperation),
     std_ConstantOperation(PyConstantOperation),
     std_AddOperation(PyAddOperation),
     std_SubOperation(PySubOperation),
@@ -21,6 +22,7 @@ enum PyOperation {
     std_DotOperation(PyDotOperation),
     std_BitwiseOrOperation(PyBitwiseOrOperation),
     std_LessOperation(PyLessOperation),
+    std_MuxOperation(PyMuxOperation),
     std_AtLeast2DOperation(PyAtLeast2DOperation),
     std_ShapeOperation(PyShapeOperation),
     std_IndexAxisOperation(PyIndexAxisOperation),
@@ -169,6 +171,14 @@ struct PyAddNOperation {
 }
 
 #[derive(Deserialize, Debug)]
+struct PyIdentityOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
 struct PyConstantOperation {
     name: String,
     #[allow(dead_code)]
@@ -220,6 +230,14 @@ struct PyLessOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyBitwiseOrOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyMuxOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -575,6 +593,16 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    std_IdentityOperation(op) => Ok(Operation {
+                        kind: IdentityOp {
+                            sig: Signature::from_unary(&op.signature, "x")?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     std_ConstantOperation(op) => Ok(Operation {
                         kind: ConstantOp {
                             sig: Signature::from_nullary(&op.signature)?,
@@ -647,6 +675,16 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_MuxOperation(op) => Ok(Operation {
+                        kind: MuxOp {
+                            sig: Signature::from_ternary(&op.signature, "selector", "x", "y")?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["selector", "x", "y"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,

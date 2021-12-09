@@ -602,7 +602,7 @@ fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, (v, p)) = tuple((constant_literal, ws(parse_placement)))(input)?;
     match p {
         Placement::Host(h) => Ok((input, v.place(&h))),
-        _ => unimplemented!(), // TODO (lvorona) return parsing error that we do not support other placements in the textual form
+        _ => unimplemented!("textual form only parses HostPlacement, found other placement"), // TODO (lvorona) return parsing error that we do not support other placements in the textual form
     }
 }
 
@@ -935,7 +935,6 @@ impl ToTextual for Operator {
             HostSlice(op) => op.to_textual(),
             HostDiag(op) => op.to_textual(),
             HostShlDim(op) => op.to_textual(),
-            HostIndexAxis(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
             HostSum(op) => op.to_textual(),
             HostTranspose(op) => op.to_textual(),
@@ -1010,7 +1009,6 @@ impl ToTextual for Operator {
             RepMsb(op) => op.to_textual(),
             RepShl(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
-            RepIndexAxis(op) => op.to_textual(),
             Index(op) => op.to_textual(),
             RepDiag(op) => op.to_textual(),
             RepBitDec(op) => op.to_textual(),
@@ -1018,7 +1016,7 @@ impl ToTextual for Operator {
             RepSlice(op) => op.to_textual(),
             RepShlDim(op) => op.to_textual(),
             RepEqual(op) => op.to_textual(),
-            IfElse(op) => op.to_textual(),
+            Mux(op) => op.to_textual(),
             Neg(op) => op.to_textual(),
             Pow2(op) => op.to_textual(),
             Exp(op) => op.to_textual(),
@@ -1304,7 +1302,9 @@ impl ToTextual for Value {
             | Value::AdditiveRing128Tensor(_) => {
                 unimplemented!("Unsupported Value variant: {:?}", self)
             }
-            Value::HostFixed128AesTensor(_) => unimplemented!(),
+            Value::HostFixed128AesTensor(_) => {
+                unimplemented!()
+            }
             Value::HostAesKey(_) => unimplemented!(),
             Value::ReplicatedAesKey(_) => unimplemented!(),
             Value::Fixed128AesTensor(_) => unimplemented!(),
@@ -1372,7 +1372,7 @@ impl<T: std::fmt::Debug> ToTextual for ndarray::ArrayD<T> {
                 buffer.push(']');
                 buffer
             }
-            _ => unimplemented!(),
+            _ => unimplemented!("ArrayD.to_textual() unimplemented for tensors of rank > 3"),
         }
     }
 }

@@ -96,6 +96,11 @@ class AddNOperation(StandardOperation):
 
 
 @dataclass
+class IdentityOperation(StandardOperation):
+    pass
+
+
+@dataclass
 class InputOperation(StandardOperation):
     pass
 
@@ -282,6 +287,11 @@ class SliceOperation(StandardOperation):
 
 @dataclass
 class BitwiseOrOperation(StandardOperation):
+    pass
+
+
+@dataclass
+class MuxOperation(StandardOperation):
     pass
 
 

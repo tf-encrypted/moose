@@ -980,7 +980,6 @@ operators![
     HostExpandDims,
     HostSlice,
     HostDiag,
-    HostIndexAxis,
     HostBitDec,
     HostReshape,
     HostSqueeze,
@@ -1073,7 +1072,6 @@ operators![
     AddN,
     RepTruncPr,
     RepToAdt,
-    RepIndexAxis,
     Index,
     RepDiag,
     RepSlice,
@@ -1081,7 +1079,7 @@ operators![
     RepBitCompose,
     RepShlDim,
     RepEqual,
-    IfElse,
+    Mux,
 ];
 
 pub trait HasShortName {
@@ -1352,13 +1350,6 @@ pub struct HostSliceOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct HostDiagOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct HostIndexAxisOp {
-    pub sig: Signature,
-    pub axis: usize,
-    pub index: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
@@ -1818,13 +1809,6 @@ pub struct RepShlDimOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct RepIndexAxisOp {
-    pub sig: Signature,
-    pub axis: usize,
-    pub index: usize,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct IndexOp {
     pub sig: Signature,
     pub index: usize,
@@ -1857,7 +1841,7 @@ pub struct RepEqualOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct IfElseOp {
+pub struct MuxOp {
     pub sig: Signature,
 }
 
