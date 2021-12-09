@@ -2486,7 +2486,7 @@ impl SigmoidOp {
         ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementNeg<S, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementGreaterThan<S, RepFixedT, RepFixedT, RepBitT>,
-        ReplicatedPlacement: PlacementIfElse<S, RepRingT, RepFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementMux<S, RepRingT, RepFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
     {
         // TODO [Yann]: revisit once we support mixed arithmetic for division
@@ -2527,12 +2527,12 @@ impl SigmoidOp {
         // compute upper bound
         let upper = rep.greater_than(sess, &x, &max_val_rep); // x > max_val?
         let upper_ring = rep.ring_inject(sess, 0, &upper);
-        let upper_wall = rep.if_else(sess, &upper_ring, &ones_rep, &output);
+        let upper_wall = rep.mux(sess, &upper_ring, &ones_rep, &output);
 
         // compute lower bound
         let lower = rep.greater_than(sess, &rep.neg(sess, &max_val_rep), &x); // -max_val > x?
         let lower_ring = rep.ring_inject(sess, 0, &lower);
-        let res = rep.if_else(sess, &lower_ring, &zeros_rep, &upper_wall);
+        let res = rep.mux(sess, &lower_ring, &zeros_rep, &upper_wall);
 
         Ok(res)
     }

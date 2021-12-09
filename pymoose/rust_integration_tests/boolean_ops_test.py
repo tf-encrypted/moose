@@ -27,18 +27,21 @@ class BooleanLogicExample(parameterized.TestCase):
                 y = edsl.cast(y, dtype=edsl.fixed(8, 27))
 
             with rep:
-                z_rep = edsl.less(x, y)
+                z_less = edsl.less(x, y)
+                z_mux = edsl.mux(z_less, x, y)
 
             with alice:
-                z_alice = edsl.logical_or(z_rep, z_rep)
-                y_alice = edsl.constant(np.array([-1.0, 4.0, 3, 2], dtype=np.float64))
+                zl_alice = edsl.logical_or(z_less, z_less)
+                zm_alice = edsl.cast(z_mux, dtype=edsl.float64)
 
+                y_alice = edsl.constant(np.array([-1.0, 4.0, 3, 2], dtype=np.float64))
                 r_alice = (
-                    edsl.save("z0", edsl.index_axis(z_alice, axis=0, index=0)),
-                    edsl.save("z1", edsl.index_axis(z_alice, axis=0, index=1)),
-                    edsl.save("z2", edsl.index_axis(z_alice, axis=0, index=2)),
-                    edsl.save("less_result", z_alice),
+                    edsl.save("z0", edsl.index_axis(zl_alice, axis=0, index=0)),
+                    edsl.save("z1", edsl.index_axis(zl_alice, axis=0, index=1)),
+                    edsl.save("z2", edsl.index_axis(zl_alice, axis=0, index=2)),
+                    edsl.save("less_result", zl_alice),
                     edsl.save("y0", edsl.index_axis(y_alice, axis=0, index=2)),
+                    edsl.save("mux", zm_alice),
                 )
 
             return r_alice
@@ -66,15 +69,21 @@ class BooleanLogicExample(parameterized.TestCase):
         z1 = runtime.read_value_from_storage("alice", "z1")
         z2 = runtime.read_value_from_storage("alice", "z2")
 
+        # testing index axis
         np.testing.assert_equal(z0, z[0])
         np.testing.assert_equal(z1, z[1])
         np.testing.assert_equal(z2, z[2])
+        np.testing.assert_equal(runtime.read_value_from_storage("alice", "y0"), 3)
 
+        # test comparison
         np.testing.assert_equal(
             runtime.read_value_from_storage("alice", "less_result"), z
         )
 
-        np.testing.assert_equal(runtime.read_value_from_storage("alice", "y0"), 3)
+        # test mux
+        np.testing.assert_almost_equal(
+            runtime.read_value_from_storage("alice", "mux"), np.array([-1.0, 2.3, 3, 2])
+        )
 
 
 if __name__ == "__main__":

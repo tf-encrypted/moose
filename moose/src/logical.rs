@@ -658,6 +658,40 @@ impl LessOp {
     }
 }
 
+modelled!(PlacementMux::mux, ReplicatedPlacement, (Tensor, Tensor, Tensor) -> Tensor, MuxOp);
+
+impl MuxOp {
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        s: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        ReplicatedPlacement: PlacementMux<S, BoolT, Fixed64T, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementMux<S, BoolT, Fixed128T, Fixed128T, Fixed128T>,
+    {
+        match (s, x, y) {
+            (AbstractTensor::Bool(s), AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let result = plc.mux(sess, &s, &x, &y);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            (AbstractTensor::Bool(s), AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let result = plc.mux(sess, &s, &x, &y);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (s, x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated mux op for {:?}, {:?} and {:?}",
+                &s.ty_desc(),
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
+        }
+    }
+}
+
 modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);
 
 kernel! {
