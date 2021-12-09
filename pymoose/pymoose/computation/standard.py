@@ -286,6 +286,11 @@ class BitwiseOrOperation(StandardOperation):
 
 
 @dataclass
+class MuxOperation(StandardOperation):
+    pass
+
+
+@dataclass
 class LoadOperation(StandardOperation):
     pass
 

@@ -987,11 +987,6 @@ impl FixedpointSumOp {
     }
 }
 
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis:usize, index: usize] (Fixed64Tensor) -> Fixed64Tensor, IndexAxisOp);
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis:usize, index: usize] (Fixed128Tensor) -> Fixed128Tensor, IndexAxisOp);
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, IndexAxisOp);
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, IndexAxisOp);
-
 impl IndexAxisOp {
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
         sess: &S,
@@ -1012,6 +1007,25 @@ impl IndexAxisOp {
         Ok(FixedTensor::Replicated(z))
     }
 
+    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: usize,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementIndexAxis<S, HostFixedT, HostFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Host(v) => v,
+        };
+        let z = plc.index_axis(sess, axis, index, &x);
+        Ok(FixedTensor::Host(z))
+    }
+
     pub(crate) fn repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -1024,6 +1038,24 @@ impl IndexAxisOp {
     {
         let y = plc.index_axis(sess, axis, index, &x.tensor);
         Ok(AbstractReplicatedFixedTensor {
+            tensor: y,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+
+    pub(crate) fn hostfixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: usize,
+        x: AbstractHostFixedTensor<HostRingT>,
+    ) -> Result<AbstractHostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementIndexAxis<S, HostRingT, HostRingT>,
+    {
+        let y = plc.index_axis(sess, axis, index, &x.tensor);
+        Ok(AbstractHostFixedTensor {
             tensor: y,
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
@@ -1583,11 +1615,43 @@ impl FillOp {
         })
     }
 }
+modelled!(PlacementMux::mux, ReplicatedPlacement, (BooleanTensor, Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, MuxOp);
+modelled!(PlacementMux::mux, ReplicatedPlacement, (BooleanTensor, Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, MuxOp);
+modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, MuxOp);
+modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, MuxOp);
+modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, MuxOp);
+modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, MuxOp);
 
-modelled!(PlacementIfElse::if_else, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, IfElseOp);
-modelled!(PlacementIfElse::if_else, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, IfElseOp);
+impl MuxOp {
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT, HostBitT, RepBitT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        s: BoolTensor<HostBitT, RepBitT>,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementMux<S, RepBitT, RepFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, HostBitT, RepBitT>,
+    {
+        let s = match s {
+            BoolTensor::Host(v) => plc.share(sess, &v),
+            BoolTensor::Replicated(v) => v,
+        };
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let y = match y {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
 
-impl IfElseOp {
+        let z = plc.mux(sess, &s, &x, &y);
+        Ok(FixedTensor::Replicated(z))
+    }
+
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -1596,11 +1660,30 @@ impl IfElseOp {
         y: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
     where
-        ReplicatedPlacement: PlacementIfElse<S, RepRingT, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMux<S, RepRingT, RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         Ok(AbstractReplicatedFixedTensor {
-            tensor: plc.if_else(sess, &s, &x.tensor, &y.tensor),
+            tensor: plc.mux(sess, &s, &x.tensor, &y.tensor),
+            fractional_precision: x.fractional_precision,
+            integral_precision: u32::max(x.integral_precision, y.integral_precision),
+        })
+    }
+
+    pub(crate) fn rep_bit_selector_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        s: m!(ReplicatedBitTensor),
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+        y: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedBitTensor: KnownType<S>,
+        ReplicatedPlacement: PlacementMux<S, m!(ReplicatedBitTensor), RepRingT, RepRingT, RepRingT>,
+    {
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: plc.mux(sess, &s, &x.tensor, &y.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
         })

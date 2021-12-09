@@ -26,6 +26,7 @@ from pymoose.edsl.base import load
 from pymoose.edsl.base import logical_or
 from pymoose.edsl.base import mean
 from pymoose.edsl.base import mul
+from pymoose.edsl.base import mux
 from pymoose.edsl.base import ones
 from pymoose.edsl.base import replicated_placement
 from pymoose.edsl.base import reshape
@@ -70,6 +71,7 @@ __all__ = [
     less,
     load,
     mul,
+    mux,
     mean,
     ones,
     reshape,

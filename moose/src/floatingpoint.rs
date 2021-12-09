@@ -322,9 +322,6 @@ impl FloatingpointOnesOp {
     }
 }
 
-modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis: usize, index:usize] (Float32Tensor) -> Float32Tensor, IndexAxisOp);
-modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis: usize,  index:usize] (Float64Tensor) -> Float64Tensor, IndexAxisOp);
-
 impl IndexAxisOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT>(
         sess: &S,

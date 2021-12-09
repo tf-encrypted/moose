@@ -27,6 +27,7 @@ from pymoose.computation.standard import LessOperation
 from pymoose.computation.standard import LoadOperation
 from pymoose.computation.standard import MeanOperation
 from pymoose.computation.standard import MulOperation
+from pymoose.computation.standard import MuxOperation
 from pymoose.computation.standard import OnesOperation
 from pymoose.computation.standard import OutputOperation
 from pymoose.computation.standard import ReshapeOperation
@@ -57,6 +58,7 @@ from pymoose.edsl.base import IndexAxisExpression
 from pymoose.edsl.base import InverseExpression
 from pymoose.edsl.base import LoadExpression
 from pymoose.edsl.base import MeanExpression
+from pymoose.edsl.base import MuxExpression
 from pymoose.edsl.base import OnesExpression
 from pymoose.edsl.base import ReplicatedPlacementExpression
 from pymoose.edsl.base import ReshapeExpression
@@ -581,6 +583,33 @@ class AstTracer:
                 signature=OpSignature(
                     input_types={"x": x_operation.return_type},
                     return_type=shape_expression.vtype,
+                ),
+            )
+        )
+
+    def visit_MuxExpression(self, mux_expression):
+        assert isinstance(mux_expression, MuxExpression)
+        (selector_expression, x_expression, y_expression) = mux_expression.inputs
+        selector_operation = self.visit(selector_expression)
+        x_operation = self.visit(x_expression)
+        y_operation = self.visit(y_expression)
+        placement = self.visit_placement_expression(mux_expression.placement)
+        return self.computation.add_operation(
+            MuxOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("mux"),
+                inputs={
+                    "selector": selector_operation.name,
+                    "x": x_operation.name,
+                    "y": y_operation.name,
+                },
+                signature=OpSignature(
+                    input_types={
+                        "selector": selector_operation.return_type,
+                        "x": x_operation.return_type,
+                        "y": y_operation.return_type,
+                    },
+                    return_type=mux_expression.vtype,
                 ),
             )
         )
