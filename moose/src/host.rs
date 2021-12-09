@@ -1020,7 +1020,7 @@ impl AddNOp {
         xs: &[FixedTensor<HostFixedT, RepFixedT>],
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
-        HostPlacement: PlacementIdentity<S, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementAddN<S, HostFixedT, HostFixedT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostFixedT: Clone,
     {
@@ -1034,14 +1034,18 @@ impl AddNOp {
                         _ => unimplemented!("mixed types in tensor"),
                     })
                     .collect();
-                unimplemented!("why can't it find the next lowering?")
-                //let result = plc.add_n(sess, &vec);
-                //Ok(FixedTensor::Host(result))
+                let result = plc.add_n(sess, &vec);
+                Ok(FixedTensor::Host(result))
             }
             FixedTensor::Replicated(_) => {
-                //let x = plc.reveal(sess, &x);
-                //Ok(FixedTensor::Host(plc.identity(sess, &x)))
-                unimplemented!("doesn't work yet for replicated")
+                let vec: Vec<HostFixedT> = xs
+                    .iter()
+                    .map(|t| match t {
+                        FixedTensor::Replicated(x) => plc.reveal(sess, x),
+                        _ => unimplemented!("mixed types in tensor"),
+                    })
+                    .collect();
+                Ok(FixedTensor::Host(plc.add_n(sess, &vec)))
             }
         }
     }

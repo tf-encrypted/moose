@@ -226,7 +226,7 @@ impl AddNOp {
     {
         let x = &xs[0];
         match x {
-            AbstractTensor::Fixed64(x) => {
+            AbstractTensor::Fixed64(_) => {
                 let vec: Vec<Fixed64T> = xs
                     .iter()
                     .map(|abstract_tensor| match abstract_tensor {
@@ -261,7 +261,7 @@ impl AddNOp {
     {
         let x = &xs[0];
         match x {
-            AbstractTensor::Fixed64(x) => {
+            AbstractTensor::Fixed64(_) => {
                 let vec: Vec<Fixed64T> = xs
                     .iter()
                     .map(|abstract_tensor| match abstract_tensor {
