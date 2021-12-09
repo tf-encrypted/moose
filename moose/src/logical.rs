@@ -1442,6 +1442,32 @@ impl ConstantOp {
             ))),
         }
     }
+
+    pub fn mir3_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        sig: Signature,
+        value: Constant,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        // Mirrored3Placement: PlacementConstant<S, Float32T>,
+        // Mirrored3Placement: PlacementConstant<S, Float64T>,
+    {
+        match sig.ret() {
+        //     Ty::Tensor(TensorDType::Float32) => {
+        //         let z = plc.constant(sess, value);
+        //         Ok(AbstractTensor::Float32(z))
+        //     }
+        //     Ty::Tensor(TensorDType::Float64) => {
+        //         let z = plc.constant(sess, value);
+        //         Ok(AbstractTensor::Float64(z))
+        //     }
+            ret => Err(Error::UnimplementedOperator(format!(
+                "ConstantOp can not produce tensors of type {:?} yet",
+                ret
+            ))),
+        }
+    }
 }
 
 impl InputOp {

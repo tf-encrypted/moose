@@ -3,61 +3,58 @@ use crate::computation::*;
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape, HostString};
 use crate::kernels::*;
-use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+
+// #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+// pub enum FloatTensor<HostT, MirroredT> {
+//     Host(HostT),
+//     Mirrored3(MirroredT),
+// }
+
+// moose_type!(Float32Tensor = FloatTensor<HostFloat32Tensor, Mirrored3Float32Tensor>);
+// moose_type!(Float64Tensor = FloatTensor<HostFloat64Tensor, Mirrored3Float64Tensor>);
+
+// impl<T, MirroredT> Placed for FloatTensor<T, MirroredT>
+// where
+//     T: Placed<Placement = HostPlacement>,
+//     MirroredT: Placed<Placement = HostPlacement>,
+// {
+//     type Placement = Placement;
+
+//     fn placement(&self) -> Result<Self::Placement> {
+//         match self {
+//             FloatTensor::Host(x) => Ok(Placement::Host(x.placement()?)),
+//             FloatTensor::Mirrored3(x) => Ok(Placement::Mirrored3(x.placement()?)),
+//         }
+//     }
+// }
+
+
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FloatTensor<HostT> {
     Host(HostT),
 }
 
-pub type Float32Tensor = FloatTensor<HostFloat32Tensor>;
-
-pub type Float64Tensor = FloatTensor<HostFloat64Tensor>;
+moose_type!(Float32Tensor = FloatTensor<HostFloat32Tensor>);
+moose_type!(Float64Tensor = FloatTensor<HostFloat64Tensor>);
 
 impl<T> Placed for FloatTensor<T>
 where
-    T: Placed<Placement = HostPlacement>,
+    T: Placed,
+    T::Placement: Into<Placement>,
 {
     type Placement = Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
         match self {
-            FloatTensor::Host(x) => Ok(Placement::Host(x.placement()?)),
+            FloatTensor::Host(x) => Ok(x.placement()?.into()),
         }
     }
 }
 
-impl<HostT> PartiallySymbolicType for FloatTensor<HostT>
-where
-    HostT: SymbolicType,
-    <HostT as SymbolicType>::Type: Placed<Placement = HostPlacement>,
-{
-    type Type = FloatTensor<<HostT as SymbolicType>::Type>;
-}
 
-// TODO(lvorona): Not sure why we need this one separately... But the moose_type macro is coming!
-impl<HostT: Placed<Placement = HostPlacement>> From<FloatTensor<HostT>>
-    for Symbolic<FloatTensor<HostT>>
-{
-    fn from(x: FloatTensor<HostT>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<HostFloatT> TryFrom<Symbolic<FloatTensor<HostFloatT>>> for FloatTensor<HostFloatT>
-where
-    HostFloatT: Placed<Placement = HostPlacement>,
-{
-    type Error = ();
-    fn try_from(v: Symbolic<FloatTensor<HostFloatT>>) -> std::result::Result<Self, ()> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(()),
-        }
-    }
-}
 
 modelled_kernel! {
     PlacementMean::mean, FloatingpointMeanOp{axis: Option<u32>},
@@ -491,6 +488,22 @@ impl ConstantOp {
         Ok(FloatTensor::Host(z))
     }
 }
+
+// impl ConstantOp {
+//     pub fn mir3_float_kernel<S: Session, HostFloatT>(
+//         sess: &S,
+//         plc: &Mirrored3Placement,
+//         value: Constant,
+//     ) -> Result<FloatTensor<HostFloatT>>
+//     where
+//         HostPlacement: PlacementConstant<S, HostFloatT>,
+//     {
+//         let z = plc.constant(sess, value);
+//         Ok(FloatTensor::Host(z))
+//     }
+// }
+
+
 
 impl InputOp {
     pub fn float_kernel<S: Session, HostFloatT>(

@@ -6,8 +6,8 @@ import numpy as np
 
 from pymoose.computation import dtypes
 from pymoose.computation import host as host_dialect
-from pymoose.computation import replicated as rep_dialect
 from pymoose.computation import mirrored as mirrored_dialect
+from pymoose.computation import replicated as rep_dialect
 from pymoose.computation import standard as std_dialect
 from pymoose.computation.base import Computation
 from pymoose.computation.base import Operation

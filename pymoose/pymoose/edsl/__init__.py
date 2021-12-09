@@ -24,11 +24,11 @@ from pymoose.edsl.base import less
 from pymoose.edsl.base import load
 from pymoose.edsl.base import logical_or
 from pymoose.edsl.base import mean
+from pymoose.edsl.base import mirrored_placement
 from pymoose.edsl.base import mul
 from pymoose.edsl.base import mux
 from pymoose.edsl.base import ones
 from pymoose.edsl.base import replicated_placement
-from pymoose.edsl.base import mirrored_placement
 from pymoose.edsl.base import reshape
 from pymoose.edsl.base import save
 from pymoose.edsl.base import shape

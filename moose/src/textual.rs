@@ -860,6 +860,7 @@ impl ToTextual for Placement {
             Placement::Host(p) => p.to_textual(),
             Placement::Replicated(p) => p.to_textual(),
             Placement::Additive(p) => p.to_textual(),
+            Placement::Mirrored3(p) => p.to_textual(),
         }
     }
 }
@@ -871,6 +872,15 @@ impl ToTextual for HostPlacement {
 }
 
 impl ToTextual for ReplicatedPlacement {
+    fn to_textual(&self) -> String {
+        format!(
+            "@Replicated({}, {}, {})",
+            self.owners[0], self.owners[1], self.owners[2]
+        )
+    }
+}
+
+impl ToTextual for Mirrored3Placement {
     fn to_textual(&self) -> String {
         format!(
             "@Replicated({}, {}, {})",

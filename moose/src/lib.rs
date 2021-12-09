@@ -4181,6 +4181,7 @@ pub mod floatingpoint;
 pub mod host;
 pub mod kernels;
 pub mod logical;
+pub mod mirrored;
 pub mod networking;
 pub mod prim;
 pub mod prng;

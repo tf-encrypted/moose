@@ -1922,7 +1922,7 @@ macro_rules! placements {
     };
 }
 
-placements![Host, Replicated, Additive,];
+placements![Host, Replicated, Additive, Mirrored3,];
 
 #[derive(Serialize, Deserialize, Display, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Role(pub String);
@@ -1960,6 +1960,11 @@ pub struct AdditivePlacement {
     pub owners: [Role; 2],
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct Mirrored3Placement {
+    pub owners: [Role; 3],
+}
+
 impl ReplicatedPlacement {
     pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
         let player0 = HostPlacement {
@@ -1984,6 +1989,21 @@ impl AdditivePlacement {
             owner: self.owners[1].clone(),
         };
         (player0, player1)
+    }
+}
+
+impl Mirrored3Placement {
+    pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
+        let player0 = HostPlacement {
+            owner: self.owners[0].clone(),
+        };
+        let player1 = HostPlacement {
+            owner: self.owners[1].clone(),
+        };
+        let player2 = HostPlacement {
+            owner: self.owners[2].clone(),
+        };
+        (player0, player1, player2)
     }
 }
 

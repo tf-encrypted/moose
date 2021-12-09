@@ -19,6 +19,7 @@ use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 use std::marker::PhantomData;
+use crate::mirrored::{Mirrored3Tensor};
 
 pub mod aes;
 pub mod control_flow;
@@ -69,17 +70,12 @@ impl<HostRingT: Ring> Ring for AbstractReplicatedRingTensor<HostRingT> {
     type BitLength = HostRingT::BitLength;
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Mirrored3RingTensor<HostRingT> {
-    pub values: [HostRingT; 3],
-}
-
 moose_type!(ReplicatedRing64Tensor = AbstractReplicatedRingTensor<HostRing64Tensor>);
 moose_type!(ReplicatedRing128Tensor = AbstractReplicatedRingTensor<HostRing128Tensor>);
 moose_type!(ReplicatedBitTensor = AbstractReplicatedRingTensor<HostBitTensor>);
-moose_type!(Mirrored3Ring64Tensor = Mirrored3RingTensor<HostRing64Tensor>);
-moose_type!(Mirrored3Ring128Tensor = Mirrored3RingTensor<HostRing128Tensor>);
-moose_type!(Mirrored3BitTensor = Mirrored3RingTensor<HostBitTensor>);
+moose_type!(Mirrored3Ring64Tensor = Mirrored3Tensor<HostRing64Tensor>);
+moose_type!(Mirrored3Ring128Tensor = Mirrored3Tensor<HostRing128Tensor>);
+moose_type!(Mirrored3BitTensor = Mirrored3Tensor<HostBitTensor>);
 
 pub trait Underlying {
     type TensorType;
@@ -94,10 +90,10 @@ impl<HostRingT> Underlying for AbstractReplicatedRingTensor<HostRingT> {
 }
 
 impl<HostRingT> MirroredCounterpart for AbstractReplicatedRingTensor<HostRingT> {
-    type MirroredType = Mirrored3RingTensor<HostRingT>;
+    type MirroredType = Mirrored3Tensor<HostRingT>;
 }
 
-impl<HostRingT> Underlying for Mirrored3RingTensor<HostRingT> {
+impl<HostRingT> Underlying for Mirrored3Tensor<HostRingT> {
     type TensorType = HostRingT;
 }
 
@@ -184,14 +180,14 @@ where
     }
 }
 
-impl<HostTenT> Placed for Mirrored3RingTensor<HostTenT>
+impl<HostTenT> Placed for Mirrored3Tensor<HostTenT>
 where
     HostTenT: Placed<Placement = HostPlacement>,
 {
     type Placement = ReplicatedPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        let Mirrored3RingTensor {
+        let Mirrored3Tensor {
             values: [x0, x1, x2],
         } = self;
 
@@ -367,7 +363,7 @@ where
 // Type aliases to shorten out impl in replicated protocols
 type RepTen<T> = AbstractReplicatedRingTensor<T>;
 type AdtTen<T> = AbstractAdditiveTensor<T>;
-type MirTen<T> = Mirrored3RingTensor<T>;
+type MirTen<T> = Mirrored3Tensor<T>;
 
 modelled!(PlacementSetupGen::gen_setup, ReplicatedPlacement, () -> ReplicatedSetup, RepSetupOp);
 

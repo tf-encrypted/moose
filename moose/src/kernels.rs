@@ -1247,6 +1247,10 @@ macro_rules! constant_kernels {
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
+        // modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
+        // modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
+        modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
+
 
         kernel! {
             ConstantOp, [
@@ -1260,6 +1264,10 @@ macro_rules! constant_kernels {
                 (HostPlacement, () -> crate::logical::Tensor => [concrete] attributes[sig, value] Self::logical_kernel),
                 (HostPlacement, () -> Float32Tensor => [concrete] attributes[value] Self::float_kernel),
                 (HostPlacement, () -> Float64Tensor => [concrete] attributes[value] Self::float_kernel),
+                (Mirrored3Placement, () -> crate::logical::Tensor => [concrete] attributes[sig, value] Self::mir3_logical_kernel),
+                // (Mirrored3Placement, () -> Float32Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
+                // (Mirrored3Placement, () -> Float64Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
+
             ]
         }
     };
@@ -1913,7 +1921,7 @@ kernel! {
                             (value * ((1u128 << precision) as f64)) as u128
                     },
                     _ => return Err(Error::UnimplementedOperator(
-                        format!("Cannot fill from {:?} into a Mirrored3RingTensor", op.value.ty()))),
+                        format!("Cannot fill from {:?} into a Mirrored3Tensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::mir_ring128_kernel(sess, rep, value, rep_shape)
