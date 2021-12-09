@@ -8,6 +8,7 @@ from pymoose.computation.base import OpSignature
 from pymoose.computation.host import HostPlacement
 from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import AbsOperation
+from pymoose.computation.standard import AddNOperation
 from pymoose.computation.standard import AddOperation
 from pymoose.computation.standard import AtLeast2DOperation
 from pymoose.computation.standard import BitwiseOrOperation
@@ -19,7 +20,6 @@ from pymoose.computation.standard import DivOperation
 from pymoose.computation.standard import DotOperation
 from pymoose.computation.standard import ExpandDimsOperation
 from pymoose.computation.standard import ExpOperation
-from pymoose.computation.standard import AddNOperation
 from pymoose.computation.standard import IndexAxisOperation
 from pymoose.computation.standard import InputOperation
 from pymoose.computation.standard import InverseOperation
@@ -42,6 +42,7 @@ from pymoose.computation.standard import UnitType
 from pymoose.computation.standard import UnknownType
 from pymoose.edsl.base import AbsExpression
 from pymoose.edsl.base import AddNExpression
+from pymoose.edsl.base import AddNOperation
 from pymoose.edsl.base import ArgumentExpression
 from pymoose.edsl.base import AtLeast2DExpression
 from pymoose.edsl.base import BinaryOpExpression
@@ -52,7 +53,6 @@ from pymoose.edsl.base import DecryptExpression
 from pymoose.edsl.base import ExpandDimsExpression
 from pymoose.edsl.base import ExpExpression
 from pymoose.edsl.base import Expression
-from pymoose.edsl.base import AddNOperation
 from pymoose.edsl.base import HostPlacementExpression
 from pymoose.edsl.base import IndexAxisExpression
 from pymoose.edsl.base import InverseExpression

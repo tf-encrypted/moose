@@ -7,6 +7,7 @@ from pymoose.computation.dtypes import int64
 from pymoose.edsl.base import Argument
 from pymoose.edsl.base import abs
 from pymoose.edsl.base import add
+from pymoose.edsl.base import add_n
 from pymoose.edsl.base import atleast_2d
 from pymoose.edsl.base import cast
 from pymoose.edsl.base import computation
@@ -18,7 +19,6 @@ from pymoose.edsl.base import dot
 from pymoose.edsl.base import exp
 from pymoose.edsl.base import expand_dims
 from pymoose.edsl.base import host_placement
-from pymoose.edsl.base import add_n
 from pymoose.edsl.base import index_axis
 from pymoose.edsl.base import inverse
 from pymoose.edsl.base import less

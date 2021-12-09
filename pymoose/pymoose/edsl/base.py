@@ -7,8 +7,8 @@ from typing import Union
 import numpy as np
 
 from pymoose.computation import dtypes
-from pymoose.computation.standard import AesKeyType
 from pymoose.computation.standard import AddNOperation
+from pymoose.computation.standard import AesKeyType
 from pymoose.computation.standard import AesTensorType
 from pymoose.computation.standard import FloatConstant
 from pymoose.computation.standard import FloatType
