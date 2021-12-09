@@ -1,6 +1,7 @@
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::HostBitTensor;
+use crate::host::HostString;
 use crate::kernels::*;
 use crate::replicated::ReplicatedBitTensor;
 use serde::{Deserialize, Serialize};
@@ -73,5 +74,65 @@ impl BitOrOp {
             BoolTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         Ok(BoolTensor::Host(plc.or(sess, &x, &y)))
+    }
+}
+
+impl IndexAxisOp {
+    pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: usize,
+        index: usize,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        ReplicatedPlacement: PlacementIndexAxis<S, RepT, RepT>,
+        ReplicatedPlacement: PlacementShare<S, HostT, RepT>,
+    {
+        let x = match x {
+            BoolTensor::Host(v) => plc.share(sess, &v),
+            BoolTensor::Replicated(v) => v,
+        };
+        let result = plc.index_axis(sess, axis, index, &x);
+        Ok(BoolTensor::Replicated(result))
+    }
+
+    pub(crate) fn bool_host_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: usize,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementIndexAxis<S, HostT, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+    {
+        let x = match x {
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+            BoolTensor::Host(v) => v,
+        };
+        let result = plc.index_axis(sess, axis, index, &x);
+        Ok(BoolTensor::Host(result))
+    }
+}
+
+impl SaveOp {
+    pub fn bool_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        key: cs!(HostString),
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<cs!(Unit)>
+    where
+        HostString: KnownType<S>,
+        Unit: KnownType<S>,
+        HostPlacement: PlacementSave<S, cs!(HostString), HostT, cs!(Unit)>,
+    {
+        let x = match x {
+            BoolTensor::Replicated(_v) => unimplemented!(),
+            BoolTensor::Host(v) => v,
+        };
+        Ok(plc.save(sess, &key, &x))
     }
 }

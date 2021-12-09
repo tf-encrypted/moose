@@ -1688,17 +1688,8 @@ impl RepShlOp {
     }
 }
 
-modelled_kernel! {
-    PlacementIndexAxis::index_axis, RepIndexAxisOp{axis: usize, index: usize},
-    [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::kernel),
-    ]
-}
-
-impl RepIndexAxisOp {
-    fn kernel<S: Session, HostRingT>(
+impl IndexAxisOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: usize,

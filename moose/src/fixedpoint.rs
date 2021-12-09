@@ -949,11 +949,6 @@ impl FixedpointSumOp {
     }
 }
 
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis:usize, index: usize] (Fixed64Tensor) -> Fixed64Tensor, IndexAxisOp);
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis:usize, index: usize] (Fixed128Tensor) -> Fixed128Tensor, IndexAxisOp);
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, IndexAxisOp);
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, IndexAxisOp);
-
 impl IndexAxisOp {
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
         sess: &S,
@@ -974,6 +969,25 @@ impl IndexAxisOp {
         Ok(FixedTensor::Replicated(z))
     }
 
+    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: usize,
+        x: FixedTensor<HostFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementIndexAxis<S, HostFixedT, HostFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Host(v) => v,
+        };
+        let z = plc.index_axis(sess, axis, index, &x);
+        Ok(FixedTensor::Host(z))
+    }
+
     pub(crate) fn repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -986,6 +1000,24 @@ impl IndexAxisOp {
     {
         let y = plc.index_axis(sess, axis, index, &x.tensor);
         Ok(AbstractReplicatedFixedTensor {
+            tensor: y,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+
+    pub(crate) fn hostfixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: usize,
+        x: AbstractHostFixedTensor<HostRingT>,
+    ) -> Result<AbstractHostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementIndexAxis<S, HostRingT, HostRingT>,
+    {
+        let y = plc.index_axis(sess, axis, index, &x.tensor);
+        Ok(AbstractHostFixedTensor {
             tensor: y,
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,

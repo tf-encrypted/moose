@@ -1071,8 +1071,6 @@ impl ExpandDimsOp {
     }
 }
 
-modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (Tensor) -> Tensor, IndexAxisOp);
-
 impl IndexAxisOp {
     pub fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
@@ -1084,6 +1082,7 @@ impl IndexAxisOp {
     where
         HostPlacement: PlacementIndexAxis<S, Float32T, Float32T>,
         HostPlacement: PlacementIndexAxis<S, Float64T, Float64T>,
+        HostPlacement: PlacementIndexAxis<S, BoolT, BoolT>,
     {
         match x {
             AbstractTensor::Float32(x) => {
@@ -1092,11 +1091,14 @@ impl IndexAxisOp {
             }
             AbstractTensor::Float64(x) => {
                 let z = plc.index_axis(sess, axis, index, &x);
-
                 Ok(AbstractTensor::Float64(z))
             }
+            AbstractTensor::Bool(x) => {
+                let z = plc.index_axis(sess, axis, index, &x);
+                Ok(AbstractTensor::Bool(z))
+            }
             _ => Err(Error::UnimplementedOperator(format!(
-                "Missing replicated index_axis for {:?}",
+                "Missing host index_axis for {:?}",
                 &x.ty_desc(),
             ))),
         }
@@ -1114,6 +1116,7 @@ impl IndexAxisOp {
     where
         ReplicatedPlacement: PlacementIndexAxis<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementIndexAxis<S, Fixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementIndexAxis<S, BoolT, BoolT>,
     {
         match x {
             AbstractTensor::Fixed64(x) => {
@@ -1123,6 +1126,10 @@ impl IndexAxisOp {
             AbstractTensor::Fixed128(x) => {
                 let result = plc.index_axis(sess, axis, index, &x);
                 Ok(AbstractTensor::Fixed128(result))
+            }
+            AbstractTensor::Bool(x) => {
+                let result = plc.index_axis(sess, axis, index, &x);
+                Ok(AbstractTensor::Bool(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             _ => Err(Error::UnimplementedOperator(format!(
@@ -1335,6 +1342,7 @@ impl SaveOp {
         // HostPlacement: PlacementSave<S, cs!(HostString), Fixed128T, cs!(Unit)>,
         HostPlacement: PlacementSave<S, cs!(HostString), Float32T, cs!(Unit)>,
         HostPlacement: PlacementSave<S, cs!(HostString), Float64T, cs!(Unit)>,
+        HostPlacement: PlacementSave<S, cs!(HostString), BoolT, cs!(Unit)>,
     {
         match x {
             AbstractTensor::Fixed64(_x) => {
@@ -1345,10 +1353,7 @@ impl SaveOp {
                 unimplemented!()
                 // plc.save(sess, &key, &x)
             }
-            AbstractTensor::Bool(_x) => {
-                unimplemented!()
-                // plc.save(sess, &key, &x)
-            }
+            AbstractTensor::Bool(x) => Ok(plc.save(sess, &key, &x)),
             AbstractTensor::Float32(x) => Ok(plc.save(sess, &key, &x)),
             AbstractTensor::Float64(x) => Ok(plc.save(sess, &key, &x)),
         }
