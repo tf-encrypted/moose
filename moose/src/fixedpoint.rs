@@ -123,12 +123,12 @@ modelled_kernel! {
 }
 
 impl FixedpointEncodeOp {
-    fn fixed_kernel<S: Session, HostFloatT, HostFixedT, RepFixedT>(
+    fn fixed_kernel<S: Session, HostFloatT, HostFixedT, RepFixedT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         fractional_precision: u32,
         integral_precision: u32,
-        x: FloatTensor<HostFloatT>,
+        x: FloatTensor<HostFloatT, MirroredT>,
     ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
     where
         HostPlacement: PlacementFixedpointEncode<S, HostFloatT, HostFixedT>,
@@ -137,6 +137,9 @@ impl FixedpointEncodeOp {
             FloatTensor::Host(x) => {
                 let x = plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
                 Ok(FixedTensor::Host(x))
+            }
+            FloatTensor::Mirrored3(x) => {
+                unimplemented!()
             }
         }
     }
@@ -172,12 +175,12 @@ modelled_kernel! {
 }
 
 impl FixedpointDecodeOp {
-    fn fixed_kernel<S: Session, HostFixedT, RepFixedT, HostFloatT>(
+    fn fixed_kernel<S: Session, HostFixedT, RepFixedT, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         precision: u32,
         x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementFixedpointDecode<S, HostFixedT, HostFloatT>,

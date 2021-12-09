@@ -10,6 +10,7 @@ use crate::host::{
     HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, SliceInfo,
 };
 use crate::kernels::*;
+use crate::mirrored::Mirrored3Tensor;
 use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::replicated::aes::AbstractReplicatedAesKey;
 use crate::symbolic::Symbolic;
@@ -19,7 +20,6 @@ use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 use std::marker::PhantomData;
-use crate::mirrored::{Mirrored3Tensor};
 
 pub mod aes;
 pub mod control_flow;
