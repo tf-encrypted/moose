@@ -297,6 +297,7 @@ class BitwiseOrExpression(Expression):
     def __hash__(self):
         return id(self)
 
+
 @dataclass
 class MuxExpression(Expression):
     def __hash__(self):

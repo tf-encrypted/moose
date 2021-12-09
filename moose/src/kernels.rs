@@ -1423,7 +1423,6 @@ impl ReceiveOp {
     }
 }
 
-
 modelled_kernel! {
     PlacementIdentity::identity, IdentityOp,
     [
