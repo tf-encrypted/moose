@@ -589,8 +589,9 @@ pub fn new_async_value() -> (crate::execution::AsyncSender, AsyncValue) {
     (sender, shared_receiver)
 }
 
-pub type CompiledKernel<S> =
-    Box<dyn Fn(&S, Vec<<S as Session>::Value>) -> Result<<S as Session>::Value> + core::marker::Send>;
+pub type CompiledKernel<S> = Box<
+    dyn Fn(&S, Vec<<S as Session>::Value>) -> Result<<S as Session>::Value> + core::marker::Send,
+>;
 
 impl Ty {
     pub fn flatten(&self) -> Ty {
@@ -895,14 +896,14 @@ impl Ty {
         }
     }
 }
-/// Macro to 
+/// Macro to
 macro_rules! operators {
     ($($t:ident,)+) => {
 
         paste! {
             #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
             pub enum Operator {
-                $($t(crate::computation::[<$t>]),)+                                                                                     
+                $($t(crate::computation::[<$t>]),)+
             }
         }
 
@@ -937,7 +938,6 @@ macro_rules! operators {
         }
     }
 }
-
 
 operators![
     Identity,

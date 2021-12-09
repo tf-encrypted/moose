@@ -19,7 +19,7 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::num::Wrapping;
-use std::ops::{Add, Div, Mul, Sub, Neg}; // related to TODOs
+use std::ops::{Add, Div, Mul, Neg, Sub}; // related to TODOs
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostString(pub String, pub HostPlacement);
@@ -133,11 +133,10 @@ pub struct SliceInfo(pub Vec<SliceInfoElem>);
 
 impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn> {
     fn from(s: SliceInfo) -> ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn> {
-        let all_slices: Vec<ndarray::SliceInfoElem> = s
-            .0
-            .iter()
-            .map(|x| ndarray::SliceInfoElem::from(Sl::new(x.start, x.end, x.step.unwrap_or(1))))
-            .collect();
+        let all_slices: Vec<ndarray::SliceInfoElem> =
+            s.0.iter()
+                .map(|x| ndarray::SliceInfoElem::from(Sl::new(x.start, x.end, x.step.unwrap_or(1))))
+                .collect();
         ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::try_from(all_slices)
             .unwrap()
     }

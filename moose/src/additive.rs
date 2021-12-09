@@ -1,7 +1,7 @@
 //! Placements backed by additive secret sharing
 use crate::computation::{
     AdditivePlacement, AdtAdd, AdtFill, AdtMul, AdtReveal, AdtShl, AdtSub, CanonicalType, Constant,
-    HostPlacement, KnownType, Placed, RepToAdt
+    HostPlacement, KnownType, Placed, RepToAdt,
 };
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};

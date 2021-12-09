@@ -786,22 +786,32 @@ pub trait NullaryKernel<S: Session, P, Y> {
 
 pub trait UnaryKernel<S: Session, P, X0, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0) -> Result<Y> + core::marker::Send>>;
+    fn compile(&self, plc: &P)
+        -> Result<Box<dyn Fn(&S, &P, X0) -> Result<Y> + core::marker::Send>>;
 }
 
 pub trait BinaryKernel<S: Session, P, X0, X1, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + core::marker::Send>>;
+    fn compile(
+        &self,
+        plc: &P,
+    ) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + core::marker::Send>>;
 }
 
 pub trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + core::marker::Send>>;
+    fn compile(
+        &self,
+        plc: &P,
+    ) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + core::marker::Send>>;
 }
 
 pub trait VariadicKernel<S: Session, P, XS, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + core::marker::Send>>;
+    fn compile(
+        &self,
+        plc: &P,
+    ) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + core::marker::Send>>;
 }
 
 pub(crate) trait NullaryKernelCheck<S: Session, P, Y>
