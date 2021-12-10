@@ -20,6 +20,7 @@ from pymoose.computation.standard import DivOperation
 from pymoose.computation.standard import DotOperation
 from pymoose.computation.standard import ExpandDimsOperation
 from pymoose.computation.standard import ExpOperation
+from pymoose.computation.standard import IdentityOperation
 from pymoose.computation.standard import IndexAxisOperation
 from pymoose.computation.standard import InputOperation
 from pymoose.computation.standard import InverseOperation
@@ -53,6 +54,7 @@ from pymoose.edsl.base import ExpandDimsExpression
 from pymoose.edsl.base import ExpExpression
 from pymoose.edsl.base import Expression
 from pymoose.edsl.base import HostPlacementExpression
+from pymoose.edsl.base import IdentityExpression
 from pymoose.edsl.base import IndexAxisExpression
 from pymoose.edsl.base import InverseExpression
 from pymoose.edsl.base import LoadExpression
@@ -176,6 +178,24 @@ class AstTracer:
             name=mirrored_placement_expression.name, player_names=player_placements
         )
         return self.computation.add_placement(placement)
+
+    def visit_IdentityExpression(self, identity_expression):
+        assert isinstance(identity_expression, IdentityExpression)
+        placement = self.visit_placement_expression(identity_expression.placement)
+        input_expression = identity_expression.inputs[0]
+        input_op = self.visit(input_expression)
+        input_type = input_op.return_type
+        output_type = input_expression.vtype
+        return self.computation.add_operation(
+            IdentityOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("identity"),
+                inputs={"x": input_op.name},
+                signature=OpSignature(
+                    input_types={"x": input_type}, return_type=output_type
+                ),
+            )
+        )
 
     def visit_ArgumentExpression(self, argument_expression):
         assert isinstance(argument_expression, ArgumentExpression)

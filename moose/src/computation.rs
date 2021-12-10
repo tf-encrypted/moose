@@ -3,7 +3,7 @@ use crate::boolean::*;
 use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::floatingpoint::{Float32Tensor, Float64Tensor};
+use crate::floatingpoint::{Float32Tensor, Float64Tensor, Mirrored3Float32, Mirrored3Float64};
 use crate::host::*;
 use crate::kernels::Session;
 use crate::logical::{Tensor, TensorDType};
@@ -523,6 +523,8 @@ values![
     Mirrored3BitTensor,
     Mirrored3Fixed64Tensor,
     Mirrored3Fixed128Tensor,
+    Mirrored3Float32,
+    Mirrored3Float64,
     AdditiveBitTensor,
     AdditiveRing64Tensor,
     AdditiveRing128Tensor,

@@ -35,6 +35,24 @@ where
     }
 }
 
+impl IdentityOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementIdentity<S, HostFloatT, HostFloatT>,
+        HostPlacement: PlacementIdentity<S, MirroredT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => plc.identity(sess, &v),
+            FloatTensor::Mirrored3(v) => plc.identity(sess, &v),
+        };
+        Ok(FloatTensor::Host(x))
+    }
+}
+
 modelled_kernel! {
     PlacementMean::mean, FloatingpointMeanOp{axis: Option<u32>},
     [
@@ -556,7 +574,8 @@ impl ConstantOp {
         Ok(FloatTensor::Mirrored3(
             Mirrored3Tensor {
                 values: [z0, z1, z2],
-            }.into()
+            }
+            .into(),
         ))
     }
 }

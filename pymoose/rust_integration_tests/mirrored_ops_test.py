@@ -21,7 +21,10 @@ class MirroredOpsExample(parameterized.TestCase):
         def my_comp():
             with mir3:
                 x = edsl.constant(np.array([1.5, 2.3, 3, 3], dtype=np.float64))
-            return x
+            with alice:
+                y = edsl.identity(x)
+
+            return y
 
         return my_comp
 
@@ -34,11 +37,14 @@ class MirroredOpsExample(parameterized.TestCase):
             "carole": {},
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
-        _ = runtime.evaluate_computation(
+        result_dict = runtime.evaluate_computation(
             computation=traced_less_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
+
+        actual_result = list(result_dict.values())[0]
+        print(actual_result)
 
 
 if __name__ == "__main__":

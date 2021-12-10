@@ -134,6 +134,70 @@ where
     }
 }
 
+impl IdentityOp {
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        HostPlacement: PlacementIdentity<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementIdentity<S, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementIdentity<S, Float32T, Float32T>,
+        HostPlacement: PlacementIdentity<S, Float64T, Float64T>,
+        HostPlacement: PlacementIdentity<S, BoolT, BoolT>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = plc.identity(sess, &x);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = plc.identity(sess, &x);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            AbstractTensor::Float32(x) => {
+                let result = plc.identity(sess, &x);
+                Ok(AbstractTensor::Float32(result))
+            }
+            AbstractTensor::Float64(x) => {
+                let result = plc.identity(sess, &x);
+                Ok(AbstractTensor::Float64(result))
+            }
+            AbstractTensor::Bool(x) => {
+                let result = plc.identity(sess, &x);
+                Ok(AbstractTensor::Bool(result))
+            }
+        }
+    }
+
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        ReplicatedPlacement: PlacementIdentity<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementIdentity<S, Fixed128T, Fixed128T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = rep.identity(sess, &x);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = rep.identity(sess, &x);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            x => Err(Error::UnimplementedOperator(format!(
+                "Missing rep identity op for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+}
+
 modelled_kernel! {
     PlacementAdd::add, AddOp,
     [
@@ -1449,19 +1513,19 @@ impl ConstantOp {
         sig: Signature,
         value: Constant,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
-where
+    where
         Mirrored3Placement: PlacementConstant<S, Float32T>,
         Mirrored3Placement: PlacementConstant<S, Float64T>,
     {
         match sig.ret() {
-                Ty::Tensor(TensorDType::Float32) => {
-                    let z = plc.constant(sess, value);
-                    Ok(AbstractTensor::Float32(z))
-                }
-                Ty::Tensor(TensorDType::Float64) => {
-                    let z = plc.constant(sess, value);
-                    Ok(AbstractTensor::Float64(z))
-                }
+            Ty::Tensor(TensorDType::Float32) => {
+                let z = plc.constant(sess, value);
+                Ok(AbstractTensor::Float32(z))
+            }
+            Ty::Tensor(TensorDType::Float64) => {
+                let z = plc.constant(sess, value);
+                Ok(AbstractTensor::Float64(z))
+            }
             ret => Err(Error::UnimplementedOperator(format!(
                 "ConstantOp can not produce tensors of type {:?} yet",
                 ret
