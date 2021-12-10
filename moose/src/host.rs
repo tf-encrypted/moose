@@ -1,6 +1,5 @@
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::fixedpoint::FixedTensor;
 use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -999,77 +998,6 @@ impl HostSumOp {
 }
 
 impl AddNOp {
-    pub(crate) fn fixed_kernel<S: Session, HostFixedT, RepFixedT>(
-        sess: &S,
-        plc: &HostPlacement,
-        xs: &[FixedTensor<HostFixedT, RepFixedT>],
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
-    where
-        HostPlacement: PlacementAddN<S, HostFixedT, HostFixedT>,
-        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
-        HostFixedT: Clone,
-    {
-        let first = &xs[0];
-        match first {
-            FixedTensor::Host(_) => {
-                let vec: Vec<HostFixedT> = xs
-                    .iter()
-                    .map(|abstract_tensor| match abstract_tensor {
-                        FixedTensor::Host(x) => (*x).clone(),
-                        _ => unimplemented!("mixed types in tensor"),
-                    })
-                    .collect();
-                let result = plc.add_n(sess, &vec);
-                Ok(FixedTensor::Host(result))
-            }
-            FixedTensor::Replicated(_) => {
-                let vec: Vec<HostFixedT> = xs
-                    .iter()
-                    .map(|t| match t {
-                        FixedTensor::Replicated(x) => plc.reveal(sess, x),
-                        _ => unimplemented!("mixed types in tensor"),
-                    })
-                    .collect();
-                Ok(FixedTensor::Host(plc.add_n(sess, &vec)))
-            }
-        }
-    }
-
-    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        xs: &[FixedTensor<HostFixedT, RepFixedT>],
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
-    where
-        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
-        ReplicatedPlacement: PlacementAddN<S, RepFixedT, RepFixedT>,
-        RepFixedT: Clone,
-    {
-        let first = &xs[0];
-        match first {
-            FixedTensor::Host(_) => {
-                let vec: Vec<RepFixedT> = xs
-                    .iter()
-                    .map(|t| match t {
-                        FixedTensor::Host(x) => plc.share(sess, x),
-                        _ => unimplemented!("mixed types in tensor"),
-                    })
-                    .collect();
-                Ok(FixedTensor::Replicated(plc.add_n(sess, &vec)))
-            }
-            FixedTensor::Replicated(_) => {
-                let vec: Vec<RepFixedT> = xs
-                    .iter()
-                    .map(|t| match t {
-                        FixedTensor::Replicated(x) => (*x).clone(),
-                        _ => unimplemented!("mixed types in tensor"),
-                    })
-                    .collect();
-                Ok(FixedTensor::Replicated(plc.add_n(sess, &vec)))
-            }
-        }
-    }
-
     pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,

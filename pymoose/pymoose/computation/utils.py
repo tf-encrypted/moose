@@ -35,7 +35,6 @@ SUPPORTED_TYPES = [
     std_dialect.ExpandDimsOperation,
     std_dialect.ExpOperation,
     std_dialect.FloatConstant,
-    std_dialect.AddNOperation,
     std_dialect.FloatType,
     std_dialect.IdentityOperation,
     std_dialect.IndexAxisOperation,
