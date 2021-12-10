@@ -274,6 +274,91 @@ impl AddOp {
     }
 }
 
+impl AddNOp {
+    pub(crate) fn host_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &HostPlacement,
+        xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>],
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        HostPlacement: PlacementAddN<S, Fixed64T, Fixed64T>,
+        Fixed64T: Clone,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot concat on empty array of tensors".to_string(),
+            ))
+        } else {
+            let x = &xs[0];
+            match x {
+                AbstractTensor::Fixed64(_) => {
+                    let vec: Vec<Fixed64T> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            AbstractTensor::Fixed64(x) => (*x).clone(),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    let result = plc.add_n(sess, &vec);
+                    Ok(AbstractTensor::Fixed64(result))
+                }
+                x => Err(Error::UnimplementedOperator(format!(
+                    "Missing host add_n op for {:?}",
+                    &x.ty_desc(),
+                ))),
+            }
+        }
+    }
+
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>],
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        ReplicatedPlacement: PlacementAddN<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementAddN<S, Fixed128T, Fixed128T>,
+        Fixed64T: Clone,
+        Fixed128T: Clone,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot concat on empty array of tensors".to_string(),
+            ))
+        } else {
+            let x = &xs[0];
+            match x {
+                AbstractTensor::Fixed64(_) => {
+                    let vec: Vec<Fixed64T> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            AbstractTensor::Fixed64(x) => (*x).clone(),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    let result = plc.add_n(sess, &vec);
+                    Ok(AbstractTensor::Fixed64(result))
+                }
+                AbstractTensor::Fixed128(_) => {
+                    let vec: Vec<Fixed128T> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            AbstractTensor::Fixed128(x) => (*x).clone(),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    let result = plc.add_n(sess, &vec);
+                    Ok(AbstractTensor::Fixed128(result))
+                }
+                x => Err(Error::UnimplementedOperator(format!(
+                    "Missing host add_n op for {:?}",
+                    &x.ty_desc(),
+                ))),
+            }
+        }
+    }
+}
+
 modelled_kernel! {
     PlacementSub::sub, SubOp,
     [

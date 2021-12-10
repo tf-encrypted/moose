@@ -7,6 +7,7 @@ from typing import Union
 import numpy as np
 
 from pymoose.computation import dtypes
+from pymoose.computation.standard import AddNOperation
 from pymoose.computation.standard import AesKeyType
 from pymoose.computation.standard import AesTensorType
 from pymoose.computation.standard import FloatConstant
@@ -100,6 +101,11 @@ class Expression:
 
     def __hash__(self):
         return id(self)
+
+
+@dataclass
+class AddNExpression(Expression):
+    pass
 
 
 @dataclass
@@ -302,6 +308,11 @@ class BitwiseOrExpression(Expression):
 class MuxExpression(Expression):
     def __hash__(self):
         return id(self)
+
+
+def add_n(x, placement=None):
+    placement = placement or get_current_placement()
+    return AddNOperation(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def identity(x, placement=None):

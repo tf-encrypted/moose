@@ -1251,6 +1251,36 @@ impl AddNOp {
             integral_precision,
         })
     }
+
+    pub(crate) fn host_fixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        xs: &[AbstractHostFixedTensor<HostRingT>],
+    ) -> Result<AbstractHostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementAddN<S, HostRingT, HostRingT>,
+        HostRingT: Clone,
+    {
+        let mut tensors = Vec::new();
+        let fractional_precision = xs[0].fractional_precision;
+        let integral_precision = xs[0].integral_precision;
+        for x in xs.iter() {
+            if (x.integral_precision != integral_precision)
+                || (x.fractional_precision != fractional_precision)
+            {
+                return Err(Error::InvalidArgument(
+                    "precisions of tensors must match for add_n".to_string(),
+                ));
+            }
+            tensors.push(x.tensor.clone());
+        }
+        let tensor = plc.add_n(sess, &tensors);
+        Ok(AbstractHostFixedTensor {
+            tensor,
+            fractional_precision,
+            integral_precision,
+        })
+    }
 }
 
 pub trait FixedpointTensor {
