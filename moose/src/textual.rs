@@ -69,7 +69,7 @@ impl FromStr for Value {
     fn from_str(source: &str) -> Result<Self, Self::Err> {
         value_literal::<(&str, ErrorKind)>(source)
             .map(|(_, v)| v)
-            .map_err(|_| anyhow::anyhow!("Failed to parse value literal {}", source))
+            .map_err(|e| anyhow::anyhow!("Failed to parse value literal {} due to {}", source, e))
     }
 }
 
@@ -504,7 +504,7 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
             Constant::RawShape(RawShape(v))
         }),
         constant_literal_helper("Bit", parse_int, Constant::Bit),
-        // 1D arrars
+        // 1D arrays
         alt((
             constant_literal_helper("Int8Tensor", vector(parse_int), |v| {
                 Constant::HostInt8Tensor(v.into())
@@ -546,7 +546,7 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
                 Constant::HostBitTensor(v.into())
             }),
         )),
-        // 2D arrars
+        // 2D arrays
         alt((
             constant_literal_helper("Int8Tensor", vector2(parse_int), |v| {
                 Constant::HostInt8Tensor(v.into())
@@ -595,15 +595,59 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
     ))(input)
 }
 
-/// Parses a literal for a constant (not a placed value).
+/// Parses a literal for a value (a placed value).
 fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Value, E> {
-    let (input, (v, p)) = tuple((constant_literal, ws(parse_placement)))(input)?;
-    match p {
-        Placement::Host(h) => Ok((input, v.place(&h))),
-        _ => unimplemented!("textual form only parses HostPlacement, found other placement"), // TODO (lvorona) return parsing error that we do not support other placements in the textual form
-    }
+    alt((
+        map(
+            tuple((constant_literal, ws(parse_placement))),
+            |(v, p)| match p {
+                Placement::Host(h) => v.place(&h),
+                _ => {
+                    unimplemented!("textual form only parses HostPlacement, found other placement")
+                } // TODO (lvorona) return parsing error that we do not support other placements in the textual form
+            },
+        ),
+        host_fixed_tensor,
+    ))(input)
+}
+
+fn host_fixed_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Value, E> {
+    let (input, (_, integral_precision, _, fractional_precision, _, tensor, placement)) =
+        preceded(
+            tag("HostFixed64Tensor"),
+            tuple((
+                ws(tag("[")),
+                parse_int,
+                ws(tag("/")),
+                parse_int,
+                ws(tag("]")),
+                delimited(ws(tag("(")), vector(parse_int), ws(tag(")"))),
+                ws(parse_placement),
+            )),
+        )(input)?;
+    let placement = match placement {
+        Placement::Host(h) => h,
+        _ => unimplemented!("textual form only parses HostPlacement, found other placement"),
+    };
+    // This is a lot of internals. Will probably have a helper in the host.rs to go from Vec<u64> to HostFixed64Tensor.
+    let tensor: Vec<u64> = tensor;
+    let tensor: Vec<std::num::Wrapping<u64>> =
+        tensor.into_iter().map(|x| std::num::Wrapping(x)).collect();
+    Ok((
+        input,
+        Value::HostFixed64Tensor(Box::new(crate::host::HostFixed64Tensor {
+            tensor: crate::host::AbstractHostRingTensor::<u64>(
+                ndarray::Array::from(tensor).into_dyn(),
+                placement,
+            ),
+            integral_precision,
+            fractional_precision,
+        })),
+    ))
 }
 
 /// Parses a vector of items, using the supplied innter parser.
@@ -1240,36 +1284,48 @@ impl ToTextual for Ty {
     }
 }
 
+macro_rules! format_to_textual {
+    ($format:expr, $($member:expr),*) => {
+        format!($format, $($member.to_textual(),)*)
+    };
+}
+
 impl ToTextual for Value {
     fn to_textual(&self) -> String {
         match self {
-            Value::HostInt8Tensor(x) => format!("Int8Tensor({})", x.0.to_textual()),
-            Value::HostInt16Tensor(x) => format!("Int16Tensor({})", x.0.to_textual()),
-            Value::HostInt32Tensor(x) => format!("Int32Tensor({})", x.0.to_textual()),
-            Value::HostInt64Tensor(x) => format!("Int64Tensor({})", x.0.to_textual()),
-            Value::HostUint8Tensor(x) => format!("Uint8Tensor({})", x.0.to_textual()),
-            Value::HostUint16Tensor(x) => format!("Uint16Tensor({})", x.0.to_textual()),
-            Value::HostUint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
-            Value::HostUint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
-            Value::HostFloat32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
-            Value::HostFloat64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
-            Value::HostRing64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
-            Value::HostRing128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
-            Value::Float32(x) => format!("Float32({})", x),
-            Value::Float64(x) => format!("Float64({})", x),
-            Value::Fixed(x) => format!("Fixed({})", x.to_textual()),
-            Value::HostString(x) => format!("String({})", x.0.to_textual()),
+            Value::HostInt8Tensor(x) => format_to_textual!("Int8Tensor({}) {}", x.0, x.1),
+            Value::HostInt16Tensor(x) => format_to_textual!("Int16Tensor({}) {}", x.0, x.1),
+            Value::HostInt32Tensor(x) => format_to_textual!("Int32Tensor({}) {}", x.0, x.1),
+            Value::HostInt64Tensor(x) => format_to_textual!("Int64Tensor({}) {}", x.0, x.1),
+            Value::HostUint8Tensor(x) => format_to_textual!("Uint8Tensor({}) {}", x.0, x.1),
+            Value::HostUint16Tensor(x) => format_to_textual!("Uint16Tensor({}) {}", x.0, x.1),
+            Value::HostUint32Tensor(x) => format_to_textual!("Uint32Tensor({}) {}", x.0, x.1),
+            Value::HostUint64Tensor(x) => format_to_textual!("Uint64Tensor({}) {}", x.0, x.1),
+            Value::HostFloat32Tensor(x) => format_to_textual!("Float32Tensor({}) {}", x.0, x.1),
+            Value::HostFloat64Tensor(x) => format_to_textual!("Float64Tensor({}) {}", x.0, x.1),
+            Value::HostRing64Tensor(x) => format_to_textual!("Ring64Tensor({}) {}", x.0, x.1),
+            Value::HostRing128Tensor(x) => format_to_textual!("Ring128Tensor({}) {}", x.0, x.1),
+            // TODO: Hosted floats for values
+            Value::Float32(x) => format!("Float32({}) @Host(TODO)", x),
+            Value::Float64(x) => format!("Float64({}) @Host(TODO)", x),
+            Value::Fixed(x) => format!("Fixed[{}]({})", x.precision, x.value),
+            Value::HostString(x) => format_to_textual!("String({}) {}", x.0, x.1),
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
-            Value::HostShape(x) => format!("HostShape({:?})", x.0),
-            Value::Seed(x) => format!("Seed({})", x.0 .0.to_textual()),
-            Value::PrfKey(x) => format!("PrfKey({})", x.0 .0.to_textual()),
+            Value::HostShape(x) => format!("Shape({:?}) {}", x.0 .0, x.1.to_textual()),
+            Value::Seed(x) => format_to_textual!("Seed({}) {}", x.0 .0, x.1),
+            Value::PrfKey(x) => format_to_textual!("PrfKey({}) {}", x.0 .0, x.1),
             Value::Bit(x) => format!("Bit({})", x),
             Value::Unit(_) => "Unit".to_string(),
-            Value::HostBitTensor(x) => format!("HostBitTensor({})", x.0.to_textual()),
-            // TODO
-            Value::HostFixed64Tensor(_)
-            | Value::HostFixed128Tensor(_)
+            Value::HostBitTensor(x) => format_to_textual!("HostBitTensor({}) {}", x.0, x.1),
+            Value::HostFixed64Tensor(x) => format_to_textual!(
+                "HostFixed64Tensor[{}/{}]({}) {}",
+                x.integral_precision,
+                x.fractional_precision,
+                x.tensor.0,
+                x.tensor.1
+            ),
+            Value::HostFixed128Tensor(_)
             | Value::HostBitArray64(_)
             | Value::Tensor(_)
             | Value::HostBitArray128(_) => unimplemented!(),
@@ -1397,12 +1453,6 @@ impl ToTextual for RendezvousKey {
     }
 }
 
-impl ToTextual for FixedpointConstant {
-    fn to_textual(&self) -> String {
-        format!("value: {:?} precision: {:?}", self.value, self.precision)
-    }
-}
-
 impl ToTextual for Signature {
     fn to_textual(&self) -> String {
         match self {
@@ -1451,6 +1501,7 @@ use_debug_to_textual!(u32);
 use_debug_to_textual!(Vec<u32>);
 use_debug_to_textual!(u64);
 use_debug_to_textual!(bool);
+use_debug_to_textual!(RawShape);
 
 impl ToTextual for SliceInfo {
     fn to_textual(&self) -> String {
@@ -1481,6 +1532,7 @@ impl ToTextual for [u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
     use std::convert::TryInto;
 
     #[test]
@@ -1950,10 +2002,37 @@ mod tests {
     }
 
     #[test]
-    fn test_value_try_into() -> Result<(), anyhow::Error> {
-        use std::convert::TryInto;
+    fn test_constant_try_into() -> Result<(), anyhow::Error> {
         let v: Constant = "Float32Tensor([1.0, 2.0, 3.0])".try_into()?;
         assert_eq!(v, Constant::HostFloat32Tensor(vec![1.0, 2.0, 3.0].into()));
+        Ok(())
+    }
+
+    #[rstest]
+    #[case("Int8Tensor([2, 3]) @Host(alice)")]
+    #[case("Int16Tensor([2, 3]) @Host(alice)")]
+    #[case("Int32Tensor([2, 3]) @Host(alice)")]
+    #[case("Int64Tensor([2, 3]) @Host(alice)")]
+    #[case("Uint8Tensor([2, 3]) @Host(alice)")]
+    #[case("Uint16Tensor([2, 3]) @Host(alice)")]
+    #[case("Uint32Tensor([2, 3]) @Host(alice)")]
+    #[case("Uint64Tensor([2, 3]) @Host(alice)")]
+    #[case("Float32Tensor([2.1, 3.2]) @Host(alice)")]
+    #[case("Float64Tensor([2.1, 3.2]) @Host(alice)")]
+    #[case("Ring64Tensor([2, 3]) @Host(alice)")]
+    #[case("Ring128Tensor([2, 3]) @Host(alice)")]
+    #[case("Float32(2.1) @Host(TODO)")]
+    #[case("Float64(2.1) @Host(TODO)")]
+    #[case("String(\"hi\") @Host(alice)")]
+    #[case("HostBitTensor([0, 1, 1, 0]) @Host(alice)")]
+    #[case("Shape([3, 2]) @Host(alice)")]
+    #[case("Seed(529c2fc9bf573d077f45f42b19cfb8d4) @Host(alice)")]
+    #[case("PrfKey(00000000000000000000000000000000) @Host(alice)")]
+    #[case("HostFixed64Tensor[7/12]([2, 42, 12]) @Host(alice)")]
+    fn test_value_round_trip(#[case] input: String) -> Result<(), anyhow::Error> {
+        let value: Value = input.parse()?;
+        let textual = value.to_textual();
+        assert_eq!(textual, input);
         Ok(())
     }
 
