@@ -13,7 +13,6 @@ use std::convert::{TryFrom, TryInto};
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
 enum PyOperation {
-    std_AddNOperation(PyAddNOperation),
     std_IdentityOperation(PyIdentityOperation),
     std_ConstantOperation(PyConstantOperation),
     std_AddOperation(PyAddOperation),
@@ -160,14 +159,6 @@ impl FromPyOpSignature for Signature {
             map_type(&pysig.return_type)?,
         ))
     }
-}
-
-#[derive(Deserialize, Debug)]
-struct PyAddNOperation {
-    name: String,
-    inputs: Inputs,
-    placement_name: String,
-    signature: PyOpSignature,
 }
 
 #[derive(Deserialize, Debug)]
@@ -583,16 +574,6 @@ impl TryFrom<PyComputation> for Computation {
                 use anyhow::Context;
                 use PyOperation::*;
                 match op {
-                    std_AddNOperation(op) => Ok(Operation {
-                        kind: AddNOp {
-                            sig: Signature::from_unary(&op.signature, "x")?,
-                        }
-                        .into(),
-                        inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        name: op.name.clone(),
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
                     std_IdentityOperation(op) => Ok(Operation {
                         kind: IdentityOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
