@@ -1247,8 +1247,8 @@ macro_rules! constant_kernels {
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
-        // modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
-        // modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
+        modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
+        modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
 
 
@@ -1265,8 +1265,8 @@ macro_rules! constant_kernels {
                 (HostPlacement, () -> Float32Tensor => [concrete] attributes[value] Self::float_kernel),
                 (HostPlacement, () -> Float64Tensor => [concrete] attributes[value] Self::float_kernel),
                 (Mirrored3Placement, () -> crate::logical::Tensor => [concrete] attributes[sig, value] Self::mir3_logical_kernel),
-                // (Mirrored3Placement, () -> Float32Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
-                // (Mirrored3Placement, () -> Float64Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
+                (Mirrored3Placement, () -> Float32Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
+                (Mirrored3Placement, () -> Float64Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
 
             ]
         }

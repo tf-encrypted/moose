@@ -5,8 +5,6 @@ use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape, HostString};
 use crate::kernels::*;
 use crate::mirrored::Mirrored3Tensor;
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
-use std::convert::TryInto;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FloatTensor<HostT, MirroredT> {
@@ -547,7 +545,7 @@ impl ConstantOp {
     ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementConstant<S, HostFloatT>,
-        Mirrored3Tensor<HostFloatT>: TryInto<MirroredT>,
+        Mirrored3Tensor<HostFloatT>: Into<MirroredT>,
     {
         let (player0, player1, player2) = plc.host_placements();
 
@@ -558,10 +556,7 @@ impl ConstantOp {
         Ok(FloatTensor::Mirrored3(
             Mirrored3Tensor {
                 values: [z0, z1, z2],
-            }
-            .try_into()
-            .ok()
-            .unwrap(),
+            }.into()
         ))
     }
 }
