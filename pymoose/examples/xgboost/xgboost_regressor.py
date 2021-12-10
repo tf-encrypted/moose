@@ -94,8 +94,12 @@ class XGBoostTreeRegressor(StandardModel):
             )
             return edsl.mux(
                 selector,
-                self._traverse_tree(left_child, leaf_weights, x_features, fixedpoint_dtype),
-                self._traverse_tree(right_child, leaf_weights, x_features, fixedpoint_dtype),
+                self._traverse_tree(
+                    left_child, leaf_weights, x_features, fixedpoint_dtype
+                ),
+                self._traverse_tree(
+                    right_child, leaf_weights, x_features, fixedpoint_dtype
+                ),
             )
         else:
             assert left_child == -1

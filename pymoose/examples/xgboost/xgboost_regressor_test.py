@@ -8,10 +8,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from pymoose import edsl
-from pymoose import elk_compiler
-from pymoose.computation import base
-from pymoose.computation import utils
-from pymoose.computation.standard import TensorType
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
