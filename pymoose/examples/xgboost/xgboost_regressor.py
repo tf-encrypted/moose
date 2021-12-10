@@ -1,11 +1,7 @@
 import abc
 import json
-import pathlib
-from re import split
 
 from pymoose import edsl
-from pymoose.computation import base
-from pymoose.computation.dtypes import fixed
 
 
 class StandardModel(metaclass=abc.ABCMeta):
@@ -24,9 +20,14 @@ class StandardModel(metaclass=abc.ABCMeta):
         )
         return (alice, bob, carole), replicated
 
+    @property
+    def host_placements(self):
+        return self.alice, self.bob, self.carole
+
     @classmethod
     def fixedpoint_constant(cls, x, plc, dtype=edsl.fixed(8, 27)):
-        return edsl.constant(x, dtype=dtype, placement=plc)
+        x = edsl.constant(x, dtype=edsl.float64, placement=plc)
+        return edsl.cast(x, dtype=dtype, placement=plc)
 
     @abc.abstractmethod
     def predictor_factory(self, *args, **kwargs):
@@ -76,10 +77,7 @@ class XGBoostTreeRegressor(StandardModel):
         return predictor
 
     def _tree_fn(self, x, nb_features, rescale_factor, fixedpoint_dtype):
-        if rescale_factor != 1.0:
-            leaf_weights = [rescale_factor * w for w in self.weights]
-        else:
-            leaf_weights = self.weights
+        leaf_weights = [rescale_factor * w for w in self.weights]
         features_vec = [edsl.index_axis(x, axis=1, index=i) for i in range(nb_features)]
         return self._traverse_tree(0, leaf_weights, features_vec, fixedpoint_dtype)
 
@@ -91,13 +89,13 @@ class XGBoostTreeRegressor(StandardModel):
             selector = edsl.less(
                 x_features[self.split_indices[node]],
                 self.fixedpoint_constant(
-                    self.split_conditions[node], self.alice, dytpe=fixedpoint_dtype
+                    self.split_conditions[node], self.alice, dtype=fixedpoint_dtype
                 ),
             )
             return edsl.mux(
                 selector,
-                self._traverse_tree(left_child, x_features),
-                self._traverse_tree(right_child, x_features),
+                self._traverse_tree(left_child, leaf_weights, x_features, fixedpoint_dtype),
+                self._traverse_tree(right_child, leaf_weights, x_features, fixedpoint_dtype),
             )
         else:
             assert left_child == -1
@@ -114,10 +112,7 @@ class XGBoostForestRegressor(StandardModel):
         self.learning_rate = learning_rate
 
     @classmethod
-    def from_json(cls, json_path):
-        json_path = pathlib.Path(json_path)
-        with open(json_path) as f:
-            model_json = json.load(f)
+    def from_json(cls, model_json):
         forest_args = cls._unbundle_forest(model_json)
         return cls(*forest_args)
 
@@ -141,7 +136,7 @@ class XGBoostForestRegressor(StandardModel):
 
     def _forest_fn(self, x, fixedpoint_dtype):
         tree_scores = [
-            tree.predictor(
+            tree._tree_fn(
                 x,
                 self.nb_features,
                 rescale_factor=self.learning_rate,
@@ -154,7 +149,7 @@ class XGBoostForestRegressor(StandardModel):
         )
         for tree_score in tree_scores:
             final_score = edsl.add(tree_score, final_score)
-        return tree_score
+        return final_score
 
     @classmethod
     def _unbundle_forest_params(cls, model_json):
