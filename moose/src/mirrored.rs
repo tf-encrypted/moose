@@ -18,12 +18,19 @@ impl IdentityOp {
         HostFloatT: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementIdentity<S, HostFloatT, HostFloatT>,
     {
-        let plc3 = x.placement()?;
-        let (player0, player1, player2) = plc3.host_placements();
+        let mir_plc = x.placement()?;
+        let (player0, player1, _player2) = mir_plc.host_placements();
+
         let Mirrored3Tensor {
             values: [x0, x1, x2],
         } = &x;
 
-        Ok(plc.identity(sess, &x0))
+        let x_plc = match () {
+            _ if *plc == player0 => x0,
+            _ if *plc == player1 => x1,
+            _ => x2, // we send it to player2 in case there's no one else to place the value on
+        };
+
+        Ok(plc.identity(sess, x_plc))
     }
 }

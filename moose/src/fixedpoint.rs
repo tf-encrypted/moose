@@ -176,7 +176,7 @@ impl FixedpointEncodeOp {
                 let x = plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
                 Ok(FixedTensor::Host(x))
             }
-            FloatTensor::Mirrored3(x) => {
+            FloatTensor::Mirrored3(_) => {
                 unimplemented!()
             }
         }

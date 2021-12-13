@@ -73,7 +73,7 @@ impl FloatingpointMeanOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
         let z = plc.mean(sess, axis, &x);
         Ok(FloatTensor::Host(z))
@@ -100,7 +100,7 @@ impl FloatingpointSumOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
         let z = plc.sum(sess, axis, &x);
         Ok(FloatTensor::Host(z))
@@ -127,7 +127,7 @@ impl FloatingpointAtLeast2DOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         let z = plc.at_least_2d(sess, to_column_vector, &x);
@@ -155,12 +155,12 @@ impl FloatingpointAddOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         let y = match y {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         let z = plc.add(sess, &x, &y);
@@ -188,11 +188,11 @@ impl FloatingpointSubOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
         let y = match y {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         let z = plc.sub(sess, &x, &y);
@@ -220,11 +220,11 @@ impl FloatingpointMulOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
         let y = match y {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         let z = plc.mul(sess, &x, &y);
@@ -252,11 +252,11 @@ impl FloatingpointDivOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
         let y = match y {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         let z = plc.div(sess, &x, &y);
@@ -284,11 +284,11 @@ impl FloatingpointDotOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
         let y = match y {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         let z = plc.dot(sess, &x, &y);
@@ -311,11 +311,11 @@ impl LessOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
         let y = match y {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         let z = plc.less(sess, &x, &y);
@@ -359,7 +359,7 @@ impl IndexAxisOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         let z = plc.index_axis(sess, axis, index, &x);
@@ -387,7 +387,7 @@ impl FloatingpointExpandDimsOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         let z = plc.expand_dims(sess, axis, &x);
@@ -421,7 +421,7 @@ impl FloatingpointConcatOp {
             .iter()
             .map(|x| match x {
                 FloatTensor::Host(x) => (*x).clone(),
-                FloatTensor::Mirrored3(x) => unimplemented!(), // TODO(Dragos) fix this
+                FloatTensor::Mirrored3(_x) => unimplemented!(), // TODO(Dragos) fix this
             })
             .collect();
 
@@ -449,7 +449,7 @@ impl FloatingpointTransposeOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         let z = plc.transpose(sess, &x);
@@ -476,7 +476,7 @@ impl FloatingpointInverseOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         let z = plc.inverse(sess, &x);
@@ -516,7 +516,7 @@ impl SaveOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         Ok(plc.save(sess, &key, &x))
@@ -534,7 +534,7 @@ impl ShapeOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         Ok(plc.shape(sess, &x))
@@ -605,7 +605,7 @@ impl OutputOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
         Ok(FloatTensor::Host(plc.output(sess, &x)))
