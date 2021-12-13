@@ -883,7 +883,7 @@ impl ToTextual for ReplicatedPlacement {
 impl ToTextual for Mirrored3Placement {
     fn to_textual(&self) -> String {
         format!(
-            "@Replicated({}, {}, {})",
+            "@Mirrored3({}, {}, {})",
             self.owners[0], self.owners[1], self.owners[2]
         )
     }

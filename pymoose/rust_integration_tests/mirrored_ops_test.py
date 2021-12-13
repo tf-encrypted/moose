@@ -44,7 +44,8 @@ class MirroredOpsExample(parameterized.TestCase):
         )
 
         actual_result = list(result_dict.values())[0]
-        print(actual_result)
+        np.testing.assert_equal(actual_result[0], 1.5)
+        np.testing.assert_equal(actual_result[1], 2.3)
 
 
 if __name__ == "__main__":
