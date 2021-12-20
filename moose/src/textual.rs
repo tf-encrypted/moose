@@ -634,9 +634,8 @@ fn host_fixed_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         _ => unimplemented!("textual form only parses HostPlacement, found other placement"),
     };
     // This is a lot of internals. Will probably have a helper in the host.rs to go from Vec<u64> to HostFixed64Tensor.
-    let tensor: Vec<u64> = tensor;
     let tensor: Vec<std::num::Wrapping<u64>> =
-        tensor.into_iter().map(|x| std::num::Wrapping(x)).collect();
+        tensor.into_iter().map(std::num::Wrapping).collect();
     Ok((
         input,
         Value::HostFixed64Tensor(Box::new(crate::host::HostFixed64Tensor {
