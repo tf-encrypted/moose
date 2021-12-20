@@ -41,16 +41,18 @@ impl TryFrom<&str> for Constant {
     fn try_from(source: &str) -> anyhow::Result<Constant> {
         constant_literal::<(&str, ErrorKind)>(source)
             .map(|(_, v)| v)
-            .map_err(|_| anyhow::anyhow!("Failed to parse constant literal {}", source))
+            .map_err(|e| {
+                anyhow::anyhow!("Failed to parse constant literal {} due to {}", source, e)
+            })
     }
 }
 
 impl FromStr for Constant {
     type Err = anyhow::Error;
     fn from_str(source: &str) -> Result<Self, Self::Err> {
-        constant_literal::<(&str, ErrorKind)>(source)
+        constant_literal(source)
             .map(|(_, v)| v)
-            .map_err(|_| anyhow::anyhow!("Failed to parse constant literal {}", source))
+            .map_err(|e| friendly_error("Failed to parse constant literal", source, e))
     }
 }
 
@@ -58,18 +60,18 @@ impl TryFrom<&str> for Value {
     type Error = anyhow::Error;
 
     fn try_from(source: &str) -> anyhow::Result<Value> {
-        value_literal::<(&str, ErrorKind)>(source)
+        value_literal(source)
             .map(|(_, v)| v)
-            .map_err(|_| anyhow::anyhow!("Failed to parse value literal {}", source))
+            .map_err(|e| friendly_error("Failed to parse value literal", source, e))
     }
 }
 
 impl FromStr for Value {
     type Err = anyhow::Error;
     fn from_str(source: &str) -> Result<Self, Self::Err> {
-        value_literal::<(&str, ErrorKind)>(source)
+        value_literal(source)
             .map(|(_, v)| v)
-            .map_err(|e| anyhow::anyhow!("Failed to parse value literal {} due to {}", source, e))
+            .map_err(|e| friendly_error("Failed to parse value literal", source, e))
     }
 }
 
@@ -599,18 +601,20 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
 fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Value, E> {
-    alt((
-        map(
-            tuple((constant_literal, ws(parse_placement))),
-            |(v, p)| match p {
-                Placement::Host(h) => v.place(&h),
-                _ => {
-                    unimplemented!("textual form only parses HostPlacement, found other placement")
-                } // TODO (lvorona) return parsing error that we do not support other placements in the textual form
-            },
-        ),
-        host_fixed_tensor,
-    ))(input)
+    context(
+        "Expecting a value literal followed by a HostPlacement",
+        alt((host_value_literal, host_fixed_tensor)),
+    )(input)
+}
+
+fn host_value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Value, E> {
+    let (input, (v, p)) = tuple((constant_literal, ws(parse_placement)))(input)?;
+    match p {
+        Placement::Host(h) => Ok((input, v.place(&h))),
+        _ => Err(Error(make_error(input, ErrorKind::MapRes))),
+    }
 }
 
 fn host_fixed_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
@@ -634,8 +638,7 @@ fn host_fixed_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         _ => unimplemented!("textual form only parses HostPlacement, found other placement"),
     };
     // This is a lot of internals. Will probably have a helper in the host.rs to go from Vec<u64> to HostFixed64Tensor.
-    let tensor: Vec<std::num::Wrapping<u64>> =
-        tensor.into_iter().map(std::num::Wrapping).collect();
+    let tensor: Vec<std::num::Wrapping<u64>> = tensor.into_iter().map(std::num::Wrapping).collect();
     Ok((
         input,
         Value::HostFixed64Tensor(Box::new(crate::host::HostFixed64Tensor {
@@ -872,6 +875,27 @@ pub fn parse_bool<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, bool, E> {
     alt((value(true, tag("true")), value(false, tag("false"))))(input)
+}
+
+/// A helper convertor from a nom error to a generic error
+///
+/// Sample usage:
+/// ```rust
+/// use moose::textual::{parse_bool, friendly_error};
+/// let source = "blah";
+/// parse_bool(source).map_err(|e| friendly_error("Failed to parse a boolean", source, e));
+/// ```
+/// Note that it binds the E in the parser to be a `VerboseError`.
+pub fn friendly_error(
+    message: &str,
+    source: &str,
+    e: nom::Err<VerboseError<&str>>,
+) -> anyhow::Error {
+    match e {
+        Failure(e) => anyhow::anyhow!("{} {}", message, convert_error(source, e)),
+        Error(e) => anyhow::anyhow!("{} {}", message, convert_error(source, e)),
+        _ => anyhow::anyhow!("{} {} due to {}", message, source, e),
+    }
 }
 
 /// A serializer to produce the same textual format from a computation
