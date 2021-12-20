@@ -152,18 +152,20 @@ class AstTracer:
 
     def visit_AddNExpression(self, add_n_expression):
         assert isinstance(add_n_expression, AddNExpression)
+        array_inputs, array_types = {}, {}
+        for i, expr in enumerate(add_n_expression.inputs):
+            array_op = self.visit(expr)
+            array_inputs[f"array{i}"] = array_op.name
+            array_types[f"array{i}"] = array_op.return_type
+
         placement = self.visit_placement_expression(add_n_expression.placement)
-        input_expression = add_n_expression.inputs[0]
-        input_op = self.visit(input_expression)
-        input_type = input_op.return_type
-        output_type = input_expression.vtype
         return self.computation.add_operation(
             AddNOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("add_n"),
-                inputs={"x": input_op.name},
+                inputs=array_inputs,
                 signature=OpSignature(
-                    input_types={"x": input_type}, return_type=output_type
+                    input_types=array_types, return_type=add_n_expression.vtype
                 ),
             )
         )

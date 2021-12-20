@@ -105,7 +105,8 @@ class Expression:
 
 @dataclass
 class AddNExpression(Expression):
-    pass
+    def __hash__(self):
+        return id(self)
 
 
 @dataclass
@@ -310,9 +311,30 @@ class MuxExpression(Expression):
         return id(self)
 
 
-def add_n(x, placement=None):
+def add_n(arrays, placement=None):
     placement = placement or get_current_placement()
-    return AddNOperation(placement=placement, inputs=[x], vtype=x.vtype)
+    if not isinstance(arrays, (tuple, list)):
+        raise ValueError(
+            "Inputs to `add_n` must be array-like, found argument "
+            f"of type {type(arrays)}."
+        )
+    input_vtype = arrays[0].vtype
+    if isinstance(input_vtype, TensorType):
+        expected_vtype = input_vtype
+        expected_dtype = input_vtype.dtype
+    else:
+        raise ValueError(f"Inputs must be have vtype TensorType, found {input_vtype}.")
+    for array in arrays:
+        if array.vtype != expected_vtype:
+            raise ValueError(
+                f"Inputs must be have vtype TensorType, found {array.vtype}."
+            )
+        if array.vtype.dtype != expected_dtype:
+            raise ValueError(
+                f"Values passed to add_n must be same dtype: found {array.dtype} "
+                f"and {expected_dtype} in value of `arrays` argument."
+            )
+    return AddNExpression(placement=placement, inputs=arrays, vtype=input_vtype)
 
 
 def identity(x, placement=None):

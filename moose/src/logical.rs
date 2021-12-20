@@ -286,7 +286,7 @@ impl AddNOp {
     {
         if xs.is_empty() {
             Err(Error::InvalidArgument(
-                "cannot concat on empty array of tensors".to_string(),
+                "cannot add_n on empty array of tensors".to_string(),
             ))
         } else {
             let x = &xs[0];
@@ -323,7 +323,7 @@ impl AddNOp {
     {
         if xs.is_empty() {
             Err(Error::InvalidArgument(
-                "cannot concat on empty array of tensors".to_string(),
+                "cannot add_n on empty array of tensors".to_string(),
             ))
         } else {
             let x = &xs[0];
