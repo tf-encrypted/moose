@@ -425,8 +425,10 @@ struct PySaveOperation {
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
 #[allow(non_camel_case_types)]
+#[allow(clippy::enum_variant_names)]
 enum PyPlacement {
     host_HostPlacement(PyHostPlacement),
+    mirrored_MirroredPlacement(PyMirroredPlacement),
     rep_ReplicatedPlacement(PyReplicatedPlacement),
 }
 
@@ -437,6 +439,13 @@ struct PyHostPlacement {
 
 #[derive(Deserialize, Debug)]
 struct PyReplicatedPlacement {
+    #[allow(dead_code)]
+    name: String,
+    player_names: Vec<String>,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyMirroredPlacement {
     #[allow(dead_code)]
     name: String,
     player_names: Vec<String>,
@@ -463,6 +472,18 @@ impl TryFrom<&PyPlacement> for Placement {
             PyPlacement::host_HostPlacement(plc) => Ok(Placement::Host(HostPlacement {
                 owner: Role::from(&plc.name),
             })),
+            PyPlacement::mirrored_MirroredPlacement(plc) => {
+                if plc.player_names.len() != 3 {
+                    return Err(anyhow::anyhow!("Placement doesn't have 3 players"));
+                }
+                Ok(Placement::Mirrored3(Mirrored3Placement {
+                    owners: [
+                        Role::from(&plc.player_names[0]),
+                        Role::from(&plc.player_names[1]),
+                        Role::from(&plc.player_names[2]),
+                    ],
+                }))
+            }
             PyPlacement::rep_ReplicatedPlacement(plc) => {
                 if plc.player_names.len() != 3 {
                     return Err(anyhow::anyhow!("Placement doesn't have 3 players"));

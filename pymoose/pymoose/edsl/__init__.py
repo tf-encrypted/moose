@@ -26,6 +26,7 @@ from pymoose.edsl.base import less
 from pymoose.edsl.base import load
 from pymoose.edsl.base import logical_or
 from pymoose.edsl.base import mean
+from pymoose.edsl.base import mirrored_placement
 from pymoose.edsl.base import mul
 from pymoose.edsl.base import mux
 from pymoose.edsl.base import ones
@@ -55,6 +56,7 @@ __all__ = [
     concatenate,
     constant,
     host_placement,
+    mirrored_placement,
     replicated_placement,
     decrypt,
     div,

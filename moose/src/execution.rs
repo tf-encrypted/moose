@@ -208,11 +208,14 @@ impl AsyncExecutor {
             .operations
             .iter() // guessing that par_iter won't help here
             .filter(|op| match &op.placement {
-                Placement::Host(plc) => own_roles.iter().any(|owner| *owner == &plc.owner),
-                Placement::Replicated(plc) => own_roles
+                Placement::Additive(plc) => own_roles
                     .iter()
                     .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
-                Placement::Additive(plc) => own_roles
+                Placement::Host(plc) => own_roles.iter().any(|owner| *owner == &plc.owner),
+                Placement::Mirrored3(plc) => own_roles
+                    .iter()
+                    .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
+                Placement::Replicated(plc) => own_roles
                     .iter()
                     .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
             })

@@ -860,6 +860,7 @@ impl ToTextual for Placement {
             Placement::Host(p) => p.to_textual(),
             Placement::Replicated(p) => p.to_textual(),
             Placement::Additive(p) => p.to_textual(),
+            Placement::Mirrored3(p) => p.to_textual(),
         }
     }
 }
@@ -874,6 +875,15 @@ impl ToTextual for ReplicatedPlacement {
     fn to_textual(&self) -> String {
         format!(
             "@Replicated({}, {}, {})",
+            self.owners[0], self.owners[1], self.owners[2]
+        )
+    }
+}
+
+impl ToTextual for Mirrored3Placement {
+    fn to_textual(&self) -> String {
+        format!(
+            "@Mirrored3({}, {}, {})",
             self.owners[0], self.owners[1], self.owners[2]
         )
     }
@@ -1228,6 +1238,8 @@ impl ToTextual for Ty {
             Ty::Mirrored3Ring64Tensor => "Mirrored3Ring64Tensor".to_string(),
             Ty::Mirrored3Ring128Tensor => "Mirrored3Ring128Tensor".to_string(),
             Ty::Mirrored3BitTensor => "Mirrored3BitTensor".to_string(),
+            Ty::Mirrored3Float32 => "Mirrored3Float32".to_string(),
+            Ty::Mirrored3Float64 => "Mirrored3Float64".to_string(),
             Ty::Mirrored3Fixed64Tensor => "Mirrored3Fixed64Tensor".to_string(),
             Ty::Mirrored3Fixed128Tensor => "Mirrored3Fixed128Tensor".to_string(),
             Ty::HostFixed128AesTensor => "HostFixed128AesTensor".to_string(),
@@ -1294,6 +1306,8 @@ impl ToTextual for Value {
             | Value::Mirrored3Ring64Tensor(_)
             | Value::Mirrored3Ring128Tensor(_)
             | Value::Mirrored3BitTensor(_)
+            | Value::Mirrored3Float32(_)
+            | Value::Mirrored3Float64(_)
             | Value::Mirrored3Fixed64Tensor(_)
             | Value::Mirrored3Fixed128Tensor(_)
             | Value::AdditiveShape(_)
