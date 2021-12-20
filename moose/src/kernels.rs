@@ -3,7 +3,7 @@ use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::execution::{Identity, SyncNetworkingImpl, SyncStorageImpl};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::floatingpoint::{Float32Tensor, Float64Tensor};
+use crate::floatingpoint::{Float32Tensor, Float64Tensor, Mirrored3Float32, Mirrored3Float64};
 use crate::host::*;
 use crate::networking::LocalSyncNetworking;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
@@ -1247,6 +1247,10 @@ macro_rules! constant_kernels {
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
+        modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
+        modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
+        modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
+
 
         kernel! {
             ConstantOp, [
@@ -1260,6 +1264,10 @@ macro_rules! constant_kernels {
                 (HostPlacement, () -> crate::logical::Tensor => [concrete] attributes[sig, value] Self::logical_kernel),
                 (HostPlacement, () -> Float32Tensor => [concrete] attributes[value] Self::float_kernel),
                 (HostPlacement, () -> Float64Tensor => [concrete] attributes[value] Self::float_kernel),
+                (Mirrored3Placement, () -> crate::logical::Tensor => [concrete] attributes[sig, value] Self::mir3_logical_kernel),
+                (Mirrored3Placement, () -> Float32Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
+                (Mirrored3Placement, () -> Float64Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
+
             ]
         }
     };
@@ -1439,6 +1447,8 @@ modelled_kernel! {
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
         (HostPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::boolean_host_kernel),
         (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::kernel),
+        (HostPlacement, (Mirrored3Float32) -> HostFloat32Tensor => [hybrid] Self::host_mir3_float_kernel),
+        (HostPlacement, (Mirrored3Float64) -> HostFloat64Tensor => [hybrid] Self::host_mir3_float_kernel),
         (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_rep_kernel),
         (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
@@ -1923,7 +1933,7 @@ kernel! {
                             (value * ((1u128 << precision) as f64)) as u128
                     },
                     _ => return Err(Error::UnimplementedOperator(
-                        format!("Cannot fill from {:?} into a Mirrored3RingTensor", op.value.ty()))),
+                        format!("Cannot fill from {:?} into a Mirrored3Tensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::mir_ring128_kernel(sess, rep, value, rep_shape)

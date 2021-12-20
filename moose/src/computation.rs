@@ -3,7 +3,7 @@ use crate::boolean::*;
 use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::floatingpoint::{Float32Tensor, Float64Tensor};
+use crate::floatingpoint::{Float32Tensor, Float64Tensor, Mirrored3Float32, Mirrored3Float64};
 use crate::host::*;
 use crate::kernels::Session;
 use crate::logical::{Tensor, TensorDType};
@@ -523,6 +523,8 @@ values![
     Mirrored3BitTensor,
     Mirrored3Fixed64Tensor,
     Mirrored3Fixed128Tensor,
+    Mirrored3Float32,
+    Mirrored3Float64,
     AdditiveBitTensor,
     AdditiveRing64Tensor,
     AdditiveRing128Tensor,
@@ -1922,7 +1924,7 @@ macro_rules! placements {
     };
 }
 
-placements![Host, Replicated, Additive,];
+placements![Host, Replicated, Additive, Mirrored3,];
 
 #[derive(Serialize, Deserialize, Display, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Role(pub String);
@@ -1960,6 +1962,11 @@ pub struct AdditivePlacement {
     pub owners: [Role; 2],
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct Mirrored3Placement {
+    pub owners: [Role; 3],
+}
+
 impl ReplicatedPlacement {
     pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
         let player0 = HostPlacement {
@@ -1984,6 +1991,21 @@ impl AdditivePlacement {
             owner: self.owners[1].clone(),
         };
         (player0, player1)
+    }
+}
+
+impl Mirrored3Placement {
+    pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
+        let player0 = HostPlacement {
+            owner: self.owners[0].clone(),
+        };
+        let player1 = HostPlacement {
+            owner: self.owners[1].clone(),
+        };
+        let player2 = HostPlacement {
+            owner: self.owners[2].clone(),
+        };
+        (player0, player1, player2)
     }
 }
 
