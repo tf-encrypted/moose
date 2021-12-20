@@ -618,7 +618,7 @@ impl TryFrom<PyComputation> for Computation {
                             name: op.name.clone(),
                             placement: map_placement(&placements, &op.placement_name)?,
                         })
-                    },
+                    }
                     std_IdentityOperation(op) => Ok(Operation {
                         kind: IdentityOp {
                             sig: Signature::from_unary(&op.signature, "x")?,

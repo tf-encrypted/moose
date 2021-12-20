@@ -1009,28 +1009,34 @@ impl AddNOp {
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostFixedT: Clone,
     {
-        let first = &xs[0];
-        match first {
-            FixedTensor::Host(_) => {
-                let vec: Vec<HostFixedT> = xs
-                    .iter()
-                    .map(|abstract_tensor| match abstract_tensor {
-                        FixedTensor::Host(x) => (*x).clone(),
-                        _ => unimplemented!("mixed types in tensor"),
-                    })
-                    .collect();
-                let result = plc.add_n(sess, &vec);
-                Ok(FixedTensor::Host(result))
-            }
-            FixedTensor::Replicated(_) => {
-                let vec: Vec<HostFixedT> = xs
-                    .iter()
-                    .map(|t| match t {
-                        FixedTensor::Replicated(x) => plc.reveal(sess, x),
-                        _ => unimplemented!("mixed types in tensor"),
-                    })
-                    .collect();
-                Ok(FixedTensor::Host(plc.add_n(sess, &vec)))
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot add_n on empty array of tensors".to_string(),
+            ))
+        } else {
+            let first = &xs[0];
+            match first {
+                FixedTensor::Host(_) => {
+                    let vec: Vec<HostFixedT> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            FixedTensor::Host(x) => (*x).clone(),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    let result = plc.add_n(sess, &vec);
+                    Ok(FixedTensor::Host(result))
+                }
+                FixedTensor::Replicated(_) => {
+                    let vec: Vec<HostFixedT> = xs
+                        .iter()
+                        .map(|t| match t {
+                            FixedTensor::Replicated(x) => plc.reveal(sess, x),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    Ok(FixedTensor::Host(plc.add_n(sess, &vec)))
+                }
             }
         }
     }
@@ -1087,6 +1093,25 @@ impl AddNOp {
             let base = xs[0].0.clone();
             let sum = xs[1..].iter().fold(base, |acc, item| acc + &item.0);
             Ok(AbstractHostRingTensor(sum, plc.clone()))
+        }
+    }
+
+    pub(crate) fn host_float_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        xs: &[HostTensor<T>],
+    ) -> Result<HostTensor<T>>
+    where
+        T: Clone + LinalgScalar,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot reduce on empty array of tensors".to_string(),
+            ))
+        } else {
+            let base = xs[0].0.clone();
+            let sum = xs[1..].iter().fold(base, |acc, item| acc + &item.0);
+            Ok(HostTensor(sum, plc.clone()))
         }
     }
 }
