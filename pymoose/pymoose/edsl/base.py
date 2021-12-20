@@ -60,6 +60,14 @@ class HostPlacementExpression(PlacementExpression):
 
 
 @dataclass
+class MirroredPlacementExpression(PlacementExpression):
+    players: List[PlacementExpression]
+
+    def __hash__(self):
+        return hash(self.name)
+
+
+@dataclass
 class ReplicatedPlacementExpression(PlacementExpression):
     players: List[PlacementExpression]
 
@@ -69,6 +77,10 @@ class ReplicatedPlacementExpression(PlacementExpression):
 
 def host_placement(name):
     return HostPlacementExpression(name=name)
+
+
+def mirrored_placement(name, players):
+    return MirroredPlacementExpression(name=name, players=players)
 
 
 def replicated_placement(name, players):

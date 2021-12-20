@@ -3,73 +3,53 @@ use crate::computation::*;
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape, HostString};
 use crate::kernels::*;
-use crate::symbolic::Symbolic;
+use crate::mirrored::Mirrored3Tensor;
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum FloatTensor<HostT> {
+pub enum FloatTensor<HostT, MirroredT> {
     Host(HostT),
+    Mirrored3(MirroredT),
 }
 
-pub type Float32Tensor = FloatTensor<HostFloat32Tensor>;
+moose_type!(Mirrored3Float32 = Mirrored3Tensor<HostFloat32Tensor>);
+moose_type!(Mirrored3Float64 = Mirrored3Tensor<HostFloat64Tensor>);
 
-pub type Float64Tensor = FloatTensor<HostFloat64Tensor>;
+moose_type!(Float32Tensor = FloatTensor<HostFloat32Tensor, Mirrored3Float32>);
+moose_type!(Float64Tensor = FloatTensor<HostFloat64Tensor, Mirrored3Float64>);
 
-impl<T> Placed for FloatTensor<T>
+impl<T, MirroredT> Placed for FloatTensor<T, MirroredT>
 where
-    T: Placed<Placement = HostPlacement>,
+    T: Placed,
+    T::Placement: Into<Placement>,
+    MirroredT: Placed,
+    MirroredT::Placement: Into<Placement>,
 {
     type Placement = Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
         match self {
-            FloatTensor::Host(x) => Ok(Placement::Host(x.placement()?)),
-        }
-    }
-}
-
-impl<HostT> PartiallySymbolicType for FloatTensor<HostT>
-where
-    HostT: SymbolicType,
-    <HostT as SymbolicType>::Type: Placed<Placement = HostPlacement>,
-{
-    type Type = FloatTensor<<HostT as SymbolicType>::Type>;
-}
-
-// TODO(lvorona): Not sure why we need this one separately... But the moose_type macro is coming!
-impl<HostT: Placed<Placement = HostPlacement>> From<FloatTensor<HostT>>
-    for Symbolic<FloatTensor<HostT>>
-{
-    fn from(x: FloatTensor<HostT>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<HostFloatT> TryFrom<Symbolic<FloatTensor<HostFloatT>>> for FloatTensor<HostFloatT>
-where
-    HostFloatT: Placed<Placement = HostPlacement>,
-{
-    type Error = ();
-    fn try_from(v: Symbolic<FloatTensor<HostFloatT>>) -> std::result::Result<Self, ()> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(()),
+            FloatTensor::Host(x) => Ok(x.placement()?.into()),
+            FloatTensor::Mirrored3(x) => Ok(x.placement()?.into()),
         }
     }
 }
 
 impl IdentityOp {
-    pub(crate) fn float_host_kernel<S: Session, HostFloatT>(
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementIdentity<S, HostFloatT, HostFloatT>,
+        HostPlacement: PlacementIdentity<S, MirroredT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
-        Ok(FloatTensor::Host(plc.identity(sess, &x)))
+        let x = match x {
+            FloatTensor::Host(v) => plc.identity(sess, &v),
+            FloatTensor::Mirrored3(v) => plc.identity(sess, &v),
+        };
+        Ok(FloatTensor::Host(x))
     }
 }
 
@@ -82,17 +62,19 @@ modelled_kernel! {
 }
 
 impl FloatingpointMeanOp {
-    fn float_host_kernel<S: Session, HostFloatT>(
+    fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
-        x: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementMean<S, HostFloatT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
-
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
         let z = plc.mean(sess, axis, &x);
         Ok(FloatTensor::Host(z))
     }
@@ -107,17 +89,19 @@ modelled_kernel! {
 }
 
 impl FloatingpointSumOp {
-    fn float_host_kernel<S: Session, HostFloatT>(
+    fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
-        x: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementSum<S, HostFloatT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
-
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
         let z = plc.sum(sess, axis, &x);
         Ok(FloatTensor::Host(z))
     }
@@ -132,16 +116,19 @@ modelled_kernel! {
 }
 
 impl FloatingpointAtLeast2DOp {
-    fn float_host_kernel<S: Session, HostFloatT>(
+    fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         to_column_vector: bool,
-        x: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementAtLeast2D<S, HostFloatT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
 
         let z = plc.at_least_2d(sess, to_column_vector, &x);
         Ok(FloatTensor::Host(z))
@@ -157,17 +144,24 @@ modelled_kernel! {
 }
 
 impl FloatingpointAddOp {
-    fn float_host_kernel<S: Session, HostFloatT>(
+    fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FloatTensor<HostFloatT>,
-        y: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+        y: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementAdd<S, HostFloatT, HostFloatT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
-        let FloatTensor::Host(y) = y;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+
+        let y = match y {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
 
         let z = plc.add(sess, &x, &y);
         Ok(FloatTensor::Host(z))
@@ -183,17 +177,23 @@ modelled_kernel! {
 }
 
 impl FloatingpointSubOp {
-    fn float_host_kernel<S: Session, HostFloatT>(
+    fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FloatTensor<HostFloatT>,
-        y: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+        y: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementSub<S, HostFloatT, HostFloatT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
-        let FloatTensor::Host(y) = y;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+        let y = match y {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
 
         let z = plc.sub(sess, &x, &y);
         Ok(FloatTensor::Host(z))
@@ -209,17 +209,23 @@ modelled_kernel! {
 }
 
 impl FloatingpointMulOp {
-    fn float_host_kernel<S: Session, HostFloatT>(
+    fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FloatTensor<HostFloatT>,
-        y: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+        y: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementMul<S, HostFloatT, HostFloatT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
-        let FloatTensor::Host(y) = y;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+        let y = match y {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
 
         let z = plc.mul(sess, &x, &y);
         Ok(FloatTensor::Host(z))
@@ -235,17 +241,23 @@ modelled_kernel! {
 }
 
 impl FloatingpointDivOp {
-    fn float_host_kernel<S: Session, HostFloatT>(
+    fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FloatTensor<HostFloatT>,
-        y: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+        y: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementDiv<S, HostFloatT, HostFloatT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
-        let FloatTensor::Host(y) = y;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+        let y = match y {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
 
         let z = plc.div(sess, &x, &y);
         Ok(FloatTensor::Host(z))
@@ -261,17 +273,23 @@ modelled_kernel! {
 }
 
 impl FloatingpointDotOp {
-    fn float_host_kernel<S: Session, HostFloatT>(
+    fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FloatTensor<HostFloatT>,
-        y: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+        y: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementDot<S, HostFloatT, HostFloatT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
-        let FloatTensor::Host(y) = y;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+        let y = match y {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
 
         let z = plc.dot(sess, &x, &y);
         Ok(FloatTensor::Host(z))
@@ -282,17 +300,23 @@ modelled!(PlacementLessThan::less, HostPlacement, (Float32Tensor, Float32Tensor)
 modelled!(PlacementLessThan::less, HostPlacement, (Float64Tensor, Float64Tensor) -> BooleanTensor, LessOp);
 
 impl LessOp {
-    pub(crate) fn float_kernel<S: Session, HostFloatT, HostBitT, RepBitT>(
+    pub(crate) fn float_kernel<S: Session, HostFloatT, HostBitT, RepBitT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FloatTensor<HostFloatT>,
-        y: FloatTensor<HostFloatT>,
+        x: FloatTensor<HostFloatT, MirroredT>,
+        y: FloatTensor<HostFloatT, MirroredT>,
     ) -> Result<BoolTensor<HostBitT, RepBitT>>
     where
         HostPlacement: PlacementLessThan<S, HostFloatT, HostFloatT, HostBitT>,
     {
-        let FloatTensor::Host(x) = x;
-        let FloatTensor::Host(y) = y;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+        let y = match y {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
 
         let z = plc.less(sess, &x, &y);
         Ok(BoolTensor::Host(z))
@@ -307,11 +331,11 @@ modelled_kernel! {
 }
 
 impl FloatingpointOnesOp {
-    fn float_host_kernel<S: Session, HostFloatT>(
+    fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         shape: cs!(HostShape),
-    ) -> Result<FloatTensor<HostFloatT>>
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostShape: KnownType<S>,
         HostFloat64Tensor: KnownType<S>,
@@ -323,17 +347,21 @@ impl FloatingpointOnesOp {
 }
 
 impl IndexAxisOp {
-    pub(crate) fn float_host_kernel<S: Session, HostFloatT>(
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         axis: usize,
         index: usize,
-        x: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementIndexAxis<S, HostFloatT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+
         let z = plc.index_axis(sess, axis, index, &x);
         Ok(FloatTensor::Host(z))
     }
@@ -348,16 +376,20 @@ modelled_kernel! {
 }
 
 impl FloatingpointExpandDimsOp {
-    fn float_host_kernel<S: Session, HostFloatT>(
+    fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         axis: Vec<u32>,
-        x: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementExpandDims<S, HostFloatT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+
         let z = plc.expand_dims(sess, axis, &x);
         Ok(FloatTensor::Host(z))
     }
@@ -375,12 +407,12 @@ kernel! {
 }
 
 impl FloatingpointConcatOp {
-    fn float_host_kernel<S: Session, HostFloatT>(
+    fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         axis: u32,
-        xs: &[FloatTensor<HostFloatT>],
-    ) -> Result<FloatTensor<HostFloatT>>
+        xs: &[FloatTensor<HostFloatT, MirroredT>],
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementConcatenate<S, HostFloatT, HostFloatT>,
         HostFloatT: Clone,
@@ -389,6 +421,7 @@ impl FloatingpointConcatOp {
             .iter()
             .map(|x| match x {
                 FloatTensor::Host(x) => (*x).clone(),
+                FloatTensor::Mirrored3(_x) => unimplemented!(), // TODO(Dragos) fix this
             })
             .collect();
 
@@ -406,15 +439,19 @@ modelled_kernel! {
 }
 
 impl FloatingpointTransposeOp {
-    pub fn kernel<S: Session, HostFloatT>(
+    pub fn kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementTranspose<S, HostFloatT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+
         let z = plc.transpose(sess, &x);
         Ok(FloatTensor::Host(z))
     }
@@ -429,27 +466,31 @@ modelled_kernel! {
 }
 
 impl FloatingpointInverseOp {
-    pub fn kernel<S: Session, HostFloatT>(
+    pub fn kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementInverse<S, HostFloatT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+
         let z = plc.inverse(sess, &x);
         Ok(FloatTensor::Host(z))
     }
 }
 
 impl LoadOp {
-    pub fn float_kernel<S: Session>(
+    pub fn float_kernel<S: Session, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         key: cs!(HostString),
         query: cs!(HostString),
-    ) -> Result<FloatTensor<cs!(HostFloat64Tensor)>>
+    ) -> Result<FloatTensor<cs!(HostFloat64Tensor), MirroredT>>
     where
         HostString: KnownType<S>,
         HostFloat32Tensor: KnownType<S>,
@@ -462,42 +503,50 @@ impl LoadOp {
 }
 
 impl SaveOp {
-    pub fn float_kernel<S: Session, HostFloatT>(
+    pub fn float_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         key: cs!(HostString),
-        x: FloatTensor<HostFloatT>,
+        x: FloatTensor<HostFloatT, MirroredT>,
     ) -> Result<cs!(Unit)>
     where
         HostString: KnownType<S>,
         Unit: KnownType<S>,
         HostPlacement: PlacementSave<S, cs!(HostString), HostFloatT, cs!(Unit)>,
     {
-        let FloatTensor::Host(x) = x;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+
         Ok(plc.save(sess, &key, &x))
     }
 }
 
 impl ShapeOp {
-    pub(crate) fn float_kernel<S: Session, HostFloatT, HostShapeT>(
+    pub(crate) fn float_kernel<S: Session, HostFloatT, HostShapeT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FloatTensor<HostFloatT>,
+        x: FloatTensor<HostFloatT, MirroredT>,
     ) -> Result<HostShapeT>
     where
         HostPlacement: PlacementShape<S, HostFloatT, HostShapeT>,
     {
-        let FloatTensor::Host(x) = x;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+
         Ok(plc.shape(sess, &x))
     }
 }
 
 impl ConstantOp {
-    pub fn float_kernel<S: Session, HostFloatT>(
+    pub fn float_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         value: Constant,
-    ) -> Result<FloatTensor<HostFloatT>>
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementConstant<S, HostFloatT>,
     {
@@ -506,12 +555,37 @@ impl ConstantOp {
     }
 }
 
+impl ConstantOp {
+    pub fn mir3_float_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        value: Constant,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementConstant<S, HostFloatT>,
+        Mirrored3Tensor<HostFloatT>: Into<MirroredT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+
+        let z0 = player0.constant(sess, value.clone());
+        let z1 = player1.constant(sess, value.clone());
+        let z2 = player2.constant(sess, value);
+
+        Ok(FloatTensor::Mirrored3(
+            Mirrored3Tensor {
+                values: [z0, z1, z2],
+            }
+            .into(),
+        ))
+    }
+}
+
 impl InputOp {
-    pub fn float_kernel<S: Session, HostFloatT>(
+    pub fn float_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         arg_name: String,
-    ) -> Result<FloatTensor<HostFloatT>>
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementInput<S, HostFloatT>,
     {
@@ -521,15 +595,19 @@ impl InputOp {
 }
 
 impl OutputOp {
-    pub fn float_kernel<S: Session, HostFloatT>(
+    pub fn float_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FloatTensor<HostFloatT>,
-    ) -> Result<FloatTensor<HostFloatT>>
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementOutput<S, HostFloatT, HostFloatT>,
     {
-        let FloatTensor::Host(x) = x;
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+
         Ok(FloatTensor::Host(plc.output(sess, &x)))
     }
 }
