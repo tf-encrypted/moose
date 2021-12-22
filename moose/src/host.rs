@@ -1191,16 +1191,8 @@ where
     }
 }
 
-modelled_kernel! {
-    PlacementRingFixedpointEncode::fixedpoint_ring_encode, RingFixedpointEncodeOp{scaling_base: u64, scaling_exp: u32},
-    [
-        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] Self::float64_kernel),
-        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] Self::float32_kernel),
-    ]
-}
-
 impl RingFixedpointEncodeOp {
-    fn float32_kernel<S: RuntimeSession>(
+    pub(crate) fn float32_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         scaling_base: u64,
@@ -1214,7 +1206,7 @@ impl RingFixedpointEncodeOp {
         Ok(AbstractHostRingTensor(x_converted, plc.clone()))
     }
 
-    fn float64_kernel<S: RuntimeSession>(
+    pub(crate) fn float64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         scaling_base: u64,

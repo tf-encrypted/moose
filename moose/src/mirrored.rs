@@ -53,36 +53,50 @@ impl IdentityOp {
     }
 }
 
-impl FixedpointEncodeOp {
-    pub(crate) fn host_mir_fixed_kernel<S: Session, HostFloatT, HostRingT>(
+// impl FixedpointEncodeOp {
+//     pub(crate) fn mir_fixed_lower_kernel<S: Session, MirFloatT, MirRingT>(
+//         sess: &S,
+//         plc: &Mirrored3Placement,
+//         fractional_precision: u32,
+//         integral_precision: u32,
+//         x: MirFloatT,
+//     ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
+//     where
+//         Mirrored3Placement: PlacementRingFixedpointEncode<S, MirFloatT, MirRingT>,
+//     {
+//         let y = plc.fixedpoint_ring_encode(sess, 2, fractional_precision, &x);
+//         Ok(AbstractMirroredFixedTensor {
+//             tensor: y,
+//             fractional_precision,
+//             integral_precision,
+//         })
+//     }
+// }
+
+impl RingFixedpointEncodeOp {
+    pub(crate) fn mir_kernel<S: Session, HostFloatT, HostRingT>(
         sess: &S,
-        plc: &HostPlacement,
-        fractional_precision: u32,
-        integral_precision: u32,
+        plc: &Mirrored3Placement,
+        scaling_base: u64,
+        scaling_exp: u32,
         x: Mirrored3Tensor<HostFloatT>,
-    ) -> Result<AbstractMirroredFixedTensor<HostRingT>>
+    ) -> Result<Mirrored3Tensor<HostRingT>>
     where
-        HostFloatT: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementRingFixedpointEncode<S, HostFloatT, HostRingT>,
+
     {
-        let mir_plc = x.placement()?;
-        let (player0, player1, _player2) = mir_plc.host_placements();
+        let (player0, player1, player2) = plc.host_placements();
 
         let Mirrored3Tensor {
             values: [x0, x1, x2],
         } = &x;
 
-        let x_plc = match () {
-            _ if *plc == player0 => x0,
-            _ if *plc == player1 => x1,
-            _ => x2, // we send it to player2 in case there's no one else to place the value on
-        };
+        let y0 = player0.fixedpoint_ring_encode(sess, scaling_base, scaling_exp, x0);
+        let y1 = player1.fixedpoint_ring_encode(sess, scaling_base, scaling_exp, x1);
+        let y2 = player2.fixedpoint_ring_encode(sess, scaling_base, scaling_exp, x2);
 
-        let y = plc.fixedpoint_ring_encode(sess, 2, fractional_precision, &x_plc);
-        Ok(AbstractMirroredFixedTensor {
-            tensor: y,
-            fractional_precision,
-            integral_precision,
+        Ok(Mirrored3Tensor {
+            values: [y0, y1, y2],
         })
     }
 }

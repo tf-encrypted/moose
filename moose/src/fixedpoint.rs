@@ -177,7 +177,6 @@ impl FixedpointEncodeOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementFixedpointEncode<S, HostFloatT, HostFixedT>,
-        // HostPlacement: PlacementFixedpointEncode<S, MirFloatT, MirFixedT>,
     {
         match x {
             FloatTensor::Host(x) => {
@@ -190,6 +189,35 @@ impl FixedpointEncodeOp {
                 // Ok(FixedTensor::Mirrored3(x))
             }
         }
+    }
+
+    pub(crate) fn mir_fixed_kernel<
+        S: Session,
+        HostFloatT,
+        HostFixedT,
+        RepFixedT,
+        MirFloatT,
+        MirFixedT,
+    >(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        fractional_precision: u32,
+        integral_precision: u32,
+        x: FloatTensor<HostFloatT, MirFloatT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        // Mirrored3Placement: PlacementFixedpointEncode<S, MirFloatT, MirFixedT>,
+    {
+        unimplemented!()
+        // match x {
+        //     FloatTensor::Mirrored3(x) => {
+        //         let x = plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
+        //         Ok(FixedTensor::Mirrored3(x))
+        //     }
+        //     FloatTensor::Host(x) => {
+        //         unimplemented!()
+        //     }
+        // }
     }
 
     pub(crate) fn hostfixed_kernel<S: Session, HostFloatT, HostRingT>(

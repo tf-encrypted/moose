@@ -2069,8 +2069,20 @@ modelled_kernel! {
         (HostPlacement, (Float64Tensor) -> Fixed128Tensor => [concrete] Self::fixed_kernel),
         (HostPlacement, (HostFloat32Tensor) -> HostFixed64Tensor => [hybrid] Self::hostfixed_kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
-        // (HostPlacement, (Mirrored3Float32) -> Mirrored3Fixed64 => [hybrid] Self::host_mir_fixed_kernel),
-        // (HostPlacement, (Mirrored3Float64) -> Mirrored3Fixed128 => [hybrid] Self::host_mir_fixed_kernel),
+        // (Mirrored3Placement, (Float32Tensor) -> Fixed64Tensor => [concrete] Self::mir_fixed_kernel),
+        // (Mirrored3Placement, (Float64Tensor) -> Fixed128Tensor => [concrete] Self::mir_fixed_kernel),
+        // (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Fixed64 => [hybrid] Self::mir_fixed_lower_kernel),
+        // (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Fixed128 => [hybrid] Self::mir_fixed_lower_kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementRingFixedpointEncode::fixedpoint_ring_encode, RingFixedpointEncodeOp{scaling_base: u64, scaling_exp: u32},
+    [
+        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] Self::float64_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] Self::float32_kernel),
+        // (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Ring64Tensor => [concrete] Self::mir_kernel),
+        // (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Ring128Tensor => [concrete] Self::mir_kernel),
     ]
 }
 
