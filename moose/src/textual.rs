@@ -603,7 +603,11 @@ fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Value, E> {
     context(
         "Expecting a value literal followed by a HostPlacement",
-        alt((host_value_literal, host_fixed_tensor)),
+        alt((
+            host_value_literal,
+            host_fixed64_tensor,
+            host_fixed128_tensor,
+        )),
     )(input)
 }
 
@@ -617,7 +621,7 @@ fn host_value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     }
 }
 
-fn host_fixed_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+fn host_fixed64_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Value, E> {
     let (input, (_, integral_precision, _, fractional_precision, _, tensor, placement)) =
@@ -635,7 +639,7 @@ fn host_fixed_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         )(input)?;
     let placement = match placement {
         Placement::Host(h) => h,
-        _ => unimplemented!("textual form only parses HostPlacement, found other placement"),
+        _ => return Err(Error(make_error(input, ErrorKind::MapRes))),
     };
     // This is a lot of internals. Will probably have a helper in the host.rs to go from Vec<u64> to HostFixed64Tensor.
     let tensor: Vec<std::num::Wrapping<u64>> = tensor.into_iter().map(std::num::Wrapping).collect();
@@ -652,6 +656,41 @@ fn host_fixed_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     ))
 }
 
+fn host_fixed128_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Value, E> {
+    let (input, (_, integral_precision, _, fractional_precision, _, tensor, placement)) =
+        preceded(
+            tag("HostFixed128Tensor"),
+            tuple((
+                ws(tag("[")),
+                parse_int,
+                ws(tag("/")),
+                parse_int,
+                ws(tag("]")),
+                delimited(ws(tag("(")), vector(parse_int), ws(tag(")"))),
+                ws(parse_placement),
+            )),
+        )(input)?;
+    let placement = match placement {
+        Placement::Host(h) => h,
+        _ => return Err(Error(make_error(input, ErrorKind::MapRes))),
+    };
+    // This is a lot of internals. Will probably have a helper in the host.rs to go from Vec<u64> to HostFixed64Tensor.
+    let tensor: Vec<std::num::Wrapping<u128>> =
+        tensor.into_iter().map(std::num::Wrapping).collect();
+    Ok((
+        input,
+        Value::HostFixed128Tensor(Box::new(crate::host::HostFixed128Tensor {
+            tensor: crate::host::AbstractHostRingTensor::<u128>(
+                ndarray::Array::from(tensor).into_dyn(),
+                placement,
+            ),
+            integral_precision,
+            fractional_precision,
+        })),
+    ))
+}
 /// Parses a vector of items, using the supplied innter parser.
 fn vector<'a, F: 'a, O, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     inner: F,
@@ -1360,10 +1399,16 @@ impl ToTextual for Value {
                 x.tensor.0,
                 x.tensor.1
             ),
-            Value::HostFixed128Tensor(_)
-            | Value::HostBitArray64(_)
-            | Value::Tensor(_)
-            | Value::HostBitArray128(_) => unimplemented!(),
+            Value::HostFixed128Tensor(x) => format_to_textual!(
+                "HostFixed128Tensor[{}/{}]({}) {}",
+                x.integral_precision,
+                x.fractional_precision,
+                x.tensor.0,
+                x.tensor.1
+            ),
+            Value::HostBitArray64(_) | Value::Tensor(_) | Value::HostBitArray128(_) => {
+                unimplemented!()
+            }
             Value::HostBitArray224(_) => unimplemented!(),
             Value::HostBitArray256(_) => unimplemented!(),
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
@@ -2066,6 +2111,7 @@ mod tests {
     #[case("Seed(529c2fc9bf573d077f45f42b19cfb8d4) @Host(alice)")]
     #[case("PrfKey(00000000000000000000000000000000) @Host(alice)")]
     #[case("HostFixed64Tensor[7/12]([2, 42, 12]) @Host(alice)")]
+    #[case("HostFixed128Tensor[7/12]([2, 42, 12]) @Host(alice)")]
     fn test_value_round_trip(#[case] input: String) -> Result<(), anyhow::Error> {
         let value: Value = input.parse()?;
         let textual = value.to_textual();
