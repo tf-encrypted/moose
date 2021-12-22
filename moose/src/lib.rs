@@ -4082,6 +4082,99 @@ macro_rules! moose_type {
             }
         }
     };
+
+    // Use this for undefined parameterised types that are wrapping three Moose types
+    ($combined:ident = $outer:ident<$inner1:ident, $inner2:ident, $inner3:ident>) => {
+        pub type $combined = $outer<$inner1, $inner2, $inner3>;
+
+        impl crate::computation::PartiallySymbolicType for $outer<$inner1, $inner2, $inner3> {
+            type Type = $outer<
+                <$inner1 as crate::computation::SymbolicType>::Type,
+                <$inner2 as crate::computation::SymbolicType>::Type,
+                <$inner3 as crate::computation::SymbolicType>::Type,
+            >;
+        }
+
+        impl crate::computation::CanonicalType for $outer<$inner1, $inner2, $inner3> {
+            type Type = $outer<
+                <$inner1 as crate::computation::CanonicalType>::Type,
+                <$inner2 as crate::computation::CanonicalType>::Type,
+                <$inner3 as crate::computation::CanonicalType>::Type,
+            >;
+        }
+
+        impl crate::computation::CanonicalType
+            for $outer<
+                <$inner1 as crate::computation::SymbolicType>::Type,
+                <$inner2 as crate::computation::SymbolicType>::Type,
+                <$inner3 as crate::computation::SymbolicType>::Type,
+            >
+        {
+            type Type = $outer<
+                <$inner1 as crate::computation::CanonicalType>::Type,
+                <$inner2 as crate::computation::CanonicalType>::Type,
+                <$inner3 as crate::computation::CanonicalType>::Type,
+            >;
+        }
+
+        impl crate::computation::CanonicalType
+            for crate::symbolic::Symbolic<
+                $outer<
+                    <$inner1 as crate::computation::SymbolicType>::Type,
+                    <$inner2 as crate::computation::SymbolicType>::Type,
+                    <$inner3 as crate::computation::SymbolicType>::Type,
+                >,
+            >
+        {
+            type Type = $outer<
+                <$inner1 as crate::computation::CanonicalType>::Type,
+                <$inner2 as crate::computation::CanonicalType>::Type,
+                <$inner3 as crate::computation::CanonicalType>::Type,
+            >;
+        }
+
+        // The kernel macro uses this to map (partially) concrete outputs to symbolic values
+        impl
+            From<
+                $outer<
+                    <$inner1 as crate::computation::SymbolicType>::Type,
+                    <$inner2 as crate::computation::SymbolicType>::Type,
+                    <$inner3 as crate::computation::SymbolicType>::Type,
+                >,
+            > for <$combined as crate::computation::SymbolicType>::Type
+        {
+            fn from(
+                x: $outer<
+                    <$inner1 as crate::computation::SymbolicType>::Type,
+                    <$inner2 as crate::computation::SymbolicType>::Type,
+                    <$inner3 as crate::computation::SymbolicType>::Type,
+                >,
+            ) -> Self {
+                crate::symbolic::Symbolic::Concrete(x)
+            }
+        }
+
+        // The kernel macros uses this to determine whether to invoke kernels, and
+        // if so, to map symbolic values to (partially) concrete inputs
+        impl std::convert::TryFrom<<$combined as crate::computation::SymbolicType>::Type>
+            for $outer<
+                <$inner1 as crate::computation::SymbolicType>::Type,
+                <$inner2 as crate::computation::SymbolicType>::Type,
+                <$inner3 as crate::computation::SymbolicType>::Type,
+            >
+        {
+            type Error = crate::error::Error;
+
+            fn try_from(
+                v: <$combined as crate::computation::SymbolicType>::Type,
+            ) -> crate::error::Result<Self> {
+                match v {
+                    crate::symbolic::Symbolic::Concrete(x) => Ok(x),
+                    _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
+                }
+            }
+        }
+    };
 }
 
 // NOTE const generics is currently not mature in stable

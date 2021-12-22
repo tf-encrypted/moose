@@ -227,13 +227,14 @@ impl AesDecryptOp {
         S: Session,
         HostFixed128AesT,
         HostFixed128T,
+        MirFixedT,
         ReplicatedFixed128T,
     >(
         sess: &S,
         plc: &HostPlacement,
         key: m!(HostAesKey),
         ciphertext: FixedAesTensor<HostFixed128AesT>,
-    ) -> Result<FixedTensor<HostFixed128T, ReplicatedFixed128T>>
+    ) -> Result<FixedTensor<HostFixed128T, MirFixedT, ReplicatedFixed128T>>
     where
         HostAesKey: KnownType<S>,
         HostPlacement: PlacementDecrypt<S, m!(HostAesKey), HostFixed128AesT, HostFixed128T>,
@@ -296,13 +297,14 @@ impl AesDecryptOp {
         ReplicatedAesKeyT,
         HostFixed128AesT,
         HostFixed128T,
+        MirFixedT,
         ReplicatedFixed128T,
     >(
         sess: &S,
         plc: &ReplicatedPlacement,
         key: ReplicatedAesKeyT,
         ciphertext: FixedAesTensor<HostFixed128AesT>,
-    ) -> Result<FixedTensor<HostFixed128T, ReplicatedFixed128T>>
+    ) -> Result<FixedTensor<HostFixed128T, MirFixedT, ReplicatedFixed128T>>
     where
         ReplicatedPlacement:
             PlacementDecrypt<S, ReplicatedAesKeyT, HostFixed128AesT, ReplicatedFixed128T>,

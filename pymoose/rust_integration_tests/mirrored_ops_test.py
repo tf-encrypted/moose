@@ -21,6 +21,7 @@ class MirroredOpsExample(parameterized.TestCase):
         def my_comp():
             with mir3:
                 x = edsl.constant(np.array([1.5, 2.3, 3, 3], dtype=np.float64))
+                x = edsl.cast(x, dtype=edsl.fixed(8, 27))
             with alice:
                 y = edsl.identity(x)
 

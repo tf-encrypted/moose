@@ -91,6 +91,7 @@ class XGBoostTreeRegressor(StandardModel):
                 self.fixedpoint_constant(
                     self.split_conditions[node], self.alice, dtype=fixedpoint_dtype
                 ),
+                # TODO(Dragos) change this to mirrored
             )
             return edsl.mux(
                 selector,
@@ -105,6 +106,7 @@ class XGBoostTreeRegressor(StandardModel):
             assert left_child == -1
             assert right_child == -1
             return self.fixedpoint_constant(leaf_weights[node], self.alice)
+            # TODO(Dragos) change this to mirrored
 
 
 class XGBoostForestRegressor(StandardModel):
@@ -151,6 +153,7 @@ class XGBoostForestRegressor(StandardModel):
         final_score = self.fixedpoint_constant(
             self.base_score, self.alice, dtype=fixedpoint_dtype
         )
+        # TODO(Dragos) change this to mirrored
         for tree_score in tree_scores:
             final_score = edsl.add(tree_score, final_score)
         return final_score
