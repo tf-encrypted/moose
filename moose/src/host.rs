@@ -3194,6 +3194,37 @@ mod tests {
     }
 
     #[test]
+    fn test_tensor_slice_neg_indicies() {
+        let x_backing: ArrayD<u64> = array![[1, 2], [3, 4]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
+
+        let slice = SliceInfo(vec![
+            SliceInfoElem {
+                start: -1,
+                end: None,
+                step: Some(2),
+            },
+            SliceInfoElem {
+                start: -1,
+                end: None,
+                step: Some(2),
+            },
+        ]);
+
+        let sess = SyncSession::default();
+        let y = alice.slice(&sess, slice, &x);
+        let target: ArrayD<u64> = array![[4]].into_dimensionality::<IxDyn>().unwrap();
+
+        assert_eq!(y, HostRing64Tensor::from_raw_plc(target, alice))
+    }
+
+    #[test]
     fn test_diag() {
         let x_backing: ArrayD<f64> = array![[1.0, 2.0], [3.0, 4.0]]
             .into_dimensionality::<IxDyn>()
