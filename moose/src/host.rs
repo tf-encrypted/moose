@@ -1441,7 +1441,7 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct HostBitTensor(pub ArrayD<u8>, HostPlacement);
+pub struct HostBitTensor(pub ArrayD<u8>, pub HostPlacement);
 
 impl std::fmt::Debug for HostBitTensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
