@@ -273,6 +273,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         DivOp::from_textual,
         DotOp::from_textual,
         MeanOp::from_textual,
+        RingNegOp::from_textual,
     ));
     alt((part1, part2, part3))(input)
 }
@@ -1263,7 +1264,7 @@ impl ToTextual for RingSampleOp {
             RingSampleOp {
                 sig,
                 max_value: None,
-            } => format!("RingSample: {}", sig.to_textual()),
+            } => format!("RingSample{{}}: {}", sig.to_textual()),
         }
     }
 }
@@ -1282,7 +1283,7 @@ impl ToTextual for RingSampleSeededOp {
             RingSampleSeededOp {
                 sig,
                 max_value: None,
-            } => format!("RingSampleSeeded: {}", sig.to_textual()),
+            } => format!("RingSampleSeeded{{}}: {}", sig.to_textual()),
         }
     }
 }
