@@ -1567,7 +1567,7 @@ impl ToTextual for Signature {
                 ret.to_textual()
             ),
             Signature::Variadic(VariadicSignature { args, ret }) => {
-                format!("(vec[{}]) -> {}", args.to_textual(), ret.to_textual())
+                format!("[{}] -> {}", args.to_textual(), ret.to_textual())
             }
         }
     }
