@@ -757,6 +757,7 @@ impl MuxOp {
 }
 
 modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);
+modelled!(PlacementCast::cast, Mirrored3Placement, (Tensor) -> Tensor, CastOp);
 
 kernel! {
     CastOp,

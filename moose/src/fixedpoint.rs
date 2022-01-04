@@ -1693,20 +1693,20 @@ impl GreaterThanOp {
     }
 }
 
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed64, FillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed128, FillOp);
+modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed64, FillOp);
+modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed128, FillOp);
 
 impl FillOp {
     pub(crate) fn mir_fixed_kernel<S: Session, MirRingT, ShapeT>(
         sess: &S,
-        plc: &ReplicatedPlacement,
+        plc: &Mirrored3Placement,
         value: Constant,
         shape: ShapeT,
         fractional_precision: u32,
         integral_precision: u32,
     ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
     where
-        ReplicatedPlacement: PlacementFill<S, ShapeT, MirRingT>,
+        Mirrored3Placement: PlacementFill<S, ShapeT, MirRingT>,
     {
         let filled = plc.fill(sess, value, &shape);
         Ok(AbstractMirroredFixedTensor {

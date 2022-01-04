@@ -10,6 +10,38 @@ pub struct Mirrored3Tensor<HostRingT> {
     pub values: [HostRingT; 3],
 }
 
+impl<HostTenT> Placed for Mirrored3Tensor<HostTenT>
+where
+    HostTenT: Placed<Placement = HostPlacement>,
+{
+    type Placement = Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        // put a match in here depending on the placement
+        // 
+        let Mirrored3Tensor {
+            values: [x0, x1, x2],
+        } = self;
+
+        let owner0 = x0.placement()?.owner;
+        let owner1 = x1.placement()?.owner;
+        let owner2 = x2.placement()?.owner;
+
+        let owners = [owner0, owner1, owner2];
+
+        match Placement {
+            Placement::Mirrored3Placement => {
+                Ok(Mirrored3Placement {owners })
+            },
+            Placement::ReplicatedPlacement => {
+                Ok(ReplicatedPlacement {owners })
+            }
+            _ => unimplemented!()
+        }
+    }
+}
+
+
 impl IdentityOp {
     pub(crate) fn host_mir3_kernel<S: Session, HostT>(
         sess: &S,

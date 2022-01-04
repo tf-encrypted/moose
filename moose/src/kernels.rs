@@ -1928,7 +1928,7 @@ kernel! {
                     Self::ring128_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring128Tensor => [concrete] custom |op| {
+        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Ring128Tensor => [concrete] custom |op| {
                 let value: u128 = match op.value {
                     Constant::Bit(v) => v as u128,
                     Constant::Ring64(v) => v as u128,
@@ -1959,7 +1959,7 @@ kernel! {
                     Self::rep_bit_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3BitTensor => [concrete] custom |op| {
+        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3BitTensor => [concrete] custom |op| {
                 let value: u8 = match op.value {
                     Constant::Bit(v) => v,
                     Constant::Ring64(v) => v as u8,
@@ -1974,7 +1974,7 @@ kernel! {
                     Self::mir_bit_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Fixed64 => [hybrid] custom |op| {
+        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Fixed64 => [hybrid] custom |op| {
                 let (ring_value, fractional_precision, integral_precision) = match op.value {
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
                         let ring_value: u64 = (value * ((1u64 << precision) as f64)) as u64;
@@ -1989,7 +1989,7 @@ kernel! {
                     Self::mir_fixed_kernel(sess, rep, Constant::Ring64(ring_value), rep_shape, fractional_precision, integral_precision)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Fixed128 => [hybrid] custom |op| {
+        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Fixed128 => [hybrid] custom |op| {
                 let (ring_value, fractional_precision, integral_precision) = match op.value {
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
                         let ring_value: u128 = (value * ((1u128 << precision) as f64)) as u128;
@@ -2006,6 +2006,8 @@ kernel! {
         }),
     ]
 }
+
+
 
 kernel! {
     MuxOp,
@@ -2076,15 +2078,31 @@ modelled_kernel! {
     ]
 }
 
-modelled_kernel! {
-    PlacementRingFixedpointEncode::fixedpoint_ring_encode, RingFixedpointEncodeOp{scaling_base: u64, scaling_exp: u32},
+modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat32Tensor) -> HostRing64Tensor, RingFixedpointEncodeOp);
+modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat64Tensor) -> HostRing128Tensor, RingFixedpointEncodeOp);
+modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, Mirrored3Placement, attributes[scaling_base: u64, scaling_exp: u32] (Mirrored3Float32) -> Mirrored3Ring64Tensor, RingFixedpointEncodeOp);
+modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, Mirrored3Placement, attributes[scaling_base: u64, scaling_exp: u32] (Mirrored3Float64) -> Mirrored3Ring128Tensor, RingFixedpointEncodeOp);
+
+kernel! {
+    RingFixedpointEncodeOp,
     [
-        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] Self::float64_kernel),
-        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] Self::float32_kernel),
-        // (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Ring64Tensor => [concrete] Self::mir_kernel),
-        // (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Ring128Tensor => [concrete] Self::mir_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float32_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float64_kernel),
+        (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Ring64Tensor => [concrete] attributes[scaling_base, scaling_exp] Self::mir_kernel),
+        (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Ring128Tensor => [concrete] attributes[scaling_base, scaling_exp] Self::mir_kernel),
     ]
 }
+
+
+// modelled_kernel! {
+//     PlacementRingFixedpointEncode::fixedpoint_ring_encode, RingFixedpointEncodeOp{scaling_base: u64, scaling_exp: u32},
+//     [
+//         (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] Self::float32_kernel),
+//         (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] Self::float64_kernel),
+//         (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Ring64Tensor => [hybrid] Self::mir_kernel),
+//         (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Ring128Tensor => [hybrid] Self::mir_kernel),
+   // ]
+// }
 
 #[derive(Default)]
 pub struct TestSyncExecutor {
