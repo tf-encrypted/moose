@@ -1,6 +1,6 @@
 use crate::computation::*;
 use crate::error::Result;
-use crate::host::{AbstractHostFixedTensor, AbstractHostRingTensor};
+use crate::host::AbstractHostFixedTensor;
 use crate::kernels::*;
 use crate::replicated::AbstractMirroredFixedTensor;
 use serde::{Deserialize, Serialize};

@@ -6,6 +6,7 @@ use crate::error::{Error, Result};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::*;
 use crate::kernels::*;
+use crate::mirrored::Mirrored3Tensor;
 use crate::replicated::*;
 use crate::symbolic::Symbolic;
 use macros::with_context;
@@ -206,19 +207,39 @@ impl FixedpointEncodeOp {
         integral_precision: u32,
         x: FloatTensor<HostFloatT, MirFloatT>,
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
-where
-        // Mirrored3Placement: PlacementFixedpointEncode<S, MirFloatT, MirFixedT>,
+    where
+        Mirrored3Placement: PlacementFixedpointEncode<S, MirFloatT, MirFixedT>,
     {
-        unimplemented!()
-        // match x {
-        //     FloatTensor::Mirrored3(x) => {
-        //         let x = plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
-        //         Ok(FixedTensor::Mirrored3(x))
-        //     }
-        //     FloatTensor::Host(x) => {
-        //         unimplemented!()
-        //     }
-        // }
+        let v = match x {
+            FloatTensor::Mirrored3(x) => x,
+            // below we need to broadcast the array to all parties
+            FloatTensor::Host(_x) => unimplemented!(),
+        };
+
+        Ok(FixedTensor::Mirrored3(plc.fixedpoint_encode(
+            sess,
+            fractional_precision,
+            integral_precision,
+            &v,
+        )))
+    }
+
+    pub(crate) fn mir_fixed_lower_kernel<S: Session, MirFloatT, MirRingT>(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        fractional_precision: u32,
+        integral_precision: u32,
+        x: MirFloatT,
+    ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
+    where
+        Mirrored3Placement: PlacementRingFixedpointEncode<S, MirFloatT, MirRingT>,
+    {
+        let tensor = plc.fixedpoint_ring_encode(sess, 2, fractional_precision, &x);
+        Ok(AbstractMirroredFixedTensor {
+            tensor,
+            fractional_precision,
+            integral_precision,
+        })
     }
 
     pub(crate) fn hostfixed_kernel<S: Session, HostFloatT, HostRingT>(

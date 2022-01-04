@@ -2074,37 +2074,22 @@ modelled_kernel! {
         (HostPlacement, (Float64Tensor) -> Fixed128Tensor => [concrete] Self::fixed_kernel),
         (HostPlacement, (HostFloat32Tensor) -> HostFixed64Tensor => [hybrid] Self::hostfixed_kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
-        // (Mirrored3Placement, (Float32Tensor) -> Fixed64Tensor => [concrete] Self::mir_fixed_kernel),
-        // (Mirrored3Placement, (Float64Tensor) -> Fixed128Tensor => [concrete] Self::mir_fixed_kernel),
-        // (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Fixed64 => [hybrid] Self::mir_fixed_lower_kernel),
-        // (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Fixed128 => [hybrid] Self::mir_fixed_lower_kernel),
+        (Mirrored3Placement, (Float32Tensor) -> Fixed64Tensor => [concrete] Self::mir_fixed_kernel),
+        (Mirrored3Placement, (Float64Tensor) -> Fixed128Tensor => [concrete] Self::mir_fixed_kernel),
+        (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Fixed64 => [hybrid] Self::mir_fixed_lower_kernel),
+        (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Fixed128 => [hybrid] Self::mir_fixed_lower_kernel),
     ]
 }
 
-modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat32Tensor) -> HostRing64Tensor, RingFixedpointEncodeOp);
-modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat64Tensor) -> HostRing128Tensor, RingFixedpointEncodeOp);
-modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, Mirrored3Placement, attributes[scaling_base: u64, scaling_exp: u32] (Mirrored3Float32) -> Mirrored3Ring64Tensor, RingFixedpointEncodeOp);
-modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, Mirrored3Placement, attributes[scaling_base: u64, scaling_exp: u32] (Mirrored3Float64) -> Mirrored3Ring128Tensor, RingFixedpointEncodeOp);
-
-kernel! {
-    RingFixedpointEncodeOp,
+modelled_kernel! {
+    PlacementRingFixedpointEncode::fixedpoint_ring_encode, RingFixedpointEncodeOp{scaling_base: u64, scaling_exp: u32},
     [
-        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float32_kernel),
-        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float64_kernel),
-        (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Ring64Tensor => [concrete] attributes[scaling_base, scaling_exp] Self::mir_kernel),
-        (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Ring128Tensor => [concrete] attributes[scaling_base, scaling_exp] Self::mir_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] Self::float32_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] Self::float64_kernel),
+        (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Ring64Tensor => [concrete] Self::mir_kernel),
+        (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Ring128Tensor => [concrete] Self::mir_kernel),
     ]
 }
-
-// modelled_kernel! {
-//     PlacementRingFixedpointEncode::fixedpoint_ring_encode, RingFixedpointEncodeOp{scaling_base: u64, scaling_exp: u32},
-//     [
-//         (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] Self::float32_kernel),
-//         (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] Self::float64_kernel),
-//         (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Ring64Tensor => [hybrid] Self::mir_kernel),
-//         (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Ring128Tensor => [hybrid] Self::mir_kernel),
-// ]
-// }
 
 modelled_kernel! {
     PlacementGather::gather, GatherOp,
@@ -2116,7 +2101,6 @@ modelled_kernel! {
         (HostPlacement, (Mirrored3Fixed128) -> HostFixed128Tensor => [hybrid] Self::fixed_kernel),
         (HostPlacement, (Mirrored3Float32) -> HostFloat32Tensor => [hybrid] Self::kernel),
         (HostPlacement, (Mirrored3Float64) -> HostFloat64Tensor => [hybrid] Self::kernel),
-
     ]
 }
 
