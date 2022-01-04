@@ -276,7 +276,6 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         RingNegOp::from_textual,
         HostShlDimOp::from_textual,
         HostBitDecOp::from_textual,
-        BitToRingOp::from_textual,
     ));
     alt((part1, part2, part3))(input)
 }
