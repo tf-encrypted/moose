@@ -1612,30 +1612,6 @@ impl FillOp {
         Ok(MirTen { values })
     }
 
-    pub(crate) fn rep_mir_ring64_kernel<S: Session, ShapeT, RingT>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        value: u64,
-        rep_shape: AbstractReplicatedShape<ShapeT>,
-    ) -> Result<MirTen<RingT>>
-    where
-        HostPlacement: PlacementFill<S, ShapeT, RingT>,
-    {
-        let (player0, player1, player2) = rep.host_placements();
-
-        let AbstractReplicatedShape {
-            shapes: [s0, s1, s2],
-        } = &rep_shape;
-
-        let values = [
-            player0.fill(sess, Constant::Ring64(value), s0),
-            player1.fill(sess, Constant::Ring64(value), s1),
-            player2.fill(sess, Constant::Ring64(value), s2),
-        ];
-
-        Ok(MirTen { values })
-    }
-
     pub(crate) fn mir_ring128_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         mir: &Mirrored3Placement,

@@ -1,6 +1,6 @@
 use crate::computation::*;
 use crate::error::Result;
-use crate::host::AbstractHostFixedTensor;
+use crate::host::{AbstractHostFixedTensor, AbstractHostRingTensor};
 use crate::kernels::*;
 use crate::replicated::AbstractMirroredFixedTensor;
 use serde::{Deserialize, Serialize};
@@ -75,6 +75,49 @@ impl IdentityOp {
             tensor: x_id,
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
+        })
+    }
+}
+impl GatherOp {
+    pub(crate) fn kernel<S: Session, R: Clone>(
+        sess: &S,
+        receiver: &HostPlacement,
+        xe: Mirrored3Tensor<R>,
+    ) -> Result<R>
+    where
+        HostPlacement: PlacementPlace<S, R>,
+        R: Placed<Placement = HostPlacement>,
+    {
+        let Mirrored3Tensor {
+            values: [x0, x1, x2],
+        } = xe.clone();
+
+        let mir_plc = xe.placement()?;
+        let (player0, player1, _player2) = &mir_plc.host_placements();
+
+        let res = match () {
+            _ if receiver == player0 => x0,
+            _ if receiver == player1 => x1,
+            _ => x2,
+            // we send it to player2 in case there's no one else to place the value on
+        };
+
+        Ok(receiver.place(sess, res))
+    }
+
+    pub(crate) fn fixed_kernel<S: Session, MirRingT, HostRingT>(
+        sess: &S,
+        receiver: &HostPlacement,
+        xe: AbstractMirroredFixedTensor<MirRingT>,
+    ) -> Result<AbstractHostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementGather<S, MirRingT, HostRingT>,
+    {
+        let x = receiver.gather(sess, &xe.tensor);
+        Ok(AbstractHostFixedTensor {
+            tensor: x,
+            fractional_precision: xe.fractional_precision,
+            integral_precision: xe.integral_precision,
         })
     }
 }

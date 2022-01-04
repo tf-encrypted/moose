@@ -1033,6 +1033,7 @@ impl ToTextual for Operator {
             Sigmoid(op) => op.to_textual(),
             Less(op) => op.to_textual(),
             GreaterThan(op) => op.to_textual(),
+            Gather(op) => op.to_textual(),
         }
     }
 }

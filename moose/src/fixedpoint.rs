@@ -128,7 +128,7 @@ impl IdentityOp {
     {
         match x {
             FixedTensor::Host(x) => Ok(FixedTensor::Host(plc.identity(sess, &x))),
-            FixedTensor::Mirrored3(x) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             // Ok(FixedTensor::Mirrored3(plc.identity(sess, &x))),
             FixedTensor::Replicated(x) => {
                 let x = plc.reveal(sess, &x);
@@ -154,7 +154,7 @@ impl IdentityOp {
             // TODO(Dragos) Here we should carefully see whether the all host placements of x
             // are the same with the replicated host placements. If not, then this should be shared amongst
             // the replicated placement, as in the previous case.
-            FixedTensor::Mirrored3(x) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(x) => Ok(FixedTensor::Replicated(plc.identity(sess, &x))),
         }
     }
@@ -177,18 +177,19 @@ impl FixedpointEncodeOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementFixedpointEncode<S, HostFloatT, HostFixedT>,
+        HostPlacement: PlacementGather<S, MirFloatT, HostFloatT>,
     {
-        match x {
-            FloatTensor::Host(x) => {
-                let x = plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
-                Ok(FixedTensor::Host(x))
-            }
-            FloatTensor::Mirrored3(x) => {
-                unimplemented!()
-                // let x = plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
-                // Ok(FixedTensor::Mirrored3(x))
-            }
-        }
+        let v = match x {
+            FloatTensor::Host(x) => x,
+            FloatTensor::Mirrored3(x) => plc.gather(sess, &x),
+        };
+
+        Ok(FixedTensor::Host(plc.fixedpoint_encode(
+            sess,
+            fractional_precision,
+            integral_precision,
+            &v,
+        )))
     }
 
     pub(crate) fn mir_fixed_kernel<
@@ -260,20 +261,17 @@ impl FixedpointDecodeOp {
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementFixedpointDecode<S, HostFixedT, HostFloatT>,
+        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
     {
         let v = match x {
-            FixedTensor::Host(v) => FloatTensor::Host(plc.fixedpoint_decode(sess, precision, &v)),
-            FixedTensor::Mirrored3(v) => {
-                unimplemented!()
-                // FloatTensor::Mirrored3(plc.fixedpoint_decode(sess, precision, &v))
-            }
-            FixedTensor::Replicated(v) => {
-                let v_clear = plc.reveal(sess, &v);
-                let y = plc.fixedpoint_decode(sess, precision, &v_clear);
-                FloatTensor::Host(y)
-            }
+            FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
-        Ok(v)
+
+        Ok(FloatTensor::Host(
+            plc.fixedpoint_decode(sess, precision, &v),
+        ))
     }
 
     fn hostfixed_kernel<S: Session, HostRingT, HostFloatT>(
@@ -356,12 +354,12 @@ impl FixedpointAddOp {
 
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(v) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(v) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -469,12 +467,12 @@ impl FixedpointSubOp {
     {
         let x = match x {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
@@ -494,12 +492,12 @@ impl FixedpointSubOp {
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(v) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(v) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -600,12 +598,12 @@ impl FixedpointMulOp {
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(v) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(v) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -713,12 +711,12 @@ impl FixedpointDivOp {
     {
         let x = match x {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
@@ -738,12 +736,12 @@ impl FixedpointDivOp {
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(v) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(v) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -812,12 +810,12 @@ impl FixedpointDotOp {
     {
         let x_revealed = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(x) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
         let y_revealed = match y {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(x) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -837,12 +835,12 @@ impl FixedpointDotOp {
     {
         let x_shared = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
-            FixedTensor::Mirrored3(x) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(x) => x,
         };
         let y_shared = match y {
             FixedTensor::Host(x) => plc.share(sess, &x),
-            FixedTensor::Mirrored3(x) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -914,7 +912,7 @@ impl FixedpointTruncPrOp {
     {
         let v = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(x) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -934,7 +932,7 @@ impl FixedpointTruncPrOp {
     {
         let v = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
-            FixedTensor::Mirrored3(x) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -1005,7 +1003,7 @@ impl FixedpointSumOp {
     {
         let v = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(x) => unimplemented!(),
+            FixedTensor::Mirrored3(_) => unimplemented!(),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 

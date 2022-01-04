@@ -308,6 +308,7 @@ impl Session for SyncSession {
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Less(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Gather(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -739,6 +740,7 @@ impl Session for AsyncSession {
             Less(op) => DispatchKernel::compile(&op, plc)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
             IndexAxis(op) => DispatchKernel::compile(&op, plc)?,
+            Gather(op) => DispatchKernel::compile(&op, plc)?,
             _ => todo!(),
         };
         kernel(self, operands)
@@ -989,6 +991,10 @@ pub trait PlacementLessThan<S: Session, T, U, O> {
 
 pub trait PlacementGreaterThan<S: Session, T, U, O> {
     fn greater_than(&self, sess: &S, x: &T, y: &U) -> O;
+}
+
+pub trait PlacementGather<S: Session, T, O> {
+    fn gather(&self, sess: &S, x: &T) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -2099,6 +2105,20 @@ kernel! {
 //         (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Ring128Tensor => [hybrid] Self::mir_kernel),
 // ]
 // }
+
+modelled_kernel! {
+    PlacementGather::gather, GatherOp,
+    [
+        (HostPlacement, (Mirrored3Ring64Tensor) -> HostRing64Tensor => [hybrid] Self::kernel),
+        (HostPlacement, (Mirrored3Ring128Tensor) -> HostRing128Tensor => [hybrid] Self::kernel),
+        (HostPlacement, (Mirrored3BitTensor) -> HostBitTensor => [hybrid] Self::kernel),
+        (HostPlacement, (Mirrored3Fixed64) -> HostFixed64Tensor => [hybrid] Self::fixed_kernel),
+        (HostPlacement, (Mirrored3Fixed128) -> HostFixed128Tensor => [hybrid] Self::fixed_kernel),
+        (HostPlacement, (Mirrored3Float32) -> HostFloat32Tensor => [hybrid] Self::kernel),
+        (HostPlacement, (Mirrored3Float64) -> HostFloat64Tensor => [hybrid] Self::kernel),
+
+    ]
+}
 
 #[derive(Default)]
 pub struct TestSyncExecutor {
