@@ -3219,9 +3219,46 @@ mod tests {
 
         let sess = SyncSession::default();
         let y = alice.slice(&sess, slice, &x);
+        // This example we take the last element of the last element in dimension 1, which is just 4.
         let target: ArrayD<u64> = array![[4]].into_dimensionality::<IxDyn>().unwrap();
 
         assert_eq!(y, HostRing64Tensor::from_raw_plc(target, alice))
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_tensor_slice_index_out_of_range() {
+        let x_backing: ArrayD<u64> = array![[1, 2], [3, 4]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
+
+        let slice = SliceInfo(vec![
+            SliceInfoElem {
+                start: -1,
+                end: None,
+                step: Some(2),
+            },
+            SliceInfoElem {
+                start: -1,
+                end: None,
+                step: Some(2),
+            },
+            SliceInfoElem {
+                start: -1,
+                end: None,
+                step: Some(2),
+            },
+        ]);
+
+        let sess = SyncSession::default();
+        let _y = alice.slice(&sess, slice, &x);
+        // This example we expect a panic from the underlying slice implementation.
+        let _target: ArrayD<u64> = array![[4]].into_dimensionality::<IxDyn>().unwrap();
     }
 
     #[test]
