@@ -14,11 +14,11 @@ impl<HostTenT> Placed for Mirrored3Tensor<HostTenT>
 where
     HostTenT: Placed<Placement = HostPlacement>,
 {
-    type Placement = Placement;
+    type Placement = Mirrored3Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
         // put a match in here depending on the placement
-        // 
+        //
         let Mirrored3Tensor {
             values: [x0, x1, x2],
         } = self;
@@ -29,18 +29,9 @@ where
 
         let owners = [owner0, owner1, owner2];
 
-        match Placement {
-            Placement::Mirrored3Placement => {
-                Ok(Mirrored3Placement {owners })
-            },
-            Placement::ReplicatedPlacement => {
-                Ok(ReplicatedPlacement {owners })
-            }
-            _ => unimplemented!()
-        }
+        Ok(Mirrored3Placement { owners })
     }
 }
-
 
 impl IdentityOp {
     pub(crate) fn host_mir3_kernel<S: Session, HostT>(
@@ -63,8 +54,11 @@ impl IdentityOp {
             _ if *plc == player0 => x0,
             _ if *plc == player1 => x1,
             _ => x2, // we send it to player2 in case there's no one else to place the value on
+                     // last case we re
         };
 
+        // TODO(Dragos)
+        // remove identity op; call identity at default case
         Ok(plc.identity(sess, x_plc))
     }
 
@@ -115,7 +109,6 @@ impl RingFixedpointEncodeOp {
     ) -> Result<Mirrored3Tensor<HostRingT>>
     where
         HostPlacement: PlacementRingFixedpointEncode<S, HostFloatT, HostRingT>,
-
     {
         let (player0, player1, player2) = plc.host_placements();
 

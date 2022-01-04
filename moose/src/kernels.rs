@@ -1852,7 +1852,6 @@ kernel! {
 kernel! {
     FillOp,
     [
-
         (HostPlacement, (HostShape) -> HostBitTensor => [runtime] custom |op| {
             use std::convert::TryInto;
             let value: u8 = match op.value {
@@ -1895,7 +1894,7 @@ kernel! {
                     Self::ring64_kernel(sess, rep, value, rep_shape)
                 }))
             }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring64Tensor => [concrete] custom |op| {
+        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Ring64Tensor => [concrete] custom |op| {
                 let value: u64 = match op.value {
                     Constant::Bit(v) => v as u64,
                     Constant::Ring64(v) => v,
@@ -1911,7 +1910,7 @@ kernel! {
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::mir_ring64_kernel(sess, rep, value, rep_shape)
                 }))
-            }),
+        }),
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [concrete] custom |op| {
                 let value: u128 = match op.value {
                     Constant::Bit(v) => v as u128,
@@ -2007,8 +2006,6 @@ kernel! {
     ]
 }
 
-
-
 kernel! {
     MuxOp,
     [
@@ -2093,7 +2090,6 @@ kernel! {
     ]
 }
 
-
 // modelled_kernel! {
 //     PlacementRingFixedpointEncode::fixedpoint_ring_encode, RingFixedpointEncodeOp{scaling_base: u64, scaling_exp: u32},
 //     [
@@ -2101,7 +2097,7 @@ kernel! {
 //         (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] Self::float64_kernel),
 //         (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Ring64Tensor => [hybrid] Self::mir_kernel),
 //         (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Ring128Tensor => [hybrid] Self::mir_kernel),
-   // ]
+// ]
 // }
 
 #[derive(Default)]

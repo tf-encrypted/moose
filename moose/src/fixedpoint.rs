@@ -205,7 +205,7 @@ impl FixedpointEncodeOp {
         integral_precision: u32,
         x: FloatTensor<HostFloatT, MirFloatT>,
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
-    where
+where
         // Mirrored3Placement: PlacementFixedpointEncode<S, MirFloatT, MirFixedT>,
     {
         unimplemented!()

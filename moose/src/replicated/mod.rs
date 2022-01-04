@@ -44,8 +44,7 @@ impl<S: Session, TenT> ShapeFill<S, TenT> for ReplicatedPlacement
 where
     TenT: MirroredCounterpart,
     Self: PlacementShape<S, TenT, m!(ReplicatedShape)>,
-    Self: PlacementFill<S, m!(ReplicatedShape), TenT::MirroredType>,
-
+    Mirrored3Placement: PlacementFill<S, m!(ReplicatedShape), TenT::MirroredType>,
     ReplicatedShape: KnownType<S>,
 {
     type Result = TenT::MirroredType;
@@ -57,30 +56,36 @@ where
         shape_from: &TenT,
     ) -> Self::Result {
         let shape = self.shape(sess, shape_from);
-        self.fill(sess, fill_value.into(), &shape)
+
+        let player0 = self.host_placements().0;
+        let player1 = self.host_placements().1;
+        let player2 = self.host_placements().2;
+
+        let mir = Mirrored3Placement {
+            owners: [player0.owner, player1.owner, player2.owner],
+        };
+        mir.fill(sess, fill_value.into(), &shape)
     }
 }
 
-impl<S: Session, TenT> ShapeFill<S, TenT> for Mirrored3Placement 
-where
-    Self: PlacementShape<S, TenT, m!(ReplicatedShape)>,
-    Self: PlacementFill<S, m!(ReplicatedShape), TenT>,
-    ReplicatedShape: KnownType<S>,
-{
-    type Result = TenT;
+// impl<S: Session, TenT> ShapeFill<S, TenT> for Mirrored3Placement
+// where
+//     Self: PlacementShape<S, TenT, m!(ReplicatedShape)>,
+//     Self: PlacementFill<S, m!(ReplicatedShape), TenT>,
+//     ReplicatedShape: KnownType<S>,
+// {
+//     type Result = TenT;
 
-    fn shape_fill<C: Into<Constant>>(
-        &self,
-        sess: &S,
-        fill_value: C,
-        shape_from: &TenT,
-    ) -> Self::Result {
-        let shape = self.shape(sess, shape_from);
-        self.fill(sess, fill_value.into(), &shape)
-    }
-}
-
-
+//     fn shape_fill<C: Into<Constant>>(
+//         &self,
+//         sess: &S,
+//         fill_value: C,
+//         shape_from: &TenT,
+//     ) -> Self::Result {
+//         let shape = self.shape(sess, shape_from);
+//         self.fill(sess, fill_value.into(), &shape)
+//     }
+// }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedRingTensor<HostRingT> {
@@ -1509,6 +1514,7 @@ impl AdtToRepOp {
 modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing64Tensor, FillOp);
 modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing128Tensor, FillOp);
 modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, FillOp);
+
 modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Ring64Tensor, FillOp);
 modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Ring128Tensor, FillOp);
 modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3BitTensor, FillOp);
@@ -1592,6 +1598,30 @@ impl FillOp {
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
         let (player0, player1, player2) = mir.host_placements();
+
+        let AbstractReplicatedShape {
+            shapes: [s0, s1, s2],
+        } = &rep_shape;
+
+        let values = [
+            player0.fill(sess, Constant::Ring64(value), s0),
+            player1.fill(sess, Constant::Ring64(value), s1),
+            player2.fill(sess, Constant::Ring64(value), s2),
+        ];
+
+        Ok(MirTen { values })
+    }
+
+    pub(crate) fn rep_mir_ring64_kernel<S: Session, ShapeT, RingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        value: u64,
+        rep_shape: AbstractReplicatedShape<ShapeT>,
+    ) -> Result<MirTen<RingT>>
+    where
+        HostPlacement: PlacementFill<S, ShapeT, RingT>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
 
         let AbstractReplicatedShape {
             shapes: [s0, s1, s2],
@@ -3263,6 +3293,10 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
+                let mir = Mirrored3Placement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
                 let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
                 let target_rep_mir = AbstractHostRingTensor::from_raw_plc(zs_mir, alice.clone());
                 let target_mir_rep = AbstractHostRingTensor::from_raw_plc(zmir_s, alice.clone());
@@ -3271,7 +3305,7 @@ mod tests {
 
                 let x_shared = rep.share(&sess, &x);
                 let y_mir: MirTen<AbstractHostRingTensor<$tt>> =
-                    rep.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
+                    mir.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
 
                 let result_rep_mir = rep.$test_func(&sess, &x_shared, &y_mir);
                 let opened_result = alice.reveal(&sess, &result_rep_mir);
@@ -3341,6 +3375,9 @@ mod tests {
                 let rep = ReplicatedPlacement {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
+                let mir3 = Mirrored3Placement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
 
                 let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
                 let target = AbstractHostRingTensor::from_raw_plc(zs, alice.clone());
@@ -3349,7 +3386,7 @@ mod tests {
 
                 let x_shared = rep.share(&sess, &x);
                 let y_mir: MirTen<AbstractHostRingTensor<$tt>> =
-                    rep.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
+                    mir3.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
 
                 let result_rep_mir = rep.$test_func(&sess, &x_shared, &y_mir);
                 let opened_result = alice.reveal(&sess, &result_rep_mir);
