@@ -262,18 +262,15 @@ impl FixedpointEncodeOp {
     }
 }
 
-modelled_kernel! {
-    PlacementFixedpointDecode::fixedpoint_decode, FixedpointDecodeOp{fractional_precision: u32},
-    [
-        (HostPlacement, (Fixed64Tensor) -> Float32Tensor => [concrete] Self::fixed_kernel),
-        (HostPlacement, (Fixed128Tensor) -> Float64Tensor => [concrete] Self::fixed_kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFloat32Tensor => [hybrid] Self::hostfixed_kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFloat64Tensor => [hybrid] Self::hostfixed_kernel),
-    ]
-}
-
 impl FixedpointDecodeOp {
-    fn fixed_kernel<S: Session, HostFixedT, RepFixedT, HostFloatT, MirFixedT, MirFloatT>(
+    pub(crate) fn fixed_kernel<
+        S: Session,
+        HostFixedT,
+        RepFixedT,
+        HostFloatT,
+        MirFixedT,
+        MirFloatT,
+    >(
         sess: &S,
         plc: &HostPlacement,
         precision: u32,
@@ -295,7 +292,49 @@ impl FixedpointDecodeOp {
         ))
     }
 
-    fn hostfixed_kernel<S: Session, HostRingT, HostFloatT>(
+    pub(crate) fn mir_fixed_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostFloatT,
+        MirFloatT,
+    >(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        precision: u32,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FloatTensor<HostFloatT, MirFloatT>>
+    where
+        Mirrored3Placement: PlacementFixedpointDecode<S, MirFixedT, MirFloatT>,
+    {
+        let v = match x {
+            FixedTensor::Mirrored3(v) => v,
+            // broadcast
+            FixedTensor::Host(v) => unimplemented!(),
+            // reveal
+            FixedTensor::Replicated(v) => unimplemented!(),
+        };
+
+        Ok(FloatTensor::Mirrored3(
+            plc.fixedpoint_decode(sess, precision, &v),
+        ))
+    }
+
+    pub(crate) fn mir_fixed_lower_kernel<S: Session, MirFloatT, MirRingT>(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        precision: u32,
+        x: AbstractMirroredFixedTensor<MirRingT>,
+    ) -> Result<MirFloatT>
+    where
+        Mirrored3Placement: PlacementRingFixedpointDecode<S, MirRingT, MirFloatT>,
+    {
+        let tensor = plc.fixedpoint_ring_decode(sess, 2, precision, &x.tensor);
+        Ok(tensor)
+    }
+
+    pub(crate) fn hostfixed_kernel<S: Session, HostRingT, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
         precision: u32,

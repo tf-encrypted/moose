@@ -168,3 +168,30 @@ impl RingFixedpointEncodeOp {
         })
     }
 }
+
+impl RingFixedpointDecodeOp {
+    pub(crate) fn mir_kernel<S: Session, HostRingT, HostFloatT>(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: Mirrored3Tensor<HostRingT>,
+    ) -> Result<Mirrored3Tensor<HostFloatT>>
+    where
+        HostPlacement: PlacementRingFixedpointDecode<S, HostRingT, HostFloatT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+
+        let Mirrored3Tensor {
+            values: [x0, x1, x2],
+        } = &x;
+
+        let y0 = player0.fixedpoint_ring_decode(sess, scaling_base, scaling_exp, x0);
+        let y1 = player1.fixedpoint_ring_decode(sess, scaling_base, scaling_exp, x1);
+        let y2 = player2.fixedpoint_ring_decode(sess, scaling_base, scaling_exp, x2);
+
+        Ok(Mirrored3Tensor {
+            values: [y0, y1, y2],
+        })
+    }
+}
