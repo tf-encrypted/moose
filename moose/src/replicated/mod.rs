@@ -57,13 +57,12 @@ where
     ) -> Self::Result {
         let shape = self.shape(sess, shape_from);
 
-        let player0 = self.host_placements().0;
-        let player1 = self.host_placements().1;
-        let player2 = self.host_placements().2;
+        let (player0, player1, player2) = self.host_placements();
 
         let mir = Mirrored3Placement {
             owners: [player0.owner, player1.owner, player2.owner],
         };
+
         mir.fill(sess, fill_value.into(), &shape)
     }
 }

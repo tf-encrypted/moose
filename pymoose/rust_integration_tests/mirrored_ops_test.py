@@ -23,8 +23,7 @@ class MirroredOpsExample(parameterized.TestCase):
                 x = edsl.constant(np.array([1.5, 2.3, 3, 3], dtype=np.float64))
                 x = edsl.cast(x, dtype=edsl.fixed(8, 27))
             with alice:
-                y = edsl.identity(x)
-                y = edsl.cast(y, dtype=edsl.float64)
+                y = edsl.cast(x, dtype=edsl.float64)
 
             return y
 

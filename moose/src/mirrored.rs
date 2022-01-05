@@ -17,8 +17,6 @@ where
     type Placement = Mirrored3Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        // put a match in here depending on the placement
-        //
         let Mirrored3Tensor {
             values: [x0, x1, x2],
         } = self;
