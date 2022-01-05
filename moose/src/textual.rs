@@ -5,7 +5,7 @@ use crate::prim::{RawPrfKey, RawSeed, SyncKey};
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
-    character::complete::{alpha1, alphanumeric1, char, digit1, multispace1, space0},
+    character::complete::{alpha1, alphanumeric1, char, multispace1, space0},
     combinator::{all_consuming, cut, eof, map, map_opt, map_res, opt, recognize, value, verify},
     error::{
         context, convert_error, make_error, ContextError, ErrorKind, ParseError, VerboseError,
@@ -663,8 +663,26 @@ pub fn slice_info_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str
 pub fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, O, E> {
-    map_res(digit1, |s: &str| s.parse::<O>())(input)
-        .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
+    // let mut parser = map(space0, |s: &str|, s.parse::<O>());
+    // We want to manipulate the result into the return type. 
+    match map(space0, |s: &str| s.parse::<O>())(input) {
+        Ok(o) => {
+            match o.1{
+                Ok(o2) => {
+                    Ok((o.0, o2))
+
+                },
+                Err(e) => {
+                    nom::Err(make_error(input, ErrorKind::MapRes))
+                }
+            }
+        },
+        Err(e) => Err(("failed parse", None)),
+    }
+        //  .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
+
+    // map(space0, |s: &str| s.parse::<O>())(input)
+    //     .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 }
 
 /// Parses a single byte, writte as two hex character.
