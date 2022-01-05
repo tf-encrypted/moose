@@ -68,25 +68,6 @@ where
     }
 }
 
-// impl<S: Session, TenT> ShapeFill<S, TenT> for Mirrored3Placement
-// where
-//     Self: PlacementShape<S, TenT, m!(ReplicatedShape)>,
-//     Self: PlacementFill<S, m!(ReplicatedShape), TenT>,
-//     ReplicatedShape: KnownType<S>,
-// {
-//     type Result = TenT;
-
-//     fn shape_fill<C: Into<Constant>>(
-//         &self,
-//         sess: &S,
-//         fill_value: C,
-//         shape_from: &TenT,
-//     ) -> Self::Result {
-//         let shape = self.shape(sess, shape_from);
-//         self.fill(sess, fill_value.into(), &shape)
-//     }
-// }
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedRingTensor<HostRingT> {
     pub shares: [[HostRingT; 2]; 3],
