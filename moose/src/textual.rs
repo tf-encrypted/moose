@@ -664,7 +664,7 @@ pub fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str> + Context
     input: &'a str,
 ) -> IResult<&'a str, O, E> {
     // let mut parser = map(space0, |s: &str|, s.parse::<O>());
-    // We want to manipulate the result into the return type. 
+    // We want to manipulate the result into the proper return type. 
     match map(space0, |s: &str| s.parse::<O>())(input) {
         Ok(o) => {
             match o.1{
@@ -673,13 +673,17 @@ pub fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str> + Context
 
                 },
                 Err(e) => {
-                    nom::Err(make_error(input, ErrorKind::MapRes))
-                }
+                    use nom::Err;
+                    Err(Err::Error(E::from_error_kind(input, ErrorKind::MapRes)))
+                },
             }
         },
-        Err(e) => Err(("failed parse", None)),
+        Err(e) => {
+            use nom::Err;
+            Err(Err::Error(E::from_error_kind(input, ErrorKind::MapRes)))
+        },
     }
-        //  .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
+    //  .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 
     // map(space0, |s: &str| s.parse::<O>())(input)
     //     .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
