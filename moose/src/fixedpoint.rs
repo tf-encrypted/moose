@@ -132,7 +132,7 @@ impl IdentityOp {
             FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
-        Ok(FixedTensor::Host(plc.identity(sess, &v)))
+        Ok(FixedTensor::Host(v))
     }
 
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
@@ -144,17 +144,16 @@ impl IdentityOp {
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementIdentity<S, RepFixedT, RepFixedT>,
     {
-        match x {
-            FixedTensor::Host(x) => {
-                let x = plc.share(sess, &x);
-                Ok(FixedTensor::Replicated(plc.identity(sess, &x)))
-            }
+        let v = match x {
+            FixedTensor::Host(x) => plc.share(sess, &x),
             // TODO(Dragos) Here we should carefully see whether the all host placements of x
             // are the same with the replicated host placements. If not, then this should be shared amongst
             // the replicated placement, as in the previous case.
             FixedTensor::Mirrored3(_) => unimplemented!(),
-            FixedTensor::Replicated(x) => Ok(FixedTensor::Replicated(plc.identity(sess, &x))),
-        }
+            FixedTensor::Replicated(x) => x,
+        };
+
+        Ok(FixedTensor::Replicated(plc.identity(sess, &v)))
     }
 }
 

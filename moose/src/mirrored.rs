@@ -34,32 +34,30 @@ where
 }
 
 impl IdentityOp {
-    pub(crate) fn host_mir3_kernel<S: Session, HostT>(
+    pub(crate) fn host_mir3_kernel<S: Session, HostT: Clone>(
         sess: &S,
         plc: &HostPlacement,
-        x: Mirrored3Tensor<HostT>,
+        xe: Mirrored3Tensor<HostT>,
     ) -> Result<HostT>
     where
+        HostPlacement: PlacementPlace<S, HostT>,
         HostT: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementIdentity<S, HostT, HostT>,
     {
-        let mir_plc = x.placement()?;
-        let (player0, player1, _player2) = mir_plc.host_placements();
-
         let Mirrored3Tensor {
             values: [x0, x1, x2],
-        } = &x;
+        } = xe.clone();
 
-        let x_plc = match () {
-            _ if *plc == player0 => x0,
-            _ if *plc == player1 => x1,
-            _ => x2, // we send it to player2 in case there's no one else to place the value on
-                     // last case we re
+        let mir_plc = xe.placement()?;
+        let (player0, player1, _player2) = &mir_plc.host_placements();
+
+        let res = match () {
+            _ if plc == player0 => x0,
+            _ if plc == player1 => x1,
+            _ => x2,
+            // we send it to player2 in case there's no one else to place the value on
         };
 
-        // TODO(Dragos)
-        // remove identity op; call identity at default case
-        Ok(plc.identity(sess, x_plc))
+        Ok(plc.place(sess, res))
     }
 
     pub(crate) fn host_mir3_fixed_kernel<S: Session, MirRingT, HostRingT>(
@@ -78,6 +76,7 @@ impl IdentityOp {
         })
     }
 }
+
 impl GatherOp {
     pub(crate) fn kernel<S: Session, R: Clone>(
         sess: &S,
