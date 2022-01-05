@@ -839,11 +839,11 @@ impl CastOp {
         sig: Signature,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
-where
-        // Mirrored3Placement: PlacementFixedpointDecode<S, Fixed64T, Float32T>,
-        // Mirrored3Placement: PlacementFixedpointDecode<S, Fixed128T, Float64T>,
-        // Mirrored3Placement: PlacementFixedpointEncode<S, Float32T, Fixed64T>,
-        // Mirrored3Placement: PlacementFixedpointEncode<S, Float64T, Fixed128T>,
+    where
+        Mirrored3Placement: PlacementFixedpointDecode<S, Fixed64T, Float32T>,
+        Mirrored3Placement: PlacementFixedpointDecode<S, Fixed128T, Float64T>,
+        Mirrored3Placement: PlacementFixedpointEncode<S, Float32T, Fixed64T>,
+        Mirrored3Placement: PlacementFixedpointEncode<S, Float64T, Fixed128T>,
     {
         let arg0_precision = match sig.arg(0) {
             Ok(Ty::Tensor(TensorDType::Fixed64 {
@@ -856,48 +856,46 @@ where
             })) => Some((integral_precision, fractional_precision)),
             _ => None,
         };
-        unimplemented!()
 
-        // match (x, sig.ret()) {
-        //     (AbstractTensor::Fixed64(x), Ty::Tensor(TensorDType::Float32)) => {
-        //         unimplemented!()
-        //         // let (_, fractional_precision) = arg0_precision.unwrap();
-        //         // let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
-        //         // Ok(AbstractTensor::Float32(inner))
-        //     }
-        //     (AbstractTensor::Fixed128(x), Ty::Tensor(TensorDType::Float64)) => {
-        //         unimplemented!()
-        //         // let (_, fractional_precision) = arg0_precision.unwrap();
-        //         // let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
-        //         // Ok(AbstractTensor::Float64(inner))
-        //     }
-        //     (
-        //         AbstractTensor::Float32(x),
-        //         Ty::Tensor(TensorDType::Fixed64 {
-        //             fractional_precision,
-        //             integral_precision,
-        //         }),
-        //     ) => {
-        //         let inner =
-        //             plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
-        //         Ok(AbstractTensor::Fixed64(inner))
-        //     }
-        //     (
-        //         AbstractTensor::Float64(x),
-        //         Ty::Tensor(TensorDType::Fixed128 {
-        //             fractional_precision,
-        //             integral_precision,
-        //         }),
-        //     ) => {
-        //         let inner =
-        //             plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
-        //         Ok(AbstractTensor::Fixed128(inner))
-        //     }
-        //     (x, ret) => Err(Error::UnimplementedOperator(format!(
-        //         "Cast operator does not support casting of {:?} to {:?}",
-        //         &x.ty_desc(),
-        //         &ret
-        //     ))),
+        match (x, sig.ret()) {
+            (AbstractTensor::Fixed64(x), Ty::Tensor(TensorDType::Float32)) => {
+                let (_, fractional_precision) = arg0_precision.unwrap();
+                let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
+                Ok(AbstractTensor::Float32(inner))
+            }
+            (AbstractTensor::Fixed128(x), Ty::Tensor(TensorDType::Float64)) => {
+                let (_, fractional_precision) = arg0_precision.unwrap();
+                let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
+                Ok(AbstractTensor::Float64(inner))
+            }
+            (
+                AbstractTensor::Float32(x),
+                Ty::Tensor(TensorDType::Fixed64 {
+                    fractional_precision,
+                    integral_precision,
+                }),
+            ) => {
+                let inner =
+                    plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
+                Ok(AbstractTensor::Fixed64(inner))
+            }
+            (
+                AbstractTensor::Float64(x),
+                Ty::Tensor(TensorDType::Fixed128 {
+                    fractional_precision,
+                    integral_precision,
+                }),
+            ) => {
+                let inner =
+                    plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
+                Ok(AbstractTensor::Fixed128(inner))
+            }
+            (x, ret) => Err(Error::UnimplementedOperator(format!(
+                "Cast operator does not support casting of {:?} to {:?}",
+                &x.ty_desc(),
+                &ret
+            ))),
+        }
     }
 }
 

@@ -3,10 +3,9 @@
 use crate::boolean::{BoolTensor, BooleanTensor};
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
+use crate::floatingpoint::FloatTensor;
 use crate::host::*;
 use crate::kernels::*;
-use crate::mirrored::Mirrored3Tensor;
 use crate::replicated::*;
 use crate::symbolic::Symbolic;
 use macros::with_context;
@@ -311,9 +310,9 @@ impl FixedpointDecodeOp {
         let v = match x {
             FixedTensor::Mirrored3(v) => v,
             // broadcast
-            FixedTensor::Host(v) => unimplemented!(),
+            FixedTensor::Host(_v) => unimplemented!(),
             // reveal
-            FixedTensor::Replicated(v) => unimplemented!(),
+            FixedTensor::Replicated(_v) => unimplemented!(),
         };
 
         Ok(FloatTensor::Mirrored3(
