@@ -388,23 +388,8 @@ impl RepSetupOp {
     }
 }
 
-modelled_kernel! {
-    PlacementShare::share, RepShareOp,
-    [
-        (ReplicatedPlacement, (HostFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::fixed_kernel),
-        (ReplicatedPlacement, (HostFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::fixed_kernel),
-        (ReplicatedPlacement, (HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_kernel),
-        (ReplicatedPlacement, (HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_kernel),
-        (ReplicatedPlacement, (HostBitTensor) -> ReplicatedBitTensor => [hybrid] Self::ring_kernel),
-        (ReplicatedPlacement, (HostBitArray64) -> ReplicatedBitArray64 => [concrete] Self::array_kernel),
-        (ReplicatedPlacement, (HostBitArray128) -> ReplicatedBitArray128 => [concrete] Self::array_kernel),
-        (ReplicatedPlacement, (HostBitArray224) -> ReplicatedBitArray224 => [concrete] Self::array_kernel),
-        (ReplicatedPlacement, (HostAesKey) -> ReplicatedAesKey => [concrete] Self::aeskey_kernel),
-    ]
-}
-
 impl RepShareOp {
-    fn aeskey_kernel<S: Session, HostBitArrayT, RepBitArrayT>(
+    pub(crate) fn aeskey_kernel<S: Session, HostBitArrayT, RepBitArrayT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         key: AbstractHostAesKey<HostBitArrayT>,
@@ -416,7 +401,7 @@ impl RepShareOp {
         Ok(AbstractReplicatedAesKey(bit_array))
     }
 
-    fn fixed_kernel<S: Session, HostRingT, RepRingT>(
+    pub(crate) fn fixed_kernel<S: Session, HostRingT, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractHostFixedTensor<HostRingT>,
@@ -431,7 +416,7 @@ impl RepShareOp {
         })
     }
 
-    fn array_kernel<S: Session, HostBitTensorT, RepBitTensorT, N: Const>(
+    pub(crate) fn array_kernel<S: Session, HostBitTensorT, RepBitTensorT, N: Const>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractHostBitArray<HostBitTensorT, N>,
@@ -443,7 +428,7 @@ impl RepShareOp {
         Ok(AbstractReplicatedBitArray(shared_tensor, x.1))
     }
 
-    fn ring_kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
+    pub(crate) fn ring_kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: RingT,

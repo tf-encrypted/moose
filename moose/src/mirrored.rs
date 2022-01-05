@@ -2,7 +2,7 @@ use crate::computation::*;
 use crate::error::Result;
 use crate::host::AbstractHostFixedTensor;
 use crate::kernels::*;
-use crate::replicated::AbstractMirroredFixedTensor;
+use crate::replicated::{AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -170,5 +170,46 @@ impl RingFixedpointDecodeOp {
         Ok(Mirrored3Tensor {
             values: [y0, y1, y2],
         })
+    }
+}
+
+impl RepShareOp {
+    pub(crate) fn fixed_mir_kernel<S: Session, MirRingT, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractMirroredFixedTensor<MirRingT>,
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, MirRingT, RepRingT>,
+    {
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: plc.share(sess, &x.tensor),
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+
+    pub(crate) fn ring_mir_kernel<S: Session, HostRingT, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        xe: Mirrored3Tensor<HostRingT>,
+    ) -> Result<RepRingT>
+    where
+        HostRingT: Clone,
+        ReplicatedPlacement: PlacementShare<S, HostRingT, RepRingT>,
+
+        HostPlacement: PlacementPlace<S, HostRingT>,
+        HostRingT: Placed<Placement = HostPlacement>,
+    {
+        let Mirrored3Tensor {
+            values: [x0, _x1, _x2],
+        } = xe;
+
+        // TODO(Dragos) Here we can insert various optimizations:
+        // 1) if the mirrored placement is the same with the replicated placement then we don't need to
+        // do any sharing.
+        // 2) If (2,3) parties know the secret then there's no need to share this
+        // 3) If intersect(mir, rep) = player then make sure the sharing happens on player (not someone else)
+        Ok(plc.share(sess, &x0))
     }
 }

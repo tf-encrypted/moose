@@ -400,22 +400,17 @@ impl FixedpointAddOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementAdd<S, RepFixedT, RepFixedT, RepFixedT>,
     {
-        // (p0, p1, p2) -> x mirrored
-        // (p0, p1, p2) -> y mirrored
-        // rep: (alice, bob, charlie)
-
-        // p0 = alice, p1 = bob;
-
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -520,15 +515,16 @@ impl FixedpointSubOp {
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementSub<S, HostFixedT, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
@@ -545,15 +541,16 @@ impl FixedpointSubOp {
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementSub<S, RepFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -626,15 +623,16 @@ impl FixedpointMulOp {
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementMul<S, HostFixedT, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(_v) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(_v) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
@@ -651,15 +649,16 @@ impl FixedpointMulOp {
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementMul<S, RepFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -764,15 +763,16 @@ impl FixedpointDivOp {
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementDiv<S, HostFixedT, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
@@ -788,16 +788,17 @@ impl FixedpointDivOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementDiv<S, RepFixedT, RepFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -863,15 +864,16 @@ impl FixedpointDotOp {
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementDot<S, HostFixedT, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
     {
         let x_revealed = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
         let y_revealed = match y {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -887,16 +889,17 @@ impl FixedpointDotOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementDot<S, RepFixedT, RepFixedT, RepFixedT>,
     {
         let x_shared = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
         let y_shared = match y {
             FixedTensor::Host(x) => plc.share(sess, &x),
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -964,11 +967,12 @@ impl FixedpointTruncPrOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementTruncPr<S, HostFixedT, HostFixedT>,
     {
         let v = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -984,11 +988,12 @@ impl FixedpointTruncPrOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepFixedT, RepFixedT>,
     {
         let v = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -1055,11 +1060,12 @@ impl FixedpointSumOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementSum<S, HostFixedT, HostFixedT>,
     {
         let v = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -1075,11 +1081,12 @@ impl FixedpointSumOp {
     ) -> Result<FixedTensor<RingT, MirT, RepT>>
     where
         ReplicatedPlacement: PlacementShare<S, RingT, RepT>,
+        ReplicatedPlacement: PlacementShare<S, MirT, RepT>,
         ReplicatedPlacement: PlacementSum<S, RepT, RepT>,
     {
         let x_shared = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
-            FixedTensor::Mirrored3(_x) => unimplemented!(),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -1132,11 +1139,12 @@ impl IndexAxisOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementIndexAxis<S, RepFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_v) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.index_axis(sess, axis, index, &x);
@@ -1152,11 +1160,12 @@ impl IndexAxisOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementIndexAxis<S, HostFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
-            FixedTensor::Mirrored3(_v) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
             FixedTensor::Host(v) => v,
         };
         let z = plc.index_axis(sess, axis, index, &x);
@@ -1208,11 +1217,12 @@ impl ShapeOp {
     ) -> Result<HostShapeT>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementShape<S, HostFixedT, HostShapeT>,
     {
         let x_revealed = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(_x) => unimplemented!(),
+            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -1226,11 +1236,12 @@ impl ShapeOp {
     ) -> Result<RepShapeT>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementShape<S, RepFixedT, RepShapeT>,
     {
         let x_shared = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
-            FixedTensor::Mirrored3(_x) => unimplemented!(),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
