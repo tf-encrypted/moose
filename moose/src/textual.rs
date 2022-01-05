@@ -666,8 +666,8 @@ pub fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str> + Context
         recognize(tuple((opt(alt((tag("-"), tag("+")))), digit1))),
         |s: &str| s.parse::<O>(),
     )(input)
-        .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
-   }
+    .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
+}
 
 /// Parses a single byte, writte as two hex character.
 ///
