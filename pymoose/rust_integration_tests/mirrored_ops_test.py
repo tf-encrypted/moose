@@ -24,6 +24,7 @@ class MirroredOpsExample(parameterized.TestCase):
                 x = edsl.cast(x, dtype=edsl.fixed(8, 27))
             with alice:
                 y = edsl.identity(x)
+                y = edsl.cast(y, dtype=edsl.float64)
 
             return y
 
@@ -45,8 +46,10 @@ class MirroredOpsExample(parameterized.TestCase):
         )
 
         actual_result = list(result_dict.values())[0]
-        np.testing.assert_equal(actual_result[0], 1.5)
-        np.testing.assert_equal(actual_result[1], 2.3)
+
+        np.testing.assert_almost_equal(actual_result[0], 1.5)
+        np.testing.assert_almost_equal(actual_result[1], 2.3)
+        np.testing.assert_almost_equal(actual_result[2], 3)
 
 
 if __name__ == "__main__":

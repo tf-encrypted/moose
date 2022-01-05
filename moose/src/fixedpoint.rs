@@ -125,16 +125,14 @@ impl IdentityOp {
     where
         HostPlacement: PlacementIdentity<S, HostFixedT, HostFixedT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
     {
-        match x {
-            FixedTensor::Host(x) => Ok(FixedTensor::Host(plc.identity(sess, &x))),
-            FixedTensor::Mirrored3(_) => unimplemented!(),
-            // Ok(FixedTensor::Mirrored3(plc.identity(sess, &x))),
-            FixedTensor::Replicated(x) => {
-                let x = plc.reveal(sess, &x);
-                Ok(FixedTensor::Host(plc.identity(sess, &x)))
-            }
-        }
+        let v = match x {
+            FixedTensor::Host(x) => x,
+            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
+            FixedTensor::Replicated(x) => plc.reveal(sess, &x),
+        };
+        Ok(FixedTensor::Host(plc.identity(sess, &v)))
     }
 
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
