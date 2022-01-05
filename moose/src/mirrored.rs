@@ -122,26 +122,6 @@ impl GatherOp {
     }
 }
 
-// impl FixedpointEncodeOp {
-//     pub(crate) fn mir_fixed_lower_kernel<S: Session, MirFloatT, MirRingT>(
-//         sess: &S,
-//         plc: &Mirrored3Placement,
-//         fractional_precision: u32,
-//         integral_precision: u32,
-//         x: MirFloatT,
-//     ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
-//     where
-//         Mirrored3Placement: PlacementRingFixedpointEncode<S, MirFloatT, MirRingT>,
-//     {
-//         let y = plc.fixedpoint_ring_encode(sess, 2, fractional_precision, &x);
-//         Ok(AbstractMirroredFixedTensor {
-//             tensor: y,
-//             fractional_precision,
-//             integral_precision,
-//         })
-//     }
-// }
-
 impl RingFixedpointEncodeOp {
     pub(crate) fn mir_kernel<S: Session, HostFloatT, HostRingT>(
         sess: &S,
