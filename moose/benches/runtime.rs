@@ -75,7 +75,7 @@ fn runtime_two_hosts(c: &mut Criterion) {
 }
 
 fn runtime_rep_computation(c: &mut Criterion) {
-    let source = include_str!("./rep_computation.mpc");
+    let source = include_str!("./rep_computation.moose");
     let computation: Computation = source.try_into().unwrap();
     let computation = compile_passes(&computation, &[Pass::Networking, Pass::Toposort]).unwrap();
 
