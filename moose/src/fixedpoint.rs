@@ -143,13 +143,11 @@ impl IdentityOp {
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementIdentity<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
     {
         let v = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
-            // TODO(Dragos) Here we should carefully see whether the all host placements of x
-            // are the same with the replicated host placements. If not, then this should be shared amongst
-            // the replicated placement, as in the previous case.
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -1283,11 +1281,12 @@ impl FixedpointMeanOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementMean<S, HostFixedT, HostFixedT>,
     {
         let x_revealed = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(_) => unimplemented!(),
+            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -1304,10 +1303,11 @@ impl FixedpointMeanOp {
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementMean<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
     {
         let x_shared = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
-            FixedTensor::Mirrored3(_x) => unimplemented!(),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -1454,11 +1454,12 @@ impl Pow2Op {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementPow2<S, RepFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_v) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.pow2(sess, &x);
@@ -1485,11 +1486,12 @@ impl ExpOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_v) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.exp(sess, &x);
@@ -1511,11 +1513,12 @@ impl SigmoidOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementSigmoid<S, RepFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_v) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.sigmoid(sess, &x);
@@ -1624,15 +1627,16 @@ impl LessOp {
     where
         HostPlacement: PlacementLessThan<S, HostFixedT, HostFixedT, HostBitT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(_v) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(_v) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let z = plc.less(sess, &x, &y);
@@ -1655,15 +1659,16 @@ impl LessOp {
     where
         ReplicatedPlacement: PlacementLessThan<S, RepFixedT, RepFixedT, RepBitT>,
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_v) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_v) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.less(sess, &x, &y);
@@ -1807,6 +1812,7 @@ impl MuxOp {
         ReplicatedPlacement: PlacementMux<S, RepBitT, RepFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementShare<S, HostBitT, RepBitT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
     {
         let s = match s {
             BoolTensor::Host(v) => plc.share(sess, &v),
@@ -1814,12 +1820,12 @@ impl MuxOp {
         };
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_v) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(_v) => unimplemented!(),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
