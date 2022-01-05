@@ -1454,8 +1454,8 @@ modelled_kernel! {
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
-        (HostPlacement, (Mirrored3Fixed64) -> HostFixed64Tensor => [hybrid] Self::host_mir3_fixed_kernel),
-        (HostPlacement, (Mirrored3Fixed128) -> HostFixed128Tensor => [hybrid] Self::host_mir3_fixed_kernel),
+        (HostPlacement, (Mirrored3Fixed64Tensor) -> HostFixed64Tensor => [hybrid] Self::host_mir3_fixed_kernel),
+        (HostPlacement, (Mirrored3Fixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::host_mir3_fixed_kernel),
         (HostPlacement, (Mirrored3Float32) -> HostFloat32Tensor => [hybrid] Self::host_mir3_kernel),
         (HostPlacement, (Mirrored3Float64) -> HostFloat64Tensor => [hybrid] Self::host_mir3_kernel),
         (HostPlacement, (Mirrored3Ring64Tensor) -> HostRing64Tensor => [hybrid] Self::host_mir3_kernel),
@@ -1820,13 +1820,13 @@ kernel! {
         (ReplicatedPlacement, (crate::logical::Tensor, crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_rep_kernel),
         (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> BooleanTensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> BooleanTensor => [concrete] Self::fixed_rep_kernel),
-        (ReplicatedPlacement, (Mirrored3Fixed64, ReplicatedFixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
-        (ReplicatedPlacement, (Mirrored3Fixed128, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
         (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::mir_rep_kernel),
         (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::mir_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_mir_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
@@ -1840,13 +1840,13 @@ kernel! {
     [
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
-        (ReplicatedPlacement, (Mirrored3Fixed128, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
-        (ReplicatedPlacement, (Mirrored3Fixed64, ReplicatedFixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
         (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::mir_rep_kernel),
         (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::mir_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_mir_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
@@ -1979,7 +1979,7 @@ kernel! {
                     Self::mir_bit_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Fixed64 => [hybrid] custom |op| {
+        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Fixed64Tensor => [hybrid] custom |op| {
                 let (ring_value, fractional_precision, integral_precision) = match op.value {
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
                         let ring_value: u64 = (value * ((1u64 << precision) as f64)) as u64;
@@ -1988,13 +1988,13 @@ kernel! {
                         (ring_value, fractional_precision, integral_precision)
                     },
                     _ => return Err(Error::UnimplementedOperator(
-                        format!("Cannot fill from {:?} into a Mirrored3Fixed64", op.value.ty()))),
+                        format!("Cannot fill from {:?} into a Mirrored3Fixed64Tensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::mir_fixed_kernel(sess, rep, Constant::Ring64(ring_value), rep_shape, fractional_precision, integral_precision)
                 }))
         }),
-        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Fixed128 => [hybrid] custom |op| {
+        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Fixed128Tensor => [hybrid] custom |op| {
                 let (ring_value, fractional_precision, integral_precision) = match op.value {
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
                         let ring_value: u128 = (value * ((1u128 << precision) as f64)) as u128;
@@ -2003,7 +2003,7 @@ kernel! {
                         (ring_value, fractional_precision, integral_precision)
                     },
                     _ => return Err(Error::UnimplementedOperator(
-                        format!("Cannot fill from {:?} into a Mirrored3Fixed128", op.value.ty()))),
+                        format!("Cannot fill from {:?} into a Mirrored3Fixed128Tensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::mir_fixed_kernel(sess, rep, Constant::Ring128(ring_value), rep_shape, fractional_precision, integral_precision)
@@ -2076,8 +2076,8 @@ modelled_kernel! {
         (HostPlacement, (HostFloat64Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
         (Mirrored3Placement, (Float32Tensor) -> Fixed64Tensor => [concrete] Self::mir_fixed_kernel),
         (Mirrored3Placement, (Float64Tensor) -> Fixed128Tensor => [concrete] Self::mir_fixed_kernel),
-        (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Fixed64 => [hybrid] Self::mir_fixed_lower_kernel),
-        (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Fixed128 => [hybrid] Self::mir_fixed_lower_kernel),
+        (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Fixed64Tensor => [hybrid] Self::mir_fixed_lower_kernel),
+        (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Fixed128Tensor => [hybrid] Self::mir_fixed_lower_kernel),
     ]
 }
 
@@ -2100,8 +2100,8 @@ modelled_kernel! {
         (HostPlacement, (HostFixed128Tensor) -> HostFloat64Tensor => [hybrid] Self::hostfixed_kernel),
         (Mirrored3Placement, (Fixed64Tensor) -> Float32Tensor => [concrete] Self::mir_fixed_kernel),
         (Mirrored3Placement, (Fixed128Tensor) -> Float64Tensor => [concrete] Self::mir_fixed_kernel),
-        (Mirrored3Placement, (Mirrored3Fixed64) -> Mirrored3Float32 => [hybrid] Self::mir_fixed_lower_kernel),
-        (Mirrored3Placement, (Mirrored3Fixed128) -> Mirrored3Float64 => [hybrid] Self::mir_fixed_lower_kernel),
+        (Mirrored3Placement, (Mirrored3Fixed64Tensor) -> Mirrored3Float32 => [hybrid] Self::mir_fixed_lower_kernel),
+        (Mirrored3Placement, (Mirrored3Fixed128Tensor) -> Mirrored3Float64 => [hybrid] Self::mir_fixed_lower_kernel),
     ]
 }
 
@@ -2121,8 +2121,8 @@ modelled_kernel! {
         (HostPlacement, (Mirrored3Ring64Tensor) -> HostRing64Tensor => [hybrid] Self::kernel),
         (HostPlacement, (Mirrored3Ring128Tensor) -> HostRing128Tensor => [hybrid] Self::kernel),
         (HostPlacement, (Mirrored3BitTensor) -> HostBitTensor => [hybrid] Self::kernel),
-        (HostPlacement, (Mirrored3Fixed64) -> HostFixed64Tensor => [hybrid] Self::fixed_kernel),
-        (HostPlacement, (Mirrored3Fixed128) -> HostFixed128Tensor => [hybrid] Self::fixed_kernel),
+        (HostPlacement, (Mirrored3Fixed64Tensor) -> HostFixed64Tensor => [hybrid] Self::fixed_kernel),
+        (HostPlacement, (Mirrored3Fixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::fixed_kernel),
         (HostPlacement, (Mirrored3Float32) -> HostFloat32Tensor => [hybrid] Self::kernel),
         (HostPlacement, (Mirrored3Float64) -> HostFloat64Tensor => [hybrid] Self::kernel),
     ]

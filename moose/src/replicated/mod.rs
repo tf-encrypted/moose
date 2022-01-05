@@ -267,8 +267,8 @@ impl<RepRingT: MirroredCounterpart> MirroredCounterpart
     type MirroredType = AbstractMirroredFixedTensor<RepRingT::MirroredType>;
 }
 
-moose_type!(Mirrored3Fixed64 = AbstractMirroredFixedTensor<Mirrored3Ring64Tensor>);
-moose_type!(Mirrored3Fixed128 = AbstractMirroredFixedTensor<Mirrored3Ring128Tensor>);
+moose_type!(Mirrored3Fixed64Tensor = AbstractMirroredFixedTensor<Mirrored3Ring64Tensor>);
+moose_type!(Mirrored3Fixed128Tensor = AbstractMirroredFixedTensor<Mirrored3Ring128Tensor>);
 
 impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;

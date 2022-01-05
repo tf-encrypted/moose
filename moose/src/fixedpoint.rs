@@ -22,8 +22,8 @@ pub enum FixedTensor<HostFixedT, MirFixedT, RepFixedT> {
     Replicated(RepFixedT),
 }
 
-moose_type!(Fixed64Tensor = FixedTensor<HostFixed64Tensor, Mirrored3Fixed64, ReplicatedFixed64Tensor>);
-moose_type!(Fixed128Tensor = FixedTensor<HostFixed128Tensor, Mirrored3Fixed128, ReplicatedFixed128Tensor>);
+moose_type!(Fixed64Tensor = FixedTensor<HostFixed64Tensor, Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor>);
+moose_type!(Fixed128Tensor = FixedTensor<HostFixed128Tensor, Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor>);
 
 impl<HostFixedT, MirFixedT, RepFixedT> Placed for FixedTensor<HostFixedT, MirFixedT, RepFixedT>
 where
@@ -357,10 +357,10 @@ modelled_kernel! {
         (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::hostfixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::repfixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::repfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64) -> ReplicatedFixed64Tensor => [concrete] Self::repfixed_mirfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128) -> ReplicatedFixed128Tensor => [concrete] Self::repfixed_mirfixed_kernel),
-        (ReplicatedPlacement, (Mirrored3Fixed64, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::mirfixed_repfixed_kernel),
-        (ReplicatedPlacement, (Mirrored3Fixed128, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::mirfixed_repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::repfixed_mirfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::repfixed_mirfixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::mirfixed_repfixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::mirfixed_repfixed_kernel),
     ]
 }
 
@@ -610,10 +610,10 @@ modelled_kernel! {
         (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::hostfixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::repfixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::repfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64) -> ReplicatedFixed64Tensor => [concrete] Self::repfixed_mirfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128) -> ReplicatedFixed128Tensor => [concrete] Self::repfixed_mirfixed_kernel),
-        (ReplicatedPlacement, (Mirrored3Fixed64, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::mirfixed_repfixed_kernel),
-        (ReplicatedPlacement, (Mirrored3Fixed128, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::mirfixed_repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::repfixed_mirfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::repfixed_mirfixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::mirfixed_repfixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::mirfixed_repfixed_kernel),
     ]
 }
 
@@ -1597,11 +1597,11 @@ modelled!(PlacementLessThan::less, HostPlacement, (Fixed128Tensor, Fixed128Tenso
 modelled!(PlacementLessThan::less, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> BooleanTensor, LessOp);
 modelled!(PlacementLessThan::less, ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> BooleanTensor, LessOp);
 modelled!(PlacementLessThan::less, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> BooleanTensor, LessOp);
-modelled!(PlacementLessThan::less, ReplicatedPlacement, (Mirrored3Fixed64, ReplicatedFixed64Tensor) -> ReplicatedBitTensor, LessOp);
-modelled!(PlacementLessThan::less, ReplicatedPlacement, (Mirrored3Fixed128, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, LessOp);
-modelled!(PlacementLessThan::less, ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64) -> ReplicatedBitTensor, LessOp);
+modelled!(PlacementLessThan::less, ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor, LessOp);
+modelled!(PlacementLessThan::less, ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, LessOp);
+modelled!(PlacementLessThan::less, ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedBitTensor, LessOp);
 modelled!(PlacementLessThan::less, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor, LessOp);
-modelled!(PlacementLessThan::less, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128) -> ReplicatedBitTensor, LessOp);
+modelled!(PlacementLessThan::less, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedBitTensor, LessOp);
 modelled!(PlacementLessThan::less, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, LessOp);
 
 impl LessOp {
@@ -1700,11 +1700,11 @@ impl LessOp {
     }
 }
 
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Fixed128, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Fixed64, ReplicatedFixed64Tensor) -> ReplicatedBitTensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128) -> ReplicatedBitTensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedBitTensor, GreaterThanOp);
 modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, GreaterThanOp);
-modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64) -> ReplicatedBitTensor, GreaterThanOp);
+modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedBitTensor, GreaterThanOp);
 modelled!(PlacementGreaterThan::greater_than, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor, GreaterThanOp);
 
 impl GreaterThanOp {
@@ -1748,8 +1748,8 @@ impl GreaterThanOp {
     }
 }
 
-modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed64, FillOp);
-modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed128, FillOp);
+modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed64Tensor, FillOp);
+modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed128Tensor, FillOp);
 
 impl FillOp {
     pub(crate) fn mir_fixed_kernel<S: Session, MirRingT, ShapeT>(
