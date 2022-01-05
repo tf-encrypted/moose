@@ -27,7 +27,7 @@ fn runtime_simple_computation(c: &mut Criterion) {
         .into_iter()
         .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
         .collect::<HashMap<Role, Identity>>();
-    c.bench_function("runtime_simple_cimputation", |b| {
+    c.bench_function("runtime_simple_computation", |b| {
         b.iter(|| {
             let storage_mapping = storage_mapping.clone();
             let valid_role_assignments = valid_role_assignments.clone();
