@@ -1,4 +1,4 @@
-use std::{collections::HashMap, convert::TryInto};
+use std::{collections::HashMap, convert::TryInto, time::Duration};
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use maplit::hashmap;
@@ -27,7 +27,7 @@ fn runtime_simple_computation(c: &mut Criterion) {
         .into_iter()
         .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
         .collect::<HashMap<Role, Identity>>();
-    c.bench_function("simple_cimputation", |b| {
+    c.bench_function("runtime_simple_cimputation", |b| {
         b.iter(|| {
             let storage_mapping = storage_mapping.clone();
             let valid_role_assignments = valid_role_assignments.clone();
@@ -60,7 +60,7 @@ fn runtime_two_hosts(c: &mut Criterion) {
         .into_iter()
         .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
         .collect::<HashMap<Role, Identity>>();
-    c.bench_function("two_hosts_dot", |b| {
+    c.bench_function("runtime_two_hosts_dot", |b| {
         b.iter(|| {
             let storage_mapping = storage_mapping.clone();
             let valid_role_assignments = valid_role_assignments.clone();
@@ -77,6 +77,7 @@ fn runtime_two_hosts(c: &mut Criterion) {
 fn runtime_rep_computation(c: &mut Criterion) {
     let source = include_str!("./rep_computation.mpc");
     let computation: Computation = source.try_into().unwrap();
+    let computation = compile_passes(&computation, &[Pass::Networking, Pass::Toposort]).unwrap();
 
     let arguments: HashMap<String, Value> = hashmap!();
     let storage_mapping: HashMap<String, HashMap<String, Value>> = hashmap!("alice".to_string() => hashmap!(), "bob".to_string()=>hashmap!(), "carole".to_string()=>hashmap!());
@@ -86,7 +87,9 @@ fn runtime_rep_computation(c: &mut Criterion) {
         .into_iter()
         .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
         .collect::<HashMap<Role, Identity>>();
-    c.bench_function("Replicated computation", |b| {
+    let mut group = c.benchmark_group("Slow Tests");
+    group.measurement_time(Duration::new(10, 0));
+    group.bench_function("runtime_replicated_computation", |b| {
         b.iter(|| {
             let storage_mapping = storage_mapping.clone();
             let valid_role_assignments = valid_role_assignments.clone();
@@ -98,6 +101,7 @@ fn runtime_rep_computation(c: &mut Criterion) {
                 .unwrap();
         })
     });
+    group.finish();
 }
 
 criterion_group!(

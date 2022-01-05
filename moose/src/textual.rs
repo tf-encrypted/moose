@@ -267,6 +267,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         HostSqrtOp::from_textual,
         HostDiagOp::from_textual,
         HostSqueezeOp::from_textual,
+        AddNOp::from_textual,
         AddOp::from_textual,
         SubOp::from_textual,
         MulOp::from_textual,
@@ -278,7 +279,6 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         HostBitDecOp::from_textual,
         FillOp::from_textual,
         IndexAxisOp::from_textual,
-        AddNOp::from_textual,
     ));
     alt((part1, part2, part3))(input)
 }
@@ -2007,6 +2007,9 @@ mod tests {
 
         parse_assignment::<(&str, ErrorKind)>(
             "load = Load: (String, String) -> Float64Tensor (xuri, xconstant) @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "addN = AddN: [String] -> String (xuri, xconstant) @Host(alice)",
         )?;
 
         Ok(())
