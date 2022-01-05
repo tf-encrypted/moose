@@ -5,7 +5,7 @@ use crate::prim::{RawPrfKey, RawSeed, SyncKey};
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
-    character::complete::{alpha1, alphanumeric1, char, multispace1, space0},
+    character::complete::{alpha1, alphanumeric1, char, digit1, multispace1, space0},
     combinator::{all_consuming, cut, eof, map, map_opt, map_res, opt, recognize, value, verify},
     error::{
         context, convert_error, make_error, ContextError, ErrorKind, ParseError, VerboseError,
@@ -652,7 +652,6 @@ pub fn slice_info_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str
         opt(attributes_member("end", parse_int)),
         opt(attributes_member("step", parse_int)),
     ))(input)?;
-    dbg!(&step);
     println!("Got parsed {:?} {:?} {:?}", start, end, step);
     println!("Remainder: {}", input);
 
@@ -663,31 +662,12 @@ pub fn slice_info_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str
 pub fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, O, E> {
-    // let mut parser = map(space0, |s: &str|, s.parse::<O>());
-    // We want to manipulate the result into the proper return type. 
-    match map(space0, |s: &str| s.parse::<O>())(input) {
-        Ok(o) => {
-            match o.1{
-                Ok(o2) => {
-                    Ok((o.0, o2))
-
-                },
-                Err(e) => {
-                    use nom::Err;
-                    Err(Err::Error(E::from_error_kind(input, ErrorKind::MapRes)))
-                },
-            }
-        },
-        Err(e) => {
-            use nom::Err;
-            Err(Err::Error(E::from_error_kind(input, ErrorKind::MapRes)))
-        },
-    }
-    //  .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
-
-    // map(space0, |s: &str| s.parse::<O>())(input)
-    //     .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
-}
+    map_res(
+        recognize(tuple((opt(alt((tag("-"), tag("+")))), digit1))),
+        |s: &str| s.parse::<O>(),
+    )(input)
+        .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
+   }
 
 /// Parses a single byte, writte as two hex character.
 ///
@@ -1783,20 +1763,24 @@ mod tests {
         assert_eq!(op.name, "x10");
         Ok(())
     }
-    #[test]
-    fn test_parse_int_negative() -> Result<(), anyhow::Error> {
-        let s = "-5";
-        let x = i32::from_str(s).unwrap();
-        assert_eq!(-5, x);
-        Ok(())
-    }
 
     #[test]
     fn test_slice_option() -> Result<(), anyhow::Error> {
-        // This will panic with error on the -1. std::str::FromStr works with "-1" but the following parse breaks.
         let input = "x10 = HostSlice{slice = {start = 1, end = 10, step = -1}}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)";
-        let result = std::panic::catch_unwind(|| parse_assignment::<(&str, ErrorKind)>(input));
-        assert!(result.is_err());
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(input)?;
+        assert_eq!(op.name, "x10");
+        assert_eq!(
+            op.kind,
+            Operator::HostSlice(HostSliceOp {
+                sig: Signature::unary(Ty::HostRing64Tensor, Ty::HostRing64Tensor),
+                slice: SliceInfo(vec![SliceInfoElem {
+                    start: 1,
+                    end: Some(10),
+                    step: Some(-1),
+                }])
+            })
+        );
+        assert_eq!(op.to_textual(), input);
         Ok(())
     }
 
@@ -1804,9 +1788,7 @@ mod tests {
     fn test_slice() -> Result<(), anyhow::Error> {
         let input = "x10 = HostSlice{slice = {start = 1, end = 10, step = 1}}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)";
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(input)?;
-        // dbg!(err);
         assert_eq!(op.name, "x10");
-        // dbg!(&op);
         assert_eq!(
             op.kind,
             Operator::HostSlice(HostSliceOp {
@@ -1818,7 +1800,6 @@ mod tests {
                 }])
             })
         );
-        // dbg!(op.to_textual());
         assert_eq!(op.to_textual(), input);
         Ok(())
     }
