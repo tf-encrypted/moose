@@ -253,6 +253,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Mux(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Gather(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Broadcast(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Index(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepDiag(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

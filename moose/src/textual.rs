@@ -1034,6 +1034,7 @@ impl ToTextual for Operator {
             Less(op) => op.to_textual(),
             GreaterThan(op) => op.to_textual(),
             Gather(op) => op.to_textual(),
+            Broadcast(op) => op.to_textual(),
         }
     }
 }

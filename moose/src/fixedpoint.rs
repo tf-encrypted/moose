@@ -203,11 +203,11 @@ impl FixedpointEncodeOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         Mirrored3Placement: PlacementFixedpointEncode<S, MirFloatT, MirFixedT>,
+        Mirrored3Placement: PlacementBroadcast<S, HostFloatT, MirFloatT>,
     {
         let v = match x {
             FloatTensor::Mirrored3(x) => x,
-            // below we need to broadcast the array to all parties
-            FloatTensor::Host(_x) => unimplemented!(),
+            FloatTensor::Host(x) => plc.broadcast(sess, &x),
         };
 
         Ok(FixedTensor::Mirrored3(plc.fixedpoint_encode(

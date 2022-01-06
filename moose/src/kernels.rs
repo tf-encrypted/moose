@@ -309,6 +309,7 @@ impl Session for SyncSession {
             Less(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Gather(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Broadcast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -741,6 +742,7 @@ impl Session for AsyncSession {
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
             IndexAxis(op) => DispatchKernel::compile(&op, plc)?,
             Gather(op) => DispatchKernel::compile(&op, plc)?,
+            Broadcast(op) => DispatchKernel::compile(&op, plc)?,
             _ => todo!(),
         };
         kernel(self, operands)
@@ -995,6 +997,10 @@ pub trait PlacementGreaterThan<S: Session, T, U, O> {
 
 pub trait PlacementGather<S: Session, T, O> {
     fn gather(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementBroadcast<S: Session, T, O> {
+    fn broadcast(&self, sess: &S, x: &T) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -2144,6 +2150,18 @@ modelled_kernel! {
         (ReplicatedPlacement, (Mirrored3Fixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::fixed_mir_kernel),
         (ReplicatedPlacement, (Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_mir_kernel),
         (ReplicatedPlacement, (Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_mir_kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementBroadcast::broadcast, BroadcastOp,
+    [
+        (Mirrored3Placement, (HostRing64Tensor) -> Mirrored3Ring64Tensor => [hybrid] Self::kernel),
+        (Mirrored3Placement, (HostRing128Tensor) -> Mirrored3Ring128Tensor => [hybrid] Self::kernel),
+        (Mirrored3Placement, (HostFloat32Tensor) -> Mirrored3Float32 => [hybrid] Self::kernel),
+        (Mirrored3Placement, (HostFloat64Tensor) -> Mirrored3Float64 => [hybrid] Self::kernel),
+        (Mirrored3Placement, (HostFixed64Tensor) -> Mirrored3Fixed64Tensor => [concrete] Self::fixed_kernel),
+        (Mirrored3Placement, (HostFixed128Tensor) -> Mirrored3Fixed128Tensor => [concrete] Self::fixed_kernel),
     ]
 }
 

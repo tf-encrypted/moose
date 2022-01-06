@@ -6,8 +6,8 @@ use crate::replicated::{AbstractMirroredFixedTensor, AbstractReplicatedFixedTens
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Mirrored3Tensor<HostRingT> {
-    pub values: [HostRingT; 3],
+pub struct Mirrored3Tensor<HostTenT> {
+    pub values: [HostTenT; 3],
 }
 
 impl<HostTenT> Placed for Mirrored3Tensor<HostTenT>
@@ -211,5 +211,42 @@ impl RepShareOp {
         // 2) If (2,3) parties know the secret then there's no need to share this
         // 3) If intersect(mir, rep) = player then make sure the sharing happens on player (not someone else)
         Ok(plc.share(sess, &x0))
+    }
+}
+
+impl BroadcastOp {
+    pub(crate) fn kernel<S: Session, HostT>(
+        sess: &S,
+        mir_plc: &Mirrored3Placement,
+        x: HostT,
+    ) -> Result<Mirrored3Tensor<HostT>>
+    where
+        HostPlacement: PlacementPlace<S, HostT>,
+        HostT: Clone,
+    {
+        let (player0, player1, player2) = &mir_plc.host_placements();
+
+        Ok(Mirrored3Tensor {
+            values: [
+                player0.place(sess, x.clone()),
+                player1.place(sess, x.clone()),
+                player2.place(sess, x),
+            ],
+        })
+    }
+
+    pub(crate) fn fixed_kernel<S: Session, HostRingT, MirRingT>(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        x: AbstractHostFixedTensor<HostRingT>,
+    ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
+    where
+        Mirrored3Placement: PlacementBroadcast<S, HostRingT, MirRingT>,
+    {
+        Ok(AbstractMirroredFixedTensor {
+            tensor: plc.broadcast(sess, &x.tensor),
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
     }
 }

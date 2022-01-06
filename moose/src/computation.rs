@@ -1084,6 +1084,8 @@ operators![
     Mux,
     // Mirrored Operators
     Gather,
+    // turns host to mirrored
+    Broadcast,
 ];
 
 pub trait HasShortName {
@@ -1851,6 +1853,11 @@ pub struct MuxOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct GatherOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+pub struct BroadcastOp {
     pub sig: Signature,
 }
 
