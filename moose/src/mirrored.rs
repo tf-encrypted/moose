@@ -75,7 +75,7 @@ impl IdentityOp {
     }
 }
 
-impl GatherOp {
+impl DemirrorOp {
     pub(crate) fn kernel<S: Session, R: Clone>(
         sess: &S,
         receiver: &HostPlacement,
@@ -108,9 +108,9 @@ impl GatherOp {
         xe: AbstractMirroredFixedTensor<MirRingT>,
     ) -> Result<AbstractHostFixedTensor<HostRingT>>
     where
-        HostPlacement: PlacementGather<S, MirRingT, HostRingT>,
+        HostPlacement: PlacementDemirror<S, MirRingT, HostRingT>,
     {
-        let x = receiver.gather(sess, &xe.tensor);
+        let x = receiver.demirror(sess, &xe.tensor);
         Ok(AbstractHostFixedTensor {
             tensor: x,
             fractional_precision: xe.fractional_precision,
@@ -214,7 +214,7 @@ impl RepShareOp {
     }
 }
 
-impl BroadcastOp {
+impl MirrorOp {
     pub(crate) fn kernel<S: Session, HostT>(
         sess: &S,
         mir_plc: &Mirrored3Placement,
@@ -241,10 +241,10 @@ impl BroadcastOp {
         x: AbstractHostFixedTensor<HostRingT>,
     ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
     where
-        Mirrored3Placement: PlacementBroadcast<S, HostRingT, MirRingT>,
+        Mirrored3Placement: PlacementMirror<S, HostRingT, MirRingT>,
     {
         Ok(AbstractMirroredFixedTensor {
-            tensor: plc.broadcast(sess, &x.tensor),
+            tensor: plc.mirror(sess, &x.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
         })

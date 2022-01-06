@@ -125,11 +125,11 @@ impl IdentityOp {
     where
         HostPlacement: PlacementIdentity<S, HostFixedT, HostFixedT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
-        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let v = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
         Ok(FixedTensor::Host(v))
@@ -172,11 +172,11 @@ impl FixedpointEncodeOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementFixedpointEncode<S, HostFloatT, HostFixedT>,
-        HostPlacement: PlacementGather<S, MirFloatT, HostFloatT>,
+        HostPlacement: PlacementDemirror<S, MirFloatT, HostFloatT>,
     {
         let v = match x {
             FloatTensor::Host(x) => x,
-            FloatTensor::Mirrored3(x) => plc.gather(sess, &x),
+            FloatTensor::Mirrored3(x) => plc.demirror(sess, &x),
         };
 
         Ok(FixedTensor::Host(plc.fixedpoint_encode(
@@ -203,11 +203,11 @@ impl FixedpointEncodeOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         Mirrored3Placement: PlacementFixedpointEncode<S, MirFloatT, MirFixedT>,
-        Mirrored3Placement: PlacementBroadcast<S, HostFloatT, MirFloatT>,
+        Mirrored3Placement: PlacementMirror<S, HostFloatT, MirFloatT>,
     {
         let v = match x {
             FloatTensor::Mirrored3(x) => x,
-            FloatTensor::Host(x) => plc.broadcast(sess, &x),
+            FloatTensor::Host(x) => plc.mirror(sess, &x),
         };
 
         Ok(FixedTensor::Mirrored3(plc.fixedpoint_encode(
@@ -273,11 +273,11 @@ impl FixedpointDecodeOp {
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementFixedpointDecode<S, HostFixedT, HostFloatT>,
-        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let v = match x {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
@@ -513,16 +513,16 @@ impl FixedpointSubOp {
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementSub<S, HostFixedT, HostFixedT, HostFixedT>,
-        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
@@ -621,16 +621,16 @@ impl FixedpointMulOp {
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementMul<S, HostFixedT, HostFixedT, HostFixedT>,
-        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
@@ -761,16 +761,16 @@ impl FixedpointDivOp {
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementDiv<S, HostFixedT, HostFixedT, HostFixedT>,
-        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
@@ -862,16 +862,16 @@ impl FixedpointDotOp {
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementDot<S, HostFixedT, HostFixedT, HostFixedT>,
-        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let x_revealed = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
         let y_revealed = match y {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -965,12 +965,12 @@ impl FixedpointTruncPrOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
-        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementTruncPr<S, HostFixedT, HostFixedT>,
     {
         let v = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -1058,12 +1058,12 @@ impl FixedpointSumOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
-        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementSum<S, HostFixedT, HostFixedT>,
     {
         let v = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -1158,12 +1158,12 @@ impl IndexAxisOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
-        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementIndexAxis<S, HostFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
-            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Host(v) => v,
         };
         let z = plc.index_axis(sess, axis, index, &x);
@@ -1215,12 +1215,12 @@ impl ShapeOp {
     ) -> Result<HostShapeT>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
-        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementShape<S, HostFixedT, HostShapeT>,
     {
         let x_revealed = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -1281,12 +1281,12 @@ impl FixedpointMeanOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
-        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementMean<S, HostFixedT, HostFixedT>,
     {
         let x_revealed = match x {
             FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(x) => plc.gather(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -1627,16 +1627,16 @@ impl LessOp {
     where
         HostPlacement: PlacementLessThan<S, HostFixedT, HostFixedT, HostBitT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
-        HostPlacement: PlacementGather<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => plc.gather(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let z = plc.less(sess, &x, &y);

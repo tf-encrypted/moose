@@ -308,8 +308,8 @@ impl Session for SyncSession {
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Less(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Gather(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Broadcast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Demirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Mirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -741,8 +741,8 @@ impl Session for AsyncSession {
             Less(op) => DispatchKernel::compile(&op, plc)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
             IndexAxis(op) => DispatchKernel::compile(&op, plc)?,
-            Gather(op) => DispatchKernel::compile(&op, plc)?,
-            Broadcast(op) => DispatchKernel::compile(&op, plc)?,
+            Demirror(op) => DispatchKernel::compile(&op, plc)?,
+            Mirror(op) => DispatchKernel::compile(&op, plc)?,
             _ => todo!(),
         };
         kernel(self, operands)
@@ -995,12 +995,12 @@ pub trait PlacementGreaterThan<S: Session, T, U, O> {
     fn greater_than(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
-pub trait PlacementGather<S: Session, T, O> {
-    fn gather(&self, sess: &S, x: &T) -> O;
+pub trait PlacementDemirror<S: Session, T, O> {
+    fn demirror(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementBroadcast<S: Session, T, O> {
-    fn broadcast(&self, sess: &S, x: &T) -> O;
+pub trait PlacementMirror<S: Session, T, O> {
+    fn mirror(&self, sess: &S, x: &T) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -2122,7 +2122,7 @@ modelled_kernel! {
 }
 
 modelled_kernel! {
-    PlacementGather::gather, GatherOp,
+    PlacementDemirror::demirror, DemirrorOp,
     [
         (HostPlacement, (Mirrored3Ring64Tensor) -> HostRing64Tensor => [hybrid] Self::kernel),
         (HostPlacement, (Mirrored3Ring128Tensor) -> HostRing128Tensor => [hybrid] Self::kernel),
@@ -2154,7 +2154,7 @@ modelled_kernel! {
 }
 
 modelled_kernel! {
-    PlacementBroadcast::broadcast, BroadcastOp,
+    PlacementMirror::mirror, MirrorOp,
     [
         (Mirrored3Placement, (HostRing64Tensor) -> Mirrored3Ring64Tensor => [hybrid] Self::kernel),
         (Mirrored3Placement, (HostRing128Tensor) -> Mirrored3Ring128Tensor => [hybrid] Self::kernel),
