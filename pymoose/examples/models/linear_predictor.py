@@ -18,35 +18,30 @@ class LinearPredictor(model.AesPredictorModel):
         self.coeffs = self._interpret_coeffs(coeffs)
 
     @classmethod
-    def from_onnx_proto(cls, model_proto, include_intercept=False):
-        first_node = model_proto.graph.node[0]
-        if first_node.name != "LinearRegressor":
+    def from_onnx_proto(cls, model_proto):
+        lr_node = model_utils.find_node_in_model_proto(model_proto, "LinearRegressor")
+        if lr_node is None:
             raise ValueError(
-                "Incompatible ONNX graph provided: graph must contain a single LinearRegressor "
-                "operator."
+                "Incompatible ONNX graph provided: graph must contain a LinearRegressor operator."
             )
-        lr_attrs = first_node.attribute
-        coeffs_attr = lr_attrs[0]
-        assert coeffs_attr.name == "coefficients"
+
+        coeffs_attr = model_utils.find_attribute_in_node(lr_node, "coefficients")
+        assert coeffs_attr is not None
         if coeffs_attr.type != 6:  # FLOATS
             raise ValueError(
                 "LinearRegressor coefficients must be of type FLOATS, found other."
             )
         coeffs = coeffs_attr.floats
-        intercept = None
-        if include_intercept:
-            if len(lr_attrs) < 2:
-                intercept_attr = lr_attrs[1]
-                if intercept_attr.name != "intercepts":
-                    raise ValueError(
-                        "Provided include_intercept=True, but LinearRegressor operator missing an "
-                        "intercept attribute."
-                    )
-                if intercept_attr.type != 6:  # FLOATS
-                    raise ValueError(
-                        "LinearRegressor intercept must of type FLOATS, found other."
-                    )
-                intercept = intercept_attr.floats
+        # extract intercept if it's there, otherwise pass it as None
+        intercept_attr = model_utils.find_attribute_in_node(lr_node, "intercepts")
+        if intercept_attr is None:
+            intercept = None
+        elif intercept_attr.type != 6:  # FLOATS
+            raise ValueError(
+                "LinearRegressor intercept must of type FLOATS, found other."
+            )
+        else:
+            intercept = intercept_attr.floats
 
         return cls(coeffs=coeffs, intercept=intercept)
 
