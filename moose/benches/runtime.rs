@@ -20,22 +20,17 @@ fn runtime_simple_computation(c: &mut Criterion) {
     let arguments: HashMap<String, Value> = hashmap!("x".to_string() => x, "y".to_string()=> y);
     let storage_mapping: HashMap<String, HashMap<String, Value>> =
         hashmap!("alice".to_string() => hashmap!());
-    let role_assignments: HashMap<String, String> =
-        hashmap!("alice".to_string() => "alice".to_string());
+    let role_assignments: HashMap<Role, Identity> = hashmap!("alice".into() => "alice".into());
 
-    let valid_role_assignments = role_assignments
-        .into_iter()
-        .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
-        .collect::<HashMap<Role, Identity>>();
     c.bench_function("runtime_simple_computation", |b| {
         b.iter(|| {
             let storage_mapping = storage_mapping.clone();
-            let valid_role_assignments = valid_role_assignments.clone();
+            let role_assignments = role_assignments.clone();
             let arguments = arguments.clone();
 
             let mut executor = AsyncTestRuntime::new(storage_mapping);
             let _outputs = executor
-                .evaluate_computation(&computation, valid_role_assignments, arguments)
+                .evaluate_computation(&computation, role_assignments, arguments)
                 .unwrap();
         })
     });
@@ -54,21 +49,18 @@ fn runtime_two_hosts(c: &mut Criterion) {
     let arguments: HashMap<String, Value> = hashmap!();
     let storage_mapping: HashMap<String, HashMap<String, Value>> =
         hashmap!("alice".to_string() => hashmap!(), "bob".to_string()=>hashmap!());
-    let role_assignments: HashMap<String, String> = hashmap!("alice".to_string() => "alice".to_string(), "bob".to_string() => "bob".to_string());
+    let role_assignments: HashMap<Role, Identity> =
+        hashmap!("alice".into() => "alice".into(), "bob".into() => "bob".into());
 
-    let valid_role_assignments = role_assignments
-        .into_iter()
-        .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
-        .collect::<HashMap<Role, Identity>>();
     c.bench_function("runtime_two_hosts_dot", |b| {
         b.iter(|| {
             let storage_mapping = storage_mapping.clone();
-            let valid_role_assignments = valid_role_assignments.clone();
+            let role_assignments = role_assignments.clone();
             let arguments = arguments.clone();
 
             let mut executor = AsyncTestRuntime::new(storage_mapping);
             let _outputs = executor
-                .evaluate_computation(&computation, valid_role_assignments, arguments)
+                .evaluate_computation(&computation, role_assignments, arguments)
                 .unwrap();
         })
     });
@@ -80,24 +72,26 @@ fn runtime_rep_computation(c: &mut Criterion) {
     let computation = compile_passes(&computation, &[Pass::Networking, Pass::Toposort]).unwrap();
 
     let arguments: HashMap<String, Value> = hashmap!();
-    let storage_mapping: HashMap<String, HashMap<String, Value>> = hashmap!("alice".to_string() => hashmap!(), "bob".to_string()=>hashmap!(), "carole".to_string()=>hashmap!());
-    let role_assignments: HashMap<String, String> = hashmap!("alice".to_string() => "alice".to_string(), "bob".to_string() => "bob".to_string(), "carole".to_string() => "carole".to_string());
+    let storage_mapping: HashMap<String, HashMap<String, Value>> = hashmap!(
+            "alice".to_string() => hashmap!(),
+            "bob".to_string()=>hashmap!(),
+            "carole".to_string()=>hashmap!());
+    let role_assignments: HashMap<Role, Identity> = hashmap!(
+            "alice".into() => "alice".into(),
+            "bob".into() => "bob".into(),
+            "carole".into() => "carole".into());
 
-    let valid_role_assignments = role_assignments
-        .into_iter()
-        .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
-        .collect::<HashMap<Role, Identity>>();
     let mut group = c.benchmark_group("Slow Tests");
     group.measurement_time(Duration::new(10, 0));
     group.bench_function("runtime_replicated_computation", |b| {
         b.iter(|| {
             let storage_mapping = storage_mapping.clone();
-            let valid_role_assignments = valid_role_assignments.clone();
+            let role_assignments = role_assignments.clone();
             let arguments = arguments.clone();
 
             let mut executor = AsyncTestRuntime::new(storage_mapping);
             let _outputs = executor
-                .evaluate_computation(&computation, valid_role_assignments, arguments)
+                .evaluate_computation(&computation, role_assignments, arguments)
                 .unwrap();
         })
     });
