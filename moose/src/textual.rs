@@ -267,12 +267,18 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         HostSqrtOp::from_textual,
         HostDiagOp::from_textual,
         HostSqueezeOp::from_textual,
+        AddNOp::from_textual,
         AddOp::from_textual,
         SubOp::from_textual,
         MulOp::from_textual,
         DivOp::from_textual,
         DotOp::from_textual,
         MeanOp::from_textual,
+        RingNegOp::from_textual,
+        HostShlDimOp::from_textual,
+        HostBitDecOp::from_textual,
+        FillOp::from_textual,
+        IndexAxisOp::from_textual,
     ));
     alt((part1, part2, part3))(input)
 }
@@ -1264,7 +1270,7 @@ impl ToTextual for RingSampleOp {
             RingSampleOp {
                 sig,
                 max_value: None,
-            } => format!("RingSample: {}", sig.to_textual()),
+            } => format!("RingSample{{}}: {}", sig.to_textual()),
         }
     }
 }
@@ -1283,7 +1289,7 @@ impl ToTextual for RingSampleSeededOp {
             RingSampleSeededOp {
                 sig,
                 max_value: None,
-            } => format!("RingSampleSeeded: {}", sig.to_textual()),
+            } => format!("RingSampleSeeded{{}}: {}", sig.to_textual()),
         }
     }
 }
@@ -1562,7 +1568,7 @@ impl ToTextual for Signature {
                 ret.to_textual()
             ),
             Signature::Variadic(VariadicSignature { args, ret }) => {
-                format!("(vec[{}]) -> {}", args.to_textual(), ret.to_textual())
+                format!("[{}] -> {}", args.to_textual(), ret.to_textual())
             }
         }
     }
@@ -2022,6 +2028,9 @@ mod tests {
 
         parse_assignment::<(&str, ErrorKind)>(
             "load = Load: (String, String) -> Float64Tensor (xuri, xconstant) @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "addN = AddN: [String] -> String (xuri, xconstant) @Host(alice)",
         )?;
 
         Ok(())
