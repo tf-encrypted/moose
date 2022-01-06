@@ -151,7 +151,7 @@ impl IdentityOp {
             FixedTensor::Replicated(x) => x,
         };
 
-        Ok(FixedTensor::Replicated(plc.identity(sess, &v)))
+        Ok(FixedTensor::Replicated(v))
     }
 }
 
@@ -371,18 +371,16 @@ impl FixedpointAddOp {
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementAdd<S, HostFixedT, HostFixedT, HostFixedT>,
-        HostPlacement: PlacementIdentity<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
-        // (p0, p1, p2) -> x mirrored
-        // plc: Host@alice
         let x = match x {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => plc.identity(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
-            FixedTensor::Mirrored3(v) => plc.identity(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
