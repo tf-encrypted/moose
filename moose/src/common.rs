@@ -85,6 +85,7 @@ modelled!(PlacementAddN::add_n, HostPlacement, vec[HostFloat64Tensor] -> HostFlo
 modelled!(PlacementAddN::add_n, HostPlacement, vec[Fixed64Tensor] -> Fixed64Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, HostPlacement, vec[Fixed128Tensor] -> Fixed128Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, HostPlacement, vec[HostFixed64Tensor] -> HostFixed64Tensor, AddNOp);
+modelled!(PlacementAddN::add_n, HostPlacement, vec[HostFixed128Tensor] -> HostFixed128Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, AddNOp);
