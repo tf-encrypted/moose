@@ -50,15 +50,8 @@ class LinearPredictorTest(parameterized.TestCase):
             arguments={"x": input_x},
         )
         actual_result = list(result_dict.values())[0]
-        # these numbers are just the coefficients of the linear model fixture
-        expected_result = sum(
-            [
-                27.277496337890625,
-                85.24308013916016,
-                42.07063674926758,
-                98.94928741455078,
-            ]
-        )
+        # predicting on input vector of all ones == sum of linear model's coefficients
+        expected_result = linear_model.coeffs.sum() + linear_model.intercept
         np.testing.assert_almost_equal(actual_result, expected_result)
 
     def test_serde(self):
@@ -69,6 +62,6 @@ class LinearPredictorTest(parameterized.TestCase):
         logical_comp_rustref = elk_compiler.compile_computation(serialized, [])
         logical_comp_rustbytes = logical_comp_rustref.to_bytes()
         pymoose.MooseComputation.from_bytes(logical_comp_rustbytes)
-        # NOTE: could also dump computation to disk as follows (but we avoid this in the test)
+        # NOTE: could also dump to disk as follows (but we don't in the test)
         # logical_comp_rustref.to_disk(path)
         # pymoose.MooseComputation.from_disk(path)
