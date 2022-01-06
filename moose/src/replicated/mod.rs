@@ -5,9 +5,9 @@ use crate::additive::{
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
-    AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedTensor, HostAesKey, HostBitArray128,
-    HostBitArray224, HostBitArray256, HostBitArray64, HostBitTensor, HostFixed128Tensor,
-    HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, SliceInfo,
+    AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128,
+    HostBitArray224, HostBitArray256, HostBitArray64, HostBitTensor, HostRing128Tensor,
+    HostRing64Tensor, HostShape, SliceInfo,
 };
 use crate::kernels::*;
 use crate::mirrored::Mirrored3Tensor;
@@ -546,23 +546,8 @@ impl RepShareOp {
     }
 }
 
-modelled_kernel! {
-    PlacementReveal::reveal, RepRevealOp,
-    [
-        (HostPlacement, (ReplicatedFixed64Tensor) -> HostFixed64Tensor => [concrete] Self::fixed_kernel),
-        (HostPlacement, (ReplicatedFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::fixed_kernel),
-        (HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor => [hybrid] Self::ring_kernel),
-        (HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor => [hybrid] Self::ring_kernel),
-        (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => [hybrid] Self::ring_kernel),
-        (HostPlacement, (ReplicatedBitArray64) -> HostBitArray64 => [concrete] Self::bit_array_kernel),
-        (HostPlacement, (ReplicatedBitArray128) -> HostBitArray128 => [concrete] Self::bit_array_kernel),
-        (HostPlacement, (ReplicatedBitArray224) -> HostBitArray224 => [concrete] Self::bit_array_kernel),
-        (HostPlacement, (ReplicatedAesKey) -> HostAesKey => [concrete] Self::aeskey_kernel),
-    ]
-}
-
 impl RepRevealOp {
-    fn aeskey_kernel<S: Session, RepBitArrayT, HostBitArrayT>(
+    pub(crate) fn aeskey_kernel<S: Session, RepBitArrayT, HostBitArrayT>(
         sess: &S,
         receiver: &HostPlacement,
         key: AbstractReplicatedAesKey<RepBitArrayT>,
@@ -574,7 +559,7 @@ impl RepRevealOp {
         Ok(AbstractHostAesKey(bit_array))
     }
 
-    fn fixed_kernel<S: Session, RepRingT, HostRingT>(
+    pub(crate) fn fixed_kernel<S: Session, RepRingT, HostRingT>(
         sess: &S,
         receiver: &HostPlacement,
         xe: AbstractReplicatedFixedTensor<RepRingT>,
@@ -590,7 +575,7 @@ impl RepRevealOp {
         })
     }
 
-    fn bit_array_kernel<S: Session, RepBitT, HostBitT, N>(
+    pub(crate) fn bit_array_kernel<S: Session, RepBitT, HostBitT, N>(
         sess: &S,
         receiver: &HostPlacement,
         xe: AbstractReplicatedBitArray<RepBitT, N>,
@@ -602,7 +587,7 @@ impl RepRevealOp {
         Ok(AbstractHostBitArray(x, PhantomData))
     }
 
-    fn ring_kernel<S: Session, R: Clone>(
+    pub(crate) fn ring_kernel<S: Session, R: Clone>(
         sess: &S,
         receiver: &HostPlacement,
         xe: RepTen<R>,
@@ -635,6 +620,44 @@ impl RepRevealOp {
             }
         };
         Ok(res)
+    }
+
+    pub(crate) fn mir_ring_kernel<S: Session, HostRingT: Clone>(
+        sess: &S,
+        mir_plc: &Mirrored3Placement,
+        xe: RepTen<HostRingT>,
+    ) -> Result<Mirrored3Tensor<HostRingT>>
+    where
+        RepTen<HostRingT>: CanonicalType,
+        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+
+        RepTen<HostRingT>: Into<m!(c!(RepTen<HostRingT>))>,
+        HostPlacement: PlacementReveal<S, m!(c!(RepTen<HostRingT>)), HostRingT>,
+    {
+        let (player0, player1, player2) = mir_plc.host_placements();
+        let x0 = player0.reveal(sess, &xe.clone().into());
+        let x1 = player1.reveal(sess, &xe.clone().into());
+        let x2 = player2.reveal(sess, &xe.into());
+
+        Ok(Mirrored3Tensor {
+            values: [x0, x1, x2],
+        })
+    }
+
+    pub(crate) fn mir_fixed_kernel<S: Session, RepRingT, MirRingT>(
+        sess: &S,
+        receiver: &Mirrored3Placement,
+        xe: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
+    where
+        Mirrored3Placement: PlacementReveal<S, RepRingT, MirRingT>,
+    {
+        let x = receiver.reveal(sess, &xe.tensor);
+        Ok(AbstractMirroredFixedTensor {
+            tensor: x,
+            fractional_precision: xe.fractional_precision,
+            integral_precision: xe.integral_precision,
+        })
     }
 }
 

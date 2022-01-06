@@ -301,13 +301,13 @@ impl FixedpointDecodeOp {
     ) -> Result<FloatTensor<HostFloatT, MirFloatT>>
     where
         Mirrored3Placement: PlacementFixedpointDecode<S, MirFixedT, MirFloatT>,
+        Mirrored3Placement: PlacementMirror<S, HostFixedT, MirFixedT>,
+        Mirrored3Placement: PlacementReveal<S, RepFixedT, MirFixedT>,
     {
         let v = match x {
             FixedTensor::Mirrored3(v) => v,
-            // broadcast
-            FixedTensor::Host(_v) => unimplemented!(),
-            // reveal
-            FixedTensor::Replicated(_v) => unimplemented!(),
+            FixedTensor::Host(v) => plc.mirror(sess, &v),
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
         Ok(FloatTensor::Mirrored3(
