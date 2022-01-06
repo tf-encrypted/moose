@@ -8,6 +8,7 @@ class StandardModel(metaclass=abc.ABCMeta):
     def __init__(self):
         (
             (self.alice, self.bob, self.carole),
+            self.mirrored,
             self.replicated,
         ) = self._standard_replicated_placements()
 
@@ -15,10 +16,13 @@ class StandardModel(metaclass=abc.ABCMeta):
         alice = edsl.host_placement("alice")
         bob = edsl.host_placement("bob")
         carole = edsl.host_placement("carole")
+        mirrored = edsl.mirrored_placement(
+            name="mirrored", players=[alice, bob, carole]
+        )
         replicated = edsl.replicated_placement(
             name="replicated", players=[alice, bob, carole]
         )
-        return (alice, bob, carole), replicated
+        return (alice, bob, carole), mirrored, replicated
 
     @property
     def host_placements(self):
@@ -89,10 +93,10 @@ class XGBoostTreeRegressor(StandardModel):
             selector = edsl.less(
                 x_features[self.split_indices[node]],
                 self.fixedpoint_constant(
-                    self.split_conditions[node], self.alice, dtype=fixedpoint_dtype
+                    self.split_conditions[node], self.mirrored, dtype=fixedpoint_dtype
                 ),
-                # TODO(Dragos) change this to mirrored
             )
+
             return edsl.mux(
                 selector,
                 self._traverse_tree(
@@ -105,8 +109,7 @@ class XGBoostTreeRegressor(StandardModel):
         else:
             assert left_child == -1
             assert right_child == -1
-            return self.fixedpoint_constant(leaf_weights[node], self.alice)
-            # TODO(Dragos) change this to mirrored
+            return self.fixedpoint_constant(leaf_weights[node], self.mirrored)
 
 
 class XGBoostForestRegressor(StandardModel):
@@ -151,9 +154,8 @@ class XGBoostForestRegressor(StandardModel):
             for tree in self.trees
         ]
         final_score = self.fixedpoint_constant(
-            self.base_score, self.alice, dtype=fixedpoint_dtype
+            self.base_score, self.mirrored, dtype=fixedpoint_dtype
         )
-        # TODO(Dragos) change this to mirrored
         for tree_score in tree_scores:
             final_score = edsl.add(tree_score, final_score)
         return final_score
