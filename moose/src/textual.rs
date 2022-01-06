@@ -737,8 +737,6 @@ pub fn slice_info_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str
         opt(attributes_member("end", parse_int)),
         opt(attributes_member("step", parse_int)),
     ))(input)?;
-    println!("Got parsed {:?} {:?} {:?}", start, end, step);
-    println!("Remainder: {}", input);
 
     Ok((input, SliceInfo(vec![SliceInfoElem { start, end, step }])))
 }
