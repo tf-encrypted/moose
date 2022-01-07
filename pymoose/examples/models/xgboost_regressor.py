@@ -3,38 +3,11 @@ import json
 
 from pymoose import edsl
 
-
-class StandardModel(metaclass=abc.ABCMeta):
-    def __init__(self):
-        (
-            (self.alice, self.bob, self.carole),
-            self.replicated,
-        ) = self._standard_replicated_placements()
-
-    def _standard_replicated_placements(self):
-        alice = edsl.host_placement("alice")
-        bob = edsl.host_placement("bob")
-        carole = edsl.host_placement("carole")
-        replicated = edsl.replicated_placement(
-            name="replicated", players=[alice, bob, carole]
-        )
-        return (alice, bob, carole), replicated
-
-    @property
-    def host_placements(self):
-        return self.alice, self.bob, self.carole
-
-    @classmethod
-    def fixedpoint_constant(cls, x, plc, dtype=edsl.fixed(8, 27)):
-        x = edsl.constant(x, dtype=edsl.float64, placement=plc)
-        return edsl.cast(x, dtype=dtype, placement=plc)
-
-    @abc.abstractmethod
-    def predictor_factory(self, *args, **kwargs):
-        pass
+from . import model
+from . import model_utils as utils
 
 
-class XGBoostTreeRegressor(StandardModel):
+class XGBoostTreeRegressor(model.AesPredictorModel):
     def __init__(self, weights, children, split_conditions, split_indices):
         super().__init__()
         self.weights = weights
@@ -107,7 +80,7 @@ class XGBoostTreeRegressor(StandardModel):
             return self.fixedpoint_constant(leaf_weights[node], self.alice)
 
 
-class XGBoostForestRegressor(StandardModel):
+class XGBoostForestRegressor(model.AesPredictorModel):
     def __init__(self, trees, nb_features, base_score, learning_rate):
         super().__init__()
         self.nb_features = nb_features
@@ -120,7 +93,12 @@ class XGBoostForestRegressor(StandardModel):
         forest_args = cls._unbundle_forest(model_json)
         return cls(*forest_args)
 
-    def predictor_factory(self, fixedpoint_dtype=edsl.fixed(8, 27)):
+    @classmethod
+    def from_onnx(cls, model_proto):
+        # TODO
+        pass
+
+    def predictor_factory(self, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE):
         # TODO[jason] make it more ergonomic for edsl.computation to bind args during
         #   tracing w/ edsl.trace
         @edsl.computation
