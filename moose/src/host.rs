@@ -999,11 +999,11 @@ impl HostSumOp {
 }
 
 impl AddNOp {
-    pub(crate) fn fixed_kernel<S: Session, HostFixedT, RepFixedT>(
+    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
-        xs: &[FixedTensor<HostFixedT, RepFixedT>],
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        xs: &[FixedTensor<HostFixedT, MirFixedT, RepFixedT>],
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementAddN<S, HostFixedT, HostFixedT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
@@ -1037,15 +1037,16 @@ impl AddNOp {
                         .collect();
                     Ok(FixedTensor::Host(plc.add_n(sess, &vec)))
                 }
+                FixedTensor::Mirrored3(_) => unimplemented!("add_n does not yet support mirrored"),
             }
         }
     }
 
-    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        xs: &[FixedTensor<HostFixedT, RepFixedT>],
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        xs: &[FixedTensor<HostFixedT, MirFixedT, RepFixedT>],
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementAddN<S, RepFixedT, RepFixedT>,
@@ -1073,6 +1074,7 @@ impl AddNOp {
                     .collect();
                 Ok(FixedTensor::Replicated(plc.add_n(sess, &vec)))
             }
+            FixedTensor::Mirrored3(_) => unimplemented!("add_n does not yet support mirrored"),
         }
     }
 
