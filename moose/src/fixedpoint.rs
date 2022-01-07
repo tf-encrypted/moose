@@ -144,11 +144,12 @@ impl IdentityOp {
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementPlace<S, RepFixedT>,
     {
         let v = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
             FixedTensor::Mirrored3(x) => plc.share(sess, &x),
-            FixedTensor::Replicated(x) => x,
+            FixedTensor::Replicated(x) => plc.place(sess, x),
         };
 
         Ok(FixedTensor::Replicated(v))
