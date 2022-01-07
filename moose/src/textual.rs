@@ -280,7 +280,8 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         FillOp::from_textual,
         IndexAxisOp::from_textual,
     ));
-    alt((part1, part2, part3))(input)
+    let part4 = alt((DemirrorOp::from_textual, MirrorOp::from_textual));
+    alt((part1, part2, part3, part4))(input)
 }
 
 /// Parses a HostExpandDims operator
