@@ -1082,6 +1082,9 @@ operators![
     RepShlDim,
     RepEqual,
     Mux,
+    // Mirrored Operators
+    Demirror,
+    Mirror,
 ];
 
 pub trait HasShortName {
@@ -1844,6 +1847,16 @@ pub struct RepEqualOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct MuxOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct DemirrorOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct MirrorOp {
     pub sig: Signature,
 }
 

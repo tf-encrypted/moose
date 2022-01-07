@@ -21,8 +21,9 @@ class MirroredOpsExample(parameterized.TestCase):
         def my_comp():
             with mir3:
                 x = edsl.constant(np.array([1.5, 2.3, 3, 3], dtype=np.float64))
+                x = edsl.cast(x, dtype=edsl.fixed(8, 27))
             with alice:
-                y = edsl.identity(x)
+                y = edsl.cast(x, dtype=edsl.float64)
 
             return y
 
@@ -44,8 +45,10 @@ class MirroredOpsExample(parameterized.TestCase):
         )
 
         actual_result = list(result_dict.values())[0]
-        np.testing.assert_equal(actual_result[0], 1.5)
-        np.testing.assert_equal(actual_result[1], 2.3)
+
+        np.testing.assert_almost_equal(actual_result[0], 1.5)
+        np.testing.assert_almost_equal(actual_result[1], 2.3)
+        np.testing.assert_almost_equal(actual_result[2], 3)
 
 
 if __name__ == "__main__":

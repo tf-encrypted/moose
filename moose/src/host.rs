@@ -1191,16 +1191,8 @@ where
     }
 }
 
-modelled_kernel! {
-    PlacementRingFixedpointEncode::fixedpoint_ring_encode, RingFixedpointEncodeOp{scaling_base: u64, scaling_exp: u32},
-    [
-        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] Self::float64_kernel),
-        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] Self::float32_kernel),
-    ]
-}
-
 impl RingFixedpointEncodeOp {
-    fn float32_kernel<S: RuntimeSession>(
+    pub(crate) fn float32_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         scaling_base: u64,
@@ -1214,7 +1206,7 @@ impl RingFixedpointEncodeOp {
         Ok(AbstractHostRingTensor(x_converted, plc.clone()))
     }
 
-    fn float64_kernel<S: RuntimeSession>(
+    pub(crate) fn float64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         scaling_base: u64,
@@ -1229,26 +1221,18 @@ impl RingFixedpointEncodeOp {
     }
 }
 
-modelled_kernel! {
-    PlacementRingFixedpointDecode::fixedpoint_ring_decode, RingFixedpointDecodeOp{scaling_base: u64, scaling_exp: u32},
-    [
-        (HostPlacement, (HostRing128Tensor) -> HostFloat64Tensor => [runtime] Self::float64_kernel),
-        (HostPlacement, (HostRing64Tensor) -> HostFloat32Tensor => [runtime] Self::float32_kernel),
-    ]
-}
-
 impl RingFixedpointDecodeOp {
-    fn float32_kernel<S: RuntimeSession, ST, TT>(
+    pub(crate) fn float32_kernel<S: RuntimeSession>(
         _sess: &S,
         _plc: &HostPlacement,
         _scaling_base: u64,
         _scaling_exp: u32,
-        _x: AbstractHostRingTensor<ST>,
-    ) -> Result<HostTensor<TT>> {
+        _x: HostRing64Tensor,
+    ) -> Result<HostFloat32Tensor> {
         unimplemented!()
     }
 
-    fn float64_kernel<S: RuntimeSession>(
+    pub(crate) fn float64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         scaling_base: u64,
@@ -2023,6 +2007,27 @@ impl<RingT: Placed> Placed for AbstractHostFixedTensor<RingT> {
 
     fn placement(&self) -> Result<Self::Placement> {
         self.tensor.placement()
+    }
+}
+
+impl<S: Session, RingT> PlacementPlace<S, AbstractHostFixedTensor<RingT>> for HostPlacement
+where
+    AbstractHostFixedTensor<RingT>: Placed<Placement = HostPlacement>,
+    HostPlacement: PlacementPlace<S, RingT>,
+{
+    fn place(&self, sess: &S, x: AbstractHostFixedTensor<RingT>) -> AbstractHostFixedTensor<RingT> {
+        match x.placement() {
+            Ok(place) if self == &place => x,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                AbstractHostFixedTensor {
+                    tensor: self.place(sess, x.tensor),
+                    integral_precision: x.integral_precision,
+                    fractional_precision: x.fractional_precision,
+                }
+            }
+        }
     }
 }
 
