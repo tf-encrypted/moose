@@ -92,6 +92,9 @@ class LinearClassifier(LinearPredictor):
     def __init__(self, coeffs, intercept=None, multitask=False):
         super().__init__(coeffs, intercept)
         n_classes = self.coeffs.shape[-1]
+        if multitask and n_classes == 1:
+            raise ValueError("Invalid argument: multitask=True found with n_classes=1.")
+        # infer post_transform
         if multitask or n_classes == 1:
             self.post_transform = edsl.sigmoid
         elif n_classes > 1:
