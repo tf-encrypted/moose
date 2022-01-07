@@ -390,7 +390,7 @@ impl AddNOp {
                     Ok(AbstractTensor::Fixed128(result))
                 }
                 x => Err(Error::UnimplementedOperator(format!(
-                    "Missing host add_n op for {:?}",
+                    "Missing replicated add_n op for {:?}",
                     &x.ty_desc(),
                 ))),
             }
