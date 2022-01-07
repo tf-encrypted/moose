@@ -8,9 +8,9 @@ from . import model_utils
 
 
 class LinearPredictor(model.AesPredictor, metaclass=abc.ABCMeta):
-    def __init__(self, coeffs, intercept=None):
+    def __init__(self, coeffs, intercepts=None):
         super().__init__()
-        self.coeffs, self.intercept = _validate_model_args(coeffs, intercept)
+        self.coeffs, self.intercepts = _validate_model_args(coeffs, intercepts)
 
     @abc.abstractmethod
     def post_transform(self, y):
@@ -23,14 +23,14 @@ class LinearPredictor(model.AesPredictor, metaclass=abc.ABCMeta):
 
     def linear_predictor_fn(self, x, fixedpoint_dtype):
         with self.alice:
-            w = edsl.constant(self.coeffs, dtype=fixedpoint_dtype)
+            w = edsl.constant(self.coeffs.T, dtype=fixedpoint_dtype)
             # TODO: use bias trick instead of explicit add op for intercept
-            if self.intercept is not None:
-                b = edsl.constant(self.intercept, dtype=fixedpoint_dtype)
+            if self.intercepts is not None:
+                b = edsl.constant(self.intercepts, dtype=fixedpoint_dtype)
 
         with self.replicated:
             y = edsl.dot(x, w)
-            if self.intercept is not None:
+            if self.intercepts is not None:
                 y = edsl.add(y, b)
             return y
 
@@ -47,13 +47,15 @@ class LinearPredictor(model.AesPredictor, metaclass=abc.ABCMeta):
             )
             y = self.linear_predictor_fn(x, fixedpoint_dtype)
             pred = self.post_transform(y)
-            return model_utils.handle_predictor_output(pred, prediction_handler=self.bob)
+            return model_utils.handle_predictor_output(
+                pred, prediction_handler=self.bob
+            )
 
         return predictor
 
 
 class LinearRegressor(LinearPredictor):
-    def post_transform(y):
+    def post_transform(self, y):
         # no-op for linear regression models
         return y
 
@@ -74,23 +76,22 @@ class LinearRegressor(LinearPredictor):
             )
         coeffs = coeffs_attr.floats
         # extract intercept if it's there, otherwise pass it as None
-        intercept_attr = model_utils.find_attribute_in_node(lr_node, "intercepts")
-        if intercept_attr is None:
-            intercept = None
-        elif intercept_attr.type != 6:  # FLOATS
+        intercepts_attr = model_utils.find_attribute_in_node(lr_node, "intercepts")
+        if intercepts_attr is None:
+            intercepts = None
+        elif intercepts_attr.type != 6:  # FLOATS
             raise ValueError(
-                "LinearRegressor intercept must of type FLOATS, found other."
+                "LinearRegressor intercept must be of type FLOATS, found other."
             )
         else:
-            intercept = intercept_attr.floats
+            intercepts = intercepts_attr.floats
 
-        return cls(coeffs=coeffs, intercept=intercept)
+        return cls(coeffs=coeffs, intercepts=intercepts)
 
 
 class LinearClassifier(LinearPredictor):
-
-    def __init__(self, coeffs, intercept=None, multitask=False):
-        super().__init__(coeffs, intercept)
+    def __init__(self, coeffs, intercepts=None, multitask=False, transform_output=True):
+        super().__init__(coeffs, intercepts)
         n_classes = self.coeffs.shape[-1]
         if multitask and n_classes == 1:
             raise ValueError("Invalid argument: multitask=True found with n_classes=1.")
@@ -102,7 +103,8 @@ class LinearClassifier(LinearPredictor):
             raise NotImplementedError("Softmax classifier not yet implemented.")
         else:
             raise ValueError(
-                f"Improper `multitask` argument, expected bool but found {type(multitask)}."
+                "Improper `multitask` argument to LinearClassifier model, expected "
+                f"bool but found {type(multitask)}."
             )
 
     @classmethod
@@ -117,23 +119,23 @@ class LinearClassifier(LinearPredictor):
         raise Exception()
 
 
-def _validate_model_args(coeffs, intercept):
+def _validate_model_args(coeffs, intercepts):
     coeffs = _interpret_coeffs(coeffs)
-    intercept = _interpret_intercept(intercept)
-    if intercept is not None and coeffs.shape[-1] != intercept.shape[-1]:
+    intercepts = _interpret_intercepts(intercepts)
+    if intercepts is not None and coeffs.shape[0] != intercepts.shape[-1]:
         raise ValueError(
-            "Shape mismatch between model coefficients and intercept: "
-            f"Intercept size of {coeffs.shape[-1]} inferred from coefficients, "
-            f"found {intercept.shape[-1]}."
+            "Shape mismatch between model coefficients and intercepts: "
+            f"Intercepts size of {coeffs.shape[0]} inferred from coefficients, "
+            f"found {intercepts.shape[-1]}."
         )
-    return coeffs, intercept
+    return coeffs, intercepts
 
 
 def _interpret_coeffs(coeffs):
     coeffs = np.asarray(coeffs, dtype=np.float64)
     coeffs_shape = coeffs.shape
     if len(coeffs_shape) == 1:
-        return np.expand_dims(coeffs, -1)
+        return np.expand_dims(coeffs, 0)
     elif len(coeffs_shape) == 2:
         return coeffs
     raise ValueError(
@@ -141,18 +143,18 @@ def _interpret_coeffs(coeffs):
     )
 
 
-def _interpret_intercept(intercept):
-    if intercept is None:
-        return intercept
-    intercept = np.asarray(intercept, dtype=np.float64)
-    intercept_shape = intercept.shape
-    if len(intercept_shape) == 1:
-        return np.expand_dims(intercept, 0)
-    elif len(intercept_shape) == 2:
-        if intercept_shape[0] != 1:
+def _interpret_intercepts(intercepts):
+    if intercepts is None:
+        return intercepts
+    intercepts = np.asarray(intercepts, dtype=np.float64)
+    intercepts_shape = intercepts.shape
+    if len(intercepts_shape) == 1:
+        return np.expand_dims(intercepts, 0)
+    elif len(intercepts_shape) == 2:
+        if intercepts_shape[0] != 1:
             pass
         else:
-            return intercept
+            return intercepts
     raise ValueError(
-        f"Intercept must be convertible to a vector, found shape of {intercept_shape}."
+        f"Intercept must be convertible to a vector, found shape of {intercepts_shape}."
     )
