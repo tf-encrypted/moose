@@ -2010,6 +2010,27 @@ impl<RingT: Placed> Placed for AbstractHostFixedTensor<RingT> {
     }
 }
 
+impl<S: Session, RingT> PlacementPlace<S, AbstractHostFixedTensor<RingT>> for HostPlacement
+where
+    AbstractHostFixedTensor<RingT>: Placed<Placement = HostPlacement>,
+    HostPlacement: PlacementPlace<S, RingT>,
+{
+    fn place(&self, sess: &S, x: AbstractHostFixedTensor<RingT>) -> AbstractHostFixedTensor<RingT> {
+        match x.placement() {
+            Ok(place) if self == &place => x,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                AbstractHostFixedTensor {
+                    tensor: self.place(sess, x.tensor),
+                    integral_precision: x.integral_precision,
+                    fractional_precision: x.fractional_precision,
+                }
+            }
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
 

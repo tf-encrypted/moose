@@ -31,51 +31,6 @@ where
     }
 }
 
-impl IdentityOp {
-    pub(crate) fn host_mir3_kernel<S: Session, HostT: Clone>(
-        sess: &S,
-        plc: &HostPlacement,
-        x: Mirrored3Tensor<HostT>,
-    ) -> Result<HostT>
-    where
-        HostPlacement: PlacementPlace<S, HostT>,
-        HostT: Placed<Placement = HostPlacement>,
-    {
-        let mir = x.placement()?;
-
-        let Mirrored3Tensor {
-            values: [x0, x1, x2],
-        } = x;
-
-        let (player0, player1, _player2) = &mir.host_placements();
-
-        let res = match () {
-            _ if plc == player0 => x0,
-            _ if plc == player1 => x1,
-            _ => plc.place(sess, x2),
-            // we send it to player2 in case there's no one else to place the value on
-        };
-
-        Ok(res)
-    }
-
-    pub(crate) fn host_mir3_fixed_kernel<S: Session, MirRingT, HostRingT>(
-        sess: &S,
-        plc: &HostPlacement,
-        x: AbstractMirroredFixedTensor<MirRingT>,
-    ) -> Result<AbstractHostFixedTensor<HostRingT>>
-    where
-        HostPlacement: PlacementIdentity<S, MirRingT, HostRingT>,
-    {
-        let x_id = plc.identity(sess, &x.tensor);
-        Ok(AbstractHostFixedTensor {
-            tensor: x_id,
-            fractional_precision: x.fractional_precision,
-            integral_precision: x.integral_precision,
-        })
-    }
-}
-
 impl DemirrorOp {
     pub(crate) fn kernel<S: Session, R: Clone>(
         sess: &S,

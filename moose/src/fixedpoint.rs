@@ -126,9 +126,10 @@ impl IdentityOp {
         HostPlacement: PlacementIdentity<S, HostFixedT, HostFixedT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementPlace<S, HostFixedT>,
     {
         let v = match x {
-            FixedTensor::Host(x) => x,
+            FixedTensor::Host(x) => plc.place(sess, x),
             FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
@@ -142,7 +143,6 @@ impl IdentityOp {
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
-        ReplicatedPlacement: PlacementIdentity<S, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
     {
         let v = match x {
