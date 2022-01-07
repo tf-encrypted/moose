@@ -624,8 +624,8 @@ impl RepRevealOp {
 
     pub(crate) fn mir_ring_kernel<S: Session, HostRingT: Clone>(
         sess: &S,
-        mir_plc: &Mirrored3Placement,
-        xe: RepTen<HostRingT>,
+        mir: &Mirrored3Placement,
+        x: RepTen<HostRingT>,
     ) -> Result<Mirrored3Tensor<HostRingT>>
     where
         RepTen<HostRingT>: CanonicalType,
@@ -634,10 +634,11 @@ impl RepRevealOp {
         RepTen<HostRingT>: Into<m!(c!(RepTen<HostRingT>))>,
         HostPlacement: PlacementReveal<S, m!(c!(RepTen<HostRingT>)), HostRingT>,
     {
-        let (player0, player1, player2) = mir_plc.host_placements();
-        let x0 = player0.reveal(sess, &xe.clone().into());
-        let x1 = player1.reveal(sess, &xe.clone().into());
-        let x2 = player2.reveal(sess, &xe.into());
+        let (player0, player1, player2) = mir.host_placements();
+
+        let x0 = player0.reveal(sess, &x.clone().into());
+        let x1 = player1.reveal(sess, &x.clone().into());
+        let x2 = player2.reveal(sess, &x.into());
 
         Ok(Mirrored3Tensor {
             values: [x0, x1, x2],

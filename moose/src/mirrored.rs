@@ -35,27 +35,28 @@ impl IdentityOp {
     pub(crate) fn host_mir3_kernel<S: Session, HostT: Clone>(
         sess: &S,
         plc: &HostPlacement,
-        xe: Mirrored3Tensor<HostT>,
+        x: Mirrored3Tensor<HostT>,
     ) -> Result<HostT>
     where
         HostPlacement: PlacementPlace<S, HostT>,
         HostT: Placed<Placement = HostPlacement>,
     {
+        let mir = x.placement()?;
+
         let Mirrored3Tensor {
             values: [x0, x1, x2],
-        } = xe.clone();
+        } = x;
 
-        let mir_plc = xe.placement()?;
-        let (player0, player1, _player2) = &mir_plc.host_placements();
+        let (player0, player1, _player2) = &mir.host_placements();
 
         let res = match () {
             _ if plc == player0 => x0,
             _ if plc == player1 => x1,
-            _ => x2,
+            _ => plc.place(sess, x2),
             // we send it to player2 in case there's no one else to place the value on
         };
 
-        Ok(plc.place(sess, res))
+        Ok(res)
     }
 
     pub(crate) fn host_mir3_fixed_kernel<S: Session, MirRingT, HostRingT>(
@@ -79,42 +80,43 @@ impl DemirrorOp {
     pub(crate) fn kernel<S: Session, R: Clone>(
         sess: &S,
         receiver: &HostPlacement,
-        xe: Mirrored3Tensor<R>,
+        x: Mirrored3Tensor<R>,
     ) -> Result<R>
     where
         HostPlacement: PlacementPlace<S, R>,
         R: Placed<Placement = HostPlacement>,
     {
+        let mir = x.placement()?;
+
         let Mirrored3Tensor {
             values: [x0, x1, x2],
-        } = xe.clone();
+        } = x;
 
-        let mir_plc = xe.placement()?;
-        let (player0, player1, _player2) = &mir_plc.host_placements();
+        let (player0, player1, _player2) = &mir.host_placements();
 
         let res = match () {
             _ if receiver == player0 => x0,
             _ if receiver == player1 => x1,
-            _ => x2,
+            _ => receiver.place(sess, x2),
             // we send it to player2 in case there's no one else to place the value on
         };
 
-        Ok(receiver.place(sess, res))
+        Ok(res)
     }
 
     pub(crate) fn fixed_kernel<S: Session, MirRingT, HostRingT>(
         sess: &S,
         receiver: &HostPlacement,
-        xe: AbstractMirroredFixedTensor<MirRingT>,
+        x: AbstractMirroredFixedTensor<MirRingT>,
     ) -> Result<AbstractHostFixedTensor<HostRingT>>
     where
         HostPlacement: PlacementDemirror<S, MirRingT, HostRingT>,
     {
-        let x = receiver.demirror(sess, &xe.tensor);
+        let dx = receiver.demirror(sess, &x.tensor);
         Ok(AbstractHostFixedTensor {
-            tensor: x,
-            fractional_precision: xe.fractional_precision,
-            integral_precision: xe.integral_precision,
+            tensor: dx,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
         })
     }
 }
@@ -192,7 +194,7 @@ impl RepShareOp {
     pub(crate) fn ring_mir_kernel<S: Session, HostRingT, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        xe: Mirrored3Tensor<HostRingT>,
+        x: Mirrored3Tensor<HostRingT>,
     ) -> Result<RepRingT>
     where
         HostRingT: Clone,
@@ -203,7 +205,7 @@ impl RepShareOp {
     {
         let Mirrored3Tensor {
             values: [x0, _x1, _x2],
-        } = xe;
+        } = x;
 
         // TODO(Dragos) Here we can insert various optimizations:
         // 1) if the mirrored placement is the same with the replicated placement then we don't need to
@@ -217,14 +219,14 @@ impl RepShareOp {
 impl MirrorOp {
     pub(crate) fn kernel<S: Session, HostT>(
         sess: &S,
-        mir_plc: &Mirrored3Placement,
+        mir: &Mirrored3Placement,
         x: HostT,
     ) -> Result<Mirrored3Tensor<HostT>>
     where
         HostPlacement: PlacementPlace<S, HostT>,
         HostT: Clone,
     {
-        let (player0, player1, player2) = &mir_plc.host_placements();
+        let (player0, player1, player2) = &mir.host_placements();
 
         Ok(Mirrored3Tensor {
             values: [
