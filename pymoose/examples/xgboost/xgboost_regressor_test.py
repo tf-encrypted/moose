@@ -17,10 +17,9 @@ from .xgboost_regressor import XGBoostForestRegressor
 class XGBoostReplicatedExample(parameterized.TestCase):
     def test_xgboost_regression_example_execute(self):
         input_x = np.array([[0, 1, 0, 0], [1, 0, 0, 1]], dtype=np.float64)
+        root_path = pathlib.Path(__file__).parent.absolute()
 
-        with pathlib.Path(
-            "./pymoose/examples/xgboost/xgboost_regression_2_trees.json"
-        ) as p:
+        with root_path / "xgboost_regression_2_trees.json" as p:
             with open(p) as f:
                 forest_json = json.load(f)
 

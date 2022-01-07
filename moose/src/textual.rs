@@ -267,12 +267,18 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         HostSqrtOp::from_textual,
         HostDiagOp::from_textual,
         HostSqueezeOp::from_textual,
+        AddNOp::from_textual,
         AddOp::from_textual,
         SubOp::from_textual,
         MulOp::from_textual,
         DivOp::from_textual,
         DotOp::from_textual,
         MeanOp::from_textual,
+        RingNegOp::from_textual,
+        HostShlDimOp::from_textual,
+        HostBitDecOp::from_textual,
+        FillOp::from_textual,
+        IndexAxisOp::from_textual,
     ));
     alt((part1, part2, part3))(input)
 }
@@ -701,7 +707,7 @@ where
     delimited(tag("["), separated_list0(ws(tag(",")), inner), tag("]"))
 }
 
-/// Parses a 2D vector of items, using the supplied innter parser.
+/// Parses a 2D vector of items, using the supplied inner parser.
 fn vector2<'a, F: 'a, O: 'a, E: 'a>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, ndarray::ArrayD<O>, E>
@@ -728,27 +734,28 @@ where
     }
 }
 
-/// Parses a literal for a Slice info (start, step, end)
+/// Parses a literal for a Slice info (start, end, step)
 pub fn slice_info_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, SliceInfo, E> {
-    let (input, (start, step, end)) = attributes!((
+    let (input, (start, end, step)) = attributes!((
         attributes_member("start", parse_int),
-        opt(attributes_member("step", parse_int)),
         opt(attributes_member("end", parse_int)),
+        opt(attributes_member("step", parse_int)),
     ))(input)?;
-    println!("Got parsed {:?} {:?} {:?}", start, step, end);
-    println!("Remainder: {}", input);
 
-    Ok((input, SliceInfo(vec![SliceInfoElem { start, step, end }])))
+    Ok((input, SliceInfo(vec![SliceInfoElem { start, end, step }])))
 }
 
 /// Parses integer (or anything implementing FromStr from decimal digits)
 pub fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, O, E> {
-    map_res(digit1, |s: &str| s.parse::<O>())(input)
-        .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
+    map_res(
+        recognize(tuple((opt(alt((tag("-"), tag("+")))), digit1))),
+        |s: &str| s.parse::<O>(),
+    )(input)
+    .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 }
 
 /// Parses a single byte, writte as two hex character.
@@ -1263,7 +1270,7 @@ impl ToTextual for RingSampleOp {
             RingSampleOp {
                 sig,
                 max_value: None,
-            } => format!("RingSample: {}", sig.to_textual()),
+            } => format!("RingSample{{}}: {}", sig.to_textual()),
         }
     }
 }
@@ -1282,7 +1289,7 @@ impl ToTextual for RingSampleSeededOp {
             RingSampleSeededOp {
                 sig,
                 max_value: None,
-            } => format!("RingSampleSeeded: {}", sig.to_textual()),
+            } => format!("RingSampleSeeded{{}}: {}", sig.to_textual()),
         }
     }
 }
@@ -1561,7 +1568,7 @@ impl ToTextual for Signature {
                 ret.to_textual()
             ),
             Signature::Variadic(VariadicSignature { args, ret }) => {
-                format!("(vec[{}]) -> {}", args.to_textual(), ret.to_textual())
+                format!("[{}] -> {}", args.to_textual(), ret.to_textual())
             }
         }
     }
@@ -1882,8 +1889,8 @@ mod tests {
     }
 
     #[test]
-    fn test_slice() -> Result<(), anyhow::Error> {
-        let input = "x10 = HostSlice{slice = {start = 1, end = 10}}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)";
+    fn test_slice_option() -> Result<(), anyhow::Error> {
+        let input = "x10 = HostSlice{slice = {start = 1, end = 10, step = -1}}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)";
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(input)?;
         assert_eq!(op.name, "x10");
         assert_eq!(
@@ -1893,7 +1900,27 @@ mod tests {
                 slice: SliceInfo(vec![SliceInfoElem {
                     start: 1,
                     end: Some(10),
-                    step: None
+                    step: Some(-1),
+                }])
+            })
+        );
+        assert_eq!(op.to_textual(), input);
+        Ok(())
+    }
+
+    #[test]
+    fn test_slice() -> Result<(), anyhow::Error> {
+        let input = "x10 = HostSlice{slice = {start = 1, end = 10, step = 1}}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)";
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(input)?;
+        assert_eq!(op.name, "x10");
+        assert_eq!(
+            op.kind,
+            Operator::HostSlice(HostSliceOp {
+                sig: Signature::unary(Ty::HostRing64Tensor, Ty::HostRing64Tensor),
+                slice: SliceInfo(vec![SliceInfoElem {
+                    start: 1,
+                    end: Some(10),
+                    step: Some(1),
                 }])
             })
         );
@@ -2001,6 +2028,9 @@ mod tests {
 
         parse_assignment::<(&str, ErrorKind)>(
             "load = Load: (String, String) -> Float64Tensor (xuri, xconstant) @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "addN = AddN: [String] -> String (xuri, xconstant) @Host(alice)",
         )?;
 
         Ok(())

@@ -4,15 +4,15 @@ build:
 pydep:
 	pip install -r pymoose/requirements-dev.txt
 
-pylib:
+pylib-release:
 	cd pymoose && python setup.py install
 
-install: pydep pylib
+install-release: pydep pylib-release
 
-pylib-dev:
+pylib:
 	cd pymoose && python setup.py develop
 
-install-dev: pydep pylib-dev
+install: pydep pylib
 
 fmt:
 	cargo fmt

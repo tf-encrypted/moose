@@ -138,3 +138,5 @@ To ease your development we encourage you to install the following extra cargo c
 - [`cargo udeps`](https://crates.io/crates/cargo-udeps) to list unused dependencies.
 
 - [`cargo expand`](https://github.com/dtolnay/cargo-expand) to dump what macros expand into.
+
+[Tokio Console](https://tokio.rs/blog/2021-12-announcing-tokio-console) is also interesting.

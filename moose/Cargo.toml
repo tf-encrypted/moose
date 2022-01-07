@@ -71,3 +71,7 @@ harness = false
 [[bench]]
 name = "networking"
 harness = false
+
+[[bench]]
+name = "runtime"
+harness = false
