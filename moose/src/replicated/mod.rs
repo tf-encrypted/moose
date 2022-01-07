@@ -277,6 +277,32 @@ impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
     }
 }
 
+impl<S: Session, RepRingT> PlacementPlace<S, AbstractReplicatedFixedTensor<RepRingT>>
+    for ReplicatedPlacement
+where
+    AbstractReplicatedFixedTensor<RepRingT>: Placed<Placement = ReplicatedPlacement>,
+    ReplicatedPlacement: PlacementPlace<S, RepRingT>,
+{
+    fn place(
+        &self,
+        sess: &S,
+        x: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> AbstractReplicatedFixedTensor<RepRingT> {
+        match x.placement() {
+            Ok(place) if self == &place => x,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                AbstractReplicatedFixedTensor {
+                    tensor: self.place(sess, x.tensor),
+                    integral_precision: x.integral_precision,
+                    fractional_precision: x.fractional_precision,
+                }
+            }
+        }
+    }
+}
+
 impl<RepRingT: Placed> Placed for AbstractMirroredFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;
 
