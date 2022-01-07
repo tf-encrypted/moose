@@ -6,6 +6,7 @@ flake8==3.8.3
 isort==5.4.2
 msgpack==1.0.2
 numpy==1.21.2
+onnx~=1.10.0
 pip~=21.2
 pytest==6.0.1
 setuptools-rust~=0.12.1
