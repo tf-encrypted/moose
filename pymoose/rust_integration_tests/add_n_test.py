@@ -1,4 +1,6 @@
+import argparse
 import numpy as np
+from absl.testing import absltest
 from absl.testing import parameterized
 
 from pymoose import edsl
@@ -71,3 +73,14 @@ class AddNExample(parameterized.TestCase):
         result = self._run_add_n()
         val = list(result.values())[0]
         assert all(val == np.array([13.0, 17.0, 21.0]))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="add_n example")
+    parser.add_argument("--verbose", action="store_true")
+    args = parser.parse_args()
+
+    if args.verbose:
+        get_logger().setLevel(level=logging.DEBUG)
+
+    absltest.main()
