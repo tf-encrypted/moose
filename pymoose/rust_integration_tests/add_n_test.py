@@ -1,4 +1,6 @@
 import argparse
+import logging
+
 import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -6,6 +8,7 @@ from absl.testing import parameterized
 from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose.computation import utils
+from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 player0 = edsl.host_placement("player0")
