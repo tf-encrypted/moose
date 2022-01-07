@@ -5,7 +5,7 @@ from pymoose import edsl
 from . import model_utils as utils
 
 
-class AesPredictorModel(metaclass=abc.ABCMeta):
+class AesPredictor(metaclass=abc.ABCMeta):
     def __init__(self):
         (
             (self.alice, self.bob, self.carole),
