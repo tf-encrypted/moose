@@ -1,10 +1,6 @@
 PyMoose Models
 ============
 
-PyMoose computations for running predictions of pretrained models.
+PyMoose computations for running predictions of select pretrained ONNX models.
 
-To run tests, the module depends on the `onnxmltools` package to convert ONNX files to PyMoose computations.
-
-```sh
-pip install onnxmltools~=1.10
-```
+Note that test fixtures come from the sk-onnx project in the [capeprivacy/research](https://github.com/capeprivacy/research) repo.

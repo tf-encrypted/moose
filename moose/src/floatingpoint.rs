@@ -43,12 +43,12 @@ impl IdentityOp {
         x: FloatTensor<HostFloatT, MirroredT>,
     ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
-        HostPlacement: PlacementIdentity<S, HostFloatT, HostFloatT>,
-        HostPlacement: PlacementIdentity<S, MirroredT, HostFloatT>,
+        HostPlacement: PlacementPlace<S, HostFloatT>,
+        HostPlacement: PlacementDemirror<S, MirroredT, HostFloatT>,
     {
         let x = match x {
-            FloatTensor::Host(v) => plc.identity(sess, &v),
-            FloatTensor::Mirrored3(v) => plc.identity(sess, &v),
+            FloatTensor::Host(v) => plc.place(sess, v),
+            FloatTensor::Mirrored3(v) => plc.demirror(sess, &v),
         };
         Ok(FloatTensor::Host(x))
     }

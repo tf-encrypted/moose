@@ -3,7 +3,7 @@
 use crate::boolean::{BoolTensor, BooleanTensor};
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
+use crate::floatingpoint::FloatTensor;
 use crate::host::*;
 use crate::kernels::*;
 use crate::replicated::*;
@@ -16,18 +16,21 @@ use std::num::Wrapping;
 use std::ops::Mul;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum FixedTensor<HostFixedT, RepFixedT> {
+pub enum FixedTensor<HostFixedT, MirFixedT, RepFixedT> {
     Host(HostFixedT),
+    Mirrored3(MirFixedT),
     Replicated(RepFixedT),
 }
 
-moose_type!(Fixed64Tensor = FixedTensor<HostFixed64Tensor, ReplicatedFixed64Tensor>);
-moose_type!(Fixed128Tensor = FixedTensor<HostFixed128Tensor, ReplicatedFixed128Tensor>);
+moose_type!(Fixed64Tensor = FixedTensor<HostFixed64Tensor, Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor>);
+moose_type!(Fixed128Tensor = FixedTensor<HostFixed128Tensor, Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor>);
 
-impl<HostFixedT, RepFixedT> Placed for FixedTensor<HostFixedT, RepFixedT>
+impl<HostFixedT, MirFixedT, RepFixedT> Placed for FixedTensor<HostFixedT, MirFixedT, RepFixedT>
 where
     HostFixedT: Placed,
     HostFixedT::Placement: Into<Placement>,
+    MirFixedT: Placed,
+    MirFixedT::Placement: Into<Placement>,
     RepFixedT: Placed,
     RepFixedT::Placement: Into<Placement>,
 {
@@ -36,6 +39,7 @@ where
     fn placement(&self) -> Result<Self::Placement> {
         match self {
             FixedTensor::Host(x) => Ok(x.placement()?.into()),
+            FixedTensor::Mirrored3(x) => Ok(x.placement()?.into()),
             FixedTensor::Replicated(x) => Ok(x.placement()?.into()),
         }
     }
@@ -113,76 +117,127 @@ where
 }
 
 impl IdentityOp {
-    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementIdentity<S, HostFixedT, HostFixedT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementPlace<S, HostFixedT>,
     {
-        match x {
-            FixedTensor::Host(x) => Ok(FixedTensor::Host(plc.identity(sess, &x))),
-            FixedTensor::Replicated(x) => {
-                let x = plc.reveal(sess, &x);
-                Ok(FixedTensor::Host(plc.identity(sess, &x)))
-            }
-        }
+        let v = match x {
+            FixedTensor::Host(x) => plc.place(sess, x),
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
+            FixedTensor::Replicated(x) => plc.reveal(sess, &x),
+        };
+        Ok(FixedTensor::Host(v))
     }
 
-    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
-        ReplicatedPlacement: PlacementIdentity<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementPlace<S, RepFixedT>,
     {
-        match x {
-            FixedTensor::Host(x) => {
-                let x = plc.share(sess, &x);
-                Ok(FixedTensor::Replicated(plc.identity(sess, &x)))
-            }
-            FixedTensor::Replicated(x) => Ok(FixedTensor::Replicated(plc.identity(sess, &x))),
-        }
-    }
-}
+        let v = match x {
+            FixedTensor::Host(x) => plc.share(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
+            FixedTensor::Replicated(x) => plc.place(sess, x),
+        };
 
-modelled_kernel! {
-    PlacementFixedpointEncode::fixedpoint_encode, FixedpointEncodeOp{fractional_precision: u32, integral_precision: u32},
-    [
-        (HostPlacement, (Float32Tensor) -> Fixed64Tensor => [concrete] Self::fixed_kernel),
-        (HostPlacement, (Float64Tensor) -> Fixed128Tensor => [concrete] Self::fixed_kernel),
-        (HostPlacement, (HostFloat32Tensor) -> HostFixed64Tensor => [hybrid] Self::hostfixed_kernel),
-        (HostPlacement, (HostFloat64Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
-    ]
+        Ok(FixedTensor::Replicated(v))
+    }
 }
 
 impl FixedpointEncodeOp {
-    fn fixed_kernel<S: Session, HostFloatT, HostFixedT, RepFixedT, MirroredT>(
+    pub(crate) fn fixed_kernel<
+        S: Session,
+        HostFloatT,
+        HostFixedT,
+        RepFixedT,
+        MirFloatT,
+        MirFixedT,
+    >(
         sess: &S,
         plc: &HostPlacement,
         fractional_precision: u32,
         integral_precision: u32,
-        x: FloatTensor<HostFloatT, MirroredT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FloatTensor<HostFloatT, MirFloatT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementFixedpointEncode<S, HostFloatT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFloatT, HostFloatT>,
     {
-        match x {
-            FloatTensor::Host(x) => {
-                let x = plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
-                Ok(FixedTensor::Host(x))
-            }
-            FloatTensor::Mirrored3(_) => {
-                unimplemented!()
-            }
-        }
+        let v = match x {
+            FloatTensor::Host(x) => x,
+            FloatTensor::Mirrored3(x) => plc.demirror(sess, &x),
+        };
+
+        Ok(FixedTensor::Host(plc.fixedpoint_encode(
+            sess,
+            fractional_precision,
+            integral_precision,
+            &v,
+        )))
     }
 
-    fn hostfixed_kernel<S: Session, HostFloatT, HostRingT>(
+    pub(crate) fn mir_fixed_kernel<
+        S: Session,
+        HostFloatT,
+        HostFixedT,
+        RepFixedT,
+        MirFloatT,
+        MirFixedT,
+    >(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        fractional_precision: u32,
+        integral_precision: u32,
+        x: FloatTensor<HostFloatT, MirFloatT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        Mirrored3Placement: PlacementFixedpointEncode<S, MirFloatT, MirFixedT>,
+        Mirrored3Placement: PlacementMirror<S, HostFloatT, MirFloatT>,
+    {
+        let v = match x {
+            FloatTensor::Mirrored3(x) => x,
+            FloatTensor::Host(x) => plc.mirror(sess, &x),
+        };
+
+        Ok(FixedTensor::Mirrored3(plc.fixedpoint_encode(
+            sess,
+            fractional_precision,
+            integral_precision,
+            &v,
+        )))
+    }
+
+    pub(crate) fn mir_fixed_lower_kernel<S: Session, MirFloatT, MirRingT>(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        fractional_precision: u32,
+        integral_precision: u32,
+        x: MirFloatT,
+    ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
+    where
+        Mirrored3Placement: PlacementRingFixedpointEncode<S, MirFloatT, MirRingT>,
+    {
+        let tensor = plc.fixedpoint_ring_encode(sess, 2, fractional_precision, &x);
+        Ok(AbstractMirroredFixedTensor {
+            tensor,
+            fractional_precision,
+            integral_precision,
+        })
+    }
+
+    pub(crate) fn hostfixed_kernel<S: Session, HostFloatT, HostRingT>(
         sess: &S,
         plc: &HostPlacement,
         fractional_precision: u32,
@@ -202,36 +257,79 @@ impl FixedpointEncodeOp {
     }
 }
 
-modelled_kernel! {
-    PlacementFixedpointDecode::fixedpoint_decode, FixedpointDecodeOp{fractional_precision: u32},
-    [
-        (HostPlacement, (Fixed64Tensor) -> Float32Tensor => [concrete] Self::fixed_kernel),
-        (HostPlacement, (Fixed128Tensor) -> Float64Tensor => [concrete] Self::fixed_kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFloat32Tensor => [hybrid] Self::hostfixed_kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFloat64Tensor => [hybrid] Self::hostfixed_kernel),
-    ]
-}
-
 impl FixedpointDecodeOp {
-    fn fixed_kernel<S: Session, HostFixedT, RepFixedT, HostFloatT, MirroredT>(
+    pub(crate) fn fixed_kernel<
+        S: Session,
+        HostFixedT,
+        RepFixedT,
+        HostFloatT,
+        MirFixedT,
+        MirFloatT,
+    >(
         sess: &S,
         plc: &HostPlacement,
         precision: u32,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FloatTensor<HostFloatT, MirFloatT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementFixedpointDecode<S, HostFixedT, HostFloatT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let v = match x {
             FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
-        let y = plc.fixedpoint_decode(sess, precision, &v);
-        Ok(FloatTensor::Host(y))
+
+        Ok(FloatTensor::Host(
+            plc.fixedpoint_decode(sess, precision, &v),
+        ))
     }
 
-    fn hostfixed_kernel<S: Session, HostRingT, HostFloatT>(
+    pub(crate) fn mir_fixed_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostFloatT,
+        MirFloatT,
+    >(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        precision: u32,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FloatTensor<HostFloatT, MirFloatT>>
+    where
+        Mirrored3Placement: PlacementFixedpointDecode<S, MirFixedT, MirFloatT>,
+        Mirrored3Placement: PlacementMirror<S, HostFixedT, MirFixedT>,
+        Mirrored3Placement: PlacementReveal<S, RepFixedT, MirFixedT>,
+    {
+        let v = match x {
+            FixedTensor::Mirrored3(v) => v,
+            FixedTensor::Host(v) => plc.mirror(sess, &v),
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+
+        Ok(FloatTensor::Mirrored3(
+            plc.fixedpoint_decode(sess, precision, &v),
+        ))
+    }
+
+    pub(crate) fn mir_fixed_lower_kernel<S: Session, MirFloatT, MirRingT>(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        precision: u32,
+        x: AbstractMirroredFixedTensor<MirRingT>,
+    ) -> Result<MirFloatT>
+    where
+        Mirrored3Placement: PlacementRingFixedpointDecode<S, MirRingT, MirFloatT>,
+    {
+        let tensor = plc.fixedpoint_ring_decode(sess, 2, precision, &x.tensor);
+        Ok(tensor)
+    }
+
+    pub(crate) fn hostfixed_kernel<S: Session, HostRingT, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
         precision: u32,
@@ -265,22 +363,25 @@ modelled_kernel! {
 }
 
 impl FixedpointAddOp {
-    fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-        y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementAdd<S, HostFixedT, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
@@ -288,22 +389,25 @@ impl FixedpointAddOp {
         Ok(FixedTensor::Host(z))
     }
 
-    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-        y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementAdd<S, RepFixedT, RepFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -399,22 +503,25 @@ modelled_kernel! {
 }
 
 impl FixedpointSubOp {
-    fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-        y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementSub<S, HostFixedT, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
@@ -422,22 +529,25 @@ impl FixedpointSubOp {
         Ok(FixedTensor::Host(z))
     }
 
-    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-        y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementSub<S, RepFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -501,22 +611,25 @@ modelled_kernel! {
 }
 
 impl FixedpointMulOp {
-    fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-        y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementMul<S, HostFixedT, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
@@ -524,22 +637,25 @@ impl FixedpointMulOp {
         Ok(FixedTensor::Host(z))
     }
 
-    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-        y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementMul<S, RepFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -635,22 +751,25 @@ modelled_kernel! {
 }
 
 impl FixedpointDivOp {
-    fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-        y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementDiv<S, HostFixedT, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
@@ -658,22 +777,25 @@ impl FixedpointDivOp {
         Ok(FixedTensor::Host(z))
     }
 
-    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-        y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementDiv<S, RepFixedT, RepFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
@@ -730,22 +852,25 @@ modelled_kernel! {
 }
 
 impl FixedpointDotOp {
-    fn fixed_on_host_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_on_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-        y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementDot<S, HostFixedT, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let x_revealed = match x {
             FixedTensor::Host(x) => x,
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
         let y_revealed = match y {
             FixedTensor::Host(x) => x,
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -753,22 +878,25 @@ impl FixedpointDotOp {
         Ok(FixedTensor::Host(z))
     }
 
-    fn fixed_on_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_on_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-        y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementDot<S, RepFixedT, RepFixedT, RepFixedT>,
     {
         let x_shared = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
         let y_shared = match y {
             FixedTensor::Host(x) => plc.share(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -828,18 +956,20 @@ modelled_kernel! {
 }
 
 impl FixedpointTruncPrOp {
-    fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
         precision: u32,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementTruncPr<S, HostFixedT, HostFixedT>,
     {
         let v = match x {
             FixedTensor::Host(x) => x,
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -847,18 +977,20 @@ impl FixedpointTruncPrOp {
         Ok(FixedTensor::Host(z))
     }
 
-    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         precision: u32,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepFixedT, RepFixedT>,
     {
         let v = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -917,18 +1049,20 @@ modelled_kernel! {
 }
 
 impl FixedpointSumOp {
-    fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementSum<S, HostFixedT, HostFixedT>,
     {
         let v = match x {
             FixedTensor::Host(x) => x,
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -936,18 +1070,20 @@ impl FixedpointSumOp {
         Ok(FixedTensor::Host(result))
     }
 
-    fn rep_kernel<S: Session, RingT, RepT>(
+    fn rep_kernel<S: Session, RingT, MirT, RepT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Option<u32>,
-        x: FixedTensor<RingT, RepT>,
-    ) -> Result<FixedTensor<RingT, RepT>>
+        x: FixedTensor<RingT, MirT, RepT>,
+    ) -> Result<FixedTensor<RingT, MirT, RepT>>
     where
         ReplicatedPlacement: PlacementShare<S, RingT, RepT>,
+        ReplicatedPlacement: PlacementShare<S, MirT, RepT>,
         ReplicatedPlacement: PlacementSum<S, RepT, RepT>,
     {
         let x_shared = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -991,38 +1127,42 @@ impl FixedpointSumOp {
 }
 
 impl IndexAxisOp {
-    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: usize,
         index: usize,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementIndexAxis<S, RepFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.index_axis(sess, axis, index, &x);
         Ok(FixedTensor::Replicated(z))
     }
 
-    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
         axis: usize,
         index: usize,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementIndexAxis<S, HostFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Host(v) => v,
         };
         let z = plc.index_axis(sess, axis, index, &x);
@@ -1067,34 +1207,38 @@ impl IndexAxisOp {
 }
 
 impl ShapeOp {
-    pub(crate) fn host_fixed_kernel<S: Session, HostFixedT, RepFixedT, HostShapeT>(
+    pub(crate) fn host_fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT, HostShapeT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<HostShapeT>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementShape<S, HostFixedT, HostShapeT>,
     {
         let x_revealed = match x {
             FixedTensor::Host(x) => x,
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
         Ok(plc.shape(sess, &x_revealed))
     }
 
-    pub(crate) fn rep_fixed_kernel<S: Session, HostFixedT, RepFixedT, RepShapeT>(
+    pub(crate) fn rep_fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT, RepShapeT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<RepShapeT>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementShape<S, RepFixedT, RepShapeT>,
     {
         let x_shared = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -1128,18 +1272,20 @@ modelled_kernel! {
 }
 
 impl FixedpointMeanOp {
-    fn fixed_host_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
         HostPlacement: PlacementMean<S, HostFixedT, HostFixedT>,
     {
         let x_revealed = match x {
             FixedTensor::Host(x) => x,
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
@@ -1147,18 +1293,20 @@ impl FixedpointMeanOp {
         Ok(FixedTensor::Host(result))
     }
 
-    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Option<u32>,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementMean<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
     {
         let x_shared = match x {
             FixedTensor::Host(x) => plc.share(sess, &x),
+            FixedTensor::Mirrored3(x) => plc.share(sess, &x),
             FixedTensor::Replicated(x) => x,
         };
 
@@ -1334,17 +1482,19 @@ modelled_kernel! {
 }
 
 impl Pow2Op {
-    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementPow2<S, RepFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.pow2(sess, &x);
@@ -1364,17 +1514,19 @@ modelled_kernel! {
 }
 
 impl ExpOp {
-    fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.exp(sess, &x);
@@ -1389,17 +1541,19 @@ modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (ReplicatedFixed128Ten
 modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor, SigmoidOp);
 
 impl SigmoidOp {
-    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT>(
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementSigmoid<S, RepFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.sigmoid(sess, &x);
@@ -1499,44 +1653,57 @@ modelled!(PlacementLessThan::less, ReplicatedPlacement, (ReplicatedFixed128Tenso
 modelled!(PlacementLessThan::less, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor, LessOp);
 
 impl LessOp {
-    pub(crate) fn fixed_kernel<S: Session, HostFixedT, RepFixedT, HostBitT, RepBitT>(
+    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT, HostBitT, RepBitT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-        y: FixedTensor<HostFixedT, RepFixedT>,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<BoolTensor<HostBitT, RepBitT>>
     where
         HostPlacement: PlacementLessThan<S, HostFixedT, HostFixedT, HostBitT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
             FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let z = plc.less(sess, &x, &y);
         Ok(BoolTensor::Host(z))
     }
 
-    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT, HostBitT, RepBitT>(
+    pub(crate) fn fixed_rep_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostBitT,
+        RepBitT,
+    >(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-        y: FixedTensor<HostFixedT, RepFixedT>,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<BoolTensor<HostBitT, RepBitT>>
     where
         ReplicatedPlacement: PlacementLessThan<S, RepFixedT, RepFixedT, RepBitT>,
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let z = plc.less(sess, &x, &y);
@@ -1631,20 +1798,20 @@ impl GreaterThanOp {
     }
 }
 
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed64Tensor, FillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed128Tensor, FillOp);
+modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed64Tensor, FillOp);
+modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed128Tensor, FillOp);
 
 impl FillOp {
     pub(crate) fn mir_fixed_kernel<S: Session, MirRingT, ShapeT>(
         sess: &S,
-        plc: &ReplicatedPlacement,
+        plc: &Mirrored3Placement,
         value: Constant,
         shape: ShapeT,
         fractional_precision: u32,
         integral_precision: u32,
     ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
     where
-        ReplicatedPlacement: PlacementFill<S, ShapeT, MirRingT>,
+        Mirrored3Placement: PlacementFill<S, ShapeT, MirRingT>,
     {
         let filled = plc.fill(sess, value, &shape);
         Ok(AbstractMirroredFixedTensor {
@@ -1662,17 +1829,25 @@ modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedBitTensor, Replicat
 modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, MuxOp);
 
 impl MuxOp {
-    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, RepFixedT, HostBitT, RepBitT>(
+    pub(crate) fn fixed_rep_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostBitT,
+        RepBitT,
+    >(
         sess: &S,
         plc: &ReplicatedPlacement,
         s: BoolTensor<HostBitT, RepBitT>,
-        x: FixedTensor<HostFixedT, RepFixedT>,
-        y: FixedTensor<HostFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, RepFixedT>>
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
         ReplicatedPlacement: PlacementMux<S, RepBitT, RepFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementShare<S, HostBitT, RepBitT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
     {
         let s = match s {
             BoolTensor::Host(v) => plc.share(sess, &v),
@@ -1680,10 +1855,12 @@ impl MuxOp {
         };
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
         let y = match y {
             FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
             FixedTensor::Replicated(v) => v,
         };
 
