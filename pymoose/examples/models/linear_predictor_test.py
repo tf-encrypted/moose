@@ -13,27 +13,27 @@ from pymoose.computation import utils as comp_utils
 from . import linear_predictor
 from . import model_utils
 
-_SK_LINEAR_MODELS = [
-    "linear_regression",
-    "ridge",
-    "ridge_cv",
-    "sgd_regressor",
+_SK_REGRESSION_MODELS = [
+    "ard_regression",
+    "bayesian_ridge",
     "elastic_net",
     "elastic_net_cv",
+    "huber_regressor",
     "lars",
     "lars_cv",
     "lasso",
     "lasso_cv",
     "lasso_lars_ic",
+    "linear_regression",
     "orthogonal_matching_pursuit",
     "orthogonal_matching_pursuit_cv",
-    "ard_regression",
-    "bayesian_ridge",
-    "huber_regressor",
+    "passive_aggressive_regressor",
     "quantile_regressor",
     "ransac_regressor",
+    "ridge",
+    "ridge_cv",
+    "sgd_regressor",
     "theil_sen_regressor",
-    "passive_aggressive_regressor",
 ]
 
 
@@ -46,7 +46,7 @@ class LinearPredictorTest(parameterized.TestCase):
         linear_model = linear_predictor.LinearPredictor.from_onnx_proto(lr_onnx)
         return linear_model
 
-    @parameterized.parameters(*_SK_LINEAR_MODELS)
+    @parameterized.parameters(*_SK_REGRESSION_MODELS)
     def test_predictor_logic(self, model_name):
         linear_model = self._build_linear_predictor(model_name)
 
@@ -78,7 +78,7 @@ class LinearPredictorTest(parameterized.TestCase):
         expected_result = linear_model.coeffs.sum() + linear_model.intercept
         np.testing.assert_almost_equal(actual_result, expected_result)
 
-    @parameterized.parameters(*_SK_LINEAR_MODELS)
+    @parameterized.parameters(*_SK_REGRESSION_MODELS)
     def test_serde(self, model_name):
         linear_model = self._build_linear_predictor(model_name)
         predictor = linear_model.predictor_factory()
