@@ -11,7 +11,8 @@ from pymoose import edsl
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
-from .xgboost_regressor import XGBoostForestRegressor
+from . import model_utils as utils
+from . import xgboost_regressor
 
 
 class XGBoostReplicatedExample(parameterized.TestCase):
@@ -19,13 +20,13 @@ class XGBoostReplicatedExample(parameterized.TestCase):
         input_x = np.array([[0, 1, 0, 0], [1, 0, 0, 1]], dtype=np.float64)
         root_path = pathlib.Path(__file__).parent.absolute()
 
-        with root_path / "xgboost_regression_2_trees.json" as p:
+        with root_path / "fixtures" / "xgboost_regression_2_trees.json" as p:
             with open(p) as f:
                 forest_json = json.load(f)
 
-        forest = XGBoostForestRegressor.from_json(forest_json)
+        forest = xgboost_regressor.XGBoostForestRegressor.from_json(forest_json)
 
-        forest_predict = forest.predictor_factory(fixedpoint_dtype=edsl.fixed(8, 27))
+        forest_predict = forest.predictor_factory(fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE)
         traced_model_comp = edsl.trace(forest_predict)
 
         storage = {plc.name: {} for plc in forest.host_placements}
