@@ -35,38 +35,43 @@ _SK_REGRESSION_MODELS = [
     "sgd_regressor",
     "theil_sen_regressor",
 ]
+_SK_CLASSIFIER_MODELS = [
+    # TODO uncomment when softmax implemented in LinearClassifier
+    # "logistic_regression_2class_multiclass",
+    # "logistic_regression_3class_multiclass",
+    "logistic_regression_2class_multilabel",
+    "logistic_regression_3class_multilabel",
+]
 
 
 class LinearPredictorTest(parameterized.TestCase):
-    def _build_linear_predictor(self, onnx_fixture):
+    def _build_linear_predictor(self, onnx_fixture, predictor_cls):
         root_path = pathlib.Path(__file__).parent.absolute()
         fixture_path = root_path / "fixtures" / f"{onnx_fixture}.onnx"
         with open(fixture_path, "rb") as model_fixture:
             lr_onnx = onnx.load_model(model_fixture)
-        linear_model = linear_predictor.LinearPredictor.from_onnx_proto(lr_onnx)
+        linear_model = predictor_cls.from_onnx(lr_onnx)
         return linear_model
 
     @parameterized.parameters(*_SK_REGRESSION_MODELS)
-    def test_predictor_logic(self, model_name):
-        linear_model = self._build_linear_predictor(model_name)
+    def test_regression_logic(self, model_name):
+        regressor = self._build_linear_predictor(
+            model_name, linear_predictor.LinearRegressor
+        )
 
         @edsl.computation
-        def predictor_minus_aes(
-            x: edsl.Argument(linear_model.alice, dtype=edsl.float64)
-        ):
-            with linear_model.alice:
+        def predictor_minus_aes(x: edsl.Argument(regressor.alice, dtype=edsl.float64)):
+            with regressor.alice:
                 x_fixed = edsl.cast(x, dtype=model_utils.DEFAULT_FIXED_DTYPE)
-            y = linear_model.linear_predictor_fn(
-                x_fixed, model_utils.DEFAULT_FIXED_DTYPE
-            )
+            y = regressor.linear_predictor_fn(x_fixed, model_utils.DEFAULT_FIXED_DTYPE)
             return model_utils.handle_predictor_output(
-                y, prediction_handler=linear_model.bob
+                y, prediction_handler=regressor.bob
             )
 
         traced_predictor = edsl.trace(predictor_minus_aes)
-        storage = {plc.name: {} for plc in linear_model.host_placements}
+        storage = {plc.name: {} for plc in regressor.host_placements}
         runtime = testing.LocalMooseRuntime(storage_mapping=storage)
-        role_assignment = {plc.name: plc.name for plc in linear_model.host_placements}
+        role_assignment = {plc.name: plc.name for plc in regressor.host_placements}
         input_x = np.array([[1.0, 1.0, 1.0, 1.0]], dtype=np.float64)
         result_dict = runtime.evaluate_computation(
             computation=traced_predictor,
@@ -75,7 +80,7 @@ class LinearPredictorTest(parameterized.TestCase):
         )
         actual_result = list(result_dict.values())[0]
         # predicting on input vector of all ones == sum of linear model's coefficients
-        expected_result = linear_model.coeffs.sum() + linear_model.intercept
+        expected_result = regressor.coeffs.sum() + regressor.intercepts
         np.testing.assert_almost_equal(actual_result, expected_result)
 
     @parameterized.parameters(*_SK_REGRESSION_MODELS)
