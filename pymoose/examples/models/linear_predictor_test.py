@@ -42,6 +42,11 @@ _SK_CLASSIFIER_MODELS = [
     # "logistic_regression_3class_multiclass",
     "logistic_regression_2class_multilabel",
     "logistic_regression_3class_multilabel",
+    # TODO uncomment when softmax implemented in LinearClassifier
+    # "logistic_regression_cv_2class_multiclass",
+    # "logistic_regression_cv_3class_multiclass",
+    "logistic_regression_cv_2class_multilabel",
+    "logistic_regression_cv_3class_multilabel",
 ]
 
 
