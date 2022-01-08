@@ -1,3 +1,4 @@
+import itertools
 import pathlib
 
 import numpy as np
@@ -83,10 +84,13 @@ class LinearPredictorTest(parameterized.TestCase):
         expected_result = regressor.coeffs.sum() + regressor.intercepts
         np.testing.assert_almost_equal(actual_result, expected_result)
 
-    @parameterized.parameters(*_SK_REGRESSION_MODELS)
-    def test_serde(self, model_name):
-        linear_model = self._build_linear_predictor(model_name)
-        predictor = linear_model.predictor_factory()
+    @parameterized.parameters(
+        *zip(_SK_REGRESSION_MODELS, itertools.repeat(linear_predictor.LinearRegressor)),
+        *zip(_SK_CLASSIFIER_MODELS, itertools.repeat(linear_predictor.LinearClassifier)),
+    )
+    def test_serde(self, model_name, predictor_cls):
+        regressor = self._build_linear_predictor(model_name, predictor_cls)
+        predictor = regressor.predictor_factory()
         traced_predictor = edsl.trace(predictor)
         serialized = comp_utils.serialize_computation(traced_predictor)
         logical_comp_rustref = elk_compiler.compile_computation(serialized, [])
