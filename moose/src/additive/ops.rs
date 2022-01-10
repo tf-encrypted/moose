@@ -13,13 +13,13 @@ impl ShapeOp {
         sess: &S,
         adt: &AdditivePlacement,
         x: AdtTensor<HostT>,
-    ) -> Result<AbstractAdditiveShape<ShapeT>>
+    ) -> Result<AdtShape<ShapeT>>
     where
         HostPlacement: PlacementShape<S, HostT, ShapeT>,
     {
         let (player0, player1) = adt.host_placements();
         let AdtTensor { shares: [x0, x1] } = &x;
-        Ok(AbstractAdditiveShape {
+        Ok(AdtShape {
             shapes: [player0.shape(sess, x0), player1.shape(sess, x1)],
         })
     }
@@ -60,14 +60,14 @@ impl AdtFillOp {
         sess: &S,
         plc: &AdditivePlacement,
         value: Constant,
-        shape: AbstractAdditiveShape<ShapeT>,
+        shape: AdtShape<ShapeT>,
     ) -> Result<AdtTensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
         // TODO should really return Mirrored2Tensor, but we don't have that type yet
 
-        let AbstractAdditiveShape {
+        let AdtShape {
             shapes: [shape0, shape1],
         } = &shape;
 

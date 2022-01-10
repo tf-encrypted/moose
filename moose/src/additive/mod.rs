@@ -60,20 +60,20 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractAdditiveShape<S> {
-    pub shapes: [S; 2],
+pub struct AdtShape<HostT> {
+    pub shapes: [HostT; 2],
 }
 
-moose_type!(AdditiveShape = AbstractAdditiveShape<HostShape>);
+moose_type!(AdditiveShape = AdtShape<HostShape>);
 
-impl<S> Placed for AbstractAdditiveShape<S>
+impl<S> Placed for AdtShape<S>
 where
     S: Placed<Placement = HostPlacement>,
 {
     type Placement = AdditivePlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        let AbstractAdditiveShape { shapes: [s0, s1] } = self;
+        let AdtShape { shapes: [s0, s1] } = self;
 
         let owner0 = s0.placement()?.owner;
         let owner1 = s1.placement()?.owner;
