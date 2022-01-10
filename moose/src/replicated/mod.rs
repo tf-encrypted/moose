@@ -2309,10 +2309,10 @@ impl RepBitComposeOp {
     }
 }
 
-/// ShrRaw takes as input a replicated secret and shifts to the right all local shares
-/// It should be used carefully since
-/// [x]>>amount is NOT equal to [ [x0 >> amount, x1 >> amount], [x1 >> amount, x2 >> amount], [x2 >> amount, x0>>amount]
-/// Used in conjunction with split operation so that we don't use the full bit-decomposition in order to perform exact truncation
+// ShrRaw takes as input a replicated secret and shifts to the right all local shares
+// It should be used carefully since
+// [x]>>amount is NOT equal to [ [x0 >> amount, x1 >> amount], [x1 >> amount, x2 >> amount], [x2 >> amount, x0>>amount]
+// Used in conjunction with split operation so that we don't use the full bit-decomposition in order to perform exact truncation
 pub trait PlacementShrRaw<S: Session, T, O> {
     fn shr_raw(&self, sess: &S, amount: usize, x: &T) -> O;
 }

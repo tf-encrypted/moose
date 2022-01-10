@@ -1,4 +1,4 @@
-//! Placements backed by additive secret sharing
+//! Placement backed by additive secret sharing
 use crate::computation::{AdditivePlacement, HostPlacement, Placed};
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};
@@ -16,9 +16,10 @@ pub use misc::*;
 pub use ops::*;
 pub use trunc::*;
 
+/// Additive secret shared tensor
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AdtTensor<HostTensorT> {
-    pub shares: [HostTensorT; 2],
+    pub(crate) shares: [HostTensorT; 2],
 }
 
 moose_type!(AdditiveRing64Tensor = AdtTensor<HostRing64Tensor>);
@@ -61,9 +62,10 @@ where
     }
 }
 
+/// Plaintext shape used by additive placements
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AdtShape<HostShapeT> {
-    pub shapes: [HostShapeT; 2],
+    pub(crate) shapes: [HostShapeT; 2],
 }
 
 moose_type!(AdditiveShape = AdtShape<HostShape>);
