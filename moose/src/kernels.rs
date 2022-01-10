@@ -1123,7 +1123,7 @@ pub trait PlacementTruncPr<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: u32, x: &T) -> O;
 }
 
-pub trait PlacementTruncPrProvider<S: Session, T, O> {
+pub trait TruncPrProvider<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
 }
 

@@ -23,9 +23,9 @@ moose_type!(AdditiveRing64Tensor = AdtTensor<HostRing64Tensor>);
 moose_type!(AdditiveRing128Tensor = AdtTensor<HostRing128Tensor>);
 moose_type!(AdditiveBitTensor = AdtTensor<HostBitTensor>);
 
-impl<R> Placed for AdtTensor<R>
+impl<HostT> Placed for AdtTensor<HostT>
 where
-    R: Placed<Placement = HostPlacement>,
+    HostT: Placed<Placement = HostPlacement>,
 {
     type Placement = AdditivePlacement;
 
@@ -40,12 +40,12 @@ where
     }
 }
 
-impl<S: Session, R> PlacementPlace<S, AdtTensor<R>> for AdditivePlacement
+impl<S: Session, HostT> PlacementPlace<S, AdtTensor<HostT>> for AdditivePlacement
 where
-    AdtTensor<R>: Placed<Placement = AdditivePlacement>,
-    HostPlacement: PlacementPlace<S, R>,
+    AdtTensor<HostT>: Placed<Placement = AdditivePlacement>,
+    HostPlacement: PlacementPlace<S, HostT>,
 {
-    fn place(&self, sess: &S, x: AdtTensor<R>) -> AdtTensor<R> {
+    fn place(&self, sess: &S, x: AdtTensor<HostT>) -> AdtTensor<HostT> {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {

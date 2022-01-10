@@ -62,7 +62,7 @@ where
     }
 }
 
-impl<S: Session, HostRingT> PlacementTruncPrProvider<S, AdtTensor<HostRingT>, AdtTensor<HostRingT>>
+impl<S: Session, HostRingT> TruncPrProvider<S, AdtTensor<HostRingT>, AdtTensor<HostRingT>>
     for AdditivePlacement
 where
     AdtTensor<HostRingT>: CanonicalType,

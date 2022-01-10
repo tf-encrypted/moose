@@ -1394,7 +1394,7 @@ impl RepTruncPrOp {
     ) -> Result<RepTen<HostRingT>>
     where
         AdditivePlacement: PlacementRepToAdt<S, RepTen<HostRingT>, AdtTen<HostRingT>>,
-        AdditivePlacement: PlacementTruncPrProvider<S, AdtTen<HostRingT>, AdtTen<HostRingT>>,
+        AdditivePlacement: TruncPrProvider<S, AdtTen<HostRingT>, AdtTen<HostRingT>>,
         ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<HostRingT>, RepTen<HostRingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
