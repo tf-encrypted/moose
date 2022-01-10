@@ -111,12 +111,12 @@ modelled_kernel! {
         (AdditivePlacement, (AdditiveRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::adt_adt_kernel),
         (AdditivePlacement, (AdditiveBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [concrete] Self::adt_adt_kernel),
         // TODO(Morten) replace host tensors with mirrored tensors in the below
-        (AdditivePlacement, (AdditiveRing64Tensor, HostRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::adt_ring_kernel),
-        (AdditivePlacement, (AdditiveRing128Tensor, HostRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::adt_ring_kernel),
-        (AdditivePlacement, (AdditiveBitTensor, HostBitTensor) -> AdditiveBitTensor => [hybrid] Self::adt_ring_kernel),
-        (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::ring_adt_kernel),
-        (AdditivePlacement, (HostRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::ring_adt_kernel),
-        (AdditivePlacement, (HostBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [hybrid] Self::ring_adt_kernel),
+        (AdditivePlacement, (AdditiveRing64Tensor, HostRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::adt_host_kernel),
+        (AdditivePlacement, (AdditiveRing128Tensor, HostRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::adt_host_kernel),
+        (AdditivePlacement, (AdditiveBitTensor, HostBitTensor) -> AdditiveBitTensor => [hybrid] Self::adt_host_kernel),
+        (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::host_adt_kernel),
+        (AdditivePlacement, (HostRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::host_adt_kernel),
+        (AdditivePlacement, (HostBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [hybrid] Self::host_adt_kernel),
     ]
 }
 
@@ -141,7 +141,7 @@ impl AdtAddOp {
         Ok(AdtTensor { shares: [z0, z1] })
     }
 
-    fn adt_ring_kernel<S: Session, HostRingT>(
+    fn adt_host_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
         x: AdtTensor<HostRingT>,
@@ -165,7 +165,7 @@ impl AdtAddOp {
         Ok(adt.place(sess, AdtTensor { shares }))
     }
 
-    fn ring_adt_kernel<S: Session, HostRingT>(
+    fn host_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
         x: HostRingT,
@@ -197,22 +197,22 @@ modelled_kernel! {
         (AdditivePlacement, (AdditiveRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::adt_adt_kernel),
         (AdditivePlacement, (AdditiveBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [concrete] Self::adt_adt_kernel),
         // TODO(Morten) replace host tensors with mirrored tensors in the below
-        (AdditivePlacement, (AdditiveRing64Tensor, HostRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::adt_ring_kernel),
-        (AdditivePlacement, (AdditiveRing128Tensor, HostRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::adt_ring_kernel),
-        (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::ring_adt_kernel),
-        (AdditivePlacement, (HostRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::ring_adt_kernel),
+        (AdditivePlacement, (AdditiveRing64Tensor, HostRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::adt_host_kernel),
+        (AdditivePlacement, (AdditiveRing128Tensor, HostRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::adt_host_kernel),
+        (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::host_adt_kernel),
+        (AdditivePlacement, (HostRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::host_adt_kernel),
     ]
 }
 
 impl AdtSubOp {
-    fn adt_adt_kernel<S: Session, R>(
+    fn adt_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AdtTensor<R>,
-        y: AdtTensor<R>,
-    ) -> Result<AdtTensor<R>>
+        x: AdtTensor<HostRingT>,
+        y: AdtTensor<HostRingT>,
+    ) -> Result<AdtTensor<HostRingT>>
     where
-        HostPlacement: PlacementSub<S, R, R, R>,
+        HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
     {
         let (player0, player1) = adt.host_placements();
 
@@ -225,16 +225,16 @@ impl AdtSubOp {
         Ok(AdtTensor { shares: [z0, z1] })
     }
 
-    fn adt_ring_kernel<S: Session, R>(
+    fn adt_host_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AdtTensor<R>,
-        y: R,
-    ) -> Result<AdtTensor<R>>
+        x: AdtTensor<HostRingT>,
+        y: HostRingT,
+    ) -> Result<AdtTensor<HostRingT>>
     where
-        R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementSub<S, R, R, R>,
-        AdditivePlacement: PlacementPlace<S, AdtTensor<R>>,
+        HostRingT: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
+        AdditivePlacement: PlacementPlace<S, AdtTensor<HostRingT>>,
     {
         let (player0, player1) = adt.host_placements();
         let y_plc = y.placement()?;
@@ -249,17 +249,17 @@ impl AdtSubOp {
         Ok(adt.place(sess, AdtTensor { shares }))
     }
 
-    fn ring_adt_kernel<S: Session, R>(
+    fn host_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: R,
-        y: AdtTensor<R>,
-    ) -> Result<AdtTensor<R>>
+        x: HostRingT,
+        y: AdtTensor<HostRingT>,
+    ) -> Result<AdtTensor<HostRingT>>
     where
-        R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementSub<S, R, R, R>,
-        HostPlacement: PlacementNeg<S, R, R>,
-        AdditivePlacement: PlacementPlace<S, AdtTensor<R>>,
+        HostRingT: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
+        HostPlacement: PlacementNeg<S, HostRingT, HostRingT>,
+        AdditivePlacement: PlacementPlace<S, AdtTensor<HostRingT>>,
     {
         let (player0, player1) = adt.host_placements();
         let x_plc = x.placement()?;
@@ -279,26 +279,26 @@ modelled_kernel! {
     PlacementMul::mul, AdtMulOp,
     [
         // TODO(Morten) replace host tensors with mirrored tensors in the below
-        (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::ring_adt_kernel),
-        (AdditivePlacement, (AdditiveRing64Tensor, HostRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::adt_ring_kernel),
-        (AdditivePlacement, (AdditiveRing128Tensor, HostRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::adt_ring_kernel),
-        (AdditivePlacement, (HostRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::ring_adt_kernel),
-        (AdditivePlacement, (AdditiveBitTensor, HostBitTensor) -> AdditiveBitTensor => [hybrid] Self::adt_ring_kernel),
-        (AdditivePlacement, (HostBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [hybrid] Self::ring_adt_kernel),
+        (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::host_adt_kernel),
+        (AdditivePlacement, (AdditiveRing64Tensor, HostRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::adt_host_kernel),
+        (AdditivePlacement, (AdditiveRing128Tensor, HostRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::adt_host_kernel),
+        (AdditivePlacement, (HostRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::host_adt_kernel),
+        (AdditivePlacement, (AdditiveBitTensor, HostBitTensor) -> AdditiveBitTensor => [hybrid] Self::adt_host_kernel),
+        (AdditivePlacement, (HostBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [hybrid] Self::host_adt_kernel),
 
     ]
 }
 
 impl AdtMulOp {
-    fn ring_adt_kernel<S: Session, R>(
+    fn host_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: R,
-        y: AdtTensor<R>,
-    ) -> Result<AdtTensor<R>>
+        x: HostRingT,
+        y: AdtTensor<HostRingT>,
+    ) -> Result<AdtTensor<HostRingT>>
     where
-        R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementMul<S, R, R, R>,
+        HostRingT: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementMul<S, HostRingT, HostRingT, HostRingT>,
     {
         let (player0, player1) = adt.host_placements();
 
@@ -310,15 +310,15 @@ impl AdtMulOp {
         Ok(AdtTensor { shares: [z0, z1] })
     }
 
-    fn adt_ring_kernel<S: Session, R>(
+    fn adt_host_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AdtTensor<R>,
-        y: R,
-    ) -> Result<AdtTensor<R>>
+        x: AdtTensor<HostRingT>,
+        y: HostRingT,
+    ) -> Result<AdtTensor<HostRingT>>
     where
-        R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementMul<S, R, R, R>,
+        HostRingT: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementMul<S, HostRingT, HostRingT, HostRingT>,
     {
         let (player0, player1) = adt.host_placements();
 
@@ -340,14 +340,14 @@ modelled_kernel! {
 }
 
 impl AdtShlOp {
-    fn kernel<S: Session, RingT>(
+    fn kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &AdditivePlacement,
         amount: usize,
-        x: AdtTensor<RingT>,
-    ) -> Result<AdtTensor<RingT>>
+        x: AdtTensor<HostRingT>,
+    ) -> Result<AdtTensor<HostRingT>>
     where
-        HostPlacement: PlacementShl<S, RingT, RingT>,
+        HostPlacement: PlacementShl<S, HostRingT, HostRingT>,
     {
         let (player0, player1) = plc.host_placements();
         let AdtTensor { shares: [x0, x1] } = &x;
