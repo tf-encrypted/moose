@@ -17,22 +17,22 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractAdditiveTensor<HostRingT> {
-    pub shares: [HostRingT; 2],
+pub struct AdtTensor<HostT> {
+    pub shares: [HostT; 2],
 }
 
-moose_type!(AdditiveRing64Tensor = AbstractAdditiveTensor<HostRing64Tensor>);
-moose_type!(AdditiveRing128Tensor = AbstractAdditiveTensor<HostRing128Tensor>);
-moose_type!(AdditiveBitTensor = AbstractAdditiveTensor<HostBitTensor>);
+moose_type!(AdditiveRing64Tensor = AdtTensor<HostRing64Tensor>);
+moose_type!(AdditiveRing128Tensor = AdtTensor<HostRing128Tensor>);
+moose_type!(AdditiveBitTensor = AdtTensor<HostBitTensor>);
 
-impl<R> Placed for AbstractAdditiveTensor<R>
+impl<R> Placed for AdtTensor<R>
 where
     R: Placed<Placement = HostPlacement>,
 {
     type Placement = AdditivePlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        let AbstractAdditiveTensor { shares: [x0, x1] } = self;
+        let AdtTensor { shares: [x0, x1] } = self;
 
         let owner0 = x0.placement()?.owner;
         let owner1 = x1.placement()?.owner;
@@ -42,18 +42,18 @@ where
     }
 }
 
-impl<S: Session, R> PlacementPlace<S, AbstractAdditiveTensor<R>> for AdditivePlacement
+impl<S: Session, R> PlacementPlace<S, AdtTensor<R>> for AdditivePlacement
 where
-    AbstractAdditiveTensor<R>: Placed<Placement = AdditivePlacement>,
+    AdtTensor<R>: Placed<Placement = AdditivePlacement>,
     HostPlacement: PlacementPlace<S, R>,
 {
-    fn place(&self, sess: &S, x: AbstractAdditiveTensor<R>) -> AbstractAdditiveTensor<R> {
+    fn place(&self, sess: &S, x: AdtTensor<R>) -> AdtTensor<R> {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
-                let AbstractAdditiveTensor { shares: [x0, x1] } = x;
+                let AdtTensor { shares: [x0, x1] } = x;
                 let (player0, player1) = self.host_placements();
-                AbstractAdditiveTensor {
+                AdtTensor {
                     shares: [player0.place(sess, x0), player1.place(sess, x1)],
                 }
             }
@@ -89,13 +89,13 @@ impl ShapeOp {
     pub(crate) fn adt_kernel<S: Session, HostT, ShapeT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AbstractAdditiveTensor<HostT>,
+        x: AdtTensor<HostT>,
     ) -> Result<AbstractAdditiveShape<ShapeT>>
     where
         HostPlacement: PlacementShape<S, HostT, ShapeT>,
     {
         let (player0, player1) = adt.host_placements();
-        let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
+        let AdtTensor { shares: [x0, x1] } = &x;
         Ok(AbstractAdditiveShape {
             shapes: [player0.shape(sess, x0), player1.shape(sess, x1)],
         })
@@ -118,7 +118,7 @@ impl AdtFillOp {
         plc: &AdditivePlacement,
         value: Constant,
         shape: ShapeT,
-    ) -> Result<AbstractAdditiveTensor<RingT>>
+    ) -> Result<AdtTensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -130,7 +130,7 @@ impl AdtFillOp {
             player0.fill(sess, value, &shape),
             player1.fill(sess, Constant::Ring64(0), &shape),
         ];
-        Ok(AbstractAdditiveTensor { shares })
+        Ok(AdtTensor { shares })
     }
 
     fn adt_kernel<S: Session, ShapeT, RingT>(
@@ -138,7 +138,7 @@ impl AdtFillOp {
         plc: &AdditivePlacement,
         value: Constant,
         shape: AbstractAdditiveShape<ShapeT>,
-    ) -> Result<AbstractAdditiveTensor<RingT>>
+    ) -> Result<AdtTensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -154,7 +154,7 @@ impl AdtFillOp {
             player0.fill(sess, value, shape0),
             player1.fill(sess, Constant::Ring64(0), shape1),
         ];
-        Ok(AbstractAdditiveTensor { shares })
+        Ok(AdtTensor { shares })
     }
 }
 
@@ -171,12 +171,12 @@ impl AdtRevealOp {
     fn kernel<S: Session, RingT>(
         sess: &S,
         plc: &HostPlacement,
-        xe: AbstractAdditiveTensor<RingT>,
+        xe: AdtTensor<RingT>,
     ) -> Result<RingT>
     where
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
     {
-        let AbstractAdditiveTensor { shares: [x0, x1] } = &xe;
+        let AdtTensor { shares: [x0, x1] } = &xe;
         Ok(with_context!(plc, sess, x0 + x1))
     }
 }
@@ -201,69 +201,69 @@ impl AdtAddOp {
     fn adt_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AbstractAdditiveTensor<HostRingT>,
-        y: AbstractAdditiveTensor<HostRingT>,
-    ) -> Result<AbstractAdditiveTensor<HostRingT>>
+        x: AdtTensor<HostRingT>,
+        y: AdtTensor<HostRingT>,
+    ) -> Result<AdtTensor<HostRingT>>
     where
         HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
     {
         let (player0, player1) = adt.host_placements();
 
-        let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
-        let AbstractAdditiveTensor { shares: [y0, y1] } = &y;
+        let AdtTensor { shares: [x0, x1] } = &x;
+        let AdtTensor { shares: [y0, y1] } = &y;
 
         let z0 = with_context!(player0, sess, x0 + y0);
         let z1 = with_context!(player1, sess, x1 + y1);
 
-        Ok(AbstractAdditiveTensor { shares: [z0, z1] })
+        Ok(AdtTensor { shares: [z0, z1] })
     }
 
     fn adt_ring_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AbstractAdditiveTensor<HostRingT>,
+        x: AdtTensor<HostRingT>,
         y: HostRingT,
-    ) -> Result<AbstractAdditiveTensor<HostRingT>>
+    ) -> Result<AdtTensor<HostRingT>>
     where
         HostRingT: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
-        AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<HostRingT>>,
+        AdditivePlacement: PlacementPlace<S, AdtTensor<HostRingT>>,
     {
         let (player0, player1) = adt.host_placements();
         let y_plc = y.placement()?;
 
-        let AbstractAdditiveTensor { shares: [x0, x1] } = x;
+        let AdtTensor { shares: [x0, x1] } = x;
 
         let shares = match () {
             _ if y_plc == player0 => [with_context!(player0, sess, x0 + y), x1],
             _ if y_plc == player1 => [x0, with_context!(player1, sess, x1 + y)],
             _ => [with_context!(player0, sess, x0 + y), x1],
         };
-        Ok(adt.place(sess, AbstractAdditiveTensor { shares }))
+        Ok(adt.place(sess, AdtTensor { shares }))
     }
 
     fn ring_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
         x: HostRingT,
-        y: AbstractAdditiveTensor<HostRingT>,
-    ) -> Result<AbstractAdditiveTensor<HostRingT>>
+        y: AdtTensor<HostRingT>,
+    ) -> Result<AdtTensor<HostRingT>>
     where
         HostRingT: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
-        AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<HostRingT>>,
+        AdditivePlacement: PlacementPlace<S, AdtTensor<HostRingT>>,
     {
         let (player0, player1) = adt.host_placements();
         let x_plc = x.placement()?;
 
-        let AbstractAdditiveTensor { shares: [y0, y1] } = y;
+        let AdtTensor { shares: [y0, y1] } = y;
 
         let shares = match () {
             _ if x_plc == player0 => [with_context!(player0, sess, y0 + x), y1],
             _ if x_plc == player1 => [y0, with_context!(player1, sess, x + y1)],
             _ => [with_context!(player0, sess, x + y0), y1],
         };
-        Ok(adt.place(sess, AbstractAdditiveTensor { shares }))
+        Ok(adt.place(sess, AdtTensor { shares }))
     }
 }
 
@@ -285,70 +285,70 @@ impl AdtSubOp {
     fn adt_adt_kernel<S: Session, R>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AbstractAdditiveTensor<R>,
-        y: AbstractAdditiveTensor<R>,
-    ) -> Result<AbstractAdditiveTensor<R>>
+        x: AdtTensor<R>,
+        y: AdtTensor<R>,
+    ) -> Result<AdtTensor<R>>
     where
         HostPlacement: PlacementSub<S, R, R, R>,
     {
         let (player0, player1) = adt.host_placements();
 
-        let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
-        let AbstractAdditiveTensor { shares: [y0, y1] } = &y;
+        let AdtTensor { shares: [x0, x1] } = &x;
+        let AdtTensor { shares: [y0, y1] } = &y;
 
         let z0 = with_context!(player0, sess, x0 - y0);
         let z1 = with_context!(player1, sess, x1 - y1);
 
-        Ok(AbstractAdditiveTensor { shares: [z0, z1] })
+        Ok(AdtTensor { shares: [z0, z1] })
     }
 
     fn adt_ring_kernel<S: Session, R>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AbstractAdditiveTensor<R>,
+        x: AdtTensor<R>,
         y: R,
-    ) -> Result<AbstractAdditiveTensor<R>>
+    ) -> Result<AdtTensor<R>>
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementSub<S, R, R, R>,
-        AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<R>>,
+        AdditivePlacement: PlacementPlace<S, AdtTensor<R>>,
     {
         let (player0, player1) = adt.host_placements();
         let y_plc = y.placement()?;
 
-        let AbstractAdditiveTensor { shares: [x0, x1] } = x;
+        let AdtTensor { shares: [x0, x1] } = x;
 
         let shares = match () {
             _ if y_plc == player0 => [with_context!(player0, sess, x0 - y), x1],
             _ if y_plc == player1 => [x0, with_context!(player1, sess, x1 - y)],
             _ => [with_context!(player0, sess, x0 - y), x1],
         };
-        Ok(adt.place(sess, AbstractAdditiveTensor { shares }))
+        Ok(adt.place(sess, AdtTensor { shares }))
     }
 
     fn ring_adt_kernel<S: Session, R>(
         sess: &S,
         adt: &AdditivePlacement,
         x: R,
-        y: AbstractAdditiveTensor<R>,
-    ) -> Result<AbstractAdditiveTensor<R>>
+        y: AdtTensor<R>,
+    ) -> Result<AdtTensor<R>>
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementSub<S, R, R, R>,
         HostPlacement: PlacementNeg<S, R, R>,
-        AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<R>>,
+        AdditivePlacement: PlacementPlace<S, AdtTensor<R>>,
     {
         let (player0, player1) = adt.host_placements();
         let x_plc = x.placement()?;
 
-        let AbstractAdditiveTensor { shares: [y0, y1] } = y;
+        let AdtTensor { shares: [y0, y1] } = y;
 
         let shares = match () {
             _ if x_plc == player0 => [with_context!(player0, sess, x - y0), player1.neg(sess, &y1)],
             _ if x_plc == player1 => [player0.neg(sess, &y0), with_context!(player1, sess, x - y1)],
             _ => [with_context!(player0, sess, x - y0), player1.neg(sess, &y1)],
         };
-        Ok(adt.place(sess, AbstractAdditiveTensor { shares }))
+        Ok(adt.place(sess, AdtTensor { shares }))
     }
 }
 
@@ -371,40 +371,40 @@ impl AdtMulOp {
         sess: &S,
         adt: &AdditivePlacement,
         x: R,
-        y: AbstractAdditiveTensor<R>,
-    ) -> Result<AbstractAdditiveTensor<R>>
+        y: AdtTensor<R>,
+    ) -> Result<AdtTensor<R>>
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementMul<S, R, R, R>,
     {
         let (player0, player1) = adt.host_placements();
 
-        let AbstractAdditiveTensor { shares: [y0, y1] } = &y;
+        let AdtTensor { shares: [y0, y1] } = &y;
 
         let z0 = with_context!(player0, sess, x * y0);
         let z1 = with_context!(player1, sess, x * y1);
 
-        Ok(AbstractAdditiveTensor { shares: [z0, z1] })
+        Ok(AdtTensor { shares: [z0, z1] })
     }
 
     fn adt_ring_kernel<S: Session, R>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AbstractAdditiveTensor<R>,
+        x: AdtTensor<R>,
         y: R,
-    ) -> Result<AbstractAdditiveTensor<R>>
+    ) -> Result<AdtTensor<R>>
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementMul<S, R, R, R>,
     {
         let (player0, player1) = adt.host_placements();
 
-        let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
+        let AdtTensor { shares: [x0, x1] } = &x;
 
         let z0 = with_context!(player0, sess, x0 * y);
         let z1 = with_context!(player1, sess, x1 * y);
 
-        Ok(AbstractAdditiveTensor { shares: [z0, z1] })
+        Ok(AdtTensor { shares: [z0, z1] })
     }
 }
 
@@ -421,16 +421,16 @@ impl AdtShlOp {
         sess: &S,
         plc: &AdditivePlacement,
         amount: usize,
-        x: AbstractAdditiveTensor<RingT>,
-    ) -> Result<AbstractAdditiveTensor<RingT>>
+        x: AdtTensor<RingT>,
+    ) -> Result<AdtTensor<RingT>>
     where
         HostPlacement: PlacementShl<S, RingT, RingT>,
     {
         let (player0, player1) = plc.host_placements();
-        let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
+        let AdtTensor { shares: [x0, x1] } = &x;
         let z0 = player0.shl(sess, amount, x0);
         let z1 = player1.shl(sess, amount, x1);
-        Ok(AbstractAdditiveTensor { shares: [z0, z1] })
+        Ok(AdtTensor { shares: [z0, z1] })
     }
 }
 
@@ -488,9 +488,9 @@ pub trait TruncMaskGen<S: Session, ShapeT, RingT> {
         amount: usize,
         shape: &ShapeT,
     ) -> (
-        AbstractAdditiveTensor<RingT>,
-        AbstractAdditiveTensor<RingT>,
-        AbstractAdditiveTensor<RingT>,
+        AdtTensor<RingT>,
+        AdtTensor<RingT>,
+        AdtTensor<RingT>,
     );
 }
 
@@ -513,9 +513,9 @@ where
         amount: usize,
         shape: &HostShapeT, // TODO(Morten) take AdditiveShape instead?
     ) -> (
-        AbstractAdditiveTensor<HostRingT>,
-        AbstractAdditiveTensor<HostRingT>,
-        AbstractAdditiveTensor<HostRingT>,
+        AdtTensor<HostRingT>,
+        AdtTensor<HostRingT>,
+        AdtTensor<HostRingT>,
     ) {
         let r = self.sample_uniform(sess, shape);
         let r_msb = self.shr(sess, HostRingT::BitLength::VALUE - 1, &r);
@@ -528,7 +528,7 @@ where
             let seed = self.derive_seed(sess, sync_key, &key);
             let x0 = self.sample_uniform_seeded(sess, shape, &seed);
             let x1 = self.sub(sess, x, &x0);
-            AbstractAdditiveTensor { shares: [x0, x1] }
+            AdtTensor { shares: [x0, x1] }
         };
 
         let r_shared = share(&r);
@@ -542,76 +542,76 @@ where
 impl<S: Session, HostRingT>
     PlacementTruncPrProvider<
         S,
-        AbstractAdditiveTensor<HostRingT>,
-        AbstractAdditiveTensor<HostRingT>,
+        AdtTensor<HostRingT>,
+        AdtTensor<HostRingT>,
     > for AdditivePlacement
 where
-    AbstractAdditiveTensor<HostRingT>: CanonicalType,
-    <AbstractAdditiveTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
+    AdtTensor<HostRingT>: CanonicalType,
+    <AdtTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
     AbstractReplicatedRingTensor<HostRingT>: CanonicalType,
     <AbstractReplicatedRingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
     HostRingT: Ring,
     HostShape: KnownType<S>,
     HostPlacement: TruncMaskGen<S, m!(HostShape), HostRingT>,
-    HostPlacement: PlacementReveal<S, st!(AbstractAdditiveTensor<HostRingT>), HostRingT>,
+    HostPlacement: PlacementReveal<S, st!(AdtTensor<HostRingT>), HostRingT>,
     HostPlacement: PlacementOnes<S, m!(HostShape), HostRingT>,
     HostPlacement: PlacementShape<S, HostRingT, m!(HostShape)>,
     HostPlacement: PlacementShl<S, HostRingT, HostRingT>,
     HostPlacement: PlacementShr<S, HostRingT, HostRingT>,
-    AbstractAdditiveTensor<HostRingT>: Clone + Into<st!(AbstractAdditiveTensor<HostRingT>)>,
-    st!(AbstractAdditiveTensor<HostRingT>): TryInto<AbstractAdditiveTensor<HostRingT>>,
+    AdtTensor<HostRingT>: Clone + Into<st!(AdtTensor<HostRingT>)>,
+    st!(AdtTensor<HostRingT>): TryInto<AdtTensor<HostRingT>>,
     AdditivePlacement: PlacementAdd<
         S,
-        st!(AbstractAdditiveTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
         HostRingT,
-        st!(AbstractAdditiveTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
     >,
     AdditivePlacement: PlacementAdd<
         S,
-        st!(AbstractAdditiveTensor<HostRingT>),
-        st!(AbstractAdditiveTensor<HostRingT>),
-        st!(AbstractAdditiveTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
     >,
     AdditivePlacement: PlacementAdd<
         S,
-        AbstractAdditiveTensor<HostRingT>,
-        AbstractAdditiveTensor<HostRingT>,
-        AbstractAdditiveTensor<HostRingT>,
+        AdtTensor<HostRingT>,
+        AdtTensor<HostRingT>,
+        AdtTensor<HostRingT>,
     >,
     AdditivePlacement: PlacementSub<
         S,
         HostRingT,
-        st!(AbstractAdditiveTensor<HostRingT>),
-        st!(AbstractAdditiveTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
     >,
     AdditivePlacement: PlacementMul<
         S,
-        st!(AbstractAdditiveTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
         HostRingT,
-        st!(AbstractAdditiveTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
     >,
     AdditivePlacement: PlacementShl<
         S,
-        st!(AbstractAdditiveTensor<HostRingT>),
-        st!(AbstractAdditiveTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
     >,
     AdditivePlacement: PlacementSub<
         S,
-        st!(AbstractAdditiveTensor<HostRingT>),
-        st!(AbstractAdditiveTensor<HostRingT>),
-        st!(AbstractAdditiveTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
     >,
     AdditivePlacement: PlacementSub<
         S,
-        AbstractAdditiveTensor<HostRingT>,
-        AbstractAdditiveTensor<HostRingT>,
-        AbstractAdditiveTensor<HostRingT>,
+        AdtTensor<HostRingT>,
+        AdtTensor<HostRingT>,
+        AdtTensor<HostRingT>,
     >,
     AdditivePlacement: PlacementSub<
         S,
-        st!(AbstractAdditiveTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
         HostRingT,
-        st!(AbstractAdditiveTensor<HostRingT>),
+        st!(AdtTensor<HostRingT>),
     >,
 {
     fn trunc_pr(
@@ -619,15 +619,15 @@ where
         sess: &S,
         amount: usize,
         provider: &HostPlacement,
-        x: &AbstractAdditiveTensor<HostRingT>,
-    ) -> AbstractAdditiveTensor<HostRingT> {
+        x: &AdtTensor<HostRingT>,
+    ) -> AdtTensor<HostRingT> {
         #![allow(clippy::many_single_char_names)]
 
         let (player0, player1) = self.host_placements();
         assert!(*provider != player0);
         assert!(*provider != player1);
 
-        let AbstractAdditiveTensor { shares: [x0, _x1] } = x;
+        let AdtTensor { shares: [x0, _x1] } = x;
 
         let shape = player0.shape(sess, x0);
 
@@ -643,7 +643,7 @@ where
         let downshifter = player0.shl(sess, k - amount - 1, &ones);
 
         // TODO(Morten) think the rest of this would clean up nicely if we instead revealed to a mirrored placement
-        let x_positive: AbstractAdditiveTensor<HostRingT> = self
+        let x_positive: AdtTensor<HostRingT> = self
             .add(sess, &x.clone().into(), &upshifter)
             .try_into()
             .ok()
@@ -686,11 +686,11 @@ impl RepToAdtOp {
         sess: &S,
         adt: &AdditivePlacement,
         x: AbstractReplicatedRingTensor<HostRingT>,
-    ) -> Result<AbstractAdditiveTensor<HostRingT>>
+    ) -> Result<AdtTensor<HostRingT>>
     where
         HostRingT: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
-        AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<HostRingT>>,
+        AdditivePlacement: PlacementPlace<S, AdtTensor<HostRingT>>,
     {
         let (adt_player0, adt_player1) = adt.host_placements();
         let (rep_player0, rep_player1, rep_player2) = x.placement()?.host_placements();
@@ -748,7 +748,7 @@ impl RepToAdtOp {
                 [y0, y1]
             }
         };
-        Ok(adt.place(sess, AbstractAdditiveTensor { shares }))
+        Ok(adt.place(sess, AdtTensor { shares }))
     }
 }
 
@@ -766,8 +766,8 @@ impl<S: Session, HostShapeT, HostRingT, HostBitT>
     PlacementDaBitProvider<
         S,
         HostShapeT,
-        AbstractAdditiveTensor<HostRingT>,
-        AbstractAdditiveTensor<HostBitT>,
+        AdtTensor<HostRingT>,
+        AdtTensor<HostBitT>,
     > for AdditivePlacement
 where
     HostRingT: Clone,
@@ -791,8 +791,8 @@ where
         shape_player0: HostShapeT,
         provider: &HostPlacement,
     ) -> (
-        AbstractAdditiveTensor<HostRingT>,
-        AbstractAdditiveTensor<HostBitT>,
+        AdtTensor<HostRingT>,
+        AdtTensor<HostBitT>,
     ) {
         let (player0, player1) = self.host_placements();
         assert!(*provider != player0);
@@ -814,8 +814,8 @@ where
         let br0: HostRingT = player0.sample_uniform_seeded(sess, &shape_player0, &seed_br);
         let br1: HostRingT = player1.place(sess, with_context!(provider, sess, br - br0_provider));
 
-        let b_shared = AbstractAdditiveTensor { shares: [b0, b1] };
-        let br_shared = AbstractAdditiveTensor { shares: [br0, br1] };
+        let b_shared = AdtTensor { shares: [b0, b1] };
+        let br_shared = AdtTensor { shares: [br0, br1] };
 
         (br_shared, b_shared)
     }
@@ -860,7 +860,7 @@ mod tests {
         };
 
         let sess = SyncSession::default();
-        let AbstractAdditiveTensor { shares: [z0, z1] } = adt.add(&sess, &x, &y);
+        let AdtTensor { shares: [z0, z1] } = adt.add(&sess, &x, &y);
 
         assert_eq!(
             z0,
@@ -872,7 +872,7 @@ mod tests {
         );
 
         let r_alice = AbstractHostRingTensor::from_raw_plc(array![7, 8, 9], alice.clone());
-        let AbstractAdditiveTensor { shares: [zr0, zr1] } = adt.add(&sess, &x, &r_alice);
+        let AdtTensor { shares: [zr0, zr1] } = adt.add(&sess, &x, &r_alice);
 
         assert_eq!(
             zr0,
@@ -884,7 +884,7 @@ mod tests {
         );
 
         let r_bob = AbstractHostRingTensor::from_raw_plc(array![7, 8, 9], bob.clone());
-        let AbstractAdditiveTensor {
+        let AdtTensor {
             shares: [zrb0, zrb1],
         } = adt.add(&sess, &x, &r_bob);
 
@@ -1079,7 +1079,7 @@ mod tests {
         };
 
         let x: <AdditiveRing64Tensor as KnownType<SymbolicSession>>::Type =
-            Symbolic::Concrete(AbstractAdditiveTensor {
+            Symbolic::Concrete(AdtTensor {
                 shares: [
                     Symbolic::Symbolic(SymbolicHandle {
                         op: "x0".into(),
@@ -1093,7 +1093,7 @@ mod tests {
             });
 
         let y: <AdditiveRing64Tensor as KnownType<SymbolicSession>>::Type =
-            Symbolic::Concrete(AbstractAdditiveTensor {
+            Symbolic::Concrete(AdtTensor {
                 shares: [
                     Symbolic::Symbolic(SymbolicHandle {
                         op: "y0".into(),
@@ -1110,7 +1110,7 @@ mod tests {
         let z = adt.add(&sess, &x, &y);
 
         match &z {
-            Symbolic::Concrete(AbstractAdditiveTensor { shares: [z0, z1] }) => {
+            Symbolic::Concrete(AdtTensor { shares: [z0, z1] }) => {
                 match z0 {
                     Symbolic::Symbolic(handle) => {
                         assert_eq!("op_0", handle.op);

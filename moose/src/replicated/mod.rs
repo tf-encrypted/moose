@@ -1,6 +1,6 @@
 //! Placements backed by replicated secret sharing
 use crate::additive::{
-    AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor, PlacementDaBitProvider,
+    AdtTensor, AdditiveRing128Tensor, AdditiveRing64Tensor, PlacementDaBitProvider,
 };
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
@@ -374,7 +374,7 @@ where
 
 // Type aliases to shorten out impl in replicated protocols
 type RepTen<T> = AbstractReplicatedRingTensor<T>;
-type AdtTen<T> = AbstractAdditiveTensor<T>;
+type AdtTen<T> = AdtTensor<T>;
 type MirTen<T> = Mirrored3Tensor<T>;
 
 modelled!(PlacementSetupGen::gen_setup, ReplicatedPlacement, () -> ReplicatedSetup, RepSetupOp);
