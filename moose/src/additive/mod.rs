@@ -15,8 +15,8 @@ pub use ops::*;
 pub use trunc::*;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AdtTensor<HostT> {
-    pub shares: [HostT; 2],
+pub struct AdtTensor<HostTensorT> {
+    pub shares: [HostTensorT; 2],
 }
 
 moose_type!(AdditiveRing64Tensor = AdtTensor<HostRing64Tensor>);
@@ -60,15 +60,15 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AdtShape<HostT> {
-    pub shapes: [HostT; 2],
+pub struct AdtShape<HostShapeT> {
+    pub shapes: [HostShapeT; 2],
 }
 
 moose_type!(AdditiveShape = AdtShape<HostShape>);
 
-impl<S> Placed for AdtShape<S>
+impl<HostT> Placed for AdtShape<HostT>
 where
-    S: Placed<Placement = HostPlacement>,
+    HostT: Placed<Placement = HostPlacement>,
 {
     type Placement = AdditivePlacement;
 
