@@ -487,11 +487,7 @@ pub trait TruncMaskGen<S: Session, ShapeT, RingT> {
         sess: &S,
         amount: usize,
         shape: &ShapeT,
-    ) -> (
-        AdtTensor<RingT>,
-        AdtTensor<RingT>,
-        AdtTensor<RingT>,
-    );
+    ) -> (AdtTensor<RingT>, AdtTensor<RingT>, AdtTensor<RingT>);
 }
 
 impl<S: Session, HostShapeT, HostRingT> TruncMaskGen<S, HostShapeT, HostRingT> for HostPlacement
@@ -539,12 +535,8 @@ where
     }
 }
 
-impl<S: Session, HostRingT>
-    PlacementTruncPrProvider<
-        S,
-        AdtTensor<HostRingT>,
-        AdtTensor<HostRingT>,
-    > for AdditivePlacement
+impl<S: Session, HostRingT> PlacementTruncPrProvider<S, AdtTensor<HostRingT>, AdtTensor<HostRingT>>
+    for AdditivePlacement
 where
     AdtTensor<HostRingT>: CanonicalType,
     <AdtTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
@@ -560,59 +552,31 @@ where
     HostPlacement: PlacementShr<S, HostRingT, HostRingT>,
     AdtTensor<HostRingT>: Clone + Into<st!(AdtTensor<HostRingT>)>,
     st!(AdtTensor<HostRingT>): TryInto<AdtTensor<HostRingT>>,
-    AdditivePlacement: PlacementAdd<
-        S,
-        st!(AdtTensor<HostRingT>),
-        HostRingT,
-        st!(AdtTensor<HostRingT>),
-    >,
+    AdditivePlacement:
+        PlacementAdd<S, st!(AdtTensor<HostRingT>), HostRingT, st!(AdtTensor<HostRingT>)>,
     AdditivePlacement: PlacementAdd<
         S,
         st!(AdtTensor<HostRingT>),
         st!(AdtTensor<HostRingT>),
         st!(AdtTensor<HostRingT>),
     >,
-    AdditivePlacement: PlacementAdd<
-        S,
-        AdtTensor<HostRingT>,
-        AdtTensor<HostRingT>,
-        AdtTensor<HostRingT>,
-    >,
-    AdditivePlacement: PlacementSub<
-        S,
-        HostRingT,
-        st!(AdtTensor<HostRingT>),
-        st!(AdtTensor<HostRingT>),
-    >,
-    AdditivePlacement: PlacementMul<
-        S,
-        st!(AdtTensor<HostRingT>),
-        HostRingT,
-        st!(AdtTensor<HostRingT>),
-    >,
-    AdditivePlacement: PlacementShl<
-        S,
-        st!(AdtTensor<HostRingT>),
-        st!(AdtTensor<HostRingT>),
-    >,
+    AdditivePlacement:
+        PlacementAdd<S, AdtTensor<HostRingT>, AdtTensor<HostRingT>, AdtTensor<HostRingT>>,
+    AdditivePlacement:
+        PlacementSub<S, HostRingT, st!(AdtTensor<HostRingT>), st!(AdtTensor<HostRingT>)>,
+    AdditivePlacement:
+        PlacementMul<S, st!(AdtTensor<HostRingT>), HostRingT, st!(AdtTensor<HostRingT>)>,
+    AdditivePlacement: PlacementShl<S, st!(AdtTensor<HostRingT>), st!(AdtTensor<HostRingT>)>,
     AdditivePlacement: PlacementSub<
         S,
         st!(AdtTensor<HostRingT>),
         st!(AdtTensor<HostRingT>),
         st!(AdtTensor<HostRingT>),
     >,
-    AdditivePlacement: PlacementSub<
-        S,
-        AdtTensor<HostRingT>,
-        AdtTensor<HostRingT>,
-        AdtTensor<HostRingT>,
-    >,
-    AdditivePlacement: PlacementSub<
-        S,
-        st!(AdtTensor<HostRingT>),
-        HostRingT,
-        st!(AdtTensor<HostRingT>),
-    >,
+    AdditivePlacement:
+        PlacementSub<S, AdtTensor<HostRingT>, AdtTensor<HostRingT>, AdtTensor<HostRingT>>,
+    AdditivePlacement:
+        PlacementSub<S, st!(AdtTensor<HostRingT>), HostRingT, st!(AdtTensor<HostRingT>)>,
 {
     fn trunc_pr(
         &self,
@@ -763,12 +727,8 @@ pub trait PlacementDaBitProvider<S: Session, HostShapeT, O1, O2> {
 }
 
 impl<S: Session, HostShapeT, HostRingT, HostBitT>
-    PlacementDaBitProvider<
-        S,
-        HostShapeT,
-        AdtTensor<HostRingT>,
-        AdtTensor<HostBitT>,
-    > for AdditivePlacement
+    PlacementDaBitProvider<S, HostShapeT, AdtTensor<HostRingT>, AdtTensor<HostBitT>>
+    for AdditivePlacement
 where
     HostRingT: Clone,
     Seed: KnownType<S>,
@@ -790,10 +750,7 @@ where
         shape_provider: HostShapeT,
         shape_player0: HostShapeT,
         provider: &HostPlacement,
-    ) -> (
-        AdtTensor<HostRingT>,
-        AdtTensor<HostBitT>,
-    ) {
+    ) -> (AdtTensor<HostRingT>, AdtTensor<HostBitT>) {
         let (player0, player1) = self.host_placements();
         assert!(*provider != player0);
         assert!(*provider != player1);

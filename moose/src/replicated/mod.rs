@@ -1,6 +1,6 @@
 //! Placements backed by replicated secret sharing
 use crate::additive::{
-    AdtTensor, AdditiveRing128Tensor, AdditiveRing64Tensor, PlacementDaBitProvider,
+    AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTensor, PlacementDaBitProvider,
 };
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
