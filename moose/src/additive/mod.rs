@@ -1,20 +1,18 @@
 //! Placements backed by additive secret sharing
-use crate::computation::{
-    AdditivePlacement, HostPlacement, Placed, 
-};
+use crate::computation::{AdditivePlacement, HostPlacement, Placed};
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};
-use crate::kernels::*;
+use crate::kernels::{PlacementAdd, PlacementPlace, PlacementShl, Session};
 use serde::{Deserialize, Serialize};
 
+mod convert;
+mod dabit;
 mod ops;
 mod trunc;
-mod dabit;
-mod convert;
-pub use ops::*;
-pub use trunc::*;
 pub use convert::*;
 pub use dabit::*;
+pub use ops::*;
+pub use trunc::*;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AdtTensor<HostT> {

@@ -1,6 +1,5 @@
-use crate::computation::{
-    AdditivePlacement, HostPlacement, KnownType, Placed, RepToAdtOp,
-};
+use super::*;
+use crate::computation::{AdditivePlacement, HostPlacement, Placed, RepToAdtOp};
 use crate::error::Result;
 use crate::kernels::*;
 use crate::replicated::{
@@ -8,7 +7,6 @@ use crate::replicated::{
     ReplicatedRing64Tensor,
 };
 use macros::with_context;
-use super::*;
 
 modelled_kernel! {
     PlacementRepToAdt::rep_to_adt, RepToAdtOp,

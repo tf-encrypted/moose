@@ -1,12 +1,12 @@
+use super::*;
 use crate::computation::{
-    AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp,
-    Constant, HostPlacement, KnownType, Placed, ShapeOp,
+    AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant,
+    HostPlacement, Placed, ShapeOp,
 };
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};
 use crate::kernels::*;
 use macros::with_context;
-use super::*;
 
 impl ShapeOp {
     pub(crate) fn adt_kernel<S: Session, HostT, ShapeT>(
@@ -361,7 +361,7 @@ impl AdtShlOp {
 mod tests {
     use super::*;
     use crate::{
-        computation::{Operation, Operator, Placement, RingAddOp},
+        computation::{KnownType, Operation, Operator, Placement, RingAddOp},
         host::AbstractHostRingTensor,
         symbolic::{Symbolic, SymbolicHandle, SymbolicSession},
     };

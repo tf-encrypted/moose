@@ -1,12 +1,10 @@
-use crate::computation::{
-    AdditivePlacement, HostPlacement, KnownType
-};
+use super::*;
+use crate::computation::{AdditivePlacement, HostPlacement, KnownType};
 use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;
-use super::*;
 
-pub trait PlacementDaBitProvider<S: Session, HostShapeT, O1, O2> {
+pub trait DaBitProvider<S: Session, HostShapeT, O1, O2> {
     fn gen_dabit(
         &self,
         sess: &S,
@@ -17,8 +15,7 @@ pub trait PlacementDaBitProvider<S: Session, HostShapeT, O1, O2> {
 }
 
 impl<S: Session, HostShapeT, HostRingT, HostBitT>
-    PlacementDaBitProvider<S, HostShapeT, AdtTensor<HostRingT>, AdtTensor<HostBitT>>
-    for AdditivePlacement
+    DaBitProvider<S, HostShapeT, AdtTensor<HostRingT>, AdtTensor<HostBitT>> for AdditivePlacement
 where
     HostRingT: Clone,
     Seed: KnownType<S>,

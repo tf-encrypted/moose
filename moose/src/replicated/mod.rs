@@ -1,7 +1,5 @@
 //! Placements backed by replicated secret sharing
-use crate::additive::{
-    AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTensor, PlacementDaBitProvider,
-};
+use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTensor, DaBitProvider};
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
@@ -2112,8 +2110,7 @@ impl RingInjectOp {
         ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<HostRingT>, RepTen<HostRingT>>,
         AdditivePlacement: PlacementFill<S, HostShapeT, AdtRingT>,
         HostPlacement: PlacementFill<S, HostShapeT, HostRingT>,
-        AdditivePlacement:
-            PlacementDaBitProvider<S, HostShapeT, AdtTen<HostRingT>, AdtTen<HostBitT>>,
+        AdditivePlacement: DaBitProvider<S, HostShapeT, AdtTen<HostRingT>, AdtTen<HostBitT>>,
         AdditivePlacement: PlacementRepToAdt<S, RepTen<HostBitT>, AdtTen<HostBitT>>,
         AdditivePlacement: PlacementAdd<S, AdtTen<HostBitT>, AdtTen<HostBitT>, AdtTen<HostBitT>>,
         AdditivePlacement: PlacementAdd<S, AdtRingT, HostRingT, AdtRingT>,

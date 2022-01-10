@@ -1,17 +1,12 @@
-use crate::computation::{
-    AdditivePlacement,
-    CanonicalType, HostPlacement, KnownType,
-};
-use crate::host::{HostShape};
+use super::*;
+use crate::computation::{AdditivePlacement, CanonicalType, HostPlacement, KnownType};
+use crate::host::HostShape;
 use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
-use crate::replicated::{
-    AbstractReplicatedRingTensor
-};
+use crate::replicated::AbstractReplicatedRingTensor;
 use crate::{Const, Ring};
 use macros::with_context;
 use std::convert::TryInto;
-use super::*;
 
 pub trait TruncMaskGen<S: Session, ShapeT, RingT> {
     fn gen_trunc_mask(
@@ -168,7 +163,6 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -302,5 +296,4 @@ mod tests {
             test_adt_trunc128(Array::from_shape_vec(IxDyn(&[raw_vector.len()]), raw_vector).unwrap(), amount, Array::from_shape_vec(IxDyn(&[target.len()]), target).unwrap());
         }
     }
-
 }
