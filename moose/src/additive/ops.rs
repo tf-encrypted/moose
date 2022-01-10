@@ -1,3 +1,4 @@
+//! Various operations for additive placements
 use super::*;
 use crate::computation::{
     AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant,

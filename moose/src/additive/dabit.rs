@@ -1,9 +1,11 @@
+//! DaBit generation for additive placements
 use super::*;
 use crate::computation::{AdditivePlacement, HostPlacement, KnownType};
 use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;
 
+/// Trait for DaBit generation
 pub trait DaBitProvider<S: Session, HostShapeT, O1, O2> {
     fn gen_dabit(
         &self,

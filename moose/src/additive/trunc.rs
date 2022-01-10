@@ -1,3 +1,4 @@
+//! Truncation for additive placements
 use super::*;
 use crate::computation::{AdditivePlacement, CanonicalType, HostPlacement, KnownType};
 use crate::host::HostShape;
@@ -8,6 +9,7 @@ use crate::{Const, Ring};
 use macros::with_context;
 use std::convert::TryInto;
 
+/// Trait for truncation mask generation
 pub trait TruncMaskGen<S: Session, ShapeT, RingT> {
     fn gen_trunc_mask(
         &self,

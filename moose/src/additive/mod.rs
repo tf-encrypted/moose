@@ -10,13 +10,15 @@ mod dabit;
 mod misc;
 mod ops;
 mod trunc;
-pub use convert::*;
+pub(crate) use convert::*;
 pub use dabit::*;
-pub use misc::*;
-pub use ops::*;
-pub use trunc::*;
+// pub use misc::*;
+pub(crate) use ops::*;
+pub(crate) use trunc::*;
 
-/// Additive secret shared tensor
+/// Secret tensor used by additive placements
+///
+/// Values are shared using additive secret sharing.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AdtTensor<HostTensorT> {
     pub(crate) shares: [HostTensorT; 2],
