@@ -1,4 +1,3 @@
-//! Placements backed by additive secret sharing
 use crate::computation::HostPlacement;
 use crate::kernels::{PlacementAdd, PlacementShl, Session};
 
