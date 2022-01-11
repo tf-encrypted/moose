@@ -185,20 +185,21 @@ impl AddNOp {
             ))
         } else {
             let first = &xs[0];
-            match first {
+            let vec: Vec<HostFloatT> = match first {
                 FloatTensor::Host(_) => {
                     let vec: Vec<HostFloatT> = xs
                         .iter()
                         .map(|tensor| match tensor {
-                            FloatTensor::Host(x) => (*x).clone(),
-                            _ => unimplemented!("mixed types in tensor"),
+                            FloatTensor::Host(x) => x.clone(),
+                            FloatTensor::Mirrored3(_) => unimplemented!(),
                         })
                         .collect();
-                    let result = plc.add_n(sess, &vec);
-                    Ok(FloatTensor::Host(result))
+                    vec
                 }
                 FloatTensor::Mirrored3(_v) => unimplemented!(),
-            }
+            };
+            let result = plc.add_n(sess, &vec);
+            Ok(FloatTensor::Host(result))
         }
     }
 }
