@@ -24,10 +24,14 @@ class LinearPredictor(model.AesPredictor, metaclass=abc.ABCMeta):
 
     def linear_predictor_fn(self, x, fixedpoint_dtype):
         with self.replicated:
-            w = self.fixedpoint_constant(self.coeffs.T, plc=self.mirrored, dtype=fixedpoint_dtype)
+            w = self.fixedpoint_constant(
+                self.coeffs.T, plc=self.mirrored, dtype=fixedpoint_dtype
+            )
             # TODO: use bias trick instead of explicit add op for intercept
             if self.intercepts is not None:
-                b = self.fixedpoint_constant(self.intercepts, plc=self.mirrored, dtype=fixedpoint_dtype)
+                b = self.fixedpoint_constant(
+                    self.intercepts, plc=self.mirrored, dtype=fixedpoint_dtype
+                )
             y = edsl.dot(x, w)
             if self.intercepts is not None:
                 y = edsl.add(y, b)
@@ -60,7 +64,9 @@ class LinearRegressor(LinearPredictor):
 
     @classmethod
     def from_onnx(cls, model_proto):
-        lr_node = model_utils.find_node_in_model_proto(model_proto, "LinearRegressor")
+        lr_node = model_utils.find_node_in_model_proto(
+            model_proto, "LinearRegressor", enforce=False
+        )
         if lr_node is None:
             raise ValueError(
                 "Incompatible ONNX graph provided: graph must contain a "
@@ -68,14 +74,15 @@ class LinearRegressor(LinearPredictor):
             )
 
         coeffs_attr = model_utils.find_attribute_in_node(lr_node, "coefficients")
-        assert coeffs_attr is not None
         if coeffs_attr.type != 6:  # FLOATS
             raise ValueError(
                 "LinearRegressor coefficients must be of type FLOATS, found other."
             )
         coeffs = coeffs_attr.floats
         # extract intercept if it's there, otherwise pass it as None
-        intercepts_attr = model_utils.find_attribute_in_node(lr_node, "intercepts")
+        intercepts_attr = model_utils.find_attribute_in_node(
+            lr_node, "intercepts", enforce=False
+        )
         if intercepts_attr is None:
             intercepts = None
         elif intercepts_attr.type != 6:  # FLOATS
@@ -110,7 +117,9 @@ class LinearClassifier(LinearPredictor):
     @classmethod
     def from_onnx(cls, model_proto):
         # parse LinearClassifier node
-        lc_node = model_utils.find_node_in_model_proto(model_proto, "LinearClassifier")
+        lc_node = model_utils.find_node_in_model_proto(
+            model_proto, "LinearClassifier", enforce=False
+        )
         if lc_node is None:
             raise ValueError(
                 "Incompatible ONNX graph provided: graph must contain a "
@@ -118,7 +127,9 @@ class LinearClassifier(LinearPredictor):
             )
 
         # parse classifier coefficients
-        coeffs_attr = model_utils.find_attribute_in_node(lc_node, "coefficients")
+        coeffs_attr = model_utils.find_attribute_in_node(
+            lc_node, "coefficients", enforce=False
+        )
         assert coeffs_attr is not None
         if coeffs_attr.type != 6:  # FLOATS
             raise ValueError(
@@ -128,10 +139,10 @@ class LinearClassifier(LinearPredictor):
 
         # reshape into (n_classes, n_features) matrix
         classlabels_ints = model_utils.find_attribute_in_node(
-            lc_node, "classlabels_ints"
+            lc_node, "classlabels_ints", enforce=False
         )
         classlabels_strings = model_utils.find_attribute_in_node(
-            lc_node, "classlabels_strings"
+            lc_node, "classlabels_strings", enforce=False
         )
         assert classlabels_ints is not None or classlabels_strings is not None
         if classlabels_ints is not None:
@@ -142,7 +153,9 @@ class LinearClassifier(LinearPredictor):
         coeffs = coeffs.reshape(n_classes, -1)
 
         # parse classifier intercepts
-        intercepts_attr = model_utils.find_attribute_in_node(lc_node, "intercepts")
+        intercepts_attr = model_utils.find_attribute_in_node(
+            lc_node, "intercepts", enforce=False
+        )
         if intercepts_attr is None:
             intercepts = None
         elif intercepts_attr.type != 6:  # FLOATS
@@ -153,20 +166,14 @@ class LinearClassifier(LinearPredictor):
             intercepts = np.asarray(intercepts_attr.floats).reshape(1, n_classes)
 
         # infer multitask arg from multi_class attribute
-        multi_class_int = model_utils.find_attribute_in_node(
-            lc_node, "multi_class", enforce=True
-        )
+        multi_class_int = model_utils.find_attribute_in_node(lc_node, "multi_class")
         assert multi_class_int.type == 2  # INT
         multi_class = bool(multi_class_int.i)
         multitask = not multi_class
 
         # derive transform_output
-        multi_class_int = model_utils.find_attribute_in_node(
-            lc_node, "multi_class", enforce=True
-        )
-        post_transform = model_utils.find_attribute_in_node(
-            lc_node, "post_transform", enforce=True
-        )
+        multi_class_int = model_utils.find_attribute_in_node(lc_node, "multi_class")
+        post_transform = model_utils.find_attribute_in_node(lc_node, "post_transform")
         post_transform_str = post_transform.s.decode()
         transform_output = post_transform_str != "NONE"
 
