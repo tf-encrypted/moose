@@ -1058,7 +1058,7 @@ macro_rules! kernel {
     Nullary
     */
 
-    ($op:ty, [$( ($plc:ty, () -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
+    ($op:ty, [$( ($plc:ty, () -> $u:path => [$flavour:tt] $($kp:tt)+), )+]) => {
         concrete_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
 
@@ -1412,7 +1412,7 @@ macro_rules! kernel {
     Binary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
+    ($op:ty, [$( ($plc:ty, ($t0:path, $t1:path) -> $u:path => [$flavour:tt] $($kp:tt)+), )+]) => {
         concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
 
@@ -1461,7 +1461,7 @@ macro_rules! kernel {
         )+
     };
 
-    (__binary hybrid, $op:ty, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary hybrid, $op:ty, $plc:ty, ($t0:path, $t1:path) -> $u:path => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1516,7 +1516,7 @@ macro_rules! kernel {
         }
     };
 
-    (__binary concrete, $op:ty, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary concrete, $op:ty, $plc:ty, ($t0:path, $t1:path) -> $u:path => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1563,7 +1563,7 @@ macro_rules! kernel {
         }
     };
 
-    (__binary transparent, $op:ty, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary transparent, $op:ty, $plc:ty, ($t0:path, $t1:path) -> $u:path => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1584,7 +1584,7 @@ macro_rules! kernel {
         }
     };
 
-    (__binary runtime, $op:ty, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary runtime, $op:ty, $plc:ty, ($t0:path, $t1:path) -> $u:path => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3311,7 +3311,7 @@ macro_rules! modelled_kernel {
     Binary
     */
 
-    ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
+    ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:path, $t1:path) -> $u:path => [$flavour:tt] $($kp:tt)+), )+]) => {
         concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
 
@@ -3407,7 +3407,7 @@ macro_rules! modelled_kernel {
         )+
     };
 
-    (__binary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:path, $t1:path) -> $u:path => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3496,7 +3496,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__binary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:path, $t1:path) -> $u:path => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3617,7 +3617,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__binary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:path, $t1:path) -> $u:path => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3672,7 +3672,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__binary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
+    (__binary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:path, $t1:path) -> $u:path => $($kp:tt)+) => {
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
