@@ -79,21 +79,45 @@ modelled_kernel! {
     ]
 }
 
+modelled!(PlacementAddN::add_n, HostPlacement, vec[Tensor] -> Tensor, AddNOp);
+modelled!(PlacementAddN::add_n, HostPlacement, vec[Float32Tensor] -> Float32Tensor, AddNOp);
+modelled!(PlacementAddN::add_n, HostPlacement, vec[Float64Tensor] -> Float64Tensor, AddNOp);
+modelled!(PlacementAddN::add_n, HostPlacement, vec[HostFloat32Tensor] -> HostFloat32Tensor, AddNOp);
+modelled!(PlacementAddN::add_n, HostPlacement, vec[HostFloat64Tensor] -> HostFloat64Tensor, AddNOp);
+modelled!(PlacementAddN::add_n, HostPlacement, vec[Fixed64Tensor] -> Fixed64Tensor, AddNOp);
+modelled!(PlacementAddN::add_n, HostPlacement, vec[Fixed128Tensor] -> Fixed128Tensor, AddNOp);
+modelled!(PlacementAddN::add_n, HostPlacement, vec[HostFixed64Tensor] -> HostFixed64Tensor, AddNOp);
+modelled!(PlacementAddN::add_n, HostPlacement, vec[HostFixed128Tensor] -> HostFixed128Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor, AddNOp);
 modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor, AddNOp);
+modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[Fixed64Tensor] -> Fixed64Tensor, AddNOp);
+modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[Fixed128Tensor] -> Fixed128Tensor, AddNOp);
+modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[Tensor] -> Tensor, AddNOp);
 
 kernel! {
     AddNOp,
     [
+        (HostPlacement, vec[Tensor] -> Tensor => [concrete] Self::host_logical_kernel),
+        (HostPlacement, vec[Float32Tensor] -> Float32Tensor => [concrete] Self::float_kernel),
+        (HostPlacement, vec[Float64Tensor] -> Float64Tensor => [concrete] Self::float_kernel),
+        (HostPlacement, vec[HostFloat32Tensor] -> HostFloat32Tensor => [runtime] Self::host_float_kernel),
+        (HostPlacement, vec[HostFloat64Tensor] -> HostFloat64Tensor => [runtime] Self::host_float_kernel),
+        (HostPlacement, vec[Fixed64Tensor] -> Fixed64Tensor => [concrete] Self::fixed_kernel),
+        (HostPlacement, vec[Fixed128Tensor] -> Fixed128Tensor => [concrete] Self::fixed_kernel),
+        (HostPlacement, vec[HostFixed64Tensor] -> HostFixed64Tensor => [concrete] Self::host_fixed_kernel),
+        (HostPlacement, vec[HostFixed128Tensor] -> HostFixed128Tensor => [concrete] Self::host_fixed_kernel),
         (HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor => [runtime] Self::host_kernel),
         (HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor => [runtime] Self::host_kernel),
         (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
         (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [concrete] Self::rep_kernel),
         (ReplicatedPlacement, vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor => [concrete] Self::rep_fixed_kernel),
         (ReplicatedPlacement, vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor => [concrete] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, vec[Fixed64Tensor] -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, vec[Fixed128Tensor] -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, vec[Tensor] -> Tensor => [concrete] Self::logical_rep_kernel),
     ]
 }

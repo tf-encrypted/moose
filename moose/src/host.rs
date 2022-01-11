@@ -1017,6 +1017,25 @@ impl AddNOp {
             Ok(AbstractHostRingTensor(sum, plc.clone()))
         }
     }
+
+    pub(crate) fn host_float_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        xs: &[HostTensor<T>],
+    ) -> Result<HostTensor<T>>
+    where
+        T: Clone + LinalgScalar,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot reduce on empty array of tensors".to_string(),
+            ))
+        } else {
+            let base = xs[0].0.clone();
+            let sum = xs[1..].iter().fold(base, |acc, item| acc + &item.0);
+            Ok(HostTensor(sum, plc.clone()))
+        }
+    }
 }
 
 modelled_kernel! {

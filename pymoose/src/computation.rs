@@ -13,6 +13,7 @@ use std::convert::{TryFrom, TryInto};
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
 enum PyOperation {
+    std_AddNOperation(PyAddNOperation),
     std_IdentityOperation(PyIdentityOperation),
     std_ConstantOperation(PyConstantOperation),
     std_AddOperation(PyAddOperation),
@@ -159,6 +160,14 @@ impl FromPyOpSignature for Signature {
             map_type(&pysig.return_type)?,
         ))
     }
+}
+
+#[derive(Deserialize, Debug)]
+struct PyAddNOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
 }
 
 #[derive(Deserialize, Debug)]
@@ -595,6 +604,21 @@ impl TryFrom<PyComputation> for Computation {
                 use anyhow::Context;
                 use PyOperation::*;
                 match op {
+                    std_AddNOperation(op) => {
+                        let mut inputs: Vec<(&String, &String)> = op.inputs.iter().collect();
+                        inputs.sort_by_key(|x| x.0);
+                        let sorted_input_names: Vec<String> =
+                            inputs.into_iter().map(|(_k, v)| v.clone()).collect();
+                        Ok(Operation {
+                            kind: AddNOp {
+                                sig: Signature::from_variadic(&op.signature, "array0")?,
+                            }
+                            .into(),
+                            inputs: sorted_input_names,
+                            name: op.name.clone(),
+                            placement: map_placement(&placements, &op.placement_name)?,
+                        })
+                    }
                     std_IdentityOperation(op) => Ok(Operation {
                         kind: IdentityOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
