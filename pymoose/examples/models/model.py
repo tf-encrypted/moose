@@ -5,10 +5,11 @@ from pymoose import edsl
 from . import model_utils as utils
 
 
-class AesPredictorModel(metaclass=abc.ABCMeta):
+class AesPredictor(metaclass=abc.ABCMeta):
     def __init__(self):
         (
             (self.alice, self.bob, self.carole),
+            self.mirrored,
             self.replicated,
         ) = self._standard_replicated_placements()
 
@@ -19,14 +20,17 @@ class AesPredictorModel(metaclass=abc.ABCMeta):
         replicated = edsl.replicated_placement(
             name="replicated", players=[alice, bob, carole]
         )
-        return (alice, bob, carole), replicated
+        mirrored = edsl.mirrored_placement(
+            name="mirrored", players=[alice, bob, carole]
+        )
+        return (alice, bob, carole), mirrored, replicated
 
     @property
     def host_placements(self):
         return self.alice, self.bob, self.carole
 
     @classmethod
-    def fixedpoint_constant(cls, x, plc, dtype=utils.DEFAULT_FIXED_DTYPE):
+    def fixedpoint_constant(cls, x, plc=None, dtype=utils.DEFAULT_FIXED_DTYPE):
         x = edsl.constant(x, dtype=edsl.float64, placement=plc)
         return edsl.cast(x, dtype=dtype, placement=plc)
 

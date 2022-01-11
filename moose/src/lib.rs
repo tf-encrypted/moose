@@ -77,7 +77,7 @@ macro_rules! derive_runtime_kernel {
 
     (variadic, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, Vec<_>) -> _ + Send> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_, Vec<_>) -> _ + Send>> = &|$op| $kf;
             kf($self)
         }
     };
@@ -3011,8 +3011,8 @@ macro_rules! modelled_kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc,
-                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+                <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -3021,7 +3021,7 @@ macro_rules! modelled_kernel {
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    x0: <$t0 as KnownType<SymbolicSession>>::Type,
+                    x0: <$t0 as crate::computation::KnownType<SymbolicSession>>::Type,
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
@@ -3093,8 +3093,8 @@ macro_rules! modelled_kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc,
-                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+                <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
@@ -3102,7 +3102,7 @@ macro_rules! modelled_kernel {
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    x0: <$t0 as KnownType<SymbolicSession>>::Type,
+                    x0: <$t0 as crate::computation::KnownType<SymbolicSession>>::Type,
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
@@ -3419,9 +3419,9 @@ macro_rules! modelled_kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc,
-                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
-                <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+                <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -3430,8 +3430,8 @@ macro_rules! modelled_kernel {
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    x0: <$t0 as KnownType<SymbolicSession>>::Type,
-                    x1: <$t1 as KnownType<SymbolicSession>>::Type,
+                    x0: <$t0 as crate::computation::KnownType<SymbolicSession>>::Type,
+                    x1: <$t1 as crate::computation::KnownType<SymbolicSession>>::Type,
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
@@ -3508,9 +3508,9 @@ macro_rules! modelled_kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc,
-                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
-                <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+                <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
@@ -3518,8 +3518,8 @@ macro_rules! modelled_kernel {
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    x0: <$t0 as KnownType<SymbolicSession>>::Type,
-                    x1: <$t1 as KnownType<SymbolicSession>>::Type,
+                    x0: <$t0 as crate::computation::KnownType<SymbolicSession>>::Type,
+                    x1: <$t1 as crate::computation::KnownType<SymbolicSession>>::Type,
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
@@ -4068,6 +4068,99 @@ macro_rules! moose_type {
             for $outer<
                 <$inner1 as crate::computation::SymbolicType>::Type,
                 <$inner2 as crate::computation::SymbolicType>::Type,
+            >
+        {
+            type Error = crate::error::Error;
+
+            fn try_from(
+                v: <$combined as crate::computation::SymbolicType>::Type,
+            ) -> crate::error::Result<Self> {
+                match v {
+                    crate::symbolic::Symbolic::Concrete(x) => Ok(x),
+                    _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
+                }
+            }
+        }
+    };
+
+    // Use this for undefined parameterised types that are wrapping three Moose types
+    ($combined:ident = $outer:ident<$inner1:ident, $inner2:ident, $inner3:ident>) => {
+        pub type $combined = $outer<$inner1, $inner2, $inner3>;
+
+        impl crate::computation::PartiallySymbolicType for $outer<$inner1, $inner2, $inner3> {
+            type Type = $outer<
+                <$inner1 as crate::computation::SymbolicType>::Type,
+                <$inner2 as crate::computation::SymbolicType>::Type,
+                <$inner3 as crate::computation::SymbolicType>::Type,
+            >;
+        }
+
+        impl crate::computation::CanonicalType for $outer<$inner1, $inner2, $inner3> {
+            type Type = $outer<
+                <$inner1 as crate::computation::CanonicalType>::Type,
+                <$inner2 as crate::computation::CanonicalType>::Type,
+                <$inner3 as crate::computation::CanonicalType>::Type,
+            >;
+        }
+
+        impl crate::computation::CanonicalType
+            for $outer<
+                <$inner1 as crate::computation::SymbolicType>::Type,
+                <$inner2 as crate::computation::SymbolicType>::Type,
+                <$inner3 as crate::computation::SymbolicType>::Type,
+            >
+        {
+            type Type = $outer<
+                <$inner1 as crate::computation::CanonicalType>::Type,
+                <$inner2 as crate::computation::CanonicalType>::Type,
+                <$inner3 as crate::computation::CanonicalType>::Type,
+            >;
+        }
+
+        impl crate::computation::CanonicalType
+            for crate::symbolic::Symbolic<
+                $outer<
+                    <$inner1 as crate::computation::SymbolicType>::Type,
+                    <$inner2 as crate::computation::SymbolicType>::Type,
+                    <$inner3 as crate::computation::SymbolicType>::Type,
+                >,
+            >
+        {
+            type Type = $outer<
+                <$inner1 as crate::computation::CanonicalType>::Type,
+                <$inner2 as crate::computation::CanonicalType>::Type,
+                <$inner3 as crate::computation::CanonicalType>::Type,
+            >;
+        }
+
+        // The kernel macro uses this to map (partially) concrete outputs to symbolic values
+        impl
+            From<
+                $outer<
+                    <$inner1 as crate::computation::SymbolicType>::Type,
+                    <$inner2 as crate::computation::SymbolicType>::Type,
+                    <$inner3 as crate::computation::SymbolicType>::Type,
+                >,
+            > for <$combined as crate::computation::SymbolicType>::Type
+        {
+            fn from(
+                x: $outer<
+                    <$inner1 as crate::computation::SymbolicType>::Type,
+                    <$inner2 as crate::computation::SymbolicType>::Type,
+                    <$inner3 as crate::computation::SymbolicType>::Type,
+                >,
+            ) -> Self {
+                crate::symbolic::Symbolic::Concrete(x)
+            }
+        }
+
+        // The kernel macros uses this to determine whether to invoke kernels, and
+        // if so, to map symbolic values to (partially) concrete inputs
+        impl std::convert::TryFrom<<$combined as crate::computation::SymbolicType>::Type>
+            for $outer<
+                <$inner1 as crate::computation::SymbolicType>::Type,
+                <$inner2 as crate::computation::SymbolicType>::Type,
+                <$inner3 as crate::computation::SymbolicType>::Type,
             >
         {
             type Error = crate::error::Error;

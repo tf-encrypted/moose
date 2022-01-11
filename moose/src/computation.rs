@@ -1082,6 +1082,9 @@ operators![
     RepShlDim,
     RepEqual,
     Mux,
+    // Mirrored Operators
+    Demirror,
+    Mirror,
 ];
 
 pub trait HasShortName {
@@ -1847,6 +1850,16 @@ pub struct MuxOp {
     pub sig: Signature,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct DemirrorOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct MirrorOp {
+    pub sig: Signature,
+}
+
 pub trait KnownPlacement {
     const TY: PlacementTy;
 
@@ -1958,11 +1971,6 @@ pub struct ReplicatedPlacement {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct AdditivePlacement {
-    pub owners: [Role; 2],
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Mirrored3Placement {
     pub owners: [Role; 3],
 }
@@ -1979,18 +1987,6 @@ impl ReplicatedPlacement {
             owner: self.owners[2].clone(),
         };
         (player0, player1, player2)
-    }
-}
-
-impl AdditivePlacement {
-    pub fn host_placements(&self) -> (HostPlacement, HostPlacement) {
-        let player0 = HostPlacement {
-            owner: self.owners[0].clone(),
-        };
-        let player1 = HostPlacement {
-            owner: self.owners[1].clone(),
-        };
-        (player0, player1)
     }
 }
 

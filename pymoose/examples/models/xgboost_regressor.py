@@ -6,7 +6,7 @@ from . import model
 from . import model_utils as utils
 
 
-class XGBoostTreeRegressor(model.AesPredictorModel):
+class XGBoostTreeRegressor(model.AesPredictor):
     def __init__(self, weights, children, split_conditions, split_indices):
         super().__init__()
         self.weights = weights
@@ -24,7 +24,7 @@ class XGBoostTreeRegressor(model.AesPredictorModel):
         return cls(weights, (left, right), split_conditions, split_indices)
 
     def predictor_factory(
-        self, nb_features, rescale_factor=1.0, fixedpoint_dtype=edsl.fixed(8, 27),
+        self, nb_features, rescale_factor=1.0, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE,
     ):
         # TODO[jason] make it more ergonomic for edsl.computation to bind args during
         #   tracing w/ edsl.trace
@@ -61,9 +61,10 @@ class XGBoostTreeRegressor(model.AesPredictorModel):
             selector = edsl.less(
                 x_features[self.split_indices[node]],
                 self.fixedpoint_constant(
-                    self.split_conditions[node], self.alice, dtype=fixedpoint_dtype
+                    self.split_conditions[node], self.mirrored, dtype=fixedpoint_dtype
                 ),
             )
+
             return edsl.mux(
                 selector,
                 self._traverse_tree(
@@ -76,10 +77,10 @@ class XGBoostTreeRegressor(model.AesPredictorModel):
         else:
             assert left_child == -1
             assert right_child == -1
-            return self.fixedpoint_constant(leaf_weights[node], self.alice)
+            return self.fixedpoint_constant(leaf_weights[node], self.mirrored)
 
 
-class XGBoostForestRegressor(model.AesPredictorModel):
+class XGBoostForestRegressor(model.AesPredictor):
     def __init__(self, trees, nb_features, base_score, learning_rate):
         super().__init__()
         self.nb_features = nb_features
@@ -126,7 +127,7 @@ class XGBoostForestRegressor(model.AesPredictorModel):
             for tree in self.trees
         ]
         final_score = self.fixedpoint_constant(
-            self.base_score, self.alice, dtype=fixedpoint_dtype
+            self.base_score, self.mirrored, dtype=fixedpoint_dtype
         )
         for tree_score in tree_scores:
             final_score = edsl.add(tree_score, final_score)

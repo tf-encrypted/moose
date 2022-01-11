@@ -91,6 +91,11 @@ class StandardOperation(Operation):
 
 
 @dataclass
+class AddNOperation(StandardOperation):
+    pass
+
+
+@dataclass
 class IdentityOperation(StandardOperation):
     pass
 

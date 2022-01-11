@@ -274,6 +274,130 @@ impl AddOp {
     }
 }
 
+impl AddNOp {
+    pub(crate) fn host_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &HostPlacement,
+        xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>],
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        HostPlacement: PlacementAddN<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementAddN<S, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementAddN<S, Float32T, Float32T>,
+        HostPlacement: PlacementAddN<S, Float64T, Float64T>,
+        Fixed64T: Clone,
+        Fixed128T: Clone,
+        Float32T: Clone,
+        Float64T: Clone,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot add_n on empty array of tensors".to_string(),
+            ))
+        } else {
+            let x = &xs[0];
+            match x {
+                AbstractTensor::Fixed64(_) => {
+                    let vec: Vec<Fixed64T> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            AbstractTensor::Fixed64(x) => x.clone(),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    let result = plc.add_n(sess, &vec);
+                    Ok(AbstractTensor::Fixed64(result))
+                }
+                AbstractTensor::Fixed128(_) => {
+                    let vec: Vec<Fixed128T> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            AbstractTensor::Fixed128(x) => x.clone(),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    let result = plc.add_n(sess, &vec);
+                    Ok(AbstractTensor::Fixed128(result))
+                }
+                AbstractTensor::Float32(_) => {
+                    let vec: Vec<Float32T> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            AbstractTensor::Float32(x) => x.clone(),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    let result = plc.add_n(sess, &vec);
+                    Ok(AbstractTensor::Float32(result))
+                }
+                AbstractTensor::Float64(_) => {
+                    let vec: Vec<Float64T> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            AbstractTensor::Float64(x) => x.clone(),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    let result = plc.add_n(sess, &vec);
+                    Ok(AbstractTensor::Float64(result))
+                }
+                x => Err(Error::UnimplementedOperator(format!(
+                    "Missing host add_n op for {:?}",
+                    &x.ty_desc(),
+                ))),
+            }
+        }
+    }
+
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>],
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        ReplicatedPlacement: PlacementAddN<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementAddN<S, Fixed128T, Fixed128T>,
+        Fixed64T: Clone,
+        Fixed128T: Clone,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot add_n on empty array of tensors".to_string(),
+            ))
+        } else {
+            let x = &xs[0];
+            match x {
+                AbstractTensor::Fixed64(_) => {
+                    let vec: Vec<Fixed64T> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            AbstractTensor::Fixed64(x) => (*x).clone(),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    let result = plc.add_n(sess, &vec);
+                    Ok(AbstractTensor::Fixed64(result))
+                }
+                AbstractTensor::Fixed128(_) => {
+                    let vec: Vec<Fixed128T> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            AbstractTensor::Fixed128(x) => (*x).clone(),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    let result = plc.add_n(sess, &vec);
+                    Ok(AbstractTensor::Fixed128(result))
+                }
+                x => Err(Error::UnimplementedOperator(format!(
+                    "Missing replicated add_n op for {:?}",
+                    &x.ty_desc(),
+                ))),
+            }
+        }
+    }
+}
+
 modelled_kernel! {
     PlacementSub::sub, SubOp,
     [
@@ -757,11 +881,13 @@ impl MuxOp {
 }
 
 modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);
+modelled!(PlacementCast::cast, Mirrored3Placement, (Tensor) -> Tensor, CastOp);
 
 kernel! {
     CastOp,
     [
         (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::kernel),
+        (Mirrored3Placement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::mir_kernel),
     ]
 }
 
@@ -777,6 +903,71 @@ impl CastOp {
         HostPlacement: PlacementFixedpointDecode<S, Fixed128T, Float64T>,
         HostPlacement: PlacementFixedpointEncode<S, Float32T, Fixed64T>,
         HostPlacement: PlacementFixedpointEncode<S, Float64T, Fixed128T>,
+    {
+        let arg0_precision = match sig.arg(0) {
+            Ok(Ty::Tensor(TensorDType::Fixed64 {
+                integral_precision,
+                fractional_precision,
+            })) => Some((integral_precision, fractional_precision)),
+            Ok(Ty::Tensor(TensorDType::Fixed128 {
+                integral_precision,
+                fractional_precision,
+            })) => Some((integral_precision, fractional_precision)),
+            _ => None,
+        };
+
+        match (x, sig.ret()) {
+            (AbstractTensor::Fixed64(x), Ty::Tensor(TensorDType::Float32)) => {
+                let (_, fractional_precision) = arg0_precision.unwrap();
+                let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
+                Ok(AbstractTensor::Float32(inner))
+            }
+            (AbstractTensor::Fixed128(x), Ty::Tensor(TensorDType::Float64)) => {
+                let (_, fractional_precision) = arg0_precision.unwrap();
+                let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
+                Ok(AbstractTensor::Float64(inner))
+            }
+            (
+                AbstractTensor::Float32(x),
+                Ty::Tensor(TensorDType::Fixed64 {
+                    fractional_precision,
+                    integral_precision,
+                }),
+            ) => {
+                let inner =
+                    plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
+                Ok(AbstractTensor::Fixed64(inner))
+            }
+            (
+                AbstractTensor::Float64(x),
+                Ty::Tensor(TensorDType::Fixed128 {
+                    fractional_precision,
+                    integral_precision,
+                }),
+            ) => {
+                let inner =
+                    plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
+                Ok(AbstractTensor::Fixed128(inner))
+            }
+            (x, ret) => Err(Error::UnimplementedOperator(format!(
+                "Cast operator does not support casting of {:?} to {:?}",
+                &x.ty_desc(),
+                &ret
+            ))),
+        }
+    }
+
+    fn mir_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &Mirrored3Placement,
+        sig: Signature,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        Mirrored3Placement: PlacementFixedpointDecode<S, Fixed64T, Float32T>,
+        Mirrored3Placement: PlacementFixedpointDecode<S, Fixed128T, Float64T>,
+        Mirrored3Placement: PlacementFixedpointEncode<S, Float32T, Fixed64T>,
+        Mirrored3Placement: PlacementFixedpointEncode<S, Float64T, Fixed128T>,
     {
         let arg0_precision = match sig.arg(0) {
             Ok(Ty::Tensor(TensorDType::Fixed64 {
