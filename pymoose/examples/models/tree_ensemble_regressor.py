@@ -23,35 +23,14 @@ class DecisionTreeRegressor(model.AesPredictor):
         split_indices = tree_json["split_indices"]
         return cls(weights, (left, right), split_conditions, split_indices)
 
-    def predictor_factory(
-        self,
-        nb_features,
-        rescale_factor=1.0,
-        fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE,
-    ):
-        # TODO[jason] make it more ergonomic for edsl.computation to bind args during
-        #   tracing w/ edsl.trace
-        @edsl.computation
-        def predictor(x: edsl.Argument(self.alice, dtype=edsl.float64)):
-            with self.alice:
-                x = edsl.cast(x, dtype=fixedpoint_dtype)
+    def predictor_factory(self):
+        raise NotImplementedError(
+            f"{self.__class__.__name__} is not meant to be used directly as an "
+            "AesPredictor model. Consider expressing your decision tree as a tree "
+            "ensemble with another AesPredictor implementation."
+        )
 
-            with self.replicated:
-                y = self._tree_fn(
-                    x,
-                    nb_features,
-                    rescale_factor=rescale_factor,
-                    fixedpoint_dtype=fixedpoint_dtype,
-                )
-
-            with self.bob:
-                y = edsl.cast(y, dtype=edsl.float64)
-
-            return y
-
-        return predictor
-
-    def _tree_fn(self, x, nb_features, rescale_factor, fixedpoint_dtype):
+    def __call__(self, x, nb_features, rescale_factor, fixedpoint_dtype):
         leaf_weights = {ix: rescale_factor * w for ix, w in self.weights.items()}
         features_vec = [edsl.index_axis(x, axis=1, index=i) for i in range(nb_features)]
         return self._traverse_tree(0, leaf_weights, features_vec, fixedpoint_dtype)
@@ -209,7 +188,7 @@ class TreeEnsembleRegressor(model.AesPredictor):
 
     def _forest_fn(self, x, fixedpoint_dtype):
         tree_scores = [
-            tree._tree_fn(
+            tree(
                 x,
                 self.nb_features,
                 rescale_factor=self.learning_rate,
