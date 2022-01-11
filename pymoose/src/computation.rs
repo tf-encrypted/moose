@@ -574,7 +574,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_AesTensorType { dtype } => match dtype {
             // TODO we are erasing fixedpoint precision here on purpose
             //  -- but we robably want to avoid this down the road
-            PyDType::fixed46_40 => Ok(Ty::AesTensor),
+            PyDType::fixed24_40 => Ok(Ty::AesTensor),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
         },
         PyValueType::std_AesKeyType => Ok(Ty::AesKey),

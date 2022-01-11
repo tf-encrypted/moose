@@ -27,7 +27,7 @@ class ReplicatedExample(parameterized.TestCase):
         @edsl.computation
         def my_aes_comp(
             key: edsl.Argument(rep, vtype=AesKeyType()),
-            ciphertext: edsl.Argument(alice, vtype=AesTensorType(edsl.fixed(46, 40))),
+            ciphertext: edsl.Argument(alice, vtype=AesTensorType(edsl.fixed(24, 40))),
         ):
             with decryptor:
                 data = edsl.decrypt(key, ciphertext)
