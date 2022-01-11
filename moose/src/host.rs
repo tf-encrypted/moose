@@ -3,6 +3,7 @@ use crate::error::{Error, Result};
 use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
+#[cfg(symbolic)]
 use crate::symbolic::Symbolic;
 use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
 use ndarray::prelude::*;
@@ -1439,6 +1440,7 @@ impl<S: Session> Tensor<S> for HostBitTensor {
     type Scalar = u8;
 }
 
+#[cfg(symbolic)]
 impl<S: Session> Tensor<S> for Symbolic<HostBitTensor> {
     type Scalar = u8;
 }
@@ -1888,6 +1890,7 @@ impl<HostBitT, N: Const> BitArray for AbstractHostBitArray<HostBitT, N> {
     type Len = N;
 }
 
+#[cfg(symbolic)]
 impl<HostBitT: Placed, N: Const> BitArray for Symbolic<AbstractHostBitArray<HostBitT, N>> {
     type Len = N;
 }
@@ -1911,28 +1914,33 @@ impl<HostBitTensorT: Placed, N> Placed for AbstractHostBitArray<HostBitTensorT, 
     }
 }
 
+#[cfg(symbolic)]
 impl PartiallySymbolicType for HostBitArray64 {
     type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N64>;
 }
 
 pub type HostBitArray128 = AbstractHostBitArray<HostBitTensor, N128>;
 
+#[cfg(symbolic)]
 impl PartiallySymbolicType for HostBitArray128 {
     type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N128>;
 }
 
 pub type HostBitArray224 = AbstractHostBitArray<HostBitTensor, N224>;
 
+#[cfg(symbolic)]
 impl PartiallySymbolicType for HostBitArray224 {
     type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N224>;
 }
 
 pub type HostBitArray256 = AbstractHostBitArray<HostBitTensor, N256>;
 
+#[cfg(symbolic)]
 impl PartiallySymbolicType for HostBitArray256 {
     type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N256>;
 }
 
+#[cfg(symbolic)]
 impl<HostBitT: Placed, N> From<AbstractHostBitArray<HostBitT, N>>
     for Symbolic<AbstractHostBitArray<HostBitT, N>>
 where
@@ -1943,6 +1951,7 @@ where
     }
 }
 
+#[cfg(symbolic)]
 impl<HostBitT, N> TryFrom<Symbolic<AbstractHostBitArray<HostBitT, N>>>
     for AbstractHostBitArray<HostBitT, N>
 where
@@ -2057,6 +2066,7 @@ impl<S: Session, T> Tensor<S> for AbstractHostRingTensor<T> {
     type Scalar = T;
 }
 
+#[cfg(symbolic)]
 impl<S: Session, T> Tensor<S> for Symbolic<AbstractHostRingTensor<T>> {
     type Scalar = T;
 }
@@ -2085,6 +2095,7 @@ where
     }
 }
 
+#[cfg(symbolic)]
 impl<R: Ring + Placed> Ring for Symbolic<R> {
     type BitLength = R::BitLength;
 }

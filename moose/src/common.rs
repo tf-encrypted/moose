@@ -1,6 +1,7 @@
 use crate::additive::{
     AdditivePlacement, AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape,
 };
+#[cfg(symbolic)] // TODO
 use crate::computation::SymbolicValue;
 use crate::computation::Value;
 use crate::computation::{

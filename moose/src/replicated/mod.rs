@@ -14,6 +14,7 @@ use crate::kernels::*;
 use crate::mirrored::Mirrored3Tensor;
 use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::replicated::aes::AbstractReplicatedAesKey;
+#[cfg(symbolic)]
 use crate::symbolic::Symbolic;
 use crate::{BitArray, Const, Ring, N128, N224, N64};
 use macros::with_context;
@@ -103,10 +104,12 @@ impl<HostRingT> Underlying for Mirrored3Tensor<HostRingT> {
     type TensorType = HostRingT;
 }
 
+#[cfg(symbolic)]
 impl<T: Placed + Underlying> Underlying for Symbolic<T> {
     type TensorType = <T as Underlying>::TensorType;
 }
 
+#[cfg(symbolic)]
 impl<T: Placed + MirroredCounterpart> MirroredCounterpart for Symbolic<T>
 where
     <T as MirroredCounterpart>::MirroredType: Placed,
@@ -121,6 +124,7 @@ impl<RepBitTensorT, N: Const> BitArray for AbstractReplicatedBitArray<RepBitTens
     type Len = N;
 }
 
+#[cfg(symbolic)]
 impl<RepBitTensorT: Placed, N: Const> BitArray
     for Symbolic<AbstractReplicatedBitArray<RepBitTensorT, N>>
 {
@@ -142,6 +146,7 @@ impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTenso
     }
 }
 
+#[cfg(symbolic)]
 impl<N> PartiallySymbolicType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
     type Type = AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>;
 }
@@ -150,18 +155,21 @@ impl<N> CanonicalType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
     type Type = Self;
 }
 
+#[cfg(symbolic)]
 impl<N> CanonicalType
     for AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>
 {
     type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
 }
 
+#[cfg(symbolic)]
 impl<N> CanonicalType
     for Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>>
 {
     type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
 }
 
+#[cfg(symbolic)]
 impl<RepBitT: Placed, N> From<AbstractReplicatedBitArray<RepBitT, N>>
     for Symbolic<AbstractReplicatedBitArray<RepBitT, N>>
 where
@@ -172,6 +180,7 @@ where
     }
 }
 
+#[cfg(symbolic)]
 impl<RepBitT, N> TryFrom<Symbolic<AbstractReplicatedBitArray<RepBitT, N>>>
     for AbstractReplicatedBitArray<RepBitT, N>
 where
@@ -2171,6 +2180,7 @@ pub trait PlacementSplit<S: Session, T, O1, O2> {
     fn split(&self, sess: &S, x: &T) -> (O1, O2);
 }
 
+#[cfg(symbolic)] // TODO
 impl<
         S: Session,
         HostRingT: Placed<Placement = HostPlacement>,
@@ -2319,6 +2329,7 @@ pub trait PlacementShrRaw<S: Session, T, O> {
     fn shr_raw(&self, sess: &S, amount: usize, x: &T) -> O;
 }
 
+#[cfg(symbolic)]
 impl<S: Session, HostRingT: Placed<Placement = HostPlacement>>
     PlacementShrRaw<S, Symbolic<RepTen<HostRingT>>, Symbolic<RepTen<HostRingT>>>
     for ReplicatedPlacement

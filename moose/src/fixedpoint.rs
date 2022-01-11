@@ -7,6 +7,7 @@ use crate::floatingpoint::FloatTensor;
 use crate::host::*;
 use crate::kernels::*;
 use crate::replicated::*;
+#[cfg(symbolic)]
 use crate::symbolic::Symbolic;
 use macros::with_context;
 use ndarray::prelude::*;
@@ -1419,6 +1420,7 @@ impl<RepRingT> FixedpointTensor for AbstractReplicatedFixedTensor<RepRingT> {
     }
 }
 
+#[cfg(symbolic)]
 impl<RepRingT: Placed> FixedpointTensor for Symbolic<AbstractReplicatedFixedTensor<RepRingT>> {
     fn fractional_precision(&self) -> u32 {
         match self {
@@ -1871,6 +1873,7 @@ impl MuxOp {
 }
 
 #[cfg(test)]
+#[cfg(symbolic)] // TODO
 mod tests {
     use super::*;
     use crate::kernels::SyncSession;

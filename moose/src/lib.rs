@@ -782,6 +782,7 @@ macro_rules! symbolic_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty), )+]) => {
+        #[cfg(symbolic)]
         impl crate::kernels::DispatchKernel<crate::symbolic::SymbolicSession> for $op {
             fn compile(
                 &self,
@@ -828,6 +829,7 @@ macro_rules! symbolic_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
+        #[cfg(symbolic)]
         impl crate::kernels::DispatchKernel<crate::symbolic::SymbolicSession> for $op {
             fn compile(
                 &self,
@@ -878,6 +880,7 @@ macro_rules! symbolic_dispatch_kernel {
     // */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty), )+]) => {
+        #[cfg(symbolic)]
         impl crate::kernels::DispatchKernel<crate::symbolic::SymbolicSession> for $op {
             fn compile(
                 &self,
@@ -931,6 +934,7 @@ macro_rules! symbolic_dispatch_kernel {
     // */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty), )+]) => {
+        #[cfg(symbolic)]
         impl crate::kernels::DispatchKernel<crate::symbolic::SymbolicSession> for $op {
             fn compile(
                 &self,
@@ -987,6 +991,7 @@ macro_rules! symbolic_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, vec[$ts:ty] -> $u:ty), )+]) => {
+        #[cfg(symbolic)]
         impl crate::kernels::DispatchKernel<crate::symbolic::SymbolicSession> for $op {
             fn compile(
                 &self,
@@ -1108,6 +1113,7 @@ macro_rules! kernel {
     };
 
     (__nullary hybrid, $op:ty, $plc:ty, () -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::NullaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1136,6 +1142,7 @@ macro_rules! kernel {
     };
 
     (__nullary concrete, $op:ty, $plc:ty, () -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::NullaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1164,6 +1171,7 @@ macro_rules! kernel {
     };
 
     (__nullary transparent, $op:ty, $plc:ty, () -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::NullaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1181,6 +1189,7 @@ macro_rules! kernel {
     };
 
     (__nullary runtime, $op:ty, $plc:ty, () -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl NullaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1260,6 +1269,7 @@ macro_rules! kernel {
     };
 
     (__unary hybrid, $op:ty, $plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1310,6 +1320,7 @@ macro_rules! kernel {
     };
 
     (__unary concrete, $op:ty, $plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1353,6 +1364,7 @@ macro_rules! kernel {
     };
 
     (__unary transparent, $op:ty, $plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1372,6 +1384,7 @@ macro_rules! kernel {
     };
 
     (__unary runtime, $op:ty, $plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1462,6 +1475,7 @@ macro_rules! kernel {
     };
 
     (__binary hybrid, $op:ty, $plc:ty, ($t0:path, $t1:path) -> $u:path => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1517,6 +1531,7 @@ macro_rules! kernel {
     };
 
     (__binary concrete, $op:ty, $plc:ty, ($t0:path, $t1:path) -> $u:path => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1564,6 +1579,7 @@ macro_rules! kernel {
     };
 
     (__binary transparent, $op:ty, $plc:ty, ($t0:path, $t1:path) -> $u:path => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1585,6 +1601,7 @@ macro_rules! kernel {
     };
 
     (__binary runtime, $op:ty, $plc:ty, ($t0:path, $t1:path) -> $u:path => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1678,6 +1695,7 @@ macro_rules! kernel {
     };
 
     (__ternary transparent, $op:ty, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::TernaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1701,6 +1719,7 @@ macro_rules! kernel {
     };
 
     (__ternary hybrid, $op:ty, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::TernaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1754,6 +1773,7 @@ macro_rules! kernel {
     };
 
     (__ternary concrete, $op:ty, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::TernaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1804,6 +1824,7 @@ macro_rules! kernel {
     };
 
     (__ternary runtime, $op:ty, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::TernaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1897,6 +1918,7 @@ macro_rules! kernel {
     };
 
     (__variadic transparent, $op:ty, $plc:ty, vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::VariadicKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1916,6 +1938,7 @@ macro_rules! kernel {
     };
 
     (__variadic hybrid, $op:ty, $plc:ty, vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::VariadicKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -1968,6 +1991,7 @@ macro_rules! kernel {
     };
 
     (__variadic concrete, $op:ty, $plc:ty, vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::VariadicKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2022,6 +2046,7 @@ macro_rules! kernel {
     };
 
     (__variadic runtime, $op:ty, $plc:ty, vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::VariadicKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2109,12 +2134,14 @@ macro_rules! modelled {
             }
         }
 
+        #[cfg(symbolic)]
         impl crate::kernels::NullaryKernelCheck<
             crate::symbolic::SymbolicSession,
             $plc,
             <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
         > for $op {}
 
+        #[cfg(symbolic)]
         impl $t<
             crate::symbolic::SymbolicSession,
             <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
@@ -2198,6 +2225,7 @@ macro_rules! modelled {
             }
         }
 
+        #[cfg(symbolic)]
         impl crate::kernels::UnaryKernelCheck<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2205,6 +2233,7 @@ macro_rules! modelled {
             <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
         > for $op {}
 
+        #[cfg(symbolic)]
         impl $t<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
@@ -2289,6 +2318,7 @@ macro_rules! modelled {
             }
         }
 
+        #[cfg(symbolic)]
         impl crate::kernels::BinaryKernelCheck<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2332,6 +2362,7 @@ macro_rules! modelled {
         //     }
         // }
 
+        #[cfg(symbolic)]
         impl $t<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -2422,6 +2453,7 @@ macro_rules! modelled {
             }
         }
 
+        #[cfg(symbolic)]
         impl crate::kernels::TernaryKernelCheck<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2431,6 +2463,7 @@ macro_rules! modelled {
             <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
         > for $op {}
 
+        #[cfg(symbolic)]
         impl $t<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
@@ -2523,6 +2556,7 @@ macro_rules! modelled {
             }
         }
 
+        #[cfg(symbolic)]
         impl crate::kernels::VariadicKernelCheck<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2530,6 +2564,7 @@ macro_rules! modelled {
             <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
         > for $op {}
 
+        #[cfg(symbolic)]
         impl $t<
             crate::symbolic::SymbolicSession,
             <$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
@@ -2657,6 +2692,7 @@ macro_rules! modelled_kernel {
 
 
     (__nullary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::NullaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2687,6 +2723,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -2718,6 +2755,7 @@ macro_rules! modelled_kernel {
     };
 
     (__nullary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::NullaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2747,6 +2785,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$u as crate::computation::PartiallySymbolicType>::Type
@@ -2778,6 +2817,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$u as crate::computation::SymbolicType>::Type
@@ -2807,6 +2847,7 @@ macro_rules! modelled_kernel {
     };
 
     (__nullary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::NullaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2822,6 +2863,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$u as crate::computation::SymbolicType>::Type
@@ -2852,6 +2894,7 @@ macro_rules! modelled_kernel {
     };
 
     (__nullary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::NullaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -2876,6 +2919,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$u as crate::computation::SymbolicType>::Type
@@ -3001,6 +3045,7 @@ macro_rules! modelled_kernel {
     };
 
     (__unary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3050,6 +3095,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -3083,6 +3129,7 @@ macro_rules! modelled_kernel {
     };
 
     (__unary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3124,6 +3171,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::PartiallySymbolicType>::Type,
@@ -3159,6 +3207,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -3192,6 +3241,7 @@ macro_rules! modelled_kernel {
     };
 
     (__unary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3209,6 +3259,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -3242,6 +3293,7 @@ macro_rules! modelled_kernel {
     };
 
     (__unary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::UnaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3275,6 +3327,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -3408,6 +3461,7 @@ macro_rules! modelled_kernel {
     };
 
     (__binary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ident, $t1:ident) -> $u:ident => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3461,6 +3515,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -3497,6 +3552,7 @@ macro_rules! modelled_kernel {
     };
 
     (__binary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ident, $t1:ident) -> $u:ident => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3542,6 +3598,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::PartiallySymbolicType>::Type,
@@ -3581,6 +3638,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -3618,6 +3676,7 @@ macro_rules! modelled_kernel {
     };
 
     (__binary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ident, $t1:ident) -> $u:ident => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3637,6 +3696,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -3673,6 +3733,7 @@ macro_rules! modelled_kernel {
     };
 
     (__binary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ident, $t1:ident) -> $u:ident => $($kp:tt)+) => {
+        #[cfg(symbolic)]
         impl crate::kernels::BinaryKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3709,6 +3770,7 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(symbolic)]
         impl $trait<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -3802,6 +3864,7 @@ macro_rules! modelled_alias {
             }
         }
 
+        #[cfg(symbolic)]
         impl
             $src_t<
                 crate::symbolic::SymbolicSession,
@@ -3849,6 +3912,7 @@ macro_rules! modelled_alias {
             }
         }
 
+        #[cfg(symbolic)]
         impl
             $src_t<
                 crate::symbolic::SymbolicSession,
@@ -3874,6 +3938,7 @@ macro_rules! modelled_alias {
 macro_rules! moose_type {
     // Use this for unparameterised types that are already defined
     ($atomic:ident) => {
+        #[cfg(symbolic)]
         impl crate::computation::PartiallySymbolicType for $atomic {
             type Type = $atomic;
         }
@@ -3882,16 +3947,19 @@ macro_rules! moose_type {
             type Type = $atomic;
         }
 
+        #[cfg(symbolic)]
         impl crate::computation::CanonicalType for crate::symbolic::Symbolic<$atomic> {
             type Type = $atomic;
         }
 
+        #[cfg(symbolic)]
         impl From<$atomic> for <$atomic as crate::computation::SymbolicType>::Type {
             fn from(x: $atomic) -> Self {
                 crate::symbolic::Symbolic::Concrete(x)
             }
         }
 
+        #[cfg(symbolic)]
         impl std::convert::TryFrom<<$atomic as crate::computation::SymbolicType>::Type>
             for $atomic
         {
@@ -3912,6 +3980,7 @@ macro_rules! moose_type {
     ($combined:ident = [atomic] $t:ty) => {
         pub type $combined = $t;
 
+        #[cfg(symbolic)]
         impl crate::computation::PartiallySymbolicType for $combined {
             type Type = $combined;
         }
@@ -3920,16 +3989,19 @@ macro_rules! moose_type {
             type Type = $combined;
         }
 
+        #[cfg(symbolic)]
         impl crate::computation::CanonicalType for crate::symbolic::Symbolic<$combined> {
             type Type = $combined;
         }
 
+        #[cfg(symbolic)]
         impl From<$combined> for <$combined as crate::computation::SymbolicType>::Type {
             fn from(x: $combined) -> Self {
                 crate::symbolic::Symbolic::Concrete(x)
             }
         }
 
+        #[cfg(symbolic)]
         impl std::convert::TryFrom<<$combined as crate::computation::SymbolicType>::Type>
             for $combined
         {
@@ -3950,6 +4022,7 @@ macro_rules! moose_type {
     ($combined:ident = $outer:ident<$inner:ident>) => {
         pub type $combined = $outer<$inner>;
 
+        #[cfg(symbolic)]
         impl crate::computation::PartiallySymbolicType for $outer<$inner> {
             type Type = $outer<<$inner as crate::computation::SymbolicType>::Type>;
         }
@@ -3958,12 +4031,14 @@ macro_rules! moose_type {
             type Type = $outer<<$inner as crate::computation::CanonicalType>::Type>;
         }
 
+        #[cfg(symbolic)]
         impl crate::computation::CanonicalType
             for $outer<<$inner as crate::computation::SymbolicType>::Type>
         {
             type Type = $outer<<$inner as crate::computation::CanonicalType>::Type>;
         }
 
+        #[cfg(symbolic)]
         impl crate::computation::CanonicalType
             for crate::symbolic::Symbolic<
                 $outer<<$inner as crate::computation::SymbolicType>::Type>,
@@ -3973,6 +4048,7 @@ macro_rules! moose_type {
         }
 
         // The kernel macro uses this to map (partially) concrete outputs to symbolic values
+        #[cfg(symbolic)]
         impl From<$outer<<$inner as crate::computation::SymbolicType>::Type>>
             for <$combined as crate::computation::SymbolicType>::Type
         {
@@ -3983,6 +4059,7 @@ macro_rules! moose_type {
 
         // The kernel macros uses this to determine whether to invoke kernels, and
         // if so, to map symbolic values to (partially) concrete inputs
+        #[cfg(symbolic)]
         impl std::convert::TryFrom<<$combined as crate::computation::SymbolicType>::Type>
             for $outer<<$inner as crate::computation::SymbolicType>::Type>
         {
@@ -4003,6 +4080,7 @@ macro_rules! moose_type {
     ($combined:ident = $outer:ident<$inner1:ident, $inner2:ident>) => {
         pub type $combined = $outer<$inner1, $inner2>;
 
+        #[cfg(symbolic)]
         impl crate::computation::PartiallySymbolicType for $outer<$inner1, $inner2> {
             type Type = $outer<
                 <$inner1 as crate::computation::SymbolicType>::Type,
@@ -4017,6 +4095,7 @@ macro_rules! moose_type {
             >;
         }
 
+        #[cfg(symbolic)]
         impl crate::computation::CanonicalType
             for $outer<
                 <$inner1 as crate::computation::SymbolicType>::Type,
@@ -4029,6 +4108,7 @@ macro_rules! moose_type {
             >;
         }
 
+        #[cfg(symbolic)]
         impl crate::computation::CanonicalType
             for crate::symbolic::Symbolic<
                 $outer<
@@ -4044,6 +4124,7 @@ macro_rules! moose_type {
         }
 
         // The kernel macro uses this to map (partially) concrete outputs to symbolic values
+        #[cfg(symbolic)]
         impl
             From<
                 $outer<
@@ -4064,6 +4145,7 @@ macro_rules! moose_type {
 
         // The kernel macros uses this to determine whether to invoke kernels, and
         // if so, to map symbolic values to (partially) concrete inputs
+        #[cfg(symbolic)]
         impl std::convert::TryFrom<<$combined as crate::computation::SymbolicType>::Type>
             for $outer<
                 <$inner1 as crate::computation::SymbolicType>::Type,
@@ -4087,6 +4169,7 @@ macro_rules! moose_type {
     ($combined:ident = $outer:ident<$inner1:ident, $inner2:ident, $inner3:ident>) => {
         pub type $combined = $outer<$inner1, $inner2, $inner3>;
 
+        #[cfg(symbolic)]
         impl crate::computation::PartiallySymbolicType for $outer<$inner1, $inner2, $inner3> {
             type Type = $outer<
                 <$inner1 as crate::computation::SymbolicType>::Type,
@@ -4103,6 +4186,7 @@ macro_rules! moose_type {
             >;
         }
 
+        #[cfg(symbolic)]
         impl crate::computation::CanonicalType
             for $outer<
                 <$inner1 as crate::computation::SymbolicType>::Type,
@@ -4117,6 +4201,7 @@ macro_rules! moose_type {
             >;
         }
 
+        #[cfg(symbolic)]
         impl crate::computation::CanonicalType
             for crate::symbolic::Symbolic<
                 $outer<
@@ -4134,6 +4219,7 @@ macro_rules! moose_type {
         }
 
         // The kernel macro uses this to map (partially) concrete outputs to symbolic values
+        #[cfg(symbolic)]
         impl
             From<
                 $outer<
@@ -4156,6 +4242,7 @@ macro_rules! moose_type {
 
         // The kernel macros uses this to determine whether to invoke kernels, and
         // if so, to map symbolic values to (partially) concrete inputs
+        #[cfg(symbolic)]
         impl std::convert::TryFrom<<$combined as crate::computation::SymbolicType>::Type>
             for $outer<
                 <$inner1 as crate::computation::SymbolicType>::Type,
@@ -4264,6 +4351,7 @@ pub mod additive;
 pub mod boolean;
 pub mod bristol_fashion;
 pub mod common;
+#[cfg(symbolic)]
 pub mod compilation;
 pub mod computation;
 pub mod encrypted;
@@ -4280,6 +4368,7 @@ pub mod prim;
 pub mod prng;
 pub mod replicated;
 pub mod storage;
+#[cfg(symbolic)]
 pub mod symbolic;
 pub mod textual;
 pub mod utils;

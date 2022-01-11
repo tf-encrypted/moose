@@ -9,6 +9,7 @@ use crate::kernels::Session;
 use crate::logical::{Tensor, TensorDType};
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::*;
+#[cfg(symbolic)]
 use crate::symbolic::Symbolic;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
@@ -146,10 +147,12 @@ impl SessionId {
 ///
 /// Note that this trait is typically not implemented directly, but
 /// rather through an implemention of the PartiallySymbolicType map.
+#[cfg(symbolic)]
 pub trait SymbolicType {
     type Type;
 }
 
+#[cfg(symbolic)]
 impl<T> SymbolicType for T
 where
     T: PartiallySymbolicType,
@@ -163,6 +166,7 @@ where
 /// Concretely, this map computes the symbolic version, except for the top-most
 /// type. As an example, RepTensor<Symbolic<HostTensor>> is partially symbolic
 /// as opposed to the (fully) symbolic type Symbolic<RepTensor<Symbolic<HostTensor>.
+#[cfg(symbolic)]
 pub trait PartiallySymbolicType {
     type Type;
 }
@@ -415,10 +419,12 @@ macro_rules! values {
 
         #[derive(PartialEq, Clone, Debug)]
         #[allow(clippy::large_enum_variant)]
+        #[cfg(symbolic)]
         pub enum SymbolicValue {
             $($val(Box<<$val as SymbolicType>::Type>),)+
         }
 
+        #[cfg(symbolic)]
         impl SymbolicValue {
             pub fn ty(&self) -> Ty {
                 match self {
@@ -435,33 +441,36 @@ macro_rules! values {
         }
 
         $(
-        impl From<<$val as SymbolicType>::Type> for SymbolicValue {
-            fn from(x: <$val as SymbolicType>::Type) -> Self {
-                SymbolicValue::$val(Box::new(x))
-            }
-        }
-        )+
-
-        $(
-        impl TryFrom<SymbolicValue> for <$val as SymbolicType>::Type {
-            type Error = Error;
-            fn try_from(v: SymbolicValue) -> Result<Self> {
-                match v {
-                    SymbolicValue::$val(x) => Ok(*x),
-                    _ => Err(Error::TypeMismatch {
-                        expected: stringify!($val).to_string(),
-                        found: v.ty(),
-                    }),
+            #[cfg(symbolic)]
+            impl From<<$val as SymbolicType>::Type> for SymbolicValue {
+                fn from(x: <$val as SymbolicType>::Type) -> Self {
+                    SymbolicValue::$val(Box::new(x))
                 }
             }
-        }
         )+
 
         $(
-        impl KnownType<crate::symbolic::SymbolicSession> for $val {
-            type Type = <$val as SymbolicType>::Type;
-            const TY: Ty = Ty::$val$(($inner::$default))?;
-        }
+            #[cfg(symbolic)]
+            impl TryFrom<SymbolicValue> for <$val as SymbolicType>::Type {
+                type Error = Error;
+                fn try_from(v: SymbolicValue) -> Result<Self> {
+                    match v {
+                        SymbolicValue::$val(x) => Ok(*x),
+                        _ => Err(Error::TypeMismatch {
+                            expected: stringify!($val).to_string(),
+                            found: v.ty(),
+                        }),
+                    }
+                }
+            }
+        )+
+
+        $(
+            #[cfg(symbolic)]
+            impl KnownType<crate::symbolic::SymbolicSession> for $val {
+                type Type = <$val as SymbolicType>::Type;
+                const TY: Ty = Ty::$val$(($inner::$default))?;
+            }
         )+
 
         $(
@@ -566,6 +575,7 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Unit(pub HostPlacement);
 
+#[cfg(symbolic)]
 impl PartiallySymbolicType for Unit {
     type Type = Unit;
 }

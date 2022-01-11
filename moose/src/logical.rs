@@ -5,6 +5,7 @@ use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{HostShape, HostString};
 use crate::kernels::*;
+#[cfg(symbolic)]
 use crate::symbolic::Symbolic;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -87,6 +88,7 @@ where
     }
 }
 
+#[cfg(symbolic)]
 impl PartiallySymbolicType for Tensor {
     #[allow(clippy::type_complexity)]
     type Type = AbstractTensor<
@@ -98,6 +100,7 @@ impl PartiallySymbolicType for Tensor {
     >;
 }
 
+#[cfg(symbolic)]
 impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>
     From<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     for Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
@@ -113,6 +116,7 @@ where
     }
 }
 
+#[cfg(symbolic)]
 impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>
     TryFrom<Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>>
     for AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>
