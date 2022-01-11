@@ -45,14 +45,10 @@ class LinearPredictor(model.AesPredictor, metaclass=abc.ABCMeta):
             ),
             aes_key: edsl.Argument(self.replicated, vtype=edsl.AesKeyType()),
         ):
-            x = model_utils.handle_aes_predictor_input(
-                aes_key, aes_data, decryptor=self.replicated
-            )
+            x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
             y = self.linear_predictor_fn(x, fixedpoint_dtype)
             pred = self.post_transform(y)
-            return model_utils.handle_predictor_output(
-                pred, prediction_handler=self.bob
-            )
+            return self.handle_output(pred, prediction_handler=self.bob)
 
         return predictor
 

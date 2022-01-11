@@ -194,17 +194,16 @@ class TreeEnsembleRegressor(model.AesPredictor):
         # TODO[jason] make it more ergonomic for edsl.computation to bind args during
         #   tracing w/ edsl.trace
         @edsl.computation
-        def predictor(x: edsl.Argument(self.alice, dtype=edsl.float64)):
-            with self.alice:
-                x = edsl.cast(x, dtype=fixedpoint_dtype)
-
+        def predictor(
+            aes_data: edsl.Argument(
+                self.alice, vtype=edsl.AesTensorType(dtype=fixedpoint_dtype)
+            ),
+            aes_key: edsl.Argument(self.replicated, vtype=edsl.AesKeyType()),
+        ):
+            x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
             with self.replicated:
                 y = self._forest_fn(x, fixedpoint_dtype=fixedpoint_dtype)
-
-            with self.bob:
-                y = edsl.cast(y, dtype=edsl.float64)
-
-            return y
+            return self.handle_output(y, prediction_handler=self.bob)
 
         return predictor
 

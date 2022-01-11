@@ -25,7 +25,9 @@ class TreeEnsembleRegressorTest(parameterized.TestCase):
         fixture_path = root_path / "fixtures" / "xgboost_regressor.onnx"
         with open(fixture_path, "rb") as model_fixture:
             forest_onnx = onnx.load_model(model_fixture)
-        forest_model = tree_ensemble_regressor.TreeEnsembleRegressor.from_onnx(forest_onnx)
+        forest_model = tree_ensemble_regressor.TreeEnsembleRegressor.from_onnx(
+            forest_onnx
+        )
         return forest_model
 
     def test_tree_ensemble_regressor_logic(self):
