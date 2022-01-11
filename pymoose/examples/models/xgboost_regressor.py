@@ -16,15 +16,18 @@ class XGBoostTreeRegressor(model.AesPredictor):
 
     @classmethod
     def from_json(cls, tree_json):
-        weights = tree_json["base_weights"]
-        left = tree_json["left_children"]
-        right = tree_json["right_children"]
+        weights = dict(enumerate(tree_json["base_weights"]))
+        left = _map_json_to_onnx_leaves(tree_json["left_children"])
+        right = _map_json_to_onnx_leaves(tree_json["right_children"])
         split_conditions = tree_json["split_conditions"]
         split_indices = tree_json["split_indices"]
         return cls(weights, (left, right), split_conditions, split_indices)
 
     def predictor_factory(
-        self, nb_features, rescale_factor=1.0, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE,
+        self,
+        nb_features,
+        rescale_factor=1.0,
+        fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE,
     ):
         # TODO[jason] make it more ergonomic for edsl.computation to bind args during
         #   tracing w/ edsl.trace
@@ -49,14 +52,14 @@ class XGBoostTreeRegressor(model.AesPredictor):
         return predictor
 
     def _tree_fn(self, x, nb_features, rescale_factor, fixedpoint_dtype):
-        leaf_weights = [rescale_factor * w for w in self.weights]
+        leaf_weights = {ix: rescale_factor * w for ix, w in self.weights.items()}
         features_vec = [edsl.index_axis(x, axis=1, index=i) for i in range(nb_features)]
         return self._traverse_tree(0, leaf_weights, features_vec, fixedpoint_dtype)
 
     def _traverse_tree(self, node, leaf_weights, x_features, fixedpoint_dtype):
         left_child = self.left[node]
         right_child = self.right[node]
-        if left_child != -1 and right_child != -1:
+        if left_child != 0 and right_child != 0:
             # we're at an inner node; this is the recursive case
             selector = edsl.less(
                 x_features[self.split_indices[node]],
@@ -75,8 +78,8 @@ class XGBoostTreeRegressor(model.AesPredictor):
                 ),
             )
         else:
-            assert left_child == -1
-            assert right_child == -1
+            assert left_child == 0
+            assert right_child == 0
             return self.fixedpoint_constant(leaf_weights[node], self.mirrored)
 
 
@@ -95,8 +98,97 @@ class XGBoostForestRegressor(model.AesPredictor):
 
     @classmethod
     def from_onnx(cls, model_proto):
-        # TODO
-        pass
+        forest_node = utils.find_node_in_model_proto(
+            model_proto, "TreeEnsembleRegressor", enforce=False
+        )
+        if forest_node is None:
+            raise ValueError(
+                "Incompatible ONNX graph provided: graph must contain a "
+                "TreeEnsembleRegressor operator."
+            )
+
+        # construct `trees` argument
+        nodes_treeids_attr = utils.find_attribute_in_node(forest_node, "nodes_treeids")
+        assert nodes_treeids_attr.type == 7  # INTS
+        nodes_treeids = nodes_treeids_attr.ints
+
+        left_attr = utils.find_attribute_in_node(forest_node, "nodes_truenodeids")
+        assert left_attr.type == 7
+        left = left_attr.ints
+
+        right_attr = utils.find_attribute_in_node(forest_node, "nodes_falsenodeids")
+        assert right_attr.type == 7
+        right = right_attr.ints
+
+        split_conditions_attr = utils.find_attribute_in_node(
+            forest_node, "nodes_values"
+        )
+        assert split_conditions_attr.type == 6
+        split_conditions = split_conditions_attr.floats
+
+        split_indices_attr = utils.find_attribute_in_node(
+            forest_node, "nodes_featureids"
+        )
+        assert split_indices_attr.type == 7
+        split_indices = split_indices_attr.ints
+
+        target_nodeids_attr = utils.find_attribute_in_node(
+            forest_node, "target_nodeids"
+        )
+        assert target_nodeids_attr.type == 7
+        target_nodeids = target_nodeids_attr.ints
+
+        target_treeids_attr = utils.find_attribute_in_node(
+            forest_node, "target_treeids"
+        )
+        assert target_treeids_attr.type == 7
+        target_treeids = target_treeids_attr.ints
+
+        target_weights_attr = utils.find_attribute_in_node(
+            forest_node, "target_weights"
+        )
+        assert target_weights_attr.type == 6  # FLOATS
+        target_weights = target_weights_attr.floats
+
+        nb_trees = len(set(nodes_treeids))
+        tree_args = [
+            {
+                "weights": {},
+                "children": [[], []],
+                "split_indices": [],
+                "split_conditions": [],
+            }
+            for _ in range(nb_trees)
+        ]
+
+        for i, tree_id in enumerate(nodes_treeids):
+            tree_args[tree_id]["children"][0].append(left[i])
+            tree_args[tree_id]["children"][1].append(right[i])
+            tree_args[tree_id]["split_indices"].append(split_indices[i])
+            tree_args[tree_id]["split_conditions"].append(split_conditions[i])
+
+        for i, tree_id in enumerate(target_treeids):
+            tree_args[tree_id]["weights"][target_nodeids[i]] = target_weights[i]
+
+        trees = [XGBoostTreeRegressor(**kwargs) for kwargs in tree_args]
+
+        # `nb_features` arg
+        model_input = model_proto.graph.input[0]
+        input_shape = utils.find_input_shape(model_input)
+        assert len(input_shape) == 2
+        nb_features = input_shape[1].dim_value
+
+        # `base_score` arg
+        base_score_attr = utils.find_attribute_in_node(forest_node, "base_values")
+        assert base_score_attr.type == 6  # FLOATS
+        base_score = base_score_attr.floats[0]
+
+        # `learning_rate` arg
+        # NOTE: ONNX assumes the leaf weights have already been scaled by the
+        # learning rate, so we keep our forest's learning_rate scaled fixed at 1.0
+        learning_rate = 1.0
+
+        return cls(trees, nb_features, base_score, learning_rate)
 
     def predictor_factory(self, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE):
         # TODO[jason] make it more ergonomic for edsl.computation to bind args during
@@ -150,3 +242,7 @@ class XGBoostForestRegressor(model.AesPredictor):
             for tree in model_json["learner"]["gradient_booster"]["model"]["trees"]
         ]
         return trees, nb_features, base_score, learning_rate
+
+
+def _map_json_to_onnx_leaves(json_leaves):
+    return [0 if child == -1 else child for child in json_leaves]
