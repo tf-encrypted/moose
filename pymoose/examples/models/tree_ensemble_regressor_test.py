@@ -16,19 +16,19 @@ from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 from . import model_utils as utils
-from . import xgboost_regressor
+from . import tree_ensemble_regressor
 
 
-class XGBoostReplicatedExample(parameterized.TestCase):
+class TreeEnsembleRegressorTest(parameterized.TestCase):
     def _build_forest_from_onnx(self):
         root_path = pathlib.Path(__file__).parent.absolute()
         fixture_path = root_path / "fixtures" / "xgboost_regressor.onnx"
         with open(fixture_path, "rb") as model_fixture:
             forest_onnx = onnx.load_model(model_fixture)
-        forest_model = xgboost_regressor.XGBoostForestRegressor.from_onnx(forest_onnx)
+        forest_model = tree_ensemble_regressor.TreeEnsembleRegressor.from_onnx(forest_onnx)
         return forest_model
 
-    def test_xgboost_regression_example_execute(self):
+    def test_tree_ensemble_regressor_logic(self):
         input_x = np.array([[0, 1, 0, 0], [1, 0, 0, 1]], dtype=np.float64)
         root_path = pathlib.Path(__file__).parent.absolute()
 
@@ -36,7 +36,7 @@ class XGBoostReplicatedExample(parameterized.TestCase):
             with open(p) as f:
                 forest_json = json.load(f)
 
-        forest = xgboost_regressor.XGBoostForestRegressor.from_json(forest_json)
+        forest = tree_ensemble_regressor.TreeEnsembleRegressor.from_json(forest_json)
 
         forest_predict = forest.predictor_factory(
             fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE

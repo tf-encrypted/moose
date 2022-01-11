@@ -6,7 +6,7 @@ from . import model
 from . import model_utils as utils
 
 
-class XGBoostTreeRegressor(model.AesPredictor):
+class DecisionTreeRegressor(model.AesPredictor):
     def __init__(self, weights, children, split_conditions, split_indices):
         super().__init__()
         self.weights = weights
@@ -83,7 +83,7 @@ class XGBoostTreeRegressor(model.AesPredictor):
             return self.fixedpoint_constant(leaf_weights[node], self.mirrored)
 
 
-class XGBoostForestRegressor(model.AesPredictor):
+class TreeEnsembleRegressor(model.AesPredictor):
     def __init__(self, trees, nb_features, base_score, learning_rate):
         super().__init__()
         self.nb_features = nb_features
@@ -170,7 +170,7 @@ class XGBoostForestRegressor(model.AesPredictor):
         for i, tree_id in enumerate(target_treeids):
             tree_args[tree_id]["weights"][target_nodeids[i]] = target_weights[i]
 
-        trees = [XGBoostTreeRegressor(**kwargs) for kwargs in tree_args]
+        trees = [DecisionTreeRegressor(**kwargs) for kwargs in tree_args]
 
         # `nb_features` arg
         model_input = model_proto.graph.input[0]
@@ -238,7 +238,7 @@ class XGBoostForestRegressor(model.AesPredictor):
     def _unbundle_forest(cls, model_json):
         nb_features, base_score, learning_rate = cls._unbundle_forest_params(model_json)
         trees = [
-            XGBoostTreeRegressor.from_json(tree)
+            DecisionTreeRegressor.from_json(tree)
             for tree in model_json["learner"]["gradient_booster"]["model"]["trees"]
         ]
         return trees, nb_features, base_score, learning_rate
