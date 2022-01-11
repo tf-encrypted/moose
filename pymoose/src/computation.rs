@@ -74,6 +74,7 @@ enum PyDType {
     bool_,
     fixed8_27,
     fixed14_23,
+    fixed24_40,
     fixed46_40,
 }
 
@@ -559,6 +560,10 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
             PyDType::fixed8_27 => Ok(Ty::Tensor(TensorDType::Fixed128 {
                 integral_precision: 8,
                 fractional_precision: 27,
+            })),
+            PyDType::fixed24_40 => Ok(Ty::Tensor(TensorDType::Fixed128 {
+                integral_precision: 24,
+                fractional_precision: 40,
             })),
             PyDType::fixed46_40 => Ok(Ty::Tensor(TensorDType::Fixed128 {
                 integral_precision: 46,
