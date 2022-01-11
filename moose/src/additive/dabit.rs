@@ -1,6 +1,6 @@
 //! DaBit generation for additive placements
 use super::*;
-use crate::computation::{AdditivePlacement, HostPlacement, KnownType};
+use crate::computation::{HostPlacement, KnownType};
 use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;

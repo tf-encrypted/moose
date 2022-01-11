@@ -1,5 +1,5 @@
-//! Placement backed by additive secret sharing
-use crate::computation::{AdditivePlacement, HostPlacement, Placed};
+//! Two-party additive secret sharing functionality
+use crate::computation::{HostPlacement, Placed, Role};
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};
 use crate::kernels::{PlacementAdd, PlacementPlace, PlacementShl, Session};
@@ -11,6 +11,24 @@ mod misc;
 mod ops;
 mod trunc;
 pub use dabit::DaBitProvider;
+
+/// Placement type for additive secret sharing
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct AdditivePlacement {
+    pub owners: [Role; 2],
+}
+
+impl AdditivePlacement {
+    pub(crate) fn host_placements(&self) -> (HostPlacement, HostPlacement) {
+        let player0 = HostPlacement {
+            owner: self.owners[0].clone(),
+        };
+        let player1 = HostPlacement {
+            owner: self.owners[1].clone(),
+        };
+        (player0, player1)
+    }
+}
 
 /// Secret tensor used by additive placements
 ///

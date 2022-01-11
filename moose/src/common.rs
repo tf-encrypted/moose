@@ -1,9 +1,11 @@
-use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape};
+use crate::additive::{
+    AdditivePlacement, AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape,
+};
 use crate::computation::SymbolicValue;
 use crate::computation::Value;
 use crate::computation::{
-    AddNOp, AdditivePlacement, HostPlacement, HostReshapeOp, KnownType, Placed,
-    ReplicatedPlacement, RingInjectOp, ShapeOp,
+    AddNOp, HostPlacement, HostReshapeOp, KnownType, Placed, ReplicatedPlacement, RingInjectOp,
+    ShapeOp,
 };
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};

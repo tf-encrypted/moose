@@ -1,6 +1,6 @@
 //! Truncation for additive placements
 use super::*;
-use crate::computation::{AdditivePlacement, CanonicalType, HostPlacement, KnownType};
+use crate::computation::{CanonicalType, HostPlacement, KnownType};
 use crate::host::HostShape;
 use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};

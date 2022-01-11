@@ -1,5 +1,8 @@
 //! Placements backed by replicated secret sharing
-use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTensor, DaBitProvider};
+use crate::additive::{
+    AdditivePlacement, AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTensor, DaBitProvider,
+};
+use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
@@ -12,8 +15,7 @@ use crate::mirrored::Mirrored3Tensor;
 use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::replicated::aes::AbstractReplicatedAesKey;
 use crate::symbolic::Symbolic;
-use crate::{computation::*, BitArray};
-use crate::{Const, Ring, N128, N224, N64};
+use crate::{BitArray, Const, Ring, N128, N224, N64};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
