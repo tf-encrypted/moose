@@ -1,6 +1,7 @@
 import abc
 
 import numpy as np
+
 from pymoose import edsl
 
 from . import model
@@ -99,10 +100,9 @@ class LinearClassifier(LinearPredictor):
         if not transform_output:
             self._post_transform = lambda x: x
         elif multitask or n_classes == 1:
-            self._post_transform = edsl.sigmoid
+            self._post_transform = lambda x: self._normalized_sigmoid(x, axis=1)
         elif n_classes > 1:
-            # self.post_transform = edsl.softmax
-            raise NotImplementedError("Softmax classifier not yet implemented.")
+            self._post_transform = lambda x: self._temporary_softmax(x, axis=1)
         else:
             raise ValueError(
                 "Improper `multitask` argument to LinearClassifier model, expected "
@@ -192,6 +192,16 @@ class LinearClassifier(LinearPredictor):
     def post_transform(self, y):
         with self.replicated:
             return self._post_transform(y)
+
+    def _normalized_sigmoid(self, x, axis):
+        y = edsl.sigmoid(x)
+        return edsl.div(y, edsl.sum(y, axis))
+
+    def _temporary_softmax(self, x, axis):
+        # TODO replace with edsl.max(x, axis)
+        x_bound = edsl.sub(x, edsl.sum(x, axis))
+        x_exp = edsl.exp(x_bound)
+        return edsl.div(x_exp, edsl.sum(x_exp, axis))
 
 
 def _validate_model_args(coeffs, intercepts):
