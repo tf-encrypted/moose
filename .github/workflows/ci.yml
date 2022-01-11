@@ -3,8 +3,6 @@ name: CI
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -37,6 +35,8 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
+
+      - uses: Swatinem/rust-cache@v1
 
       - name: Install OpenBLAS.
         run: |

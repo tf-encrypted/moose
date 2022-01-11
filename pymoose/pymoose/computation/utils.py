@@ -6,10 +6,12 @@ import numpy as np
 
 from pymoose.computation import dtypes
 from pymoose.computation import host as host_dialect
+from pymoose.computation import mirrored as mirrored_dialect
 from pymoose.computation import replicated as rep_dialect
 from pymoose.computation import standard as std_dialect
 from pymoose.computation.base import Computation
 from pymoose.computation.base import Operation
+from pymoose.computation.base import OpSignature
 from pymoose.computation.base import Placement
 from pymoose.computation.base import Value
 from pymoose.computation.base import ValueType
@@ -18,11 +20,14 @@ from pymoose.logger import get_logger
 SUPPORTED_TYPES = [
     host_dialect.HostPlacement,
     rep_dialect.ReplicatedPlacement,
+    mirrored_dialect.MirroredPlacement,
     std_dialect.AbsOperation,
+    std_dialect.AddNOperation,
     std_dialect.AddOperation,
     std_dialect.AesKeyType,
     std_dialect.AesTensorType,
     std_dialect.AtLeast2DOperation,
+    std_dialect.BitwiseOrOperation,
     std_dialect.BytesType,
     std_dialect.CastOperation,
     std_dialect.ConcatenateOperation,
@@ -34,13 +39,17 @@ SUPPORTED_TYPES = [
     std_dialect.ExpOperation,
     std_dialect.FloatConstant,
     std_dialect.FloatType,
+    std_dialect.IdentityOperation,
+    std_dialect.IndexAxisOperation,
     std_dialect.InputOperation,
     std_dialect.IntConstant,
     std_dialect.IntType,
     std_dialect.InverseOperation,
+    std_dialect.LessOperation,
     std_dialect.LoadOperation,
     std_dialect.MeanOperation,
     std_dialect.MulOperation,
+    std_dialect.MuxOperation,
     std_dialect.OnesOperation,
     std_dialect.OutputOperation,
     std_dialect.SigmoidOperation,
@@ -88,6 +97,12 @@ def _encode(val):
         d = {field.name: getattr(val, field.name) for field in fields(val)}
         d["__type__"] = type_name
         return d
+    elif isinstance(val, OpSignature):
+        return {
+            "__type__": "OpSignature",
+            "input_types": val.input_types,
+            "return_type": val.return_type,
+        }
     elif isinstance(val, dtypes.DType):
         return {"__type__": "DType", "name": val.name}
     elif isinstance(val, np.ndarray):
@@ -120,7 +135,12 @@ def _decode(obj):
                 dtypes.uint64.name: dtypes.uint64,
                 dtypes.float32.name: dtypes.float32,
                 dtypes.float64.name: dtypes.float64,
+                dtypes.bool_.name: dtypes.bool_,
             }[dtype_name]
+        elif obj["__type__"] == "OpSignature":
+            return OpSignature(
+                input_types=obj["input_types"], return_type=obj["return_type"],
+            )
         elif obj["__type__"] == "ndarray":
             dtype = obj["dtype"]
             shape = obj["shape"]

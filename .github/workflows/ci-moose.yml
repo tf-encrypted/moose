@@ -1,0 +1,44 @@
+name: Moose-only CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  ubuntu-moose-ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v2
+    
+      - name: Set up Rust.
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - name: Install OpenBLAS.
+        run: |
+          sudo apt install libopenblas-dev
+
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Formatting.
+        run: |
+          cargo fmt --all -- --check
+
+      - name: Linting.
+        run: |
+          cargo clippy --all-targets -- -D warnings --no-deps
+
+      - name: Build tests.
+        run: |
+          cargo test --no-run
+
+      - name: Run tests.
+        run: |
+          cargo test

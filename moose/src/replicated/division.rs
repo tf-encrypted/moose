@@ -26,7 +26,12 @@ impl FixedpointDivOp {
 
         let k = int_precision + frac_precision;
 
-        assert!(2 * k as usize <= RepRingT::BitLength::VALUE);
+        assert!(
+            2 * k as usize <= RepRingT::BitLength::VALUE,
+            "2 * (fractional_precision + integral_precision) = {}, BitLength = {}",
+            2 * k as usize,
+            RepRingT::BitLength::VALUE
+        );
 
         let constant_quotient: f64 = 17_f64.log2();
         let theta = ((k as f64) / constant_quotient).log2().ceil() as u32;

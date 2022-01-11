@@ -1,8 +1,9 @@
+use crate::boolean::*;
 use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::execution::{Identity, SyncNetworkingImpl, SyncStorageImpl};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::floatingpoint::{Float32Tensor, Float64Tensor};
+use crate::floatingpoint::{Float32Tensor, Float64Tensor, Mirrored3Float32, Mirrored3Float64};
 use crate::host::*;
 use crate::networking::LocalSyncNetworking;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
@@ -141,6 +142,7 @@ impl Session for SyncSession {
             BitXor(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitAnd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            BitOr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitExtract(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingSample(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -175,7 +177,6 @@ impl Session for SyncSession {
             RepSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Index(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepDiag(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -234,7 +235,6 @@ impl Session for SyncSession {
             HostSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostDiag(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostIndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -286,6 +286,7 @@ impl Session for SyncSession {
             )?,
             HostReshape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            IndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Slice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Ones(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             ExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -301,12 +302,14 @@ impl Session for SyncSession {
             Sum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            IfElse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Mux(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Pow2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Exp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            LessThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Less(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Demirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Mirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -620,6 +623,7 @@ impl Session for AsyncSession {
             BitXor(op) => DispatchKernel::compile(&op, plc)?,
             BitAnd(op) => DispatchKernel::compile(&op, plc)?,
             BitNeg(op) => DispatchKernel::compile(&op, plc)?,
+            BitOr(op) => DispatchKernel::compile(&op, plc)?,
             BitExtract(op) => DispatchKernel::compile(&op, plc)?,
             RingSample(op) => DispatchKernel::compile(&op, plc)?,
             RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)?,
@@ -651,7 +655,6 @@ impl Session for AsyncSession {
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
             RepSum(op) => DispatchKernel::compile(&op, plc)?,
             RepShl(op) => DispatchKernel::compile(&op, plc)?,
-            RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?,
             RepDiag(op) => DispatchKernel::compile(&op, plc)?,
             RepSlice(op) => DispatchKernel::compile(&op, plc)?,
             RepBitDec(op) => DispatchKernel::compile(&op, plc)?,
@@ -687,7 +690,6 @@ impl Session for AsyncSession {
             HostSlice(op) => DispatchKernel::compile(&op, plc)?,
             HostDiag(op) => DispatchKernel::compile(&op, plc)?,
             HostShlDim(op) => DispatchKernel::compile(&op, plc)?,
-            HostIndexAxis(op) => DispatchKernel::compile(&op, plc)?,
             HostAdd(op) => DispatchKernel::compile(&op, plc)?,
             HostSub(op) => DispatchKernel::compile(&op, plc)?,
             HostMul(op) => DispatchKernel::compile(&op, plc)?,
@@ -735,9 +737,12 @@ impl Session for AsyncSession {
             AddN(op) => DispatchKernel::compile(&op, plc)?,
             Exp(op) => DispatchKernel::compile(&op, plc)?,
             RepEqual(op) => DispatchKernel::compile(&op, plc)?,
-            IfElse(op) => DispatchKernel::compile(&op, plc)?,
-            LessThan(op) => DispatchKernel::compile(&op, plc)?,
+            Mux(op) => DispatchKernel::compile(&op, plc)?,
+            Less(op) => DispatchKernel::compile(&op, plc)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
+            IndexAxis(op) => DispatchKernel::compile(&op, plc)?,
+            Demirror(op) => DispatchKernel::compile(&op, plc)?,
+            Mirror(op) => DispatchKernel::compile(&op, plc)?,
             _ => todo!(),
         };
         kernel(self, operands)
@@ -777,27 +782,27 @@ pub trait DispatchKernel<S: Session> {
 // function kernels then we could consider returning an enum over
 // fn.. and Box<dyn Fn...> in the traits below instead
 
-pub trait NullaryKernel<S: Session, P, Y> {
+pub(crate) trait NullaryKernel<S: Session, P, Y> {
     #[allow(clippy::type_complexity)] // TODO
     fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P) -> Result<Y> + Send>>;
 }
 
-pub trait UnaryKernel<S: Session, P, X0, Y> {
+pub(crate) trait UnaryKernel<S: Session, P, X0, Y> {
     #[allow(clippy::type_complexity)] // TODO
     fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send>>;
 }
 
-pub trait BinaryKernel<S: Session, P, X0, X1, Y> {
+pub(crate) trait BinaryKernel<S: Session, P, X0, X1, Y> {
     #[allow(clippy::type_complexity)] // TODO
     fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send>>;
 }
 
-pub trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
+pub(crate) trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
     #[allow(clippy::type_complexity)] // TODO
     fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send>>;
 }
 
-pub trait VariadicKernel<S: Session, P, XS, Y> {
+pub(crate) trait VariadicKernel<S: Session, P, XS, Y> {
     #[allow(clippy::type_complexity)] // TODO
     fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send>>;
 }
@@ -900,6 +905,10 @@ pub trait PlacementAnd<S: Session, T, U, O> {
     fn and(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
+pub trait PlacementOr<S: Session, T, U, O> {
+    fn or(&self, sess: &S, x: &T, y: &U) -> O;
+}
+
 pub trait PlacementBitExtract<S: Session, T, O> {
     fn bit_extract(&self, sess: &S, bit_idx: usize, x: &T) -> O;
 }
@@ -963,8 +972,8 @@ pub trait PlacementEqual<S: Session, T, U, O> {
     fn equal(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
-pub trait PlacementIfElse<S: Session, T, U, V, O> {
-    fn if_else(&self, sess: &S, s: &T, x: &U, y: &V) -> O;
+pub trait PlacementMux<S: Session, T, U, V, O> {
+    fn mux(&self, sess: &S, s: &T, x: &U, y: &V) -> O;
 }
 
 pub trait PlacementPow2<S: Session, T, O> {
@@ -979,11 +988,19 @@ pub trait PlacementSigmoid<S: Session, T, O> {
     fn sigmoid(&self, sess: &S, x: &T) -> O;
 }
 pub trait PlacementLessThan<S: Session, T, U, O> {
-    fn less_than(&self, sess: &S, x: &T, y: &U) -> O;
+    fn less(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementGreaterThan<S: Session, T, U, O> {
     fn greater_than(&self, sess: &S, x: &T, y: &U) -> O;
+}
+
+pub trait PlacementDemirror<S: Session, T, O> {
+    fn demirror(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementMirror<S: Session, T, O> {
+    fn mirror(&self, sess: &S, x: &T) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -1106,7 +1123,7 @@ pub trait PlacementTruncPr<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: u32, x: &T) -> O;
 }
 
-pub trait PlacementTruncPrProvider<S: Session, T, O> {
+pub trait TruncPrProvider<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
 }
 
@@ -1242,6 +1259,10 @@ macro_rules! constant_kernels {
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
+        modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
+        modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
+        modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
+
 
         kernel! {
             ConstantOp, [
@@ -1252,9 +1273,13 @@ macro_rules! constant_kernels {
                 (HostPlacement, () -> HostShape => [runtime] attributes[value: RawShape] Self::shape_kernel),
                 (HostPlacement, () -> PrfKey => [runtime] attributes[value: RawPrfKey] Self::prf_key_kernel),
                 (HostPlacement, () -> Seed => [runtime] attributes[value: RawSeed] Self::seed_kernel),
-                (HostPlacement, () -> crate::logical::Tensor => [hybrid] attributes[sig, value] Self::logical_kernel),
-                (HostPlacement, () -> Float32Tensor => [hybrid] attributes[value] Self::float32_kernel),
-                (HostPlacement, () -> Float64Tensor => [hybrid] attributes[value] Self::float64_kernel),
+                (HostPlacement, () -> crate::logical::Tensor => [concrete] attributes[sig, value] Self::logical_kernel),
+                (HostPlacement, () -> Float32Tensor => [concrete] attributes[value] Self::float_kernel),
+                (HostPlacement, () -> Float64Tensor => [concrete] attributes[value] Self::float_kernel),
+                (Mirrored3Placement, () -> crate::logical::Tensor => [concrete] attributes[sig, value] Self::mir3_logical_kernel),
+                (Mirrored3Placement, () -> Float32Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
+                (Mirrored3Placement, () -> Float64Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
+
             ]
         }
     };
@@ -1418,24 +1443,32 @@ impl ReceiveOp {
     }
 }
 
-for_all_values! {( $($value:ty),* ) => (
-    $(
-        modelled!(PlacementIdentity::identity, HostPlacement, ($value) -> $value, IdentityOp);
-    )*
-)}
-
-kernel! {
-    IdentityOp, [
-        (HostPlacement, (HostString) -> HostString => [runtime] Self::kernel),
-        (HostPlacement, (Unit) -> Unit => [runtime] Self::missing_kernel),
-        (HostPlacement, (HostShape) -> HostShape => [runtime] Self::kernel),
-        (HostPlacement, (Seed) -> Seed => [runtime] Self::kernel),
-        (HostPlacement, (PrfKey) -> PrfKey => [runtime] Self::kernel),
+modelled_kernel! {
+    PlacementIdentity::identity, IdentityOp,
+    [
+        (HostPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::boolean_host_kernel),
+        (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_host_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::kernel),
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [concrete] Self::host_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::host_kernel),
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
+        (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_rep_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_inner_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_inner_kernel),
+        (ReplicatedPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::boolean_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::rep_inner_kernel),
+        // TODO higher-level kernels for these
         (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
@@ -1444,9 +1477,11 @@ kernel! {
         (HostPlacement, (HostUint16Tensor) -> HostUint16Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [runtime] Self::missing_kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::missing_kernel),
-
+        (HostPlacement, (HostString) -> HostString => [runtime] Self::kernel),
+        (HostPlacement, (Unit) -> Unit => [runtime] Self::missing_kernel),
+        (HostPlacement, (HostShape) -> HostShape => [runtime] Self::kernel),
+        (HostPlacement, (Seed) -> Seed => [runtime] Self::kernel),
+        (HostPlacement, (PrfKey) -> PrfKey => [runtime] Self::kernel),
     ]
 }
 
@@ -1505,9 +1540,9 @@ kernel! {
         (HostPlacement, () -> HostShape => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Seed => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> PrfKey => [runtime] attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> HostBitArray64 => [hybrid] attributes[arg_name] Self::host_bitarray64),
-        (HostPlacement, () -> HostBitArray128 => [hybrid] attributes[arg_name] Self::host_bitarray128),
-        (HostPlacement, () -> HostBitArray224 => [hybrid] attributes[arg_name] Self::host_bitarray224),
+        (HostPlacement, () -> HostBitArray64 => [concrete] attributes[arg_name] Self::host_bitarray64),
+        (HostPlacement, () -> HostBitArray128 => [concrete] attributes[arg_name] Self::host_bitarray128),
+        (HostPlacement, () -> HostBitArray224 => [concrete] attributes[arg_name] Self::host_bitarray224),
         (HostPlacement, () -> HostBitTensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostRing64Tensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostRing128Tensor => [runtime] attributes[arg_name] Self::kernel),
@@ -1523,24 +1558,24 @@ kernel! {
         (HostPlacement, () -> HostUint64Tensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostFixed64Tensor => [runtime] attributes[arg_name] Self::missing_kernel),
         (HostPlacement, () -> HostFixed128Tensor => [runtime] attributes[arg_name] Self::missing_kernel),
-        (HostPlacement, () -> crate::logical::Tensor => [hybrid] attributes[sig, arg_name] Self::logical_kernel),
-        (HostPlacement, () -> Float32Tensor => [hybrid] attributes[arg_name] Self::float32_kernel),
-        (HostPlacement, () -> Float64Tensor => [hybrid] attributes[arg_name] Self::float64_kernel),
-        (HostPlacement, () -> AesKey => [hybrid] attributes[arg_name] Self::aes_kernel_on_host),
-        (HostPlacement, () -> HostAesKey => [hybrid] attributes[arg_name] Self::host_aes_kernel),
-        (HostPlacement, () -> AesTensor => [hybrid] attributes[arg_name] Self::aestensor),
-        (HostPlacement, () -> Fixed128AesTensor => [hybrid] attributes[arg_name] Self::fixed_aestensor),
-        (HostPlacement, () -> HostFixed128AesTensor => [hybrid] attributes[sig, arg_name] Self::host_fixed_aestensor),
-        (ReplicatedPlacement, () -> ReplicatedBitTensor => [hybrid] attributes[arg_name] Self::replicated_ring_kernel),
-        (ReplicatedPlacement, () -> ReplicatedRing64Tensor => [hybrid] attributes[arg_name] Self::replicated_ring_kernel),
-        (ReplicatedPlacement, () -> ReplicatedRing128Tensor => [hybrid] attributes[arg_name] Self::replicated_ring_kernel),
-        (ReplicatedPlacement, () -> ReplicatedFixed64Tensor => [hybrid] attributes[sig, arg_name] Self::replicated_fixed_kernel),
-        (ReplicatedPlacement, () -> ReplicatedFixed128Tensor => [hybrid] attributes[sig, arg_name] Self::replicated_fixed_kernel),
-        (ReplicatedPlacement, () -> ReplicatedBitArray64 => [hybrid] attributes[arg_name] Self::replicated_bitarray64),
-        (ReplicatedPlacement, () -> ReplicatedBitArray128 => [hybrid] attributes[arg_name] Self::replicated_bitarray128),
-        (ReplicatedPlacement, () -> ReplicatedBitArray224 => [hybrid] attributes[arg_name] Self::replicated_bitarray224),
-        (ReplicatedPlacement, () -> AesKey => [hybrid] attributes[arg_name] Self::aes_kernel_on_replicated),
-        (ReplicatedPlacement, () -> ReplicatedAesKey => [hybrid] attributes[arg_name] Self::replicated_aes_kernel),
+        (HostPlacement, () -> crate::logical::Tensor => [concrete] attributes[sig, arg_name] Self::logical_kernel),
+        (HostPlacement, () -> Float32Tensor => [concrete] attributes[arg_name] Self::float_kernel),
+        (HostPlacement, () -> Float64Tensor => [concrete] attributes[arg_name] Self::float_kernel),
+        (HostPlacement, () -> AesKey => [concrete] attributes[arg_name] Self::aes_kernel_on_host),
+        (HostPlacement, () -> HostAesKey => [concrete] attributes[arg_name] Self::host_aes_kernel),
+        (HostPlacement, () -> AesTensor => [concrete] attributes[arg_name] Self::aestensor),
+        (HostPlacement, () -> Fixed128AesTensor => [concrete] attributes[arg_name] Self::fixed_aestensor),
+        (HostPlacement, () -> HostFixed128AesTensor => [concrete] attributes[sig, arg_name] Self::host_fixed_aestensor),
+        (ReplicatedPlacement, () -> ReplicatedBitTensor => [concrete] attributes[arg_name] Self::replicated_ring_kernel),
+        (ReplicatedPlacement, () -> ReplicatedRing64Tensor => [concrete] attributes[arg_name] Self::replicated_ring_kernel),
+        (ReplicatedPlacement, () -> ReplicatedRing128Tensor => [concrete] attributes[arg_name] Self::replicated_ring_kernel),
+        (ReplicatedPlacement, () -> ReplicatedFixed64Tensor => [concrete] attributes[sig, arg_name] Self::replicated_fixed_kernel),
+        (ReplicatedPlacement, () -> ReplicatedFixed128Tensor => [concrete] attributes[sig, arg_name] Self::replicated_fixed_kernel),
+        (ReplicatedPlacement, () -> ReplicatedBitArray64 => [concrete] attributes[arg_name] Self::replicated_bitarray64),
+        (ReplicatedPlacement, () -> ReplicatedBitArray128 => [concrete] attributes[arg_name] Self::replicated_bitarray128),
+        (ReplicatedPlacement, () -> ReplicatedBitArray224 => [concrete] attributes[arg_name] Self::replicated_bitarray224),
+        (ReplicatedPlacement, () -> AesKey => [concrete] attributes[arg_name] Self::aes_kernel_on_replicated),
+        (ReplicatedPlacement, () -> ReplicatedAesKey => [concrete] attributes[arg_name] Self::replicated_aes_kernel),
     ]
 }
 
@@ -1604,9 +1639,10 @@ kernel! {
         (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [runtime] Self::non_placing_kernel),
         (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::non_placing_kernel),
-        (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
-        (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] Self::float_kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] Self::float_kernel),
+        (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_kernel),
+        (HostPlacement, (BooleanTensor) -> BooleanTensor => [hybrid] Self::bool_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_kernel),
     ]
 }
 
@@ -1641,6 +1677,7 @@ for_all_values! {( $($value:ty),* ) => (
 modelled!(PlacementSave::save, HostPlacement, (HostString, crate::logical::Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (HostString, Float32Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (HostString, Float64Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (HostString, BooleanTensor) -> Unit, SaveOp);
 
 kernel! {
     SaveOp, [
@@ -1667,6 +1704,7 @@ kernel! {
         (HostPlacement, (HostString, crate::logical::Tensor) -> Unit => [hybrid] Self::logical_kernel),
         (HostPlacement, (HostString, Float32Tensor) -> Unit => [hybrid] Self::float_kernel),
         (HostPlacement, (HostString, Float64Tensor) -> Unit => [hybrid] Self::float_kernel),
+        (HostPlacement, (HostString, BooleanTensor) -> Unit => [hybrid] Self::bool_kernel),
     ]
 }
 
@@ -1756,35 +1794,43 @@ impl LoadOp {
 kernel! {
     SigmoidOp,
     [
-        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
+        (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_kernel),
     ]
 }
 
 kernel! {
-    LessThanOp,
+    LessOp,
     [
-        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
-        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
-        (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (HostPlacement, (crate::logical::Tensor, crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_host_kernel),
+        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> BooleanTensor => [concrete] Self::fixed_kernel),
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> BooleanTensor => [concrete] Self::fixed_kernel),
+        (HostPlacement, (Float32Tensor, Float32Tensor) -> BooleanTensor => [concrete] Self::float_kernel),
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> BooleanTensor => [concrete] Self::float_kernel),
+        (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostBitTensor => [runtime] Self::host_float_kernel),
+        (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostBitTensor => [runtime] Self::host_float_kernel),
+        (HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostBitTensor => [hybrid] Self::host_fixed_kernel),
+        (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostBitTensor => [hybrid] Self::host_fixed_kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostBitTensor => [runtime] Self::host_ring64_kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostBitTensor => [runtime] Self::host_ring128_kernel),
+        (ReplicatedPlacement, (crate::logical::Tensor, crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_rep_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> BooleanTensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> BooleanTensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_mir_fixed_kernel),
         (ReplicatedPlacement, (Mirrored3Ring64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::mir_rep_kernel),
         (ReplicatedPlacement, (Mirrored3Ring128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::mir_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor, Mirrored3Fixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_mir_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, Mirrored3Fixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedBitTensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, Mirrored3Ring64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_mir_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
-        // TODO(Dragos) these do not work now as they should output a boolean/ring type. makes no sense to output a fixed tensor
-        // (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [transparent] Self::fixed_kernel),
-        // instead it should be
-        // (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> BitTensor => [transparent] Self::fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, Mirrored3Ring128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_mir_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
     ]
 }
 
@@ -1811,7 +1857,6 @@ kernel! {
 kernel! {
     FillOp,
     [
-
         (HostPlacement, (HostShape) -> HostBitTensor => [runtime] custom |op| {
             use std::convert::TryInto;
             let value: u8 = match op.value {
@@ -1837,7 +1882,7 @@ kernel! {
                 Self::bit_kernel(sess, host, value, host_shape)
             }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [concrete] custom |op| {
                 let value: u64 = match op.value {
                     Constant::Bit(v) => v as u64,
                     Constant::Ring64(v) => v,
@@ -1854,7 +1899,7 @@ kernel! {
                     Self::ring64_kernel(sess, rep, value, rep_shape)
                 }))
             }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring64Tensor => [hybrid] custom |op| {
+        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Ring64Tensor => [concrete] custom |op| {
                 let value: u64 = match op.value {
                     Constant::Bit(v) => v as u64,
                     Constant::Ring64(v) => v,
@@ -1870,8 +1915,8 @@ kernel! {
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::mir_ring64_kernel(sess, rep, value, rep_shape)
                 }))
-            }),
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [hybrid] custom |op| {
+        }),
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [concrete] custom |op| {
                 let value: u128 = match op.value {
                     Constant::Bit(v) => v as u128,
                     Constant::Ring64(v) => v as u128,
@@ -1887,7 +1932,7 @@ kernel! {
                     Self::ring128_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Ring128Tensor => [hybrid] custom |op| {
+        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Ring128Tensor => [concrete] custom |op| {
                 let value: u128 = match op.value {
                     Constant::Bit(v) => v as u128,
                     Constant::Ring64(v) => v as u128,
@@ -1897,13 +1942,13 @@ kernel! {
                             (value * ((1u128 << precision) as f64)) as u128
                     },
                     _ => return Err(Error::UnimplementedOperator(
-                        format!("Cannot fill from {:?} into a Mirrored3RingTensor", op.value.ty()))),
+                        format!("Cannot fill from {:?} into a Mirrored3Tensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::mir_ring128_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => [hybrid] custom |op| {
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => [concrete] custom |op| {
                 let value: u8 = match op.value {
                     Constant::Bit(v) => v,
                     Constant::Ring64(v) => v as u8,
@@ -1918,7 +1963,7 @@ kernel! {
                     Self::rep_bit_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3BitTensor => [hybrid] custom |op| {
+        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3BitTensor => [concrete] custom |op| {
                 let value: u8 = match op.value {
                     Constant::Bit(v) => v,
                     Constant::Ring64(v) => v as u8,
@@ -1933,7 +1978,7 @@ kernel! {
                     Self::mir_bit_kernel(sess, rep, value, rep_shape)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Fixed64Tensor => [hybrid] custom |op| {
+        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Fixed64Tensor => [hybrid] custom |op| {
                 let (ring_value, fractional_precision, integral_precision) = match op.value {
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
                         let ring_value: u64 = (value * ((1u64 << precision) as f64)) as u64;
@@ -1948,7 +1993,7 @@ kernel! {
                     Self::mir_fixed_kernel(sess, rep, Constant::Ring64(ring_value), rep_shape, fractional_precision, integral_precision)
                 }))
         }),
-        (ReplicatedPlacement, (ReplicatedShape) -> Mirrored3Fixed128Tensor => [hybrid] custom |op| {
+        (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Fixed128Tensor => [hybrid] custom |op| {
                 let (ring_value, fractional_precision, integral_precision) = match op.value {
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
                         let ring_value: u128 = (value * ((1u128 << precision) as f64)) as u128;
@@ -1967,24 +2012,175 @@ kernel! {
 }
 
 kernel! {
-    IfElseOp,
+    MuxOp,
     [
-
+        (ReplicatedPlacement, (crate::logical::Tensor, crate::logical::Tensor, crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_rep_kernel),
+        (ReplicatedPlacement, (BooleanTensor, Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (BooleanTensor, Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor  => [transparent] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor  => [transparent] Self::rep_bit_selector_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_bit_selector_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::rep_bit_selector_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::rep_bit_selector_fixed_kernel),
     ]
 }
 
-pub struct TestSyncExecutor {
-    // Placeholder for the future state we want to keep
+kernel! {
+    BitOrOp,
+    [
+        (HostPlacement, (crate::logical::Tensor, crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_host_kernel),
+        (HostPlacement, (BooleanTensor, BooleanTensor) -> BooleanTensor => [concrete] Self::bool_kernel),
+        (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => [runtime] Self::host_kernel),
+    ]
 }
 
-impl Default for TestSyncExecutor {
-    fn default() -> Self {
-        TestSyncExecutor {}
-    }
+modelled_kernel! {
+    PlacementIndexAxis::index_axis, IndexAxisOp{axis: usize, index: usize},
+    [
+
+        (HostPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::bool_host_kernel),
+        (HostPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_host_kernel),
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::host_bit_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [concrete] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::hostfixed_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::host_float_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::host_float_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_ring_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_ring_kernel),
+        (ReplicatedPlacement, (BooleanTensor) -> BooleanTensor => [concrete]  Self::bool_rep_kernel),
+        (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_rep_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete]  Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete]  Self::rep_kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementFixedpointEncode::fixedpoint_encode, FixedpointEncodeOp{fractional_precision: u32, integral_precision: u32},
+    [
+        (HostPlacement, (Float32Tensor) -> Fixed64Tensor => [concrete] Self::fixed_kernel),
+        (HostPlacement, (Float64Tensor) -> Fixed128Tensor => [concrete] Self::fixed_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFixed64Tensor => [hybrid] Self::hostfixed_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
+        (Mirrored3Placement, (Float32Tensor) -> Fixed64Tensor => [concrete] Self::mir_fixed_kernel),
+        (Mirrored3Placement, (Float64Tensor) -> Fixed128Tensor => [concrete] Self::mir_fixed_kernel),
+        (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Fixed64Tensor => [hybrid] Self::mir_fixed_lower_kernel),
+        (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Fixed128Tensor => [hybrid] Self::mir_fixed_lower_kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementRingFixedpointEncode::fixedpoint_ring_encode, RingFixedpointEncodeOp{scaling_base: u64, scaling_exp: u32},
+    [
+        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] Self::float32_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] Self::float64_kernel),
+        (Mirrored3Placement, (Mirrored3Float32) -> Mirrored3Ring64Tensor => [concrete] Self::mir_kernel),
+        (Mirrored3Placement, (Mirrored3Float64) -> Mirrored3Ring128Tensor => [concrete] Self::mir_kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementFixedpointDecode::fixedpoint_decode, FixedpointDecodeOp{fractional_precision: u32},
+    [
+        (HostPlacement, (Fixed64Tensor) -> Float32Tensor => [concrete] Self::fixed_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Float64Tensor => [concrete] Self::fixed_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFloat32Tensor => [hybrid] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFloat64Tensor => [hybrid] Self::hostfixed_kernel),
+        (Mirrored3Placement, (Fixed64Tensor) -> Float32Tensor => [concrete] Self::mir_fixed_kernel),
+        (Mirrored3Placement, (Fixed128Tensor) -> Float64Tensor => [concrete] Self::mir_fixed_kernel),
+        (Mirrored3Placement, (Mirrored3Fixed64Tensor) -> Mirrored3Float32 => [hybrid] Self::mir_fixed_lower_kernel),
+        (Mirrored3Placement, (Mirrored3Fixed128Tensor) -> Mirrored3Float64 => [hybrid] Self::mir_fixed_lower_kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementRingFixedpointDecode::fixedpoint_ring_decode, RingFixedpointDecodeOp{scaling_base: u64, scaling_exp: u32},
+    [
+        (HostPlacement, (HostRing64Tensor) -> HostFloat32Tensor => [runtime] Self::float32_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostFloat64Tensor => [runtime] Self::float64_kernel),
+        (Mirrored3Placement, (Mirrored3Ring64Tensor) -> Mirrored3Float32 => [concrete] Self::mir_kernel),
+        (Mirrored3Placement, (Mirrored3Ring128Tensor) -> Mirrored3Float64 => [concrete] Self::mir_kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementDemirror::demirror, DemirrorOp,
+    [
+        (HostPlacement, (Mirrored3BitTensor) -> HostBitTensor => [hybrid] Self::kernel),
+        (HostPlacement, (Mirrored3Fixed64Tensor) -> HostFixed64Tensor => [hybrid] Self::fixed_kernel),
+        (HostPlacement, (Mirrored3Fixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::fixed_kernel),
+        (HostPlacement, (Mirrored3Float32) -> HostFloat32Tensor => [hybrid] Self::kernel),
+        (HostPlacement, (Mirrored3Float64) -> HostFloat64Tensor => [hybrid] Self::kernel),
+        (HostPlacement, (Mirrored3Ring64Tensor) -> HostRing64Tensor => [hybrid] Self::kernel),
+        (HostPlacement, (Mirrored3Ring128Tensor) -> HostRing128Tensor => [hybrid] Self::kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementShare::share, RepShareOp,
+    [
+        (ReplicatedPlacement, (HostFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::fixed_kernel),
+        (ReplicatedPlacement, (HostFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::fixed_kernel),
+        (ReplicatedPlacement, (HostRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_kernel),
+        (ReplicatedPlacement, (HostRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_kernel),
+        (ReplicatedPlacement, (HostBitTensor) -> ReplicatedBitTensor => [hybrid] Self::ring_kernel),
+        (ReplicatedPlacement, (HostBitArray64) -> ReplicatedBitArray64 => [concrete] Self::array_kernel),
+        (ReplicatedPlacement, (HostBitArray128) -> ReplicatedBitArray128 => [concrete] Self::array_kernel),
+        (ReplicatedPlacement, (HostBitArray224) -> ReplicatedBitArray224 => [concrete] Self::array_kernel),
+        (ReplicatedPlacement, (HostAesKey) -> ReplicatedAesKey => [concrete] Self::aeskey_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::fixed_mir_kernel),
+        (ReplicatedPlacement, (Mirrored3Fixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::fixed_mir_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_mir_kernel),
+        (ReplicatedPlacement, (Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_mir_kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementReveal::reveal, RepRevealOp,
+    [
+        (HostPlacement, (ReplicatedFixed64Tensor) -> HostFixed64Tensor => [concrete] Self::fixed_kernel),
+        (HostPlacement, (ReplicatedFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::fixed_kernel),
+        (HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor => [hybrid] Self::ring_kernel),
+        (HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor => [hybrid] Self::ring_kernel),
+        (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => [hybrid] Self::ring_kernel),
+        (HostPlacement, (ReplicatedBitArray64) -> HostBitArray64 => [concrete] Self::bit_array_kernel),
+        (HostPlacement, (ReplicatedBitArray128) -> HostBitArray128 => [concrete] Self::bit_array_kernel),
+        (HostPlacement, (ReplicatedBitArray224) -> HostBitArray224 => [concrete] Self::bit_array_kernel),
+        (HostPlacement, (ReplicatedAesKey) -> HostAesKey => [concrete] Self::aeskey_kernel),
+        (Mirrored3Placement, (ReplicatedBitTensor) -> Mirrored3BitTensor => [concrete] Self::mir_ring_kernel),
+        (Mirrored3Placement, (ReplicatedRing64Tensor) -> Mirrored3Ring64Tensor => [concrete] Self::mir_ring_kernel),
+        (Mirrored3Placement, (ReplicatedRing128Tensor) -> Mirrored3Ring128Tensor => [concrete] Self::mir_ring_kernel),
+        (Mirrored3Placement, (ReplicatedFixed64Tensor) -> Mirrored3Fixed64Tensor => [concrete] Self::mir_fixed_kernel),
+        (Mirrored3Placement, (ReplicatedFixed128Tensor) -> Mirrored3Fixed128Tensor => [concrete] Self::mir_fixed_kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementMirror::mirror, MirrorOp,
+    [
+        (Mirrored3Placement, (HostFixed64Tensor) -> Mirrored3Fixed64Tensor => [concrete] Self::fixed_kernel),
+        (Mirrored3Placement, (HostFixed128Tensor) -> Mirrored3Fixed128Tensor => [concrete] Self::fixed_kernel),
+        (Mirrored3Placement, (HostFloat32Tensor) -> Mirrored3Float32 => [hybrid] Self::kernel),
+        (Mirrored3Placement, (HostFloat64Tensor) -> Mirrored3Float64 => [hybrid] Self::kernel),
+        (Mirrored3Placement, (HostRing64Tensor) -> Mirrored3Ring64Tensor => [hybrid] Self::kernel),
+        (Mirrored3Placement, (HostRing128Tensor) -> Mirrored3Ring128Tensor => [hybrid] Self::kernel),
+    ]
+}
+
+#[derive(Default)]
+pub struct TestSyncExecutor {
+    // Placeholder for the future state we want to keep
 }
 
 impl TestSyncExecutor {

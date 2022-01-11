@@ -24,11 +24,19 @@ from pymoose.computation.standard import ValueType
 CURRENT_PLACEMENT: List = []
 _NUMPY_DTYPES_MAP = {
     np.uint32: dtypes.uint32,
+    np.dtype("uint32"): dtypes.uint32,
     np.uint64: dtypes.uint64,
+    np.dtype("uint64"): dtypes.uint64,
     np.int32: dtypes.int32,
+    np.dtype("int32"): dtypes.int32,
     np.int64: dtypes.int64,
+    np.dtype("int64"): dtypes.int64,
     np.float32: dtypes.float32,
+    np.dtype("float32"): dtypes.float32,
     np.float64: dtypes.float64,
+    np.dtype("float64"): dtypes.float64,
+    np.bool_: dtypes.bool_,
+    np.dtype("bool_"): dtypes.bool_,
 }
 
 
@@ -52,6 +60,14 @@ class HostPlacementExpression(PlacementExpression):
 
 
 @dataclass
+class MirroredPlacementExpression(PlacementExpression):
+    players: List[PlacementExpression]
+
+    def __hash__(self):
+        return hash(self.name)
+
+
+@dataclass
 class ReplicatedPlacementExpression(PlacementExpression):
     players: List[PlacementExpression]
 
@@ -61,6 +77,10 @@ class ReplicatedPlacementExpression(PlacementExpression):
 
 def host_placement(name):
     return HostPlacementExpression(name=name)
+
+
+def mirrored_placement(name, players):
+    return MirroredPlacementExpression(name=name, players=players)
 
 
 def replicated_placement(name, players):
@@ -90,6 +110,18 @@ class Expression:
     inputs: List
     vtype: Optional[ValueType]
 
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class AddNExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class IdentityExpression(Expression):
     def __hash__(self):
         return id(self)
 
@@ -255,6 +287,15 @@ class ShapeExpression(Expression):
 
 
 @dataclass
+class IndexAxisExpression(Expression):
+    axis: int
+    index: int
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class SliceExpression(Expression):
     begin: int
     end: int
@@ -263,8 +304,62 @@ class SliceExpression(Expression):
         return id(self)
 
 
+@dataclass
+class LessExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class BitwiseOrExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class MuxExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+def add_n(arrays, placement=None):
+    placement = placement or get_current_placement()
+    if not isinstance(arrays, (tuple, list)):
+        raise ValueError(
+            "Inputs to `add_n` must be array-like, found argument "
+            f"of type {type(arrays)}."
+        )
+    input_vtype = arrays[0].vtype
+    if isinstance(input_vtype, TensorType):
+        expected_vtype = input_vtype
+        expected_dtype = input_vtype.dtype
+    else:
+        raise ValueError(f"Inputs must be have vtype TensorType, found {input_vtype}.")
+    for array in arrays:
+        if array.vtype != expected_vtype:
+            raise ValueError(
+                f"Inputs must be have vtype TensorType, found {array.vtype}."
+            )
+        if array.vtype.dtype != expected_dtype:
+            raise ValueError(
+                f"Values passed to add_n must be same dtype: found {array.dtype} "
+                f"and {expected_dtype} in value of `arrays` argument."
+            )
+    return AddNExpression(placement=placement, inputs=arrays, vtype=input_vtype)
+
+
+def identity(x, placement=None):
+    placement = placement or get_current_placement()
+    return IdentityExpression(placement=placement, inputs=[x], vtype=x.vtype)
+
+
 def concatenate(arrays, axis=0, placement=None):
     placement = placement or get_current_placement()
+    if not isinstance(arrays, (tuple, list)):
+        raise ValueError(
+            "Inputs to `concatenate` must be array-like, found argument "
+            f"of type {type(arrays)}."
+        )
     input_vtype = arrays[0].vtype
     if isinstance(input_vtype, TensorType):
         expected_vtype = input_vtype
@@ -398,6 +493,28 @@ def div(lhs, rhs, placement=None):
     )
 
 
+def less(lhs, rhs, placement=None):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
+    return BinaryOpExpression(
+        op_name="less",
+        placement=placement,
+        inputs=[lhs, rhs],
+        vtype=TensorType(dtype=dtypes.bool_),
+    )
+
+
+def logical_or(lhs, rhs, placement=None):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
+    vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "or")
+    return BinaryOpExpression(
+        op_name="or", placement=placement, inputs=[lhs, rhs], vtype=vtype
+    )
+
+
 def inverse(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
@@ -480,6 +597,25 @@ def shape(x, placement=None):
     return ShapeExpression(placement=placement, inputs=[x], vtype=ShapeType())
 
 
+def index_axis(x, axis, index, placement=None):
+    assert isinstance(x, Expression)
+    if not isinstance(axis, int) or index < 0:
+        raise ValueError(
+            "`axis` argument must be int greater or equal to 0, found "
+            f"{axis} of type {type(axis)}"
+        )
+    if not isinstance(index, int) or index < 0:
+        raise ValueError(
+            "`index` argument must be int greater or equal to 0, found "
+            f"{index} of type {type(index)}"
+        )
+
+    placement = placement or get_current_placement()
+    return IndexAxisExpression(
+        placement=placement, inputs=[x], axis=axis, index=index, vtype=x.vtype
+    )
+
+
 def slice(x, begin, end, placement=None):
     assert isinstance(x, Expression)
     assert isinstance(begin, int)
@@ -512,7 +648,9 @@ def atleast_2d(x, to_column_vector=False, placement=None):
 def reshape(x, shape, placement=None):
     assert isinstance(x, Expression)
     if isinstance(shape, (list, tuple)):
-        shape = constant(ShapeConstant(value=shape), placement=placement)
+        shape = constant(
+            ShapeConstant(value=shape), vtype=ShapeType(), placement=placement
+        )
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
     return ReshapeExpression(placement=placement, inputs=[x, shape], vtype=x.vtype)
@@ -522,6 +660,22 @@ def abs(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return AbsExpression(placement=placement, inputs=[x], vtype=x.vtype)
+
+
+def mux(selector, x, y, placement=None):
+    assert isinstance(selector, Expression)
+    assert isinstance(selector.vtype, TensorType)
+    assert selector.vtype.dtype.is_boolean, selector.vtype.dtype
+    assert isinstance(x, Expression)
+    assert isinstance(x.vtype, TensorType), x.vtype
+    assert x.vtype.dtype.is_fixedpoint, x.vtype.dtype
+    assert isinstance(y, Expression)
+    assert isinstance(y.vtype, TensorType), y.vtype
+    assert y.vtype.dtype.is_fixedpoint, y.vtype.dtype
+    placement = placement or get_current_placement()
+    assert isinstance(placement, ReplicatedPlacementExpression)
+    vtype = _assimilate_arg_vtypes(x.vtype, y.vtype, "mux")
+    return MuxExpression(placement=placement, inputs=[selector, x, y], vtype=vtype)
 
 
 def cast(x, dtype, placement=None):

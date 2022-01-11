@@ -32,6 +32,10 @@ class DType:
     def is_signed(self):
         pass
 
+    @abc.abstractproperty
+    def is_boolean(self):
+        pass
+
 
 class _ConcreteDType(DType):
     def __init__(
@@ -44,6 +48,7 @@ class _ConcreteDType(DType):
         is_integer,
         is_float,
         is_signed,
+        is_boolean,
         precision=(None, None),
     ):
         self._name = name
@@ -54,6 +59,7 @@ class _ConcreteDType(DType):
         self._is_integer = is_integer
         self._is_float = is_float
         self._is_signed = is_signed
+        self._is_boolean = is_boolean
         self._integral_precision = precision[0]
         self._fractional_precision = precision[1]
 
@@ -107,6 +113,10 @@ class _ConcreteDType(DType):
     def is_signed(self):
         return self._is_signed
 
+    @property
+    def is_boolean(self):
+        return self._is_boolean
+
 
 int32 = _ConcreteDType(
     "int32",
@@ -117,6 +127,7 @@ int32 = _ConcreteDType(
     is_integer=True,
     is_float=False,
     is_signed=True,
+    is_boolean=False,
 )
 int64 = _ConcreteDType(
     "int64",
@@ -127,6 +138,7 @@ int64 = _ConcreteDType(
     is_integer=True,
     is_float=False,
     is_signed=True,
+    is_boolean=False,
 )
 uint32 = _ConcreteDType(
     "uint32",
@@ -137,6 +149,7 @@ uint32 = _ConcreteDType(
     is_integer=True,
     is_float=False,
     is_signed=False,
+    is_boolean=False,
 )
 uint64 = _ConcreteDType(
     "uint64",
@@ -147,6 +160,7 @@ uint64 = _ConcreteDType(
     is_integer=True,
     is_float=False,
     is_signed=False,
+    is_boolean=False,
 )
 float32 = _ConcreteDType(
     "float32",
@@ -157,6 +171,7 @@ float32 = _ConcreteDType(
     is_integer=False,
     is_float=True,
     is_signed=True,
+    is_boolean=False,
 )
 float64 = _ConcreteDType(
     "float64",
@@ -167,6 +182,18 @@ float64 = _ConcreteDType(
     is_integer=False,
     is_float=True,
     is_signed=True,
+    is_boolean=False,
+)
+bool_ = _ConcreteDType(
+    "bool_",
+    "bool",
+    numpy_dtype=np.bool_,
+    is_native=True,
+    is_fixedpoint=False,
+    is_integer=False,
+    is_float=False,
+    is_signed=False,
+    is_boolean=True,
 )
 
 
@@ -183,6 +210,7 @@ def fixed(integ, frac):
         is_integer=False,
         is_float=False,
         is_signed=True,
+        is_boolean=False,
         precision=(integ, frac),
     )
 

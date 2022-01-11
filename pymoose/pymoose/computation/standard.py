@@ -83,7 +83,7 @@ class ShapeType(StandardType):
     pass
 
 
-@dataclass
+@dataclass(init=False)
 class StandardOperation(Operation):
     @classmethod
     def dialect(cls):
@@ -91,24 +91,28 @@ class StandardOperation(Operation):
 
 
 @dataclass
+class AddNOperation(StandardOperation):
+    pass
+
+
+@dataclass
+class IdentityOperation(StandardOperation):
+    pass
+
+
+@dataclass
 class InputOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class OutputOperation(StandardOperation):
-    output_type: ValueType
-
-
-@dataclass
-class ConcatenateOperation(StandardOperation):
-    axis: Optional[int]
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class DecryptOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
@@ -137,6 +141,12 @@ class BytesConstant(StandardConstant):
 class TensorConstant(StandardConstant):
     value: np.ndarray
 
+    def __hash__(self):
+        return hash(self.value.tobytes())
+
+    def __eq__(self, other):
+        return isinstance(other, TensorConstant) and np.all(self.value == other.value)
+
 
 @dataclass
 class IntConstant(StandardConstant):
@@ -151,128 +161,145 @@ class FloatConstant(StandardConstant):
 @dataclass
 class ConstantOperation(StandardOperation):
     value: Value
-    output_type: ValueType
+
+
+@dataclass
+class ConcatenateOperation(StandardOperation):
+    axis: int
 
 
 @dataclass
 class AddOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class SubOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class MulOperation(StandardOperation):
-    output_type: ValueType
+    pass
+
+
+@dataclass
+class LessOperation(StandardOperation):
+    pass
 
 
 @dataclass
 class AbsOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class CastOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class DotOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class DivOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class InverseOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class ExpandDimsOperation(StandardOperation):
     axis: Tuple[int]
-    output_type: ValueType
 
 
 @dataclass
 class SqueezeOperation(StandardOperation):
     axis: Optional[Union[int, Tuple[int]]]
-    output_type: ValueType
 
 
 @dataclass
 class OnesOperation(StandardOperation):
     dtype: Optional[Union[float, np.float64, int, np.int64]]
-    output_type: ValueType
 
 
 @dataclass
 class SumOperation(StandardOperation):
     axis: Optional[Union[int, Tuple[int]]]
-    output_type: ValueType
 
 
 @dataclass
 class MeanOperation(StandardOperation):
     axis: Optional[Union[int, Tuple[int]]]
-    output_type: ValueType
 
 
 @dataclass
 class ExpOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class SigmoidOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class SqrtOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class TransposeOperation(StandardOperation):
     axes: Optional[Tuple[int]]
-    output_type: ValueType
 
 
 @dataclass
 class ReshapeOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class AtLeast2DOperation(StandardOperation):
     to_column_vector: bool
-    output_type: ValueType
 
 
 @dataclass
 class ShapeOperation(StandardOperation):
-    output_type: ValueType = ShapeType()
+    pass
+
+
+@dataclass
+class IndexAxisOperation(StandardOperation):
+    axis: int
+    index: int
 
 
 @dataclass
 class SliceOperation(StandardOperation):
     begin: int
     end: int
-    output_type: ValueType
+
+
+@dataclass
+class BitwiseOrOperation(StandardOperation):
+    pass
+
+
+@dataclass
+class MuxOperation(StandardOperation):
+    pass
 
 
 @dataclass
 class LoadOperation(StandardOperation):
-    output_type: ValueType
+    pass
 
 
 @dataclass
 class SaveOperation(StandardOperation):
-    output_type: ValueType = UnitType()
+    pass

@@ -27,7 +27,7 @@ class ReplicatedExample(parameterized.TestCase):
         @edsl.computation
         def my_aes_comp(
             key: edsl.Argument(rep, vtype=AesKeyType()),
-            ciphertext: edsl.Argument(alice, vtype=AesTensorType(edsl.fixed(46, 40))),
+            ciphertext: edsl.Argument(alice, vtype=AesTensorType(edsl.fixed(24, 40))),
         ):
             with decryptor:
                 data = edsl.decrypt(key, ciphertext)
@@ -78,12 +78,12 @@ class ReplicatedExample(parameterized.TestCase):
             computation=traced_aes_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={
-                "key/player0/share0": np.array([0] * 128, dtype=np.bool_),
-                "key/player0/share1": np.array([0] * 128, dtype=np.bool_),
-                "key/player1/share1": np.array([0] * 128, dtype=np.bool_),
-                "key/player1/share2": np.array([0] * 128, dtype=np.bool_),
-                "key/player2/share2": np.array([0] * 128, dtype=np.bool_),
-                "key/player2/share0": np.array([0] * 128, dtype=np.bool_),
+                "key/alice/share0": np.array([0] * 128, dtype=np.bool_),
+                "key/alice/share1": np.array([0] * 128, dtype=np.bool_),
+                "key/bob/share1": np.array([0] * 128, dtype=np.bool_),
+                "key/bob/share2": np.array([0] * 128, dtype=np.bool_),
+                "key/carole/share2": np.array([0] * 128, dtype=np.bool_),
+                "key/carole/share0": np.array([0] * 128, dtype=np.bool_),
                 "ciphertext": np.array([0] * 224, dtype=np.bool_),
             },
         )

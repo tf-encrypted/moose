@@ -1,11 +1,19 @@
+from pymoose.computation.dtypes import bool_
 from pymoose.computation.dtypes import fixed
 from pymoose.computation.dtypes import float32
 from pymoose.computation.dtypes import float64
 from pymoose.computation.dtypes import int32
 from pymoose.computation.dtypes import int64
+from pymoose.computation.standard import AesKeyType
+from pymoose.computation.standard import AesTensorType
+from pymoose.computation.standard import FloatType
+from pymoose.computation.standard import IntType
+from pymoose.computation.standard import StringType
+from pymoose.computation.standard import TensorType
 from pymoose.edsl.base import Argument
 from pymoose.edsl.base import abs
 from pymoose.edsl.base import add
+from pymoose.edsl.base import add_n
 from pymoose.edsl.base import atleast_2d
 from pymoose.edsl.base import cast
 from pymoose.edsl.base import computation
@@ -17,10 +25,16 @@ from pymoose.edsl.base import dot
 from pymoose.edsl.base import exp
 from pymoose.edsl.base import expand_dims
 from pymoose.edsl.base import host_placement
+from pymoose.edsl.base import identity
+from pymoose.edsl.base import index_axis
 from pymoose.edsl.base import inverse
+from pymoose.edsl.base import less
 from pymoose.edsl.base import load
+from pymoose.edsl.base import logical_or
 from pymoose.edsl.base import mean
+from pymoose.edsl.base import mirrored_placement
 from pymoose.edsl.base import mul
+from pymoose.edsl.base import mux
 from pymoose.edsl.base import ones
 from pymoose.edsl.base import replicated_placement
 from pymoose.edsl.base import reshape
@@ -39,14 +53,16 @@ from pymoose.edsl.tracer import trace_and_compile
 __all__ = [
     abs,
     add,
+    add_n,
+    AesKeyType,
+    AesTensorType,
     Argument,
     atleast_2d,
+    bool_,
     cast,
     computation,
     concatenate,
     constant,
-    host_placement,
-    replicated_placement,
     decrypt,
     div,
     dot,
@@ -55,13 +71,23 @@ __all__ = [
     fixed,
     float32,
     float64,
+    FloatType,
+    host_placement,
+    identity,
+    index_axis,
     int32,
     int64,
+    IntType,
     inverse,
+    less,
     load,
+    logical_or,
+    mirrored_placement,
     mul,
+    mux,
     mean,
     ones,
+    replicated_placement,
     reshape,
     save,
     slice,
@@ -71,7 +97,9 @@ __all__ = [
     sigmoid,
     sub,
     sum,
+    TensorType,
     transpose,
     trace,
     trace_and_compile,
+    StringType,
 ]

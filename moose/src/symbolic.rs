@@ -215,6 +215,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             BitXor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitAnd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitNeg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            BitOr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitExtract(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitSample(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -250,9 +251,10 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepXor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepNeg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            IfElse(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Mux(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Demirror(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Mirror(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepIndexAxis(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Index(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepDiag(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepSlice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -273,7 +275,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             HostSlice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostDiag(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            HostIndexAxis(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostOnes(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostAdd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostSub(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -284,7 +285,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Pow2(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Exp(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            LessThan(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Less(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -318,6 +319,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FloatingpointSum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            IndexAxis(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Slice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Ones(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             ExpandDims(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -338,14 +340,9 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
     }
 }
 
+#[derive(Default)]
 pub struct SymbolicExecutor {
     // Placeholder for the future state we want to keep (symbolic strategy pointer, replicated setup cache, etc).
-}
-
-impl Default for SymbolicExecutor {
-    fn default() -> Self {
-        SymbolicExecutor {}
-    }
 }
 
 impl SymbolicExecutor {
