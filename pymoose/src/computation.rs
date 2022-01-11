@@ -75,6 +75,7 @@ enum PyDType {
     bool_,
     fixed8_27,
     fixed14_23,
+    fixed24_40,
     fixed46_40,
 }
 
@@ -569,6 +570,10 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
                 integral_precision: 8,
                 fractional_precision: 27,
             })),
+            PyDType::fixed24_40 => Ok(Ty::Tensor(TensorDType::Fixed128 {
+                integral_precision: 24,
+                fractional_precision: 40,
+            })),
             PyDType::fixed46_40 => Ok(Ty::Tensor(TensorDType::Fixed128 {
                 integral_precision: 46,
                 fractional_precision: 40,
@@ -578,7 +583,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_AesTensorType { dtype } => match dtype {
             // TODO we are erasing fixedpoint precision here on purpose
             //  -- but we robably want to avoid this down the road
-            PyDType::fixed46_40 => Ok(Ty::AesTensor),
+            PyDType::fixed24_40 => Ok(Ty::AesTensor),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
         },
         PyValueType::std_AesKeyType => Ok(Ty::AesKey),
