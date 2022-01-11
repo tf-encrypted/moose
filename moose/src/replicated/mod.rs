@@ -1,7 +1,8 @@
 //! Placements backed by replicated secret sharing
 use crate::additive::{
-    AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor, PlacementDaBitProvider,
+    AdditivePlacement, AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTensor, DaBitProvider,
 };
+use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
@@ -14,8 +15,7 @@ use crate::mirrored::Mirrored3Tensor;
 use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::replicated::aes::AbstractReplicatedAesKey;
 use crate::symbolic::Symbolic;
-use crate::{computation::*, BitArray};
-use crate::{Const, Ring, N128, N224, N64};
+use crate::{BitArray, Const, Ring, N128, N224, N64};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
@@ -374,7 +374,7 @@ where
 
 // Type aliases to shorten out impl in replicated protocols
 type RepTen<T> = AbstractReplicatedRingTensor<T>;
-type AdtTen<T> = AbstractAdditiveTensor<T>;
+type AdtTen<T> = AdtTensor<T>;
 type MirTen<T> = Mirrored3Tensor<T>;
 
 modelled!(PlacementSetupGen::gen_setup, ReplicatedPlacement, () -> ReplicatedSetup, RepSetupOp);
@@ -1396,7 +1396,7 @@ impl RepTruncPrOp {
     ) -> Result<RepTen<HostRingT>>
     where
         AdditivePlacement: PlacementRepToAdt<S, RepTen<HostRingT>, AdtTen<HostRingT>>,
-        AdditivePlacement: PlacementTruncPrProvider<S, AdtTen<HostRingT>, AdtTen<HostRingT>>,
+        AdditivePlacement: TruncPrProvider<S, AdtTen<HostRingT>, AdtTen<HostRingT>>,
         ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<HostRingT>, RepTen<HostRingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -2112,8 +2112,7 @@ impl RingInjectOp {
         ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<HostRingT>, RepTen<HostRingT>>,
         AdditivePlacement: PlacementFill<S, HostShapeT, AdtRingT>,
         HostPlacement: PlacementFill<S, HostShapeT, HostRingT>,
-        AdditivePlacement:
-            PlacementDaBitProvider<S, HostShapeT, AdtTen<HostRingT>, AdtTen<HostBitT>>,
+        AdditivePlacement: DaBitProvider<S, HostShapeT, AdtTen<HostRingT>, AdtTen<HostBitT>>,
         AdditivePlacement: PlacementRepToAdt<S, RepTen<HostBitT>, AdtTen<HostBitT>>,
         AdditivePlacement: PlacementAdd<S, AdtTen<HostBitT>, AdtTen<HostBitT>, AdtTen<HostBitT>>,
         AdditivePlacement: PlacementAdd<S, AdtRingT, HostRingT, AdtRingT>,
@@ -2312,10 +2311,10 @@ impl RepBitComposeOp {
     }
 }
 
-/// ShrRaw takes as input a replicated secret and shifts to the right all local shares
-/// It should be used carefully since
-/// [x]>>amount is NOT equal to [ [x0 >> amount, x1 >> amount], [x1 >> amount, x2 >> amount], [x2 >> amount, x0>>amount]
-/// Used in conjunction with split operation so that we don't use the full bit-decomposition in order to perform exact truncation
+// ShrRaw takes as input a replicated secret and shifts to the right all local shares
+// It should be used carefully since
+// [x]>>amount is NOT equal to [ [x0 >> amount, x1 >> amount], [x1 >> amount, x2 >> amount], [x2 >> amount, x0>>amount]
+// Used in conjunction with split operation so that we don't use the full bit-decomposition in order to perform exact truncation
 pub trait PlacementShrRaw<S: Session, T, O> {
     fn shr_raw(&self, sess: &S, amount: usize, x: &T) -> O;
 }

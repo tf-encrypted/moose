@@ -3011,8 +3011,8 @@ macro_rules! modelled_kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc,
-                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+                <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -3021,7 +3021,7 @@ macro_rules! modelled_kernel {
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    x0: <$t0 as KnownType<SymbolicSession>>::Type,
+                    x0: <$t0 as crate::computation::KnownType<SymbolicSession>>::Type,
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
@@ -3093,8 +3093,8 @@ macro_rules! modelled_kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc,
-                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+                <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
@@ -3102,7 +3102,7 @@ macro_rules! modelled_kernel {
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    x0: <$t0 as KnownType<SymbolicSession>>::Type,
+                    x0: <$t0 as crate::computation::KnownType<SymbolicSession>>::Type,
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
@@ -3419,9 +3419,9 @@ macro_rules! modelled_kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc,
-                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
-                <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+                <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
@@ -3430,8 +3430,8 @@ macro_rules! modelled_kernel {
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    x0: <$t0 as KnownType<SymbolicSession>>::Type,
-                    x1: <$t1 as KnownType<SymbolicSession>>::Type,
+                    x0: <$t0 as crate::computation::KnownType<SymbolicSession>>::Type,
+                    x1: <$t1 as crate::computation::KnownType<SymbolicSession>>::Type,
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
@@ -3508,9 +3508,9 @@ macro_rules! modelled_kernel {
             fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc,
-                <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
-                <$t1 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
+                <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
+            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
@@ -3518,8 +3518,8 @@ macro_rules! modelled_kernel {
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    x0: <$t0 as KnownType<SymbolicSession>>::Type,
-                    x1: <$t1 as KnownType<SymbolicSession>>::Type,
+                    x0: <$t0 as crate::computation::KnownType<SymbolicSession>>::Type,
+                    x1: <$t1 as crate::computation::KnownType<SymbolicSession>>::Type,
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten

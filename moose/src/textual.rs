@@ -1,3 +1,4 @@
+use crate::additive::AdditivePlacement;
 use crate::computation::*;
 use crate::host::{RawShape, SliceInfo, SliceInfoElem};
 use crate::logical::TensorDType;
