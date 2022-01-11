@@ -175,7 +175,8 @@ class LinearClassifier(LinearPredictor):
         # sanity check that post_transform conforms to our expectations
         if post_transform_str == "PROBIT":
             raise RuntimeError(
-                f"{post_transform_str} post_transform is unsupported for LinearClassifier."
+                f"{post_transform_str} post_transform is unsupported for "
+                "LinearClassifier."
             )
         elif post_transform_str in ["SOFTMAX", "SOFTMAX_ZERO"] and multitask:
             raise RuntimeError(

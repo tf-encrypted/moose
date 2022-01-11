@@ -37,16 +37,14 @@ _SK_REGRESSION_MODELS = [
     "theil_sen_regressor",
 ]
 _SK_CLASSIFIER_MODELS = [
-    # TODO uncomment when softmax implemented in LinearClassifier
-    # "logistic_regression_2class_multiclass",
-    # "logistic_regression_3class_multiclass",
-    "logistic_regression_2class_multilabel",
-    "logistic_regression_3class_multilabel",
-    # TODO uncomment when softmax implemented in LinearClassifier
-    # "logistic_regression_cv_2class_multiclass",
-    # "logistic_regression_cv_3class_multiclass",
-    "logistic_regression_cv_2class_multilabel",
-    "logistic_regression_cv_3class_multilabel",
+    ("logistic_regression_2class_multiclass", [0.5535523, 0.4464477]),
+    ("logistic_regression_3class_multiclass", [0.11341234, 0.51814332, 0.36844435]),
+    ("logistic_regression_2class_multilabel", [0.56790665, 0.43209335]),
+    ("logistic_regression_3class_multilabel", [0.1371954, 0.46855493, 0.39424967]),
+    ("logistic_regression_cv_2class_multiclass", [0.5756927, 0.4243073]),
+    ("logistic_regression_cv_3class_multiclass", [0.23125406, 0.41739519, 0.35135075]),
+    ("logistic_regression_cv_2class_multilabel", [0.59146365, 0.40853635]),
+    ("logistic_regression_cv_3class_multilabel", [0.11771997, 0.47229152, 0.40998851]),
 ]
 
 
@@ -59,25 +57,32 @@ class LinearPredictorTest(parameterized.TestCase):
         linear_model = predictor_cls.from_onnx(lr_onnx)
         return linear_model
 
+    def _build_prediction_logic(self, model_name, predictor_cls):
+        predictor = self._build_linear_predictor(model_name, predictor_cls)
+
+        @edsl.computation
+        def predictor_no_aes(x: edsl.Argument(predictor.alice, dtype=edsl.float64)):
+            with predictor.alice:
+                x_fixed = edsl.cast(x, dtype=model_utils.DEFAULT_FIXED_DTYPE)
+            y = predictor.linear_predictor_fn(x_fixed, model_utils.DEFAULT_FIXED_DTYPE)
+            y_t = predictor.post_transform(y)
+            return model_utils.handle_predictor_output(
+                y_t, prediction_handler=predictor.bob
+            )
+
+        return predictor, predictor_no_aes
+
     @parameterized.parameters(*_SK_REGRESSION_MODELS)
     def test_regression_logic(self, model_name):
-        regressor = self._build_linear_predictor(
+        regressor, regressor_logic = self._build_prediction_logic(
             model_name, linear_predictor.LinearRegressor
         )
 
-        @edsl.computation
-        def predictor_minus_aes(x: edsl.Argument(regressor.alice, dtype=edsl.float64)):
-            with regressor.alice:
-                x_fixed = edsl.cast(x, dtype=model_utils.DEFAULT_FIXED_DTYPE)
-            y = regressor.linear_predictor_fn(x_fixed, model_utils.DEFAULT_FIXED_DTYPE)
-            return model_utils.handle_predictor_output(
-                y, prediction_handler=regressor.bob
-            )
-
-        traced_predictor = edsl.trace(predictor_minus_aes)
+        traced_predictor = edsl.trace(regressor_logic)
         storage = {plc.name: {} for plc in regressor.host_placements}
         runtime = testing.LocalMooseRuntime(storage_mapping=storage)
         role_assignment = {plc.name: plc.name for plc in regressor.host_placements}
+
         input_x = np.array([[1.0, 1.0, 1.0, 1.0]], dtype=np.float64)
         result_dict = runtime.evaluate_computation(
             computation=traced_predictor,
@@ -89,9 +94,36 @@ class LinearPredictorTest(parameterized.TestCase):
         expected_result = regressor.coeffs.sum() + regressor.intercepts
         np.testing.assert_almost_equal(actual_result, expected_result)
 
+    @parameterized.parameters(*_SK_CLASSIFIER_MODELS)
+    def test_classification_logic(self, model_name, expected):
+        # model_name, expected = test_case
+        classifier, classifier_logic = self._build_prediction_logic(
+            model_name, linear_predictor.LinearClassifier
+        )
+
+        traced_predictor = edsl.trace(classifier_logic)
+        storage = {plc.name: {} for plc in classifier.host_placements}
+        runtime = testing.LocalMooseRuntime(storage_mapping=storage)
+        role_assignment = {plc.name: plc.name for plc in classifier.host_placements}
+
+        input_x = np.array([[-0.9, 1.3, 0.6, -0.4]], dtype=np.float64)
+        result_dict = runtime.evaluate_computation(
+            computation=traced_predictor,
+            role_assignment=role_assignment,
+            arguments={"x": input_x},
+        )
+        actual_result = list(result_dict.values())[0]
+        expected_result = np.array([expected])
+        # TODO multiple divisions seems to lose significant amount of precision
+        # (hence decimal=2 here)
+        np.testing.assert_almost_equal(actual_result, expected_result, decimal=2)
+
     @parameterized.parameters(
         *zip(_SK_REGRESSION_MODELS, itertools.repeat(linear_predictor.LinearRegressor)),
-        *zip(_SK_CLASSIFIER_MODELS, itertools.repeat(linear_predictor.LinearClassifier)),
+        *zip(
+            map(lambda x: x[0], _SK_CLASSIFIER_MODELS),
+            itertools.repeat(linear_predictor.LinearClassifier),
+        ),
     )
     def test_serde(self, model_name, predictor_cls):
         regressor = self._build_linear_predictor(model_name, predictor_cls)
