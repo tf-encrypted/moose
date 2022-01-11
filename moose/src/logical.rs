@@ -301,7 +301,7 @@ impl AddNOp {
                     let vec: Vec<Fixed64T> = xs
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
-                            AbstractTensor::Fixed64(x) => (*x).clone(),
+                            AbstractTensor::Fixed64(x) => x.clone(),
                             _ => unimplemented!("mixed types in tensor"),
                         })
                         .collect();
@@ -312,7 +312,7 @@ impl AddNOp {
                     let vec: Vec<Fixed128T> = xs
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
-                            AbstractTensor::Fixed128(x) => (*x).clone(),
+                            AbstractTensor::Fixed128(x) => x.clone(),
                             _ => unimplemented!("mixed types in tensor"),
                         })
                         .collect();
@@ -323,7 +323,7 @@ impl AddNOp {
                     let vec: Vec<Float32T> = xs
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
-                            AbstractTensor::Float32(x) => (*x).clone(),
+                            AbstractTensor::Float32(x) => x.clone(),
                             _ => unimplemented!("mixed types in tensor"),
                         })
                         .collect();
@@ -334,7 +334,7 @@ impl AddNOp {
                     let vec: Vec<Float64T> = xs
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
-                            AbstractTensor::Float64(x) => (*x).clone(),
+                            AbstractTensor::Float64(x) => x.clone(),
                             _ => unimplemented!("mixed types in tensor"),
                         })
                         .collect();
