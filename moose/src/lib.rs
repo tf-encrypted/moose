@@ -77,7 +77,7 @@ macro_rules! derive_runtime_kernel {
 
     (variadic, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, Vec<_>) -> _ + Send> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_, Vec<_>) -> _ + Send>> = &|$op| $kf;
             kf($self)
         }
     };
