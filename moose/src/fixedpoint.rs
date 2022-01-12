@@ -1530,7 +1530,34 @@ impl ConcatOp {
         ReplicatedPlacement: PlacementConcatenate<S, RepFixedT, RepFixedT>,
         RepFixedT: Clone,
     {
-        unimplemented!("ConcatOp::fixed_rep_kernel TODO")
+        let first = &xs[0];
+        match first {
+            FixedTensor::Host(_) => {
+                let vec: Vec<RepFixedT> = xs
+                    .iter()
+                    .map(|t| match t {
+                        FixedTensor::Host(x) => plc.share(sess, x),
+                        FixedTensor::Replicated(x) => x.clone(),
+                        _ => unimplemented!("1 mixed types in tensor"),
+                    })
+                    .collect();
+                Ok(FixedTensor::Replicated(plc.concatenate(sess, axis, &vec)))
+            }
+            FixedTensor::Replicated(_) => {
+                let vec: Vec<RepFixedT> = xs
+                    .iter()
+                    .map(|t| match t {
+                        FixedTensor::Host(x) => plc.share(sess, x),
+                        FixedTensor::Replicated(x) => x.clone(),
+                        _ => unimplemented!("2 mixed types in tensor"),
+                    })
+                    .collect();
+                Ok(FixedTensor::Replicated(plc.concatenate(sess, axis, &vec)))
+            }
+            FixedTensor::Mirrored3(_) => {
+                unimplemented!("concatenate does not yet support mirrored")
+            }
+        }
     }
 }
 
