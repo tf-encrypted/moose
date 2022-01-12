@@ -66,9 +66,7 @@ class LinearPredictorTest(parameterized.TestCase):
                 x_fixed = edsl.cast(x, dtype=model_utils.DEFAULT_FIXED_DTYPE)
             y = predictor.linear_predictor_fn(x_fixed, model_utils.DEFAULT_FIXED_DTYPE)
             y_t = predictor.post_transform(y)
-            return model_utils.handle_predictor_output(
-                y_t, prediction_handler=predictor.bob
-            )
+            return predictor.handle_output(y_t, prediction_handler=predictor.bob)
 
         return predictor, predictor_no_aes
 
@@ -96,7 +94,6 @@ class LinearPredictorTest(parameterized.TestCase):
 
     @parameterized.parameters(*_SK_CLASSIFIER_MODELS)
     def test_classification_logic(self, model_name, expected):
-        # model_name, expected = test_case
         classifier, classifier_logic = self._build_prediction_logic(
             model_name, linear_predictor.LinearClassifier
         )

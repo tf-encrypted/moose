@@ -15,7 +15,7 @@ from pymoose.computation import utils as comp_utils
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
-from . import model_utils as utils
+from . import model_utils
 from . import tree_ensemble_regressor
 
 
@@ -30,32 +30,49 @@ class TreeEnsembleRegressorTest(parameterized.TestCase):
         )
         return forest_model
 
-    def test_tree_ensemble_regressor_logic(self):
-        input_x = np.array([[0, 1, 0, 0], [1, 0, 0, 1]], dtype=np.float64)
+    def _build_forest_from_json(self):
         root_path = pathlib.Path(__file__).parent.absolute()
-
         with root_path / "fixtures" / "xgboost_regressor.json" as p:
             with open(p) as f:
                 forest_json = json.load(f)
-
-        forest = tree_ensemble_regressor.TreeEnsembleRegressor.from_json(forest_json)
-
-        forest_predict = forest.predictor_factory(
-            fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE
+        forest_model = tree_ensemble_regressor.TreeEnsembleRegressor.from_json(
+            forest_json
         )
-        traced_model_comp = edsl.trace(forest_predict)
+        return forest_model
 
-        storage = {plc.name: {} for plc in forest.host_placements}
+    def _build_prediction_logic(self, onnx_or_json):
+        if onnx_or_json == "onnx":
+            predictor = self._build_forest_from_onnx()
+        elif onnx_or_json == "json":
+            predictor = self._build_forest_from_json()
+        else:
+            raise ValueError()
+
+        @edsl.computation
+        def predictor_no_aes(x: edsl.Argument(predictor.alice, dtype=edsl.float64)):
+            with predictor.alice:
+                x_fixed = edsl.cast(x, dtype=model_utils.DEFAULT_FIXED_DTYPE)
+            with predictor.replicated:
+                y = predictor._forest_fn(x_fixed, model_utils.DEFAULT_FIXED_DTYPE)
+            return predictor.handle_output(y, prediction_handler=predictor.bob)
+
+        return predictor, predictor_no_aes
+
+    def test_tree_ensemble_regressor_logic(self):
+        input_x = np.array([[0, 1, 1, 0], [1, 0, 1, 0]], dtype=np.float64)
+        regressor, regression_logic = self._build_prediction_logic("onnx")
+        traced_model_comp = edsl.trace(regression_logic)
+        storage = {plc.name: {} for plc in regressor.host_placements}
         runtime = LocalMooseRuntime(storage_mapping=storage)
-        role_assignment = {plc.name: plc.name for plc in forest.host_placements}
+        role_assignment = {plc.name: plc.name for plc in regressor.host_placements}
         result_dict = runtime.evaluate_computation(
             computation=traced_model_comp,
             role_assignment=role_assignment,
             arguments={"x": input_x},
         )
         actual_result = list(result_dict.values())[0]
-        expected_result = np.array([26.6495275, 88.423399], dtype=np.float64)
-        np.testing.assert_almost_equal(actual_result, expected_result)
+        expected_result = np.array([5.327446, 54.89666], dtype=np.float64)
+        np.testing.assert_almost_equal(actual_result, expected_result, decimal=5)
 
     def test_serde(self):
         forest = self._build_forest_from_onnx()
@@ -68,7 +85,7 @@ class TreeEnsembleRegressorTest(parameterized.TestCase):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Logistic Regression example")
+    parser = argparse.ArgumentParser(description="Tree Ensemble predictions")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
