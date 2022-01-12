@@ -3,7 +3,9 @@ use crate::computation::*;
 use crate::error::Result;
 use crate::host::AbstractHostFixedTensor;
 use crate::kernels::*;
-use crate::replicated::{AbstractMirroredFixedTensor, AbstractReplicatedFixedTensor};
+use crate::replicated::{
+    AbstractReplicatedFixedTensor, AbstractReplicatedRingTensor, ReplicatedPlacement,
+};
 
 impl MirrorOp {
     pub(crate) fn kernel<S: Session, HostT>(
@@ -179,5 +181,48 @@ impl RepShareOp {
         // 2) If (2,3) parties know the secret then there's no need to share this
         // 3) If intersect(mir, rep) = player then make sure the sharing happens on player (not someone else)
         Ok(plc.share(sess, &x0))
+    }
+}
+
+type RepTen<T> = AbstractReplicatedRingTensor<T>; // TODO remove
+
+impl RepRevealOp {
+    pub(crate) fn mir_ring_kernel<S: Session, HostRingT: Clone>(
+        sess: &S,
+        mir: &Mirrored3Placement,
+        x: RepTen<HostRingT>,
+    ) -> Result<Mirrored3Tensor<HostRingT>>
+    where
+        RepTen<HostRingT>: CanonicalType,
+        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+
+        RepTen<HostRingT>: Into<m!(c!(RepTen<HostRingT>))>,
+        HostPlacement: PlacementReveal<S, m!(c!(RepTen<HostRingT>)), HostRingT>,
+    {
+        let (player0, player1, player2) = mir.host_placements();
+
+        let x0 = player0.reveal(sess, &x.clone().into());
+        let x1 = player1.reveal(sess, &x.clone().into());
+        let x2 = player2.reveal(sess, &x.into());
+
+        Ok(Mirrored3Tensor {
+            values: [x0, x1, x2],
+        })
+    }
+
+    pub(crate) fn mir_fixed_kernel<S: Session, RepRingT, MirRingT>(
+        sess: &S,
+        receiver: &Mirrored3Placement,
+        xe: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
+    where
+        Mirrored3Placement: PlacementReveal<S, RepRingT, MirRingT>,
+    {
+        let x = receiver.reveal(sess, &xe.tensor);
+        Ok(AbstractMirroredFixedTensor {
+            tensor: x,
+            fractional_precision: xe.fractional_precision,
+            integral_precision: xe.integral_precision,
+        })
     }
 }

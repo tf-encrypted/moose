@@ -1,6 +1,6 @@
-use crate::computation::{KnownType, Placed, RepEqualOp, ReplicatedPlacement};
+use super::*;
+use crate::computation::RepEqualOp;
 use crate::error::Result;
-use crate::kernels::*;
 use crate::replicated::{ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor};
 use crate::{Const, Ring};
 

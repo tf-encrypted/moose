@@ -1,6 +1,6 @@
-use crate::computation::{Placed, ReplicatedPlacement};
+use super::*;
+use crate::computation::Placed;
 use crate::error::Result;
-use crate::replicated::ReplicatedBitArray128;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

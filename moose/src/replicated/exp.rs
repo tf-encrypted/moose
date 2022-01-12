@@ -1,10 +1,9 @@
+use super::*;
 use crate::fixedpoint::{FixedpointTensor, PolynomialEval};
+use lazy_static::lazy_static;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num_traits::{FromPrimitive, One, ToPrimitive};
-
-use super::*;
-use lazy_static::lazy_static;
 
 impl Pow2Op {
     pub(crate) fn rep_rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, RepShapeT, N: Const>(

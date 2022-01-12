@@ -210,10 +210,10 @@ pub fn byte_vec_to_bit_vec_be(bytes: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::computation::{HostPlacement, ReplicatedPlacement, Role};
+    use crate::computation::{HostPlacement, Role};
     use crate::host::HostBitTensor;
     use crate::kernels::SyncSession;
-    use crate::replicated::ReplicatedBitTensor;
+    use crate::replicated::{ReplicatedBitTensor, ReplicatedPlacement};
 
     #[test]
     fn test_parse_aes() {

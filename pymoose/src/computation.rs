@@ -3,6 +3,7 @@
 use moose::computation::*;
 use moose::host::{HostFloat32Tensor, HostFloat64Tensor, RawShape, SliceInfo, SliceInfoElem};
 use moose::logical::TensorDType;
+use moose::replicated::ReplicatedPlacement;
 use ndarray::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;

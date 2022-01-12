@@ -1,20 +1,11 @@
+use crate::computation::*;
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, FixedTensor};
-use crate::host::{
-    AbstractHostAesKey, AbstractHostFixedAesTensor, AbstractHostFixedTensor, HostAesKey,
-    HostFixed128AesTensor, HostFixed128Tensor,
-};
-use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementDecrypt, PlacementFill, PlacementIndex, PlacementInput,
-    PlacementNeg, PlacementReveal, PlacementRingInject, PlacementShape, PlacementShare,
-    PlacementXor, Session,
-};
+use crate::host::*;
+use crate::kernels::*;
 use crate::logical::{AbstractTensor, Tensor};
-use crate::replicated::{
-    aes::AbstractReplicatedAesKey, aes::ReplicatedAesKey, AbstractReplicatedFixedTensor,
-    ReplicatedFixed128Tensor,
-};
-use crate::{computation::*, BitArray, N128, N224};
+use crate::replicated::*;
+use crate::{BitArray, N128, N224};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

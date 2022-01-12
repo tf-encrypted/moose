@@ -3,7 +3,7 @@ use crate::error::{Error, Result};
 use crate::host::HostBitTensor;
 use crate::host::HostString;
 use crate::kernels::*;
-use crate::replicated::ReplicatedBitTensor;
+use crate::replicated::{ReplicatedBitTensor, ReplicatedPlacement};
 use serde::{Deserialize, Serialize};
 
 /// TODO(Dragos) perhaps we can unify BoolTensor with FixedTensor

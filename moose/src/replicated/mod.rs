@@ -1,4 +1,4 @@
-//! Placements backed by replicated secret sharing
+//! Placements backed by three-party replicated secret sharing
 use crate::additive::{
     AdditivePlacement, AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTensor, DaBitProvider,
 };
@@ -11,9 +11,11 @@ use crate::host::{
     HostRing64Tensor, HostShape, SliceInfo,
 };
 use crate::kernels::*;
-use crate::mirrored::{Mirrored3Placement, Mirrored3Tensor};
+use crate::mirrored::{
+    AbstractMirroredFixedTensor, Mirrored3BitTensor, Mirrored3Placement, Mirrored3Ring128Tensor,
+    Mirrored3Ring64Tensor, Mirrored3Tensor,
+};
 use crate::prim::{PrfKey, Seed, SyncKey};
-use crate::replicated::aes::AbstractReplicatedAesKey;
 use crate::symbolic::Symbolic;
 use crate::{BitArray, Const, Ring, N128, N224, N64};
 use macros::with_context;
@@ -21,13 +23,34 @@ use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 use std::marker::PhantomData;
 
-pub mod aes;
-pub mod control_flow;
-pub mod division;
-pub mod exp;
-pub mod input;
-pub mod log;
-pub use self::aes::ReplicatedAesKey;
+mod aes;
+mod control_flow;
+mod division;
+mod exp;
+mod input;
+mod log;
+pub use self::aes::{AbstractReplicatedAesKey, ReplicatedAesKey};
+
+/// Placement type for three-party replicated secret sharing
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
+pub struct ReplicatedPlacement {
+    pub owners: [Role; 3],
+}
+
+impl ReplicatedPlacement {
+    pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
+        let player0 = HostPlacement {
+            owner: self.owners[0].clone(),
+        };
+        let player1 = HostPlacement {
+            owner: self.owners[1].clone(),
+        };
+        let player2 = HostPlacement {
+            owner: self.owners[2].clone(),
+        };
+        (player0, player1, player2)
+    }
+}
 
 pub trait ShapeFill<S, TenT> {
     type Result;
@@ -67,6 +90,7 @@ where
     }
 }
 
+/// Secret tensor used by replicated placements
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedRingTensor<HostRingT> {
     pub shares: [[HostRingT; 2]; 3],
@@ -79,9 +103,6 @@ impl<HostRingT: Ring> Ring for AbstractReplicatedRingTensor<HostRingT> {
 moose_type!(ReplicatedRing64Tensor = AbstractReplicatedRingTensor<HostRing64Tensor>);
 moose_type!(ReplicatedRing128Tensor = AbstractReplicatedRingTensor<HostRing128Tensor>);
 moose_type!(ReplicatedBitTensor = AbstractReplicatedRingTensor<HostBitTensor>);
-moose_type!(Mirrored3Ring64Tensor = Mirrored3Tensor<HostRing64Tensor>);
-moose_type!(Mirrored3Ring128Tensor = Mirrored3Tensor<HostRing128Tensor>);
-moose_type!(Mirrored3BitTensor = Mirrored3Tensor<HostBitTensor>);
 
 pub trait Underlying {
     type TensorType;
@@ -249,13 +270,6 @@ pub struct AbstractReplicatedFixedTensor<RepRingT> {
 moose_type!(ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>);
 moose_type!(ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>);
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractMirroredFixedTensor<MirRingT> {
-    pub tensor: MirRingT,
-    pub fractional_precision: u32,
-    pub integral_precision: u32,
-}
-
 impl<RepRingT: Underlying> Underlying for AbstractReplicatedFixedTensor<RepRingT> {
     type TensorType = RepRingT::TensorType;
 }
@@ -265,9 +279,6 @@ impl<RepRingT: MirroredCounterpart> MirroredCounterpart
 {
     type MirroredType = AbstractMirroredFixedTensor<RepRingT::MirroredType>;
 }
-
-moose_type!(Mirrored3Fixed64Tensor = AbstractMirroredFixedTensor<Mirrored3Ring64Tensor>);
-moose_type!(Mirrored3Fixed128Tensor = AbstractMirroredFixedTensor<Mirrored3Ring128Tensor>);
 
 impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;
@@ -300,14 +311,6 @@ where
                 }
             }
         }
-    }
-}
-
-impl<RepRingT: Placed> Placed for AbstractMirroredFixedTensor<RepRingT> {
-    type Placement = RepRingT::Placement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        self.tensor.placement()
     }
 }
 
@@ -646,45 +649,6 @@ impl RepRevealOp {
             }
         };
         Ok(res)
-    }
-
-    pub(crate) fn mir_ring_kernel<S: Session, HostRingT: Clone>(
-        sess: &S,
-        mir: &Mirrored3Placement,
-        x: RepTen<HostRingT>,
-    ) -> Result<Mirrored3Tensor<HostRingT>>
-    where
-        RepTen<HostRingT>: CanonicalType,
-        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-
-        RepTen<HostRingT>: Into<m!(c!(RepTen<HostRingT>))>,
-        HostPlacement: PlacementReveal<S, m!(c!(RepTen<HostRingT>)), HostRingT>,
-    {
-        let (player0, player1, player2) = mir.host_placements();
-
-        let x0 = player0.reveal(sess, &x.clone().into());
-        let x1 = player1.reveal(sess, &x.clone().into());
-        let x2 = player2.reveal(sess, &x.into());
-
-        Ok(Mirrored3Tensor {
-            values: [x0, x1, x2],
-        })
-    }
-
-    pub(crate) fn mir_fixed_kernel<S: Session, RepRingT, MirRingT>(
-        sess: &S,
-        receiver: &Mirrored3Placement,
-        xe: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
-    where
-        Mirrored3Placement: PlacementReveal<S, RepRingT, MirRingT>,
-    {
-        let x = receiver.reveal(sess, &xe.tensor);
-        Ok(AbstractMirroredFixedTensor {
-            tensor: x,
-            fractional_precision: xe.fractional_precision,
-            integral_precision: xe.integral_precision,
-        })
     }
 }
 

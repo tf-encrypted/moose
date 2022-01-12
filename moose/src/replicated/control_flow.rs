@@ -1,9 +1,7 @@
-use macros::with_context;
-
-use crate::computation::{MuxOp, ReplicatedPlacement};
+use super::*;
+use crate::computation::MuxOp;
 use crate::error::Result;
-use crate::kernels::*;
-use crate::replicated::{ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor};
+use macros::with_context;
 
 modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, MuxOp);
 modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, MuxOp);

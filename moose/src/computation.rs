@@ -7,7 +7,10 @@ use crate::floatingpoint::{Float32Tensor, Float64Tensor, Mirrored3Float32, Mirro
 use crate::host::*;
 use crate::kernels::Session;
 use crate::logical::{Tensor, TensorDType};
-use crate::mirrored::Mirrored3Placement;
+use crate::mirrored::{
+    Mirrored3BitTensor, Mirrored3Fixed128Tensor, Mirrored3Fixed64Tensor, Mirrored3Placement,
+    Mirrored3Ring128Tensor, Mirrored3Ring64Tensor,
+};
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::*;
 use crate::symbolic::Symbolic;
@@ -1964,26 +1967,6 @@ impl From<&str> for Role {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostPlacement {
     pub owner: Role,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
-pub struct ReplicatedPlacement {
-    pub owners: [Role; 3],
-}
-
-impl ReplicatedPlacement {
-    pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
-        let player0 = HostPlacement {
-            owner: self.owners[0].clone(),
-        };
-        let player1 = HostPlacement {
-            owner: self.owners[1].clone(),
-        };
-        let player2 = HostPlacement {
-            owner: self.owners[2].clone(),
-        };
-        (player0, player1, player2)
-    }
 }
 
 pub trait Placed {

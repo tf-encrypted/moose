@@ -1,10 +1,9 @@
 use crate::computation::{
-    Computation, KnownType, Operation, Operator, Placed, Placement, ReplicatedPlacement,
-    SymbolicValue,
+    Computation, KnownType, Operation, Operator, Placed, Placement, SymbolicValue,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{DispatchKernel, PlacementPlace, Session};
-use crate::replicated::ReplicatedSetup;
+use crate::replicated::{ReplicatedPlacement, ReplicatedSetup};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;

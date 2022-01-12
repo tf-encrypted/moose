@@ -7,7 +7,7 @@ use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor, Mirrored3Float32, Mirrored3Float64};
 use crate::for_all_values;
 use crate::host::*;
-use crate::mirrored::Mirrored3Placement;
+use crate::mirrored::*;
 use crate::networking::LocalSyncNetworking;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::*;

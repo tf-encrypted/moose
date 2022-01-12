@@ -4,8 +4,7 @@ use crate::additive::{
 use crate::computation::SymbolicValue;
 use crate::computation::Value;
 use crate::computation::{
-    AddNOp, HostPlacement, HostReshapeOp, KnownType, Placed, ReplicatedPlacement, RingInjectOp,
-    ShapeOp,
+    AddNOp, HostPlacement, HostReshapeOp, KnownType, Placed, RingInjectOp, ShapeOp,
 };
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
@@ -18,7 +17,7 @@ use crate::host::{
 use crate::kernels::{PlacementAddN, PlacementReshape, PlacementRingInject, PlacementShape};
 use crate::logical::Tensor;
 use crate::replicated::{
-    ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
+    ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor, ReplicatedPlacement,
     ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
 };
 

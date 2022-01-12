@@ -12,7 +12,7 @@ mod ops;
 mod trunc;
 pub use dabit::DaBitProvider;
 
-/// Placement type for additive secret sharing
+/// Placement type for two-party additive secret sharing
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct AdditivePlacement {
     pub owners: [Role; 2],
