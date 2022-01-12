@@ -71,6 +71,23 @@ class LinearPredictor(model.AesPredictorModel):
         return predictor
 
 
+def onnx_to_logical(onnx_model):
+    """
+    Convert a linear regression model to pymoose logical computation.
+
+    Args:
+        onnx_model (bytes): serialized onnx model
+
+    Returns: 
+        logical computation
+    """ 
+    prediction = onnx_model.predictor_factory()
+    traced_predictor = edsl.trace(predictor)
+    serialized = comp_utils.serialize_computation(traced_predictor)
+    logical_comp_rustref = elk_compiler.compile_computation(serialized, [])
+    return logical_comp_rustref.to_bytes()
+
+
 def _interpret_coeffs(coeffs):
     coeffs = np.asarray(coeffs, dtype=np.float64)
     coeffs_shape = coeffs.shape
