@@ -4,7 +4,7 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape, HostString};
 use crate::kernels::*;
-use crate::mirrored::Mirrored3Tensor;
+use crate::mirrored::{Mirrored3Placement, Mirrored3Tensor};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

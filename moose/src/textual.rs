@@ -2,6 +2,7 @@ use crate::additive::AdditivePlacement;
 use crate::computation::*;
 use crate::host::{RawShape, SliceInfo, SliceInfoElem};
 use crate::logical::TensorDType;
+use crate::mirrored::Mirrored3Placement;
 use crate::prim::{RawPrfKey, RawSeed, SyncKey};
 use nom::{
     branch::{alt, permutation},

@@ -6,6 +6,7 @@ use crate::error::{Error, Result};
 use crate::floatingpoint::FloatTensor;
 use crate::host::*;
 use crate::kernels::*;
+use crate::mirrored::Mirrored3Placement;
 use crate::replicated::*;
 use crate::symbolic::Symbolic;
 use macros::with_context;

@@ -1,15 +1,17 @@
 use crate::boolean::*;
+use crate::computation::*;
 use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
 use crate::execution::{Identity, SyncNetworkingImpl, SyncStorageImpl};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor, Mirrored3Float32, Mirrored3Float64};
+use crate::for_all_values;
 use crate::host::*;
+use crate::mirrored::Mirrored3Placement;
 use crate::networking::LocalSyncNetworking;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::*;
 use crate::storage::LocalSyncStorage;
-use crate::{computation::*, for_all_values};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::rc::Rc;

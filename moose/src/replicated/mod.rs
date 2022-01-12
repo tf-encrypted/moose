@@ -11,7 +11,7 @@ use crate::host::{
     HostRing64Tensor, HostShape, SliceInfo,
 };
 use crate::kernels::*;
-use crate::mirrored::Mirrored3Tensor;
+use crate::mirrored::{Mirrored3Placement, Mirrored3Tensor};
 use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::replicated::aes::AbstractReplicatedAesKey;
 use crate::symbolic::Symbolic;
