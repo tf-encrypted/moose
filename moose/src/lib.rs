@@ -3748,7 +3748,7 @@ macro_rules! modelled_kernel {
 
     // Variadic
 
-    ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? (vec[$ts:ty]) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
+    ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? vec[$ts:ty] -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
         concrete_dispatch_kernel!($op, [$( ($plc, vec[$ts] -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, vec[$ts] -> $u), )+]);
 
@@ -3776,7 +3776,7 @@ macro_rules! modelled_kernel {
                 $ts,
                 $u
             > for $plc {
-                fn $f(
+                fn $trait_fn(
                     &self,
                     sess: &crate::kernels::SyncSession,
                     $($($attr_id:$attr_ty),*,)?
@@ -3828,7 +3828,7 @@ macro_rules! modelled_kernel {
                 $u
             > for $plc {
                 #[allow(unused_variables)]
-                fn $f(
+                fn $trait_fn(
                     &self,
                     sess: &crate::kernels::AsyncSession,
                     $($($attr_id:$attr_ty),*,)?
@@ -3840,12 +3840,12 @@ macro_rules! modelled_kernel {
         )+
 
         $(
-            modelled_kernel!(__variadic $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? (vec[$ts]) -> $u => $($kp)+);
+            modelled_kernel!(__variadic $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? vec[$ts] -> $u => $($kp)+);
         )+
 
     };
 
-    (__variadic hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? (vec[$ts:ty]) -> $u:ty => $($kp:tt)+) => {
+    (__variadic hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
             impl crate::kernels::VariadicKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3921,7 +3921,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                let vs: Vec<Value> = xs.iter().map(|x| x.clone().into()).collect();
+                let vs: Vec<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
                 sess.execute(op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
@@ -3931,7 +3931,7 @@ macro_rules! modelled_kernel {
     };
 
 
-    (__variadic concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? (vec[$ts:ty]) -> $u:ty => $($kp:tt)+) => {
+    (__variadic concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::VariadicKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -3993,7 +3993,7 @@ macro_rules! modelled_kernel {
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
                 $($($attr_id:$attr_ty),*,)?
-                xs: &Vec<<$ts as crate::computation::PartiallySymbolicType>::Type>
+                xs: &[<$ts as crate::computation::PartiallySymbolicType>::Type]
             ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
                 use crate::computation::{KnownType, VariadicSignature, SymbolicValue};
                 use crate::kernels::{Session};
@@ -4028,7 +4028,7 @@ macro_rules! modelled_kernel {
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
                 $($($attr_id:$attr_ty),*,)?
-                xs: &Vec<<$t0 as crate::computation::SymbolicType>::Type>
+                xs: &[<$t0 as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, VariadicSignature, SymbolicValue};
                 use crate::kernels::{Session};
@@ -4044,14 +4044,14 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let vs: Vec<Value> = xs.iter().map(|x| x.clone().into()).collect();
+                let vs: Vec<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
                 let y = sess.execute(op.into(), &self.into(), vs).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
             }
         }
     };
 
-    (__variadic transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+    (__variadic transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::VariadicKernel<
             crate::symbolic::SymbolicSession,
             $plc,
@@ -4078,9 +4078,9 @@ macro_rules! modelled_kernel {
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
                 $($($attr_id:$attr_ty),*,)?
-                xs: &Vec<<$t0 as crate::computation::SymbolicType>::Type>
+                xs: &[<$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
-                use crate::computation::{KnownType, UnarySignature};
+                use crate::computation::{KnownType};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
@@ -4093,7 +4093,8 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into()])
+                let vs: Vec<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
+                sess.execute(op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4153,7 +4154,7 @@ macro_rules! modelled_kernel {
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
                 $($($attr_id:$attr_ty),*,)?
-                xs: &Vec<<$ts as crate::computation::SymbolicType>::Type>
+                xs: &[<$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature};
                 use crate::kernels::{Session};
@@ -4169,7 +4170,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let vs: Vec<Value> = xs.iter().map(|x| x.clone().into()).collect();
+                let vs: Vec<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
                 sess.execute(op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
