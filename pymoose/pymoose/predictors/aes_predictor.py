@@ -1,8 +1,7 @@
 import abc
 
 from pymoose import edsl
-
-from . import model_utils as utils
+from pymoose.predictors import predictor_utils as utils
 
 
 class AesPredictor(metaclass=abc.ABCMeta):

@@ -10,9 +10,8 @@ from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose import testing
 from pymoose.computation import utils as comp_utils
-
-from . import linear_predictor
-from . import model_utils
+from pymoose.predictors import linear_predictor
+from pymoose.predictors import predictor_utils
 
 _SK_REGRESSION_MODELS = [
     "ard_regression",
@@ -63,8 +62,10 @@ class LinearPredictorTest(parameterized.TestCase):
         @edsl.computation
         def predictor_no_aes(x: edsl.Argument(predictor.alice, dtype=edsl.float64)):
             with predictor.alice:
-                x_fixed = edsl.cast(x, dtype=model_utils.DEFAULT_FIXED_DTYPE)
-            y = predictor.linear_predictor_fn(x_fixed, model_utils.DEFAULT_FIXED_DTYPE)
+                x_fixed = edsl.cast(x, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
+            y = predictor.linear_predictor_fn(
+                x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE
+            )
             y_t = predictor.post_transform(y)
             return predictor.handle_output(y_t, prediction_handler=predictor.bob)
 

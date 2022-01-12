@@ -1,12 +1,11 @@
 import json
 
 from pymoose import edsl
+from pymoose.predictors import aes_predictor
+from pymoose.predictors import predictor_utils as utils
 
-from . import model
-from . import model_utils as utils
 
-
-class DecisionTreeRegressor(model.AesPredictor):
+class DecisionTreeRegressor(aes_predictor.AesPredictor):
     def __init__(self, weights, children, split_conditions, split_indices):
         super().__init__()
         self.weights = weights
@@ -62,7 +61,7 @@ class DecisionTreeRegressor(model.AesPredictor):
             return self.fixedpoint_constant(leaf_weights[node], self.mirrored)
 
 
-class TreeEnsembleRegressor(model.AesPredictor):
+class TreeEnsembleRegressor(aes_predictor.AesPredictor):
     def __init__(self, trees, nb_features, base_score, learning_rate):
         super().__init__()
         self.nb_features = nb_features
@@ -158,7 +157,9 @@ class TreeEnsembleRegressor(model.AesPredictor):
         nb_features = input_shape[1].dim_value
 
         # `base_score` arg
-        base_score_attr = utils.find_attribute_in_node(forest_node, "base_values", enforce=False)
+        base_score_attr = utils.find_attribute_in_node(
+            forest_node, "base_values", enforce=False
+        )
         if base_score_attr is None:
             base_score = 0.0
         else:

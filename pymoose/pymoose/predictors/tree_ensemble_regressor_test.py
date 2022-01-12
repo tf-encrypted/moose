@@ -13,11 +13,9 @@ from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose.computation import utils as comp_utils
 from pymoose.logger import get_logger
+from pymoose.predictors import predictor_utils
+from pymoose.predictors import tree_ensemble_regressor
 from pymoose.testing import LocalMooseRuntime
-
-from . import model_utils
-from . import tree_ensemble_regressor
-
 
 _XGB_MODELS = [("xgboost_regressor", [14.121551, 14.121551, 113.279236])]
 _SK_MODELS = [
@@ -26,6 +24,7 @@ _SK_MODELS = [
     ("gradient_boosting_regressor", [6.98515914, 0.94996615, 22.03610848]),
     ("hist_gradient_boosting_regressor", [-1.01535751, -1.01535751, 12.34103961]),
 ]
+
 
 class TreeEnsembleRegressorTest(parameterized.TestCase):
     def _build_forest_from_onnx(self, model_name):
@@ -59,16 +58,18 @@ class TreeEnsembleRegressorTest(parameterized.TestCase):
         @edsl.computation
         def predictor_no_aes(x: edsl.Argument(predictor.alice, dtype=edsl.float64)):
             with predictor.alice:
-                x_fixed = edsl.cast(x, dtype=model_utils.DEFAULT_FIXED_DTYPE)
+                x_fixed = edsl.cast(x, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
             with predictor.replicated:
-                y = predictor._forest_fn(x_fixed, model_utils.DEFAULT_FIXED_DTYPE)
+                y = predictor._forest_fn(x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE)
             return predictor.handle_output(y, prediction_handler=predictor.bob)
 
         return predictor, predictor_no_aes
 
     @parameterized.parameters(*_XGB_MODELS + _SK_MODELS)
     def test_tree_ensemble_regressor_logic(self, model_name, expected):
-        input_x = np.array([[0, 1, 1, 0], [1, 0, 1, 0], [0.2, 4, 2, 6]], dtype=np.float64)
+        input_x = np.array(
+            [[0, 1, 1, 0], [1, 0, 1, 0], [0.2, 4, 2, 6]], dtype=np.float64
+        )
         regressor, regression_logic = self._build_prediction_logic(model_name, "onnx")
         traced_model_comp = edsl.trace(regression_logic)
         storage = {plc.name: {} for plc in regressor.host_placements}

@@ -3,12 +3,11 @@ import abc
 import numpy as np
 
 from pymoose import edsl
+from pymoose.predictors import aes_predictor
+from pymoose.predictors import predictor_utils
 
-from . import model
-from . import model_utils
 
-
-class LinearPredictor(model.AesPredictor, metaclass=abc.ABCMeta):
+class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     def __init__(self, coeffs, intercepts=None):
         super().__init__()
         self.coeffs, self.intercepts = _validate_model_args(coeffs, intercepts)
@@ -37,7 +36,7 @@ class LinearPredictor(model.AesPredictor, metaclass=abc.ABCMeta):
                 y = edsl.add(y, b)
             return y
 
-    def predictor_factory(self, fixedpoint_dtype=model_utils.DEFAULT_FIXED_DTYPE):
+    def predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
         @edsl.computation
         def predictor(
             aes_data: edsl.Argument(
@@ -60,7 +59,7 @@ class LinearRegressor(LinearPredictor):
 
     @classmethod
     def from_onnx(cls, model_proto):
-        lr_node = model_utils.find_node_in_model_proto(
+        lr_node = predictor_utils.find_node_in_model_proto(
             model_proto, "LinearRegressor", enforce=False
         )
         if lr_node is None:
@@ -69,14 +68,14 @@ class LinearRegressor(LinearPredictor):
                 "LinearRegressor operator."
             )
 
-        coeffs_attr = model_utils.find_attribute_in_node(lr_node, "coefficients")
+        coeffs_attr = predictor_utils.find_attribute_in_node(lr_node, "coefficients")
         if coeffs_attr.type != 6:  # FLOATS
             raise ValueError(
                 "LinearRegressor coefficients must be of type FLOATS, found other."
             )
         coeffs = coeffs_attr.floats
         # extract intercept if it's there, otherwise pass it as None
-        intercepts_attr = model_utils.find_attribute_in_node(
+        intercepts_attr = predictor_utils.find_attribute_in_node(
             lr_node, "intercepts", enforce=False
         )
         if intercepts_attr is None:
@@ -113,7 +112,7 @@ class LinearClassifier(LinearPredictor):
     @classmethod
     def from_onnx(cls, model_proto):
         # parse LinearClassifier node
-        lc_node = model_utils.find_node_in_model_proto(
+        lc_node = predictor_utils.find_node_in_model_proto(
             model_proto, "LinearClassifier", enforce=False
         )
         if lc_node is None:
@@ -123,7 +122,7 @@ class LinearClassifier(LinearPredictor):
             )
 
         # parse classifier coefficients
-        coeffs_attr = model_utils.find_attribute_in_node(
+        coeffs_attr = predictor_utils.find_attribute_in_node(
             lc_node, "coefficients", enforce=False
         )
         assert coeffs_attr is not None
@@ -134,10 +133,10 @@ class LinearClassifier(LinearPredictor):
         coeffs = np.asarray(coeffs_attr.floats)
 
         # reshape into (n_classes, n_features) matrix
-        classlabels_ints = model_utils.find_attribute_in_node(
+        classlabels_ints = predictor_utils.find_attribute_in_node(
             lc_node, "classlabels_ints", enforce=False
         )
-        classlabels_strings = model_utils.find_attribute_in_node(
+        classlabels_strings = predictor_utils.find_attribute_in_node(
             lc_node, "classlabels_strings", enforce=False
         )
         assert classlabels_ints is not None or classlabels_strings is not None
@@ -149,7 +148,7 @@ class LinearClassifier(LinearPredictor):
         coeffs = coeffs.reshape(n_classes, -1)
 
         # parse classifier intercepts
-        intercepts_attr = model_utils.find_attribute_in_node(
+        intercepts_attr = predictor_utils.find_attribute_in_node(
             lc_node, "intercepts", enforce=False
         )
         if intercepts_attr is None:
@@ -162,14 +161,16 @@ class LinearClassifier(LinearPredictor):
             intercepts = np.asarray(intercepts_attr.floats).reshape(1, n_classes)
 
         # infer multitask arg from multi_class attribute
-        multi_class_int = model_utils.find_attribute_in_node(lc_node, "multi_class")
+        multi_class_int = predictor_utils.find_attribute_in_node(lc_node, "multi_class")
         assert multi_class_int.type == 2  # INT
         multi_class = bool(multi_class_int.i)
         multitask = not multi_class
 
         # derive transform_output
-        multi_class_int = model_utils.find_attribute_in_node(lc_node, "multi_class")
-        post_transform = model_utils.find_attribute_in_node(lc_node, "post_transform")
+        multi_class_int = predictor_utils.find_attribute_in_node(lc_node, "multi_class")
+        post_transform = predictor_utils.find_attribute_in_node(
+            lc_node, "post_transform"
+        )
         post_transform_str = post_transform.s.decode()
         transform_output = post_transform_str != "NONE"
 
