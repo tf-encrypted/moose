@@ -1,7 +1,6 @@
 import inspect
 from collections import defaultdict
 
-from pymoose import elk_compiler
 from pymoose.computation import utils
 from pymoose.computation.base import Computation
 from pymoose.computation.base import OpSignature
@@ -73,6 +72,7 @@ from pymoose.edsl.base import SliceExpression
 from pymoose.edsl.base import SqueezeExpression
 from pymoose.edsl.base import SumExpression
 from pymoose.edsl.base import TransposeExpression
+from pymoose.rust import elk_compiler
 
 
 def trace(abstract_computation):
