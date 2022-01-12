@@ -137,7 +137,9 @@ modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axi
 modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, ConcatOp);
 modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor, ConcatOp);
 modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor, ConcatOp);
-//modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
+modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[Fixed64Tensor] -> Fixed64Tensor, ConcatOp);
+modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[Fixed128Tensor] -> Fixed128Tensor, ConcatOp);
+modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
 
 kernel! {
     ConcatOp, [
@@ -154,6 +156,8 @@ kernel! {
         (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [concrete] attributes[axis] Self::rep_rep_kernel),
         (ReplicatedPlacement, vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor => [concrete] attributes[axis] Self::rep_fixed_kernel),
         (ReplicatedPlacement, vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor => [concrete] attributes[axis] Self::rep_fixed_kernel),
-        //(ReplicatedPlacement, vec[Tensor] -> Tensor => [concrete] attributes[axis] Self::rep_logical_kernel),
+        (ReplicatedPlacement, vec[Fixed64Tensor] -> Fixed64Tensor => [concrete] attributes[axis] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, vec[Fixed128Tensor] -> Fixed128Tensor => [concrete] attributes[axis] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, vec[Tensor] -> Tensor => [concrete] attributes[axis] Self::logical_rep_kernel),
     ]
 }

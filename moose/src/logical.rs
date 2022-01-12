@@ -1551,33 +1551,20 @@ impl ConcatOp {
         }
     }
 
-    //pub(crate) fn rep_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
-    //    sess: &S,
-    //    plc: &ReplicatedPlacement,
-    //    axis: u32,
-    //    x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-    //) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
-    //where
-    //    ReplicatedPlacement: PlacementExp<S, Fixed64T, Fixed64T>,
-    //    ReplicatedPlacement: PlacementExp<S, Fixed128T, Fixed128T>,
-
-    //{
-    //    //match x {
-    //    //    AbstractTensor::Fixed64(x) => {
-    //    //        let result = plc.exp(sess, &x);
-    //    //        Ok(AbstractTensor::Fixed64(result))
-    //    //    }
-    //    //    AbstractTensor::Fixed128(x) => {
-    //    //        let result = plc.exp(sess, &x);
-    //    //        Ok(AbstractTensor::Fixed128(result))
-    //    //    }
-    //    //    _ => Err(Error::UnimplementedOperator(format!(
-    //    //        "Missing replicated concat for {:?}",
-    //    //        &x.ty_desc(),
-    //    //    ))),
-    //    //}
-    //    unimplemented!("rep_logical_kernel TODO")
-    //}
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>],
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        ReplicatedPlacement: PlacementConcatenate<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementConcatenate<S, Fixed128T, Fixed128T>,
+        Fixed64T: Clone,
+        Fixed128T: Clone,
+    {
+        unimplemented!("ConcatOp::logical_rep_kernel TODO")
+    }
 }
 
 modelled!(PlacementTranspose::transpose, HostPlacement, (Tensor) -> Tensor, TransposeOp);

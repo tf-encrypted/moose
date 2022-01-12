@@ -1518,6 +1518,22 @@ impl AddNOp {
     }
 }
 
+impl ConcatOp {
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[FixedTensor<HostFixedT, MirFixedT, RepFixedT>],
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementConcatenate<S, RepFixedT, RepFixedT>,
+        RepFixedT: Clone,
+    {
+        unimplemented!("ConcatOp::fixed_rep_kernel TODO")
+    }
+}
+
 pub trait FixedpointTensor {
     fn fractional_precision(&self) -> u32;
     fn integral_precision(&self) -> u32;
