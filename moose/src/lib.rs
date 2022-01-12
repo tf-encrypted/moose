@@ -4267,7 +4267,7 @@ pub mod common;
 pub mod compilation;
 pub mod computation;
 pub mod encrypted;
-pub mod error;
+pub mod error; // TODO make non-pub
 pub mod execution;
 pub mod fixedpoint;
 pub mod floatingpoint;
@@ -4283,3 +4283,6 @@ pub mod storage;
 pub mod symbolic;
 pub mod textual;
 pub mod utils;
+
+#[doc(inline)]
+pub use error::{Error, Result};
