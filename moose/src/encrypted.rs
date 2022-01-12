@@ -1,3 +1,5 @@
+//! Logical layer for AES encrypted tensors
+
 use crate::computation::*;
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, FixedTensor};
