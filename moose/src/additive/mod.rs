@@ -1,4 +1,4 @@
-//! Two-party additive secret sharing functionality
+//! Placement backed by two-party additive secret sharing
 use crate::computation::{HostPlacement, Placed, Role};
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};
