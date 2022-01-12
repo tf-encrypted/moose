@@ -238,7 +238,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let part2 = alt((
         HostSumOp::from_textual,
         HostOnesOp::from_textual,
-        HostConcatOp::from_textual,
+        ConcatOp::from_textual,
         HostTransposeOp::from_textual,
         HostInverseOp::from_textual,
         RingAddOp::from_textual,
@@ -1052,7 +1052,6 @@ impl ToTextual for Operator {
             HostMean(op) => op.to_textual(),
             HostSqrt(op) => op.to_textual(),
             HostOnes(op) => op.to_textual(),
-            HostConcat(op) => op.to_textual(),
             HostExpandDims(op) => op.to_textual(),
             HostSqueeze(op) => op.to_textual(),
             HostReshape(op) => op.to_textual(),

@@ -1090,30 +1090,8 @@ impl HostSqueezeOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat32Tensor] -> HostFloat32Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat64Tensor] -> HostFloat64Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt8Tensor] -> HostInt8Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt16Tensor] -> HostInt16Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt32Tensor] -> HostInt32Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt64Tensor] -> HostInt64Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostRing64Tensor] -> HostRing64Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostRing128Tensor] -> HostRing128Tensor, HostConcatOp);
-
-kernel! {
-    HostConcatOp, [
-        (HostPlacement, vec[HostFloat32Tensor] -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostFloat64Tensor] -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostInt8Tensor] -> HostInt8Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostInt16Tensor] -> HostInt16Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostInt32Tensor] -> HostInt32Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostInt64Tensor] -> HostInt64Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor => [runtime] attributes[axis] Self::ring_kernel),
-        (HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor => [runtime] attributes[axis] Self::ring_kernel),
-    ]
-}
-
-impl HostConcatOp {
-    pub fn kernel<S: Session, T: LinalgScalar + FromPrimitive>(
+impl ConcatOp {
+    pub(crate) fn kernel<S: Session, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         axis: u32,
@@ -1129,7 +1107,7 @@ impl HostConcatOp {
         Ok(HostTensor(c, plc.clone()))
     }
 
-    pub fn ring_kernel<S: Session, T>(
+    pub(crate) fn ring_kernel<S: Session, T>(
         _sess: &S,
         plc: &HostPlacement,
         axis: u32,

@@ -5,10 +5,7 @@ use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{HostShape, HostString};
 use crate::kernels::*;
-use crate::replicated::{
-    AbstractReplicatedFixedTensor, RepTen, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
-    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
-};
+use crate::replicated::{AbstractReplicatedFixedTensor, RepTen};
 use crate::symbolic::Symbolic;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -1399,26 +1396,8 @@ impl IndexAxisOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor, ConcatOp);
-//modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
-
-kernel! {
-    ConcatOp, [
-        (HostPlacement, vec[Tensor] -> Tensor => [concrete] attributes[axis] Self::host_kernel),
-        (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [concrete] attributes[axis] Self::rep_rep_kernel),
-        (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [concrete] attributes[axis] Self::rep_rep_kernel),
-        (ReplicatedPlacement, vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor => [concrete] attributes[axis] Self::rep_fixed_kernel),
-        (ReplicatedPlacement, vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor => [concrete] attributes[axis] Self::rep_fixed_kernel),
-        //(ReplicatedPlacement, vec[Tensor] -> Tensor => [concrete] attributes[axis] Self::rep_logical_kernel),
-    ]
-}
-
 impl ConcatOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         axis: u32,
@@ -1427,8 +1406,10 @@ impl ConcatOp {
     where
         HostPlacement: PlacementConcatenate<S, Float32T, Float32T>,
         HostPlacement: PlacementConcatenate<S, Float64T, Float64T>,
+        //HostPlacement: PlacementConcatenate<S, Fixed128T, Fixed128T>,
         Float32T: Clone,
         Float64T: Clone,
+        //Fixed128T: Clone,
     {
         match xs[0] {
             // (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
@@ -1439,11 +1420,27 @@ impl ConcatOp {
             //     let result = plc.concatenate(sess, axis, &x, &y);
             //     AbstractTensor::Fixed128(result)
             // }
+
+            //AbstractTensor::Fixed128(_) => {
+            //    let xs: Vec<Fixed128T> = xs
+            //        .iter()
+            //        .map(|x| match x {
+            //            AbstractTensor::Fixed128(x) => x.clone(),
+            //            _ => {
+            //                unimplemented!(
+            //                    "ConcatOp can not concatenate tensors of different kinds"
+            //                )
+            //            }
+            //        })
+            //        .collect();
+            //    let result = plc.concatenate(sess, axis, &xs);
+            //    Ok(AbstractTensor::Fixed128(result))
+            //}
             AbstractTensor::Float32(_) => {
                 let xs: Vec<Float32T> = xs
                     .iter()
                     .map(|x| match x {
-                        AbstractTensor::Float32(x) => (*x).clone(),
+                        AbstractTensor::Float32(x) => x.clone(),
                         _ => {
                             unimplemented!(
                                 "ConcatOp can not concatenate tensors of different kinds"
@@ -1458,7 +1455,7 @@ impl ConcatOp {
                 let xs: Vec<Float64T> = xs
                     .iter()
                     .map(|x| match x {
-                        AbstractTensor::Float64(x) => (*x).clone(),
+                        AbstractTensor::Float64(x) => x.clone(),
                         _ => {
                             unimplemented!(
                                 "ConcatOp can not concatenate tensors of different kinds"
@@ -1476,7 +1473,7 @@ impl ConcatOp {
         }
     }
 
-    fn rep_rep_kernel<S: Session, HostRingT>(
+    pub(crate) fn rep_rep_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: u32,
