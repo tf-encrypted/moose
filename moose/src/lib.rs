@@ -4009,7 +4009,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let vs: Vec<Value> = xs.iter().map(|x| x.clone().into()).collect();
+                let vs: Vec<SymbolicValue> = xs.iter().map(|x| Symbolic::Concrete(x.clone()).into()).collect();
                 let y = sess.execute(op.into(), &self.into(), vs).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
@@ -4028,7 +4028,7 @@ macro_rules! modelled_kernel {
                 &self,
                 sess: &crate::symbolic::SymbolicSession,
                 $($($attr_id:$attr_ty),*,)?
-                xs: &[<$t0 as crate::computation::SymbolicType>::Type]
+                xs: &[<$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, VariadicSignature, SymbolicValue};
                 use crate::kernels::{Session};
@@ -4046,7 +4046,7 @@ macro_rules! modelled_kernel {
 
                 let vs: Vec<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
                 let y = sess.execute(op.into(), &self.into(), vs).unwrap();
-                let y = Symbolic::try_from(y).unwrap();
+                Symbolic::try_from(y).unwrap()
             }
         }
     };

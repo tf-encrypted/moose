@@ -1870,6 +1870,65 @@ impl MuxOp {
     }
 }
 
+impl MaximumOp {
+    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: &[FixedTensor<HostFixedT, MirFixedT, RepFixedT>],
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementMaximum<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        RepFixedT: Clone,
+    {
+        let xv: Vec<RepFixedT> = x
+            .iter()
+            .map(|item| {
+                let out = match item {
+                    FixedTensor::Host(v) => plc.share(sess, v),
+                    FixedTensor::Mirrored3(v) => plc.share(sess, v),
+                    FixedTensor::Replicated(v) => v.clone(),
+                };
+                out
+            })
+            .collect();
+        let z = plc.maximum(sess, &xv);
+        Ok(FixedTensor::Replicated(z))
+    }
+
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: &[AbstractReplicatedFixedTensor<RepRingT>],
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementMaximum<S, RepRingT, RepRingT>,
+        RepRingT: Clone,
+    {
+        assert!(x.len() > 0);
+        let local_fractional_precision = x[0].fractional_precision;
+        let mut local_integral_precision = x[0].integral_precision;
+
+        let xv: Vec<_> = x
+            .iter()
+            .map(|item| {
+                assert_eq!(item.fractional_precision, local_fractional_precision);
+                local_integral_precision =
+                    u32::max(item.integral_precision, local_integral_precision);
+                // TODO(Dragos) can we get rid of this cloning?
+                item.tensor.clone()
+            })
+            .collect();
+
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: plc.maximum(sess, &xv),
+            fractional_precision: local_fractional_precision,
+            integral_precision: local_integral_precision,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

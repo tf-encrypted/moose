@@ -1082,6 +1082,7 @@ operators![
     RepShlDim,
     RepEqual,
     Mux,
+    Maximum,
     // Mirrored Operators
     Demirror,
     Mirror,
@@ -1168,6 +1169,12 @@ pub struct IndexAxisOp {
 pub struct SliceOp {
     pub sig: Signature,
     pub slice: SliceInfo,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+pub struct GetAxisOp {
+    pub sig: Signature,
+    pub axis: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
@@ -1857,6 +1864,11 @@ pub struct DemirrorOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct MirrorOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct MaximumOp {
     pub sig: Signature,
 }
 
