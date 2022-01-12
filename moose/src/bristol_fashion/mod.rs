@@ -1,5 +1,6 @@
 //! Code for applying [Bristol Fashion circuits](https://homes.esat.kuleuven.be/~nsmart/MPC/) on placements
 
+use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor, Session};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{newline, space0, u64};
@@ -7,7 +8,6 @@ use nom::combinator::{all_consuming, value};
 use nom::multi::{length_count, many0, many_m_n, separated_list0};
 use nom::sequence::{delimited, terminated, tuple};
 use std::convert::TryFrom;
-use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor, Session};
 
 const AES_128: &[u8] = include_bytes!("aes_128.txt");
 
