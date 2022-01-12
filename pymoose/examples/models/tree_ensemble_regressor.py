@@ -158,9 +158,12 @@ class TreeEnsembleRegressor(model.AesPredictor):
         nb_features = input_shape[1].dim_value
 
         # `base_score` arg
-        base_score_attr = utils.find_attribute_in_node(forest_node, "base_values")
-        assert base_score_attr.type == 6  # FLOATS
-        base_score = base_score_attr.floats[0]
+        base_score_attr = utils.find_attribute_in_node(forest_node, "base_values", enforce=False)
+        if base_score_attr is None:
+            base_score = 0.0
+        else:
+            assert base_score_attr.type == 6  # FLOATS
+            base_score = base_score_attr.floats[0]
 
         # `learning_rate` arg
         # NOTE: ONNX assumes the leaf weights have already been scaled by the
