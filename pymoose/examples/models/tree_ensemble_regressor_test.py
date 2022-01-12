@@ -19,10 +19,18 @@ from . import model_utils
 from . import tree_ensemble_regressor
 
 
+_XGB_MODELS = [("xgboost_regressor", [14.121551, 14.121551, 113.279236])]
+_SK_MODELS = [
+    ("extra_trees_regressor", [-13.39700383, -13.39700383, 114.41578554]),
+    ("random_forest_regressor", [-4.89890751, -4.89890751, 125.78084158]),
+    ("gradient_boosting_regressor", [6.98515914, 0.94996615, 22.03610848]),
+    ("hist_gradient_boosting_regressor", [-1.01535751, -1.01535751, 12.34103961]),
+]
+
 class TreeEnsembleRegressorTest(parameterized.TestCase):
-    def _build_forest_from_onnx(self):
+    def _build_forest_from_onnx(self, model_name):
         root_path = pathlib.Path(__file__).parent.absolute()
-        fixture_path = root_path / "fixtures" / "xgboost_regressor.onnx"
+        fixture_path = root_path / "fixtures" / f"{model_name}.onnx"
         with open(fixture_path, "rb") as model_fixture:
             forest_onnx = onnx.load_model(model_fixture)
         forest_model = tree_ensemble_regressor.TreeEnsembleRegressor.from_onnx(
@@ -40,9 +48,9 @@ class TreeEnsembleRegressorTest(parameterized.TestCase):
         )
         return forest_model
 
-    def _build_prediction_logic(self, onnx_or_json):
+    def _build_prediction_logic(self, model_name, onnx_or_json):
         if onnx_or_json == "onnx":
-            predictor = self._build_forest_from_onnx()
+            predictor = self._build_forest_from_onnx(model_name)
         elif onnx_or_json == "json":
             predictor = self._build_forest_from_json()
         else:
@@ -58,9 +66,10 @@ class TreeEnsembleRegressorTest(parameterized.TestCase):
 
         return predictor, predictor_no_aes
 
-    def test_tree_ensemble_regressor_logic(self):
-        input_x = np.array([[0, 1, 1, 0], [1, 0, 1, 0]], dtype=np.float64)
-        regressor, regression_logic = self._build_prediction_logic("onnx")
+    @parameterized.parameters(*_XGB_MODELS + _SK_MODELS)
+    def test_tree_ensemble_regressor_logic(self, model_name, expected):
+        input_x = np.array([[0, 1, 1, 0], [1, 0, 1, 0], [0.2, 4, 2, 6]], dtype=np.float64)
+        regressor, regression_logic = self._build_prediction_logic(model_name, "onnx")
         traced_model_comp = edsl.trace(regression_logic)
         storage = {plc.name: {} for plc in regressor.host_placements}
         runtime = LocalMooseRuntime(storage_mapping=storage)
@@ -71,11 +80,12 @@ class TreeEnsembleRegressorTest(parameterized.TestCase):
             arguments={"x": input_x},
         )
         actual_result = list(result_dict.values())[0]
-        expected_result = np.array([5.327446, 54.89666], dtype=np.float64)
-        np.testing.assert_almost_equal(actual_result, expected_result, decimal=5)
+        expected_result = np.array(expected, dtype=np.float64)
+        np.testing.assert_almost_equal(actual_result, expected_result, decimal=6)
 
-    def test_serde(self):
-        forest = self._build_forest_from_onnx()
+    @parameterized.parameters(*map(lambda x: x[0], _XGB_MODELS + _SK_MODELS))
+    def test_serde(self, model_name):
+        forest = self._build_forest_from_onnx(model_name)
         predictor = forest.predictor_factory()
         traced = edsl.trace(predictor)
         serialized = comp_utils.serialize_computation(traced)
