@@ -137,6 +137,12 @@ class ConcatenateExpression(Expression):
 
 
 @dataclass
+class MaximumExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class DecryptExpression(Expression):
     def __hash__(self):
         return id(self)
@@ -348,6 +354,33 @@ def concatenate(arrays, axis=0, placement=None):
     return ConcatenateExpression(
         placement=placement, inputs=arrays, axis=axis, vtype=input_vtype
     )
+
+
+def maximum(arrays, placement=None):
+    placement = placement or get_current_placement()
+    if not isinstance(arrays, (tuple, list)):
+        raise ValueError(
+            "Inputs to `concatenate` must be array-like, found argument "
+            f"of type {type(arrays)}."
+        )
+    input_vtype = arrays[0].vtype
+    if isinstance(input_vtype, TensorType):
+        expected_vtype = input_vtype
+        expected_dtype = input_vtype.dtype
+    else:
+        raise ValueError(f"Inputs must be have vtype TensorType, found {input_vtype}.")
+
+    for array in arrays:
+        if array.vtype != expected_vtype:
+            raise ValueError(
+                f"Inputs must be have vtype TensorType, found {array.vtype}."
+            )
+        if array.vtype.dtype != expected_dtype:
+            raise ValueError(
+                f"Values passed to concatenate must be same dtype: found {array.dtype} "
+                f"and {expected_dtype} in value of `arrays` argument."
+            )
+    return MaximumExpression(placement=placement, inputs=arrays, vtype=input_vtype)
 
 
 def decrypt(key, ciphertext, placement=None):

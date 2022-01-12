@@ -28,6 +28,7 @@ enum PyOperation {
     std_SliceOperation(PySliceOperation),
     std_OnesOperation(PyOnesOperation),
     std_ConcatenateOperation(PyConcatenateOperation),
+    std_MaximumOperation(PyMaximumOperation),
     std_DecryptOperation(PyDecryptOperation),
     std_TransposeOperation(PyTransposeOperation),
     std_ExpandDimsOperation(PyExpandDimsOperation),
@@ -313,6 +314,14 @@ struct PyConcatenateOperation {
     placement_name: String,
     signature: PyOpSignature,
     axis: u32,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyMaximumOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
 }
 
 #[derive(Deserialize, Debug)]
@@ -792,6 +801,22 @@ impl TryFrom<PyComputation> for Computation {
                                 // TODO[jason] input_types should actually just be a single type, not one for each array
                                 sig: Signature::from_variadic(&op.signature, "array0")?,
                                 axis: op.axis,
+                            }
+                            .into(),
+                            inputs: sorted_input_names,
+                            name: op.name.clone(),
+                            placement: map_placement(&placements, &op.placement_name)?,
+                        })
+                    }
+                    std_MaximumOperation(op) => {
+                        let mut inputs: Vec<(&String, &String)> = op.inputs.iter().collect();
+                        inputs.sort_by_key(|x| x.0);
+                        let sorted_input_names: Vec<String> =
+                            inputs.into_iter().map(|(_k, v)| v.clone()).collect();
+                        Ok(Operation {
+                            kind: MaximumOp {
+                                // TODO[jason] input_types should actually just be a single type, not one for each array
+                                sig: Signature::from_variadic(&op.signature, "array0")?,
                             }
                             .into(),
                             inputs: sorted_input_names,
