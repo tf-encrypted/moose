@@ -6,6 +6,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from pymoose import edsl
+from pymoose.computation.standard import StringType
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
@@ -18,49 +19,50 @@ class ReducemaxLogicExample(parameterized.TestCase):
         rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
         @edsl.computation
-        def my_comp():
+        def my_comp(x_uri: edsl.Argument(placement=bob, vtype=StringType())):
             with bob:
-                x = edsl.constant(
-                    np.array(
-                        [[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]],
-                        dtype=np.float64,
-                    )
-                )
-                xf = edsl.cast(x, dtype=edsl.fixed(8, 27))
-                res = edsl.save("x0", edsl.index_axis(x, axis=2, index=0))
-                x0 = edsl.index_axis(xf, axis=2, index=0)
-                x1 = edsl.index_axis(xf, axis=2, index=1)
-                x2 = edsl.index_axis(xf, axis=2, index=2)
+                x = edsl.load(x_uri, dtype=edsl.float64)
+                x_fixed = edsl.cast(x, dtype=edsl.fixed(8, 27))
+                x0 = edsl.index_axis(x_fixed, axis=2, index=0)
+                x1 = edsl.index_axis(x_fixed, axis=2, index=1)
+                x2 = edsl.index_axis(x_fixed, axis=2, index=2)
 
             with rep:
-                x_max = edsl.maximum([x0, x1, x2, x0])
+                x_max = edsl.maximum([x0, x1, x2])
 
             with bob:
                 x_max_host = edsl.cast(x_max, dtype=edsl.float64)
+                res = edsl.save("reduce_max", x_max_host)
 
-            return res, x_max_host
+            return res
 
         return my_comp
 
-    def test_example_execute(self):
+    @parameterized.parameters(
+        ([[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]],),
+        ([[[1, 10, 1], [4, 100, 32]], [[123, 521, 132], [312, 421, 321]]],),
+    )
+    def test_example_execute(self, x):
         comp = self._setup_comp()
         traced_less_comp = edsl.trace(comp)
+
+        x_arg = np.array(x, dtype=np.float64)
+
         storage = {
             "alice": {},
-            "bob": {},
             "carole": {},
+            "bob": {"x_arg": x_arg,},
         }
+
         runtime = LocalMooseRuntime(storage_mapping=storage)
-        result_dict = runtime.evaluate_computation(
+        _ = runtime.evaluate_computation(
             computation=traced_less_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
-            arguments={},
+            arguments={"x_uri": "x_arg",},
         )
 
-        print("outputs: ", result_dict)
-
-        x0 = runtime.read_value_from_storage("bob", "x0")
-        np.testing.assert_almost_equal(x0, [[1, 4], [7, 10]])
+        x0 = runtime.read_value_from_storage("bob", "reduce_max")
+        np.testing.assert_almost_equal(x0, x_arg.max(axis=2))
 
 
 if __name__ == "__main__":
