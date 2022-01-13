@@ -125,6 +125,35 @@ class EdslTest(parameterized.TestCase):
             ),
         )
 
+    def test_add_n(self):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            x0 = edsl.add_n(
+                [
+                    edsl.constant(np.array([1], dtype=np.float32), placement=player0),
+                    edsl.constant(np.array([1], dtype=np.float32), placement=player0),
+                ],
+                placement=player0,
+            )
+            return x0
+
+        concrete_comp = trace(my_comp)
+        op = concrete_comp.operation("add_n_0")
+        assert op == standard_ops.AddNOperation(
+            placement_name="player0",
+            name="add_n_0",
+            inputs={"array0": "constant_0", "array1": "constant_1"},
+            signature=OpSignature(
+                {
+                    "array0": TensorType(dtypes.float32),
+                    "array1": TensorType(dtypes.float32),
+                },
+                TensorType(dtypes.float32),
+            ),
+        )
+
     def test_ones(self):
         player0 = edsl.host_placement(name="player0")
 

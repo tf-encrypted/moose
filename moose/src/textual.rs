@@ -1,3 +1,4 @@
+use crate::additive::AdditivePlacement;
 use crate::computation::*;
 use crate::host::{RawShape, SliceInfo, SliceInfoElem};
 use crate::logical::TensorDType;
@@ -267,14 +268,21 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         HostSqrtOp::from_textual,
         HostDiagOp::from_textual,
         HostSqueezeOp::from_textual,
+        AddNOp::from_textual,
         AddOp::from_textual,
         SubOp::from_textual,
         MulOp::from_textual,
         DivOp::from_textual,
         DotOp::from_textual,
         MeanOp::from_textual,
+        RingNegOp::from_textual,
+        HostShlDimOp::from_textual,
+        HostBitDecOp::from_textual,
+        FillOp::from_textual,
+        IndexAxisOp::from_textual,
     ));
-    alt((part1, part2, part3))(input)
+    let part4 = alt((DemirrorOp::from_textual, MirrorOp::from_textual));
+    alt((part1, part2, part3, part4))(input)
 }
 
 /// Parses a HostExpandDims operator
@@ -737,8 +745,6 @@ pub fn slice_info_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str
         opt(attributes_member("end", parse_int)),
         opt(attributes_member("step", parse_int)),
     ))(input)?;
-    println!("Got parsed {:?} {:?} {:?}", start, end, step);
-    println!("Remainder: {}", input);
 
     Ok((input, SliceInfo(vec![SliceInfoElem { start, end, step }])))
 }
@@ -1142,6 +1148,8 @@ impl ToTextual for Operator {
             Sigmoid(op) => op.to_textual(),
             Less(op) => op.to_textual(),
             GreaterThan(op) => op.to_textual(),
+            Demirror(op) => op.to_textual(),
+            Mirror(op) => op.to_textual(),
         }
     }
 }
@@ -1266,7 +1274,7 @@ impl ToTextual for RingSampleOp {
             RingSampleOp {
                 sig,
                 max_value: None,
-            } => format!("RingSample: {}", sig.to_textual()),
+            } => format!("RingSample{{}}: {}", sig.to_textual()),
         }
     }
 }
@@ -1285,7 +1293,7 @@ impl ToTextual for RingSampleSeededOp {
             RingSampleSeededOp {
                 sig,
                 max_value: None,
-            } => format!("RingSampleSeeded: {}", sig.to_textual()),
+            } => format!("RingSampleSeeded{{}}: {}", sig.to_textual()),
         }
     }
 }
@@ -1564,7 +1572,7 @@ impl ToTextual for Signature {
                 ret.to_textual()
             ),
             Signature::Variadic(VariadicSignature { args, ret }) => {
-                format!("(vec[{}]) -> {}", args.to_textual(), ret.to_textual())
+                format!("[{}] -> {}", args.to_textual(), ret.to_textual())
             }
         }
     }
@@ -2024,6 +2032,9 @@ mod tests {
 
         parse_assignment::<(&str, ErrorKind)>(
             "load = Load: (String, String) -> Float64Tensor (xuri, xconstant) @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "addN = AddN: [String] -> String (xuri, xconstant) @Host(alice)",
         )?;
 
         Ok(())

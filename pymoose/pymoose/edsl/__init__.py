@@ -4,9 +4,16 @@ from pymoose.computation.dtypes import float32
 from pymoose.computation.dtypes import float64
 from pymoose.computation.dtypes import int32
 from pymoose.computation.dtypes import int64
+from pymoose.computation.standard import AesKeyType
+from pymoose.computation.standard import AesTensorType
+from pymoose.computation.standard import FloatType
+from pymoose.computation.standard import IntType
+from pymoose.computation.standard import StringType
+from pymoose.computation.standard import TensorType
 from pymoose.edsl.base import Argument
 from pymoose.edsl.base import abs
 from pymoose.edsl.base import add
+from pymoose.edsl.base import add_n
 from pymoose.edsl.base import atleast_2d
 from pymoose.edsl.base import cast
 from pymoose.edsl.base import computation
@@ -46,36 +53,41 @@ from pymoose.edsl.tracer import trace_and_compile
 __all__ = [
     abs,
     add,
+    add_n,
+    AesKeyType,
+    AesTensorType,
     Argument,
     atleast_2d,
-    logical_or,
+    bool_,
     cast,
     computation,
     concatenate,
     constant,
-    host_placement,
-    mirrored_placement,
-    replicated_placement,
     decrypt,
     div,
     dot,
     exp,
     expand_dims,
     fixed,
-    bool_,
     float32,
     float64,
+    FloatType,
+    host_placement,
     identity,
     index_axis,
     int32,
     int64,
+    IntType,
     inverse,
     less,
     load,
+    logical_or,
+    mirrored_placement,
     mul,
     mux,
     mean,
     ones,
+    replicated_placement,
     reshape,
     save,
     slice,
@@ -85,7 +97,9 @@ __all__ = [
     sigmoid,
     sub,
     sum,
+    TensorType,
     transpose,
     trace,
     trace_and_compile,
+    StringType,
 ]

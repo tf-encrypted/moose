@@ -1,5 +1,6 @@
 use crate::boolean::{BoolTensor, BooleanTensor};
 use crate::computation::*;
+use crate::error::Error;
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape, HostString};
 use crate::kernels::*;
@@ -42,12 +43,12 @@ impl IdentityOp {
         x: FloatTensor<HostFloatT, MirroredT>,
     ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
-        HostPlacement: PlacementIdentity<S, HostFloatT, HostFloatT>,
-        HostPlacement: PlacementIdentity<S, MirroredT, HostFloatT>,
+        HostPlacement: PlacementPlace<S, HostFloatT>,
+        HostPlacement: PlacementDemirror<S, MirroredT, HostFloatT>,
     {
         let x = match x {
-            FloatTensor::Host(v) => plc.identity(sess, &v),
-            FloatTensor::Mirrored3(v) => plc.identity(sess, &v),
+            FloatTensor::Host(v) => plc.place(sess, v),
+            FloatTensor::Mirrored3(v) => plc.demirror(sess, &v),
         };
         Ok(FloatTensor::Host(x))
     }
@@ -165,6 +166,41 @@ impl FloatingpointAddOp {
 
         let z = plc.add(sess, &x, &y);
         Ok(FloatTensor::Host(z))
+    }
+}
+
+impl AddNOp {
+    pub(crate) fn float_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &HostPlacement,
+        xs: &[FloatTensor<HostFloatT, MirroredT>],
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementAddN<S, HostFloatT, HostFloatT>,
+        HostFloatT: Clone,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot add_n on empty array of tensors".to_string(),
+            ))
+        } else {
+            let first = &xs[0];
+            let vec: Vec<HostFloatT> = match first {
+                FloatTensor::Host(_) => {
+                    let vec: Vec<HostFloatT> = xs
+                        .iter()
+                        .map(|tensor| match tensor {
+                            FloatTensor::Host(x) => x.clone(),
+                            FloatTensor::Mirrored3(_) => unimplemented!(),
+                        })
+                        .collect();
+                    vec
+                }
+                FloatTensor::Mirrored3(_v) => unimplemented!(),
+            };
+            let result = plc.add_n(sess, &vec);
+            Ok(FloatTensor::Host(result))
+        }
     }
 }
 
