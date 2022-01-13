@@ -876,6 +876,27 @@ impl VariadicSignature {
 
                 Ok(())
             }
+            Signature::Ternary(sig) => {
+                if self.args == sig.arg0 && self.args == sig.arg1 && self.args == sig.arg2 {
+                    if let Some(new_type) = self.args.merge(&sig.arg0) {
+                        self.args = new_type;
+                    }
+
+                    if let Some(new_type) = self.args.merge(&sig.arg1) {
+                        self.args = new_type;
+                    }
+
+                    if let Some(new_type) = self.args.merge(&sig.arg2) {
+                        self.args = new_type;
+                    }
+                }
+
+                if let Some(new_type) = self.ret.merge(&sig.ret) {
+                    self.ret = new_type;
+                }
+
+                Ok(())
+            }
             o => Err(anyhow::anyhow!(
                 "Can not merge {:?} with an incompatible signature {:?}",
                 self,
