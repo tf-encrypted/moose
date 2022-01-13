@@ -12,6 +12,7 @@ use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::num::Wrapping;
 use std::ops::Mul;
 
@@ -1384,7 +1385,9 @@ impl AddNOp {
     where
         HostPlacement: PlacementAddN<S, HostFixedT, HostFixedT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
-        HostFixedT: Clone,
+        HostFixedT: Clone + Debug,
+        MirFixedT: Debug,
+        RepFixedT: Debug,
     {
         if xs.is_empty() {
             Err(Error::InvalidArgument(
@@ -1398,7 +1401,10 @@ impl AddNOp {
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
                             FixedTensor::Host(x) => (*x).clone(),
-                            _ => unimplemented!("mixed types in tensor"),
+                            other => unimplemented!(
+                                "Mixed types in input vector, expected Fixed::Host, found {:?}",
+                                other
+                            ),
                         })
                         .collect();
                     let result = plc.add_n(sess, &vec);
@@ -1409,7 +1415,10 @@ impl AddNOp {
                         .iter()
                         .map(|t| match t {
                             FixedTensor::Replicated(x) => plc.reveal(sess, x),
-                            _ => unimplemented!("mixed types in tensor"),
+                            other => unimplemented!(
+                                "Mixed types in input vector, expected Fixed::Replicated, found {:?}",
+                                other
+                            ),
                         })
                         .collect();
                     Ok(FixedTensor::Host(plc.add_n(sess, &vec)))

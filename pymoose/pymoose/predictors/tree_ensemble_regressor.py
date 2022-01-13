@@ -58,7 +58,7 @@ class DecisionTreeRegressor(aes_predictor.AesPredictor):
         else:
             assert left_child == 0
             assert right_child == 0
-            return self.fixedpoint_constant(leaf_weights[node], self.mirrored)
+            return self.fixedpoint_constant(leaf_weights[node], self.carole)
 
 
 class TreeEnsembleRegressor(aes_predictor.AesPredictor):
@@ -200,12 +200,15 @@ class TreeEnsembleRegressor(aes_predictor.AesPredictor):
             )
             for tree in self.trees
         ]
-        final_score = self.fixedpoint_constant(
-            self.base_score, self.mirrored, dtype=fixedpoint_dtype
+        base_score = self.fixedpoint_constant(
+            self.base_score, self.carole, dtype=fixedpoint_dtype
         )
-        for tree_score in tree_scores:
-            final_score = edsl.add(tree_score, final_score)
-        return final_score
+        # ugly way of ensuring it's replicated;
+        # normally it would be replicated just by using it in add_n @ replicated,
+        # but here it's input to an op w/ variadic signature, which does not do
+        # the work of converting from host to replicated for all of its inputs
+        base_score = edsl.identity(base_score)
+        return edsl.add_n([base_score] + tree_scores)
 
     @classmethod
     def _unbundle_forest_params(cls, model_json):
