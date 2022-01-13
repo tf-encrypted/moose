@@ -1878,7 +1878,7 @@ impl MaximumOp {
         Fixed64T: Clone,
         Fixed128T: Clone,
     {
-        assert!(x.len() > 0);
+        assert!(!x.is_empty());
 
         for entry in x {
             assert_eq!(entry.ty_desc(), x[0].ty_desc());

@@ -1999,12 +1999,11 @@ impl MaximumOp {
         let xv: Vec<RepFixedT> = x
             .iter()
             .map(|item| {
-                let out = match item {
+                match item {
                     FixedTensor::Host(v) => plc.share(sess, v),
                     FixedTensor::Mirrored3(v) => plc.share(sess, v),
                     FixedTensor::Replicated(v) => v.clone(),
-                };
-                out
+                }
             })
             .collect();
         let z = plc.maximum(sess, &xv);
@@ -2020,7 +2019,8 @@ impl MaximumOp {
         ReplicatedPlacement: PlacementMaximum<S, RepRingT, RepRingT>,
         RepRingT: Clone,
     {
-        assert!(x.len() > 0);
+        assert!(!x.is_empty());
+
         let local_fractional_precision = x[0].fractional_precision;
         let mut local_integral_precision = x[0].integral_precision;
 
