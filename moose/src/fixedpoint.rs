@@ -2020,14 +2020,14 @@ impl MaximumOp {
         assert!(!x.is_empty());
 
         let local_fractional_precision = x[0].fractional_precision;
-        let mut local_integral_precision = x[0].integral_precision;
+        let local_integral_precision = x.iter().fold(x[0].integral_precision, |max, val| {
+            u32::max(max, val.integral_precision)
+        });
 
         let xv: Vec<_> = x
             .iter()
             .map(|item| {
                 assert_eq!(item.fractional_precision, local_fractional_precision);
-                local_integral_precision =
-                    u32::max(item.integral_precision, local_integral_precision);
                 // TODO(Dragos) can we get rid of this cloning?
                 item.tensor.clone()
             })
