@@ -11,7 +11,7 @@ const COLORS: [&str; 9] = [
 ];
 
 /// Prints the computation's graph DOT representation to stdout
-pub fn print_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
+pub fn get_dot_graph(comp: &Computation) -> String {
     let graph = comp.as_graph();
 
     // We need to compute the color lookup table ahead of time, because `Dot`'s closures capture everything as immutable
@@ -24,7 +24,7 @@ pub fn print_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
             .or_insert_with(|| COLORS[color.next().unwrap_or_default() % COLORS.len()]);
     }
 
-    println!(
+    format!(
         "{:?}",
         Dot::with_attr_getters(
             &graph,
@@ -56,7 +56,13 @@ pub fn print_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
                 )
             }
         )
-    );
+    )
+}
+
+/// Prints the computation's graph DOT representation to stdout
+pub fn print_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
+    let graph = get_dot_graph(comp);
+    println!("{}", graph);
     Ok(None)
 }
 
