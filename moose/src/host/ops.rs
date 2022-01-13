@@ -6,7 +6,7 @@ use crate::{Const, Ring, N128, N224, N64};
 use ndarray::LinalgScalar;
 #[cfg(feature = "blas")]
 use ndarray_linalg::Lapack;
-use num_traits::{Zero, Float, FromPrimitive};
+use num_traits::{Float, FromPrimitive, Zero};
 use std::marker::PhantomData;
 use std::num::Wrapping;
 

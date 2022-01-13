@@ -1330,7 +1330,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::ops::{Add, Sub, Mul, Div};
+    use std::ops::{Add, Div, Mul, Sub};
 
     #[test]
     fn dot_prod_f32() {
