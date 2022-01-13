@@ -1,3 +1,5 @@
+//! Abstraction layer for floating-point values
+
 use crate::boolean::{BoolTensor, BooleanTensor};
 use crate::computation::*;
 use crate::error::Error;

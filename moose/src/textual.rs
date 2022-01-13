@@ -1,3 +1,5 @@
+//! Textual representation of computations
+
 use crate::additive::AdditivePlacement;
 use crate::computation::*;
 use crate::host::{RawShape, SliceInfo, SliceInfoElem};

@@ -1,4 +1,4 @@
-//! High-level logical layer
+//! Abstraction layer for high-level logical tensors
 
 use crate::boolean::BooleanTensor;
 use crate::computation::*;

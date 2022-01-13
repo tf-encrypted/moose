@@ -1,4 +1,4 @@
-//! Code for applying [Bristol Fashion circuits](https://homes.esat.kuleuven.be/~nsmart/MPC/) on placements
+//! Support for applying [Bristol Fashion circuits](https://homes.esat.kuleuven.be/~nsmart/MPC/)
 
 use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor, Session};
 use nom::branch::alt;
