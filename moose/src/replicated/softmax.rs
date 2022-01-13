@@ -4,7 +4,7 @@ use crate::error::Result;
 use macros::with_context;
 
 impl MaximumOp {
-    pub(crate) fn kernel<S: Session, RepRingT, RepBitT>(
+    pub(crate) fn kernel<S: Session, RepRingT, RepBitT, MirRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: &[RepRingT],
@@ -17,6 +17,8 @@ impl MaximumOp {
         ReplicatedPlacement: PlacementNeg<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementMaximum<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirRingT>,
+        ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
     {
         let n = x.len();
         if n == 1 {
@@ -30,12 +32,12 @@ impl MaximumOp {
             let lesser = plc.less(sess, &max_chunk1, &max_chunk2);
 
             let lesser_ring = plc.ring_inject(sess, 0, &lesser);
-            let lesser_ring_neg = plc.neg(sess, &lesser_ring);
+            let ones = plc.shape_fill(sess, Constant::Ring64(1), &lesser_ring);
 
             let expr = with_context!(
                 plc,
                 sess,
-                lesser_ring * max_chunk2 + lesser_ring_neg * max_chunk1
+                lesser_ring * max_chunk2 + (ones - lesser_ring) * max_chunk1
             );
             Ok(expr)
         }

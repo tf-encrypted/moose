@@ -30,15 +30,15 @@ class ReducemaxLogicExample(parameterized.TestCase):
                 res = edsl.save("x0", edsl.index_axis(x, axis=2, index=0))
                 x0 = edsl.index_axis(xf, axis=2, index=0)
                 x1 = edsl.index_axis(xf, axis=2, index=1)
+                x2 = edsl.index_axis(xf, axis=2, index=2)
 
             with rep:
-                x_max = edsl.maximum([x0, x1])
+                x_max = edsl.maximum([x0, x1, x2, x0])
 
             with bob:
                 x_max_host = edsl.cast(x_max, dtype=edsl.float64)
-                x_float = edsl.cast(x0, dtype=edsl.float64)
 
-            return res, x_max_host, x_float
+            return res, x_max_host
 
         return my_comp
 

@@ -377,7 +377,7 @@ def maximum(arrays, placement=None):
             )
         if array.vtype.dtype != expected_dtype:
             raise ValueError(
-                f"Values passed to concatenate must be same dtype: found {array.dtype} "
+                f"Values passed to maximum must be same dtype: found {array.dtype} "
                 f"and {expected_dtype} in value of `arrays` argument."
             )
     return MaximumExpression(placement=placement, inputs=arrays, vtype=input_vtype)
