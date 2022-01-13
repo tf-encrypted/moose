@@ -1998,12 +1998,10 @@ impl MaximumOp {
     {
         let xv: Vec<RepFixedT> = x
             .iter()
-            .map(|item| {
-                match item {
-                    FixedTensor::Host(v) => plc.share(sess, v),
-                    FixedTensor::Mirrored3(v) => plc.share(sess, v),
-                    FixedTensor::Replicated(v) => v.clone(),
-                }
+            .map(|item| match item {
+                FixedTensor::Host(v) => plc.share(sess, v),
+                FixedTensor::Mirrored3(v) => plc.share(sess, v),
+                FixedTensor::Replicated(v) => v.clone(),
             })
             .collect();
         let z = plc.maximum(sess, &xv);
