@@ -48,10 +48,10 @@ impl MuxOp {
 
 #[cfg(test)]
 mod tests {
-    use crate::computation::{HostPlacement};
+    use crate::computation::HostPlacement;
     use crate::host::FromRawPlc;
     use crate::kernels::*;
-    use crate::replicated::{ReplicatedRing128Tensor, ReplicatedPlacement};
+    use crate::replicated::{ReplicatedPlacement, ReplicatedRing128Tensor};
     use ndarray::{array, IxDyn};
 
     #[test]

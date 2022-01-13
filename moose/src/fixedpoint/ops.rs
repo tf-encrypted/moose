@@ -1,5 +1,6 @@
 //! Support for fixed-point arithmetic
 
+use super::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::boolean::{BoolTensor, BooleanTensor};
 use crate::computation::*;
 use crate::error::{Error, Result};
@@ -8,14 +9,7 @@ use crate::host::*;
 use crate::kernels::*;
 use crate::mirrored::*;
 use crate::replicated::*;
-use crate::symbolic::Symbolic;
 use macros::with_context;
-use ndarray::prelude::*;
-use num_traits::{One, Zero};
-use serde::{Deserialize, Serialize};
-use std::num::Wrapping;
-use std::ops::Mul;
-use super::{Convert, PrefixMul, FixedTensor, Fixed64Tensor, Fixed128Tensor};
 
 impl IdentityOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
@@ -1777,10 +1771,13 @@ impl MuxOp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fixedpoint::{Convert, PrefixMul};
     use crate::kernels::SyncSession;
     use crate::replicated::AbstractReplicatedRingTensor;
     use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
+    use ndarray::prelude::*;
     use proptest::prelude::*;
+    use std::num::Wrapping;
 
     #[test]
     fn ring_fixedpoint() {

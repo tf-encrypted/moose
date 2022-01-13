@@ -1,7 +1,7 @@
 //! Abstraction layer for high-level logical tensors
 
 use crate::boolean::BooleanTensor;
-use crate::computation::*;
+use crate::computation::{PartiallySymbolicType, Placed, Placement, SymbolicType};
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};

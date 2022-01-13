@@ -1,15 +1,12 @@
 //! Abstraction layer for fixed-point values
 
-use crate::boolean::{BoolTensor, BooleanTensor};
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::floatingpoint::FloatTensor;
 use crate::host::*;
 use crate::kernels::*;
 use crate::mirrored::*;
 use crate::replicated::*;
 use crate::symbolic::Symbolic;
-use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};

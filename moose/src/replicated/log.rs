@@ -50,10 +50,10 @@ impl RepEqualOp {
 
 #[cfg(test)]
 mod tests {
-    use crate::computation::{HostPlacement};
+    use crate::computation::HostPlacement;
     use crate::host::{AbstractHostRingTensor, HostBitTensor};
     use crate::kernels::*;
-    use crate::replicated::{ReplicatedBitTensor , ReplicatedPlacement};
+    use crate::replicated::{ReplicatedBitTensor, ReplicatedPlacement};
     use ndarray::{array, IxDyn};
 
     #[test]
