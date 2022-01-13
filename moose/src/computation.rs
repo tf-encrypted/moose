@@ -1,19 +1,13 @@
 use crate::additive::*;
-use crate::boolean::*;
-use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::floatingpoint::{Float32Tensor, Float64Tensor, Mirrored3Float32, Mirrored3Float64};
 use crate::host::*;
 use crate::kernels::Session;
-use crate::logical::{Tensor, TensorDType};
-use crate::mirrored::{
-    Mirrored3BitTensor, Mirrored3Fixed128Tensor, Mirrored3Fixed64Tensor, Mirrored3Placement,
-    Mirrored3Ring128Tensor, Mirrored3Ring64Tensor,
-};
+use crate::logical::TensorDType;
+use crate::mirrored::Mirrored3Placement;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::*;
 use crate::symbolic::Symbolic;
+use crate::types::*;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
 use macros::{FromTextual, ShortName, ToTextual};

@@ -1,22 +1,17 @@
 //! Placements backed by three-party replicated secret sharing
-use crate::additive::{
-    AdditivePlacement, AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTensor, DaBitProvider,
-};
+use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
     AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128,
-    HostBitArray224, HostBitArray256, HostBitArray64, HostBitTensor, HostRing128Tensor,
-    HostRing64Tensor, HostShape, SliceInfo,
+    HostBitArray224, HostBitArray256, HostBitArray64, SliceInfo,
 };
 use crate::kernels::*;
-use crate::mirrored::{
-    AbstractMirroredFixedTensor, Mirrored3BitTensor, Mirrored3Placement, Mirrored3Ring128Tensor,
-    Mirrored3Ring64Tensor, Mirrored3Tensor,
-};
+use crate::mirrored::{AbstractMirroredFixedTensor, Mirrored3Placement, Mirrored3Tensor};
 use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::symbolic::Symbolic;
+use crate::types::*;
 use crate::{BitArray, Const, Ring, N128, N224, N64};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
@@ -29,7 +24,7 @@ mod division;
 mod exp;
 mod input;
 mod log;
-pub use self::aes::{AbstractReplicatedAesKey, ReplicatedAesKey};
+pub use self::aes::AbstractReplicatedAesKey;
 
 /// Placement type for three-party replicated secret sharing
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
@@ -99,10 +94,6 @@ pub struct AbstractReplicatedRingTensor<HostRingT> {
 impl<HostRingT: Ring> Ring for AbstractReplicatedRingTensor<HostRingT> {
     type BitLength = HostRingT::BitLength;
 }
-
-moose_type!(ReplicatedRing64Tensor = AbstractReplicatedRingTensor<HostRing64Tensor>);
-moose_type!(ReplicatedRing128Tensor = AbstractReplicatedRingTensor<HostRing128Tensor>);
-moose_type!(ReplicatedBitTensor = AbstractReplicatedRingTensor<HostBitTensor>);
 
 pub trait Underlying {
     type TensorType;
@@ -267,9 +258,6 @@ pub struct AbstractReplicatedFixedTensor<RepRingT> {
     pub integral_precision: u32,
 }
 
-moose_type!(ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>);
-moose_type!(ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>);
-
 impl<RepRingT: Underlying> Underlying for AbstractReplicatedFixedTensor<RepRingT> {
     type TensorType = RepRingT::TensorType;
 }
@@ -319,8 +307,6 @@ pub struct AbstractReplicatedSetup<K> {
     pub keys: [[K; 2]; 3],
 }
 
-moose_type!(ReplicatedSetup = AbstractReplicatedSetup<PrfKey>);
-
 impl<K> Placed for AbstractReplicatedSetup<K>
 where
     K: Placed<Placement = HostPlacement>,
@@ -352,8 +338,6 @@ where
 pub struct AbstractReplicatedShape<S> {
     pub shapes: [S; 3],
 }
-
-moose_type!(ReplicatedShape = AbstractReplicatedShape<HostShape>);
 
 impl<KeyT> Placed for AbstractReplicatedShape<KeyT>
 where
@@ -2844,7 +2828,7 @@ mod tests {
         let scaling_base = 2;
         let scaling_exp = 24;
 
-        let x = crate::host::HostFloat64Tensor::from_raw_plc(
+        let x = HostFloat64Tensor::from_raw_plc(
             array![1.0, 2.0, 3.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),

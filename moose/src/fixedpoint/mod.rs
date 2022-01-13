@@ -4,9 +4,9 @@ use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::*;
 use crate::kernels::*;
-use crate::mirrored::*;
 use crate::replicated::*;
 use crate::symbolic::Symbolic;
+use crate::types::*;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
@@ -21,9 +21,6 @@ pub enum FixedTensor<HostFixedT, MirFixedT, RepFixedT> {
     Mirrored3(MirFixedT),
     Replicated(RepFixedT),
 }
-
-moose_type!(Fixed64Tensor = FixedTensor<HostFixed64Tensor, Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor>);
-moose_type!(Fixed128Tensor = FixedTensor<HostFixed128Tensor, Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor>);
 
 impl<HostFixedT, MirFixedT, RepFixedT> Placed for FixedTensor<HostFixedT, MirFixedT, RepFixedT>
 where

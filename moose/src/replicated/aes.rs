@@ -16,5 +16,3 @@ where
         self.0.placement()
     }
 }
-
-moose_type!(ReplicatedAesKey = AbstractReplicatedAesKey<ReplicatedBitArray128>);

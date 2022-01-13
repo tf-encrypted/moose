@@ -3,7 +3,8 @@ use crate::computation::{
 };
 use crate::error::{Error, Result};
 use crate::kernels::{DispatchKernel, PlacementPlace, Session};
-use crate::replicated::{ReplicatedPlacement, ReplicatedSetup};
+use crate::replicated::ReplicatedPlacement;
+use crate::types::ReplicatedSetup;
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -148,7 +149,7 @@ impl Session for SymbolicSession {
         self.strategy.execute(self, op, plc, operands)
     }
 
-    type ReplicatedSetup = <crate::replicated::ReplicatedSetup as KnownType<SymbolicSession>>::Type;
+    type ReplicatedSetup = <ReplicatedSetup as KnownType<SymbolicSession>>::Type;
 
     /// Produce a new replicated setup or returned a previously produced setup for the placement
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {

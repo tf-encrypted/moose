@@ -218,7 +218,8 @@ mod tests {
     use crate::computation::{HostPlacement, Role};
     use crate::host::HostBitTensor;
     use crate::kernels::SyncSession;
-    use crate::replicated::{ReplicatedBitTensor, ReplicatedPlacement};
+    use crate::replicated::ReplicatedPlacement;
+    use crate::types::ReplicatedBitTensor;
 
     #[test]
     fn test_parse_aes() {

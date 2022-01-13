@@ -5,8 +5,8 @@ use crate::computation::{
     Placed, ShapeOp,
 };
 use crate::error::Result;
-use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};
 use crate::kernels::*;
+use crate::types::*;
 use macros::with_context;
 
 impl ShapeOp {

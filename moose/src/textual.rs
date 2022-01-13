@@ -7,6 +7,7 @@ use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
 use crate::prim::{RawPrfKey, RawSeed, SyncKey};
 use crate::replicated::ReplicatedPlacement;
+use crate::types::*;
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
@@ -657,7 +658,7 @@ fn host_fixed64_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let tensor: Vec<std::num::Wrapping<u64>> = tensor.into_iter().map(std::num::Wrapping).collect();
     Ok((
         input,
-        Value::HostFixed64Tensor(Box::new(crate::host::HostFixed64Tensor {
+        Value::HostFixed64Tensor(Box::new(HostFixed64Tensor {
             tensor: crate::host::AbstractHostRingTensor::<u64>(
                 ndarray::Array::from(tensor).into_dyn(),
                 placement,
@@ -688,22 +689,17 @@ fn host_fixed128_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
         Placement::Host(h) => h,
         _ => return Err(Error(make_error(input, ErrorKind::MapRes))),
     };
-    // This is a lot of internals. Will probably have a helper in the host.rs to go from Vec<u64> to HostFixed64Tensor.
-    let tensor: Vec<std::num::Wrapping<u128>> =
-        tensor.into_iter().map(std::num::Wrapping).collect();
+    let tensor: Vec<u128> = tensor;
     Ok((
         input,
-        Value::HostFixed128Tensor(Box::new(crate::host::HostFixed128Tensor {
-            tensor: crate::host::AbstractHostRingTensor::<u128>(
-                ndarray::Array::from(tensor).into_dyn(),
-                placement,
-            ),
+        Value::HostFixed128Tensor(Box::new(HostFixed128Tensor {
+            tensor: HostRing128Tensor::from_raw_plc(ndarray::Array::from(tensor), placement),
             integral_precision,
             fractional_precision,
         })),
     ))
 }
-/// Parses a vector of items, using the supplied innter parser.
+/// Parses a vector of items, using the supplied inner parser.
 fn vector<'a, F: 'a, O, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<O>, E>
@@ -1697,7 +1693,7 @@ mod tests {
         use std::convert::TryInto;
         let parsed_f32: Constant = "Float32Tensor([[1.0, 2.0], [3.0, 4.0]])".try_into()?;
 
-        let x = crate::host::HostFloat32Tensor::from(
+        let x = HostFloat32Tensor::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -1710,7 +1706,7 @@ mod tests {
         let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let x = crate::host::HostRing64Tensor::from(x_backing);
+        let x = HostRing64Tensor::from(x_backing);
 
         assert_eq!(parsed_ring64, Constant::HostRing64Tensor(x));
 
@@ -1768,7 +1764,7 @@ mod tests {
 
         // 2D tensor
         use ndarray::prelude::*;
-        let x = crate::host::HostFloat32Tensor::from(
+        let x = HostFloat32Tensor::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),

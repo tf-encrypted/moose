@@ -115,15 +115,16 @@ impl InputOp {
 
 #[cfg(test)]
 mod tests {
-    use std::rc::Rc;
-
     use super::*;
     use crate::computation::SessionId;
-    use crate::host::{FromRawPlc, HostFloat32Tensor, HostRing64Tensor};
+    use crate::host::FromRawPlc;
     use crate::kernels::{PlacementFixedpointEncode, PlacementReveal, PlacementShare, SyncSession};
-    use crate::replicated::{ReplicatedFixed64Tensor, ReplicatedRing64Tensor};
     use crate::storage::LocalSyncStorage;
+    use crate::types::{
+        HostFloat32Tensor, HostRing64Tensor, ReplicatedFixed64Tensor, ReplicatedRing64Tensor,
+    };
     use ndarray::{array, IxDyn};
+    use std::rc::Rc;
 
     #[test]
     fn test_input_rep_ring() {

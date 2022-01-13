@@ -1,25 +1,12 @@
-use crate::additive::{
-    AdditivePlacement, AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape,
-};
+use crate::additive::AdditivePlacement;
 use crate::computation::SymbolicValue;
 use crate::computation::Value;
 use crate::computation::{
     AddNOp, HostPlacement, HostReshapeOp, KnownType, Placed, RingInjectOp, ShapeOp,
 };
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::{
-    HostBitTensor, HostFixed128Tensor, HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor,
-    HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor,
-    HostRing64Tensor, HostShape, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor,
-    HostUint8Tensor,
-};
 use crate::kernels::{PlacementAddN, PlacementReshape, PlacementRingInject, PlacementShape};
-use crate::logical::Tensor;
-use crate::replicated::{
-    ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor, ReplicatedPlacement,
-    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
-};
+use crate::replicated::ReplicatedPlacement;
+use crate::types::*;
 
 modelled_kernel! {
     PlacementShape::shape, ShapeOp,

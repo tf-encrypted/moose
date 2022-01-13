@@ -1,21 +1,14 @@
 use super::*;
-use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::kernels::*;
 use crate::prim::Seed;
 use crate::prng::AesRng;
 use crate::{Const, Ring, N128, N224, N64};
-use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 #[cfg(feature = "blas")]
-use ndarray_linalg::{Inverse, Lapack, Scalar};
-use num_traits::Zero;
-use num_traits::{Float, FromPrimitive};
-use rand::prelude::*;
+use ndarray_linalg::Lapack;
+use num_traits::{Zero, Float, FromPrimitive};
 use std::marker::PhantomData;
 use std::num::Wrapping;
-use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
-use std::ops::{BitAnd, Neg, Shl, Shr};
 
 impl InputOp {
     pub(crate) fn host_bitarray64<S: Session, HostBitTensorT>(
@@ -215,7 +208,7 @@ impl HostDivOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         Wrapping<T>: Clone,
-        Wrapping<T>: Div<Wrapping<T>, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Div<Wrapping<T>, Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(x.0 / y.0, plc.clone()))
     }
@@ -702,7 +695,7 @@ impl AddNOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         T: Clone + LinalgScalar,
-        Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Add<Wrapping<T>, Output = Wrapping<T>>,
     {
         if xs.is_empty() {
             Err(Error::InvalidArgument(
@@ -1160,7 +1153,7 @@ impl BitAndOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         Wrapping<T>: Clone,
-        Wrapping<T>: BitAnd<Wrapping<T>, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::BitAnd<Wrapping<T>, Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(x.0 & y.0, plc.clone()))
     }
@@ -1224,7 +1217,7 @@ impl RingInjectOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         T: From<u8>,
-        Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Shl<usize, Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(
             x.0.mapv(|ai| Wrapping(T::from(ai)) << bit_idx),
@@ -1313,7 +1306,7 @@ impl RingAddOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         Wrapping<T>: Clone,
-        Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Add<Wrapping<T>, Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(x.0 + y.0, plc.clone()))
     }
@@ -1339,7 +1332,7 @@ impl RingSubOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         Wrapping<T>: Clone,
-        Wrapping<T>: Sub<Wrapping<T>, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Sub<Wrapping<T>, Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(x.0 - y.0, plc.clone()))
     }
@@ -1364,8 +1357,9 @@ impl RingNegOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         Wrapping<T>: Clone,
-        Wrapping<T>: Neg<Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Neg<Output = Wrapping<T>>,
     {
+        use std::ops::Neg;
         Ok(AbstractHostRingTensor(x.0.neg(), plc.clone()))
     }
 }
@@ -1390,7 +1384,7 @@ impl RingMulOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         Wrapping<T>: Clone,
-        Wrapping<T>: Mul<Wrapping<T>, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Mul<Wrapping<T>, Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(x.0 * y.0, plc.clone()))
     }
@@ -1416,7 +1410,7 @@ impl RingDotOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         Wrapping<T>: Clone,
-        Wrapping<T>: Mul<Wrapping<T>, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Mul<Wrapping<T>, Output = Wrapping<T>>,
         Wrapping<T>: LinalgScalar,
     {
         let dot = x.dot(y)?;
@@ -1445,7 +1439,7 @@ impl RingSumOp {
     where
         T: FromPrimitive + Zero,
         Wrapping<T>: Clone,
-        Wrapping<T>: Add<Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Add<Output = Wrapping<T>>,
         HostPlacement: PlacementPlace<S, AbstractHostRingTensor<T>>,
     {
         let sum = x.sum(axis.map(|a| a as usize))?;
@@ -1473,7 +1467,7 @@ impl RingShlOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         Wrapping<T>: Clone,
-        Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Shl<usize, Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(x.0 << amount, plc.clone()))
     }
@@ -1499,7 +1493,7 @@ impl RingShrOp {
     ) -> Result<AbstractHostRingTensor<T>>
     where
         Wrapping<T>: Clone,
-        Wrapping<T>: Shr<usize, Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Shr<usize, Output = Wrapping<T>>,
     {
         Ok(AbstractHostRingTensor(x.0 >> amount, plc.clone()))
     }

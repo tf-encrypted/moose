@@ -1,12 +1,10 @@
 //! Abstraction layer for high-level logical tensors
 
-use crate::boolean::BooleanTensor;
 use crate::computation::{PartiallySymbolicType, Placed, Placement, SymbolicType};
 use crate::error::Result;
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::HostShape;
 use crate::symbolic::Symbolic;
+use crate::types::*;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -44,9 +42,6 @@ pub enum AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT> {
     Float64(Float64T),
     Bool(BoolT),
 }
-
-pub type Tensor =
-    AbstractTensor<Fixed64Tensor, Fixed128Tensor, Float32Tensor, Float64Tensor, BooleanTensor>;
 
 impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>
     AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>

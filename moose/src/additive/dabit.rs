@@ -2,7 +2,8 @@
 use super::*;
 use crate::computation::{HostPlacement, KnownType};
 use crate::kernels::*;
-use crate::prim::{PrfKey, Seed, SyncKey};
+use crate::prim::SyncKey;
+use crate::types::{PrfKey, Seed};
 use macros::with_context;
 
 /// Internal trait for DaBit generation

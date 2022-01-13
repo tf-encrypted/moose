@@ -6,6 +6,7 @@ use crate::kernels::*;
 use crate::prim::RawSeed;
 use crate::prng::AesRng;
 use crate::symbolic::Symbolic;
+use crate::types::*;
 use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
@@ -13,7 +14,6 @@ use ndarray::Slice;
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack, Scalar};
 use num_traits::FromPrimitive;
-use num_traits::Zero;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
@@ -21,15 +21,11 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::num::Wrapping;
-use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
-use std::ops::{BitAnd, BitXor, Shl, Shr};
 
 mod ops;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostString(pub String, pub HostPlacement);
-
-moose_type!(HostString);
 
 impl Placed for HostString {
     type Placement = HostPlacement;
@@ -97,8 +93,6 @@ impl RawShape {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostShape(pub RawShape, pub HostPlacement);
 
-moose_type!(HostShape);
-
 impl Placed for HostShape {
     type Placement = HostPlacement;
 
@@ -158,17 +152,6 @@ impl<T> Placed for HostTensor<T> {
         Ok(self.1.clone())
     }
 }
-
-moose_type!(HostFloat32Tensor = [atomic] HostTensor<f32>);
-moose_type!(HostFloat64Tensor = [atomic] HostTensor<f64>);
-moose_type!(HostInt8Tensor = [atomic] HostTensor<i8>);
-moose_type!(HostInt16Tensor = [atomic] HostTensor<i16>);
-moose_type!(HostInt32Tensor = [atomic] HostTensor<i32>);
-moose_type!(HostInt64Tensor = [atomic] HostTensor<i64>);
-moose_type!(HostUint8Tensor = [atomic] HostTensor<u8>);
-moose_type!(HostUint16Tensor = [atomic] HostTensor<u16>);
-moose_type!(HostUint32Tensor = [atomic] HostTensor<u32>);
-moose_type!(HostUint64Tensor = [atomic] HostTensor<u64>);
 
 impl<S: Session, T> PlacementPlace<S, HostTensor<T>> for HostPlacement {
     fn place(&self, _sess: &S, x: HostTensor<T>) -> HostTensor<T> {
@@ -367,7 +350,7 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> Add for HostTensor<T>
+impl<T> std::ops::Add for HostTensor<T>
 where
     T: LinalgScalar,
 {
@@ -383,7 +366,7 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> Sub for HostTensor<T>
+impl<T> std::ops::Sub for HostTensor<T>
 where
     T: LinalgScalar,
 {
@@ -399,7 +382,7 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> Mul for HostTensor<T>
+impl<T> std::ops::Mul for HostTensor<T>
 where
     T: LinalgScalar,
 {
@@ -415,7 +398,7 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> Div for HostTensor<T>
+impl<T> std::ops::Div for HostTensor<T>
 where
     T: LinalgScalar,
 {
@@ -495,13 +478,11 @@ impl std::fmt::Debug for HostBitTensor {
     }
 }
 
-moose_type!(HostBitTensor);
-
-impl<S: Session> Tensor<S> for HostBitTensor {
+impl<S: Session> TensorLike<S> for HostBitTensor {
     type Scalar = u8;
 }
 
-impl<S: Session> Tensor<S> for Symbolic<HostBitTensor> {
+impl<S: Session> TensorLike<S> for Symbolic<HostBitTensor> {
     type Scalar = u8;
 }
 
@@ -668,7 +649,7 @@ impl From<HostBitTensor> for ArrayD<u8> {
     }
 }
 
-impl BitXor for HostBitTensor {
+impl std::ops::BitXor for HostBitTensor {
     type Output = HostBitTensor;
     fn bitxor(self, other: Self) -> Self::Output {
         assert_eq!(self.1, other.1);
@@ -676,7 +657,7 @@ impl BitXor for HostBitTensor {
     }
 }
 
-impl BitAnd for HostBitTensor {
+impl std::ops::BitAnd for HostBitTensor {
     type Output = HostBitTensor;
     fn bitand(self, other: Self) -> Self::Output {
         assert_eq!(self.1, other.1);
@@ -777,16 +758,12 @@ impl<HostBitArrayT: Placed<Placement = HostPlacement>> Placed
     }
 }
 
-moose_type!(HostAesKey = AbstractHostAesKey<HostBitArray128>);
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostFixedAesTensor<HostBitArrayT> {
     pub tensor: HostBitArrayT,
     pub integral_precision: u32,
     pub fractional_precision: u32,
 }
-
-moose_type!(HostFixed128AesTensor = AbstractHostFixedAesTensor<HostBitArray224>);
 
 impl<HostBitArrayT: Placed> Placed for AbstractHostFixedAesTensor<HostBitArrayT>
 where
@@ -805,9 +782,6 @@ pub struct AbstractHostFixedTensor<HostRingT> {
     pub fractional_precision: u32,
     pub integral_precision: u32,
 }
-
-moose_type!(HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>);
-moose_type!(HostFixed128Tensor = AbstractHostFixedTensor<HostRing128Tensor>);
 
 impl<RingT: Placed> Placed for AbstractHostFixedTensor<RingT> {
     type Placement = RingT::Placement;
@@ -841,9 +815,6 @@ where
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
 
-moose_type!(HostRing64Tensor = [atomic] AbstractHostRingTensor<u64>);
-moose_type!(HostRing128Tensor = [atomic] AbstractHostRingTensor<u128>);
-
 impl Ring for HostRing64Tensor {
     type BitLength = N64;
 }
@@ -860,11 +831,11 @@ impl<T> Placed for AbstractHostRingTensor<T> {
     }
 }
 
-impl<S: Session, T> Tensor<S> for AbstractHostRingTensor<T> {
+impl<S: Session, T> TensorLike<S> for AbstractHostRingTensor<T> {
     type Scalar = T;
 }
 
-impl<S: Session, T> Tensor<S> for Symbolic<AbstractHostRingTensor<T>> {
+impl<S: Session, T> TensorLike<S> for Symbolic<AbstractHostRingTensor<T>> {
     type Scalar = T;
 }
 
@@ -1184,10 +1155,10 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> Add<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
+impl<T> std::ops::Add<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
-    Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
+    Wrapping<T>: std::ops::Add<Wrapping<T>, Output = Wrapping<T>>,
 {
     type Output = AbstractHostRingTensor<T>;
     fn add(self, other: AbstractHostRingTensor<T>) -> Self::Output {
@@ -1196,10 +1167,10 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> Mul<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
+impl<T> std::ops::Mul<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
-    Wrapping<T>: Mul<Wrapping<T>, Output = Wrapping<T>>,
+    Wrapping<T>: std::ops::Mul<Wrapping<T>, Output = Wrapping<T>>,
 {
     type Output = AbstractHostRingTensor<T>;
     fn mul(self, other: AbstractHostRingTensor<T>) -> Self::Output {
@@ -1208,10 +1179,10 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> Sub<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
+impl<T> std::ops::Sub<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
-    Wrapping<T>: Sub<Wrapping<T>, Output = Wrapping<T>>,
+    Wrapping<T>: std::ops::Sub<Wrapping<T>, Output = Wrapping<T>>,
 {
     type Output = AbstractHostRingTensor<T>;
     fn sub(self, other: AbstractHostRingTensor<T>) -> Self::Output {
@@ -1220,10 +1191,10 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> Shl<usize> for AbstractHostRingTensor<T>
+impl<T> std::ops::Shl<usize> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
-    Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
+    Wrapping<T>: std::ops::Shl<usize, Output = Wrapping<T>>,
 {
     type Output = AbstractHostRingTensor<T>;
     fn shl(self, other: usize) -> Self::Output {
@@ -1232,10 +1203,10 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> Shr<usize> for AbstractHostRingTensor<T>
+impl<T> std::ops::Shr<usize> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
-    Wrapping<T>: Shr<usize, Output = Wrapping<T>>,
+    Wrapping<T>: std::ops::Shr<usize, Output = Wrapping<T>>,
 {
     type Output = AbstractHostRingTensor<T>;
     fn shr(self, other: usize) -> Self::Output {
@@ -1244,10 +1215,10 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> BitAnd<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
+impl<T> std::ops::BitAnd<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
-    Wrapping<T>: BitAnd<Wrapping<T>, Output = Wrapping<T>>,
+    Wrapping<T>: std::ops::BitAnd<Wrapping<T>, Output = Wrapping<T>>,
 {
     type Output = AbstractHostRingTensor<T>;
     fn bitand(self, other: AbstractHostRingTensor<T>) -> Self::Output {
@@ -1342,7 +1313,7 @@ where
 
 impl<T> AbstractHostRingTensor<T>
 where
-    Wrapping<T>: Clone + Zero,
+    Wrapping<T>: Clone + num_traits::Zero,
 {
     pub fn sum(self, axis: Option<usize>) -> Result<AbstractHostRingTensor<T>> {
         if let Some(i) = axis {
@@ -1359,6 +1330,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::ops::{Add, Sub, Mul, Div};
 
     #[test]
     fn dot_prod_f32() {

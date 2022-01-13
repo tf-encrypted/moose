@@ -1,16 +1,9 @@
 //! Placement for mirroring operations across multiple hosts
 use crate::computation::{HostPlacement, Placed, Role};
 use crate::error::Result;
-use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor};
 use serde::{Deserialize, Serialize};
 
 mod ops;
-
-moose_type!(Mirrored3Ring64Tensor = Mirrored3Tensor<HostRing64Tensor>);
-moose_type!(Mirrored3Ring128Tensor = Mirrored3Tensor<HostRing128Tensor>);
-moose_type!(Mirrored3BitTensor = Mirrored3Tensor<HostBitTensor>);
-moose_type!(Mirrored3Fixed64Tensor = AbstractMirroredFixedTensor<Mirrored3Ring64Tensor>);
-moose_type!(Mirrored3Fixed128Tensor = AbstractMirroredFixedTensor<Mirrored3Ring128Tensor>);
 
 /// Placement for mirroring operations across three hosts
 ///

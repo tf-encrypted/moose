@@ -2,8 +2,6 @@
 
 use crate::computation::{Placed, Placement};
 use crate::error::Result;
-use crate::host::{HostAesKey, HostFixed128AesTensor};
-use crate::replicated::ReplicatedAesKey;
 use serde::{Deserialize, Serialize};
 
 mod ops;
@@ -17,8 +15,6 @@ pub enum AbstractAesKey<HostKeyT, RepKeyT> {
     Host(HostKeyT),
     Replicated(RepKeyT),
 }
-
-moose_type!(AesKey = AbstractAesKey<HostAesKey, ReplicatedAesKey>);
 
 impl<HostKeyT, RepKeyT> Placed for AbstractAesKey<HostKeyT, RepKeyT>
 where
@@ -43,8 +39,6 @@ pub enum AbstractAesTensor<Fixed128AesT> {
     Fixed128(Fixed128AesT),
 }
 
-moose_type!(AesTensor = AbstractAesTensor<Fixed128AesTensor>);
-
 impl<Fixed128T> Placed for AbstractAesTensor<Fixed128T>
 where
     Fixed128T: Placed,
@@ -64,8 +58,6 @@ where
 pub enum FixedAesTensor<HostFixedAesT> {
     Host(HostFixedAesT),
 }
-
-moose_type!(Fixed128AesTensor = FixedAesTensor<HostFixed128AesTensor>);
 
 impl<HostFixedAesT> Placed for FixedAesTensor<HostFixedAesT>
 where

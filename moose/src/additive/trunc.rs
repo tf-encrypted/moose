@@ -169,6 +169,7 @@ where
 mod tests {
     use super::*;
     use crate::host::AbstractHostRingTensor;
+    use crate::types::*;
     use ndarray::array;
     use ndarray::prelude::*;
     use proptest::prelude::*;

@@ -3,10 +3,8 @@ use super::*;
 use crate::computation::{HostPlacement, Placed, RepToAdtOp};
 use crate::error::Result;
 use crate::kernels::*;
-use crate::replicated::{
-    AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor,
-    ReplicatedRing64Tensor,
-};
+use crate::replicated::AbstractReplicatedRingTensor;
+use crate::types::*;
 use macros::with_context;
 
 modelled_kernel! {

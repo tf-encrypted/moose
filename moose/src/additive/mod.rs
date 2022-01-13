@@ -1,7 +1,6 @@
 //! Placement backed by two-party additive secret sharing
 use crate::computation::{HostPlacement, Placed, Role};
 use crate::error::Result;
-use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape};
 use crate::kernels::{PlacementAdd, PlacementPlace, PlacementShl, Session};
 use serde::{Deserialize, Serialize};
 
@@ -37,10 +36,6 @@ impl AdditivePlacement {
 pub struct AdtTensor<HostTensorT> {
     pub(crate) shares: [HostTensorT; 2],
 }
-
-moose_type!(AdditiveRing64Tensor = AdtTensor<HostRing64Tensor>);
-moose_type!(AdditiveRing128Tensor = AdtTensor<HostRing128Tensor>);
-moose_type!(AdditiveBitTensor = AdtTensor<HostBitTensor>);
 
 impl<HostT> Placed for AdtTensor<HostT>
 where
@@ -83,8 +78,6 @@ where
 pub struct AdtShape<HostShapeT> {
     pub(crate) shapes: [HostShapeT; 2],
 }
-
-moose_type!(AdditiveShape = AdtShape<HostShape>);
 
 impl<HostT> Placed for AdtShape<HostT>
 where

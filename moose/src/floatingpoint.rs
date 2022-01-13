@@ -1,12 +1,12 @@
 //! Abstraction layer for floating-point values
 
-use crate::boolean::{BoolTensor, BooleanTensor};
+use crate::boolean::BoolTensor;
 use crate::computation::*;
 use crate::error::Error;
 use crate::error::Result;
-use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape, HostString};
 use crate::kernels::*;
 use crate::mirrored::{Mirrored3Placement, Mirrored3Tensor};
+use crate::types::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -14,12 +14,6 @@ pub enum FloatTensor<HostT, MirroredT> {
     Host(HostT),
     Mirrored3(MirroredT),
 }
-
-moose_type!(Mirrored3Float32 = Mirrored3Tensor<HostFloat32Tensor>);
-moose_type!(Mirrored3Float64 = Mirrored3Tensor<HostFloat64Tensor>);
-
-moose_type!(Float32Tensor = FloatTensor<HostFloat32Tensor, Mirrored3Float32>);
-moose_type!(Float64Tensor = FloatTensor<HostFloat64Tensor, Mirrored3Float64>);
 
 impl<T, MirroredT> Placed for FloatTensor<T, MirroredT>
 where

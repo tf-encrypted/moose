@@ -1,11 +1,12 @@
 use super::*;
 use crate::computation::*;
 use crate::error::Result;
-use crate::fixedpoint::{Fixed128Tensor, FixedTensor};
+use crate::fixedpoint::FixedTensor;
 use crate::host::*;
 use crate::kernels::*;
-use crate::logical::{AbstractTensor, Tensor};
+use crate::logical::AbstractTensor;
 use crate::replicated::*;
+use crate::types::*;
 use crate::{BitArray, N128, N224};
 
 impl InputOp {

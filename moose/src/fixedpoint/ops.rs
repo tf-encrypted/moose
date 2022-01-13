@@ -1,7 +1,7 @@
 //! Support for fixed-point arithmetic
 
-use super::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
-use crate::boolean::{BoolTensor, BooleanTensor};
+use super::FixedTensor;
+use crate::boolean::BoolTensor;
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::floatingpoint::FloatTensor;
@@ -9,6 +9,7 @@ use crate::host::*;
 use crate::kernels::*;
 use crate::mirrored::*;
 use crate::replicated::*;
+use crate::types::*;
 use macros::with_context;
 
 impl IdentityOp {
@@ -1451,7 +1452,7 @@ modelled_kernel! {
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_rep_kernel),
-        (ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor => [concrete] Self::logical_kernel),
+        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] Self::logical_kernel),
     ]
 }
 
@@ -1480,7 +1481,7 @@ modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (Fixed64Tensor) -> Fix
 modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor, SigmoidOp);
 modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, SigmoidOp);
 modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, SigmoidOp);
-modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (crate::logical::Tensor) -> crate::logical::Tensor, SigmoidOp);
+modelled!(PlacementSigmoid::sigmoid, ReplicatedPlacement, (Tensor) -> Tensor, SigmoidOp);
 
 impl SigmoidOp {
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(

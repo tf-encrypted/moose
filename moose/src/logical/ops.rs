@@ -1,10 +1,6 @@
-use super::{Tensor, *};
-use crate::boolean::BooleanTensor;
+use super::*;
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::{HostShape, HostString};
 use crate::kernels::*;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
