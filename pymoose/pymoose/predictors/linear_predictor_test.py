@@ -63,11 +63,12 @@ class LinearPredictorTest(parameterized.TestCase):
         def predictor_no_aes(x: edsl.Argument(predictor.alice, dtype=edsl.float64)):
             with predictor.alice:
                 x_fixed = edsl.cast(x, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
-            y = predictor.linear_predictor_fn(
-                x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE
-            )
-            y_t = predictor.post_transform(y)
-            return predictor.handle_output(y_t, prediction_handler=predictor.bob)
+            with predictor.replicated:
+                y = predictor.linear_predictor_fn(
+                    x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE
+                )
+                y = predictor.post_transform(y)
+            return predictor.handle_output(y, prediction_handler=predictor.bob)
 
         return predictor, predictor_no_aes
 

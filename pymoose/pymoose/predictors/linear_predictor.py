@@ -12,29 +12,28 @@ class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         super().__init__()
         self.coeffs, self.intercepts = _validate_model_args(coeffs, intercepts)
 
-    @abc.abstractmethod
-    def post_transform(self, y):
-        pass
-
     @classmethod
     @abc.abstractmethod
     def from_onnx(cls, model_proto):
         pass
 
+    @abc.abstractmethod
+    def post_transform(self, y):
+        pass
+
     def linear_predictor_fn(self, x, fixedpoint_dtype):
-        with self.replicated:
-            w = self.fixedpoint_constant(
-                self.coeffs.T, plc=self.mirrored, dtype=fixedpoint_dtype
+        w = self.fixedpoint_constant(
+            self.coeffs.T, plc=self.mirrored, dtype=fixedpoint_dtype
+        )
+        # TODO: use bias trick instead of explicit add op for intercept
+        if self.intercepts is not None:
+            b = self.fixedpoint_constant(
+                self.intercepts, plc=self.mirrored, dtype=fixedpoint_dtype
             )
-            # TODO: use bias trick instead of explicit add op for intercept
-            if self.intercepts is not None:
-                b = self.fixedpoint_constant(
-                    self.intercepts, plc=self.mirrored, dtype=fixedpoint_dtype
-                )
-            y = edsl.dot(x, w)
-            if self.intercepts is not None:
-                y = edsl.add(y, b)
-            return y
+        y = edsl.dot(x, w)
+        if self.intercepts is not None:
+            y = edsl.add(y, b)
+        return y
 
     def predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
         @edsl.computation
@@ -45,8 +44,9 @@ class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
             aes_key: edsl.Argument(self.replicated, vtype=edsl.AesKeyType()),
         ):
             x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
-            y = self.linear_predictor_fn(x, fixedpoint_dtype)
-            pred = self.post_transform(y)
+            with self.replicated:
+                y = self.linear_predictor_fn(x, fixedpoint_dtype)
+                pred = self.post_transform(y)
             return self.handle_output(pred, prediction_handler=self.bob)
 
         return predictor
@@ -193,8 +193,7 @@ class LinearClassifier(LinearPredictor):
         )
 
     def post_transform(self, y):
-        with self.replicated:
-            return self._post_transform(y)
+        return self._post_transform(y)
 
     def _normalized_sigmoid(self, x, axis):
         y = edsl.sigmoid(x)
