@@ -1,7 +1,9 @@
+//! Placement running plaintext operations on a single role
+
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::kernels::*;
-use crate::prim::{RawSeed, Seed};
+use crate::prim::RawSeed;
 use crate::prng::AesRng;
 use crate::symbolic::Symbolic;
 use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
@@ -10,8 +12,8 @@ use ndarray::LinalgScalar;
 use ndarray::Slice;
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack, Scalar};
+use num_traits::FromPrimitive;
 use num_traits::Zero;
-use num_traits::{Float, FromPrimitive};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
@@ -20,7 +22,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::num::Wrapping;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
-use std::ops::{BitAnd, BitXor, Neg, Shl, Shr};
+use std::ops::{BitAnd, BitXor, Shl, Shr};
 
 mod ops;
 

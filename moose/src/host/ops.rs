@@ -1,27 +1,21 @@
+use super::*;
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::kernels::*;
-use crate::prim::{RawSeed, Seed};
+use crate::prim::Seed;
 use crate::prng::AesRng;
-use crate::symbolic::Symbolic;
-use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
+use crate::{Const, Ring, N128, N224, N64};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
-use ndarray::Slice;
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack, Scalar};
 use num_traits::Zero;
 use num_traits::{Float, FromPrimitive};
 use rand::prelude::*;
-use serde::{Deserialize, Serialize};
-use std::cmp::Reverse;
-use std::convert::TryFrom;
-use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::num::Wrapping;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
-use std::ops::{BitAnd, BitXor, Neg, Shl, Shr};
-use super::*;
+use std::ops::{BitAnd, Neg, Shl, Shr};
 
 impl InputOp {
     pub(crate) fn host_bitarray64<S: Session, HostBitTensorT>(
