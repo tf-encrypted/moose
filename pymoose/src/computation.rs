@@ -1,10 +1,11 @@
 //! Parser for computations defined in Python
 
 use moose::computation::*;
-use moose::host::{HostFloat32Tensor, HostFloat64Tensor, RawShape, SliceInfo, SliceInfoElem};
+use moose::host::{RawShape, SliceInfo, SliceInfoElem};
 use moose::logical::TensorDType;
-use moose::replicated::ReplicatedPlacement;
 use moose::mirrored::Mirrored3Placement;
+use moose::replicated::ReplicatedPlacement;
+use moose::types::{HostFloat32Tensor, HostFloat64Tensor};
 use ndarray::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
