@@ -10,7 +10,7 @@ impl InputOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         arg_name: String,
-    ) -> Result<AbstractReplicatedRingTensor<HostTensorT>>
+    ) -> Result<RepTensor<HostTensorT>>
     where
         HostPlacement: PlacementInput<S, HostTensorT>,
     {
@@ -27,7 +27,7 @@ impl InputOp {
         let in21 = p1.input(sess, lift_name(1, 2));
         let in22 = p2.input(sess, lift_name(2, 2));
         let in02 = p2.input(sess, lift_name(2, 0));
-        Ok(AbstractReplicatedRingTensor {
+        Ok(RepTensor {
             shares: [[in00, in10], [in11, in21], [in22, in02]],
         })
     }

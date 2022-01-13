@@ -4,7 +4,7 @@ use crate::computation::{CanonicalType, HostPlacement, KnownType};
 use crate::host::HostShape;
 use crate::kernels::*;
 use crate::prim::{PrfKey, Seed, SyncKey};
-use crate::replicated::AbstractReplicatedRingTensor;
+use crate::replicated::RepTensor;
 use crate::{Const, Ring};
 use macros::with_context;
 use std::convert::TryInto;
@@ -69,8 +69,8 @@ impl<S: Session, HostRingT> TruncPrProvider<S, AdtTensor<HostRingT>, AdtTensor<H
 where
     AdtTensor<HostRingT>: CanonicalType,
     <AdtTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
-    AbstractReplicatedRingTensor<HostRingT>: CanonicalType,
-    <AbstractReplicatedRingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
+    RepTensor<HostRingT>: CanonicalType,
+    <RepTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
     HostRingT: Ring,
     HostShape: KnownType<S>,
     HostPlacement: TruncMaskGen<S, m!(HostShape), HostRingT>,

@@ -1774,7 +1774,7 @@ mod tests {
     use super::*;
     use crate::fixedpoint::{Convert, PrefixMul};
     use crate::kernels::SyncSession;
-    use crate::replicated::AbstractReplicatedRingTensor;
+    use crate::replicated::RepTensor;
     use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
     use ndarray::prelude::*;
     use proptest::prelude::*;

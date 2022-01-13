@@ -3,9 +3,7 @@ use crate::computation::*;
 use crate::error::Result;
 use crate::host::AbstractHostFixedTensor;
 use crate::kernels::*;
-use crate::replicated::{
-    AbstractReplicatedFixedTensor, AbstractReplicatedRingTensor, ReplicatedPlacement,
-};
+use crate::replicated::{AbstractReplicatedFixedTensor, RepTensor, ReplicatedPlacement};
 
 impl MirrorOp {
     pub(crate) fn kernel<S: Session, HostT>(
@@ -184,20 +182,18 @@ impl RepShareOp {
     }
 }
 
-type RepTen<T> = AbstractReplicatedRingTensor<T>; // TODO remove
-
 impl RepRevealOp {
     pub(crate) fn mir_ring_kernel<S: Session, HostRingT: Clone>(
         sess: &S,
         mir: &Mirrored3Placement,
-        x: RepTen<HostRingT>,
+        x: RepTensor<HostRingT>,
     ) -> Result<Mirrored3Tensor<HostRingT>>
     where
-        RepTen<HostRingT>: CanonicalType,
-        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+        RepTensor<HostRingT>: CanonicalType,
+        <RepTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
 
-        RepTen<HostRingT>: Into<m!(c!(RepTen<HostRingT>))>,
-        HostPlacement: PlacementReveal<S, m!(c!(RepTen<HostRingT>)), HostRingT>,
+        RepTensor<HostRingT>: Into<m!(c!(RepTensor<HostRingT>))>,
+        HostPlacement: PlacementReveal<S, m!(c!(RepTensor<HostRingT>)), HostRingT>,
     {
         let (player0, player1, player2) = mir.host_placements();
 

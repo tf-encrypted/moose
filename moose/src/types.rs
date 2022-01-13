@@ -12,8 +12,8 @@ use crate::host::{
 use crate::logical::AbstractTensor;
 use crate::mirrored::{AbstractMirroredFixedTensor, Mirrored3Tensor};
 use crate::replicated::{
-    AbstractReplicatedAesKey, AbstractReplicatedFixedTensor, AbstractReplicatedRingTensor,
-    AbstractReplicatedSetup, AbstractReplicatedShape, ReplicatedBitArray128,
+    AbstractReplicatedAesKey, AbstractReplicatedFixedTensor, AbstractReplicatedSetup,
+    AbstractReplicatedShape, RepTensor, ReplicatedBitArray128,
 };
 pub use crate::{
     host::{HostShape, HostString},
@@ -45,7 +45,7 @@ moose_type!(Mirrored3Float64 = Mirrored3Tensor<HostFloat64Tensor>);
 
 moose_type!(BooleanTensor = BoolTensor<HostBitTensor, ReplicatedBitTensor>);
 pub use crate::host::HostBitTensor;
-moose_type!(ReplicatedBitTensor = AbstractReplicatedRingTensor<HostBitTensor>);
+moose_type!(ReplicatedBitTensor = RepTensor<HostBitTensor>);
 
 // Encrypted types
 
@@ -59,12 +59,12 @@ moose_type!(ReplicatedAesKey = AbstractReplicatedAesKey<ReplicatedBitArray128>);
 
 // Ring types
 
-moose_type!(ReplicatedRing64Tensor = AbstractReplicatedRingTensor<HostRing64Tensor>);
+moose_type!(ReplicatedRing64Tensor = RepTensor<HostRing64Tensor>);
 moose_type!(AdditiveRing64Tensor = AdtTensor<HostRing64Tensor>);
 moose_type!(Mirrored3Ring64Tensor = Mirrored3Tensor<HostRing64Tensor>);
 moose_type!(HostRing64Tensor = [atomic] AbstractHostRingTensor<u64>);
 
-moose_type!(ReplicatedRing128Tensor = AbstractReplicatedRingTensor<HostRing128Tensor>);
+moose_type!(ReplicatedRing128Tensor = RepTensor<HostRing128Tensor>);
 moose_type!(AdditiveRing128Tensor = AdtTensor<HostRing128Tensor>);
 moose_type!(Mirrored3Ring128Tensor = Mirrored3Tensor<HostRing128Tensor>);
 moose_type!(HostRing128Tensor = [atomic] AbstractHostRingTensor<u128>);

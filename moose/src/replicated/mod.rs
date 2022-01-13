@@ -87,11 +87,11 @@ where
 
 /// Secret tensor used by replicated placements
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedRingTensor<HostRingT> {
+pub struct RepTensor<HostRingT> {
     pub shares: [[HostRingT; 2]; 3],
 }
 
-impl<HostRingT: Ring> Ring for AbstractReplicatedRingTensor<HostRingT> {
+impl<HostRingT: Ring> Ring for RepTensor<HostRingT> {
     type BitLength = HostRingT::BitLength;
 }
 
@@ -103,11 +103,11 @@ pub trait MirroredCounterpart {
     type MirroredType;
 }
 
-impl<HostRingT> Underlying for AbstractReplicatedRingTensor<HostRingT> {
+impl<HostRingT> Underlying for RepTensor<HostRingT> {
     type TensorType = HostRingT;
 }
 
-impl<HostRingT> MirroredCounterpart for AbstractReplicatedRingTensor<HostRingT> {
+impl<HostRingT> MirroredCounterpart for RepTensor<HostRingT> {
     type MirroredType = Mirrored3Tensor<HostRingT>;
 }
 
@@ -198,14 +198,14 @@ where
     }
 }
 
-impl<HostTenT> Placed for AbstractReplicatedRingTensor<HostTenT>
+impl<HostTenT> Placed for RepTensor<HostTenT>
 where
     HostTenT: Placed<Placement = HostPlacement>,
 {
     type Placement = ReplicatedPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        let AbstractReplicatedRingTensor {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = self;
 
@@ -225,7 +225,7 @@ where
     }
 }
 
-impl<S: Session, R> PlacementPlace<S, AbstractReplicatedRingTensor<R>> for ReplicatedPlacement
+impl<S: Session, R> PlacementPlace<S, RepTensor<R>> for ReplicatedPlacement
 where
     RepTen<R>: Placed<Placement = ReplicatedPlacement>,
     HostPlacement: PlacementPlace<S, R>,
@@ -360,7 +360,7 @@ where
 }
 
 // Type aliases to shorten out impl in replicated protocols
-type RepTen<T> = AbstractReplicatedRingTensor<T>;
+type RepTen<T> = RepTensor<T>;
 type AdtTen<T> = AdtTensor<T>;
 type MirTen<T> = Mirrored3Tensor<T>;
 
@@ -662,7 +662,7 @@ impl IdentityOp {
         HostPlacement: PlacementIdentity<S, HostT, HostT>,
     {
         let (player0, player1, player2) = rep.host_placements();
-        let AbstractReplicatedRingTensor {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
         let y00 = player0.identity(sess, x00);
@@ -671,7 +671,7 @@ impl IdentityOp {
         let y21 = player1.identity(sess, x21);
         let y22 = player2.identity(sess, x22);
         let y02 = player2.identity(sess, x02);
-        Ok(AbstractReplicatedRingTensor {
+        Ok(RepTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         })
     }
@@ -1677,7 +1677,7 @@ impl RepShlOp {
         HostPlacement: PlacementShl<S, HostRingT, HostRingT>,
     {
         let (player0, player1, player2) = plc.host_placements();
-        let AbstractReplicatedRingTensor {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
         let z00 = player0.shl(sess, amount, x00);
@@ -2077,7 +2077,7 @@ impl RingInjectOp {
         };
         let provider = player2;
 
-        let AbstractReplicatedRingTensor {
+        let RepTensor {
             shares: [[x00, _x10], [_x11, _x21], [x22, _x02]],
         } = &x;
 
@@ -2298,7 +2298,7 @@ where
 {
     fn shr_raw(&self, sess: &S, amount: usize, x: &RepTen<HostRingT>) -> RepTen<HostRingT> {
         let (player0, player1, player2) = self.host_placements();
-        let AbstractReplicatedRingTensor {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -2875,7 +2875,7 @@ mod tests {
 
         let sess = SyncSession::default();
 
-        let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>> =
+        let shares: Vec<RepTensor<AbstractHostRingTensor<u64>>> =
             inputs.into_iter().map(|x| rep.share(&sess, &x)).collect();
 
         let sum = rep.add_n(&sess, &shares);
@@ -2901,7 +2901,7 @@ mod tests {
 
         let sess = SyncSession::default();
 
-        let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u128>>> =
+        let shares: Vec<RepTensor<AbstractHostRingTensor<u128>>> =
             inputs.into_iter().map(|x| rep.share(&sess, &x)).collect();
 
         let sum = rep.add_n(&sess, &shares);

@@ -20,9 +20,9 @@ macro_rules! st {
 ///   $t: CanonicalType
 ///
 /// Examples:
-/// - c!(RepTen<HostBitTen>) -> RepTen<HostBiTTen>
-/// - c!(RepTen<Sym<HostBitTen>>) -> RepTen<HostBiTTen>
-/// - c!(Sym<RepTen<Sym<HostBitTen>>>) -> RepTen<HostBiTTen>
+/// - c!(RepTensor<HostBitTen>) -> RepTensor<HostBitTen>
+/// - c!(RepTensor<Sym<HostBitTen>>) -> RepTensor<HostBitTen>
+/// - c!(Sym<RepTensor<Sym<HostBitTen>>>) -> RepTensor<HostBitTen>
 macro_rules! c {
     ($t:ty) => {
         <$t as crate::computation::CanonicalType>::Type
@@ -35,14 +35,14 @@ macro_rules! c {
 ///  $t: KnownType<S>
 ///
 /// Note also that this is sometimes useful in conjection with `c!`:
-///   m!(c!(RepTen<HostRingT>))
+///   m!(c!(RepTensor<HostRingT>))
 /// which then requires adding trait bounds:
 ///   $t: CanonicalType
 ///   <$t as CanonicalType>::Type: KnownType<S>
 ///
 /// Examples:
-/// - m!(RepTen<HostBitTen>) in SyncSession -> RepTen<HostBitTen>
-/// - m!(RepTen<HostBitTen>) in SymbSession -> Sym<RepTen<Sym<HostBitTen>>>
+/// - m!(RepTensor<HostBitTen>) in SyncSession -> RepTensor<HostBitTen>
+/// - m!(RepTensor<HostBitTen>) in SymbSession -> Sym<RepTensor<Sym<HostBitTen>>>
 macro_rules! m {
     ($t:ty) => {
         <$t as KnownType<S>>::Type
