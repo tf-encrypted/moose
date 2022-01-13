@@ -1,7 +1,6 @@
 import inspect
 from collections import defaultdict
 
-from pymoose import elk_compiler
 from pymoose.computation import utils
 from pymoose.computation.base import Computation
 from pymoose.computation.base import OpSignature
@@ -9,6 +8,7 @@ from pymoose.computation.host import HostPlacement
 from pymoose.computation.mirrored import MirroredPlacement
 from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import AbsOperation
+from pymoose.computation.standard import AddNOperation
 from pymoose.computation.standard import AddOperation
 from pymoose.computation.standard import AtLeast2DOperation
 from pymoose.computation.standard import BitwiseOrOperation
@@ -44,6 +44,7 @@ from pymoose.computation.standard import TransposeOperation
 from pymoose.computation.standard import UnitType
 from pymoose.computation.standard import UnknownType
 from pymoose.edsl.base import AbsExpression
+from pymoose.edsl.base import AddNExpression
 from pymoose.edsl.base import ArgumentExpression
 from pymoose.edsl.base import AtLeast2DExpression
 from pymoose.edsl.base import BinaryOpExpression
@@ -73,6 +74,7 @@ from pymoose.edsl.base import SliceExpression
 from pymoose.edsl.base import SqueezeExpression
 from pymoose.edsl.base import SumExpression
 from pymoose.edsl.base import TransposeExpression
+from pymoose.rust import elk_compiler
 
 
 def trace(abstract_computation):
@@ -213,6 +215,26 @@ class AstTracer:
                 name=argument_expression.arg_name,
                 inputs={},
                 signature=OpSignature(input_types={}, return_type=output_type,),
+            )
+        )
+
+    def visit_AddNExpression(self, add_n_expression):
+        assert isinstance(add_n_expression, AddNExpression)
+        array_inputs, array_types = {}, {}
+        for i, expr in enumerate(add_n_expression.inputs):
+            array_op = self.visit(expr)
+            array_inputs[f"array{i}"] = array_op.name
+            array_types[f"array{i}"] = array_op.return_type
+
+        placement = self.visit_placement_expression(add_n_expression.placement)
+        return self.computation.add_operation(
+            AddNOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("add_n"),
+                inputs=array_inputs,
+                signature=OpSignature(
+                    input_types=array_types, return_type=add_n_expression.vtype
+                ),
             )
         )
 

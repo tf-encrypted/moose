@@ -13,6 +13,7 @@ use std::convert::{TryFrom, TryInto};
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
 enum PyOperation {
+    std_AddNOperation(PyAddNOperation),
     std_IdentityOperation(PyIdentityOperation),
     std_ConstantOperation(PyConstantOperation),
     std_AddOperation(PyAddOperation),
@@ -75,6 +76,7 @@ enum PyDType {
     bool_,
     fixed8_27,
     fixed14_23,
+    fixed24_40,
     fixed46_40,
 }
 
@@ -160,6 +162,14 @@ impl FromPyOpSignature for Signature {
             map_type(&pysig.return_type)?,
         ))
     }
+}
+
+#[derive(Deserialize, Debug)]
+struct PyAddNOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
 }
 
 #[derive(Deserialize, Debug)]
@@ -569,6 +579,10 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
                 integral_precision: 8,
                 fractional_precision: 27,
             })),
+            PyDType::fixed24_40 => Ok(Ty::Tensor(TensorDType::Fixed128 {
+                integral_precision: 24,
+                fractional_precision: 40,
+            })),
             PyDType::fixed46_40 => Ok(Ty::Tensor(TensorDType::Fixed128 {
                 integral_precision: 46,
                 fractional_precision: 40,
@@ -578,7 +592,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_AesTensorType { dtype } => match dtype {
             // TODO we are erasing fixedpoint precision here on purpose
             //  -- but we robably want to avoid this down the road
-            PyDType::fixed46_40 => Ok(Ty::AesTensor),
+            PyDType::fixed24_40 => Ok(Ty::AesTensor),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
         },
         PyValueType::std_AesKeyType => Ok(Ty::AesKey),
@@ -604,6 +618,21 @@ impl TryFrom<PyComputation> for Computation {
                 use anyhow::Context;
                 use PyOperation::*;
                 match op {
+                    std_AddNOperation(op) => {
+                        let mut inputs: Vec<(&String, &String)> = op.inputs.iter().collect();
+                        inputs.sort_by_key(|x| x.0);
+                        let sorted_input_names: Vec<String> =
+                            inputs.into_iter().map(|(_k, v)| v.clone()).collect();
+                        Ok(Operation {
+                            kind: AddNOp {
+                                sig: Signature::from_variadic(&op.signature, "array0")?,
+                            }
+                            .into(),
+                            inputs: sorted_input_names,
+                            name: op.name.clone(),
+                            placement: map_placement(&placements, &op.placement_name)?,
+                        })
+                    }
                     std_IdentityOperation(op) => Ok(Operation {
                         kind: IdentityOp {
                             sig: Signature::from_unary(&op.signature, "x")?,

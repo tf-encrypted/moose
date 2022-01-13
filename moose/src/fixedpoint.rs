@@ -1376,6 +1376,84 @@ impl NegOp {
 }
 
 impl AddNOp {
+    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        xs: &[FixedTensor<HostFixedT, MirFixedT, RepFixedT>],
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementAddN<S, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostFixedT: Clone,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot add_n on empty array of tensors".to_string(),
+            ))
+        } else {
+            let first = &xs[0];
+            match first {
+                FixedTensor::Host(_) => {
+                    let vec: Vec<HostFixedT> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            FixedTensor::Host(x) => (*x).clone(),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    let result = plc.add_n(sess, &vec);
+                    Ok(FixedTensor::Host(result))
+                }
+                FixedTensor::Replicated(_) => {
+                    let vec: Vec<HostFixedT> = xs
+                        .iter()
+                        .map(|t| match t {
+                            FixedTensor::Replicated(x) => plc.reveal(sess, x),
+                            _ => unimplemented!("mixed types in tensor"),
+                        })
+                        .collect();
+                    Ok(FixedTensor::Host(plc.add_n(sess, &vec)))
+                }
+                FixedTensor::Mirrored3(_) => unimplemented!("add_n does not yet support mirrored"),
+            }
+        }
+    }
+
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        xs: &[FixedTensor<HostFixedT, MirFixedT, RepFixedT>],
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementAddN<S, RepFixedT, RepFixedT>,
+        RepFixedT: Clone,
+    {
+        let first = &xs[0];
+        match first {
+            FixedTensor::Host(_) => {
+                let vec: Vec<RepFixedT> = xs
+                    .iter()
+                    .map(|t| match t {
+                        FixedTensor::Host(x) => plc.share(sess, x),
+                        _ => unimplemented!("mixed types in tensor"),
+                    })
+                    .collect();
+                Ok(FixedTensor::Replicated(plc.add_n(sess, &vec)))
+            }
+            FixedTensor::Replicated(_) => {
+                let vec: Vec<RepFixedT> = xs
+                    .iter()
+                    .map(|t| match t {
+                        FixedTensor::Replicated(x) => (*x).clone(),
+                        _ => unimplemented!("mixed types in tensor"),
+                    })
+                    .collect();
+                Ok(FixedTensor::Replicated(plc.add_n(sess, &vec)))
+            }
+            FixedTensor::Mirrored3(_) => unimplemented!("add_n does not yet support mirrored"),
+        }
+    }
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -1401,6 +1479,42 @@ impl AddNOp {
             fractional_precision,
             integral_precision,
         })
+    }
+
+    pub(crate) fn host_fixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        xs: &[AbstractHostFixedTensor<HostRingT>],
+    ) -> Result<AbstractHostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementAddN<S, HostRingT, HostRingT>,
+        HostRingT: Clone,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot add_n on empty array of tensors".to_string(),
+            ))
+        } else {
+            let mut tensors = Vec::new();
+            let fractional_precision = xs[0].fractional_precision;
+            let integral_precision = xs[0].integral_precision;
+            for x in xs.iter() {
+                if (x.integral_precision != integral_precision)
+                    || (x.fractional_precision != fractional_precision)
+                {
+                    return Err(Error::InvalidArgument(
+                        "precisions of tensors must match for add_n".to_string(),
+                    ));
+                }
+                tensors.push(x.tensor.clone());
+            }
+            let tensor = plc.add_n(sess, &tensors);
+            Ok(AbstractHostFixedTensor {
+                tensor,
+                fractional_precision,
+                integral_precision,
+            })
+        }
     }
 }
 

@@ -22,6 +22,7 @@ SUPPORTED_TYPES = [
     rep_dialect.ReplicatedPlacement,
     mirrored_dialect.MirroredPlacement,
     std_dialect.AbsOperation,
+    std_dialect.AddNOperation,
     std_dialect.AddOperation,
     std_dialect.AesKeyType,
     std_dialect.AesTensorType,
