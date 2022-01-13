@@ -1538,7 +1538,7 @@ impl ConcatOp {
                     .map(|t| match t {
                         FixedTensor::Host(x) => plc.share(sess, x),
                         FixedTensor::Replicated(x) => x.clone(),
-                        _ => unimplemented!("1 mixed types in tensor"),
+                        FixedTensor::Mirrored3(_) => unimplemented!(),
                     })
                     .collect();
                 Ok(FixedTensor::Replicated(plc.concatenate(sess, axis, &vec)))
@@ -1549,7 +1549,7 @@ impl ConcatOp {
                     .map(|t| match t {
                         FixedTensor::Host(x) => plc.share(sess, x),
                         FixedTensor::Replicated(x) => x.clone(),
-                        _ => unimplemented!("2 mixed types in tensor"),
+                        FixedTensor::Mirrored3(_) => unimplemented!(),
                     })
                     .collect();
                 Ok(FixedTensor::Replicated(plc.concatenate(sess, axis, &vec)))

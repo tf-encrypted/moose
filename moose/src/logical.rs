@@ -1420,22 +1420,6 @@ impl ConcatOp {
             //     let result = plc.concatenate(sess, axis, &x, &y);
             //     AbstractTensor::Fixed128(result)
             // }
-
-            //AbstractTensor::Fixed128(_) => {
-            //    let xs: Vec<Fixed128T> = xs
-            //        .iter()
-            //        .map(|x| match x {
-            //            AbstractTensor::Fixed128(x) => x.clone(),
-            //            _ => {
-            //                unimplemented!(
-            //                    "ConcatOp can not concatenate tensors of different kinds"
-            //                )
-            //            }
-            //        })
-            //        .collect();
-            //    let result = plc.concatenate(sess, axis, &xs);
-            //    Ok(AbstractTensor::Fixed128(result))
-            //}
             AbstractTensor::Float32(_) => {
                 let xs: Vec<Float32T> = xs
                     .iter()
