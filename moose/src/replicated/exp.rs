@@ -245,7 +245,7 @@ impl ExpOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::host::AbstractHostRingTensor;
+    use crate::host::HostRingTensor;
     use crate::kernels::SyncSession;
     use ndarray::array;
 
@@ -258,11 +258,9 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(
-            array![[0u64], [1], [1], [1]].into_dyn(),
-            alice.clone(),
-        );
-        let target = AbstractHostRingTensor::from_raw_plc(array![16384u64], alice.clone());
+        let x =
+            HostRingTensor::from_raw_plc(array![[0u64], [1], [1], [1]].into_dyn(), alice.clone());
+        let target = HostRingTensor::from_raw_plc(array![16384u64], alice.clone());
 
         let sess = SyncSession::default();
 

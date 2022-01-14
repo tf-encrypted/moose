@@ -168,7 +168,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::host::AbstractHostRingTensor;
+    use crate::host::HostRingTensor;
     use crate::types::*;
     use ndarray::array;
     use ndarray::prelude::*;
@@ -255,8 +255,8 @@ mod tests {
                     Array::from_shape_vec(IxDyn(&[xs.len()]), vec![0 as $tt; xs.len()]).unwrap();
                 let x = AdtTensor {
                     shares: [
-                        AbstractHostRingTensor::from_raw_plc(zero, alice),
-                        AbstractHostRingTensor::from_raw_plc(xs.clone(), bob),
+                        HostRingTensor::from_raw_plc(zero, alice),
+                        HostRingTensor::from_raw_plc(xs.clone(), bob),
                     ],
                 };
 
@@ -264,7 +264,7 @@ mod tests {
                 let x_trunc = adt.trunc_pr(&sess, amount, &carole, &x);
                 let _y = carole.reveal(&sess, &x_trunc);
 
-                let target_y = AbstractHostRingTensor::from_raw_plc(ys.clone(), carole.clone());
+                let target_y = HostRingTensor::from_raw_plc(ys.clone(), carole.clone());
                 for (i, value) in _y.0.iter().enumerate() {
                     let diff = value - target_y.0[i];
                     assert!(

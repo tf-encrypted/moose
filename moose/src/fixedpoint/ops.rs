@@ -1915,10 +1915,10 @@ mod tests {
                 let ys = ys.clone().map(encode);
 
                 let x = FixedTensor::Host(new_host_fixed_tensor_with_precision(
-                    AbstractHostRingTensor::from_raw_plc(xs.clone(), alice.clone()), integral_precision, fractional_precision)
+                    HostRingTensor::from_raw_plc(xs.clone(), alice.clone()), integral_precision, fractional_precision)
                 );
                 let y = FixedTensor::Host(new_host_fixed_tensor_with_precision(
-                    AbstractHostRingTensor::from_raw_plc(ys.clone(), alice.clone()), integral_precision, fractional_precision)
+                    HostRingTensor::from_raw_plc(ys.clone(), alice.clone()), integral_precision, fractional_precision)
                 );
 
                 let sess = SyncSession::default();
@@ -1954,12 +1954,14 @@ mod tests {
                     owner: "alice".into(),
                 };
 
-                let x = FixedTensor::Host(new_host_fixed_tensor(
-                    AbstractHostRingTensor::from_raw_plc(xs, alice.clone()),
-                ));
-                let y = FixedTensor::Host(new_host_fixed_tensor(
-                    AbstractHostRingTensor::from_raw_plc(ys, alice.clone()),
-                ));
+                let x = FixedTensor::Host(new_host_fixed_tensor(HostRingTensor::from_raw_plc(
+                    xs,
+                    alice.clone(),
+                )));
+                let y = FixedTensor::Host(new_host_fixed_tensor(HostRingTensor::from_raw_plc(
+                    ys,
+                    alice.clone(),
+                )));
 
                 let sess = SyncSession::default();
 
@@ -1970,7 +1972,7 @@ mod tests {
                 };
                 assert_eq!(
                     opened_product.tensor,
-                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
+                    HostRingTensor::from_raw_plc(zs, alice.clone())
                 );
                 let expected_precision = match x {
                     FixedTensor::Host(x) => x.fractional_precision * $factor,
@@ -2013,8 +2015,8 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = FixedTensor::Host(new_host_fixed_tensor(AbstractHostRingTensor::from_raw_plc(xs, alice.clone())));
-                let y = FixedTensor::Host(new_host_fixed_tensor(AbstractHostRingTensor::from_raw_plc(ys, alice.clone())));
+                let x = FixedTensor::Host(new_host_fixed_tensor(HostRingTensor::from_raw_plc(xs, alice.clone())));
+                let y = FixedTensor::Host(new_host_fixed_tensor(HostRingTensor::from_raw_plc(ys, alice.clone())));
 
                 let sess = SyncSession::default();
 
@@ -2025,7 +2027,7 @@ mod tests {
                 };
                 assert_eq!(
                     opened_product.tensor,
-                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
+                    HostRingTensor::from_raw_plc(zs, alice.clone())
                 );
                 let expected_precision = match x {
                     FixedTensor::Host(x) => x.fractional_precision * $factor,
@@ -2357,10 +2359,10 @@ mod tests {
                 let xs = xs.clone().map(encode);
                 let ys = ys.clone().map(encode);
                 let x = FixedTensor::Host(new_host_fixed_tensor_with_precision(
-                    AbstractHostRingTensor::from_raw_plc(xs.clone(), alice.clone()), $i_precision, $f_precision)
+                    HostRingTensor::from_raw_plc(xs.clone(), alice.clone()), $i_precision, $f_precision)
                 );
                 let y = FixedTensor::Host(new_host_fixed_tensor_with_precision(
-                    AbstractHostRingTensor::from_raw_plc(ys.clone(), alice.clone()), $i_precision, $f_precision)
+                    HostRingTensor::from_raw_plc(ys.clone(), alice.clone()), $i_precision, $f_precision)
                 );
 
                 let sess = SyncSession::default();
@@ -2415,7 +2417,7 @@ mod tests {
             fn $func_name(
                 name: &str,
                 rep: &ReplicatedPlacement,
-            ) -> Symbolic<RepTensor<Symbolic<AbstractHostRingTensor<$tt>>>> {
+            ) -> Symbolic<RepTensor<Symbolic<HostRingTensor<$tt>>>> {
                 let (alice, bob, carole) = rep.host_placements();
                 let symbolic_replicated = Symbolic::Concrete(RepTensor {
                     shares: [
@@ -2529,9 +2531,8 @@ mod tests {
                     .into_iter()
                     .map(|x| {
                         let x_encode = x.map(encode);
-                        let x_ring = AbstractHostRingTensor::from_raw_plc(x_encode, alice.clone());
-                        let x_shared: RepTensor<AbstractHostRingTensor<$tt>> =
-                            rep.share(&sess, &x_ring);
+                        let x_ring = HostRingTensor::from_raw_plc(x_encode, alice.clone());
+                        let x_shared: RepTensor<HostRingTensor<$tt>> = rep.share(&sess, &x_ring);
                         new_replicated_fixed_tensor(x_shared)
                     })
                     .collect();
@@ -2593,8 +2594,8 @@ mod tests {
 
                 let encode = |item: &f64| (2_i64.pow($f_precision) as f64 * item) as $tt;
                 let x_encoded = x.map(encode);
-                let x_ring = AbstractHostRingTensor::from_raw_plc(x_encoded, alice.clone());
-                let x_shared: RepTensor<AbstractHostRingTensor<$tt>> = rep.share(&sess, &x_ring);
+                let x_ring = HostRingTensor::from_raw_plc(x_encoded, alice.clone());
+                let x_shared: RepTensor<HostRingTensor<$tt>> = rep.share(&sess, &x_ring);
                 let x_fixed_shared = new_replicated_fixed_tensor(x_shared.clone());
 
                 let output = rep.polynomial_eval(&sess, coeffs, x_fixed_shared);
@@ -2635,7 +2636,7 @@ mod tests {
         let alice = HostPlacement {
             owner: "alice".into(),
         };
-        let x = AbstractHostRingTensor::from_raw_plc(
+        let x = HostRingTensor::from_raw_plc(
             array![1024u64, 5, 4]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -2667,7 +2668,7 @@ mod tests {
                 let x_encoded = x.map(encode);
 
                 let x = FixedTensor::Host(new_host_fixed_tensor_with_precision(
-                    AbstractHostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()), $i_precision, $f_precision)
+                    HostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()), $i_precision, $f_precision)
                 );
 
                 let exp_result = rep.$test_func(&sess, &x);
@@ -2802,13 +2803,13 @@ mod tests {
                 let y_encoded = y.map(encode);
 
                 let xf = new_host_fixed_tensor_with_precision(
-                    AbstractHostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()),
+                    HostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()),
                     $i_precision,
                     $f_precision,
                 );
 
                 let yf = new_host_fixed_tensor_with_precision(
-                    AbstractHostRingTensor::from_raw_plc(y_encoded.clone(), alice.clone()),
+                    HostRingTensor::from_raw_plc(y_encoded.clone(), alice.clone()),
                     $i_precision,
                     $f_precision,
                 );
@@ -2886,7 +2887,7 @@ mod tests {
                 let x_encoded = x.map(encode);
 
                 let x = FixedTensor::Host(new_host_fixed_tensor_with_precision(
-                    AbstractHostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()), $i_precision, $f_precision)
+                    HostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()), $i_precision, $f_precision)
                 );
 
                 let exp_result = rep.index_axis(&sess, $axis, $index, &x);

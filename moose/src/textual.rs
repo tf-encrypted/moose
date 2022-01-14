@@ -659,7 +659,7 @@ fn host_fixed64_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((
         input,
         Value::HostFixed64Tensor(Box::new(HostFixed64Tensor {
-            tensor: crate::host::AbstractHostRingTensor::<u64>(
+            tensor: crate::host::HostRingTensor::<u64>(
                 ndarray::Array::from(tensor).into_dyn(),
                 placement,
             ),

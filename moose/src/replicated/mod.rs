@@ -2622,8 +2622,8 @@ impl GreaterThanOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::host::AbstractHostRingTensor;
     use crate::host::FromRawPlc;
+    use crate::host::HostRingTensor;
     use crate::kernels::{
         PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, SyncSession,
     };
@@ -2640,7 +2640,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
+        let x = HostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
         let expected = x.clone();
 
         let sess = SyncSession::default();
@@ -2664,7 +2664,7 @@ mod tests {
             owners: ["alice-1".into(), "bob-1".into(), "carole-1".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice0.clone());
+        let x = HostRingTensor::from_raw_plc(array![1u64, 2, 3], alice0.clone());
         let expected = x.clone();
 
         let sess = SyncSession::default();
@@ -2694,13 +2694,13 @@ mod tests {
 
         let x1 = AdditiveRing64Tensor {
             shares: [
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![1, 2, 3],
                     HostPlacement {
                         owner: "alice".into(),
                     },
                 ),
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![4, 5, 6],
                     HostPlacement {
                         owner: "bob".into(),
@@ -2718,13 +2718,13 @@ mod tests {
 
         let x2 = AdditiveRing64Tensor {
             shares: [
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![1, 2, 3],
                     HostPlacement {
                         owner: "bob".into(),
                     },
                 ),
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![4, 5, 6],
                     HostPlacement {
                         owner: "alice".into(),
@@ -2740,13 +2740,13 @@ mod tests {
 
         let x3 = AdditiveRing64Tensor {
             shares: [
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![1, 2, 3],
                     HostPlacement {
                         owner: "david".into(),
                     },
                 ),
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![4, 5, 6],
                     HostPlacement {
                         owner: "eric".into(),
@@ -2762,13 +2762,13 @@ mod tests {
 
         let x4 = AdditiveRing64Tensor {
             shares: [
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![1, 2, 3],
                     HostPlacement {
                         owner: "alice".into(),
                     },
                 ),
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![4, 5, 6],
                     HostPlacement {
                         owner: "eric".into(),
@@ -2835,17 +2835,17 @@ mod tests {
         };
 
         // 64 bit
-        let a = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
-        let b = AbstractHostRingTensor::from_raw_plc(array![2u64, 3, 4], bob.clone());
-        let c = AbstractHostRingTensor::from_raw_plc(array![5u64, 12, 13], carole.clone());
+        let a = HostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
+        let b = HostRingTensor::from_raw_plc(array![2u64, 3, 4], bob.clone());
+        let c = HostRingTensor::from_raw_plc(array![5u64, 12, 13], carole.clone());
 
-        let expected = AbstractHostRingTensor::from_raw_plc(array![8u64, 17, 20], alice.clone());
+        let expected = HostRingTensor::from_raw_plc(array![8u64, 17, 20], alice.clone());
 
         let inputs = vec![a, b, c];
 
         let sess = SyncSession::default();
 
-        let shares: Vec<RepTensor<AbstractHostRingTensor<u64>>> =
+        let shares: Vec<RepTensor<HostRingTensor<u64>>> =
             inputs.into_iter().map(|x| rep.share(&sess, &x)).collect();
 
         let sum = rep.add_n(&sess, &shares);
@@ -2854,24 +2854,18 @@ mod tests {
         assert_eq!(expected, opened_result);
 
         // 128 bit
-        let a = AbstractHostRingTensor::from_raw_plc(
-            array![[1u128, 2, 3], [2u128, 3, 4]],
-            alice.clone(),
-        );
-        let b = AbstractHostRingTensor::from_raw_plc(array![[2u128, 3, 4], [2u128, 3, 4]], bob);
-        let c =
-            AbstractHostRingTensor::from_raw_plc(array![[5u128, 12, 13], [1u128, 2, 3]], carole);
+        let a = HostRingTensor::from_raw_plc(array![[1u128, 2, 3], [2u128, 3, 4]], alice.clone());
+        let b = HostRingTensor::from_raw_plc(array![[2u128, 3, 4], [2u128, 3, 4]], bob);
+        let c = HostRingTensor::from_raw_plc(array![[5u128, 12, 13], [1u128, 2, 3]], carole);
 
-        let expected = AbstractHostRingTensor::from_raw_plc(
-            array![[8u128, 17, 20], [5, 8, 11]],
-            alice.clone(),
-        );
+        let expected =
+            HostRingTensor::from_raw_plc(array![[8u128, 17, 20], [5, 8, 11]], alice.clone());
 
         let inputs = vec![a, b, c];
 
         let sess = SyncSession::default();
 
-        let shares: Vec<RepTensor<AbstractHostRingTensor<u128>>> =
+        let shares: Vec<RepTensor<HostRingTensor<u128>>> =
             inputs.into_iter().map(|x| rep.share(&sess, &x)).collect();
 
         let sum = rep.add_n(&sess, &shares);
@@ -2889,7 +2883,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
+        let x = HostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
 
         let sess = SyncSession::default();
 
@@ -2928,8 +2922,8 @@ mod tests {
     }
 
     diag_op_test!(rep_diag_bit, u8, HostBitTensor);
-    diag_op_test!(rep_diag_ring64, u64, AbstractHostRingTensor);
-    diag_op_test!(rep_diag_ring128, u128, AbstractHostRingTensor);
+    diag_op_test!(rep_diag_ring64, u64, HostRingTensor);
+    diag_op_test!(rep_diag_ring128, u128, HostRingTensor);
 
     #[test]
     fn test_rep_diag_bit() {
@@ -2973,8 +2967,8 @@ mod tests {
     }
 
     index_axis_op_test!(rep_index_axis_bit, u8, HostBitTensor);
-    index_axis_op_test!(rep_index_axis_ring64, u64, AbstractHostRingTensor);
-    index_axis_op_test!(rep_index_axis_ring128, u128, AbstractHostRingTensor);
+    index_axis_op_test!(rep_index_axis_ring64, u64, HostRingTensor);
+    index_axis_op_test!(rep_index_axis_ring128, u128, HostRingTensor);
 
     #[test]
     fn test_rep_index_axis_bit() {
@@ -3042,8 +3036,8 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
-                let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
+                let y = HostRingTensor::from_raw_plc(ys, alice.clone());
 
                 let sess = SyncSession::default();
 
@@ -3052,10 +3046,7 @@ mod tests {
 
                 let sum = rep.add(&sess, &x_shared, &y_shared);
                 let opened_sum = alice.reveal(&sess, &sum);
-                assert_eq!(
-                    opened_sum,
-                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
-                );
+                assert_eq!(opened_sum, HostRingTensor::from_raw_plc(zs, alice.clone()));
             }
         };
     }
@@ -3099,20 +3090,20 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
-                let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
+                let y = HostRingTensor::from_raw_plc(ys, alice.clone());
 
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
                 let y_shared = rep.share(&sess, &y);
 
-                let sum: RepTensor<AbstractHostRingTensor<$tt>> =
+                let sum: RepTensor<HostRingTensor<$tt>> =
                     rep.$test_func(&sess, &x_shared, &y_shared);
                 let opened_product = alice.reveal(&sess, &sum);
                 assert_eq!(
                     opened_product,
-                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
+                    HostRingTensor::from_raw_plc(zs, alice.clone())
                 );
             }
         };
@@ -3205,14 +3196,14 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
-                let target_rep_mir = AbstractHostRingTensor::from_raw_plc(zs_mir, alice.clone());
-                let target_mir_rep = AbstractHostRingTensor::from_raw_plc(zmir_s, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
+                let target_rep_mir = HostRingTensor::from_raw_plc(zs_mir, alice.clone());
+                let target_mir_rep = HostRingTensor::from_raw_plc(zmir_s, alice.clone());
 
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
-                let y_mir: MirTen<AbstractHostRingTensor<$tt>> =
+                let y_mir: MirTen<HostRingTensor<$tt>> =
                     mir.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
 
                 let result_rep_mir = rep.$test_func(&sess, &x_shared, &y_mir);
@@ -3287,13 +3278,13 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
-                let target = AbstractHostRingTensor::from_raw_plc(zs, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
+                let target = HostRingTensor::from_raw_plc(zs, alice.clone());
 
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
-                let y_mir: MirTen<AbstractHostRingTensor<$tt>> =
+                let y_mir: MirTen<HostRingTensor<$tt>> =
                     mir3.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
 
                 let result_rep_mir = rep.$test_func(&sess, &x_shared, &y_mir);
@@ -3347,12 +3338,12 @@ mod tests {
 
                 let sess = SyncSession::default();
 
-                let alice_x1 = AbstractHostRingTensor::from_raw_plc(xs.clone(), alice.clone());
+                let alice_x1 = HostRingTensor::from_raw_plc(xs.clone(), alice.clone());
                 let alice_rep = rep.share(&sess, &alice_x1);
                 let alice_tr = rep.trunc_pr(&sess, amount, &alice_rep);
                 let alice_open = alice.reveal(&sess, &alice_tr);
 
-                let alice_y = AbstractHostRingTensor::from_raw_plc(ys.clone(), alice.clone());
+                let alice_y = HostRingTensor::from_raw_plc(ys.clone(), alice.clone());
                 assert_eq!(alice_open.1, alice_y.1); // make sure placements are equal
 
                 // truncation can be off by 1
@@ -3369,12 +3360,12 @@ mod tests {
                     );
                 }
 
-                let bob_x1 = AbstractHostRingTensor::from_raw_plc(xs.clone(), bob.clone());
+                let bob_x1 = HostRingTensor::from_raw_plc(xs.clone(), bob.clone());
                 let bob_rep = rep.share(&sess, &bob_x1);
                 let bob_tr = rep.trunc_pr(&sess, amount, &bob_rep);
                 let bob_open = bob.reveal(&sess, &bob_tr);
 
-                let bob_y = AbstractHostRingTensor::from_raw_plc(ys.clone(), bob.clone());
+                let bob_y = HostRingTensor::from_raw_plc(ys.clone(), bob.clone());
                 assert_eq!(bob_open.1, bob);
 
                 for (i, value) in bob_y.0.iter().enumerate() {
@@ -3390,12 +3381,12 @@ mod tests {
                     );
                 }
 
-                let carole_x1 = AbstractHostRingTensor::from_raw_plc(xs.clone(), carole.clone());
+                let carole_x1 = HostRingTensor::from_raw_plc(xs.clone(), carole.clone());
                 let carole_rep = rep.share(&sess, &carole_x1);
                 let carole_tr = rep.trunc_pr(&sess, amount, &carole_rep);
                 let carole_open = carole.reveal(&sess, &carole_tr);
 
-                let carole_y = AbstractHostRingTensor::from_raw_plc(ys.clone(), bob.clone());
+                let carole_y = HostRingTensor::from_raw_plc(ys.clone(), bob.clone());
                 assert_eq!(carole_open.1, carole);
 
                 for (i, value) in carole_y.0.iter().enumerate() {
@@ -3500,18 +3491,17 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
 
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
 
-                let result: RepTensor<AbstractHostRingTensor<$tt>> =
-                    rep.$test_func(&sess, &x_shared);
+                let result: RepTensor<HostRingTensor<$tt>> = rep.$test_func(&sess, &x_shared);
                 let opened_result = alice.reveal(&sess, &result);
                 assert_eq!(
                     opened_result,
-                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
+                    HostRingTensor::from_raw_plc(zs, alice.clone())
                 );
             }
         };
@@ -3604,7 +3594,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+        let x = HostRingTensor::from_raw_plc(xs, alice.clone());
 
         let sess = SyncSession::default();
 
@@ -3644,7 +3634,7 @@ mod tests {
 
                 let expected = xs.clone();
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
 
                 let sess = SyncSession::default();
 
@@ -3656,10 +3646,7 @@ mod tests {
 
                 let opened_result = alice.reveal(&sess, &composed);
 
-                assert_eq!(
-                    opened_result,
-                    AbstractHostRingTensor::from_raw_plc(expected, alice)
-                );
+                assert_eq!(opened_result, HostRingTensor::from_raw_plc(expected, alice));
             }
         };
     }
@@ -3762,7 +3749,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(xs, bob);
+        let x = HostRingTensor::from_raw_plc(xs, bob);
 
         let sess = SyncSession::default();
 
@@ -3783,7 +3770,7 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(x, alice.clone());
+                let x = HostRingTensor::from_raw_plc(x, alice.clone());
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
@@ -3836,8 +3823,8 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
-                let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
+                let y = HostRingTensor::from_raw_plc(ys, alice.clone());
 
                 let sess = SyncSession::default();
 

@@ -805,7 +805,7 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractHostRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
+pub struct HostRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
 
 impl Ring for HostRing64Tensor {
     type BitLength = N64;
@@ -815,7 +815,7 @@ impl Ring for HostRing128Tensor {
     type BitLength = N128;
 }
 
-impl<T> Placed for AbstractHostRingTensor<T> {
+impl<T> Placed for HostRingTensor<T> {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -823,11 +823,11 @@ impl<T> Placed for AbstractHostRingTensor<T> {
     }
 }
 
-impl<S: Session, T> TensorLike<S> for AbstractHostRingTensor<T> {
+impl<S: Session, T> TensorLike<S> for HostRingTensor<T> {
     type Scalar = T;
 }
 
-impl<S: Session, T> TensorLike<S> for Symbolic<AbstractHostRingTensor<T>> {
+impl<S: Session, T> TensorLike<S> for Symbolic<HostRingTensor<T>> {
     type Scalar = T;
 }
 
@@ -835,14 +835,14 @@ pub trait FromRawPlc<P, T> {
     fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> Self;
 }
 
-impl<P, T> FromRawPlc<P, T> for AbstractHostRingTensor<T>
+impl<P, T> FromRawPlc<P, T> for HostRingTensor<T>
 where
     P: Into<HostPlacement>,
     T: Clone,
 {
-    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> AbstractHostRingTensor<T> {
+    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> HostRingTensor<T> {
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
-        AbstractHostRingTensor(tensor, plc.into())
+        HostRingTensor(tensor, plc.into())
     }
 }
 
@@ -859,25 +859,25 @@ impl<R: Ring + Placed> Ring for Symbolic<R> {
     type BitLength = R::BitLength;
 }
 
-impl<S: Session, T> PlacementPlace<S, AbstractHostRingTensor<T>> for HostPlacement
+impl<S: Session, T> PlacementPlace<S, HostRingTensor<T>> for HostPlacement
 where
-    AbstractHostRingTensor<T>: Placed<Placement = HostPlacement>,
+    HostRingTensor<T>: Placed<Placement = HostPlacement>,
 {
-    fn place(&self, _sess: &S, x: AbstractHostRingTensor<T>) -> AbstractHostRingTensor<T> {
+    fn place(&self, _sess: &S, x: HostRingTensor<T>) -> HostRingTensor<T> {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
-                AbstractHostRingTensor(x.0, self.clone())
+                HostRingTensor(x.0, self.clone())
             }
         }
     }
 }
 
-impl<T> AbstractHostRingTensor<T> {
-    pub fn place(plc: &HostPlacement, x: ArrayD<Wrapping<T>>) -> AbstractHostRingTensor<T> {
-        AbstractHostRingTensor::<T>(x, plc.clone())
+impl<T> HostRingTensor<T> {
+    pub fn place(plc: &HostPlacement, x: ArrayD<Wrapping<T>>) -> HostRingTensor<T> {
+        HostRingTensor::<T>(x, plc.clone())
     }
 }
 
@@ -985,22 +985,22 @@ impl HostRing128Tensor {
     }
 }
 
-impl<T> AbstractHostRingTensor<T>
+impl<T> HostRingTensor<T>
 where
     T: Clone,
 {
     pub fn from_raw_plc<D: ndarray::Dimension, P: Into<HostPlacement>>(
         raw_tensor: Array<T, D>,
         plc: P,
-    ) -> AbstractHostRingTensor<T> {
+    ) -> HostRingTensor<T> {
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
-        AbstractHostRingTensor(tensor, plc.into())
+        HostRingTensor(tensor, plc.into())
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> AbstractHostRingTensor<T>
+impl<T> HostRingTensor<T>
 where
     Wrapping<T>: Clone,
 {
@@ -1010,8 +1010,8 @@ where
             note = "This function is only used by the old kernels, which are not aware of the placements."
         )
     )]
-    pub fn fill(shape: &RawShape, el: T) -> AbstractHostRingTensor<T> {
-        AbstractHostRingTensor(
+    pub fn fill(shape: &RawShape, el: T) -> HostRingTensor<T> {
+        HostRingTensor(
             ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)),
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1020,21 +1020,21 @@ where
     }
 }
 
-impl<T> AbstractHostRingTensor<T> {
+impl<T> HostRingTensor<T> {
     pub(crate) fn shape(&self) -> HostShape {
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<ArrayD<T>> for AbstractHostRingTensor<T>
+impl<T> From<ArrayD<T>> for HostRingTensor<T>
 where
     T: Clone,
 {
-    fn from(a: ArrayD<T>) -> AbstractHostRingTensor<T> {
+    fn from(a: ArrayD<T>) -> HostRingTensor<T> {
         let wrapped = a.mapv(Wrapping);
-        AbstractHostRingTensor(
+        HostRingTensor(
             wrapped,
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1043,12 +1043,12 @@ where
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
-impl From<ArrayD<i64>> for AbstractHostRingTensor<u64> {
-    fn from(a: ArrayD<i64>) -> AbstractHostRingTensor<u64> {
+impl From<ArrayD<i64>> for HostRingTensor<u64> {
+    fn from(a: ArrayD<i64>) -> HostRingTensor<u64> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u64));
-        AbstractHostRingTensor(
+        HostRingTensor(
             ring_rep,
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1057,12 +1057,12 @@ impl From<ArrayD<i64>> for AbstractHostRingTensor<u64> {
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
-impl From<ArrayD<i128>> for AbstractHostRingTensor<u128> {
-    fn from(a: ArrayD<i128>) -> AbstractHostRingTensor<u128> {
+impl From<ArrayD<i128>> for HostRingTensor<u128> {
+    fn from(a: ArrayD<i128>) -> HostRingTensor<u128> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u128));
-        AbstractHostRingTensor(
+        HostRingTensor(
             ring_rep,
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1072,9 +1072,9 @@ impl From<ArrayD<i128>> for AbstractHostRingTensor<u128> {
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> AbstractHostRingTensor<T> {
-    pub fn new(a: ArrayD<Wrapping<T>>) -> AbstractHostRingTensor<T> {
-        AbstractHostRingTensor(
+impl<T> HostRingTensor<T> {
+    pub fn new(a: ArrayD<Wrapping<T>>) -> HostRingTensor<T> {
+        HostRingTensor(
             a,
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1083,15 +1083,15 @@ impl<T> AbstractHostRingTensor<T> {
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<HostBitTensor> for AbstractHostRingTensor<T>
+impl<T> From<HostBitTensor> for HostRingTensor<T>
 where
     T: From<u8>,
 {
-    fn from(b: HostBitTensor) -> AbstractHostRingTensor<T> {
+    fn from(b: HostBitTensor) -> HostRingTensor<T> {
         let ring_rep = b.0.mapv(|ai| Wrapping(ai.into()));
-        AbstractHostRingTensor(
+        HostRingTensor(
             ring_rep,
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1100,26 +1100,26 @@ where
     }
 }
 
-impl From<&AbstractHostRingTensor<u64>> for ArrayD<i64> {
-    fn from(r: &AbstractHostRingTensor<u64>) -> ArrayD<i64> {
+impl From<&HostRingTensor<u64>> for ArrayD<i64> {
+    fn from(r: &HostRingTensor<u64>) -> ArrayD<i64> {
         r.0.mapv(|element| element.0 as i64)
     }
 }
 
-impl From<&AbstractHostRingTensor<u128>> for ArrayD<i128> {
-    fn from(r: &AbstractHostRingTensor<u128>) -> ArrayD<i128> {
+impl From<&HostRingTensor<u128>> for ArrayD<i128> {
+    fn from(r: &HostRingTensor<u128>) -> ArrayD<i128> {
         r.0.mapv(|element| element.0 as i128)
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<Vec<T>> for AbstractHostRingTensor<T> {
-    fn from(v: Vec<T>) -> AbstractHostRingTensor<T> {
+impl<T> From<Vec<T>> for HostRingTensor<T> {
+    fn from(v: Vec<T>) -> HostRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
         use vec_utils::VecExt;
         let v_wrapped: Vec<_> = v.map(Wrapping);
-        AbstractHostRingTensor(
+        HostRingTensor(
             Array::from_shape_vec(ix, v_wrapped).unwrap(),
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1128,16 +1128,16 @@ impl<T> From<Vec<T>> for AbstractHostRingTensor<T> {
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<&[T]> for AbstractHostRingTensor<T>
+impl<T> From<&[T]> for HostRingTensor<T>
 where
     T: Copy,
 {
-    fn from(v: &[T]) -> AbstractHostRingTensor<T> {
+    fn from(v: &[T]) -> HostRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
         let v_wrapped: Vec<_> = v.iter().map(|vi| Wrapping(*vi)).collect();
-        AbstractHostRingTensor(
+        HostRingTensor(
             Array::from_shape_vec(ix, v_wrapped).unwrap(),
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1147,82 +1147,82 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Add<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
+impl<T> std::ops::Add<HostRingTensor<T>> for HostRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: std::ops::Add<Wrapping<T>, Output = Wrapping<T>>,
 {
-    type Output = AbstractHostRingTensor<T>;
-    fn add(self, other: AbstractHostRingTensor<T>) -> Self::Output {
-        AbstractHostRingTensor(self.0 + other.0, self.1)
+    type Output = HostRingTensor<T>;
+    fn add(self, other: HostRingTensor<T>) -> Self::Output {
+        HostRingTensor(self.0 + other.0, self.1)
     }
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Mul<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
+impl<T> std::ops::Mul<HostRingTensor<T>> for HostRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: std::ops::Mul<Wrapping<T>, Output = Wrapping<T>>,
 {
-    type Output = AbstractHostRingTensor<T>;
-    fn mul(self, other: AbstractHostRingTensor<T>) -> Self::Output {
-        AbstractHostRingTensor(self.0 * other.0, self.1)
+    type Output = HostRingTensor<T>;
+    fn mul(self, other: HostRingTensor<T>) -> Self::Output {
+        HostRingTensor(self.0 * other.0, self.1)
     }
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Sub<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
+impl<T> std::ops::Sub<HostRingTensor<T>> for HostRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: std::ops::Sub<Wrapping<T>, Output = Wrapping<T>>,
 {
-    type Output = AbstractHostRingTensor<T>;
-    fn sub(self, other: AbstractHostRingTensor<T>) -> Self::Output {
-        AbstractHostRingTensor(self.0 - other.0, self.1)
+    type Output = HostRingTensor<T>;
+    fn sub(self, other: HostRingTensor<T>) -> Self::Output {
+        HostRingTensor(self.0 - other.0, self.1)
     }
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Shl<usize> for AbstractHostRingTensor<T>
+impl<T> std::ops::Shl<usize> for HostRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: std::ops::Shl<usize, Output = Wrapping<T>>,
 {
-    type Output = AbstractHostRingTensor<T>;
+    type Output = HostRingTensor<T>;
     fn shl(self, other: usize) -> Self::Output {
-        AbstractHostRingTensor(self.0 << other, self.1)
+        HostRingTensor(self.0 << other, self.1)
     }
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Shr<usize> for AbstractHostRingTensor<T>
+impl<T> std::ops::Shr<usize> for HostRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: std::ops::Shr<usize, Output = Wrapping<T>>,
 {
-    type Output = AbstractHostRingTensor<T>;
+    type Output = HostRingTensor<T>;
     fn shr(self, other: usize) -> Self::Output {
-        AbstractHostRingTensor(self.0 >> other, self.1)
+        HostRingTensor(self.0 >> other, self.1)
     }
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::BitAnd<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
+impl<T> std::ops::BitAnd<HostRingTensor<T>> for HostRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: std::ops::BitAnd<Wrapping<T>, Output = Wrapping<T>>,
 {
-    type Output = AbstractHostRingTensor<T>;
-    fn bitand(self, other: AbstractHostRingTensor<T>) -> Self::Output {
-        AbstractHostRingTensor(self.0 & other.0, self.1)
+    type Output = HostRingTensor<T>;
+    fn bitand(self, other: HostRingTensor<T>) -> Self::Output {
+        HostRingTensor(self.0 & other.0, self.1)
     }
 }
 
-impl<T> AbstractHostRingTensor<T>
+impl<T> HostRingTensor<T>
 where
     Wrapping<T>: LinalgScalar,
 {
-    pub fn dot(self, rhs: AbstractHostRingTensor<T>) -> Result<AbstractHostRingTensor<T>> {
+    pub fn dot(self, rhs: HostRingTensor<T>) -> Result<HostRingTensor<T>> {
         match self.0.ndim() {
             1 => match rhs.0.ndim() {
                 1 => {
@@ -1237,7 +1237,7 @@ where
                     let res = Array::from_elem([], l.dot(&r))
                         .into_dimensionality::<IxDyn>()
                         .map_err(|e| Error::KernelError(e.to_string()))?;
-                    Ok(AbstractHostRingTensor(res, self.1))
+                    Ok(HostRingTensor(res, self.1))
                 }
                 2 => {
                     let l = self
@@ -1252,10 +1252,10 @@ where
                         .dot(&r)
                         .into_dimensionality::<IxDyn>()
                         .map_err(|e| Error::KernelError(e.to_string()))?;
-                    Ok(AbstractHostRingTensor(res, self.1))
+                    Ok(HostRingTensor(res, self.1))
                 }
                 other => Err(Error::KernelError(format!(
-                    "Dot<AbstractHostRingTensor> cannot handle argument of rank {:?} ",
+                    "Dot<HostRingTensor> cannot handle argument of rank {:?} ",
                     other
                 ))),
             },
@@ -1273,7 +1273,7 @@ where
                         .dot(&r)
                         .into_dimensionality::<IxDyn>()
                         .map_err(|e| Error::KernelError(e.to_string()))?;
-                    Ok(AbstractHostRingTensor(res, self.1))
+                    Ok(HostRingTensor(res, self.1))
                 }
                 2 => {
                     let l = self
@@ -1288,33 +1288,33 @@ where
                         .dot(&r)
                         .into_dimensionality::<IxDyn>()
                         .map_err(|e| Error::KernelError(e.to_string()))?;
-                    Ok(AbstractHostRingTensor(res, self.1))
+                    Ok(HostRingTensor(res, self.1))
                 }
                 other => Err(Error::KernelError(format!(
-                    "Dot<AbstractHostRingTensor> cannot handle argument of rank {:?} ",
+                    "Dot<HostRingTensor> cannot handle argument of rank {:?} ",
                     other
                 ))),
             },
             other => Err(Error::KernelError(format!(
-                "Dot<AbstractHostRingTensor> not implemented for tensors of rank {:?}",
+                "Dot<HostRingTensor> not implemented for tensors of rank {:?}",
                 other
             ))),
         }
     }
 }
 
-impl<T> AbstractHostRingTensor<T>
+impl<T> HostRingTensor<T>
 where
     Wrapping<T>: Clone + num_traits::Zero,
 {
-    pub fn sum(self, axis: Option<usize>) -> Result<AbstractHostRingTensor<T>> {
+    pub fn sum(self, axis: Option<usize>) -> Result<HostRingTensor<T>> {
         if let Some(i) = axis {
-            Ok(AbstractHostRingTensor(self.0.sum_axis(Axis(i)), self.1))
+            Ok(HostRingTensor(self.0.sum_axis(Axis(i)), self.1))
         } else {
             let out = Array::from_elem([], self.0.sum())
                 .into_dimensionality::<IxDyn>()
                 .map_err(|e| Error::KernelError(e.to_string()))?;
-            Ok(AbstractHostRingTensor(out, self.1))
+            Ok(HostRingTensor(out, self.1))
         }
     }
 }

@@ -76,18 +76,18 @@ impl Convert<HostFloat64Tensor> for HostRing128Tensor {
     }
 }
 
-impl<T> AbstractHostRingTensor<T>
+impl<T> HostRingTensor<T>
 where
     Wrapping<T>: Clone + Zero + Mul<Wrapping<T>, Output = Wrapping<T>>,
-    AbstractHostRingTensor<T>: Convert<HostFloat64Tensor>,
+    HostRingTensor<T>: Convert<HostFloat64Tensor>,
 {
     pub fn fixedpoint_mean(
         x: Self,
         axis: Option<usize>,
-        scaling_factor: <AbstractHostRingTensor<T> as Convert<HostFloat64Tensor>>::Scale,
-    ) -> Result<AbstractHostRingTensor<T>> {
+        scaling_factor: <HostRingTensor<T> as Convert<HostFloat64Tensor>>::Scale,
+    ) -> Result<HostRingTensor<T>> {
         let mean_weight = Self::compute_mean_weight(&x, &axis)?;
-        let encoded_weight = AbstractHostRingTensor::<T>::encode(&mean_weight, scaling_factor);
+        let encoded_weight = HostRingTensor::<T>::encode(&mean_weight, scaling_factor);
         let operand_sum = x.sum(axis)?;
         Ok(operand_sum.mul(encoded_weight))
     }
