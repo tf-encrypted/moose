@@ -39,12 +39,12 @@ impl InputOp {
         plc: &HostPlacement,
         _sig: Signature,
         arg_name: String,
-    ) -> Result<AbstractHostFixedAesTensor<HostBitArrayT>>
+    ) -> Result<HostFixedAesTensor<HostBitArrayT>>
     where
         HostPlacement: PlacementInput<S, HostBitArrayT>,
     {
         let tensor = plc.input(sess, arg_name);
-        Ok(AbstractHostFixedAesTensor {
+        Ok(HostFixedAesTensor {
             tensor,
             // TODO(Morten) extract precision from sig
             integral_precision: 46,
@@ -253,7 +253,7 @@ impl AesDecryptOp {
         sess: &S,
         plc: &HostPlacement,
         key: AbstractHostAesKey<HostBitArray128T>,
-        ciphertext: AbstractHostFixedAesTensor<HostBitArray224T>,
+        ciphertext: HostFixedAesTensor<HostBitArray224T>,
     ) -> Result<HostFixedTensor<HostRing128TensorT>>
     where
         HostBitArray128T: BitArray<Len = N128>,
@@ -290,7 +290,7 @@ impl AesDecryptOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         key: AbstractReplicatedAesKey<RepBitArray128T>,
-        ciphertext: AbstractHostFixedAesTensor<HostBitArray224T>,
+        ciphertext: HostFixedAesTensor<HostBitArray224T>,
     ) -> Result<RepFixedTensor<RepRing128TensorT>>
     where
         RepBitArray128T: BitArray<Len = N128>,

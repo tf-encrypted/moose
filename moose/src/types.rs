@@ -6,8 +6,8 @@ use crate::encrypted::{AbstractAesKey, AbstractAesTensor, FixedAesTensor};
 use crate::fixedpoint::FixedTensor;
 use crate::floatingpoint::FloatTensor;
 use crate::host::{
-    AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedAesTensor, HostFixedTensor,
-    HostRingTensor, HostTensor,
+    AbstractHostAesKey, AbstractHostBitArray, HostFixedAesTensor, HostFixedTensor, HostRingTensor,
+    HostTensor,
 };
 use crate::logical::AbstractTensor;
 use crate::mirrored::{Mir3Tensor, MirFixedTensor};
@@ -51,7 +51,7 @@ moose_type!(ReplicatedBitTensor = RepTensor<HostBitTensor>);
 
 moose_type!(AesTensor = AbstractAesTensor<Fixed128AesTensor>);
 moose_type!(Fixed128AesTensor = FixedAesTensor<HostFixed128AesTensor>);
-moose_type!(HostFixed128AesTensor = AbstractHostFixedAesTensor<HostBitArray224>);
+moose_type!(HostFixed128AesTensor = HostFixedAesTensor<HostBitArray224>);
 
 moose_type!(AesKey = AbstractAesKey<HostAesKey, ReplicatedAesKey>);
 moose_type!(HostAesKey = AbstractHostAesKey<HostBitArray128>);

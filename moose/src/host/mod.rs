@@ -751,13 +751,13 @@ impl<HostBitArrayT: Placed<Placement = HostPlacement>> Placed
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractHostFixedAesTensor<HostBitArrayT> {
+pub struct HostFixedAesTensor<HostBitArrayT> {
     pub tensor: HostBitArrayT,
     pub integral_precision: u32,
     pub fractional_precision: u32,
 }
 
-impl<HostBitArrayT: Placed> Placed for AbstractHostFixedAesTensor<HostBitArrayT>
+impl<HostBitArrayT: Placed> Placed for HostFixedAesTensor<HostBitArrayT>
 where
     <HostBitArrayT as Placed>::Placement: Into<Placement>,
 {
