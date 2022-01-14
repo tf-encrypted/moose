@@ -2017,11 +2017,19 @@ impl MaximumOp {
         ReplicatedPlacement: PlacementMaximum<S, RepRingT, RepRingT>,
         RepRingT: Clone,
     {
-        if x.is_empty() {
-            return Err(Error::InvalidArgument(
-                "maximum op needs a non-empty array of tensors".to_string(),
-            ));
-        }
+        // leave it up to the reduce op to identify whethere x is empty.
+        let integral_precision = x
+            .iter()
+            .map(|item| item.integral_precision)
+            .reduce(u32::max);
+        let integral_precision = match integral_precision {
+            Some(v) => v,
+            None => {
+                return Err(Error::Unexpected(Some(
+                    "maximum op had no inputs".to_string(),
+                )))
+            }
+        };
 
         let fractional_precision = x[0].fractional_precision;
         for item in x.iter() {
@@ -2031,10 +2039,6 @@ impl MaximumOp {
                 ));
             };
         }
-
-        let integral_precision = x.iter().fold(x[0].integral_precision, |max, val| {
-            u32::max(max, val.integral_precision)
-        });
 
         let xv: Vec<_> = x
             .iter()

@@ -1895,21 +1895,31 @@ impl MaximumOp {
             AbstractTensor::Fixed64(_) => {
                 let xv: Vec<Fixed64T> = x
                     .iter()
-                    .map(|entry| match entry {
-                        AbstractTensor::Fixed64(v) => v.clone(),
-                        _ => unimplemented!(), // never going to be reached
+                    .filter_map(|entry| match entry {
+                        AbstractTensor::Fixed64(v) => Some(v.clone()),
+                        _ => None,
                     })
                     .collect();
+                if xv.len() != x.len() {
+                    return Err(Error::Unexpected(Some(
+                        "maximum op all args to have same types".to_string(),
+                    )));
+                }
                 AbstractTensor::Fixed64(plc.maximum(sess, &xv))
             }
             AbstractTensor::Fixed128(_) => {
                 let xv: Vec<Fixed128T> = x
                     .iter()
-                    .map(|entry| match entry {
-                        AbstractTensor::Fixed128(v) => v.clone(),
-                        _ => unimplemented!(), // never going to be reached
+                    .filter_map(|entry| match entry {
+                        AbstractTensor::Fixed128(v) => Some(v.clone()),
+                        _ => None, // never going to be reached
                     })
                     .collect();
+                if xv.len() != x.len() {
+                    return Err(Error::Unexpected(Some(
+                        "maximum op all args to have same types".to_string(),
+                    )));
+                }
                 AbstractTensor::Fixed128(plc.maximum(sess, &xv))
             }
             _ => unimplemented!(),
