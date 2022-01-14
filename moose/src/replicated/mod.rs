@@ -3,7 +3,7 @@ use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
-use crate::host::{AbstractHostAesKey, AbstractHostBitArray, HostFixedTensor, SliceInfo};
+use crate::host::{AbstractHostAesKey, HostBitArray, HostFixedTensor, SliceInfo};
 use crate::kernels::*;
 use crate::mirrored::{Mir3Tensor, MirFixedTensor, Mirrored3Placement};
 use crate::prim::{PrfKey, Seed, SyncKey};
@@ -405,7 +405,7 @@ impl RepShareOp {
     pub(crate) fn array_kernel<S: Session, HostBitTensorT, RepBitTensorT, N: Const>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractHostBitArray<HostBitTensorT, N>,
+        x: HostBitArray<HostBitTensorT, N>,
     ) -> Result<RepBitArray<RepBitTensorT, N>>
     where
         ReplicatedPlacement: PlacementShare<S, HostBitTensorT, RepBitTensorT>,
@@ -565,12 +565,12 @@ impl RepRevealOp {
         sess: &S,
         receiver: &HostPlacement,
         xe: RepBitArray<RepBitT, N>,
-    ) -> Result<AbstractHostBitArray<HostBitT, N>>
+    ) -> Result<HostBitArray<HostBitT, N>>
     where
         HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
     {
         let x = receiver.reveal(sess, &xe.0);
-        Ok(AbstractHostBitArray(x, PhantomData))
+        Ok(HostBitArray(x, PhantomData))
     }
 
     pub(crate) fn ring_kernel<S: Session, R: Clone>(
@@ -3602,7 +3602,7 @@ mod tests {
 
         let result: ReplicatedBitArray64 = rep.bit_decompose(&sess, &x_shared);
         let opened_result = alice.reveal(&sess, &result);
-        assert_eq!(opened_result, AbstractHostBitArray::from_raw_plc(zs, alice));
+        assert_eq!(opened_result, HostBitArray::from_raw_plc(zs, alice));
     }
 
     #[rstest]
@@ -3757,7 +3757,7 @@ mod tests {
 
         let result: ReplicatedBitArray64 = rep.bit_decompose(&sess, &x_shared);
         let opened_result = alice.reveal(&sess, &result);
-        assert_eq!(opened_result, AbstractHostBitArray::from_raw_plc(zs, alice));
+        assert_eq!(opened_result, HostBitArray::from_raw_plc(zs, alice));
     }
 
     macro_rules! rep_prefix_op_bit_test {

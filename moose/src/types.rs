@@ -6,7 +6,7 @@ use crate::encrypted::{AbstractAesKey, AbstractAesTensor, FixedAesTensor};
 use crate::fixedpoint::FixedTensor;
 use crate::floatingpoint::FloatTensor;
 use crate::host::{
-    AbstractHostAesKey, AbstractHostBitArray, HostFixedAesTensor, HostFixedTensor, HostRingTensor,
+    AbstractHostAesKey, HostBitArray, HostFixedAesTensor, HostFixedTensor, HostRingTensor,
     HostTensor,
 };
 use crate::logical::AbstractTensor;
@@ -96,10 +96,10 @@ moose_type!(HostUint8Tensor = [atomic] HostTensor<u8>);
 moose_type!(HostUint16Tensor = [atomic] HostTensor<u16>);
 moose_type!(HostUint32Tensor = [atomic] HostTensor<u32>);
 moose_type!(HostUint64Tensor = [atomic] HostTensor<u64>);
-pub type HostBitArray64 = AbstractHostBitArray<HostBitTensor, N64>;
-pub type HostBitArray128 = AbstractHostBitArray<HostBitTensor, N128>;
-pub type HostBitArray224 = AbstractHostBitArray<HostBitTensor, N224>;
-pub type HostBitArray256 = AbstractHostBitArray<HostBitTensor, N256>;
+pub type HostBitArray64 = HostBitArray<HostBitTensor, N64>;
+pub type HostBitArray128 = HostBitArray<HostBitTensor, N128>;
+pub type HostBitArray224 = HostBitArray<HostBitTensor, N224>;
+pub type HostBitArray256 = HostBitArray<HostBitTensor, N256>;
 
 moose_type!(PrfKey);
 moose_type!(Seed);

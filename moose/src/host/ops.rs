@@ -15,39 +15,39 @@ impl InputOp {
         sess: &S,
         plc: &HostPlacement,
         arg_name: String,
-    ) -> Result<AbstractHostBitArray<HostBitTensorT, N64>>
+    ) -> Result<HostBitArray<HostBitTensorT, N64>>
     where
         HostPlacement: PlacementInput<S, HostBitTensorT>,
     {
         // TODO(Morten) ideally we should verify that shape of bit tensor
         let bit_tensor = plc.input(sess, arg_name);
-        Ok(AbstractHostBitArray(bit_tensor, PhantomData))
+        Ok(HostBitArray(bit_tensor, PhantomData))
     }
 
     pub(crate) fn host_bitarray128<S: Session, HostBitTensorT>(
         sess: &S,
         plc: &HostPlacement,
         arg_name: String,
-    ) -> Result<AbstractHostBitArray<HostBitTensorT, N128>>
+    ) -> Result<HostBitArray<HostBitTensorT, N128>>
     where
         HostPlacement: PlacementInput<S, HostBitTensorT>,
     {
         // TODO(Morten) ideally we should verify that shape of bit tensor
         let bit_tensor = plc.input(sess, arg_name);
-        Ok(AbstractHostBitArray(bit_tensor, PhantomData))
+        Ok(HostBitArray(bit_tensor, PhantomData))
     }
 
     pub(crate) fn host_bitarray224<S: Session, HostBitTensorT>(
         sess: &S,
         plc: &HostPlacement,
         arg_name: String,
-    ) -> Result<AbstractHostBitArray<HostBitTensorT, N224>>
+    ) -> Result<HostBitArray<HostBitTensorT, N224>>
     where
         HostPlacement: PlacementInput<S, HostBitTensorT>,
     {
         // TODO(Morten) ideally we should verify that shape of bit tensor
         let bit_tensor = plc.input(sess, arg_name);
-        Ok(AbstractHostBitArray(bit_tensor, PhantomData))
+        Ok(HostBitArray(bit_tensor, PhantomData))
     }
 }
 
@@ -458,7 +458,7 @@ impl IndexOp {
         sess: &S,
         plc: &HostPlacement,
         index: usize,
-        x: AbstractHostBitArray<HostBitT, N>,
+        x: HostBitArray<HostBitT, N>,
     ) -> Result<HostBitT>
     where
         HostPlacement: PlacementIndexAxis<S, HostBitT, HostBitT>,

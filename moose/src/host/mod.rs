@@ -666,30 +666,30 @@ impl std::ops::BitAnd for HostBitTensor {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractHostBitArray<HostBitTensorT, N>(pub HostBitTensorT, pub PhantomData<N>);
+pub struct HostBitArray<HostBitTensorT, N>(pub HostBitTensorT, pub PhantomData<N>);
 
-impl<HostBitT: CanonicalType, N> CanonicalType for AbstractHostBitArray<HostBitT, N> {
-    type Type = AbstractHostBitArray<<HostBitT as CanonicalType>::Type, N>;
+impl<HostBitT: CanonicalType, N> CanonicalType for HostBitArray<HostBitT, N> {
+    type Type = HostBitArray<<HostBitT as CanonicalType>::Type, N>;
 }
 
-impl<HostBitT, N: Const> BitArray for AbstractHostBitArray<HostBitT, N> {
+impl<HostBitT, N: Const> BitArray for HostBitArray<HostBitT, N> {
     type Len = N;
 }
 
-impl<HostBitT: Placed, N: Const> BitArray for Symbolic<AbstractHostBitArray<HostBitT, N>> {
+impl<HostBitT: Placed, N: Const> BitArray for Symbolic<HostBitArray<HostBitT, N>> {
     type Len = N;
 }
 
 #[cfg(test)]
-impl<N> AbstractHostBitArray<HostBitTensor, N> {
+impl<N> HostBitArray<HostBitTensor, N> {
     pub(crate) fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> Self {
         // TODO check that first dimension equals N
-        AbstractHostBitArray::<_, N>(HostBitTensor::from_raw_plc(raw_tensor, plc), PhantomData)
+        HostBitArray::<_, N>(HostBitTensor::from_raw_plc(raw_tensor, plc), PhantomData)
     }
 }
 
 // TODO implement using moose_type macro
-impl<HostBitTensorT: Placed, N> Placed for AbstractHostBitArray<HostBitTensorT, N> {
+impl<HostBitTensorT: Placed, N> Placed for HostBitArray<HostBitTensorT, N> {
     type Placement = HostBitTensorT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -698,38 +698,36 @@ impl<HostBitTensorT: Placed, N> Placed for AbstractHostBitArray<HostBitTensorT, 
 }
 
 impl PartiallySymbolicType for HostBitArray64 {
-    type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N64>;
+    type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N64>;
 }
 
 impl PartiallySymbolicType for HostBitArray128 {
-    type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N128>;
+    type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N128>;
 }
 
 impl PartiallySymbolicType for HostBitArray224 {
-    type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N224>;
+    type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N224>;
 }
 
 impl PartiallySymbolicType for HostBitArray256 {
-    type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N256>;
+    type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N256>;
 }
 
-impl<HostBitT: Placed, N> From<AbstractHostBitArray<HostBitT, N>>
-    for Symbolic<AbstractHostBitArray<HostBitT, N>>
+impl<HostBitT: Placed, N> From<HostBitArray<HostBitT, N>> for Symbolic<HostBitArray<HostBitT, N>>
 where
     HostBitT: Placed<Placement = HostPlacement>,
 {
-    fn from(x: AbstractHostBitArray<HostBitT, N>) -> Self {
+    fn from(x: HostBitArray<HostBitT, N>) -> Self {
         Symbolic::Concrete(x)
     }
 }
 
-impl<HostBitT, N> TryFrom<Symbolic<AbstractHostBitArray<HostBitT, N>>>
-    for AbstractHostBitArray<HostBitT, N>
+impl<HostBitT, N> TryFrom<Symbolic<HostBitArray<HostBitT, N>>> for HostBitArray<HostBitT, N>
 where
     HostBitT: Placed<Placement = HostPlacement>,
 {
     type Error = crate::error::Error;
-    fn try_from(v: Symbolic<AbstractHostBitArray<HostBitT, N>>) -> crate::error::Result<Self> {
+    fn try_from(v: Symbolic<HostBitArray<HostBitT, N>>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
