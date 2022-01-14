@@ -1539,15 +1539,17 @@ impl ConcatOp {
         ReplicatedPlacement: PlacementConcatenate<S, RepFixedT, RepFixedT>,
         RepFixedT: Clone,
     {
-        let vec: Vec<RepFixedT> = xs
+        let vec: Result<Vec<RepFixedT>> = xs
             .iter()
             .map(|t| match t {
-                FixedTensor::Host(x) => plc.share(sess, x),
-                FixedTensor::Replicated(x) => x.clone(),
-                FixedTensor::Mirrored3(_) => unimplemented!(),
+                FixedTensor::Host(x) => Ok(plc.share(sess, x)),
+                FixedTensor::Replicated(x) => Ok(x.clone()),
+                FixedTensor::Mirrored3(_) => Err(Error::InvalidArgument(
+                    "concat does not support mirrored tensors".to_string(),
+                )),
             })
             .collect();
-        Ok(FixedTensor::Replicated(plc.concatenate(sess, axis, &vec)))
+        Ok(FixedTensor::Replicated(plc.concatenate(sess, axis, &vec?)))
     }
 }
 

@@ -1557,25 +1557,33 @@ impl ConcatOp {
             let x = &xs[0];
             match x {
                 AbstractTensor::Fixed64(_) => {
-                    let vec: Vec<Fixed64T> = xs
+                    let vec: Result<Vec<Fixed64T>> = xs
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
-                            AbstractTensor::Fixed64(x) => x.clone(),
-                            _ => unimplemented!("mixed types in tensor"),
+                            AbstractTensor::Fixed64(x) => Ok(x.clone()),
+                            _ => {
+                                return Err(Error::InvalidArgument(
+                                    "concat does not support mixed tensor types".to_string(),
+                                ))
+                            }
                         })
                         .collect();
-                    let result = plc.concatenate(sess, axis, &vec);
+                    let result = plc.concatenate(sess, axis, &vec?);
                     Ok(AbstractTensor::Fixed64(result))
                 }
                 AbstractTensor::Fixed128(_) => {
-                    let vec: Vec<Fixed128T> = xs
+                    let vec: Result<Vec<Fixed128T>> = xs
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
-                            AbstractTensor::Fixed128(x) => x.clone(),
-                            _ => unimplemented!("mixed types in tensor"),
+                            AbstractTensor::Fixed128(x) => Ok(x.clone()),
+                            _ => {
+                                return Err(Error::InvalidArgument(
+                                    "concat does not support mixed tensor types".to_string(),
+                                ))
+                            }
                         })
                         .collect();
-                    let result = plc.concatenate(sess, axis, &vec);
+                    let result = plc.concatenate(sess, axis, &vec?);
                     Ok(AbstractTensor::Fixed128(result))
                 }
                 x => Err(Error::UnimplementedOperator(format!(
