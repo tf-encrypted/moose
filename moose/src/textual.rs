@@ -2,10 +2,10 @@
 
 use crate::additive::AdditivePlacement;
 use crate::computation::*;
+use crate::host::{RawPrfKey, RawSeed, SyncKey};
 use crate::host::{RawShape, SliceInfo, SliceInfoElem};
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
-use crate::host::{RawPrfKey, RawSeed, SyncKey};
 use crate::replicated::ReplicatedPlacement;
 use crate::types::*;
 use nom::{

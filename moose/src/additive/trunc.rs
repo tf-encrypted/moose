@@ -1,9 +1,8 @@
 //! Truncation for additive placements
 use super::*;
 use crate::computation::{CanonicalType, HostPlacement, KnownType};
-use crate::host::HostShape;
+use crate::host::{HostShape, PrfKey, Seed, SyncKey};
 use crate::kernels::*;
-use crate::host::{PrfKey, Seed, SyncKey};
 use crate::replicated::RepTensor;
 use crate::{Const, Ring};
 use macros::with_context;
