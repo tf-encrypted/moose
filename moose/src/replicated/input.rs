@@ -77,7 +77,7 @@ impl InputOp {
         plc: &ReplicatedPlacement,
         sig: Signature,
         arg_name: String,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementInput<S, RepRingT>,
     {
@@ -94,7 +94,7 @@ impl InputOp {
             }),
         }?;
 
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: ring_tensor,
             integral_precision,
             fractional_precision,

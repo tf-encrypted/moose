@@ -291,7 +291,7 @@ impl AesDecryptOp {
         plc: &ReplicatedPlacement,
         key: AbstractReplicatedAesKey<RepBitArray128T>,
         ciphertext: AbstractHostFixedAesTensor<HostBitArray224T>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRing128TensorT>>
+    ) -> Result<RepFixedTensor<RepRing128TensorT>>
     where
         RepBitArray128T: BitArray<Len = N128>,
         HostBitArray224T: BitArray<Len = N224>,
@@ -312,7 +312,7 @@ impl AesDecryptOp {
     {
         let shared_ciphertext = plc.share(sess, &ciphertext.tensor);
         let tensor = aesgcm(sess, plc, key.0, shared_ciphertext);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor,
             integral_precision: ciphertext.integral_precision,
             fractional_precision: ciphertext.fractional_precision,

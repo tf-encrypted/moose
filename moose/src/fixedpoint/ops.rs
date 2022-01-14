@@ -332,15 +332,15 @@ impl FixedpointAddOp {
     fn repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+        y: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.add(sess, &x.tensor, &y.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
@@ -350,15 +350,15 @@ impl FixedpointAddOp {
     fn repfixed_mirfixed_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
+        x: RepFixedTensor<RepRingT>,
         y: AbstractMirroredFixedTensor<MirRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementAdd<S, RepRingT, MirRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.add(sess, &x.tensor, &y.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: z,
             fractional_precision: u32::max(x.fractional_precision, y.fractional_precision),
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
@@ -369,14 +369,14 @@ impl FixedpointAddOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractMirroredFixedTensor<MirRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        y: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementAdd<S, MirRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.add(sess, &x.tensor, &y.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: z,
             fractional_precision: u32::max(x.fractional_precision, y.fractional_precision),
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
@@ -472,15 +472,15 @@ impl FixedpointSubOp {
     fn repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+        y: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.sub(sess, &x.tensor, &y.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
@@ -580,15 +580,15 @@ impl FixedpointMulOp {
     fn repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+        y: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.mul(sess, &x.tensor, &y.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision + y.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
@@ -598,15 +598,15 @@ impl FixedpointMulOp {
     fn repfixed_mirfixed_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
+        x: RepFixedTensor<RepRingT>,
         y: AbstractMirroredFixedTensor<MirRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementMul<S, RepRingT, MirRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.mul(sess, &x.tensor, &y.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision + y.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
@@ -617,14 +617,14 @@ impl FixedpointMulOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractMirroredFixedTensor<MirRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        y: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementMul<S, MirRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.mul(sess, &x.tensor, &y.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision + y.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
@@ -821,15 +821,15 @@ impl FixedpointDotOp {
     fn repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+        y: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementDot<S, RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         let z = plc.dot(sess, &x.tensor, &y.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision + y.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
@@ -916,13 +916,13 @@ impl FixedpointTruncPrOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         precision: u32,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
     {
         let z = plc.trunc_pr(sess, precision, &x.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: z,
             fractional_precision: x.fractional_precision - precision,
             integral_precision: x.integral_precision,
@@ -1008,13 +1008,13 @@ impl FixedpointSumOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Option<u32>,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementSum<S, RepRingT, RepRingT>,
     {
         let z = plc.sum(sess, axis, &x.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: z,
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
@@ -1070,13 +1070,13 @@ impl IndexAxisOp {
         plc: &ReplicatedPlacement,
         axis: usize,
         index: usize,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementIndexAxis<S, RepRingT, RepRingT>,
     {
         let y = plc.index_axis(sess, axis, index, &x.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: y,
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
@@ -1231,13 +1231,13 @@ impl FixedpointMeanOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Option<u32>,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementMeanAsFixedpoint<S, RepRingT, RepRingT>,
     {
         let y = plc.mean_as_fixedpoint(sess, axis, 2, x.fractional_precision, &x.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: y,
             fractional_precision: x.fractional_precision * 2,
             integral_precision: x.integral_precision,
@@ -1257,13 +1257,13 @@ impl NegOp {
     fn repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementNeg<S, RepRingT, RepRingT>,
     {
         let y = plc.neg(sess, &x.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: y,
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
@@ -1353,8 +1353,8 @@ impl AddNOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        xs: &[AbstractReplicatedFixedTensor<RepRingT>],
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        xs: &[RepFixedTensor<RepRingT>],
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementAddN<S, RepRingT, RepRingT>,
         RepRingT: Clone,
@@ -1370,7 +1370,7 @@ impl AddNOp {
 
         let zs: Vec<RepRingT> = xs.iter().map(|item| item.tensor.clone()).collect();
 
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: rep.add_n(sess, &zs),
             fractional_precision,
             integral_precision,
@@ -1576,8 +1576,8 @@ impl LessOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
+        x: RepFixedTensor<RepRingT>,
+        y: RepFixedTensor<RepRingT>,
     ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementLessThan<S, RepRingT, RepRingT, RepBitT>,
@@ -1590,7 +1590,7 @@ impl LessOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractMirroredFixedTensor<MirRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
+        y: RepFixedTensor<RepRingT>,
     ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementLessThan<S, MirRingT, RepRingT, RepBitT>,
@@ -1602,7 +1602,7 @@ impl LessOp {
     pub(crate) fn rep_fixed_mir_kernel<S: Session, RepRingT, MirRingT, RepBitT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
+        x: RepFixedTensor<RepRingT>,
         y: AbstractMirroredFixedTensor<MirRingT>,
     ) -> Result<RepBitT>
     where
@@ -1624,8 +1624,8 @@ impl GreaterThanOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
+        x: RepFixedTensor<RepRingT>,
+        y: RepFixedTensor<RepRingT>,
     ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementGreaterThan<S, RepRingT, RepRingT, RepBitT>,
@@ -1638,7 +1638,7 @@ impl GreaterThanOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractMirroredFixedTensor<MirRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
+        y: RepFixedTensor<RepRingT>,
     ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementGreaterThan<S, MirRingT, RepRingT, RepBitT>,
@@ -1650,7 +1650,7 @@ impl GreaterThanOp {
     pub(crate) fn rep_fixed_mir_kernel<S: Session, RepRingT, MirRingT, RepBitT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
+        x: RepFixedTensor<RepRingT>,
         y: AbstractMirroredFixedTensor<MirRingT>,
     ) -> Result<RepBitT>
     where
@@ -1735,14 +1735,14 @@ impl MuxOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         s: RepRingT,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+        y: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementMux<S, RepRingT, RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: plc.mux(sess, &s, &x.tensor, &y.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
@@ -1753,15 +1753,15 @@ impl MuxOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         s: m!(ReplicatedBitTensor),
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+        y: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedBitTensor: KnownType<S>,
         ReplicatedPlacement: PlacementMux<S, m!(ReplicatedBitTensor), RepRingT, RepRingT, RepRingT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: plc.mux(sess, &s, &x.tensor, &y.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
@@ -1892,10 +1892,8 @@ mod tests {
         }
     }
 
-    fn new_replicated_fixed_tensor<RepRingT>(
-        x: RepRingT,
-    ) -> AbstractReplicatedFixedTensor<RepRingT> {
-        AbstractReplicatedFixedTensor {
+    fn new_replicated_fixed_tensor<RepRingT>(x: RepRingT) -> RepFixedTensor<RepRingT> {
+        RepFixedTensor {
             tensor: x,
             fractional_precision: 15,
             integral_precision: 8,
@@ -2468,13 +2466,13 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                let x = Symbolic::Concrete(RepFixedTensor {
                     fractional_precision: f_precision,
                     integral_precision: i_precision,
                     tensor: $new_symbolic_rep(&"x", &rep),
                 });
 
-                let y = Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                let y = Symbolic::Concrete(RepFixedTensor {
                     fractional_precision: f_precision,
                     integral_precision: i_precision,
                     tensor: $new_symbolic_rep(&"y", &rep),
@@ -2484,7 +2482,7 @@ mod tests {
 
                 let result = rep.div(&sess, &x, &y);
                 match result {
-                    Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                    Symbolic::Concrete(RepFixedTensor {
                         tensor: _,
                         fractional_precision,
                         integral_precision,
@@ -2748,7 +2746,7 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                let x = Symbolic::Concrete(RepFixedTensor {
                     fractional_precision: f_precision,
                     integral_precision: i_precision,
                     tensor: $new_symbolic_rep(&"x", &rep),
@@ -2758,7 +2756,7 @@ mod tests {
 
                 let result = rep.$test_func(&sess, &x);
                 match result {
-                    Symbolic::Concrete(AbstractReplicatedFixedTensor {
+                    Symbolic::Concrete(RepFixedTensor {
                         tensor: _,
                         fractional_precision,
                         integral_precision,

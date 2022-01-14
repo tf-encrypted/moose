@@ -118,7 +118,7 @@ pub trait FixedpointTensor {
     fn integral_precision(&self) -> u32;
 }
 
-impl<RepRingT> FixedpointTensor for AbstractReplicatedFixedTensor<RepRingT> {
+impl<RepRingT> FixedpointTensor for RepFixedTensor<RepRingT> {
     fn fractional_precision(&self) -> u32 {
         self.fractional_precision
     }
@@ -128,7 +128,7 @@ impl<RepRingT> FixedpointTensor for AbstractReplicatedFixedTensor<RepRingT> {
     }
 }
 
-impl<RepRingT: Placed> FixedpointTensor for Symbolic<AbstractReplicatedFixedTensor<RepRingT>> {
+impl<RepRingT: Placed> FixedpointTensor for Symbolic<RepFixedTensor<RepRingT>> {
     fn fractional_precision(&self) -> u32 {
         match self {
             Symbolic::Symbolic(_) => unimplemented!(), // TODO(Dragos) extract from underlying op signature

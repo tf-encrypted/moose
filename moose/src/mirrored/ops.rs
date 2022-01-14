@@ -3,7 +3,7 @@ use crate::computation::*;
 use crate::error::Result;
 use crate::host::AbstractHostFixedTensor;
 use crate::kernels::*;
-use crate::replicated::{AbstractReplicatedFixedTensor, RepTensor, ReplicatedPlacement};
+use crate::replicated::{RepFixedTensor, RepTensor, ReplicatedPlacement};
 
 impl MirrorOp {
     pub(crate) fn kernel<S: Session, HostT>(
@@ -146,11 +146,11 @@ impl RepShareOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractMirroredFixedTensor<MirRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementShare<S, MirRingT, RepRingT>,
     {
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: plc.share(sess, &x.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
@@ -209,7 +209,7 @@ impl RepRevealOp {
     pub(crate) fn mir_fixed_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         receiver: &Mirrored3Placement,
-        xe: AbstractReplicatedFixedTensor<RepRingT>,
+        xe: RepFixedTensor<RepRingT>,
     ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
     where
         Mirrored3Placement: PlacementReveal<S, RepRingT, MirRingT>,

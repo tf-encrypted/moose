@@ -4,9 +4,9 @@ impl FixedpointDivOp {
     pub(crate) fn rep_rep_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+        y: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         RepRingT: Ring,
         ReplicatedPlacement: ApproximateReciprocal<S, RepRingT, RepRingT>,
@@ -62,7 +62,7 @@ impl FixedpointDivOp {
         b = rep.mul(sess, &b, &rep.add(sess, &rep_alpha, &a));
         b = rep.trunc_pr(sess, 2 * frac_precision, &b);
 
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: b,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
             fractional_precision: x.fractional_precision,

@@ -235,23 +235,21 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractReplicatedFixedTensor<RepRingT> {
+pub struct RepFixedTensor<RepRingT> {
     pub tensor: RepRingT,
     pub fractional_precision: u32,
     pub integral_precision: u32,
 }
 
-impl<RepRingT: Underlying> Underlying for AbstractReplicatedFixedTensor<RepRingT> {
+impl<RepRingT: Underlying> Underlying for RepFixedTensor<RepRingT> {
     type TensorType = RepRingT::TensorType;
 }
 
-impl<RepRingT: MirroredCounterpart> MirroredCounterpart
-    for AbstractReplicatedFixedTensor<RepRingT>
-{
+impl<RepRingT: MirroredCounterpart> MirroredCounterpart for RepFixedTensor<RepRingT> {
     type MirroredType = AbstractMirroredFixedTensor<RepRingT::MirroredType>;
 }
 
-impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
+impl<RepRingT: Placed> Placed for RepFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -259,23 +257,18 @@ impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
     }
 }
 
-impl<S: Session, RepRingT> PlacementPlace<S, AbstractReplicatedFixedTensor<RepRingT>>
-    for ReplicatedPlacement
+impl<S: Session, RepRingT> PlacementPlace<S, RepFixedTensor<RepRingT>> for ReplicatedPlacement
 where
-    AbstractReplicatedFixedTensor<RepRingT>: Placed<Placement = ReplicatedPlacement>,
+    RepFixedTensor<RepRingT>: Placed<Placement = ReplicatedPlacement>,
     ReplicatedPlacement: PlacementPlace<S, RepRingT>,
 {
-    fn place(
-        &self,
-        sess: &S,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> AbstractReplicatedFixedTensor<RepRingT> {
+    fn place(&self, sess: &S, x: RepFixedTensor<RepRingT>) -> RepFixedTensor<RepRingT> {
         match x.placement() {
             Ok(place) if self == &place => x,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
-                AbstractReplicatedFixedTensor {
+                RepFixedTensor {
                     tensor: self.place(sess, x.tensor),
                     integral_precision: x.integral_precision,
                     fractional_precision: x.fractional_precision,
@@ -398,11 +391,11 @@ impl RepShareOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractHostFixedTensor<HostRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostRingT, RepRingT>,
     {
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: plc.share(sess, &x.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
@@ -555,7 +548,7 @@ impl RepRevealOp {
     pub(crate) fn fixed_kernel<S: Session, RepRingT, HostRingT>(
         sess: &S,
         receiver: &HostPlacement,
-        xe: AbstractReplicatedFixedTensor<RepRingT>,
+        xe: RepFixedTensor<RepRingT>,
     ) -> Result<AbstractHostFixedTensor<HostRingT>>
     where
         HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
@@ -620,13 +613,13 @@ impl IdentityOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementIdentity<S, RepRingT, RepRingT>,
     {
         let tensor = rep.identity(sess, &x.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor,
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
@@ -1938,7 +1931,7 @@ impl ShapeOp {
     pub fn rep_repfixed_kernel<S: Session, RepRingT, RepShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
+        x: RepFixedTensor<RepRingT>,
     ) -> Result<RepShapeT>
     where
         ReplicatedPlacement: PlacementShape<S, RepRingT, RepShapeT>,
@@ -2464,7 +2457,7 @@ impl SigmoidOp {
     where
         RepRingT: Clone,
         RepFixedT: FixedpointTensor,
-        AbstractReplicatedFixedTensor<RepRingT>: Into<RepFixedT>,
+        RepFixedTensor<RepRingT>: Into<RepFixedT>,
         ReplicatedPlacement: PlacementShape<S, RepFixedT, ShapeT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepFixedT, RepFixedT, RepFixedT>,
@@ -2481,13 +2474,13 @@ impl SigmoidOp {
         let ones_fill = rep.fill(sess, ones.into(), &rep.shape(sess, &x));
         let zeros_fill = rep.fill(sess, 0_u8.into(), &rep.shape(sess, &x));
 
-        let ones_rep = AbstractReplicatedFixedTensor {
+        let ones_rep = RepFixedTensor {
             tensor: ones_fill,
             integral_precision: x.integral_precision(),
             fractional_precision: x.fractional_precision(),
         }
         .into();
-        let zeros_rep = AbstractReplicatedFixedTensor {
+        let zeros_rep = RepFixedTensor {
             tensor: zeros_fill,
             integral_precision: x.integral_precision(),
             fractional_precision: x.fractional_precision(),
@@ -2503,7 +2496,7 @@ impl SigmoidOp {
             .ln()
             .as_fixedpoint(x.fractional_precision() as usize);
         let max_val_fill = rep.fill(sess, max_val.into(), &rep.shape(sess, &x));
-        let max_val_rep = AbstractReplicatedFixedTensor {
+        let max_val_rep = RepFixedTensor {
             tensor: max_val_fill,
             integral_precision: x.integral_precision(),
             fractional_precision: x.fractional_precision(),
