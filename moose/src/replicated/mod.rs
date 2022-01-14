@@ -3,8 +3,9 @@ use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
-use crate::host::{AbstractHostAesKey, HostBitArray, HostFixedTensor, SliceInfo};
-use crate::host::{PrfKey, Seed, SyncKey};
+use crate::host::{
+    AbstractHostAesKey, HostBitArray, HostFixedTensor, PrfKey, Seed, SliceInfo, SyncKey,
+};
 use crate::kernels::*;
 use crate::mirrored::{Mir3Tensor, MirFixedTensor, Mirrored3Placement};
 use crate::symbolic::Symbolic;
@@ -2622,8 +2623,7 @@ impl GreaterThanOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::host::FromRawPlc;
-    use crate::host::HostRingTensor;
+    use crate::host::{FromRawPlc, HostRingTensor};
     use crate::kernels::{
         PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, SyncSession,
     };

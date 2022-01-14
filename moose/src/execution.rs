@@ -413,8 +413,7 @@ mod tests {
     use crate::compilation::compile_passes;
     use crate::compilation::Pass;
     use crate::error::Error;
-    use crate::host::{HostTensor, RawShape};
-    use crate::host::{RawSeed, Seed};
+    use crate::host::{HostTensor, RawSeed, RawShape, Seed};
     use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
     use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
     use crate::types::{

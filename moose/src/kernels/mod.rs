@@ -3,7 +3,6 @@ use crate::error::{Error, Result};
 use crate::execution::{Identity, SyncNetworkingImpl, SyncStorageImpl};
 use crate::for_all_values;
 use crate::host::*;
-use crate::host::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::mirrored::*;
 use crate::networking::LocalSyncNetworking;
 use crate::replicated::*;

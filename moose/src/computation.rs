@@ -1,7 +1,6 @@
 use crate::additive::*;
 use crate::error::{Error, Result};
 use crate::host::*;
-use crate::host::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::kernels::Session;
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
