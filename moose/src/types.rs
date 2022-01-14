@@ -16,7 +16,7 @@ use crate::replicated::{
 };
 pub use crate::{
     host::{HostShape, HostString},
-    prim::{PrfKey, Seed},
+    host::{PrfKey, Seed},
 };
 use crate::{N128, N224, N256, N64};
 

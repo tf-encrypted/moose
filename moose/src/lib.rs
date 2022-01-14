@@ -4276,7 +4276,6 @@ pub mod kernels;
 pub mod logical;
 pub mod mirrored;
 pub mod networking;
-pub mod prim;
 pub mod prng;
 pub mod replicated;
 pub mod storage;

@@ -2,7 +2,7 @@
 use super::*;
 use crate::computation::{HostPlacement, KnownType};
 use crate::kernels::*;
-use crate::prim::SyncKey;
+use crate::host::SyncKey;
 use crate::types::{PrfKey, Seed};
 use macros::with_context;
 

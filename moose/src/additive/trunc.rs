@@ -3,7 +3,7 @@ use super::*;
 use crate::computation::{CanonicalType, HostPlacement, KnownType};
 use crate::host::HostShape;
 use crate::kernels::*;
-use crate::prim::{PrfKey, Seed, SyncKey};
+use crate::host::{PrfKey, Seed, SyncKey};
 use crate::replicated::RepTensor;
 use crate::{Const, Ring};
 use macros::with_context;

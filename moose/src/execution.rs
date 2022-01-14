@@ -415,7 +415,7 @@ mod tests {
     use crate::error::Error;
     use crate::host::{HostTensor, RawShape};
     use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
-    use crate::prim::{RawSeed, Seed};
+    use crate::host::{RawSeed, Seed};
     use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
     use crate::types::{
         HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostRing128Tensor, HostRing64Tensor,

@@ -6,7 +6,7 @@ use crate::fixedpoint::FixedpointTensor;
 use crate::host::{AbstractHostAesKey, HostBitArray, HostFixedTensor, SliceInfo};
 use crate::kernels::*;
 use crate::mirrored::{Mir3Tensor, MirFixedTensor, Mirrored3Placement};
-use crate::prim::{PrfKey, Seed, SyncKey};
+use crate::host::{PrfKey, Seed, SyncKey};
 use crate::symbolic::Symbolic;
 use crate::types::*;
 use crate::{BitArray, Const, Ring};

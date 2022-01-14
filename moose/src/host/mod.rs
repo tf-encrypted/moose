@@ -3,7 +3,6 @@
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::kernels::*;
-use crate::prim::RawSeed;
 use crate::prng::AesRng;
 use crate::symbolic::Symbolic;
 use crate::types::*;
@@ -23,6 +22,8 @@ use std::marker::PhantomData;
 use std::num::Wrapping;
 
 mod ops;
+mod prim;
+pub use prim::*;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostString(pub String, pub HostPlacement);

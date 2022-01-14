@@ -1,6 +1,5 @@
 use super::*;
 use crate::error::{Error, Result};
-use crate::prim::Seed;
 use crate::prng::AesRng;
 use crate::{Const, Ring, N128, N224, N64};
 use ndarray::LinalgScalar;

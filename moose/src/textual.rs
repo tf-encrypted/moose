@@ -5,7 +5,7 @@ use crate::computation::*;
 use crate::host::{RawShape, SliceInfo, SliceInfoElem};
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
-use crate::prim::{RawPrfKey, RawSeed, SyncKey};
+use crate::host::{RawPrfKey, RawSeed, SyncKey};
 use crate::replicated::ReplicatedPlacement;
 use crate::types::*;
 use nom::{

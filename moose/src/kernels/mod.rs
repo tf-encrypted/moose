@@ -5,7 +5,7 @@ use crate::for_all_values;
 use crate::host::*;
 use crate::mirrored::*;
 use crate::networking::LocalSyncNetworking;
-use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
+use crate::host::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::*;
 use crate::storage::LocalSyncStorage;
 use crate::types::*;

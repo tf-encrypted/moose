@@ -1,6 +1,6 @@
 use moose::computation::*;
 use moose::host::RawShape;
-use moose::prim::SyncKey;
+use moose::host::SyncKey;
 use std::convert::TryFrom;
 
 fn main() {
