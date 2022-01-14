@@ -318,18 +318,18 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedShape<S> {
+pub struct RepShape<S> {
     pub shapes: [S; 3],
 }
 
-impl<KeyT> Placed for AbstractReplicatedShape<KeyT>
+impl<KeyT> Placed for RepShape<KeyT>
 where
     KeyT: Placed<Placement = HostPlacement>,
 {
     type Placement = ReplicatedPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = self;
 
@@ -1028,7 +1028,7 @@ impl RepMulOp {
         let s0 = player0.shape(sess, &v0);
         let s1 = player1.shape(sess, &v1);
         let s2 = player2.shape(sess, &v2);
-        let zero_shape = AbstractReplicatedShape {
+        let zero_shape = RepShape {
             shapes: [s0, s1, s2],
         };
 
@@ -1161,7 +1161,7 @@ impl RepDotOp {
         let s0 = player0.shape(sess, &v0);
         let s1 = player1.shape(sess, &v1);
         let s2 = player2.shape(sess, &v2);
-        let zero_shape = AbstractReplicatedShape {
+        let zero_shape = RepShape {
             shapes: [s0, s1, s2],
         };
 
@@ -1470,7 +1470,7 @@ impl FillOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u64,
-        rep_shape: AbstractReplicatedShape<ShapeT>,
+        rep_shape: RepShape<ShapeT>,
     ) -> Result<RepTen<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
@@ -1478,7 +1478,7 @@ impl FillOp {
         // TODO should really return PublicReplicatedTensor, but we don't have that type yet
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = &rep_shape;
 
@@ -1504,7 +1504,7 @@ impl FillOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u128,
-        rep_shape: AbstractReplicatedShape<ShapeT>,
+        rep_shape: RepShape<ShapeT>,
     ) -> Result<RepTen<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
@@ -1512,7 +1512,7 @@ impl FillOp {
         // TODO should really return PublicReplicatedTensor, but we don't have that type yet
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = &rep_shape;
 
@@ -1538,14 +1538,14 @@ impl FillOp {
         sess: &S,
         mir: &Mirrored3Placement,
         value: u64,
-        rep_shape: AbstractReplicatedShape<ShapeT>,
+        rep_shape: RepShape<ShapeT>,
     ) -> Result<MirTen<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
         let (player0, player1, player2) = mir.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = &rep_shape;
 
@@ -1562,14 +1562,14 @@ impl FillOp {
         sess: &S,
         mir: &Mirrored3Placement,
         value: u128,
-        rep_shape: AbstractReplicatedShape<ShapeT>,
+        rep_shape: RepShape<ShapeT>,
     ) -> Result<MirTen<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
         let (player0, player1, player2) = mir.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = &rep_shape;
 
@@ -1586,7 +1586,7 @@ impl FillOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u8,
-        rep_shape: AbstractReplicatedShape<ShapeT>,
+        rep_shape: RepShape<ShapeT>,
     ) -> Result<RepTen<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
@@ -1594,7 +1594,7 @@ impl FillOp {
         // TODO should really return PublicReplicatedTensor, but we don't have that type yet
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = &rep_shape;
 
@@ -1620,14 +1620,14 @@ impl FillOp {
         sess: &S,
         mir: &Mirrored3Placement,
         value: u8,
-        shape: AbstractReplicatedShape<ShapeT>,
+        shape: RepShape<ShapeT>,
     ) -> Result<MirTen<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
         let (player0, player1, player2) = mir.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = &shape;
 
@@ -1788,14 +1788,14 @@ impl RepSliceOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         slice: SliceInfo,
-        shape: AbstractReplicatedShape<ShapeT>,
-    ) -> Result<AbstractReplicatedShape<ShapeT>>
+        shape: RepShape<ShapeT>,
+    ) -> Result<RepShape<ShapeT>>
     where
         HostPlacement: PlacementSlice<S, ShapeT, ShapeT>,
     {
         let (player0, player1, player2) = plc.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [shape0, shape1, shape2],
         } = shape;
 
@@ -1803,7 +1803,7 @@ impl RepSliceOp {
         let new_shape1 = player1.slice(sess, slice.clone(), &shape1);
         let new_shape2 = player2.slice(sess, slice, &shape2);
 
-        Ok(AbstractReplicatedShape {
+        Ok(RepShape {
             shapes: [new_shape0, new_shape1, new_shape2],
         })
     }
@@ -1921,7 +1921,7 @@ impl ShapeOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepTen<RingT>,
-    ) -> Result<AbstractReplicatedShape<ShapeT>>
+    ) -> Result<RepShape<ShapeT>>
     where
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
     {
@@ -1929,7 +1929,7 @@ impl ShapeOp {
         let RepTen {
             shares: [[x00, _x10], [x11, _x21], [x22, _x02]],
         } = &x;
-        Ok(AbstractReplicatedShape {
+        Ok(RepShape {
             shapes: [
                 player0.shape(sess, x00),
                 player1.shape(sess, x11),
@@ -2360,7 +2360,7 @@ trait ZeroShareGen<S: Session, ShapeT, RingT> {
     fn gen_zero_share(
         &self,
         sess: &S,
-        shape: &AbstractReplicatedShape<ShapeT>,
+        shape: &RepShape<ShapeT>,
     ) -> AbstractReplicatedZeroShare<RingT>;
 }
 
@@ -2377,7 +2377,7 @@ where
     fn gen_zero_share(
         &self,
         sess: &S,
-        shape: &AbstractReplicatedShape<HostShapeT>,
+        shape: &RepShape<HostShapeT>,
     ) -> AbstractReplicatedZeroShare<RingT> {
         let setup = match (*sess.replicated_setup(self)).clone().try_into() {
             Ok(setup) => setup,
@@ -2386,7 +2386,7 @@ where
 
         let (player0, player1, player2) = self.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [shape0, shape1, shape2],
         } = shape;
 
