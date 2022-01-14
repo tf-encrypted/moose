@@ -5,7 +5,7 @@ use crate::computation::*;
 use crate::error::Error;
 use crate::error::Result;
 use crate::kernels::*;
-use crate::mirrored::{Mirrored3Placement, Mirrored3Tensor};
+use crate::mirrored::{Mir3Tensor, Mirrored3Placement};
 use crate::types::*;
 use serde::{Deserialize, Serialize};
 
@@ -595,7 +595,7 @@ impl ConstantOp {
     ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementConstant<S, HostFloatT>,
-        Mirrored3Tensor<HostFloatT>: Into<MirroredT>,
+        Mir3Tensor<HostFloatT>: Into<MirroredT>,
     {
         let (player0, player1, player2) = plc.host_placements();
 
@@ -604,7 +604,7 @@ impl ConstantOp {
         let z2 = player2.constant(sess, value);
 
         Ok(FloatTensor::Mirrored3(
-            Mirrored3Tensor {
+            Mir3Tensor {
                 values: [z0, z1, z2],
             }
             .into(),

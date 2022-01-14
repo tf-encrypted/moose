@@ -10,14 +10,14 @@ impl MirrorOp {
         sess: &S,
         mir: &Mirrored3Placement,
         x: HostT,
-    ) -> Result<Mirrored3Tensor<HostT>>
+    ) -> Result<Mir3Tensor<HostT>>
     where
         HostPlacement: PlacementPlace<S, HostT>,
         HostT: Clone,
     {
         let (player0, player1, player2) = &mir.host_placements();
 
-        Ok(Mirrored3Tensor {
+        Ok(Mir3Tensor {
             values: [
                 player0.place(sess, x.clone()),
                 player1.place(sess, x.clone()),
@@ -46,7 +46,7 @@ impl DemirrorOp {
     pub(crate) fn kernel<S: Session, R: Clone>(
         sess: &S,
         receiver: &HostPlacement,
-        x: Mirrored3Tensor<R>,
+        x: Mir3Tensor<R>,
     ) -> Result<R>
     where
         HostPlacement: PlacementPlace<S, R>,
@@ -54,7 +54,7 @@ impl DemirrorOp {
     {
         let mir = x.placement()?;
 
-        let Mirrored3Tensor {
+        let Mir3Tensor {
             values: [x0, x1, x2],
         } = x;
 
@@ -93,14 +93,14 @@ impl RingFixedpointEncodeOp {
         plc: &Mirrored3Placement,
         scaling_base: u64,
         scaling_exp: u32,
-        x: Mirrored3Tensor<HostFloatT>,
-    ) -> Result<Mirrored3Tensor<HostRingT>>
+        x: Mir3Tensor<HostFloatT>,
+    ) -> Result<Mir3Tensor<HostRingT>>
     where
         HostPlacement: PlacementRingFixedpointEncode<S, HostFloatT, HostRingT>,
     {
         let (player0, player1, player2) = plc.host_placements();
 
-        let Mirrored3Tensor {
+        let Mir3Tensor {
             values: [x0, x1, x2],
         } = &x;
 
@@ -108,7 +108,7 @@ impl RingFixedpointEncodeOp {
         let y1 = player1.fixedpoint_ring_encode(sess, scaling_base, scaling_exp, x1);
         let y2 = player2.fixedpoint_ring_encode(sess, scaling_base, scaling_exp, x2);
 
-        Ok(Mirrored3Tensor {
+        Ok(Mir3Tensor {
             values: [y0, y1, y2],
         })
     }
@@ -120,14 +120,14 @@ impl RingFixedpointDecodeOp {
         plc: &Mirrored3Placement,
         scaling_base: u64,
         scaling_exp: u32,
-        x: Mirrored3Tensor<HostRingT>,
-    ) -> Result<Mirrored3Tensor<HostFloatT>>
+        x: Mir3Tensor<HostRingT>,
+    ) -> Result<Mir3Tensor<HostFloatT>>
     where
         HostPlacement: PlacementRingFixedpointDecode<S, HostRingT, HostFloatT>,
     {
         let (player0, player1, player2) = plc.host_placements();
 
-        let Mirrored3Tensor {
+        let Mir3Tensor {
             values: [x0, x1, x2],
         } = &x;
 
@@ -135,7 +135,7 @@ impl RingFixedpointDecodeOp {
         let y1 = player1.fixedpoint_ring_decode(sess, scaling_base, scaling_exp, x1);
         let y2 = player2.fixedpoint_ring_decode(sess, scaling_base, scaling_exp, x2);
 
-        Ok(Mirrored3Tensor {
+        Ok(Mir3Tensor {
             values: [y0, y1, y2],
         })
     }
@@ -160,7 +160,7 @@ impl RepShareOp {
     pub(crate) fn ring_mir_kernel<S: Session, HostRingT, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: Mirrored3Tensor<HostRingT>,
+        x: Mir3Tensor<HostRingT>,
     ) -> Result<RepRingT>
     where
         HostRingT: Clone,
@@ -169,7 +169,7 @@ impl RepShareOp {
         HostPlacement: PlacementPlace<S, HostRingT>,
         HostRingT: Placed<Placement = HostPlacement>,
     {
-        let Mirrored3Tensor {
+        let Mir3Tensor {
             values: [x0, _x1, _x2],
         } = x;
 
@@ -187,7 +187,7 @@ impl RepRevealOp {
         sess: &S,
         mir: &Mirrored3Placement,
         x: RepTensor<HostRingT>,
-    ) -> Result<Mirrored3Tensor<HostRingT>>
+    ) -> Result<Mir3Tensor<HostRingT>>
     where
         RepTensor<HostRingT>: CanonicalType,
         <RepTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
@@ -201,7 +201,7 @@ impl RepRevealOp {
         let x1 = player1.reveal(sess, &x.clone().into());
         let x2 = player2.reveal(sess, &x.into());
 
-        Ok(Mirrored3Tensor {
+        Ok(Mir3Tensor {
             values: [x0, x1, x2],
         })
     }

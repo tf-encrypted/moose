@@ -1941,7 +1941,7 @@ kernel! {
                             (value * ((1u128 << precision) as f64)) as u128
                     },
                     _ => return Err(Error::UnimplementedOperator(
-                        format!("Cannot fill from {:?} into a Mirrored3Tensor", op.value.ty()))),
+                        format!("Cannot fill from {:?} into a Mirrored3Ring128Tensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::mir_ring128_kernel(sess, rep, value, rep_shape)

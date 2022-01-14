@@ -5,7 +5,7 @@ use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{AbstractHostAesKey, AbstractHostBitArray, HostFixedTensor, SliceInfo};
 use crate::kernels::*;
-use crate::mirrored::{MirFixedTensor, Mirrored3Placement, Mirrored3Tensor};
+use crate::mirrored::{Mir3Tensor, MirFixedTensor, Mirrored3Placement};
 use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::symbolic::Symbolic;
 use crate::types::*;
@@ -105,10 +105,10 @@ impl<HostRingT> Underlying for RepTensor<HostRingT> {
 }
 
 impl<HostRingT> MirroredCounterpart for RepTensor<HostRingT> {
-    type MirroredType = Mirrored3Tensor<HostRingT>;
+    type MirroredType = Mir3Tensor<HostRingT>;
 }
 
-impl<HostRingT> Underlying for Mirrored3Tensor<HostRingT> {
+impl<HostRingT> Underlying for Mir3Tensor<HostRingT> {
     type TensorType = HostRingT;
 }
 
@@ -338,7 +338,7 @@ where
 // Type aliases to shorten out impl in replicated protocols
 type RepTen<T> = RepTensor<T>;
 type AdtTen<T> = AdtTensor<T>;
-type MirTen<T> = Mirrored3Tensor<T>;
+type MirTen<T> = Mir3Tensor<T>;
 
 modelled!(PlacementSetupGen::gen_setup, ReplicatedPlacement, () -> ReplicatedSetup, RepSetupOp);
 

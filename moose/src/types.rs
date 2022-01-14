@@ -10,7 +10,7 @@ use crate::host::{
     HostFixedTensor, HostTensor,
 };
 use crate::logical::AbstractTensor;
-use crate::mirrored::{MirFixedTensor, Mirrored3Tensor};
+use crate::mirrored::{Mir3Tensor, MirFixedTensor};
 use crate::replicated::{
     AbstractReplicatedAesKey, RepBitArray, RepFixedTensor, RepSetup, RepShape, RepTensor,
 };
@@ -37,11 +37,11 @@ moose_type!(ReplicatedFixed128Tensor = RepFixedTensor<ReplicatedRing128Tensor>);
 
 moose_type!(Float32Tensor = FloatTensor<HostFloat32Tensor, Mirrored3Float32>);
 moose_type!(HostFloat32Tensor = [atomic] HostTensor<f32>);
-moose_type!(Mirrored3Float32 = Mirrored3Tensor<HostFloat32Tensor>);
+moose_type!(Mirrored3Float32 = Mir3Tensor<HostFloat32Tensor>);
 
 moose_type!(Float64Tensor = FloatTensor<HostFloat64Tensor, Mirrored3Float64>);
 moose_type!(HostFloat64Tensor = [atomic] HostTensor<f64>);
-moose_type!(Mirrored3Float64 = Mirrored3Tensor<HostFloat64Tensor>);
+moose_type!(Mirrored3Float64 = Mir3Tensor<HostFloat64Tensor>);
 
 moose_type!(BooleanTensor = BoolTensor<HostBitTensor, ReplicatedBitTensor>);
 pub use crate::host::HostBitTensor;
@@ -61,17 +61,17 @@ moose_type!(ReplicatedAesKey = AbstractReplicatedAesKey<ReplicatedBitArray128>);
 
 moose_type!(ReplicatedRing64Tensor = RepTensor<HostRing64Tensor>);
 moose_type!(AdditiveRing64Tensor = AdtTensor<HostRing64Tensor>);
-moose_type!(Mirrored3Ring64Tensor = Mirrored3Tensor<HostRing64Tensor>);
+moose_type!(Mirrored3Ring64Tensor = Mir3Tensor<HostRing64Tensor>);
 moose_type!(HostRing64Tensor = [atomic] AbstractHostRingTensor<u64>);
 
 moose_type!(ReplicatedRing128Tensor = RepTensor<HostRing128Tensor>);
 moose_type!(AdditiveRing128Tensor = AdtTensor<HostRing128Tensor>);
-moose_type!(Mirrored3Ring128Tensor = Mirrored3Tensor<HostRing128Tensor>);
+moose_type!(Mirrored3Ring128Tensor = Mir3Tensor<HostRing128Tensor>);
 moose_type!(HostRing128Tensor = [atomic] AbstractHostRingTensor<u128>);
 
 // Misc mirrored types
 
-moose_type!(Mirrored3BitTensor = Mirrored3Tensor<HostBitTensor>);
+moose_type!(Mirrored3BitTensor = Mir3Tensor<HostBitTensor>);
 
 // Mist additive types
 

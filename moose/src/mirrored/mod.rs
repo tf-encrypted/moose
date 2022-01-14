@@ -30,18 +30,18 @@ impl Mirrored3Placement {
 
 /// Base tensor for mirroring across three hosts
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Mirrored3Tensor<HostTenT> {
+pub struct Mir3Tensor<HostTenT> {
     pub values: [HostTenT; 3],
 }
 
-impl<HostTenT> Placed for Mirrored3Tensor<HostTenT>
+impl<HostTenT> Placed for Mir3Tensor<HostTenT>
 where
     HostTenT: Placed<Placement = HostPlacement>,
 {
     type Placement = Mirrored3Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        let Mirrored3Tensor {
+        let Mir3Tensor {
             values: [x0, x1, x2],
         } = self;
 
