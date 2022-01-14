@@ -51,14 +51,14 @@ class ReducemaxLogicExample(parameterized.TestCase):
         storage = {
             "alice": {},
             "carole": {},
-            "bob": {"x_arg": x_arg,},
+            "bob": {"x_arg": x_arg},
         }
 
         runtime = LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
             computation=traced_less_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
-            arguments={"x_uri": "x_arg",},
+            arguments={"x_uri": "x_arg"},
         )
 
         x0 = runtime.read_value_from_storage("bob", "reduce_max")
