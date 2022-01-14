@@ -236,7 +236,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::host::AbstractHostRingTensor;
     use crate::kernels::SyncSession;
     use ndarray::array;
 
@@ -249,7 +248,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
+        let x = HostRing64Tensor::from_raw_plc(array![896u64], alice.clone());
 
         let sess = SyncSession::default();
 
@@ -257,8 +256,8 @@ mod tests {
 
         let (upshifted, topmost) = rep.norm(&sess, 12, &x_shared);
 
-        let topmost_target = AbstractHostRingTensor::from_raw_plc(array![4u64], alice.clone());
-        let upshifted_target = AbstractHostRingTensor::from_raw_plc(array![3584], alice.clone());
+        let topmost_target = HostRing64Tensor::from_raw_plc(array![4u64], alice.clone());
+        let upshifted_target = HostRing64Tensor::from_raw_plc(array![3584], alice.clone());
 
         assert_eq!(topmost_target, alice.reveal(&sess, &topmost));
         assert_eq!(upshifted_target, alice.reveal(&sess, &upshifted));
@@ -273,9 +272,8 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(array![3884509700957842751u64], alice.clone());
-        let y =
-            AbstractHostRingTensor::from_raw_plc(array![13611438098135434720u64], alice.clone());
+        let x = HostRing64Tensor::from_raw_plc(array![3884509700957842751u64], alice.clone());
+        let y = HostRing64Tensor::from_raw_plc(array![13611438098135434720u64], alice.clone());
         let expected_output = x.clone() + y.clone();
 
         let sess = SyncSession::default();
@@ -302,7 +300,7 @@ mod tests {
         };
 
         // 3.5 * 2^8
-        let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
+        let x = HostRing64Tensor::from_raw_plc(array![896u64], alice.clone());
 
         let sess = SyncSession::default();
 
