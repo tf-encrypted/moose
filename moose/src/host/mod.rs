@@ -769,13 +769,13 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractHostFixedTensor<HostRingT> {
+pub struct HostFixedTensor<HostRingT> {
     pub tensor: HostRingT,
     pub fractional_precision: u32,
     pub integral_precision: u32,
 }
 
-impl<RingT: Placed> Placed for AbstractHostFixedTensor<RingT> {
+impl<RingT: Placed> Placed for HostFixedTensor<RingT> {
     type Placement = RingT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -783,18 +783,18 @@ impl<RingT: Placed> Placed for AbstractHostFixedTensor<RingT> {
     }
 }
 
-impl<S: Session, RingT> PlacementPlace<S, AbstractHostFixedTensor<RingT>> for HostPlacement
+impl<S: Session, RingT> PlacementPlace<S, HostFixedTensor<RingT>> for HostPlacement
 where
-    AbstractHostFixedTensor<RingT>: Placed<Placement = HostPlacement>,
+    HostFixedTensor<RingT>: Placed<Placement = HostPlacement>,
     HostPlacement: PlacementPlace<S, RingT>,
 {
-    fn place(&self, sess: &S, x: AbstractHostFixedTensor<RingT>) -> AbstractHostFixedTensor<RingT> {
+    fn place(&self, sess: &S, x: HostFixedTensor<RingT>) -> HostFixedTensor<RingT> {
         match x.placement() {
             Ok(place) if self == &place => x,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
-                AbstractHostFixedTensor {
+                HostFixedTensor {
                     tensor: self.place(sess, x.tensor),
                     integral_precision: x.integral_precision,
                     fractional_precision: x.fractional_precision,

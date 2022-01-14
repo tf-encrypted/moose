@@ -254,7 +254,7 @@ impl AesDecryptOp {
         plc: &HostPlacement,
         key: AbstractHostAesKey<HostBitArray128T>,
         ciphertext: AbstractHostFixedAesTensor<HostBitArray224T>,
-    ) -> Result<AbstractHostFixedTensor<HostRing128TensorT>>
+    ) -> Result<HostFixedTensor<HostRing128TensorT>>
     where
         HostBitArray128T: BitArray<Len = N128>,
         HostBitArray224T: BitArray<Len = N224>,
@@ -271,7 +271,7 @@ impl AesDecryptOp {
         HostPlacement: PlacementNeg<S, HostBitTensorT, HostBitTensorT>,
     {
         let tensor = aesgcm(sess, plc, key.0, ciphertext.tensor);
-        Ok(AbstractHostFixedTensor {
+        Ok(HostFixedTensor {
             tensor,
             integral_precision: ciphertext.integral_precision,
             fractional_precision: ciphertext.fractional_precision,

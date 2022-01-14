@@ -3,7 +3,7 @@ use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
-use crate::host::{AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedTensor, SliceInfo};
+use crate::host::{AbstractHostAesKey, AbstractHostBitArray, HostFixedTensor, SliceInfo};
 use crate::kernels::*;
 use crate::mirrored::{MirFixedTensor, Mirrored3Placement, Mirrored3Tensor};
 use crate::prim::{PrfKey, Seed, SyncKey};
@@ -390,7 +390,7 @@ impl RepShareOp {
     pub(crate) fn fixed_kernel<S: Session, HostRingT, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractHostFixedTensor<HostRingT>,
+        x: HostFixedTensor<HostRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostRingT, RepRingT>,
@@ -549,12 +549,12 @@ impl RepRevealOp {
         sess: &S,
         receiver: &HostPlacement,
         xe: RepFixedTensor<RepRingT>,
-    ) -> Result<AbstractHostFixedTensor<HostRingT>>
+    ) -> Result<HostFixedTensor<HostRingT>>
     where
         HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
     {
         let x = receiver.reveal(sess, &xe.tensor);
-        Ok(AbstractHostFixedTensor {
+        Ok(HostFixedTensor {
             tensor: x,
             fractional_precision: xe.fractional_precision,
             integral_precision: xe.integral_precision,

@@ -1,7 +1,7 @@
 use super::*;
 use crate::computation::*;
 use crate::error::Result;
-use crate::host::AbstractHostFixedTensor;
+use crate::host::HostFixedTensor;
 use crate::kernels::*;
 use crate::replicated::{RepFixedTensor, RepTensor, ReplicatedPlacement};
 
@@ -29,7 +29,7 @@ impl MirrorOp {
     pub(crate) fn fixed_kernel<S: Session, HostRingT, MirRingT>(
         sess: &S,
         plc: &Mirrored3Placement,
-        x: AbstractHostFixedTensor<HostRingT>,
+        x: HostFixedTensor<HostRingT>,
     ) -> Result<MirFixedTensor<MirRingT>>
     where
         Mirrored3Placement: PlacementMirror<S, HostRingT, MirRingT>,
@@ -74,12 +74,12 @@ impl DemirrorOp {
         sess: &S,
         receiver: &HostPlacement,
         x: MirFixedTensor<MirRingT>,
-    ) -> Result<AbstractHostFixedTensor<HostRingT>>
+    ) -> Result<HostFixedTensor<HostRingT>>
     where
         HostPlacement: PlacementDemirror<S, MirRingT, HostRingT>,
     {
         let dx = receiver.demirror(sess, &x.tensor);
-        Ok(AbstractHostFixedTensor {
+        Ok(HostFixedTensor {
             tensor: dx,
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,

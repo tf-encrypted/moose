@@ -1704,8 +1704,8 @@ impl LessOp {
     pub(crate) fn host_fixed_kernel<S: Session, HostRingT, HostBitT>(
         sess: &S,
         plc: &HostPlacement,
-        x: AbstractHostFixedTensor<HostRingT>,
-        y: AbstractHostFixedTensor<HostRingT>,
+        x: HostFixedTensor<HostRingT>,
+        y: HostFixedTensor<HostRingT>,
     ) -> Result<HostBitT>
     where
         HostPlacement: PlacementLessThan<S, HostRingT, HostRingT, HostBitT>,
@@ -1779,13 +1779,13 @@ impl IdentityOp {
     pub(crate) fn host_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &HostPlacement,
-        x: AbstractHostFixedTensor<HostRingT>,
-    ) -> Result<AbstractHostFixedTensor<HostRingT>>
+        x: HostFixedTensor<HostRingT>,
+    ) -> Result<HostFixedTensor<HostRingT>>
     where
         HostPlacement: PlacementIdentity<S, HostRingT, HostRingT>,
     {
         let tensor = plc.identity(sess, &x.tensor);
-        Ok(AbstractHostFixedTensor::<HostRingT> {
+        Ok(HostFixedTensor::<HostRingT> {
             tensor,
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
