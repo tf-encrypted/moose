@@ -286,18 +286,18 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedSetup<K> {
+pub struct RepSetup<K> {
     pub keys: [[K; 2]; 3],
 }
 
-impl<K> Placed for AbstractReplicatedSetup<K>
+impl<K> Placed for RepSetup<K>
 where
     K: Placed<Placement = HostPlacement>,
 {
     type Placement = ReplicatedPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        let AbstractReplicatedSetup {
+        let RepSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
         } = self;
 
@@ -357,10 +357,7 @@ kernel! {
 }
 
 impl RepSetupOp {
-    fn kernel<S: Session, K: Clone>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-    ) -> Result<AbstractReplicatedSetup<K>>
+    fn kernel<S: Session, K: Clone>(sess: &S, rep: &ReplicatedPlacement) -> Result<RepSetup<K>>
     where
         HostPlacement: PlacementKeyGen<S, K>,
         HostPlacement: PlacementPlace<S, K>,
@@ -371,7 +368,7 @@ impl RepSetupOp {
         let k1 = player1.gen_key(sess);
         let k2 = player2.gen_key(sess);
 
-        Ok(AbstractReplicatedSetup {
+        Ok(RepSetup {
             keys: [
                 [
                     player0.place(sess, k0.clone()),
@@ -431,7 +428,7 @@ impl RepShareOp {
     ) -> Result<RepTen<RingT>>
     where
         <S as Session>::ReplicatedSetup: Clone,
-        <S as Session>::ReplicatedSetup: TryInto<AbstractReplicatedSetup<KeyT>>,
+        <S as Session>::ReplicatedSetup: TryInto<RepSetup<KeyT>>,
         RingT: Clone + Placed<Placement = HostPlacement>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, RingT>,
@@ -447,7 +444,7 @@ impl RepShareOp {
             Ok(setup) => setup,
             _ => todo!("not sure what to do with the symbolic setup yet"), // TODO: perhaps a custom kernel could instead output a symbolic op
         };
-        let AbstractReplicatedSetup {
+        let RepSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
         } = &setup;
 
@@ -2305,11 +2302,7 @@ struct AbstractReplicatedSeeds<T> {
 }
 
 trait ReplicatedSeedsGen<S: Session, KeyT, SeedT> {
-    fn gen_seeds(
-        &self,
-        ctx: &S,
-        setup: &AbstractReplicatedSetup<KeyT>,
-    ) -> AbstractReplicatedSeeds<SeedT>;
+    fn gen_seeds(&self, ctx: &S, setup: &RepSetup<KeyT>) -> AbstractReplicatedSeeds<SeedT>;
 }
 
 impl<S: Session> ReplicatedSeedsGen<S, cs!(PrfKey), cs!(Seed)> for ReplicatedPlacement
@@ -2321,11 +2314,11 @@ where
     fn gen_seeds(
         &self,
         ctx: &S,
-        setup: &AbstractReplicatedSetup<cs!(PrfKey)>,
+        setup: &RepSetup<cs!(PrfKey)>,
     ) -> AbstractReplicatedSeeds<cs!(Seed)> {
         let (player0, player1, player2) = self.host_placements();
 
-        let AbstractReplicatedSetup {
+        let RepSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
         } = setup;
 
@@ -2369,7 +2362,7 @@ where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
     <S as Session>::ReplicatedSetup: Clone,
-    <S as Session>::ReplicatedSetup: TryInto<AbstractReplicatedSetup<m!(PrfKey)>>,
+    <S as Session>::ReplicatedSetup: TryInto<RepSetup<m!(PrfKey)>>,
     HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(Seed), RingT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
     ReplicatedPlacement: ReplicatedSeedsGen<S, m!(PrfKey), m!(Seed)>,
