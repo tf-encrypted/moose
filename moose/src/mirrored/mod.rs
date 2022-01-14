@@ -56,13 +56,13 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractMirroredFixedTensor<MirRingT> {
+pub struct MirFixedTensor<MirRingT> {
     pub tensor: MirRingT,
     pub fractional_precision: u32,
     pub integral_precision: u32,
 }
 
-impl<RepRingT: Placed> Placed for AbstractMirroredFixedTensor<RepRingT> {
+impl<RepRingT: Placed> Placed for MirFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {

@@ -10,7 +10,7 @@ use crate::host::{
     AbstractHostRingTensor, HostTensor,
 };
 use crate::logical::AbstractTensor;
-use crate::mirrored::{AbstractMirroredFixedTensor, Mirrored3Tensor};
+use crate::mirrored::{MirFixedTensor, Mirrored3Tensor};
 use crate::replicated::{
     AbstractReplicatedAesKey, RepBitArray, RepFixedTensor, RepSetup, RepShape, RepTensor,
 };
@@ -27,12 +27,12 @@ pub type Tensor =
 
 moose_type!(Fixed64Tensor = FixedTensor<HostFixed64Tensor, Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor>);
 moose_type!(HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>);
-moose_type!(Mirrored3Fixed64Tensor = AbstractMirroredFixedTensor<Mirrored3Ring64Tensor>);
+moose_type!(Mirrored3Fixed64Tensor = MirFixedTensor<Mirrored3Ring64Tensor>);
 moose_type!(ReplicatedFixed64Tensor = RepFixedTensor<ReplicatedRing64Tensor>);
 
 moose_type!(Fixed128Tensor = FixedTensor<HostFixed128Tensor, Mirrored3Fixed128Tensor, ReplicatedFixed128Tensor>);
 moose_type!(HostFixed128Tensor = AbstractHostFixedTensor<HostRing128Tensor>);
-moose_type!(Mirrored3Fixed128Tensor = AbstractMirroredFixedTensor<Mirrored3Ring128Tensor>);
+moose_type!(Mirrored3Fixed128Tensor = MirFixedTensor<Mirrored3Ring128Tensor>);
 moose_type!(ReplicatedFixed128Tensor = RepFixedTensor<ReplicatedRing128Tensor>);
 
 moose_type!(Float32Tensor = FloatTensor<HostFloat32Tensor, Mirrored3Float32>);

@@ -5,7 +5,7 @@ use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedTensor, SliceInfo};
 use crate::kernels::*;
-use crate::mirrored::{AbstractMirroredFixedTensor, Mirrored3Placement, Mirrored3Tensor};
+use crate::mirrored::{MirFixedTensor, Mirrored3Placement, Mirrored3Tensor};
 use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::symbolic::Symbolic;
 use crate::types::*;
@@ -246,7 +246,7 @@ impl<RepRingT: Underlying> Underlying for RepFixedTensor<RepRingT> {
 }
 
 impl<RepRingT: MirroredCounterpart> MirroredCounterpart for RepFixedTensor<RepRingT> {
-    type MirroredType = AbstractMirroredFixedTensor<RepRingT::MirroredType>;
+    type MirroredType = MirFixedTensor<RepRingT::MirroredType>;
 }
 
 impl<RepRingT: Placed> Placed for RepFixedTensor<RepRingT> {

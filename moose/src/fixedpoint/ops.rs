@@ -121,12 +121,12 @@ impl FixedpointEncodeOp {
         fractional_precision: u32,
         integral_precision: u32,
         x: MirFloatT,
-    ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
+    ) -> Result<MirFixedTensor<MirRingT>>
     where
         Mirrored3Placement: PlacementRingFixedpointEncode<S, MirFloatT, MirRingT>,
     {
         let tensor = plc.fixedpoint_ring_encode(sess, 2, fractional_precision, &x);
-        Ok(AbstractMirroredFixedTensor {
+        Ok(MirFixedTensor {
             tensor,
             fractional_precision,
             integral_precision,
@@ -216,7 +216,7 @@ impl FixedpointDecodeOp {
         sess: &S,
         plc: &Mirrored3Placement,
         precision: u32,
-        x: AbstractMirroredFixedTensor<MirRingT>,
+        x: MirFixedTensor<MirRingT>,
     ) -> Result<MirFloatT>
     where
         Mirrored3Placement: PlacementRingFixedpointDecode<S, MirRingT, MirFloatT>,
@@ -351,7 +351,7 @@ impl FixedpointAddOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         x: RepFixedTensor<RepRingT>,
-        y: AbstractMirroredFixedTensor<MirRingT>,
+        y: MirFixedTensor<MirRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementAdd<S, RepRingT, MirRingT, RepRingT>,
@@ -368,7 +368,7 @@ impl FixedpointAddOp {
     fn mirfixed_repfixed_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractMirroredFixedTensor<MirRingT>,
+        x: MirFixedTensor<MirRingT>,
         y: RepFixedTensor<RepRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
@@ -599,7 +599,7 @@ impl FixedpointMulOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         x: RepFixedTensor<RepRingT>,
-        y: AbstractMirroredFixedTensor<MirRingT>,
+        y: MirFixedTensor<MirRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementMul<S, RepRingT, MirRingT, RepRingT>,
@@ -616,7 +616,7 @@ impl FixedpointMulOp {
     fn mirfixed_repfixed_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractMirroredFixedTensor<MirRingT>,
+        x: MirFixedTensor<MirRingT>,
         y: RepFixedTensor<RepRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
@@ -1589,7 +1589,7 @@ impl LessOp {
     pub(crate) fn rep_mir_fixed_kernel<S: Session, RepRingT, MirRingT, RepBitT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractMirroredFixedTensor<MirRingT>,
+        x: MirFixedTensor<MirRingT>,
         y: RepFixedTensor<RepRingT>,
     ) -> Result<RepBitT>
     where
@@ -1603,7 +1603,7 @@ impl LessOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         x: RepFixedTensor<RepRingT>,
-        y: AbstractMirroredFixedTensor<MirRingT>,
+        y: MirFixedTensor<MirRingT>,
     ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementLessThan<S, RepRingT, MirRingT, RepBitT>,
@@ -1637,7 +1637,7 @@ impl GreaterThanOp {
     pub(crate) fn rep_mir_fixed_kernel<S: Session, RepRingT, MirRingT, RepBitT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractMirroredFixedTensor<MirRingT>,
+        x: MirFixedTensor<MirRingT>,
         y: RepFixedTensor<RepRingT>,
     ) -> Result<RepBitT>
     where
@@ -1651,7 +1651,7 @@ impl GreaterThanOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         x: RepFixedTensor<RepRingT>,
-        y: AbstractMirroredFixedTensor<MirRingT>,
+        y: MirFixedTensor<MirRingT>,
     ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementGreaterThan<S, RepRingT, MirRingT, RepBitT>,
@@ -1672,12 +1672,12 @@ impl FillOp {
         shape: ShapeT,
         fractional_precision: u32,
         integral_precision: u32,
-    ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
+    ) -> Result<MirFixedTensor<MirRingT>>
     where
         Mirrored3Placement: PlacementFill<S, ShapeT, MirRingT>,
     {
         let filled = plc.fill(sess, value, &shape);
-        Ok(AbstractMirroredFixedTensor {
+        Ok(MirFixedTensor {
             tensor: filled,
             integral_precision,
             fractional_precision,

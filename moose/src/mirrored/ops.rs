@@ -30,11 +30,11 @@ impl MirrorOp {
         sess: &S,
         plc: &Mirrored3Placement,
         x: AbstractHostFixedTensor<HostRingT>,
-    ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
+    ) -> Result<MirFixedTensor<MirRingT>>
     where
         Mirrored3Placement: PlacementMirror<S, HostRingT, MirRingT>,
     {
-        Ok(AbstractMirroredFixedTensor {
+        Ok(MirFixedTensor {
             tensor: plc.mirror(sess, &x.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
@@ -73,7 +73,7 @@ impl DemirrorOp {
     pub(crate) fn fixed_kernel<S: Session, MirRingT, HostRingT>(
         sess: &S,
         receiver: &HostPlacement,
-        x: AbstractMirroredFixedTensor<MirRingT>,
+        x: MirFixedTensor<MirRingT>,
     ) -> Result<AbstractHostFixedTensor<HostRingT>>
     where
         HostPlacement: PlacementDemirror<S, MirRingT, HostRingT>,
@@ -145,7 +145,7 @@ impl RepShareOp {
     pub(crate) fn fixed_mir_kernel<S: Session, MirRingT, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractMirroredFixedTensor<MirRingT>,
+        x: MirFixedTensor<MirRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementShare<S, MirRingT, RepRingT>,
@@ -210,12 +210,12 @@ impl RepRevealOp {
         sess: &S,
         receiver: &Mirrored3Placement,
         xe: RepFixedTensor<RepRingT>,
-    ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
+    ) -> Result<MirFixedTensor<MirRingT>>
     where
         Mirrored3Placement: PlacementReveal<S, RepRingT, MirRingT>,
     {
         let x = receiver.reveal(sess, &xe.tensor);
-        Ok(AbstractMirroredFixedTensor {
+        Ok(MirFixedTensor {
             tensor: x,
             fractional_precision: xe.fractional_precision,
             integral_precision: xe.integral_precision,
