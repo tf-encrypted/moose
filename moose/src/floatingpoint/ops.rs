@@ -1,6 +1,6 @@
+use super::*;
 use crate::boolean::BoolTensor;
 use crate::computation::*;
-use super::*;
 use crate::error::Error;
 use crate::error::Result;
 use crate::kernels::*;
