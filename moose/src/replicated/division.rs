@@ -95,18 +95,15 @@ pub(crate) trait DivNorm<S: Session, T, O> {
 impl<S: Session, RepRingT, N> DivNorm<S, RepRingT, RepRingT> for ReplicatedPlacement
 where
     RepRingT: Ring<BitLength = N>,
-    AbstractReplicatedBitArray<ReplicatedBitTensor, N>: KnownType<S>,
+    RepBitArray<ReplicatedBitTensor, N>: KnownType<S>,
     ReplicatedBitTensor: KnownType<S>,
 
     ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
     ReplicatedPlacement: SignFromMsb<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: TopMostIndex<S, cs!(ReplicatedBitTensor), RepRingT>,
-    ReplicatedPlacement: PlacementIndex<
-        S,
-        cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
-        cs!(ReplicatedBitTensor),
-    >,
+    ReplicatedPlacement:
+        PlacementIndex<S, cs!(RepBitArray<ReplicatedBitTensor, N>), cs!(ReplicatedBitTensor)>,
 {
     fn norm(&self, sess: &S, max_bits: usize, x: &RepRingT) -> (RepRingT, RepRingT) {
         let rep = self;
@@ -134,10 +131,9 @@ impl<S: Session, RepRingT, RepBitT, N: Const> TopMost<S, RepRingT, RepBitT> for 
 where
     RepBitT: Clone + CanonicalType,
     RepRingT: Clone + Ring<BitLength = N>,
-    AbstractReplicatedBitArray<c!(RepBitT), N>: KnownType<S>,
-    ReplicatedPlacement:
-        PlacementBitDec<S, RepRingT, m!(AbstractReplicatedBitArray<c!(RepBitT), N>)>,
-    ReplicatedPlacement: PlacementIndex<S, m!(AbstractReplicatedBitArray<c!(RepBitT), N>), RepBitT>,
+    RepBitArray<c!(RepBitT), N>: KnownType<S>,
+    ReplicatedPlacement: PlacementBitDec<S, RepRingT, m!(RepBitArray<c!(RepBitT), N>)>,
+    ReplicatedPlacement: PlacementIndex<S, m!(RepBitArray<c!(RepBitT), N>), RepBitT>,
     ReplicatedPlacement: PlacementAnd<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementSub<S, RepBitT, RepBitT, RepBitT>,

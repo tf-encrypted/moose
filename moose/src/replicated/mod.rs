@@ -124,20 +124,18 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedBitArray<RepBitTensorT, N>(RepBitTensorT, PhantomData<N>);
+pub struct RepBitArray<RepBitTensorT, N>(RepBitTensorT, PhantomData<N>);
 
-impl<RepBitTensorT, N: Const> BitArray for AbstractReplicatedBitArray<RepBitTensorT, N> {
+impl<RepBitTensorT, N: Const> BitArray for RepBitArray<RepBitTensorT, N> {
     type Len = N;
 }
 
-impl<RepBitTensorT: Placed, N: Const> BitArray
-    for Symbolic<AbstractReplicatedBitArray<RepBitTensorT, N>>
-{
+impl<RepBitTensorT: Placed, N: Const> BitArray for Symbolic<RepBitArray<RepBitTensorT, N>> {
     type Len = N;
 }
 
 // TODO implement using moose_type macro
-impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTensorT, N> {
+impl<RepBitTensorT: Placed, N> Placed for RepBitArray<RepBitTensorT, N> {
     type Placement = RepBitTensorT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -145,43 +143,37 @@ impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTenso
     }
 }
 
-impl<N> PartiallySymbolicType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
-    type Type = AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>;
+impl<N> PartiallySymbolicType for RepBitArray<ReplicatedBitTensor, N> {
+    type Type = RepBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>;
 }
 
-impl<N> CanonicalType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
+impl<N> CanonicalType for RepBitArray<ReplicatedBitTensor, N> {
     type Type = Self;
 }
 
-impl<N> CanonicalType
-    for AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>
-{
-    type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
+impl<N> CanonicalType for RepBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N> {
+    type Type = RepBitArray<ReplicatedBitTensor, N>;
 }
 
-impl<N> CanonicalType
-    for Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>>
-{
-    type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
+impl<N> CanonicalType for Symbolic<RepBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>> {
+    type Type = RepBitArray<ReplicatedBitTensor, N>;
 }
 
-impl<RepBitT: Placed, N> From<AbstractReplicatedBitArray<RepBitT, N>>
-    for Symbolic<AbstractReplicatedBitArray<RepBitT, N>>
+impl<RepBitT: Placed, N> From<RepBitArray<RepBitT, N>> for Symbolic<RepBitArray<RepBitT, N>>
 where
     RepBitT: Placed<Placement = ReplicatedPlacement>,
 {
-    fn from(x: AbstractReplicatedBitArray<RepBitT, N>) -> Self {
+    fn from(x: RepBitArray<RepBitT, N>) -> Self {
         Symbolic::Concrete(x)
     }
 }
 
-impl<RepBitT, N> TryFrom<Symbolic<AbstractReplicatedBitArray<RepBitT, N>>>
-    for AbstractReplicatedBitArray<RepBitT, N>
+impl<RepBitT, N> TryFrom<Symbolic<RepBitArray<RepBitT, N>>> for RepBitArray<RepBitT, N>
 where
     RepBitT: Placed<Placement = ReplicatedPlacement>,
 {
     type Error = Error;
-    fn try_from(v: Symbolic<AbstractReplicatedBitArray<RepBitT, N>>) -> crate::error::Result<Self> {
+    fn try_from(v: Symbolic<RepBitArray<RepBitT, N>>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected(None)), // TODO err message
@@ -424,12 +416,12 @@ impl RepShareOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractHostBitArray<HostBitTensorT, N>,
-    ) -> Result<AbstractReplicatedBitArray<RepBitTensorT, N>>
+    ) -> Result<RepBitArray<RepBitTensorT, N>>
     where
         ReplicatedPlacement: PlacementShare<S, HostBitTensorT, RepBitTensorT>,
     {
         let shared_tensor = plc.share(sess, &x.0);
-        Ok(AbstractReplicatedBitArray(shared_tensor, x.1))
+        Ok(RepBitArray(shared_tensor, x.1))
     }
 
     pub(crate) fn ring_kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
@@ -582,7 +574,7 @@ impl RepRevealOp {
     pub(crate) fn bit_array_kernel<S: Session, RepBitT, HostBitT, N>(
         sess: &S,
         receiver: &HostPlacement,
-        xe: AbstractReplicatedBitArray<RepBitT, N>,
+        xe: RepBitArray<RepBitT, N>,
     ) -> Result<AbstractHostBitArray<HostBitT, N>>
     where
         HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
@@ -1735,7 +1727,7 @@ impl IndexOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         index: usize,
-        x: AbstractReplicatedBitArray<RepBitT, N>,
+        x: RepBitArray<RepBitT, N>,
     ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementIndexAxis<S, RepBitT, RepBitT>,
@@ -2204,7 +2196,7 @@ impl RepBitDecOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
-    ) -> Result<AbstractReplicatedBitArray<RepBitT, N>>
+    ) -> Result<RepBitArray<RepBitT, N>>
     where
         RepRingT: Ring<BitLength = N>,
         ReplicatedPlacement: PlacementSplit<S, RepRingT, RepBitT, RepBitT>,
@@ -2212,7 +2204,7 @@ impl RepBitDecOp {
     {
         let (x0, x1) = rep.split(sess, &x);
         let res = rep.binary_adder(sess, &x0, &x1, RepRingT::BitLength::VALUE);
-        Ok(AbstractReplicatedBitArray(res, PhantomData))
+        Ok(RepBitArray(res, PhantomData))
     }
 }
 
@@ -3032,7 +3024,7 @@ mod tests {
 
                 let x_shared = rep.share(&sess, &xr);
                 let x_shared_bit_array =
-                    AbstractReplicatedBitArray::<ReplicatedBitTensor, $n>(x_shared, PhantomData);
+                    RepBitArray::<ReplicatedBitTensor, $n>(x_shared, PhantomData);
 
                 let index = rep.index(&sess, 0, &x_shared_bit_array);
                 let opened_index = alice.reveal(&sess, &index);
