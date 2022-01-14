@@ -1090,26 +1090,8 @@ impl HostSqueezeOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat32Tensor] -> HostFloat32Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat64Tensor] -> HostFloat64Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt8Tensor] -> HostInt8Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt16Tensor] -> HostInt16Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt32Tensor] -> HostInt32Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt64Tensor] -> HostInt64Tensor, HostConcatOp);
-
-kernel! {
-    HostConcatOp, [
-        (HostPlacement, vec[HostFloat32Tensor] -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostFloat64Tensor] -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostInt8Tensor] -> HostInt8Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostInt16Tensor] -> HostInt16Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostInt32Tensor] -> HostInt32Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostInt64Tensor] -> HostInt64Tensor => [runtime] attributes[axis] Self::kernel),
-    ]
-}
-
-impl HostConcatOp {
-    pub fn kernel<S: Session, T: LinalgScalar + FromPrimitive>(
+impl ConcatOp {
+    pub(crate) fn kernel<S: Session, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         axis: u32,
@@ -1123,6 +1105,25 @@ impl HostConcatOp {
 
         let c = ndarray::concatenate(ax, &arr).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostTensor(c, plc.clone()))
+    }
+
+    pub(crate) fn ring_kernel<S: Session, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: u32,
+        xs: &[AbstractHostRingTensor<T>],
+    ) -> Result<AbstractHostRingTensor<T>>
+    where
+        T: Clone,
+    {
+        use ndarray::IxDynImpl;
+        use ndarray::ViewRepr;
+        let arr: Vec<ArrayBase<ViewRepr<&std::num::Wrapping<T>>, Dim<IxDynImpl>>> =
+            xs.iter().map(|x| x.0.view()).collect();
+        let ax = Axis(axis as usize);
+        let concatenated =
+            ndarray::concatenate(ax, &arr).map_err(|e| Error::KernelError(e.to_string()))?;
+        Ok(AbstractHostRingTensor(concatenated, plc.clone()))
     }
 }
 
@@ -3362,6 +3363,43 @@ mod tests {
     }
 
     #[test]
+    fn test_ring_concatenate() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let sess = SyncSession::default();
+
+        let x_backing: ArrayD<u64> = array![[1, 4], [9, 16], [25, 36]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y_backing: ArrayD<u64> = array![[1, 3], [6, 10], [15, 21]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let z_backing: ArrayD<u64> = array![[1, 36], [1225, 41616], [1413721, 48024900]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let x = HostRing64Tensor::from(x_backing);
+        let y = HostRing64Tensor::from(y_backing);
+        let z = HostRing64Tensor::from(z_backing);
+        let expected_backing: ArrayD<u64> = array![
+            [1, 4],
+            [9, 16],
+            [25, 36],
+            [1, 3],
+            [6, 10],
+            [15, 21],
+            [1, 36],
+            [1225, 41616],
+            [1413721, 48024900]
+        ]
+        .into_dimensionality::<IxDyn>()
+        .unwrap();
+        let expected = HostRing64Tensor::from_raw_plc(expected_backing, alice.clone());
+        let out = alice.concatenate(&sess, 0, &[x, y, z]);
+        assert_eq!(out, expected);
+    }
+
+    #[test]
     fn test_atleast_2d() {
         let a = HostTensor::<f32>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
@@ -3742,7 +3780,7 @@ mod tests {
     }
 
     #[test]
-    fn ring_add_n() {
+    fn test_ring_add_n() {
         let alice = HostPlacement {
             owner: "alice".into(),
         };

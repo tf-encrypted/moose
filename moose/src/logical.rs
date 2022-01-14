@@ -5,6 +5,7 @@ use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{HostShape, HostString};
 use crate::kernels::*;
+use crate::replicated::{AbstractReplicatedFixedTensor, RepTen};
 use crate::symbolic::Symbolic;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -1401,17 +1402,8 @@ impl IndexAxisOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
-
-kernel! {
-    ConcatOp,
-    [
-        (HostPlacement, vec[Tensor] -> Tensor => [concrete] attributes[axis] Self::host_kernel),
-    ]
-}
-
 impl ConcatOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         axis: u32,
@@ -1436,7 +1428,7 @@ impl ConcatOp {
                 let xs: Vec<Float32T> = xs
                     .iter()
                     .map(|x| match x {
-                        AbstractTensor::Float32(x) => (*x).clone(),
+                        AbstractTensor::Float32(x) => x.clone(),
                         _ => {
                             unimplemented!(
                                 "ConcatOp can not concatenate tensors of different kinds"
@@ -1451,7 +1443,7 @@ impl ConcatOp {
                 let xs: Vec<Float64T> = xs
                     .iter()
                     .map(|x| match x {
-                        AbstractTensor::Float64(x) => (*x).clone(),
+                        AbstractTensor::Float64(x) => x.clone(),
                         _ => {
                             unimplemented!(
                                 "ConcatOp can not concatenate tensors of different kinds"
@@ -1466,6 +1458,135 @@ impl ConcatOp {
             _ => Err(Error::UnimplementedOperator(
                 "ConcatOp missing an implementation.".to_string(),
             )),
+        }
+    }
+
+    pub(crate) fn rep_rep_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[RepTen<HostRingT>],
+    ) -> Result<RepTen<HostRingT>>
+    where
+        HostPlacement: PlacementConcatenate<S, HostRingT, HostRingT>,
+        HostRingT: Clone,
+    {
+        let mut z00s: Vec<HostRingT> = Vec::new();
+        let mut z10s: Vec<HostRingT> = Vec::new();
+        let mut z11s: Vec<HostRingT> = Vec::new();
+        let mut z21s: Vec<HostRingT> = Vec::new();
+        let mut z22s: Vec<HostRingT> = Vec::new();
+        let mut z02s: Vec<HostRingT> = Vec::new();
+
+        let (player0, player1, player2) = plc.host_placements();
+        for x in xs.iter() {
+            let RepTen {
+                shares: [[x00, x10], [x11, x21], [x22, x02]],
+            } = &x;
+
+            z00s.push(x00.clone());
+            z10s.push(x10.clone());
+            z11s.push(x11.clone());
+            z21s.push(x21.clone());
+            z22s.push(x22.clone());
+            z02s.push(x02.clone());
+        }
+        let z00 = player0.concatenate(sess, axis, &z00s);
+        let z10 = player0.concatenate(sess, axis, &z10s);
+        let z11 = player1.concatenate(sess, axis, &z11s);
+        let z21 = player1.concatenate(sess, axis, &z21s);
+        let z22 = player2.concatenate(sess, axis, &z22s);
+        let z02 = player2.concatenate(sess, axis, &z02s);
+        Ok(RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        })
+    }
+
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[AbstractReplicatedFixedTensor<RepRingT>],
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementConcatenate<S, RepRingT, RepRingT>,
+        RepRingT: Clone,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot concat on empty array of tensors".to_string(),
+            ))
+        } else {
+            let mut tensors = Vec::new();
+            let fractional_precision = xs[0].fractional_precision;
+            let integral_precision = xs[0].integral_precision;
+            for x in xs.iter() {
+                if x.fractional_precision != fractional_precision {
+                    return Err(Error::InvalidArgument(
+                        "precisions of tensors must match when concatenating".to_string(),
+                    ));
+                }
+                tensors.push(x.tensor.clone());
+            }
+            let tensor = plc.concatenate(sess, axis, &tensors);
+            Ok(AbstractReplicatedFixedTensor {
+                tensor,
+                fractional_precision,
+                integral_precision,
+            })
+        }
+    }
+
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>],
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        ReplicatedPlacement: PlacementConcatenate<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementConcatenate<S, Fixed128T, Fixed128T>,
+        Fixed64T: Clone,
+        Fixed128T: Clone,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot concatenate on empty array of tensors".to_string(),
+            ))
+        } else {
+            let x = &xs[0];
+            match x {
+                AbstractTensor::Fixed64(_) => {
+                    let vec: Result<Vec<Fixed64T>> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            AbstractTensor::Fixed64(x) => Ok(x.clone()),
+                            _ => Err(Error::InvalidArgument(
+                                "concat does not support mixed tensor types".to_string(),
+                            )),
+                        })
+                        .collect();
+                    let result = plc.concatenate(sess, axis, &vec?);
+                    Ok(AbstractTensor::Fixed64(result))
+                }
+                AbstractTensor::Fixed128(_) => {
+                    let vec: Result<Vec<Fixed128T>> = xs
+                        .iter()
+                        .map(|abstract_tensor| match abstract_tensor {
+                            AbstractTensor::Fixed128(x) => Ok(x.clone()),
+                            _ => Err(Error::InvalidArgument(
+                                "concat does not support mixed tensor types".to_string(),
+                            )),
+                        })
+                        .collect();
+                    let result = plc.concatenate(sess, axis, &vec?);
+                    Ok(AbstractTensor::Fixed128(result))
+                }
+                x => Err(Error::UnimplementedOperator(format!(
+                    "Missing replicated concatenate op for {:?}",
+                    &x.ty_desc(),
+                ))),
+            }
         }
     }
 }

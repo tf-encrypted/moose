@@ -1527,6 +1527,32 @@ impl AddNOp {
     }
 }
 
+impl ConcatOp {
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[FixedTensor<HostFixedT, MirFixedT, RepFixedT>],
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementConcatenate<S, RepFixedT, RepFixedT>,
+        RepFixedT: Clone,
+    {
+        let vec: Result<Vec<RepFixedT>> = xs
+            .iter()
+            .map(|t| match t {
+                FixedTensor::Host(x) => Ok(plc.share(sess, x)),
+                FixedTensor::Replicated(x) => Ok(x.clone()),
+                FixedTensor::Mirrored3(_) => Err(Error::InvalidArgument(
+                    "concat does not support mirrored tensors".to_string(),
+                )),
+            })
+            .collect();
+        Ok(FixedTensor::Replicated(plc.concatenate(sess, axis, &vec?)))
+    }
+}
+
 pub trait FixedpointTensor {
     fn fractional_precision(&self) -> u32;
     fn integral_precision(&self) -> u32;

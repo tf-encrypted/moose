@@ -1008,7 +1008,6 @@ operators![
     HostSqueeze,
     HostSum,
     HostOnes,
-    HostConcat,
     HostTranspose,
     HostInverse,
     HostAtLeast2D,
@@ -1203,7 +1202,7 @@ pub struct ExpandDimsOp {
     pub axis: Vec<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct ConcatOp {
     pub sig: Signature,
     pub axis: u32,
@@ -1312,12 +1311,6 @@ pub struct HostSqrtOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct HostOnesOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostConcatOp {
-    pub sig: Signature,
-    pub axis: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
