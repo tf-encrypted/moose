@@ -28,7 +28,10 @@ _SK_REGRESSOR_MODELS = [
 _XGB_CLASSIFIER_MODELS = [
     (
         "xgboost_classifier_2class",
-        [[0.64118324, 0.35881676], [0.8644176, 0.1355824], [0.64118324, 0.35881676]],
+        [0.35881676, 0.1355824, 0.35881676],
+        # TODO see TreeEnsembleClassifier._double_sigmoid in tree_ensemble module
+        # [[0.64118324, 0.35881676], [0.8644176, 0.1355824], [0.64118324, 0.35881676]],
+        [0.35881676, 0.1355824, 0.35881676],
     ),
     (
         "xgboost_classifier_3class",

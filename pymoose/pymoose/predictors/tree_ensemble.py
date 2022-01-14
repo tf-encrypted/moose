@@ -257,9 +257,11 @@ class TreeEnsembleClassifier(TreeEnsemble):
     def _double_sigmoid(self, tree_scores, fixedpoint_dtype):
         logit = edsl.add_n(tree_scores)
         pos_prob = edsl.sigmoid(logit)
-        one = self.fixedpoint_constant(1, plc=self.mirrored, dtype=fixedpoint_dtype)
-        neg_prob = edsl.sub(one, pos_prob)
-        return edsl.concatenate([neg_prob, pos_prob], axis=1)
+        # TODO match binary classification format from sklearn, etc.
+        # one = self.fixedpoint_constant(1, plc=self.mirrored, dtype=fixedpoint_dtype)
+        # neg_prob = edsl.sub(one, pos_prob)
+        # return edsl.concatenate([neg_prob, pos_prob], axis=1)
+        return pos_prob
 
     def _ovr_softmax(self, tree_scores, axis):
         ovr_results = [[] for _ in range(self.n_classes)]
