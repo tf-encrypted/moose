@@ -1,36 +1,11 @@
-//! Abstraction layer for floating-point values
-
 use crate::boolean::BoolTensor;
 use crate::computation::*;
+use super::*;
 use crate::error::Error;
 use crate::error::Result;
 use crate::kernels::*;
 use crate::mirrored::{Mir3Tensor, Mirrored3Placement};
 use crate::types::*;
-use serde::{Deserialize, Serialize};
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum FloatTensor<HostT, MirroredT> {
-    Host(HostT),
-    Mirrored3(MirroredT),
-}
-
-impl<T, MirroredT> Placed for FloatTensor<T, MirroredT>
-where
-    T: Placed,
-    T::Placement: Into<Placement>,
-    MirroredT: Placed,
-    MirroredT::Placement: Into<Placement>,
-{
-    type Placement = Placement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        match self {
-            FloatTensor::Host(x) => Ok(x.placement()?.into()),
-            FloatTensor::Mirrored3(x) => Ok(x.placement()?.into()),
-        }
-    }
-}
 
 impl IdentityOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
