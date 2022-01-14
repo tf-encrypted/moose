@@ -26,6 +26,7 @@ from pymoose.computation.standard import InputOperation
 from pymoose.computation.standard import InverseOperation
 from pymoose.computation.standard import LessOperation
 from pymoose.computation.standard import LoadOperation
+from pymoose.computation.standard import MaximumOperation
 from pymoose.computation.standard import MeanOperation
 from pymoose.computation.standard import MulOperation
 from pymoose.computation.standard import MuxOperation
@@ -59,6 +60,7 @@ from pymoose.edsl.base import IdentityExpression
 from pymoose.edsl.base import IndexAxisExpression
 from pymoose.edsl.base import InverseExpression
 from pymoose.edsl.base import LoadExpression
+from pymoose.edsl.base import MaximumExpression
 from pymoose.edsl.base import MeanExpression
 from pymoose.edsl.base import MirroredPlacementExpression
 from pymoose.edsl.base import MuxExpression
@@ -253,6 +255,26 @@ class AstTracer:
                 inputs=array_inputs,
                 signature=OpSignature(
                     input_types=array_types, return_type=concatenate_expression.vtype,
+                ),
+            )
+        )
+
+    def visit_MaximumExpression(self, maximum_expression):
+        assert isinstance(maximum_expression, MaximumExpression)
+        array_inputs, array_types = {}, {}
+        for i, expr in enumerate(maximum_expression.inputs):
+            array_op = self.visit(expr)
+            array_inputs[f"array{i}"] = array_op.name
+            array_types[f"array{i}"] = array_op.return_type
+
+        placement = self.visit_placement_expression(maximum_expression.placement)
+        return self.computation.add_operation(
+            MaximumOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("maximum"),
+                inputs=array_inputs,
+                signature=OpSignature(
+                    input_types=array_types, return_type=maximum_expression.vtype,
                 ),
             )
         )

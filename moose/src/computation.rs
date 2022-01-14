@@ -1103,6 +1103,7 @@ operators![
     RepShlDim,
     RepEqual,
     Mux,
+    Maximum,
     // Mirrored Operators
     Demirror,
     Mirror,
@@ -1878,6 +1879,11 @@ pub struct DemirrorOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct MirrorOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct MaximumOp {
     pub sig: Signature,
 }
 

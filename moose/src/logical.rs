@@ -1337,6 +1337,8 @@ impl IndexAxisOp {
     where
         HostPlacement: PlacementIndexAxis<S, Float32T, Float32T>,
         HostPlacement: PlacementIndexAxis<S, Float64T, Float64T>,
+        HostPlacement: PlacementIndexAxis<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementIndexAxis<S, Fixed128T, Fixed128T>,
         HostPlacement: PlacementIndexAxis<S, BoolT, BoolT>,
     {
         match x {
@@ -1348,14 +1350,18 @@ impl IndexAxisOp {
                 let z = plc.index_axis(sess, axis, index, &x);
                 Ok(AbstractTensor::Float64(z))
             }
+            AbstractTensor::Fixed64(x) => {
+                let z = plc.index_axis(sess, axis, index, &x);
+                Ok(AbstractTensor::Fixed64(z))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let z = plc.index_axis(sess, axis, index, &x);
+                Ok(AbstractTensor::Fixed128(z))
+            }
             AbstractTensor::Bool(x) => {
                 let z = plc.index_axis(sess, axis, index, &x);
                 Ok(AbstractTensor::Bool(z))
             }
-            _ => Err(Error::UnimplementedOperator(format!(
-                "Missing host index_axis for {:?}",
-                &x.ty_desc(),
-            ))),
         }
     }
 }
@@ -1857,5 +1863,67 @@ impl BitOrOp {
                 &y.ty_desc()
             ))),
         }
+    }
+}
+
+impl MaximumOp {
+    pub fn rep_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>],
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        ReplicatedPlacement: PlacementMaximum<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementMaximum<S, Fixed128T, Fixed128T>,
+        Fixed64T: Clone,
+        Fixed128T: Clone,
+    {
+        if x.is_empty() {
+            return Err(Error::InvalidArgument(
+                "maximum op needs a non-empty array of tensors".to_string(),
+            ));
+        }
+        for entry in x {
+            if entry.ty_desc() != x[0].ty_desc() {
+                return Err(Error::InvalidArgument(
+                    "maximum op all args to have same types".to_string(),
+                ));
+            }
+        }
+
+        let out = match x[0] {
+            AbstractTensor::Fixed64(_) => {
+                let xv: Vec<Fixed64T> = x
+                    .iter()
+                    .filter_map(|entry| match entry {
+                        AbstractTensor::Fixed64(v) => Some(v.clone()),
+                        _ => None,
+                    })
+                    .collect();
+                if xv.len() != x.len() {
+                    return Err(Error::Unexpected(Some(
+                        "maximum op all args to have same types".to_string(),
+                    )));
+                }
+                AbstractTensor::Fixed64(plc.maximum(sess, &xv))
+            }
+            AbstractTensor::Fixed128(_) => {
+                let xv: Vec<Fixed128T> = x
+                    .iter()
+                    .filter_map(|entry| match entry {
+                        AbstractTensor::Fixed128(v) => Some(v.clone()),
+                        _ => None, // never going to be reached
+                    })
+                    .collect();
+                if xv.len() != x.len() {
+                    return Err(Error::Unexpected(Some(
+                        "maximum op all args to have same types".to_string(),
+                    )));
+                }
+                AbstractTensor::Fixed128(plc.maximum(sess, &xv))
+            }
+            _ => unimplemented!(),
+        };
+        Ok(out)
     }
 }
