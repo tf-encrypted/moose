@@ -1193,12 +1193,6 @@ pub struct SliceOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct GetAxisOp {
-    pub sig: Signature,
-    pub axis: usize,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct OnesOp {
     pub sig: Signature,
 }
