@@ -1561,11 +1561,9 @@ impl ConcatOp {
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
                             AbstractTensor::Fixed64(x) => Ok(x.clone()),
-                            _ => {
-                                return Err(Error::InvalidArgument(
-                                    "concat does not support mixed tensor types".to_string(),
-                                ))
-                            }
+                            _ => Err(Error::InvalidArgument(
+                                "concat does not support mixed tensor types".to_string(),
+                            )),
                         })
                         .collect();
                     let result = plc.concatenate(sess, axis, &vec?);
@@ -1576,11 +1574,9 @@ impl ConcatOp {
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
                             AbstractTensor::Fixed128(x) => Ok(x.clone()),
-                            _ => {
-                                return Err(Error::InvalidArgument(
-                                    "concat does not support mixed tensor types".to_string(),
-                                ))
-                            }
+                            _ => Err(Error::InvalidArgument(
+                                "concat does not support mixed tensor types".to_string(),
+                            )),
                         })
                         .collect();
                     let result = plc.concatenate(sess, axis, &vec?);
