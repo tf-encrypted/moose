@@ -2017,17 +2017,28 @@ impl MaximumOp {
         ReplicatedPlacement: PlacementMaximum<S, RepRingT, RepRingT>,
         RepRingT: Clone,
     {
-        assert!(!x.is_empty());
+        if x.is_empty() {
+            return Err(Error::InvalidArgument(
+                "maximum op needs a non-empty array of tensors".to_string(),
+            ));
+        }
 
-        let local_fractional_precision = x[0].fractional_precision;
-        let local_integral_precision = x.iter().fold(x[0].integral_precision, |max, val| {
+        let fractional_precision = x[0].fractional_precision;
+        for item in x.iter() {
+            if item.fractional_precision != fractional_precision {
+                return Err(Error::InvalidArgument(
+                    "maximum op needs all array entries to have same precision".to_string(),
+                ));
+            };
+        }
+
+        let integral_precision = x.iter().fold(x[0].integral_precision, |max, val| {
             u32::max(max, val.integral_precision)
         });
 
         let xv: Vec<_> = x
             .iter()
             .map(|item| {
-                assert_eq!(item.fractional_precision, local_fractional_precision);
                 // TODO(Dragos) can we get rid of this cloning?
                 item.tensor.clone()
             })
@@ -2035,8 +2046,8 @@ impl MaximumOp {
 
         Ok(AbstractReplicatedFixedTensor {
             tensor: plc.maximum(sess, &xv),
-            fractional_precision: local_fractional_precision,
-            integral_precision: local_integral_precision,
+            fractional_precision,
+            integral_precision,
         })
     }
 }

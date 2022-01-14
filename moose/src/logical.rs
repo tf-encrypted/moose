@@ -1878,10 +1878,17 @@ impl MaximumOp {
         Fixed64T: Clone,
         Fixed128T: Clone,
     {
-        assert!(!x.is_empty());
-
+        if x.is_empty() {
+            return Err(Error::InvalidArgument(
+                "maximum op needs a non-empty array of tensors".to_string(),
+            ));
+        }
         for entry in x {
-            assert_eq!(entry.ty_desc(), x[0].ty_desc());
+            if entry.ty_desc() != x[0].ty_desc() {
+                return Err(Error::InvalidArgument(
+                    "maximum op all args to have same types".to_string(),
+                ));
+            }
         }
 
         let out = match x[0] {
@@ -1890,7 +1897,7 @@ impl MaximumOp {
                     .iter()
                     .map(|entry| match entry {
                         AbstractTensor::Fixed64(v) => v.clone(),
-                        _ => unimplemented!(),
+                        _ => unimplemented!(), // never going to be reached
                     })
                     .collect();
                 AbstractTensor::Fixed64(plc.maximum(sess, &xv))
@@ -1900,7 +1907,7 @@ impl MaximumOp {
                     .iter()
                     .map(|entry| match entry {
                         AbstractTensor::Fixed128(v) => v.clone(),
-                        _ => unimplemented!(),
+                        _ => unimplemented!(), // never going to be reached
                     })
                     .collect();
                 AbstractTensor::Fixed128(plc.maximum(sess, &xv))

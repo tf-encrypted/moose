@@ -21,7 +21,11 @@ impl MaximumOp {
         ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
     {
         let n = x.len();
-        if n == 1 {
+        if n == 0 {
+            Err(Error::InvalidArgument(
+                "maximum op needs a non-empty array of tensors".to_string(),
+            ))
+        } else if n == 1 {
             Ok(x[0].clone())
         } else {
             let chunk1 = &x[0..n / 2];
