@@ -680,8 +680,6 @@ impl<HostBitT: Placed, N: Const> BitArray for Symbolic<AbstractHostBitArray<Host
     type Len = N;
 }
 
-pub type HostBitArray64 = AbstractHostBitArray<HostBitTensor, N64>;
-
 #[cfg(test)]
 impl<N> AbstractHostBitArray<HostBitTensor, N> {
     pub(crate) fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> Self {
@@ -703,19 +701,13 @@ impl PartiallySymbolicType for HostBitArray64 {
     type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N64>;
 }
 
-pub type HostBitArray128 = AbstractHostBitArray<HostBitTensor, N128>;
-
 impl PartiallySymbolicType for HostBitArray128 {
     type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N128>;
 }
 
-pub type HostBitArray224 = AbstractHostBitArray<HostBitTensor, N224>;
-
 impl PartiallySymbolicType for HostBitArray224 {
     type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N224>;
 }
-
-pub type HostBitArray256 = AbstractHostBitArray<HostBitTensor, N256>;
 
 impl PartiallySymbolicType for HostBitArray256 {
     type Type = AbstractHostBitArray<<HostBitTensor as SymbolicType>::Type, N256>;

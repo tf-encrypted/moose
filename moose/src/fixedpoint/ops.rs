@@ -2417,9 +2417,9 @@ mod tests {
             fn $func_name(
                 name: &str,
                 rep: &ReplicatedPlacement,
-            ) -> Symbolic<AbstractReplicatedRingTensor<Symbolic<AbstractHostRingTensor<$tt>>>> {
+            ) -> Symbolic<RepTensor<Symbolic<AbstractHostRingTensor<$tt>>>> {
                 let (alice, bob, carole) = rep.host_placements();
-                let symbolic_replicated = Symbolic::Concrete(AbstractReplicatedRingTensor {
+                let symbolic_replicated = Symbolic::Concrete(RepTensor {
                     shares: [
                         [
                             Symbolic::Symbolic(SymbolicHandle {
@@ -2532,7 +2532,7 @@ mod tests {
                     .map(|x| {
                         let x_encode = x.map(encode);
                         let x_ring = AbstractHostRingTensor::from_raw_plc(x_encode, alice.clone());
-                        let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
+                        let x_shared: RepTensor<AbstractHostRingTensor<$tt>> =
                             rep.share(&sess, &x_ring);
                         new_replicated_fixed_tensor(x_shared)
                     })
@@ -2596,8 +2596,7 @@ mod tests {
                 let encode = |item: &f64| (2_i64.pow($f_precision) as f64 * item) as $tt;
                 let x_encoded = x.map(encode);
                 let x_ring = AbstractHostRingTensor::from_raw_plc(x_encoded, alice.clone());
-                let x_shared: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
-                    rep.share(&sess, &x_ring);
+                let x_shared: RepTensor<AbstractHostRingTensor<$tt>> = rep.share(&sess, &x_ring);
                 let x_fixed_shared = new_replicated_fixed_tensor(x_shared.clone());
 
                 let output = rep.polynomial_eval(&sess, coeffs, x_fixed_shared);

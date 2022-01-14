@@ -3,6 +3,7 @@ use crate::computation::{HostPlacement, InputOp, Signature, Ty};
 use crate::error::{Error, Result};
 use crate::kernels::{PlacementInput, Session};
 use crate::replicated::aes::AbstractReplicatedAesKey;
+use crate::{N128, N224, N64};
 use std::marker::PhantomData;
 
 impl InputOp {

@@ -3,16 +3,13 @@ use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
-use crate::host::{
-    AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128,
-    HostBitArray224, HostBitArray256, HostBitArray64, SliceInfo,
-};
+use crate::host::{AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedTensor, SliceInfo};
 use crate::kernels::*;
 use crate::mirrored::{AbstractMirroredFixedTensor, Mirrored3Placement, Mirrored3Tensor};
 use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::symbolic::Symbolic;
 use crate::types::*;
-use crate::{BitArray, Const, Ring, N128, N224, N64};
+use crate::{BitArray, Const, Ring};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
@@ -138,12 +135,6 @@ impl<RepBitTensorT: Placed, N: Const> BitArray
 {
     type Len = N;
 }
-
-pub type ReplicatedBitArray64 = AbstractReplicatedBitArray<ReplicatedBitTensor, N64>;
-
-pub type ReplicatedBitArray128 = AbstractReplicatedBitArray<ReplicatedBitTensor, N128>;
-
-pub type ReplicatedBitArray224 = AbstractReplicatedBitArray<ReplicatedBitTensor, N224>;
 
 // TODO implement using moose_type macro
 impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTensorT, N> {
@@ -2658,6 +2649,7 @@ mod tests {
     use crate::kernels::{
         PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, SyncSession,
     };
+    use crate::{N128, N64};
     use ndarray::array;
     use proptest::prelude::*;
 
@@ -3137,7 +3129,7 @@ mod tests {
                 let x_shared = rep.share(&sess, &x);
                 let y_shared = rep.share(&sess, &y);
 
-                let sum: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
+                let sum: RepTensor<AbstractHostRingTensor<$tt>> =
                     rep.$test_func(&sess, &x_shared, &y_shared);
                 let opened_product = alice.reveal(&sess, &sum);
                 assert_eq!(
@@ -3536,7 +3528,7 @@ mod tests {
 
                 let x_shared = rep.share(&sess, &x);
 
-                let result: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
+                let result: RepTensor<AbstractHostRingTensor<$tt>> =
                     rep.$test_func(&sess, &x_shared);
                 let opened_result = alice.reveal(&sess, &result);
                 assert_eq!(
@@ -3874,8 +3866,7 @@ mod tests {
                 let x_shared = rep.share(&sess, &x);
                 let y_shared = rep.share(&sess, &y);
 
-                let sum: AbstractReplicatedRingTensor<HostBitTensor> =
-                    rep.$test_func(&sess, &x_shared, &y_shared);
+                let sum: RepTensor<HostBitTensor> = rep.$test_func(&sess, &x_shared, &y_shared);
                 let opened_product = alice.reveal(&sess, &sum);
                 assert_eq!(
                     opened_product,

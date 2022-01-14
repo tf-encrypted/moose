@@ -6,19 +6,20 @@ use crate::encrypted::{AbstractAesKey, AbstractAesTensor, FixedAesTensor};
 use crate::fixedpoint::FixedTensor;
 use crate::floatingpoint::FloatTensor;
 use crate::host::{
-    AbstractHostAesKey, AbstractHostFixedAesTensor, AbstractHostFixedTensor,
-    AbstractHostRingTensor, HostBitArray128, HostBitArray224, HostTensor,
+    AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedAesTensor, AbstractHostFixedTensor,
+    AbstractHostRingTensor, HostTensor,
 };
 use crate::logical::AbstractTensor;
 use crate::mirrored::{AbstractMirroredFixedTensor, Mirrored3Tensor};
 use crate::replicated::{
-    AbstractReplicatedAesKey, AbstractReplicatedFixedTensor, AbstractReplicatedSetup,
-    AbstractReplicatedShape, RepTensor, ReplicatedBitArray128,
+    AbstractReplicatedAesKey, AbstractReplicatedBitArray, AbstractReplicatedFixedTensor,
+    AbstractReplicatedSetup, AbstractReplicatedShape, RepTensor,
 };
 pub use crate::{
     host::{HostShape, HostString},
     prim::{PrfKey, Seed},
 };
+use crate::{N128, N224, N256, N64};
 
 // Logical types
 
@@ -82,6 +83,9 @@ moose_type!(AdditiveShape = AdtShape<HostShape>);
 
 moose_type!(ReplicatedShape = AbstractReplicatedShape<HostShape>);
 moose_type!(ReplicatedSetup = AbstractReplicatedSetup<PrfKey>);
+pub type ReplicatedBitArray64 = AbstractReplicatedBitArray<ReplicatedBitTensor, N64>;
+pub type ReplicatedBitArray128 = AbstractReplicatedBitArray<ReplicatedBitTensor, N128>;
+pub type ReplicatedBitArray224 = AbstractReplicatedBitArray<ReplicatedBitTensor, N224>;
 
 // Misc host types
 
@@ -93,6 +97,10 @@ moose_type!(HostUint8Tensor = [atomic] HostTensor<u8>);
 moose_type!(HostUint16Tensor = [atomic] HostTensor<u16>);
 moose_type!(HostUint32Tensor = [atomic] HostTensor<u32>);
 moose_type!(HostUint64Tensor = [atomic] HostTensor<u64>);
+pub type HostBitArray64 = AbstractHostBitArray<HostBitTensor, N64>;
+pub type HostBitArray128 = AbstractHostBitArray<HostBitTensor, N128>;
+pub type HostBitArray224 = AbstractHostBitArray<HostBitTensor, N224>;
+pub type HostBitArray256 = AbstractHostBitArray<HostBitTensor, N256>;
 
 moose_type!(PrfKey);
 moose_type!(Seed);
