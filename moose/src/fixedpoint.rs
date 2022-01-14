@@ -1539,34 +1539,15 @@ impl ConcatOp {
         ReplicatedPlacement: PlacementConcatenate<S, RepFixedT, RepFixedT>,
         RepFixedT: Clone,
     {
-        let first = &xs[0];
-        match first {
-            FixedTensor::Host(_) => {
-                let vec: Vec<RepFixedT> = xs
-                    .iter()
-                    .map(|t| match t {
-                        FixedTensor::Host(x) => plc.share(sess, x),
-                        FixedTensor::Replicated(x) => x.clone(),
-                        FixedTensor::Mirrored3(_) => unimplemented!(),
-                    })
-                    .collect();
-                Ok(FixedTensor::Replicated(plc.concatenate(sess, axis, &vec)))
-            }
-            FixedTensor::Replicated(_) => {
-                let vec: Vec<RepFixedT> = xs
-                    .iter()
-                    .map(|t| match t {
-                        FixedTensor::Host(x) => plc.share(sess, x),
-                        FixedTensor::Replicated(x) => x.clone(),
-                        FixedTensor::Mirrored3(_) => unimplemented!(),
-                    })
-                    .collect();
-                Ok(FixedTensor::Replicated(plc.concatenate(sess, axis, &vec)))
-            }
-            FixedTensor::Mirrored3(_) => {
-                unimplemented!("concatenate does not yet support mirrored")
-            }
-        }
+        let vec: Vec<RepFixedT> = xs
+            .iter()
+            .map(|t| match t {
+                FixedTensor::Host(x) => plc.share(sess, x),
+                FixedTensor::Replicated(x) => x.clone(),
+                FixedTensor::Mirrored3(_) => unimplemented!(),
+            })
+            .collect();
+        Ok(FixedTensor::Replicated(plc.concatenate(sess, axis, &vec)))
     }
 }
 
