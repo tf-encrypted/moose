@@ -4,8 +4,7 @@ use crate::additive::{
 use crate::computation::SymbolicValue;
 use crate::computation::Value;
 use crate::computation::{
-    AddNOp, ConcatOp, HostPlacement, HostReshapeOp, KnownType, Placed, ReplicatedPlacement,
-    RingInjectOp, ShapeOp,
+    AddNOp, ConcatOp, HostPlacement, HostReshapeOp, KnownType, Placed, ReplicatedPlacement, ShapeOp,
 };
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
@@ -15,9 +14,7 @@ use crate::host::{
     HostRing64Tensor, HostShape, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor,
     HostUint8Tensor,
 };
-use crate::kernels::{
-    PlacementAddN, PlacementConcatenate, PlacementReshape, PlacementRingInject, PlacementShape,
-};
+use crate::kernels::{PlacementAddN, PlacementConcatenate, PlacementReshape, PlacementShape};
 use crate::logical::Tensor;
 use crate::replicated::{
     ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
@@ -68,16 +65,6 @@ modelled_kernel! {
         (HostPlacement, (HostUint16Tensor, HostShape) -> HostUint16Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostUint32Tensor, HostShape) -> HostUint32Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostUint64Tensor, HostShape) -> HostUint64Tensor => [runtime] Self::host_kernel),
-    ]
-}
-
-modelled_kernel! {
-    PlacementRingInject::ring_inject, RingInjectOp{bit_idx: usize},
-    [
-        (HostPlacement, (HostBitTensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
-        (HostPlacement, (HostBitTensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_kernel),
     ]
 }
 

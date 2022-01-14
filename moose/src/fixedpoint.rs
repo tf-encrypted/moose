@@ -12,6 +12,7 @@ use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::num::Wrapping;
 use std::ops::Mul;
 
@@ -1384,7 +1385,9 @@ impl AddNOp {
     where
         HostPlacement: PlacementAddN<S, HostFixedT, HostFixedT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
-        HostFixedT: Clone,
+        HostFixedT: Clone + Debug,
+        MirFixedT: Debug,
+        RepFixedT: Debug,
     {
         if xs.is_empty() {
             Err(Error::InvalidArgument(
@@ -1398,7 +1401,10 @@ impl AddNOp {
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
                             FixedTensor::Host(x) => (*x).clone(),
-                            _ => unimplemented!("mixed types in tensor"),
+                            other => unimplemented!(
+                                "Mixed types in input vector, expected Fixed::Host, found {:?}",
+                                other
+                            ),
                         })
                         .collect();
                     let result = plc.add_n(sess, &vec);
@@ -1409,7 +1415,10 @@ impl AddNOp {
                         .iter()
                         .map(|t| match t {
                             FixedTensor::Replicated(x) => plc.reveal(sess, x),
-                            _ => unimplemented!("mixed types in tensor"),
+                            other => unimplemented!(
+                                "Mixed types in input vector, expected Fixed::Replicated, found {:?}",
+                                other
+                            ),
                         })
                         .collect();
                     Ok(FixedTensor::Host(plc.add_n(sess, &vec)))
@@ -2023,6 +2032,78 @@ impl MuxOp {
             tensor: plc.mux(sess, &s, &x.tensor, &y.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
+        })
+    }
+}
+
+impl MaximumOp {
+    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: &[FixedTensor<HostFixedT, MirFixedT, RepFixedT>],
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementMaximum<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        RepFixedT: Clone,
+    {
+        let xv: Vec<RepFixedT> = x
+            .iter()
+            .map(|item| match item {
+                FixedTensor::Host(v) => plc.share(sess, v),
+                FixedTensor::Mirrored3(v) => plc.share(sess, v),
+                FixedTensor::Replicated(v) => v.clone(),
+            })
+            .collect();
+        let z = plc.maximum(sess, &xv);
+        Ok(FixedTensor::Replicated(z))
+    }
+
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: &[AbstractReplicatedFixedTensor<RepRingT>],
+    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementMaximum<S, RepRingT, RepRingT>,
+        RepRingT: Clone,
+    {
+        // leave it up to the reduce op to identify whethere x is empty.
+        let integral_precision = x
+            .iter()
+            .map(|item| item.integral_precision)
+            .reduce(u32::max);
+        let integral_precision = match integral_precision {
+            Some(v) => v,
+            None => {
+                return Err(Error::Unexpected(Some(
+                    "maximum op had no inputs".to_string(),
+                )))
+            }
+        };
+
+        let fractional_precision = x[0].fractional_precision;
+        for item in x.iter() {
+            if item.fractional_precision != fractional_precision {
+                return Err(Error::InvalidArgument(
+                    "maximum op needs all array entries to have same precision".to_string(),
+                ));
+            };
+        }
+
+        let xv: Vec<_> = x
+            .iter()
+            .map(|item| {
+                // TODO(Dragos) can we get rid of this cloning?
+                item.tensor.clone()
+            })
+            .collect();
+
+        Ok(AbstractReplicatedFixedTensor {
+            tensor: plc.maximum(sess, &xv),
+            fractional_precision,
+            integral_precision,
         })
     }
 }

@@ -27,6 +27,7 @@ pub mod division;
 pub mod exp;
 pub mod input;
 pub mod log;
+pub mod softmax;
 pub use self::aes::ReplicatedAesKey;
 
 pub trait ShapeFill<S, TenT> {
@@ -374,8 +375,8 @@ where
 
 // Type aliases to shorten out impl in replicated protocols
 pub(crate) type RepTen<T> = AbstractReplicatedRingTensor<T>;
-type AdtTen<T> = AdtTensor<T>;
-type MirTen<T> = Mirrored3Tensor<T>;
+pub(crate) type AdtTen<T> = AdtTensor<T>;
+pub(crate) type MirTen<T> = Mirrored3Tensor<T>;
 
 modelled!(PlacementSetupGen::gen_setup, ReplicatedPlacement, () -> ReplicatedSetup, RepSetupOp);
 

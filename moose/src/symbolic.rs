@@ -252,6 +252,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepNeg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepEqual(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Mux(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Maximum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Demirror(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Mirror(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

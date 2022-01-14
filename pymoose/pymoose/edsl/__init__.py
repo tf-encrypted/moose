@@ -31,6 +31,7 @@ from pymoose.edsl.base import inverse
 from pymoose.edsl.base import less
 from pymoose.edsl.base import load
 from pymoose.edsl.base import logical_or
+from pymoose.edsl.base import maximum
 from pymoose.edsl.base import mean
 from pymoose.edsl.base import mirrored_placement
 from pymoose.edsl.base import mul
@@ -82,6 +83,7 @@ __all__ = [
     less,
     load,
     logical_or,
+    maximum,
     mirrored_placement,
     mul,
     mux,
