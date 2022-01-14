@@ -1,6 +1,6 @@
 use super::*;
 use crate::error::{Error, Result};
-use crate::prim::Seed;
+use crate::prim::{Seed, RawPrfKey};
 use crate::prng::AesRng;
 use crate::{Const, Ring, N128, N224, N64};
 use ndarray::LinalgScalar;
@@ -9,6 +9,34 @@ use ndarray_linalg::Lapack;
 use num_traits::{Float, FromPrimitive, Zero};
 use std::marker::PhantomData;
 use std::num::Wrapping;
+
+macro_rules! wrapping_constant_kernel {
+    ($name:ident for $wrapping:tt($inner:ty)) => {
+        impl ConstantOp {
+            pub(crate) fn $name<S: RuntimeSession>(
+                _sess: &S,
+                plc: &HostPlacement,
+                value: $inner,
+            ) -> Result<$wrapping> {
+                Ok($wrapping(value.clone(), plc.clone()))
+            }
+        }
+    };
+}
+
+wrapping_constant_kernel!(string_kernel for HostString(String));
+wrapping_constant_kernel!(shape_kernel for HostShape(RawShape));
+wrapping_constant_kernel!(prf_key_kernel for PrfKey(RawPrfKey));
+wrapping_constant_kernel!(seed_kernel for Seed(RawSeed));
+
+impl ConstantOp {
+    pub(crate) fn kernel<S: RuntimeSession, T: Placed>(sess: &S, plc: &HostPlacement, value: T) -> Result<T>
+    where
+        HostPlacement: PlacementPlace<S, T>,
+    {
+        Ok(plc.place(sess, value))
+    }
+}
 
 impl InputOp {
     pub(crate) fn host_bitarray64<S: Session, HostBitTensorT>(

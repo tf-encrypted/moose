@@ -23,6 +23,7 @@ use std::marker::PhantomData;
 use std::num::Wrapping;
 
 mod ops;
+mod io;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostString(pub String, pub HostPlacement);
