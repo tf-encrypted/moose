@@ -1412,10 +1412,8 @@ impl ConcatOp {
     where
         HostPlacement: PlacementConcatenate<S, Float32T, Float32T>,
         HostPlacement: PlacementConcatenate<S, Float64T, Float64T>,
-        //HostPlacement: PlacementConcatenate<S, Fixed128T, Fixed128T>,
         Float32T: Clone,
         Float64T: Clone,
-        //Fixed128T: Clone,
     {
         match xs[0] {
             // (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
