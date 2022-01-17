@@ -242,7 +242,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let part2 = alt((
         HostSumOp::from_textual,
         HostOnesOp::from_textual,
-        HostConcatOp::from_textual,
+        ConcatOp::from_textual,
         HostTransposeOp::from_textual,
         HostInverseOp::from_textual,
         RingAddOp::from_textual,
@@ -285,7 +285,11 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         FillOp::from_textual,
         IndexAxisOp::from_textual,
     ));
-    let part4 = alt((DemirrorOp::from_textual, MirrorOp::from_textual));
+    let part4 = alt((
+        DemirrorOp::from_textual,
+        MirrorOp::from_textual,
+        MaximumOp::from_textual,
+    ));
     alt((part1, part2, part3, part4))(input)
 }
 
@@ -1051,7 +1055,6 @@ impl ToTextual for Operator {
             HostMean(op) => op.to_textual(),
             HostSqrt(op) => op.to_textual(),
             HostOnes(op) => op.to_textual(),
-            HostConcat(op) => op.to_textual(),
             HostExpandDims(op) => op.to_textual(),
             HostSqueeze(op) => op.to_textual(),
             HostReshape(op) => op.to_textual(),
@@ -1149,6 +1152,7 @@ impl ToTextual for Operator {
             GreaterThan(op) => op.to_textual(),
             Demirror(op) => op.to_textual(),
             Mirror(op) => op.to_textual(),
+            Maximum(op) => op.to_textual(),
         }
     }
 }

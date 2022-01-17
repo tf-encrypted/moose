@@ -1,4 +1,4 @@
-PyMoose Models
+PyMoose Predictors
 ============
 
 PyMoose computations for running predictions of select pretrained ONNX models.

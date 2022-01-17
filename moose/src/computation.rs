@@ -755,22 +755,22 @@ impl Signature {
             (Signature::Variadic(s), o) => s.merge(o),
 
             (Signature::Nullary(s), o) => Err(anyhow::anyhow!(
-                "Can not merge {:?} with an incompatible signature {:?}",
+                "Cannot merge {:?} with an incompatible signature {:?}",
                 s,
                 o
             )),
             (Signature::Unary(s), o) => Err(anyhow::anyhow!(
-                "Can not merge {:?} with an incompatible signature {:?}",
+                "Cannot merge {:?} with an incompatible signature {:?}",
                 s,
                 o
             )),
             (Signature::Binary(s), o) => Err(anyhow::anyhow!(
-                "Can not merge {:?} with an incompatible signature {:?}",
+                "Cannot merge {:?} with an incompatible signature {:?}",
                 s,
                 o
             )),
             (Signature::Ternary(s), o) => Err(anyhow::anyhow!(
-                "Can not merge {:?} with an incompatible signature {:?}",
+                "Cannot merge {:?} with an incompatible signature {:?}",
                 s,
                 o
             )),
@@ -873,8 +873,29 @@ impl VariadicSignature {
 
                 Ok(())
             }
+            Signature::Ternary(sig) => {
+                if self.args == sig.arg0 && self.args == sig.arg1 && self.args == sig.arg2 {
+                    if let Some(new_type) = self.args.merge(&sig.arg0) {
+                        self.args = new_type;
+                    }
+
+                    if let Some(new_type) = self.args.merge(&sig.arg1) {
+                        self.args = new_type;
+                    }
+
+                    if let Some(new_type) = self.args.merge(&sig.arg2) {
+                        self.args = new_type;
+                    }
+                }
+
+                if let Some(new_type) = self.ret.merge(&sig.ret) {
+                    self.ret = new_type;
+                }
+
+                Ok(())
+            }
             o => Err(anyhow::anyhow!(
-                "Can not merge {:?} with an incompatible signature {:?}",
+                "Cannot merge {:?} with an incompatible signature {:?}",
                 self,
                 o
             )),
@@ -984,7 +1005,6 @@ operators![
     HostSqueeze,
     HostSum,
     HostOnes,
-    HostConcat,
     HostTranspose,
     HostInverse,
     HostAtLeast2D,
@@ -1079,6 +1099,7 @@ operators![
     RepShlDim,
     RepEqual,
     Mux,
+    Maximum,
     // Mirrored Operators
     Demirror,
     Mirror,
@@ -1178,7 +1199,7 @@ pub struct ExpandDimsOp {
     pub axis: Vec<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct ConcatOp {
     pub sig: Signature,
     pub axis: u32,
@@ -1287,12 +1308,6 @@ pub struct HostSqrtOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct HostOnesOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostConcatOp {
-    pub sig: Signature,
-    pub axis: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
@@ -1854,6 +1869,11 @@ pub struct DemirrorOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct MirrorOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct MaximumOp {
     pub sig: Signature,
 }
 

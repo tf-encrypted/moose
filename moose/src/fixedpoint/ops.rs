@@ -1414,6 +1414,67 @@ impl AddNOp {
     }
 }
 
+impl ConcatOp {
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[FixedTensor<HostFixedT, MirFixedT, RepFixedT>],
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementConcatenate<S, RepFixedT, RepFixedT>,
+        RepFixedT: Clone,
+    {
+        let vec: Result<Vec<RepFixedT>> = xs
+            .iter()
+            .map(|t| match t {
+                FixedTensor::Host(x) => Ok(plc.share(sess, x)),
+                FixedTensor::Replicated(x) => Ok(x.clone()),
+                FixedTensor::Mirrored3(_) => Err(Error::InvalidArgument(
+                    "concat does not support mirrored tensors".to_string(),
+                )),
+            })
+            .collect();
+        Ok(FixedTensor::Replicated(plc.concatenate(sess, axis, &vec?)))
+    }
+
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[RepFixedTensor<RepRingT>],
+    ) -> Result<RepFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementConcatenate<S, RepRingT, RepRingT>,
+        RepRingT: Clone,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot concat on empty array of tensors".to_string(),
+            ))
+        } else {
+            let mut tensors = Vec::new();
+            let fractional_precision = xs[0].fractional_precision;
+            let integral_precision = xs[0].integral_precision;
+            for x in xs.iter() {
+                if x.fractional_precision != fractional_precision {
+                    return Err(Error::InvalidArgument(
+                        "precisions of tensors must match when concatenating".to_string(),
+                    ));
+                }
+                tensors.push(x.tensor.clone());
+            }
+            let tensor = plc.concatenate(sess, axis, &tensors);
+            Ok(RepFixedTensor {
+                tensor,
+                fractional_precision,
+                integral_precision,
+            })
+        }
+    }
+}
+
 modelled_kernel! {
     PlacementPow2::pow2, Pow2Op,
     [
@@ -1765,6 +1826,78 @@ impl MuxOp {
             tensor: plc.mux(sess, &s, &x.tensor, &y.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
+        })
+    }
+}
+
+impl MaximumOp {
+    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: &[FixedTensor<HostFixedT, MirFixedT, RepFixedT>],
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementMaximum<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        RepFixedT: Clone,
+    {
+        let xv: Vec<RepFixedT> = x
+            .iter()
+            .map(|item| match item {
+                FixedTensor::Host(v) => plc.share(sess, v),
+                FixedTensor::Mirrored3(v) => plc.share(sess, v),
+                FixedTensor::Replicated(v) => v.clone(),
+            })
+            .collect();
+        let z = plc.maximum(sess, &xv);
+        Ok(FixedTensor::Replicated(z))
+    }
+
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: &[RepFixedTensor<RepRingT>],
+    ) -> Result<RepFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementMaximum<S, RepRingT, RepRingT>,
+        RepRingT: Clone,
+    {
+        // leave it up to the reduce op to identify whethere x is empty.
+        let integral_precision = x
+            .iter()
+            .map(|item| item.integral_precision)
+            .reduce(u32::max);
+        let integral_precision = match integral_precision {
+            Some(v) => v,
+            None => {
+                return Err(Error::Unexpected(Some(
+                    "maximum op had no inputs".to_string(),
+                )))
+            }
+        };
+
+        let fractional_precision = x[0].fractional_precision;
+        for item in x.iter() {
+            if item.fractional_precision != fractional_precision {
+                return Err(Error::InvalidArgument(
+                    "maximum op needs all array entries to have same precision".to_string(),
+                ));
+            };
+        }
+
+        let xv: Vec<_> = x
+            .iter()
+            .map(|item| {
+                // TODO(Dragos) can we get rid of this cloning?
+                item.tensor.clone()
+            })
+            .collect();
+
+        Ok(RepFixedTensor {
+            tensor: plc.maximum(sess, &xv),
+            fractional_precision,
+            integral_precision,
         })
     }
 }

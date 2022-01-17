@@ -240,7 +240,6 @@ impl Session for SyncSession {
             HostDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sign(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -306,6 +305,7 @@ impl Session for SyncSession {
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Less(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Maximum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Demirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Mirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
@@ -695,7 +695,6 @@ impl Session for AsyncSession {
             HostDot(op) => DispatchKernel::compile(&op, plc)?,
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)?,
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?,
-            HostConcat(op) => DispatchKernel::compile(&op, plc)?,
             Sign(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointSub(op) => DispatchKernel::compile(&op, plc)?,
@@ -739,6 +738,7 @@ impl Session for AsyncSession {
             Less(op) => DispatchKernel::compile(&op, plc)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
             IndexAxis(op) => DispatchKernel::compile(&op, plc)?,
+            Maximum(op) => DispatchKernel::compile(&op, plc)?,
             Demirror(op) => DispatchKernel::compile(&op, plc)?,
             Mirror(op) => DispatchKernel::compile(&op, plc)?,
             _ => todo!(),
@@ -999,6 +999,10 @@ pub trait PlacementDemirror<S: Session, T, O> {
 
 pub trait PlacementMirror<S: Session, T, O> {
     fn mirror(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementMaximum<S: Session, TS, O> {
+    fn maximum(&self, sess: &S, x: &[TS]) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -2173,6 +2177,29 @@ modelled_kernel! {
         (Mirrored3Placement, (HostFloat64Tensor) -> Mirrored3Float64 => [hybrid] Self::kernel),
         (Mirrored3Placement, (HostRing64Tensor) -> Mirrored3Ring64Tensor => [hybrid] Self::kernel),
         (Mirrored3Placement, (HostRing128Tensor) -> Mirrored3Ring128Tensor => [hybrid] Self::kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementMaximum::maximum, MaximumOp,
+    [
+        (ReplicatedPlacement, vec[Tensor] -> Tensor => [concrete] Self::rep_logical_kernel),
+        (ReplicatedPlacement, vec[Fixed64Tensor] -> Fixed64Tensor => [concrete] Self::fixed_kernel),
+        (ReplicatedPlacement, vec[Fixed128Tensor] -> Fixed128Tensor => [concrete] Self::fixed_kernel),
+        (ReplicatedPlacement, vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor => [concrete] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor => [concrete] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [transparent] Self::kernel),
+        (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [transparent] Self::kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementRingInject::ring_inject, RingInjectOp{bit_idx: usize},
+    [
+        (HostPlacement, (HostBitTensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostBitTensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_kernel),
     ]
 }
 

@@ -22,6 +22,7 @@ mod division;
 mod exp;
 mod input;
 mod log;
+mod softmax;
 pub use self::aes::AbstractReplicatedAesKey;
 
 /// Placement type for three-party replicated secret sharing
@@ -337,9 +338,9 @@ where
 }
 
 // Type aliases to shorten out impl in replicated protocols
-type RepTen<T> = RepTensor<T>;
-type AdtTen<T> = AdtTensor<T>;
-type MirTen<T> = Mir3Tensor<T>;
+pub(crate) type RepTen<T> = RepTensor<T>;
+pub(crate) type AdtTen<T> = AdtTensor<T>;
+pub(crate) type MirTen<T> = Mir3Tensor<T>;
 
 modelled!(PlacementSetupGen::gen_setup, ReplicatedPlacement, () -> ReplicatedSetup, RepSetupOp);
 
@@ -1253,6 +1254,49 @@ impl AddNOp {
         let z22 = player2.add_n(sess, &z22s);
         let z02 = player2.add_n(sess, &z02s);
 
+        Ok(RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        })
+    }
+}
+
+impl ConcatOp {
+    pub(crate) fn rep_rep_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[RepTen<HostRingT>],
+    ) -> Result<RepTen<HostRingT>>
+    where
+        HostPlacement: PlacementConcatenate<S, HostRingT, HostRingT>,
+        HostRingT: Clone,
+    {
+        let mut z00s: Vec<HostRingT> = Vec::new();
+        let mut z10s: Vec<HostRingT> = Vec::new();
+        let mut z11s: Vec<HostRingT> = Vec::new();
+        let mut z21s: Vec<HostRingT> = Vec::new();
+        let mut z22s: Vec<HostRingT> = Vec::new();
+        let mut z02s: Vec<HostRingT> = Vec::new();
+
+        let (player0, player1, player2) = plc.host_placements();
+        for x in xs.iter() {
+            let RepTen {
+                shares: [[x00, x10], [x11, x21], [x22, x02]],
+            } = &x;
+
+            z00s.push(x00.clone());
+            z10s.push(x10.clone());
+            z11s.push(x11.clone());
+            z21s.push(x21.clone());
+            z22s.push(x22.clone());
+            z02s.push(x02.clone());
+        }
+        let z00 = player0.concatenate(sess, axis, &z00s);
+        let z10 = player0.concatenate(sess, axis, &z10s);
+        let z11 = player1.concatenate(sess, axis, &z11s);
+        let z21 = player1.concatenate(sess, axis, &z21s);
+        let z22 = player2.concatenate(sess, axis, &z22s);
+        let z02 = player2.concatenate(sess, axis, &z02s);
         Ok(RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })

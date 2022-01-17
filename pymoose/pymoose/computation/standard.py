@@ -169,6 +169,11 @@ class ConcatenateOperation(StandardOperation):
 
 
 @dataclass
+class MaximumOperation(StandardOperation):
+    pass
+
+
+@dataclass
 class AddOperation(StandardOperation):
     pass
 

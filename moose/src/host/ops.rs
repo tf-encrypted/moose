@@ -779,26 +779,8 @@ impl HostSqueezeOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat32Tensor] -> HostFloat32Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat64Tensor] -> HostFloat64Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt8Tensor] -> HostInt8Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt16Tensor] -> HostInt16Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt32Tensor] -> HostInt32Tensor, HostConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt64Tensor] -> HostInt64Tensor, HostConcatOp);
-
-kernel! {
-    HostConcatOp, [
-        (HostPlacement, vec[HostFloat32Tensor] -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostFloat64Tensor] -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostInt8Tensor] -> HostInt8Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostInt16Tensor] -> HostInt16Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostInt32Tensor] -> HostInt32Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, vec[HostInt64Tensor] -> HostInt64Tensor => [runtime] attributes[axis] Self::kernel),
-    ]
-}
-
-impl HostConcatOp {
-    pub fn kernel<S: Session, T: LinalgScalar + FromPrimitive>(
+impl ConcatOp {
+    pub(crate) fn kernel<S: Session, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         axis: u32,
@@ -812,6 +794,25 @@ impl HostConcatOp {
 
         let c = ndarray::concatenate(ax, &arr).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostTensor(c, plc.clone()))
+    }
+
+    pub(crate) fn ring_kernel<S: Session, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: u32,
+        xs: &[HostRingTensor<T>],
+    ) -> Result<HostRingTensor<T>>
+    where
+        T: Clone,
+    {
+        use ndarray::IxDynImpl;
+        use ndarray::ViewRepr;
+        let arr: Vec<ArrayBase<ViewRepr<&std::num::Wrapping<T>>, Dim<IxDynImpl>>> =
+            xs.iter().map(|x| x.0.view()).collect();
+        let ax = Axis(axis as usize);
+        let concatenated =
+            ndarray::concatenate(ax, &arr).map_err(|e| Error::KernelError(e.to_string()))?;
+        Ok(HostRingTensor(concatenated, plc.clone()))
     }
 }
 

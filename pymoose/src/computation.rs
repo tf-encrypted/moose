@@ -32,6 +32,7 @@ enum PyOperation {
     std_SliceOperation(PySliceOperation),
     std_OnesOperation(PyOnesOperation),
     std_ConcatenateOperation(PyConcatenateOperation),
+    std_MaximumOperation(PyMaximumOperation),
     std_DecryptOperation(PyDecryptOperation),
     std_TransposeOperation(PyTransposeOperation),
     std_ExpandDimsOperation(PyExpandDimsOperation),
@@ -78,6 +79,7 @@ enum PyDType {
     bool_,
     fixed8_27,
     fixed14_23,
+    fixed24_40,
     fixed46_40,
 }
 
@@ -328,6 +330,14 @@ struct PyConcatenateOperation {
 }
 
 #[derive(Deserialize, Debug)]
+struct PyMaximumOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
 struct PyDecryptOperation {
     name: String,
     inputs: Inputs,
@@ -572,6 +582,10 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
                 integral_precision: 8,
                 fractional_precision: 27,
             })),
+            PyDType::fixed24_40 => Ok(Ty::Tensor(TensorDType::Fixed128 {
+                integral_precision: 24,
+                fractional_precision: 40,
+            })),
             PyDType::fixed46_40 => Ok(Ty::Tensor(TensorDType::Fixed128 {
                 integral_precision: 46,
                 fractional_precision: 40,
@@ -581,7 +595,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_AesTensorType { dtype } => match dtype {
             // TODO we are erasing fixedpoint precision here on purpose
             //  -- but we robably want to avoid this down the road
-            PyDType::fixed46_40 => Ok(Ty::AesTensor),
+            PyDType::fixed24_40 => Ok(Ty::AesTensor),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
         },
         PyValueType::std_AesKeyType => Ok(Ty::AesKey),
@@ -819,6 +833,22 @@ impl TryFrom<PyComputation> for Computation {
                                 // TODO[jason] input_types should actually just be a single type, not one for each array
                                 sig: Signature::from_variadic(&op.signature, "array0")?,
                                 axis: op.axis,
+                            }
+                            .into(),
+                            inputs: sorted_input_names,
+                            name: op.name.clone(),
+                            placement: map_placement(&placements, &op.placement_name)?,
+                        })
+                    }
+                    std_MaximumOperation(op) => {
+                        let mut inputs: Vec<(&String, &String)> = op.inputs.iter().collect();
+                        inputs.sort_by_key(|x| x.0);
+                        let sorted_input_names: Vec<String> =
+                            inputs.into_iter().map(|(_k, v)| v.clone()).collect();
+                        Ok(Operation {
+                            kind: MaximumOp {
+                                // TODO[jason] input_types should actually just be a single type, not one for each array
+                                sig: Signature::from_variadic(&op.signature, "array0")?,
                             }
                             .into(),
                             inputs: sorted_input_names,
