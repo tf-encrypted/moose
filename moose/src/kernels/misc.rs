@@ -813,3 +813,5 @@ impl TestSyncExecutor {
         Ok(outputs)
     }
 }
+
+pub trait EmptyTypeHolder<T> {}

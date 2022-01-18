@@ -471,8 +471,6 @@ pub trait PlacementCast<S: Session, T, O> {
     fn cast(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait EmptyTypeHolder<T> {}
-
 pub trait PlacementSlice<S: Session, T, O> {
     fn slice(&self, sess: &S, slice_info: SliceInfo, x: &T) -> O;
 }
