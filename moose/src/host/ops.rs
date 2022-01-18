@@ -9,6 +9,38 @@ use num_traits::{Float, FromPrimitive, Zero};
 use std::marker::PhantomData;
 use std::num::Wrapping;
 
+impl ConstantOp {
+    pub(crate) fn kernel<S: RuntimeSession, T: Placed>(
+        sess: &S,
+        plc: &HostPlacement,
+        value: T,
+    ) -> Result<T>
+    where
+        HostPlacement: PlacementPlace<S, T>,
+    {
+        Ok(plc.place(sess, value))
+    }
+}
+
+macro_rules! wrapping_constant_kernel {
+    ($name:ident for $wrapping:tt($inner:ty)) => {
+        impl ConstantOp {
+            pub(crate) fn $name<S: RuntimeSession>(
+                _sess: &S,
+                plc: &HostPlacement,
+                value: $inner,
+            ) -> Result<$wrapping> {
+                Ok($wrapping(value.clone(), plc.clone()))
+            }
+        }
+    };
+}
+
+wrapping_constant_kernel!(string_kernel for HostString(String));
+wrapping_constant_kernel!(shape_kernel for HostShape(RawShape));
+wrapping_constant_kernel!(prf_key_kernel for PrfKey(RawPrfKey));
+wrapping_constant_kernel!(seed_kernel for Seed(RawSeed));
+
 impl SendOp {
     pub(crate) fn kernel<S: RuntimeSession, T>(
         _sess: &S,
