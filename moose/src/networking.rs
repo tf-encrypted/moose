@@ -149,58 +149,6 @@ impl AsyncNetworking for LocalAsyncNetworking {
     }
 }
 
-/// A naive implementation of both synchronous and asynchronous networking.
-///
-/// This implementation is intended for benchmarking only.
-pub struct DummyNetworking(pub Value);
-
-impl SyncNetworking for DummyNetworking {
-    fn send(
-        &self,
-        _value: &Value,
-        _receiver: &Identity,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) -> Result<()> {
-        tracing::debug!("Sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
-        Ok(())
-    }
-
-    fn receive(
-        &self,
-        _sender: &Identity,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) -> Result<Value> {
-        tracing::debug!("Receiving; rdv:'{}', sid:{}", rendezvous_key, session_id);
-        Ok(self.0.clone())
-    }
-}
-
-#[async_trait]
-impl AsyncNetworking for DummyNetworking {
-    async fn send(
-        &self,
-        _value: &Value,
-        _receiver: &Identity,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) -> Result<()> {
-        tracing::debug!("Sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
-        Ok(())
-    }
-
-    async fn receive(
-        &self,
-        _sender: &Identity,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) -> Result<Value> {
-        tracing::debug!("Receiving; rdv:'{}', sid:{}", rendezvous_key, session_id);
-        Ok(self.0.clone())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
