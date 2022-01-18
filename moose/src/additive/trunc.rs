@@ -1,10 +1,9 @@
 //! Truncation for additive placements
 use super::*;
 use crate::computation::{CanonicalType, HostPlacement, KnownType};
-use crate::host::HostShape;
+use crate::host::{HostShape, PrfKey, Seed, SyncKey};
 use crate::kernels::*;
-use crate::prim::{PrfKey, Seed, SyncKey};
-use crate::replicated::AbstractReplicatedRingTensor;
+use crate::replicated::RepTensor;
 use crate::{Const, Ring};
 use macros::with_context;
 use std::convert::TryInto;
@@ -69,8 +68,8 @@ impl<S: Session, HostRingT> TruncPrProvider<S, AdtTensor<HostRingT>, AdtTensor<H
 where
     AdtTensor<HostRingT>: CanonicalType,
     <AdtTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
-    AbstractReplicatedRingTensor<HostRingT>: CanonicalType,
-    <AbstractReplicatedRingTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
+    RepTensor<HostRingT>: CanonicalType,
+    <RepTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
     HostRingT: Ring,
     HostShape: KnownType<S>,
     HostPlacement: TruncMaskGen<S, m!(HostShape), HostRingT>,
@@ -168,7 +167,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::host::AbstractHostRingTensor;
+    use crate::host::HostRingTensor;
+    use crate::types::*;
     use ndarray::array;
     use ndarray::prelude::*;
     use proptest::prelude::*;
@@ -190,8 +190,8 @@ mod tests {
 
         let x = AdditiveRing64Tensor {
             shares: [
-                AbstractHostRingTensor::from_raw_plc(array![0_u64, 0, 0], alice),
-                AbstractHostRingTensor::from_raw_plc(
+                HostRing64Tensor::from_raw_plc(array![0_u64, 0, 0], alice),
+                HostRing64Tensor::from_raw_plc(
                     array![
                         4611686018427387903,
                         -1152921504606846976_i64 as u64,
@@ -206,7 +206,7 @@ mod tests {
         let x_trunc = adt.trunc_pr(&sess, 60, &carole, &x);
         let _y = carole.reveal(&sess, &x_trunc);
 
-        let target = AbstractHostRingTensor::from_raw_plc(array![3, -1_i64 as u64, 0], carole);
+        let target = HostRing64Tensor::from_raw_plc(array![3, -1_i64 as u64, 0], carole);
 
         // probabilistic truncation can be off by 1
         for (i, value) in _y.0.iter().enumerate() {
@@ -254,8 +254,8 @@ mod tests {
                     Array::from_shape_vec(IxDyn(&[xs.len()]), vec![0 as $tt; xs.len()]).unwrap();
                 let x = AdtTensor {
                     shares: [
-                        AbstractHostRingTensor::from_raw_plc(zero, alice),
-                        AbstractHostRingTensor::from_raw_plc(xs.clone(), bob),
+                        HostRingTensor::from_raw_plc(zero, alice),
+                        HostRingTensor::from_raw_plc(xs.clone(), bob),
                     ],
                 };
 
@@ -263,7 +263,7 @@ mod tests {
                 let x_trunc = adt.trunc_pr(&sess, amount, &carole, &x);
                 let _y = carole.reveal(&sess, &x_trunc);
 
-                let target_y = AbstractHostRingTensor::from_raw_plc(ys.clone(), carole.clone());
+                let target_y = HostRingTensor::from_raw_plc(ys.clone(), carole.clone());
                 for (i, value) in _y.0.iter().enumerate() {
                     let diff = value - target_y.0[i];
                     assert!(

@@ -1,15 +1,12 @@
 use crate::additive::*;
-use crate::boolean::*;
-use crate::encrypted::{AesKey, AesTensor, Fixed128AesTensor};
 use crate::error::{Error, Result};
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::floatingpoint::{Float32Tensor, Float64Tensor, Mirrored3Float32, Mirrored3Float64};
 use crate::host::*;
 use crate::kernels::Session;
-use crate::logical::{Tensor, TensorDType};
-use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
+use crate::logical::TensorDType;
+use crate::mirrored::Mirrored3Placement;
 use crate::replicated::*;
 use crate::symbolic::Symbolic;
+use crate::types::*;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
 use macros::{FromTextual, ShortName, ToTextual};
@@ -1983,46 +1980,6 @@ impl From<&str> for Role {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostPlacement {
     pub owner: Role,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
-pub struct ReplicatedPlacement {
-    pub owners: [Role; 3],
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct Mirrored3Placement {
-    pub owners: [Role; 3],
-}
-
-impl ReplicatedPlacement {
-    pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
-        let player0 = HostPlacement {
-            owner: self.owners[0].clone(),
-        };
-        let player1 = HostPlacement {
-            owner: self.owners[1].clone(),
-        };
-        let player2 = HostPlacement {
-            owner: self.owners[2].clone(),
-        };
-        (player0, player1, player2)
-    }
-}
-
-impl Mirrored3Placement {
-    pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
-        let player0 = HostPlacement {
-            owner: self.owners[0].clone(),
-        };
-        let player1 = HostPlacement {
-            owner: self.owners[1].clone(),
-        };
-        let player2 = HostPlacement {
-            owner: self.owners[2].clone(),
-        };
-        (player0, player1, player2)
-    }
 }
 
 pub trait Placed {

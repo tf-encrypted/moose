@@ -3,10 +3,8 @@ use super::*;
 use crate::computation::{HostPlacement, Placed, RepToAdtOp};
 use crate::error::Result;
 use crate::kernels::*;
-use crate::replicated::{
-    AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor,
-    ReplicatedRing64Tensor,
-};
+use crate::replicated::RepTensor;
+use crate::types::*;
 use macros::with_context;
 
 modelled_kernel! {
@@ -22,7 +20,7 @@ impl RepToAdtOp {
     fn rep_to_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AbstractReplicatedRingTensor<HostRingT>,
+        x: RepTensor<HostRingT>,
     ) -> Result<AdtTensor<HostRingT>>
     where
         HostRingT: Placed<Placement = HostPlacement>,
@@ -32,7 +30,7 @@ impl RepToAdtOp {
         let (adt_player0, adt_player1) = adt.host_placements();
         let (rep_player0, rep_player1, rep_player2) = x.placement()?.host_placements();
 
-        let AbstractReplicatedRingTensor {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 

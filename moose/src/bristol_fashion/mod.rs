@@ -1,5 +1,6 @@
-//! This module contains code for loading Bistrol Fashion circuits as (partial) computations.
+//! Support for applying [Bristol Fashion circuits](https://homes.esat.kuleuven.be/~nsmart/MPC/)
 
+use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor, Session};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{newline, space0, u64};
@@ -8,10 +9,9 @@ use nom::multi::{length_count, many0, many_m_n, separated_list0};
 use nom::sequence::{delimited, terminated, tuple};
 use std::convert::TryFrom;
 
-use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor, Session};
-
 const AES_128: &[u8] = include_bytes!("aes_128.txt");
 
+/// Perform single-block AES-128 encryption on placement
 pub fn aes128<S: Session, P, BitT>(sess: &S, plc: &P, key: Vec<BitT>, block: Vec<BitT>) -> Vec<BitT>
 where
     BitT: Clone,
@@ -86,7 +86,7 @@ where
 
 #[derive(Debug)]
 #[allow(dead_code)] // Not all the fields are used by our code, but we still want to have access to them.
-pub struct Circuit {
+pub(crate) struct Circuit {
     num_gates: usize,
     num_wires: usize,
     num_inputs: usize,
@@ -109,14 +109,14 @@ impl TryFrom<&[u8]> for Circuit {
 }
 
 #[derive(Debug)]
-pub struct Gate {
+pub(crate) struct Gate {
     kind: GateKind,
     input_wires: Vec<usize>,  // TODO could use small_vec here
     output_wires: Vec<usize>, // TODO could use small_vec here
 }
 
 #[derive(Clone, Debug)]
-pub enum GateKind {
+pub(crate) enum GateKind {
     Xor,
     And,
     Inv,
@@ -181,14 +181,17 @@ fn parse_usize(line: &[u8]) -> Res<&[u8], usize> {
     Ok((line, res as usize))
 }
 
+/// Convert a byte to bits in Little Endian
 pub fn byte_to_bits_le(byte: &u8) -> Vec<u8> {
     (0..8).map(|i| (byte >> i) & 1).collect::<Vec<_>>()
 }
 
+/// Convert a byte to bits in Big Endian
 pub fn byte_to_bits_be(byte: &u8) -> Vec<u8> {
     (0..8).map(|i| (byte >> (7 - i)) & 1).collect::<Vec<_>>()
 }
 
+/// Convert 8 bits to a byte in Little Endian
 pub fn bits_to_byte_le(bits: &[u8]) -> u8 {
     (0..8)
         .map(|i| bits[i] << i)
@@ -196,6 +199,7 @@ pub fn bits_to_byte_le(bits: &[u8]) -> u8 {
         .unwrap()
 }
 
+/// Convert 8 bits to a byte in Big Endian
 pub fn bits_to_byte_be(bits: &[u8]) -> u8 {
     (0..8)
         .map(|i| bits[i] << (7 - i))
@@ -203,6 +207,7 @@ pub fn bits_to_byte_be(bits: &[u8]) -> u8 {
         .unwrap()
 }
 
+/// Convert bytes to bits in Big Endian
 pub fn byte_vec_to_bit_vec_be(bytes: &[u8]) -> Vec<u8> {
     bytes.iter().flat_map(byte_to_bits_be).collect::<Vec<_>>()
 }
@@ -210,10 +215,11 @@ pub fn byte_vec_to_bit_vec_be(bytes: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::computation::{HostPlacement, ReplicatedPlacement, Role};
+    use crate::computation::{HostPlacement, Role};
     use crate::host::HostBitTensor;
     use crate::kernels::SyncSession;
-    use crate::replicated::ReplicatedBitTensor;
+    use crate::replicated::ReplicatedPlacement;
+    use crate::types::ReplicatedBitTensor;
 
     #[test]
     fn test_parse_aes() {

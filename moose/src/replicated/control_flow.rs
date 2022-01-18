@@ -1,9 +1,7 @@
-use macros::with_context;
-
-use crate::computation::{MuxOp, ReplicatedPlacement};
+use super::*;
+use crate::computation::MuxOp;
 use crate::error::Result;
-use crate::kernels::*;
-use crate::replicated::{ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor};
+use macros::with_context;
 
 modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, MuxOp);
 modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, MuxOp);
@@ -50,10 +48,11 @@ impl MuxOp {
 
 #[cfg(test)]
 mod tests {
-    use crate::computation::{HostPlacement, ReplicatedPlacement};
+    use crate::computation::HostPlacement;
     use crate::host::FromRawPlc;
     use crate::kernels::*;
-    use crate::replicated::ReplicatedRing128Tensor;
+    use crate::replicated::ReplicatedPlacement;
+    use crate::types::*;
     use ndarray::{array, IxDyn};
 
     #[test]
@@ -74,20 +73,20 @@ mod tests {
         let scaling_base = 2;
         let scaling_exp = 24;
 
-        let a = crate::host::HostFloat64Tensor::from_raw_plc(
+        let a = HostFloat64Tensor::from_raw_plc(
             array![1.0, 1.0, -1.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
             alice.clone(),
         );
 
-        let x = crate::host::HostFloat64Tensor::from_raw_plc(
+        let x = HostFloat64Tensor::from_raw_plc(
             array![1.0, 2.0, 3.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
             alice.clone(),
         );
-        let y = crate::host::HostFloat64Tensor::from_raw_plc(
+        let y = HostFloat64Tensor::from_raw_plc(
             array![4.0, 5.0, 6.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -118,7 +117,7 @@ mod tests {
 
         assert_eq!(
             decoded_result,
-            crate::host::HostFloat64Tensor::from_raw_plc(
+            HostFloat64Tensor::from_raw_plc(
                 array![1.0, 2.0, 6.0]
                     .into_dimensionality::<IxDyn>()
                     .unwrap(),
@@ -145,25 +144,25 @@ mod tests {
         let scaling_base = 2;
         let scaling_exp = 24;
 
-        let s = crate::host::HostBitTensor::from_raw_plc(
+        let s = HostBitTensor::from_raw_plc(
             array![1, 0, 1, 0].into_dimensionality::<IxDyn>().unwrap(),
             alice.clone(),
         );
 
-        let x = crate::host::HostFloat64Tensor::from_raw_plc(
+        let x = HostFloat64Tensor::from_raw_plc(
             array![1.0, 2.0, 3.0, 4.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
             alice.clone(),
         );
-        let y = crate::host::HostFloat64Tensor::from_raw_plc(
+        let y = HostFloat64Tensor::from_raw_plc(
             array![4.0, 5.0, 6.0, -1.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
             bob.clone(),
         );
 
-        let s_shared: crate::replicated::ReplicatedBitTensor = rep.share(&sess, &s);
+        let s_shared: ReplicatedBitTensor = rep.share(&sess, &s);
 
         let x = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &x);
         let x_shared = rep.share(&sess, &x);
@@ -179,7 +178,7 @@ mod tests {
 
         assert_eq!(
             decoded_result,
-            crate::host::HostFloat64Tensor::from_raw_plc(
+            HostFloat64Tensor::from_raw_plc(
                 array![1.0, 5.0, 3.0, -1.0]
                     .into_dimensionality::<IxDyn>()
                     .unwrap(),

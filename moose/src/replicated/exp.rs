@@ -1,17 +1,16 @@
+use super::*;
 use crate::fixedpoint::{FixedpointTensor, PolynomialEval};
+use lazy_static::lazy_static;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num_traits::{FromPrimitive, One, ToPrimitive};
-
-use super::*;
-use lazy_static::lazy_static;
 
 impl Pow2Op {
     pub(crate) fn rep_rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, RepShapeT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         RepRingT: Ring<BitLength = N>,
         RepRingT: Clone,
@@ -29,9 +28,9 @@ impl Pow2Op {
         ReplicatedPlacement: ExpFromParts<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementDiv<
             S,
-            AbstractReplicatedFixedTensor<RepRingT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
-            AbstractReplicatedFixedTensor<RepRingT>,
+            RepFixedTensor<RepRingT>,
+            RepFixedTensor<RepRingT>,
+            RepFixedTensor<RepRingT>,
         >,
     {
         let integral_precision = x.integral_precision as usize;
@@ -82,13 +81,13 @@ impl Pow2Op {
         // if exponent is negative than compute the inverse of the result
         // since 2^-x = 1/2^x.
         let one = rep.fill(sess, 1_u8.into(), &x_shape);
-        let one_fixed = AbstractReplicatedFixedTensor {
+        let one_fixed = RepFixedTensor {
             tensor: rep.shl(sess, x.fractional_precision as usize, &one),
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
         };
 
-        let g_fixed = AbstractReplicatedFixedTensor {
+        let g_fixed = RepFixedTensor {
             tensor: g.clone(),
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
@@ -100,7 +99,7 @@ impl Pow2Op {
         // oblivious branching depending on the exponent sign, choose 1/2^x or 2^x
         let switch = rep.mux(sess, &msb, &inverse.tensor, &g);
 
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: switch,
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
@@ -176,15 +175,14 @@ where
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     RepRingT: Clone,
 
-    AbstractReplicatedFixedTensor<RepRingT>: CanonicalType,
-    <AbstractReplicatedFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
+    RepFixedTensor<RepRingT>: CanonicalType,
+    <RepFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
 
-    m!(c!(AbstractReplicatedFixedTensor<RepRingT>)):
-        TryInto<AbstractReplicatedFixedTensor<RepRingT>>,
-    AbstractReplicatedFixedTensor<RepRingT>: Into<m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
+    m!(c!(RepFixedTensor<RepRingT>)): TryInto<RepFixedTensor<RepRingT>>,
+    RepFixedTensor<RepRingT>: Into<m!(c!(RepFixedTensor<RepRingT>))>,
 
     // TODO(Morten) Good chance we can remove macros here after complete switch to modelled_kernel
-    ReplicatedPlacement: PolynomialEval<S, m!(c!(AbstractReplicatedFixedTensor<RepRingT>))>,
+    ReplicatedPlacement: PolynomialEval<S, m!(c!(RepFixedTensor<RepRingT>))>,
 
     ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
@@ -198,7 +196,7 @@ where
         k: u32,
     ) -> RepRingT {
         let amount = k - 2 - f;
-        let x = AbstractReplicatedFixedTensor {
+        let x = RepFixedTensor {
             tensor: self.shl(sess, amount as usize, e_frac),
             integral_precision: 2,
             fractional_precision: k - 2,
@@ -206,7 +204,7 @@ where
         let e_approx = self.polynomial_eval(sess, P_1045.to_vec(), x.into());
 
         // convert replicated fixed tensor to concrete value in order to grab the replicated ring tensor
-        let e_approx_f: AbstractReplicatedFixedTensor<RepRingT> = e_approx.try_into().ok().unwrap();
+        let e_approx_f: RepFixedTensor<RepRingT> = e_approx.try_into().ok().unwrap();
         let e_approx_ring = e_approx_f.tensor;
 
         // do replicated multiplication at the ring level
@@ -247,7 +245,7 @@ impl ExpOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::host::AbstractHostRingTensor;
+    use crate::host::HostRingTensor;
     use crate::kernels::SyncSession;
     use ndarray::array;
 
@@ -260,11 +258,9 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(
-            array![[0u64], [1], [1], [1]].into_dyn(),
-            alice.clone(),
-        );
-        let target = AbstractHostRingTensor::from_raw_plc(array![16384u64], alice.clone());
+        let x =
+            HostRingTensor::from_raw_plc(array![[0u64], [1], [1], [1]].into_dyn(), alice.clone());
+        let target = HostRingTensor::from_raw_plc(array![16384u64], alice.clone());
 
         let sess = SyncSession::default();
 

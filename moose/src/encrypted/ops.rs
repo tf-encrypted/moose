@@ -1,88 +1,13 @@
+use super::*;
+use crate::computation::*;
 use crate::error::Result;
-use crate::fixedpoint::{Fixed128Tensor, FixedTensor};
-use crate::host::{
-    AbstractHostAesKey, AbstractHostFixedAesTensor, AbstractHostFixedTensor, HostAesKey,
-    HostFixed128AesTensor, HostFixed128Tensor,
-};
-use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementDecrypt, PlacementFill, PlacementIndex, PlacementInput,
-    PlacementNeg, PlacementReveal, PlacementRingInject, PlacementShape, PlacementShare,
-    PlacementXor, Session,
-};
-use crate::logical::{AbstractTensor, Tensor};
-use crate::replicated::{
-    aes::AbstractReplicatedAesKey, aes::ReplicatedAesKey, AbstractReplicatedFixedTensor,
-    ReplicatedFixed128Tensor,
-};
-use crate::{computation::*, BitArray, N128, N224};
-use serde::{Deserialize, Serialize};
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum FixedAesTensor<HostFixedAesT> {
-    Host(HostFixedAesT),
-}
-
-moose_type!(Fixed128AesTensor = FixedAesTensor<HostFixed128AesTensor>);
-
-impl<HostFixedAesT> Placed for FixedAesTensor<HostFixedAesT>
-where
-    HostFixedAesT: Placed,
-    HostFixedAesT::Placement: Into<Placement>,
-{
-    type Placement = Placement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        match self {
-            FixedAesTensor::Host(x) => Ok(x.placement()?.into()),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum AbstractAesTensor<Fixed128AesT> {
-    Fixed128(Fixed128AesT),
-}
-
-moose_type!(AesTensor = AbstractAesTensor<Fixed128AesTensor>);
-
-impl<Fixed128T> Placed for AbstractAesTensor<Fixed128T>
-where
-    Fixed128T: Placed,
-    Fixed128T::Placement: Into<Placement>,
-{
-    type Placement = Placement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        match self {
-            AbstractAesTensor::Fixed128(x) => Ok(x.placement()?.into()),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum AbstractAesKey<HostKeyT, RepKeyT> {
-    Host(HostKeyT),
-    Replicated(RepKeyT),
-}
-
-moose_type!(AesKey = AbstractAesKey<HostAesKey, ReplicatedAesKey>);
-
-impl<HostKeyT, RepKeyT> Placed for AbstractAesKey<HostKeyT, RepKeyT>
-where
-    HostKeyT: Placed,
-    HostKeyT::Placement: Into<Placement>,
-    RepKeyT: Placed,
-    RepKeyT::Placement: Into<Placement>,
-{
-    type Placement = Placement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        match self {
-            AbstractAesKey::Host(x) => Ok(x.placement()?.into()),
-            AbstractAesKey::Replicated(x) => Ok(x.placement()?.into()),
-        }
-    }
-}
+use crate::fixedpoint::FixedTensor;
+use crate::host::*;
+use crate::kernels::*;
+use crate::logical::AbstractTensor;
+use crate::replicated::*;
+use crate::types::*;
+use crate::{BitArray, N128, N224};
 
 impl InputOp {
     pub(crate) fn aestensor<S: Session, Fixed128AesTensorT>(
@@ -114,12 +39,12 @@ impl InputOp {
         plc: &HostPlacement,
         _sig: Signature,
         arg_name: String,
-    ) -> Result<AbstractHostFixedAesTensor<HostBitArrayT>>
+    ) -> Result<HostFixedAesTensor<HostBitArrayT>>
     where
         HostPlacement: PlacementInput<S, HostBitArrayT>,
     {
         let tensor = plc.input(sess, arg_name);
-        Ok(AbstractHostFixedAesTensor {
+        Ok(HostFixedAesTensor {
             tensor,
             // TODO(Morten) extract precision from sig
             integral_precision: 46,
@@ -328,8 +253,8 @@ impl AesDecryptOp {
         sess: &S,
         plc: &HostPlacement,
         key: AbstractHostAesKey<HostBitArray128T>,
-        ciphertext: AbstractHostFixedAesTensor<HostBitArray224T>,
-    ) -> Result<AbstractHostFixedTensor<HostRing128TensorT>>
+        ciphertext: HostFixedAesTensor<HostBitArray224T>,
+    ) -> Result<HostFixedTensor<HostRing128TensorT>>
     where
         HostBitArray128T: BitArray<Len = N128>,
         HostBitArray224T: BitArray<Len = N224>,
@@ -346,7 +271,7 @@ impl AesDecryptOp {
         HostPlacement: PlacementNeg<S, HostBitTensorT, HostBitTensorT>,
     {
         let tensor = aesgcm(sess, plc, key.0, ciphertext.tensor);
-        Ok(AbstractHostFixedTensor {
+        Ok(HostFixedTensor {
             tensor,
             integral_precision: ciphertext.integral_precision,
             fractional_precision: ciphertext.fractional_precision,
@@ -365,8 +290,8 @@ impl AesDecryptOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         key: AbstractReplicatedAesKey<RepBitArray128T>,
-        ciphertext: AbstractHostFixedAesTensor<HostBitArray224T>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRing128TensorT>>
+        ciphertext: HostFixedAesTensor<HostBitArray224T>,
+    ) -> Result<RepFixedTensor<RepRing128TensorT>>
     where
         RepBitArray128T: BitArray<Len = N128>,
         HostBitArray224T: BitArray<Len = N224>,
@@ -387,7 +312,7 @@ impl AesDecryptOp {
     {
         let shared_ciphertext = plc.share(sess, &ciphertext.tensor);
         let tensor = aesgcm(sess, plc, key.0, shared_ciphertext);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor,
             integral_precision: ciphertext.integral_precision,
             fractional_precision: ciphertext.fractional_precision,
@@ -482,9 +407,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::host::{HostBitArray128, HostBitArray224};
     use crate::kernels::PlacementReveal;
     use crate::kernels::SyncSession;
+    use crate::types::{HostBitArray128, HostBitArray224};
     use aes::cipher::generic_array::sequence::Concat;
     use aes_gcm::{aead::NewAead, AeadInPlace};
     use ndarray::Array;

@@ -1,5 +1,5 @@
 use super::*;
-use crate::computation::{MaximumOp, ReplicatedPlacement};
+use crate::computation::MaximumOp;
 use crate::error::Result;
 use macros::with_context;
 

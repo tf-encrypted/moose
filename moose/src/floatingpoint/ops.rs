@@ -1,40 +1,11 @@
-use crate::boolean::{BoolTensor, BooleanTensor};
+use super::*;
+use crate::boolean::BoolTensor;
 use crate::computation::*;
 use crate::error::Error;
 use crate::error::Result;
-use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape, HostString};
 use crate::kernels::*;
-use crate::mirrored::Mirrored3Tensor;
-use serde::{Deserialize, Serialize};
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum FloatTensor<HostT, MirroredT> {
-    Host(HostT),
-    Mirrored3(MirroredT),
-}
-
-moose_type!(Mirrored3Float32 = Mirrored3Tensor<HostFloat32Tensor>);
-moose_type!(Mirrored3Float64 = Mirrored3Tensor<HostFloat64Tensor>);
-
-moose_type!(Float32Tensor = FloatTensor<HostFloat32Tensor, Mirrored3Float32>);
-moose_type!(Float64Tensor = FloatTensor<HostFloat64Tensor, Mirrored3Float64>);
-
-impl<T, MirroredT> Placed for FloatTensor<T, MirroredT>
-where
-    T: Placed,
-    T::Placement: Into<Placement>,
-    MirroredT: Placed,
-    MirroredT::Placement: Into<Placement>,
-{
-    type Placement = Placement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        match self {
-            FloatTensor::Host(x) => Ok(x.placement()?.into()),
-            FloatTensor::Mirrored3(x) => Ok(x.placement()?.into()),
-        }
-    }
-}
+use crate::mirrored::{Mir3Tensor, Mirrored3Placement};
+use crate::types::*;
 
 impl IdentityOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
@@ -599,7 +570,7 @@ impl ConstantOp {
     ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostPlacement: PlacementConstant<S, HostFloatT>,
-        Mirrored3Tensor<HostFloatT>: Into<MirroredT>,
+        Mir3Tensor<HostFloatT>: Into<MirroredT>,
     {
         let (player0, player1, player2) = plc.host_placements();
 
@@ -608,7 +579,7 @@ impl ConstantOp {
         let z2 = player2.constant(sess, value);
 
         Ok(FloatTensor::Mirrored3(
-            Mirrored3Tensor {
+            Mir3Tensor {
                 values: [z0, z1, z2],
             }
             .into(),

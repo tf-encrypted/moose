@@ -1,34 +1,50 @@
-//! Placements backed by replicated secret sharing
-use crate::additive::{
-    AdditivePlacement, AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTensor, DaBitProvider,
-};
+//! Placements backed by three-party replicated secret sharing
+use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
-    AbstractHostAesKey, AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128,
-    HostBitArray224, HostBitArray256, HostBitArray64, HostBitTensor, HostRing128Tensor,
-    HostRing64Tensor, HostShape, SliceInfo,
+    AbstractHostAesKey, HostBitArray, HostFixedTensor, PrfKey, Seed, SliceInfo, SyncKey,
 };
 use crate::kernels::*;
-use crate::mirrored::Mirrored3Tensor;
-use crate::prim::{PrfKey, Seed, SyncKey};
-use crate::replicated::aes::AbstractReplicatedAesKey;
+use crate::mirrored::{Mir3Tensor, MirFixedTensor, Mirrored3Placement};
 use crate::symbolic::Symbolic;
-use crate::{BitArray, Const, Ring, N128, N224, N64};
+use crate::types::*;
+use crate::{BitArray, Const, Ring};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 use std::marker::PhantomData;
 
-pub mod aes;
-pub mod control_flow;
-pub mod division;
-pub mod exp;
-pub mod input;
-pub mod log;
-pub mod softmax;
-pub use self::aes::ReplicatedAesKey;
+mod aes;
+mod control_flow;
+mod division;
+mod exp;
+mod input;
+mod log;
+mod softmax;
+pub use self::aes::AbstractReplicatedAesKey;
+
+/// Placement type for three-party replicated secret sharing
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
+pub struct ReplicatedPlacement {
+    pub owners: [Role; 3],
+}
+
+impl ReplicatedPlacement {
+    pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
+        let player0 = HostPlacement {
+            owner: self.owners[0].clone(),
+        };
+        let player1 = HostPlacement {
+            owner: self.owners[1].clone(),
+        };
+        let player2 = HostPlacement {
+            owner: self.owners[2].clone(),
+        };
+        (player0, player1, player2)
+    }
+}
 
 pub trait ShapeFill<S, TenT> {
     type Result;
@@ -68,21 +84,15 @@ where
     }
 }
 
+/// Secret tensor used by replicated placements
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedRingTensor<HostRingT> {
+pub struct RepTensor<HostRingT> {
     pub shares: [[HostRingT; 2]; 3],
 }
 
-impl<HostRingT: Ring> Ring for AbstractReplicatedRingTensor<HostRingT> {
+impl<HostRingT: Ring> Ring for RepTensor<HostRingT> {
     type BitLength = HostRingT::BitLength;
 }
-
-moose_type!(ReplicatedRing64Tensor = AbstractReplicatedRingTensor<HostRing64Tensor>);
-moose_type!(ReplicatedRing128Tensor = AbstractReplicatedRingTensor<HostRing128Tensor>);
-moose_type!(ReplicatedBitTensor = AbstractReplicatedRingTensor<HostBitTensor>);
-moose_type!(Mirrored3Ring64Tensor = Mirrored3Tensor<HostRing64Tensor>);
-moose_type!(Mirrored3Ring128Tensor = Mirrored3Tensor<HostRing128Tensor>);
-moose_type!(Mirrored3BitTensor = Mirrored3Tensor<HostBitTensor>);
 
 pub trait Underlying {
     type TensorType;
@@ -92,15 +102,15 @@ pub trait MirroredCounterpart {
     type MirroredType;
 }
 
-impl<HostRingT> Underlying for AbstractReplicatedRingTensor<HostRingT> {
+impl<HostRingT> Underlying for RepTensor<HostRingT> {
     type TensorType = HostRingT;
 }
 
-impl<HostRingT> MirroredCounterpart for AbstractReplicatedRingTensor<HostRingT> {
-    type MirroredType = Mirrored3Tensor<HostRingT>;
+impl<HostRingT> MirroredCounterpart for RepTensor<HostRingT> {
+    type MirroredType = Mir3Tensor<HostRingT>;
 }
 
-impl<HostRingT> Underlying for Mirrored3Tensor<HostRingT> {
+impl<HostRingT> Underlying for Mir3Tensor<HostRingT> {
     type TensorType = HostRingT;
 }
 
@@ -116,26 +126,18 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedBitArray<RepBitTensorT, N>(RepBitTensorT, PhantomData<N>);
+pub struct RepBitArray<RepBitTensorT, N>(RepBitTensorT, PhantomData<N>);
 
-impl<RepBitTensorT, N: Const> BitArray for AbstractReplicatedBitArray<RepBitTensorT, N> {
+impl<RepBitTensorT, N: Const> BitArray for RepBitArray<RepBitTensorT, N> {
     type Len = N;
 }
 
-impl<RepBitTensorT: Placed, N: Const> BitArray
-    for Symbolic<AbstractReplicatedBitArray<RepBitTensorT, N>>
-{
+impl<RepBitTensorT: Placed, N: Const> BitArray for Symbolic<RepBitArray<RepBitTensorT, N>> {
     type Len = N;
 }
-
-pub type ReplicatedBitArray64 = AbstractReplicatedBitArray<ReplicatedBitTensor, N64>;
-
-pub type ReplicatedBitArray128 = AbstractReplicatedBitArray<ReplicatedBitTensor, N128>;
-
-pub type ReplicatedBitArray224 = AbstractReplicatedBitArray<ReplicatedBitTensor, N224>;
 
 // TODO implement using moose_type macro
-impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTensorT, N> {
+impl<RepBitTensorT: Placed, N> Placed for RepBitArray<RepBitTensorT, N> {
     type Placement = RepBitTensorT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -143,43 +145,37 @@ impl<RepBitTensorT: Placed, N> Placed for AbstractReplicatedBitArray<RepBitTenso
     }
 }
 
-impl<N> PartiallySymbolicType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
-    type Type = AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>;
+impl<N> PartiallySymbolicType for RepBitArray<ReplicatedBitTensor, N> {
+    type Type = RepBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>;
 }
 
-impl<N> CanonicalType for AbstractReplicatedBitArray<ReplicatedBitTensor, N> {
+impl<N> CanonicalType for RepBitArray<ReplicatedBitTensor, N> {
     type Type = Self;
 }
 
-impl<N> CanonicalType
-    for AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>
-{
-    type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
+impl<N> CanonicalType for RepBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N> {
+    type Type = RepBitArray<ReplicatedBitTensor, N>;
 }
 
-impl<N> CanonicalType
-    for Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>>
-{
-    type Type = AbstractReplicatedBitArray<ReplicatedBitTensor, N>;
+impl<N> CanonicalType for Symbolic<RepBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>> {
+    type Type = RepBitArray<ReplicatedBitTensor, N>;
 }
 
-impl<RepBitT: Placed, N> From<AbstractReplicatedBitArray<RepBitT, N>>
-    for Symbolic<AbstractReplicatedBitArray<RepBitT, N>>
+impl<RepBitT: Placed, N> From<RepBitArray<RepBitT, N>> for Symbolic<RepBitArray<RepBitT, N>>
 where
     RepBitT: Placed<Placement = ReplicatedPlacement>,
 {
-    fn from(x: AbstractReplicatedBitArray<RepBitT, N>) -> Self {
+    fn from(x: RepBitArray<RepBitT, N>) -> Self {
         Symbolic::Concrete(x)
     }
 }
 
-impl<RepBitT, N> TryFrom<Symbolic<AbstractReplicatedBitArray<RepBitT, N>>>
-    for AbstractReplicatedBitArray<RepBitT, N>
+impl<RepBitT, N> TryFrom<Symbolic<RepBitArray<RepBitT, N>>> for RepBitArray<RepBitT, N>
 where
     RepBitT: Placed<Placement = ReplicatedPlacement>,
 {
     type Error = Error;
-    fn try_from(v: Symbolic<AbstractReplicatedBitArray<RepBitT, N>>) -> crate::error::Result<Self> {
+    fn try_from(v: Symbolic<RepBitArray<RepBitT, N>>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected(None)), // TODO err message
@@ -187,14 +183,14 @@ where
     }
 }
 
-impl<HostTenT> Placed for AbstractReplicatedRingTensor<HostTenT>
+impl<HostTenT> Placed for RepTensor<HostTenT>
 where
     HostTenT: Placed<Placement = HostPlacement>,
 {
     type Placement = ReplicatedPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        let AbstractReplicatedRingTensor {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = self;
 
@@ -214,7 +210,7 @@ where
     }
 }
 
-impl<S: Session, R> PlacementPlace<S, AbstractReplicatedRingTensor<R>> for ReplicatedPlacement
+impl<S: Session, R> PlacementPlace<S, RepTensor<R>> for ReplicatedPlacement
 where
     RepTen<R>: Placed<Placement = ReplicatedPlacement>,
     HostPlacement: PlacementPlace<S, R>,
@@ -241,36 +237,21 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractReplicatedFixedTensor<RepRingT> {
+pub struct RepFixedTensor<RepRingT> {
     pub tensor: RepRingT,
     pub fractional_precision: u32,
     pub integral_precision: u32,
 }
 
-moose_type!(ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>);
-moose_type!(ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>);
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractMirroredFixedTensor<MirRingT> {
-    pub tensor: MirRingT,
-    pub fractional_precision: u32,
-    pub integral_precision: u32,
-}
-
-impl<RepRingT: Underlying> Underlying for AbstractReplicatedFixedTensor<RepRingT> {
+impl<RepRingT: Underlying> Underlying for RepFixedTensor<RepRingT> {
     type TensorType = RepRingT::TensorType;
 }
 
-impl<RepRingT: MirroredCounterpart> MirroredCounterpart
-    for AbstractReplicatedFixedTensor<RepRingT>
-{
-    type MirroredType = AbstractMirroredFixedTensor<RepRingT::MirroredType>;
+impl<RepRingT: MirroredCounterpart> MirroredCounterpart for RepFixedTensor<RepRingT> {
+    type MirroredType = MirFixedTensor<RepRingT::MirroredType>;
 }
 
-moose_type!(Mirrored3Fixed64Tensor = AbstractMirroredFixedTensor<Mirrored3Ring64Tensor>);
-moose_type!(Mirrored3Fixed128Tensor = AbstractMirroredFixedTensor<Mirrored3Ring128Tensor>);
-
-impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
+impl<RepRingT: Placed> Placed for RepFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -278,23 +259,18 @@ impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
     }
 }
 
-impl<S: Session, RepRingT> PlacementPlace<S, AbstractReplicatedFixedTensor<RepRingT>>
-    for ReplicatedPlacement
+impl<S: Session, RepRingT> PlacementPlace<S, RepFixedTensor<RepRingT>> for ReplicatedPlacement
 where
-    AbstractReplicatedFixedTensor<RepRingT>: Placed<Placement = ReplicatedPlacement>,
+    RepFixedTensor<RepRingT>: Placed<Placement = ReplicatedPlacement>,
     ReplicatedPlacement: PlacementPlace<S, RepRingT>,
 {
-    fn place(
-        &self,
-        sess: &S,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> AbstractReplicatedFixedTensor<RepRingT> {
+    fn place(&self, sess: &S, x: RepFixedTensor<RepRingT>) -> RepFixedTensor<RepRingT> {
         match x.placement() {
             Ok(place) if self == &place => x,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
-                AbstractReplicatedFixedTensor {
+                RepFixedTensor {
                     tensor: self.place(sess, x.tensor),
                     integral_precision: x.integral_precision,
                     fractional_precision: x.fractional_precision,
@@ -304,29 +280,19 @@ where
     }
 }
 
-impl<RepRingT: Placed> Placed for AbstractMirroredFixedTensor<RepRingT> {
-    type Placement = RepRingT::Placement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        self.tensor.placement()
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedSetup<K> {
+pub struct RepSetup<K> {
     pub keys: [[K; 2]; 3],
 }
 
-moose_type!(ReplicatedSetup = AbstractReplicatedSetup<PrfKey>);
-
-impl<K> Placed for AbstractReplicatedSetup<K>
+impl<K> Placed for RepSetup<K>
 where
     K: Placed<Placement = HostPlacement>,
 {
     type Placement = ReplicatedPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        let AbstractReplicatedSetup {
+        let RepSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
         } = self;
 
@@ -347,20 +313,18 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedShape<S> {
+pub struct RepShape<S> {
     pub shapes: [S; 3],
 }
 
-moose_type!(ReplicatedShape = AbstractReplicatedShape<HostShape>);
-
-impl<KeyT> Placed for AbstractReplicatedShape<KeyT>
+impl<KeyT> Placed for RepShape<KeyT>
 where
     KeyT: Placed<Placement = HostPlacement>,
 {
     type Placement = ReplicatedPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = self;
 
@@ -374,9 +338,9 @@ where
 }
 
 // Type aliases to shorten out impl in replicated protocols
-pub(crate) type RepTen<T> = AbstractReplicatedRingTensor<T>;
+pub(crate) type RepTen<T> = RepTensor<T>;
 pub(crate) type AdtTen<T> = AdtTensor<T>;
-pub(crate) type MirTen<T> = Mirrored3Tensor<T>;
+pub(crate) type MirTen<T> = Mir3Tensor<T>;
 
 modelled!(PlacementSetupGen::gen_setup, ReplicatedPlacement, () -> ReplicatedSetup, RepSetupOp);
 
@@ -388,10 +352,7 @@ kernel! {
 }
 
 impl RepSetupOp {
-    fn kernel<S: Session, K: Clone>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-    ) -> Result<AbstractReplicatedSetup<K>>
+    fn kernel<S: Session, K: Clone>(sess: &S, rep: &ReplicatedPlacement) -> Result<RepSetup<K>>
     where
         HostPlacement: PlacementKeyGen<S, K>,
         HostPlacement: PlacementPlace<S, K>,
@@ -402,7 +363,7 @@ impl RepSetupOp {
         let k1 = player1.gen_key(sess);
         let k2 = player2.gen_key(sess);
 
-        Ok(AbstractReplicatedSetup {
+        Ok(RepSetup {
             keys: [
                 [
                     player0.place(sess, k0.clone()),
@@ -431,12 +392,12 @@ impl RepShareOp {
     pub(crate) fn fixed_kernel<S: Session, HostRingT, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractHostFixedTensor<HostRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: HostFixedTensor<HostRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostRingT, RepRingT>,
     {
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: plc.share(sess, &x.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
@@ -446,13 +407,13 @@ impl RepShareOp {
     pub(crate) fn array_kernel<S: Session, HostBitTensorT, RepBitTensorT, N: Const>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: AbstractHostBitArray<HostBitTensorT, N>,
-    ) -> Result<AbstractReplicatedBitArray<RepBitTensorT, N>>
+        x: HostBitArray<HostBitTensorT, N>,
+    ) -> Result<RepBitArray<RepBitTensorT, N>>
     where
         ReplicatedPlacement: PlacementShare<S, HostBitTensorT, RepBitTensorT>,
     {
         let shared_tensor = plc.share(sess, &x.0);
-        Ok(AbstractReplicatedBitArray(shared_tensor, x.1))
+        Ok(RepBitArray(shared_tensor, x.1))
     }
 
     pub(crate) fn ring_kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
@@ -462,7 +423,7 @@ impl RepShareOp {
     ) -> Result<RepTen<RingT>>
     where
         <S as Session>::ReplicatedSetup: Clone,
-        <S as Session>::ReplicatedSetup: TryInto<AbstractReplicatedSetup<KeyT>>,
+        <S as Session>::ReplicatedSetup: TryInto<RepSetup<KeyT>>,
         RingT: Clone + Placed<Placement = HostPlacement>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, RingT>,
@@ -478,7 +439,7 @@ impl RepShareOp {
             Ok(setup) => setup,
             _ => todo!("not sure what to do with the symbolic setup yet"), // TODO: perhaps a custom kernel could instead output a symbolic op
         };
-        let AbstractReplicatedSetup {
+        let RepSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
         } = &setup;
 
@@ -589,13 +550,13 @@ impl RepRevealOp {
     pub(crate) fn fixed_kernel<S: Session, RepRingT, HostRingT>(
         sess: &S,
         receiver: &HostPlacement,
-        xe: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractHostFixedTensor<HostRingT>>
+        xe: RepFixedTensor<RepRingT>,
+    ) -> Result<HostFixedTensor<HostRingT>>
     where
         HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
     {
         let x = receiver.reveal(sess, &xe.tensor);
-        Ok(AbstractHostFixedTensor {
+        Ok(HostFixedTensor {
             tensor: x,
             fractional_precision: xe.fractional_precision,
             integral_precision: xe.integral_precision,
@@ -605,13 +566,13 @@ impl RepRevealOp {
     pub(crate) fn bit_array_kernel<S: Session, RepBitT, HostBitT, N>(
         sess: &S,
         receiver: &HostPlacement,
-        xe: AbstractReplicatedBitArray<RepBitT, N>,
-    ) -> Result<AbstractHostBitArray<HostBitT, N>>
+        xe: RepBitArray<RepBitT, N>,
+    ) -> Result<HostBitArray<HostBitT, N>>
     where
         HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
     {
         let x = receiver.reveal(sess, &xe.0);
-        Ok(AbstractHostBitArray(x, PhantomData))
+        Ok(HostBitArray(x, PhantomData))
     }
 
     pub(crate) fn ring_kernel<S: Session, R: Clone>(
@@ -648,58 +609,19 @@ impl RepRevealOp {
         };
         Ok(res)
     }
-
-    pub(crate) fn mir_ring_kernel<S: Session, HostRingT: Clone>(
-        sess: &S,
-        mir: &Mirrored3Placement,
-        x: RepTen<HostRingT>,
-    ) -> Result<Mirrored3Tensor<HostRingT>>
-    where
-        RepTen<HostRingT>: CanonicalType,
-        <RepTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-
-        RepTen<HostRingT>: Into<m!(c!(RepTen<HostRingT>))>,
-        HostPlacement: PlacementReveal<S, m!(c!(RepTen<HostRingT>)), HostRingT>,
-    {
-        let (player0, player1, player2) = mir.host_placements();
-
-        let x0 = player0.reveal(sess, &x.clone().into());
-        let x1 = player1.reveal(sess, &x.clone().into());
-        let x2 = player2.reveal(sess, &x.into());
-
-        Ok(Mirrored3Tensor {
-            values: [x0, x1, x2],
-        })
-    }
-
-    pub(crate) fn mir_fixed_kernel<S: Session, RepRingT, MirRingT>(
-        sess: &S,
-        receiver: &Mirrored3Placement,
-        xe: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractMirroredFixedTensor<MirRingT>>
-    where
-        Mirrored3Placement: PlacementReveal<S, RepRingT, MirRingT>,
-    {
-        let x = receiver.reveal(sess, &xe.tensor);
-        Ok(AbstractMirroredFixedTensor {
-            tensor: x,
-            fractional_precision: xe.fractional_precision,
-            integral_precision: xe.integral_precision,
-        })
-    }
 }
 
 impl IdentityOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementIdentity<S, RepRingT, RepRingT>,
     {
         let tensor = rep.identity(sess, &x.tensor);
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor,
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
@@ -715,7 +637,7 @@ impl IdentityOp {
         HostPlacement: PlacementIdentity<S, HostT, HostT>,
     {
         let (player0, player1, player2) = rep.host_placements();
-        let AbstractReplicatedRingTensor {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
         let y00 = player0.identity(sess, x00);
@@ -724,7 +646,7 @@ impl IdentityOp {
         let y21 = player1.identity(sess, x21);
         let y22 = player2.identity(sess, x22);
         let y02 = player2.identity(sess, x02);
-        Ok(AbstractReplicatedRingTensor {
+        Ok(RepTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         })
     }
@@ -1098,7 +1020,7 @@ impl RepMulOp {
         let s0 = player0.shape(sess, &v0);
         let s1 = player1.shape(sess, &v1);
         let s2 = player2.shape(sess, &v2);
-        let zero_shape = AbstractReplicatedShape {
+        let zero_shape = RepShape {
             shapes: [s0, s1, s2],
         };
 
@@ -1231,7 +1153,7 @@ impl RepDotOp {
         let s0 = player0.shape(sess, &v0);
         let s1 = player1.shape(sess, &v1);
         let s2 = player2.shape(sess, &v2);
-        let zero_shape = AbstractReplicatedShape {
+        let zero_shape = RepShape {
             shapes: [s0, s1, s2],
         };
 
@@ -1332,6 +1254,49 @@ impl AddNOp {
         let z22 = player2.add_n(sess, &z22s);
         let z02 = player2.add_n(sess, &z02s);
 
+        Ok(RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        })
+    }
+}
+
+impl ConcatOp {
+    pub(crate) fn rep_rep_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        xs: &[RepTen<HostRingT>],
+    ) -> Result<RepTen<HostRingT>>
+    where
+        HostPlacement: PlacementConcatenate<S, HostRingT, HostRingT>,
+        HostRingT: Clone,
+    {
+        let mut z00s: Vec<HostRingT> = Vec::new();
+        let mut z10s: Vec<HostRingT> = Vec::new();
+        let mut z11s: Vec<HostRingT> = Vec::new();
+        let mut z21s: Vec<HostRingT> = Vec::new();
+        let mut z22s: Vec<HostRingT> = Vec::new();
+        let mut z02s: Vec<HostRingT> = Vec::new();
+
+        let (player0, player1, player2) = plc.host_placements();
+        for x in xs.iter() {
+            let RepTen {
+                shares: [[x00, x10], [x11, x21], [x22, x02]],
+            } = &x;
+
+            z00s.push(x00.clone());
+            z10s.push(x10.clone());
+            z11s.push(x11.clone());
+            z21s.push(x21.clone());
+            z22s.push(x22.clone());
+            z02s.push(x02.clone());
+        }
+        let z00 = player0.concatenate(sess, axis, &z00s);
+        let z10 = player0.concatenate(sess, axis, &z10s);
+        let z11 = player1.concatenate(sess, axis, &z11s);
+        let z21 = player1.concatenate(sess, axis, &z21s);
+        let z22 = player2.concatenate(sess, axis, &z22s);
+        let z02 = player2.concatenate(sess, axis, &z02s);
         Ok(RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
@@ -1540,7 +1505,7 @@ impl FillOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u64,
-        rep_shape: AbstractReplicatedShape<ShapeT>,
+        rep_shape: RepShape<ShapeT>,
     ) -> Result<RepTen<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
@@ -1548,7 +1513,7 @@ impl FillOp {
         // TODO should really return PublicReplicatedTensor, but we don't have that type yet
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = &rep_shape;
 
@@ -1574,7 +1539,7 @@ impl FillOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u128,
-        rep_shape: AbstractReplicatedShape<ShapeT>,
+        rep_shape: RepShape<ShapeT>,
     ) -> Result<RepTen<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
@@ -1582,7 +1547,7 @@ impl FillOp {
         // TODO should really return PublicReplicatedTensor, but we don't have that type yet
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = &rep_shape;
 
@@ -1608,14 +1573,14 @@ impl FillOp {
         sess: &S,
         mir: &Mirrored3Placement,
         value: u64,
-        rep_shape: AbstractReplicatedShape<ShapeT>,
+        rep_shape: RepShape<ShapeT>,
     ) -> Result<MirTen<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
         let (player0, player1, player2) = mir.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = &rep_shape;
 
@@ -1632,14 +1597,14 @@ impl FillOp {
         sess: &S,
         mir: &Mirrored3Placement,
         value: u128,
-        rep_shape: AbstractReplicatedShape<ShapeT>,
+        rep_shape: RepShape<ShapeT>,
     ) -> Result<MirTen<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
         let (player0, player1, player2) = mir.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = &rep_shape;
 
@@ -1656,7 +1621,7 @@ impl FillOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u8,
-        rep_shape: AbstractReplicatedShape<ShapeT>,
+        rep_shape: RepShape<ShapeT>,
     ) -> Result<RepTen<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
@@ -1664,7 +1629,7 @@ impl FillOp {
         // TODO should really return PublicReplicatedTensor, but we don't have that type yet
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = &rep_shape;
 
@@ -1690,14 +1655,14 @@ impl FillOp {
         sess: &S,
         mir: &Mirrored3Placement,
         value: u8,
-        shape: AbstractReplicatedShape<ShapeT>,
+        shape: RepShape<ShapeT>,
     ) -> Result<MirTen<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
         let (player0, player1, player2) = mir.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [s0, s1, s2],
         } = &shape;
 
@@ -1730,7 +1695,7 @@ impl RepShlOp {
         HostPlacement: PlacementShl<S, HostRingT, HostRingT>,
     {
         let (player0, player1, player2) = plc.host_placements();
-        let AbstractReplicatedRingTensor {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
         let z00 = player0.shl(sess, amount, x00);
@@ -1797,7 +1762,7 @@ impl IndexOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         index: usize,
-        x: AbstractReplicatedBitArray<RepBitT, N>,
+        x: RepBitArray<RepBitT, N>,
     ) -> Result<RepBitT>
     where
         ReplicatedPlacement: PlacementIndexAxis<S, RepBitT, RepBitT>,
@@ -1858,14 +1823,14 @@ impl RepSliceOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         slice: SliceInfo,
-        shape: AbstractReplicatedShape<ShapeT>,
-    ) -> Result<AbstractReplicatedShape<ShapeT>>
+        shape: RepShape<ShapeT>,
+    ) -> Result<RepShape<ShapeT>>
     where
         HostPlacement: PlacementSlice<S, ShapeT, ShapeT>,
     {
         let (player0, player1, player2) = plc.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [shape0, shape1, shape2],
         } = shape;
 
@@ -1873,7 +1838,7 @@ impl RepSliceOp {
         let new_shape1 = player1.slice(sess, slice.clone(), &shape1);
         let new_shape2 = player2.slice(sess, slice, &shape2);
 
-        Ok(AbstractReplicatedShape {
+        Ok(RepShape {
             shapes: [new_shape0, new_shape1, new_shape2],
         })
     }
@@ -1991,7 +1956,7 @@ impl ShapeOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepTen<RingT>,
-    ) -> Result<AbstractReplicatedShape<ShapeT>>
+    ) -> Result<RepShape<ShapeT>>
     where
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
     {
@@ -1999,7 +1964,7 @@ impl ShapeOp {
         let RepTen {
             shares: [[x00, _x10], [x11, _x21], [x22, _x02]],
         } = &x;
-        Ok(AbstractReplicatedShape {
+        Ok(RepShape {
             shapes: [
                 player0.shape(sess, x00),
                 player1.shape(sess, x11),
@@ -2011,7 +1976,7 @@ impl ShapeOp {
     pub fn rep_repfixed_kernel<S: Session, RepRingT, RepShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
+        x: RepFixedTensor<RepRingT>,
     ) -> Result<RepShapeT>
     where
         ReplicatedPlacement: PlacementShape<S, RepRingT, RepShapeT>,
@@ -2130,7 +2095,7 @@ impl RingInjectOp {
         };
         let provider = player2;
 
-        let AbstractReplicatedRingTensor {
+        let RepTensor {
             shares: [[x00, _x10], [_x11, _x21], [x22, _x02]],
         } = &x;
 
@@ -2266,7 +2231,7 @@ impl RepBitDecOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
-    ) -> Result<AbstractReplicatedBitArray<RepBitT, N>>
+    ) -> Result<RepBitArray<RepBitT, N>>
     where
         RepRingT: Ring<BitLength = N>,
         ReplicatedPlacement: PlacementSplit<S, RepRingT, RepBitT, RepBitT>,
@@ -2274,7 +2239,7 @@ impl RepBitDecOp {
     {
         let (x0, x1) = rep.split(sess, &x);
         let res = rep.binary_adder(sess, &x0, &x1, RepRingT::BitLength::VALUE);
-        Ok(AbstractReplicatedBitArray(res, PhantomData))
+        Ok(RepBitArray(res, PhantomData))
     }
 }
 
@@ -2351,7 +2316,7 @@ where
 {
     fn shr_raw(&self, sess: &S, amount: usize, x: &RepTen<HostRingT>) -> RepTen<HostRingT> {
         let (player0, player1, player2) = self.host_placements();
-        let AbstractReplicatedRingTensor {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -2375,11 +2340,7 @@ struct AbstractReplicatedSeeds<T> {
 }
 
 trait ReplicatedSeedsGen<S: Session, KeyT, SeedT> {
-    fn gen_seeds(
-        &self,
-        ctx: &S,
-        setup: &AbstractReplicatedSetup<KeyT>,
-    ) -> AbstractReplicatedSeeds<SeedT>;
+    fn gen_seeds(&self, ctx: &S, setup: &RepSetup<KeyT>) -> AbstractReplicatedSeeds<SeedT>;
 }
 
 impl<S: Session> ReplicatedSeedsGen<S, cs!(PrfKey), cs!(Seed)> for ReplicatedPlacement
@@ -2391,11 +2352,11 @@ where
     fn gen_seeds(
         &self,
         ctx: &S,
-        setup: &AbstractReplicatedSetup<cs!(PrfKey)>,
+        setup: &RepSetup<cs!(PrfKey)>,
     ) -> AbstractReplicatedSeeds<cs!(Seed)> {
         let (player0, player1, player2) = self.host_placements();
 
-        let AbstractReplicatedSetup {
+        let RepSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
         } = setup;
 
@@ -2430,7 +2391,7 @@ trait ZeroShareGen<S: Session, ShapeT, RingT> {
     fn gen_zero_share(
         &self,
         sess: &S,
-        shape: &AbstractReplicatedShape<ShapeT>,
+        shape: &RepShape<ShapeT>,
     ) -> AbstractReplicatedZeroShare<RingT>;
 }
 
@@ -2439,7 +2400,7 @@ where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
     <S as Session>::ReplicatedSetup: Clone,
-    <S as Session>::ReplicatedSetup: TryInto<AbstractReplicatedSetup<m!(PrfKey)>>,
+    <S as Session>::ReplicatedSetup: TryInto<RepSetup<m!(PrfKey)>>,
     HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(Seed), RingT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
     ReplicatedPlacement: ReplicatedSeedsGen<S, m!(PrfKey), m!(Seed)>,
@@ -2447,7 +2408,7 @@ where
     fn gen_zero_share(
         &self,
         sess: &S,
-        shape: &AbstractReplicatedShape<HostShapeT>,
+        shape: &RepShape<HostShapeT>,
     ) -> AbstractReplicatedZeroShare<RingT> {
         let setup = match (*sess.replicated_setup(self)).clone().try_into() {
             Ok(setup) => setup,
@@ -2456,7 +2417,7 @@ where
 
         let (player0, player1, player2) = self.host_placements();
 
-        let AbstractReplicatedShape {
+        let RepShape {
             shapes: [shape0, shape1, shape2],
         } = shape;
 
@@ -2541,7 +2502,7 @@ impl SigmoidOp {
     where
         RepRingT: Clone,
         RepFixedT: FixedpointTensor,
-        AbstractReplicatedFixedTensor<RepRingT>: Into<RepFixedT>,
+        RepFixedTensor<RepRingT>: Into<RepFixedT>,
         ReplicatedPlacement: PlacementShape<S, RepFixedT, ShapeT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepFixedT, RepFixedT, RepFixedT>,
@@ -2558,13 +2519,13 @@ impl SigmoidOp {
         let ones_fill = rep.fill(sess, ones.into(), &rep.shape(sess, &x));
         let zeros_fill = rep.fill(sess, 0_u8.into(), &rep.shape(sess, &x));
 
-        let ones_rep = AbstractReplicatedFixedTensor {
+        let ones_rep = RepFixedTensor {
             tensor: ones_fill,
             integral_precision: x.integral_precision(),
             fractional_precision: x.fractional_precision(),
         }
         .into();
-        let zeros_rep = AbstractReplicatedFixedTensor {
+        let zeros_rep = RepFixedTensor {
             tensor: zeros_fill,
             integral_precision: x.integral_precision(),
             fractional_precision: x.fractional_precision(),
@@ -2580,7 +2541,7 @@ impl SigmoidOp {
             .ln()
             .as_fixedpoint(x.fractional_precision() as usize);
         let max_val_fill = rep.fill(sess, max_val.into(), &rep.shape(sess, &x));
-        let max_val_rep = AbstractReplicatedFixedTensor {
+        let max_val_rep = RepFixedTensor {
             tensor: max_val_fill,
             integral_precision: x.integral_precision(),
             fractional_precision: x.fractional_precision(),
@@ -2706,11 +2667,11 @@ impl GreaterThanOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::host::AbstractHostRingTensor;
-    use crate::host::FromRawPlc;
+    use crate::host::{FromRawPlc, HostRingTensor};
     use crate::kernels::{
         PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, SyncSession,
     };
+    use crate::{N128, N64};
     use ndarray::array;
     use proptest::prelude::*;
 
@@ -2723,7 +2684,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
+        let x = HostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
         let expected = x.clone();
 
         let sess = SyncSession::default();
@@ -2747,7 +2708,7 @@ mod tests {
             owners: ["alice-1".into(), "bob-1".into(), "carole-1".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice0.clone());
+        let x = HostRingTensor::from_raw_plc(array![1u64, 2, 3], alice0.clone());
         let expected = x.clone();
 
         let sess = SyncSession::default();
@@ -2777,13 +2738,13 @@ mod tests {
 
         let x1 = AdditiveRing64Tensor {
             shares: [
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![1, 2, 3],
                     HostPlacement {
                         owner: "alice".into(),
                     },
                 ),
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![4, 5, 6],
                     HostPlacement {
                         owner: "bob".into(),
@@ -2801,13 +2762,13 @@ mod tests {
 
         let x2 = AdditiveRing64Tensor {
             shares: [
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![1, 2, 3],
                     HostPlacement {
                         owner: "bob".into(),
                     },
                 ),
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![4, 5, 6],
                     HostPlacement {
                         owner: "alice".into(),
@@ -2823,13 +2784,13 @@ mod tests {
 
         let x3 = AdditiveRing64Tensor {
             shares: [
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![1, 2, 3],
                     HostPlacement {
                         owner: "david".into(),
                     },
                 ),
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![4, 5, 6],
                     HostPlacement {
                         owner: "eric".into(),
@@ -2845,13 +2806,13 @@ mod tests {
 
         let x4 = AdditiveRing64Tensor {
             shares: [
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![1, 2, 3],
                     HostPlacement {
                         owner: "alice".into(),
                     },
                 ),
-                AbstractHostRingTensor::from_raw_plc(
+                HostRingTensor::from_raw_plc(
                     array![4, 5, 6],
                     HostPlacement {
                         owner: "eric".into(),
@@ -2881,7 +2842,7 @@ mod tests {
         let scaling_base = 2;
         let scaling_exp = 24;
 
-        let x = crate::host::HostFloat64Tensor::from_raw_plc(
+        let x = HostFloat64Tensor::from_raw_plc(
             array![1.0, 2.0, 3.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -2918,17 +2879,17 @@ mod tests {
         };
 
         // 64 bit
-        let a = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
-        let b = AbstractHostRingTensor::from_raw_plc(array![2u64, 3, 4], bob.clone());
-        let c = AbstractHostRingTensor::from_raw_plc(array![5u64, 12, 13], carole.clone());
+        let a = HostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
+        let b = HostRingTensor::from_raw_plc(array![2u64, 3, 4], bob.clone());
+        let c = HostRingTensor::from_raw_plc(array![5u64, 12, 13], carole.clone());
 
-        let expected = AbstractHostRingTensor::from_raw_plc(array![8u64, 17, 20], alice.clone());
+        let expected = HostRingTensor::from_raw_plc(array![8u64, 17, 20], alice.clone());
 
         let inputs = vec![a, b, c];
 
         let sess = SyncSession::default();
 
-        let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u64>>> =
+        let shares: Vec<RepTensor<HostRingTensor<u64>>> =
             inputs.into_iter().map(|x| rep.share(&sess, &x)).collect();
 
         let sum = rep.add_n(&sess, &shares);
@@ -2937,24 +2898,18 @@ mod tests {
         assert_eq!(expected, opened_result);
 
         // 128 bit
-        let a = AbstractHostRingTensor::from_raw_plc(
-            array![[1u128, 2, 3], [2u128, 3, 4]],
-            alice.clone(),
-        );
-        let b = AbstractHostRingTensor::from_raw_plc(array![[2u128, 3, 4], [2u128, 3, 4]], bob);
-        let c =
-            AbstractHostRingTensor::from_raw_plc(array![[5u128, 12, 13], [1u128, 2, 3]], carole);
+        let a = HostRingTensor::from_raw_plc(array![[1u128, 2, 3], [2u128, 3, 4]], alice.clone());
+        let b = HostRingTensor::from_raw_plc(array![[2u128, 3, 4], [2u128, 3, 4]], bob);
+        let c = HostRingTensor::from_raw_plc(array![[5u128, 12, 13], [1u128, 2, 3]], carole);
 
-        let expected = AbstractHostRingTensor::from_raw_plc(
-            array![[8u128, 17, 20], [5, 8, 11]],
-            alice.clone(),
-        );
+        let expected =
+            HostRingTensor::from_raw_plc(array![[8u128, 17, 20], [5, 8, 11]], alice.clone());
 
         let inputs = vec![a, b, c];
 
         let sess = SyncSession::default();
 
-        let shares: Vec<AbstractReplicatedRingTensor<AbstractHostRingTensor<u128>>> =
+        let shares: Vec<RepTensor<HostRingTensor<u128>>> =
             inputs.into_iter().map(|x| rep.share(&sess, &x)).collect();
 
         let sum = rep.add_n(&sess, &shares);
@@ -2972,7 +2927,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
+        let x = HostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
 
         let sess = SyncSession::default();
 
@@ -3011,8 +2966,8 @@ mod tests {
     }
 
     diag_op_test!(rep_diag_bit, u8, HostBitTensor);
-    diag_op_test!(rep_diag_ring64, u64, AbstractHostRingTensor);
-    diag_op_test!(rep_diag_ring128, u128, AbstractHostRingTensor);
+    diag_op_test!(rep_diag_ring64, u64, HostRingTensor);
+    diag_op_test!(rep_diag_ring128, u128, HostRingTensor);
 
     #[test]
     fn test_rep_diag_bit() {
@@ -3056,8 +3011,8 @@ mod tests {
     }
 
     index_axis_op_test!(rep_index_axis_bit, u8, HostBitTensor);
-    index_axis_op_test!(rep_index_axis_ring64, u64, AbstractHostRingTensor);
-    index_axis_op_test!(rep_index_axis_ring128, u128, AbstractHostRingTensor);
+    index_axis_op_test!(rep_index_axis_ring64, u64, HostRingTensor);
+    index_axis_op_test!(rep_index_axis_ring128, u128, HostRingTensor);
 
     #[test]
     fn test_rep_index_axis_bit() {
@@ -3093,7 +3048,7 @@ mod tests {
 
                 let x_shared = rep.share(&sess, &xr);
                 let x_shared_bit_array =
-                    AbstractReplicatedBitArray::<ReplicatedBitTensor, $n>(x_shared, PhantomData);
+                    RepBitArray::<ReplicatedBitTensor, $n>(x_shared, PhantomData);
 
                 let index = rep.index(&sess, 0, &x_shared_bit_array);
                 let opened_index = alice.reveal(&sess, &index);
@@ -3125,8 +3080,8 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
-                let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
+                let y = HostRingTensor::from_raw_plc(ys, alice.clone());
 
                 let sess = SyncSession::default();
 
@@ -3135,10 +3090,7 @@ mod tests {
 
                 let sum = rep.add(&sess, &x_shared, &y_shared);
                 let opened_sum = alice.reveal(&sess, &sum);
-                assert_eq!(
-                    opened_sum,
-                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
-                );
+                assert_eq!(opened_sum, HostRingTensor::from_raw_plc(zs, alice.clone()));
             }
         };
     }
@@ -3182,20 +3134,20 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
-                let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
+                let y = HostRingTensor::from_raw_plc(ys, alice.clone());
 
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
                 let y_shared = rep.share(&sess, &y);
 
-                let sum: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
+                let sum: RepTensor<HostRingTensor<$tt>> =
                     rep.$test_func(&sess, &x_shared, &y_shared);
                 let opened_product = alice.reveal(&sess, &sum);
                 assert_eq!(
                     opened_product,
-                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
+                    HostRingTensor::from_raw_plc(zs, alice.clone())
                 );
             }
         };
@@ -3288,14 +3240,14 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
-                let target_rep_mir = AbstractHostRingTensor::from_raw_plc(zs_mir, alice.clone());
-                let target_mir_rep = AbstractHostRingTensor::from_raw_plc(zmir_s, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
+                let target_rep_mir = HostRingTensor::from_raw_plc(zs_mir, alice.clone());
+                let target_mir_rep = HostRingTensor::from_raw_plc(zmir_s, alice.clone());
 
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
-                let y_mir: MirTen<AbstractHostRingTensor<$tt>> =
+                let y_mir: MirTen<HostRingTensor<$tt>> =
                     mir.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
 
                 let result_rep_mir = rep.$test_func(&sess, &x_shared, &y_mir);
@@ -3370,13 +3322,13 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
-                let target = AbstractHostRingTensor::from_raw_plc(zs, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
+                let target = HostRingTensor::from_raw_plc(zs, alice.clone());
 
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
-                let y_mir: MirTen<AbstractHostRingTensor<$tt>> =
+                let y_mir: MirTen<HostRingTensor<$tt>> =
                     mir3.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
 
                 let result_rep_mir = rep.$test_func(&sess, &x_shared, &y_mir);
@@ -3430,12 +3382,12 @@ mod tests {
 
                 let sess = SyncSession::default();
 
-                let alice_x1 = AbstractHostRingTensor::from_raw_plc(xs.clone(), alice.clone());
+                let alice_x1 = HostRingTensor::from_raw_plc(xs.clone(), alice.clone());
                 let alice_rep = rep.share(&sess, &alice_x1);
                 let alice_tr = rep.trunc_pr(&sess, amount, &alice_rep);
                 let alice_open = alice.reveal(&sess, &alice_tr);
 
-                let alice_y = AbstractHostRingTensor::from_raw_plc(ys.clone(), alice.clone());
+                let alice_y = HostRingTensor::from_raw_plc(ys.clone(), alice.clone());
                 assert_eq!(alice_open.1, alice_y.1); // make sure placements are equal
 
                 // truncation can be off by 1
@@ -3452,12 +3404,12 @@ mod tests {
                     );
                 }
 
-                let bob_x1 = AbstractHostRingTensor::from_raw_plc(xs.clone(), bob.clone());
+                let bob_x1 = HostRingTensor::from_raw_plc(xs.clone(), bob.clone());
                 let bob_rep = rep.share(&sess, &bob_x1);
                 let bob_tr = rep.trunc_pr(&sess, amount, &bob_rep);
                 let bob_open = bob.reveal(&sess, &bob_tr);
 
-                let bob_y = AbstractHostRingTensor::from_raw_plc(ys.clone(), bob.clone());
+                let bob_y = HostRingTensor::from_raw_plc(ys.clone(), bob.clone());
                 assert_eq!(bob_open.1, bob);
 
                 for (i, value) in bob_y.0.iter().enumerate() {
@@ -3473,12 +3425,12 @@ mod tests {
                     );
                 }
 
-                let carole_x1 = AbstractHostRingTensor::from_raw_plc(xs.clone(), carole.clone());
+                let carole_x1 = HostRingTensor::from_raw_plc(xs.clone(), carole.clone());
                 let carole_rep = rep.share(&sess, &carole_x1);
                 let carole_tr = rep.trunc_pr(&sess, amount, &carole_rep);
                 let carole_open = carole.reveal(&sess, &carole_tr);
 
-                let carole_y = AbstractHostRingTensor::from_raw_plc(ys.clone(), bob.clone());
+                let carole_y = HostRingTensor::from_raw_plc(ys.clone(), bob.clone());
                 assert_eq!(carole_open.1, carole);
 
                 for (i, value) in carole_y.0.iter().enumerate() {
@@ -3583,18 +3535,17 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
 
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
 
-                let result: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
-                    rep.$test_func(&sess, &x_shared);
+                let result: RepTensor<HostRingTensor<$tt>> = rep.$test_func(&sess, &x_shared);
                 let opened_result = alice.reveal(&sess, &result);
                 assert_eq!(
                     opened_result,
-                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
+                    HostRingTensor::from_raw_plc(zs, alice.clone())
                 );
             }
         };
@@ -3687,7 +3638,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+        let x = HostRingTensor::from_raw_plc(xs, alice.clone());
 
         let sess = SyncSession::default();
 
@@ -3695,7 +3646,7 @@ mod tests {
 
         let result: ReplicatedBitArray64 = rep.bit_decompose(&sess, &x_shared);
         let opened_result = alice.reveal(&sess, &result);
-        assert_eq!(opened_result, AbstractHostBitArray::from_raw_plc(zs, alice));
+        assert_eq!(opened_result, HostBitArray::from_raw_plc(zs, alice));
     }
 
     #[rstest]
@@ -3727,7 +3678,7 @@ mod tests {
 
                 let expected = xs.clone();
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
 
                 let sess = SyncSession::default();
 
@@ -3739,10 +3690,7 @@ mod tests {
 
                 let opened_result = alice.reveal(&sess, &composed);
 
-                assert_eq!(
-                    opened_result,
-                    AbstractHostRingTensor::from_raw_plc(expected, alice)
-                );
+                assert_eq!(opened_result, HostRingTensor::from_raw_plc(expected, alice));
             }
         };
     }
@@ -3845,7 +3793,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(xs, bob);
+        let x = HostRingTensor::from_raw_plc(xs, bob);
 
         let sess = SyncSession::default();
 
@@ -3853,7 +3801,7 @@ mod tests {
 
         let result: ReplicatedBitArray64 = rep.bit_decompose(&sess, &x_shared);
         let opened_result = alice.reveal(&sess, &result);
-        assert_eq!(opened_result, AbstractHostBitArray::from_raw_plc(zs, alice));
+        assert_eq!(opened_result, HostBitArray::from_raw_plc(zs, alice));
     }
 
     macro_rules! rep_prefix_op_bit_test {
@@ -3866,7 +3814,7 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(x, alice.clone());
+                let x = HostRingTensor::from_raw_plc(x, alice.clone());
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
@@ -3919,16 +3867,15 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
-                let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
+                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
+                let y = HostRingTensor::from_raw_plc(ys, alice.clone());
 
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
                 let y_shared = rep.share(&sess, &y);
 
-                let sum: AbstractReplicatedRingTensor<HostBitTensor> =
-                    rep.$test_func(&sess, &x_shared, &y_shared);
+                let sum: RepTensor<HostBitTensor> = rep.$test_func(&sess, &x_shared, &y_shared);
                 let opened_product = alice.reveal(&sess, &sum);
                 assert_eq!(
                     opened_product,

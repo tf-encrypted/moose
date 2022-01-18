@@ -1,19 +1,19 @@
+//! Abstraction layer for boolean values
+
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::host::HostBitTensor;
-use crate::host::HostString;
 use crate::kernels::*;
-use crate::replicated::ReplicatedBitTensor;
+use crate::replicated::ReplicatedPlacement;
+use crate::types::*;
 use serde::{Deserialize, Serialize};
 
-/// TODO(Dragos) perhaps we can unify BoolTensor with FixedTensor
+/// Boolean tensor abstracting over host and replicated values
+// TODO(Dragos) perhaps we can unify BoolTensor with FixedTensor
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum BoolTensor<HostT, RepT> {
     Host(HostT),
     Replicated(RepT),
 }
-
-moose_type!(BooleanTensor = BoolTensor<HostBitTensor, ReplicatedBitTensor>);
 
 impl<HostT, RepT> Placed for BoolTensor<HostT, RepT>
 where

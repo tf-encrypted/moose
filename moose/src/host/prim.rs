@@ -15,8 +15,6 @@ pub struct RawSeed(pub [u8; 16]);
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Seed(pub RawSeed, pub HostPlacement);
 
-moose_type!(Seed);
-
 impl Placed for Seed {
     type Placement = HostPlacement;
 
@@ -49,8 +47,6 @@ impl RawPrfKey {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct PrfKey(pub RawPrfKey, pub HostPlacement);
-
-moose_type!(PrfKey);
 
 impl Placed for PrfKey {
     type Placement = HostPlacement;

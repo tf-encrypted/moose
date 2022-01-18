@@ -4,9 +4,9 @@ impl FixedpointDivOp {
     pub(crate) fn rep_rep_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractReplicatedFixedTensor<RepRingT>,
-        y: AbstractReplicatedFixedTensor<RepRingT>,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+        x: RepFixedTensor<RepRingT>,
+        y: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         RepRingT: Ring,
         ReplicatedPlacement: ApproximateReciprocal<S, RepRingT, RepRingT>,
@@ -67,7 +67,7 @@ impl FixedpointDivOp {
         b = rep.mul(sess, &b, &rep.add(sess, &rep_alpha, &a));
         b = rep.trunc_pr(sess, 2 * frac_precision, &b);
 
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: b,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
             fractional_precision: x.fractional_precision,
@@ -100,18 +100,15 @@ pub(crate) trait DivNorm<S: Session, T, O> {
 impl<S: Session, RepRingT, N> DivNorm<S, RepRingT, RepRingT> for ReplicatedPlacement
 where
     RepRingT: Ring<BitLength = N>,
-    AbstractReplicatedBitArray<ReplicatedBitTensor, N>: KnownType<S>,
+    RepBitArray<ReplicatedBitTensor, N>: KnownType<S>,
     ReplicatedBitTensor: KnownType<S>,
 
     ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
     ReplicatedPlacement: SignFromMsb<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: TopMostIndex<S, cs!(ReplicatedBitTensor), RepRingT>,
-    ReplicatedPlacement: PlacementIndex<
-        S,
-        cs!(AbstractReplicatedBitArray<ReplicatedBitTensor, N>),
-        cs!(ReplicatedBitTensor),
-    >,
+    ReplicatedPlacement:
+        PlacementIndex<S, cs!(RepBitArray<ReplicatedBitTensor, N>), cs!(ReplicatedBitTensor)>,
 {
     fn norm(&self, sess: &S, max_bits: usize, x: &RepRingT) -> (RepRingT, RepRingT) {
         let rep = self;
@@ -139,10 +136,9 @@ impl<S: Session, RepRingT, RepBitT, N: Const> TopMost<S, RepRingT, RepBitT> for 
 where
     RepBitT: Clone + CanonicalType,
     RepRingT: Clone + Ring<BitLength = N>,
-    AbstractReplicatedBitArray<c!(RepBitT), N>: KnownType<S>,
-    ReplicatedPlacement:
-        PlacementBitDec<S, RepRingT, m!(AbstractReplicatedBitArray<c!(RepBitT), N>)>,
-    ReplicatedPlacement: PlacementIndex<S, m!(AbstractReplicatedBitArray<c!(RepBitT), N>), RepBitT>,
+    RepBitArray<c!(RepBitT), N>: KnownType<S>,
+    ReplicatedPlacement: PlacementBitDec<S, RepRingT, m!(RepBitArray<c!(RepBitT), N>)>,
+    ReplicatedPlacement: PlacementIndex<S, m!(RepBitArray<c!(RepBitT), N>), RepBitT>,
     ReplicatedPlacement: PlacementAnd<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementSub<S, RepBitT, RepBitT, RepBitT>,
@@ -245,7 +241,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::host::AbstractHostRingTensor;
     use crate::kernels::SyncSession;
     use ndarray::array;
 
@@ -258,7 +253,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
+        let x = HostRing64Tensor::from_raw_plc(array![896u64], alice.clone());
 
         let sess = SyncSession::default();
 
@@ -266,8 +261,8 @@ mod tests {
 
         let (upshifted, topmost) = rep.norm(&sess, 12, &x_shared);
 
-        let topmost_target = AbstractHostRingTensor::from_raw_plc(array![4u64], alice.clone());
-        let upshifted_target = AbstractHostRingTensor::from_raw_plc(array![3584], alice.clone());
+        let topmost_target = HostRing64Tensor::from_raw_plc(array![4u64], alice.clone());
+        let upshifted_target = HostRing64Tensor::from_raw_plc(array![3584], alice.clone());
 
         assert_eq!(topmost_target, alice.reveal(&sess, &topmost));
         assert_eq!(upshifted_target, alice.reveal(&sess, &upshifted));
@@ -282,9 +277,8 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractHostRingTensor::from_raw_plc(array![3884509700957842751u64], alice.clone());
-        let y =
-            AbstractHostRingTensor::from_raw_plc(array![13611438098135434720u64], alice.clone());
+        let x = HostRing64Tensor::from_raw_plc(array![3884509700957842751u64], alice.clone());
+        let y = HostRing64Tensor::from_raw_plc(array![13611438098135434720u64], alice.clone());
         let expected_output = x.clone() + y.clone();
 
         let sess = SyncSession::default();
@@ -311,7 +305,7 @@ mod tests {
         };
 
         // 3.5 * 2^8
-        let x = AbstractHostRingTensor::from_raw_plc(array![896u64], alice.clone());
+        let x = HostRing64Tensor::from_raw_plc(array![896u64], alice.clone());
 
         let sess = SyncSession::default();
 

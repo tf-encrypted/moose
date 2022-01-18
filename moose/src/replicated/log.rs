@@ -1,6 +1,6 @@
-use crate::computation::{KnownType, Placed, RepEqualOp, ReplicatedPlacement};
+use super::*;
+use crate::computation::RepEqualOp;
 use crate::error::Result;
-use crate::kernels::*;
 use crate::replicated::{ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor};
 use crate::{Const, Ring};
 
@@ -50,10 +50,10 @@ impl RepEqualOp {
 
 #[cfg(test)]
 mod tests {
-    use crate::computation::{HostPlacement, ReplicatedPlacement};
-    use crate::host::{AbstractHostRingTensor, HostBitTensor};
+    use crate::computation::HostPlacement;
+    use crate::host::{HostBitTensor, HostRingTensor};
     use crate::kernels::*;
-    use crate::replicated::ReplicatedBitTensor;
+    use crate::replicated::{ReplicatedBitTensor, ReplicatedPlacement};
     use ndarray::{array, IxDyn};
 
     #[test]
@@ -72,14 +72,14 @@ mod tests {
 
         let sess = SyncSession::default();
 
-        let x = AbstractHostRingTensor::from_raw_plc(
+        let x = HostRingTensor::from_raw_plc(
             array![1024u64, 5, 4]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
             alice.clone(),
         );
 
-        let y = AbstractHostRingTensor::from_raw_plc(
+        let y = HostRingTensor::from_raw_plc(
             array![1024u64, 4, 5]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),

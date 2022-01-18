@@ -1,8 +1,9 @@
 use super::*;
-use crate::computation::{HostPlacement, InputOp, ReplicatedPlacement, Signature, Ty};
+use crate::computation::{HostPlacement, InputOp, Signature, Ty};
 use crate::error::{Error, Result};
 use crate::kernels::{PlacementInput, Session};
 use crate::replicated::aes::AbstractReplicatedAesKey;
+use crate::{N128, N224, N64};
 use std::marker::PhantomData;
 
 impl InputOp {
@@ -10,7 +11,7 @@ impl InputOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         arg_name: String,
-    ) -> Result<AbstractReplicatedRingTensor<HostTensorT>>
+    ) -> Result<RepTensor<HostTensorT>>
     where
         HostPlacement: PlacementInput<S, HostTensorT>,
     {
@@ -27,7 +28,7 @@ impl InputOp {
         let in21 = p1.input(sess, lift_name(1, 2));
         let in22 = p2.input(sess, lift_name(2, 2));
         let in02 = p2.input(sess, lift_name(2, 0));
-        Ok(AbstractReplicatedRingTensor {
+        Ok(RepTensor {
             shares: [[in00, in10], [in11, in21], [in22, in02]],
         })
     }
@@ -36,39 +37,39 @@ impl InputOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         arg_name: String,
-    ) -> Result<AbstractReplicatedBitArray<RepBitTensorT, N64>>
+    ) -> Result<RepBitArray<RepBitTensorT, N64>>
     where
         ReplicatedPlacement: PlacementInput<S, RepBitTensorT>,
     {
         // TODO(Morten) ideally we should verify that shape of bit tensor
         let bit_tensor = plc.input(sess, arg_name);
-        Ok(AbstractReplicatedBitArray(bit_tensor, PhantomData))
+        Ok(RepBitArray(bit_tensor, PhantomData))
     }
 
     pub(crate) fn replicated_bitarray128<S: Session, RepBitTensorT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         arg_name: String,
-    ) -> Result<AbstractReplicatedBitArray<RepBitTensorT, N128>>
+    ) -> Result<RepBitArray<RepBitTensorT, N128>>
     where
         ReplicatedPlacement: PlacementInput<S, RepBitTensorT>,
     {
         // TODO(Morten) ideally we should verify that shape of bit tensor
         let bit_tensor = plc.input(sess, arg_name);
-        Ok(AbstractReplicatedBitArray(bit_tensor, PhantomData))
+        Ok(RepBitArray(bit_tensor, PhantomData))
     }
 
     pub(crate) fn replicated_bitarray224<S: Session, RepBitTensorT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         arg_name: String,
-    ) -> Result<AbstractReplicatedBitArray<RepBitTensorT, N224>>
+    ) -> Result<RepBitArray<RepBitTensorT, N224>>
     where
         ReplicatedPlacement: PlacementInput<S, RepBitTensorT>,
     {
         // TODO(Morten) ideally we should verify that shape of bit tensor
         let bit_tensor = plc.input(sess, arg_name);
-        Ok(AbstractReplicatedBitArray(bit_tensor, PhantomData))
+        Ok(RepBitArray(bit_tensor, PhantomData))
     }
 
     pub(crate) fn replicated_fixed_kernel<S: Session, RepRingT>(
@@ -76,7 +77,7 @@ impl InputOp {
         plc: &ReplicatedPlacement,
         sig: Signature,
         arg_name: String,
-    ) -> Result<AbstractReplicatedFixedTensor<RepRingT>>
+    ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementInput<S, RepRingT>,
     {
@@ -93,7 +94,7 @@ impl InputOp {
             }),
         }?;
 
-        Ok(AbstractReplicatedFixedTensor {
+        Ok(RepFixedTensor {
             tensor: ring_tensor,
             integral_precision,
             fractional_precision,
@@ -115,15 +116,16 @@ impl InputOp {
 
 #[cfg(test)]
 mod tests {
-    use std::rc::Rc;
-
     use super::*;
     use crate::computation::SessionId;
-    use crate::host::{FromRawPlc, HostFloat32Tensor, HostRing64Tensor};
+    use crate::host::FromRawPlc;
     use crate::kernels::{PlacementFixedpointEncode, PlacementReveal, PlacementShare, SyncSession};
-    use crate::replicated::{ReplicatedFixed64Tensor, ReplicatedRing64Tensor};
     use crate::storage::LocalSyncStorage;
+    use crate::types::{
+        HostFloat32Tensor, HostRing64Tensor, ReplicatedFixed64Tensor, ReplicatedRing64Tensor,
+    };
     use ndarray::{array, IxDyn};
+    use std::rc::Rc;
 
     #[test]
     fn test_input_rep_ring() {
