@@ -1,3 +1,5 @@
+//! Networking traits and helpers
+
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::Identity;
@@ -5,6 +7,10 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+/// Requirements for synchronous networking
+///
+/// An implementation of this trait must be provided when using Moose
+/// for synchronous (blocking) execution.
 pub trait SyncNetworking {
     fn send(
         &self,
@@ -21,6 +27,10 @@ pub trait SyncNetworking {
     ) -> Result<Value>;
 }
 
+/// Requirements for asynchronous networking
+///
+/// An implementation of this trait must be provided when using Moose
+/// for asynchronous (blocking) execution.
 #[async_trait]
 pub trait AsyncNetworking {
     async fn send(
@@ -38,6 +48,10 @@ pub trait AsyncNetworking {
     ) -> Result<Value>;
 }
 
+/// A simple implementation of synchronous networking for local execution
+///
+/// This implementation is intended for local development/testing purposes
+/// only. It simply stores all values in a hashmap without any actual networking.
 #[derive(Default)]
 pub struct LocalSyncNetworking {
     store: std::sync::RwLock<HashMap<String, Value>>,
@@ -82,6 +96,10 @@ impl SyncNetworking for LocalSyncNetworking {
     }
 }
 
+/// A simple implementation of asynchronous networking for local execution
+///
+/// This implementation is intended for local development/testing purposes
+/// only. It simply stores all values in a hashmap without any actual networking.
 #[derive(Default)]
 pub struct LocalAsyncNetworking {
     store: dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>,
@@ -131,6 +149,9 @@ impl AsyncNetworking for LocalAsyncNetworking {
     }
 }
 
+/// A naive implementation of both synchronous and asynchronous networking.
+///
+/// This implementation is intended for benchmarking only.
 pub struct DummyNetworking(pub Value);
 
 impl SyncNetworking for DummyNetworking {
