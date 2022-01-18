@@ -1,10 +1,10 @@
+use crate::additive::*;
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::for_all_values;
 use crate::host::*;
 use crate::mirrored::*;
 use crate::replicated::*;
-use crate::additive::*;
 use crate::types::*;
 
 mod io;
@@ -1056,7 +1056,6 @@ modelled_kernel! {
     ]
 }
 
-
 modelled_kernel! {
     PlacementAdd::add, AdtAddOp,
     [
@@ -1110,7 +1109,6 @@ modelled_kernel! {
         (HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::kernel),
     ]
 }
-
 
 modelled_kernel! {
     PlacementMul::mul, AdtMulOp,
