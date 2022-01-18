@@ -1,3 +1,4 @@
+use super::{DispatchKernel, PlacementSetupGen};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{Identity, SyncNetworkingImpl, SyncStorageImpl};
@@ -9,7 +10,6 @@ use crate::types::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
-use super::{DispatchKernel, PlacementSetupGen};
 
 /// General session trait determining basic properties for session objects.
 pub trait Session {
