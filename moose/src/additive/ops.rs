@@ -289,6 +289,7 @@ impl AdtShlOp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::*;
     use crate::{
         computation::{KnownType, Operation, Operator, Placement, RingAddOp},
         symbolic::{Symbolic, SymbolicHandle, SymbolicSession},
