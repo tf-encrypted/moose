@@ -1986,7 +1986,7 @@ mod tests {
             r#"z = Input{arg_name = "prompt"}: () -> Float32Tensor () @Host(alice)"#,
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostExpandDims {axis = [0]}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = ExpandDims {axis = [0]}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = HostAtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
