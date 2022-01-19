@@ -238,7 +238,6 @@ impl Session for SyncSession {
             HostMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostDiv(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sign(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -249,7 +248,6 @@ impl Session for SyncSession {
             FloatingpointAtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointTranspose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointInverse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -693,7 +691,6 @@ impl Session for AsyncSession {
             HostMul(op) => DispatchKernel::compile(&op, plc)?,
             HostDiv(op) => DispatchKernel::compile(&op, plc)?,
             HostDot(op) => DispatchKernel::compile(&op, plc)?,
-            HostExpandDims(op) => DispatchKernel::compile(&op, plc)?,
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?,
             Sign(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?,
@@ -704,7 +701,6 @@ impl Session for AsyncSession {
             FloatingpointAtLeast2D(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?,
-            FloatingpointExpandDims(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointTranspose(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointInverse(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?,
@@ -2036,6 +2032,39 @@ kernel! {
         (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::logical_host_kernel),
         (HostPlacement, (BooleanTensor, BooleanTensor) -> BooleanTensor => [concrete] Self::bool_kernel),
         (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => [runtime] Self::host_kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementExpandDims::expand_dims, ExpandDimsOp{axis: Vec<u32>},
+    [
+
+        (HostPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::bool_host_kernel),
+        (HostPlacement, (Tensor) -> Tensor => [concrete] Self::logical_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_host_kernel),
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::host_bit_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [concrete] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::hostfixed_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::host_int_float_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::host_int_float_kernel),
+        (HostPlacement, (HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::host_int_float_kernel),
+        (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::host_int_float_kernel),
+        (HostPlacement, (HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::host_int_float_kernel),
+        (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::host_int_float_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_ring_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_ring_kernel),
+        (ReplicatedPlacement, (BooleanTensor) -> BooleanTensor => [concrete]  Self::bool_rep_kernel),
+        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] Self::logical_rep_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete]  Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete]  Self::rep_kernel),
     ]
 }
 

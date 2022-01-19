@@ -374,16 +374,8 @@ impl IndexAxisOp {
     }
 }
 
-modelled_kernel! {
-    PlacementExpandDims::expand_dims, FloatingpointExpandDimsOp{axis: Vec<u32>},
-    [
-        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
-    ]
-}
-
-impl FloatingpointExpandDimsOp {
-    fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
+impl ExpandDimsOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         axis: Vec<u32>,
