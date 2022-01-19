@@ -184,11 +184,13 @@ class TreeEnsembleClassifier(TreeEnsemble):
             ]
             # update n_trees inferred by onnx helper fn above
             n_trees = len(set(final_class_treeids))
-            distinct_treeids = len(sorted(list(set(nodes_treeids))))
-            sublist_length = len(nodes_treeids) // distinct_treeids
+            # rely on nodes_treeids being sorted to preserve sublist order.
+            # the order matters to map back into the format expected when there are
+            # separate forests for each class
+            assert nodes_treeids == sorted(nodes_treeids)
             sublists = [
-                nodes_treeids[i : i + sublist_length]
-                for i in range(0, len(nodes_treeids), sublist_length)
+                list(filter(lambda x: x == i, nodes_treeids))
+                for i in sorted(set(nodes_treeids))
             ]
             repeated_sublists = [
                 [n_classes * i + j for _ in x]
@@ -354,7 +356,8 @@ class TreeEnsembleRegressor(TreeEnsemble):
         # ugly way of ensuring it's replicated;
         # normally it would be replicated just by using it in add_n @ replicated,
         # but here it's input to an op w/ variadic signature, which does not do
-        # the work of converting from host to replicated for all of its inputs
+        # the work of converting from host to replicated for all of its inputs.
+        # we could also have used `add(base_score, add_n(tree_scores))` to avoid this
         base_score = edsl.identity(base_score)
         return edsl.add_n([base_score] + tree_scores)
 

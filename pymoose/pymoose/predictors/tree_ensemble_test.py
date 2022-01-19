@@ -32,12 +32,26 @@ _XGB_CLASSIFIER_MODELS = [
         # TODO see TreeEnsembleClassifier._double_sigmoid in tree_ensemble module
         # [[0.64118324, 0.35881676], [0.8644176, 0.1355824], [0.64118326, 0.35881677]],
     ),
+    (
+        "xgboost_classifier_2class_5trees",
+        [0.17284839, 0.03632155, 0.06678587],
+        # TODO see TreeEnsembleClassifier._double_sigmoid in tree_ensemble module
+        # [[0.8271516, 0.17284839], [0.9636785, 0.03632155], [0.9332141, 0.06678587]]
+    ),
     # (
     #     "xgboost_classifier_3class",
     #     [
     #         [0.04490882, 0.91165735, 0.04343383],
     #         [0.04490882, 0.91165735, 0.04343383],
     #         [0.2080709, 0.1956092, 0.59631991],
+    #     ],
+    # ),
+    # (
+    #     "xgboost_classifier_3class_5trees",
+    #     [
+    #         [0.0064704, 0.988167, 0.00536254],
+    #         [0.00647771, 0.98928285, 0.00423949],
+    #         [0.09881791, 0.40364704, 0.49753505],
     #     ],
     # ),
 ]
@@ -59,7 +73,7 @@ _SK_CLASSIFIER_MODELS = [
     #         [0.19040698, 0.75145349, 0.05813953],
     #         [0.29457364, 0.31395349, 0.39147287],
     #     ],
-    # )
+    # ),
     (
         "gradient_boosting_classifier_2class",
         [0.45258452, 0.45258452, 0.45258452],
@@ -102,6 +116,16 @@ _SK_CLASSIFIER_MODELS = [
         # TODO
         # [[0.3, 0.7], [0.7047619, 0.2952381], [0.5, 0.5]],
     ),
+    (
+        "random_forest_classifier_2class_5trees",
+        [0.49142857, 0.27142857, 0.35333333],
+        # TODO
+        # [
+        #     [0.50857143, 0.49142857],
+        #     [0.72857143, 0.27142857],
+        #     [0.64666667, 0.35333333],
+        # ],
+    ),
     # (
     #     "random_forest_classifier_3class",
     #     [
@@ -109,7 +133,15 @@ _SK_CLASSIFIER_MODELS = [
     #         [0.03571429, 0.9642857, 0.],
     #         [0.5, 0.5, 0.],
     #     ]
-    # )
+    # ),
+    # (
+    #     "random_forest_classifier_3class_5trees",
+    #     [
+    #         [0.01428571, 0.98571429, 0.0],
+    #         [0.01428571, 0.98571429, 0.0],
+    #         [0.33333333, 0.6, 0.06666667],
+    #     ],
+    # ),
 ]
 _REGRESSOR_MODELS = _SK_REGRESSOR_MODELS + _XGB_REGRESSOR_MODELS
 _CLASSIFIER_MODELS = _SK_CLASSIFIER_MODELS + _XGB_CLASSIFIER_MODELS
