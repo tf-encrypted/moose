@@ -482,7 +482,7 @@ impl AsyncExecutor {
         computation: &Computation,
         role_assignment: &RoleAssignment,
         own_identity: &Identity,
-        session: &crate::kernels::AsyncSession,
+        session: &AsyncSession,
     ) -> Result<HashMap<String, AsyncReceiver>> {
         if !self.session_ids.insert(session.session_id.clone()) {
             return Err(Error::SessionAlreadyExists(format!(
@@ -594,7 +594,7 @@ impl AsyncTestRuntime {
         role_assignments: HashMap<Role, Identity>,
         arguments: HashMap<String, Value>,
     ) -> Result<HashMap<String, Value>> {
-        let mut session_handles: Vec<crate::kernels::AsyncSessionHandle> = Vec::new();
+        let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
         let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
@@ -613,7 +613,7 @@ impl AsyncTestRuntime {
         }
 
         for (own_identity, executor) in self.executors.iter_mut() {
-            let moose_session = crate::kernels::AsyncSession::new(
+            let moose_session = AsyncSession::new(
                 SessionId::try_from("foobar").unwrap(),
                 arguments.clone(),
                 valid_role_assignments.clone(),
@@ -636,9 +636,7 @@ impl AsyncTestRuntime {
                 output_futures.insert(output_name, output_future);
             }
 
-            session_handles.push(crate::kernels::AsyncSessionHandle::for_session(
-                &moose_session,
-            ))
+            session_handles.push(AsyncSessionHandle::for_session(&moose_session))
         }
 
         for handle in session_handles {
