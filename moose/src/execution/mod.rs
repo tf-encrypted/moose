@@ -4,7 +4,7 @@ use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking, SyncNetworking};
 use crate::storage::{AsyncStorage, LocalAsyncStorage, SyncStorage};
-
+use crate::replicated::ReplicatedPlacement;
 use derive_more::Display;
 use futures::future::{Map, Shared};
 use petgraph::algo::toposort;
@@ -12,7 +12,6 @@ use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
-use std::rc::Rc;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
@@ -21,6 +20,35 @@ mod asynchronous;
 mod synchronous;
 pub use asynchronous::*;
 pub use synchronous::*;
+
+
+/// General session trait determining basic properties for session objects.
+pub trait Session {
+    type Value;
+    fn execute(
+        &self,
+        op: Operator,
+        plc: &Placement,
+        operands: Vec<Self::Value>,
+    ) -> Result<Self::Value>;
+
+    type ReplicatedSetup;
+    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup>;
+}
+
+/// Trait for sessions that are intended for run-time use only.
+///
+/// This trait is used to make a distinct between functionality that may
+/// only be executed during run-time as opposed to at compile-time, such
+/// as for instance key generation. Moreover, it also offers access to
+/// information that is only known at run-time, such as the concrete
+/// session id under which execution is happening.
+pub trait RuntimeSession: Session {
+    fn session_id(&self) -> &SessionId;
+    fn find_argument(&self, key: &str) -> Option<Value>;
+    fn find_role_assignment(&self, role: &Role) -> Result<&Identity>;
+}
+
 
 pub enum Kernel {
     NullaryClosure(Arc<dyn Fn() -> Result<Value> + Send + Sync>),
