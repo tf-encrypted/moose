@@ -303,7 +303,7 @@ impl MooseComputation {
 
 #[pymodule]
 fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    #[pyfn(m, computation, "*", passes="None")]
+    #[pyfn(m, computation, passes = "None")]
     #[pyo3(name = "compile_computation")]
     pub fn compile_computation(
         _py: Python,
@@ -312,7 +312,13 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> PyResult<MooseComputation> {
         let computation = create_computation_graph_from_py_bytes(computation);
         let passes: Vec<String> = match passes {
-            None => vec!["typing".into(), "full".into(), "prune".into(), "networking".into(), "toposort".into()],
+            None => vec![
+                "typing".into(),
+                "full".into(),
+                "prune".into(),
+                "networking".into(),
+                "toposort".into(),
+            ],
             Some(passvec) => passvec,
         };
         let passes = into_pass(&passes).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;

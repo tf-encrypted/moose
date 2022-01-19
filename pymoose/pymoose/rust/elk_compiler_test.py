@@ -1,13 +1,13 @@
 import argparse
 import logging
 
+import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
-import numpy as np
 
+from pymoose import LocalRuntime
 from pymoose import edsl
 from pymoose import elk_compiler
-from pymoose import LocalRuntime
 from pymoose.computation import utils
 from pymoose.logger import get_logger
 
@@ -23,6 +23,7 @@ _DEFAULT_PASSES = [
     "networking",
     "toposort",
 ]
+
 
 @edsl.computation
 def _reference_computation():
@@ -59,8 +60,12 @@ class CompileComputation(parameterized.TestCase):
     def test_default_passes_arg(self):
         comp0 = self._trace_and_compile(passes=None)
         comp1 = self._trace_and_compile(passes=_DEFAULT_PASSES)
-        res0 = self._build_new_runtime().evaluate_compiled(comp0, self.role_assignment, {})
-        res1 = self._build_new_runtime().evaluate_compiled(comp1, self.role_assignment, {})
+        res0 = self._build_new_runtime().evaluate_compiled(
+            comp0, self.role_assignment, {}
+        )
+        res1 = self._build_new_runtime().evaluate_compiled(
+            comp1, self.role_assignment, {}
+        )
         np.testing.assert_equal(res0, res1)
 
     def _build_new_runtime(self):
@@ -71,6 +76,7 @@ class CompileComputation(parameterized.TestCase):
         pyserialized = utils.serialize_computation(traced)
         rustref = elk_compiler.compile_computation(pyserialized, passes=passes)
         return rustref
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="elk compiler tests")
