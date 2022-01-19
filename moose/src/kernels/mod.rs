@@ -15,9 +15,11 @@ mod control_flow;
 mod conversion;
 mod indexing;
 mod io;
-mod misc;
 mod sampling;
 mod shapes;
+pub use crate::execution::{
+    AsyncSession, AsyncSessionHandle, RuntimeSession, Session, SyncSession, TestSyncExecutor,
+};
 pub use arithmetic::*;
 pub use boolean::*;
 pub use comparison::*;
@@ -26,7 +28,6 @@ pub use control_flow::*;
 pub use conversion::*;
 pub use indexing::*;
 pub use io::*;
-pub use misc::*;
 pub use sampling::*;
 pub use shapes::*;
 

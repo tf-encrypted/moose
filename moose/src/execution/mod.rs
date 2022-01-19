@@ -3,8 +3,8 @@
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking, SyncNetworking};
-use crate::storage::{AsyncStorage, LocalAsyncStorage, SyncStorage};
 use crate::replicated::ReplicatedPlacement;
+use crate::storage::{AsyncStorage, LocalAsyncStorage, SyncStorage};
 use derive_more::Display;
 use futures::future::{Map, Shared};
 use petgraph::algo::toposort;
@@ -20,7 +20,6 @@ mod asynchronous;
 mod synchronous;
 pub use asynchronous::*;
 pub use synchronous::*;
-
 
 /// General session trait determining basic properties for session objects.
 pub trait Session {
@@ -48,7 +47,6 @@ pub trait RuntimeSession: Session {
     fn find_argument(&self, key: &str) -> Option<Value>;
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity>;
 }
-
 
 pub enum Kernel {
     NullaryClosure(Arc<dyn Fn() -> Result<Value> + Send + Sync>),

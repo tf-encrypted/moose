@@ -1,8 +1,8 @@
 use super::*;
-use crate::kernels::{DispatchKernel, PlacementSetupGen};
 use crate::error::{Error, Result};
-use crate::execution::{Identity};
+use crate::execution::Identity;
 use crate::host::*;
+use crate::kernels::{DispatchKernel, PlacementSetupGen};
 use crate::networking::LocalSyncNetworking;
 use crate::replicated::*;
 use crate::storage::LocalSyncStorage;
@@ -309,5 +309,53 @@ impl RuntimeSession for SyncSession {
         self.role_assignments
             .get(role)
             .ok_or_else(|| Error::Networking(format!("Missing role assignemnt for {}", role)))
+    }
+}
+
+#[derive(Default)]
+pub struct TestSyncExecutor {
+    // Placeholder for the future state we want to keep
+}
+
+impl TestSyncExecutor {
+    pub fn run_computation(
+        &self,
+        computation: &Computation,
+        session: &SyncSession,
+    ) -> anyhow::Result<HashMap<String, Value>> {
+        let mut env: HashMap<String, Value> = HashMap::default();
+
+        let output_names: Vec<String> = computation
+            .operations
+            .iter() // guessing that par_iter won't help here
+            .filter_map(|op| match op.kind {
+                Operator::Output(_) => Some(op.name.clone()),
+                _ => None,
+            })
+            .collect();
+
+        for op in computation.operations.iter() {
+            let operator = op.kind.clone();
+            let operands = op
+                .inputs
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
+            let value = session
+                .execute(operator, &op.placement, operands)
+                .map_err(|e| {
+                    Error::Compilation(format!(
+                        "SyncSession failed to execute computation due to an error: {:?}",
+                        e,
+                    ))
+                })?;
+            env.insert(op.name.clone(), value);
+        }
+
+        let outputs: HashMap<String, Value> = output_names
+            .iter()
+            .map(|op_name| (op_name.clone(), env.get(op_name).cloned().unwrap()))
+            .collect();
+        Ok(outputs)
     }
 }
