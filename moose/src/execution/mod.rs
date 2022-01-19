@@ -192,6 +192,13 @@ impl AsyncExecutor {
             )));
         }
 
+        // Record the computation details in the main span.
+        let _ = tracing::info_span!(
+            "AsyncExecutor_run_computation",
+            op_count = computation.operations.len()
+        )
+        .entered();
+
         // using a Vec instead of eg HashSet here since we can expect it to be very small
         let own_roles: Vec<&Role> = role_assignment
             .iter()
