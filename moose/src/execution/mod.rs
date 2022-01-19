@@ -1,15 +1,12 @@
 #![allow(unused_macros)]
 
 use crate::computation::*;
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking, SyncNetworking};
 use crate::replicated::ReplicatedPlacement;
 use crate::storage::{AsyncStorage, LocalAsyncStorage, SyncStorage};
 use derive_more::Display;
 use futures::future::{Map, Shared};
-use petgraph::algo::toposort;
-use petgraph::graph::NodeIndex;
-use petgraph::Graph;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::sync::Arc;
@@ -60,86 +57,6 @@ pub enum Kernel {
     BinaryFunction(fn(Value, Value) -> Result<Value>),
     TernaryFunction(fn(Value, Value, Value) -> Result<Value>),
     VariadicFunction(fn(Vec<Value>) -> Result<Value>),
-}
-
-impl Computation {
-    pub fn as_graph(&self) -> Graph<(String, usize), ()> {
-        let mut graph = Graph::new();
-
-        let mut vertex_map: HashMap<&str, NodeIndex> = HashMap::new();
-
-        let mut send_nodes: HashMap<&RendezvousKey, NodeIndex> = HashMap::new();
-        let mut recv_nodes: HashMap<&RendezvousKey, NodeIndex> = HashMap::new();
-
-        let mut rdv_keys: HashSet<&RendezvousKey> = HashSet::new();
-
-        for (i, op) in self.operations.iter().enumerate() {
-            let vertex = graph.add_node((op.name.clone(), i));
-            match op.kind {
-                Operator::Send(ref op) => {
-                    let key = &op.rendezvous_key;
-
-                    if send_nodes.contains_key(key) {
-                        Error::MalformedComputation(format!(
-                            "Already had a send node with same rdv key at key {}",
-                            key
-                        ));
-                    }
-
-                    send_nodes.insert(key, vertex);
-                    rdv_keys.insert(key);
-                }
-                Operator::Receive(ref op) => {
-                    let key = &op.rendezvous_key;
-
-                    if recv_nodes.contains_key(key) {
-                        Error::MalformedComputation(format!(
-                            "Already had a recv node with same rdv key at key {}",
-                            key
-                        ));
-                    }
-
-                    recv_nodes.insert(key, vertex);
-                    rdv_keys.insert(key);
-                }
-                _ => {}
-            }
-            vertex_map.insert(&op.name, vertex);
-        }
-
-        for op in self.operations.iter() {
-            for ins in op.inputs.iter() {
-                graph.add_edge(vertex_map[&ins.as_ref()], vertex_map[&op.name.as_ref()], ());
-            }
-        }
-
-        for key in rdv_keys.into_iter() {
-            if !send_nodes.contains_key(key) {
-                Error::MalformedComputation(format!("No send node with rdv key {}", key));
-            }
-            if !recv_nodes.contains_key(key) {
-                Error::MalformedComputation(format!("No recv node with rdv key {}", key));
-            }
-            // add edge send->recv (send must be evaluated before recv)
-            graph.add_edge(send_nodes[key], recv_nodes[key], ());
-        }
-
-        graph
-    }
-
-    pub fn toposort(&self) -> Result<Computation> {
-        let graph = self.as_graph();
-        let toposort = toposort(&graph, None).map_err(|_| {
-            Error::MalformedComputation("There is a cycle detected in the runtime graph".into())
-        })?;
-
-        let operations = toposort
-            .iter()
-            .map(|node| self.operations[graph[*node].1].clone())
-            .collect();
-
-        Ok(Computation { operations })
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Display)]
