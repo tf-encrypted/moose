@@ -19,8 +19,7 @@ mod sampling;
 mod shapes;
 // TODO update imports elsewhere so this can be removed
 pub use crate::execution::{
-    AsyncSession, AsyncSessionHandle, RuntimeSession, Session, SyncSession, TestSyncExecutor,
-};
+    AsyncSession, AsyncSessionHandle, RuntimeSession, Session, SyncSession};
 pub use arithmetic::*;
 pub use boolean::*;
 pub use comparison::*;
