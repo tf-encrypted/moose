@@ -289,6 +289,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         DemirrorOp::from_textual,
         MirrorOp::from_textual,
         MaximumOp::from_textual,
+        SoftmaxOp::from_textual,
     ));
     alt((part1, part2, part3, part4))(input)
 }
@@ -1153,6 +1154,7 @@ impl ToTextual for Operator {
             Demirror(op) => op.to_textual(),
             Mirror(op) => op.to_textual(),
             Maximum(op) => op.to_textual(),
+            Softmax(op) => op.to_textual(),
         }
     }
 }
@@ -1297,6 +1299,28 @@ impl ToTextual for RingSampleSeededOp {
                 sig,
                 max_value: None,
             } => format!("RingSampleSeeded{{}}: {}", sig.to_textual()),
+        }
+    }
+}
+
+impl ToTextual for SoftmaxOp {
+    fn to_textual(&self) -> String {
+        match self {
+            SoftmaxOp {
+                sig,
+                axis: Some(a),
+                upmost_index,
+            } => format!(
+                "Softmax{{max_value = {}}}: {} {}",
+                a,
+                sig.to_textual(),
+                upmost_index
+            ),
+            SoftmaxOp {
+                sig,
+                axis: None,
+                upmost_index,
+            } => format!("Softmax{{}}: {} {}", sig.to_textual(), upmost_index),
         }
     }
 }

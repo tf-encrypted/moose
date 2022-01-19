@@ -306,6 +306,7 @@ impl Session for SyncSession {
             Less(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Maximum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Softmax(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Demirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Mirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };
@@ -739,6 +740,7 @@ impl Session for AsyncSession {
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
             IndexAxis(op) => DispatchKernel::compile(&op, plc)?,
             Maximum(op) => DispatchKernel::compile(&op, plc)?,
+            Softmax(op) => DispatchKernel::compile(&op, plc)?,
             Demirror(op) => DispatchKernel::compile(&op, plc)?,
             Mirror(op) => DispatchKernel::compile(&op, plc)?,
             _ => todo!(),
@@ -1003,6 +1005,10 @@ pub trait PlacementMirror<S: Session, T, O> {
 
 pub trait PlacementMaximum<S: Session, TS, O> {
     fn maximum(&self, sess: &S, x: &[TS]) -> O;
+}
+
+pub trait PlacementSoftmax<S: Session, T, O> {
+    fn softmax(&self, sess: &S, axis: Option<u32>, upmost_index: usize, x: &T) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -2200,6 +2206,17 @@ modelled_kernel! {
         (HostPlacement, (HostBitTensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementSoftmax::softmax, SoftmaxOp{axis: Option<u32>, upmost_index: usize},
+    [
+        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] Self::logical_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_fixed_kernel),
     ]
 }
 

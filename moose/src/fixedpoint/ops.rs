@@ -1902,6 +1902,30 @@ impl MaximumOp {
     }
 }
 
+impl SoftmaxOp {
+    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Option<u32>,
+        upmost_index: usize,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementSoftmax<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+
+        let z = plc.softmax(sess, axis, upmost_index, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

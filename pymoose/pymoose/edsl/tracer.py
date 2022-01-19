@@ -37,6 +37,7 @@ from pymoose.computation.standard import SaveOperation
 from pymoose.computation.standard import ShapeOperation
 from pymoose.computation.standard import SigmoidOperation
 from pymoose.computation.standard import SliceOperation
+from pymoose.computation.standard import SoftmaxOperation
 from pymoose.computation.standard import SqueezeOperation
 from pymoose.computation.standard import SubOperation
 from pymoose.computation.standard import SumOperation
@@ -71,9 +72,11 @@ from pymoose.edsl.base import SaveExpression
 from pymoose.edsl.base import ShapeExpression
 from pymoose.edsl.base import SigmoidExpression
 from pymoose.edsl.base import SliceExpression
+from pymoose.edsl.base import SoftmaxExpression
 from pymoose.edsl.base import SqueezeExpression
 from pymoose.edsl.base import SumExpression
 from pymoose.edsl.base import TransposeExpression
+from pymoose.edsl.base import softmax
 from pymoose.rust import elk_compiler
 
 
@@ -451,6 +454,25 @@ class AstTracer:
             SigmoidOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("sigmoid"),
+                inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=exp_expression.vtype,
+                ),
+            )
+        )
+
+    def visit_SoftmaxExpression(self, exp_expression):
+        assert isinstance(exp_expression, SoftmaxExpression)
+        (x_expression,) = exp_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(exp_expression.placement)
+        return self.computation.add_operation(
+            SoftmaxOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("sigmoid"),
+                axis=exp_expression.axis,
+                upmost_index=exp_expression.upmost_index,
                 inputs={"x": x_operation.name},
                 signature=OpSignature(
                     input_types={"x": x_operation.return_type},

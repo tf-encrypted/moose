@@ -1100,6 +1100,7 @@ operators![
     RepEqual,
     Mux,
     Maximum,
+    Softmax,
     // Mirrored Operators
     Demirror,
     Mirror,
@@ -1875,6 +1876,13 @@ pub struct MirrorOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct MaximumOp {
     pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
+pub struct SoftmaxOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+    pub upmost_index: usize,
 }
 
 pub trait KnownPlacement {
