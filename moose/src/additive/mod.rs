@@ -1,7 +1,7 @@
 //! Placement backed by two-party additive secret sharing
 use crate::computation::{HostPlacement, Placed, Role};
 use crate::error::Result;
-use crate::kernels::{PlacementAdd, PlacementPlace, PlacementShl, Session};
+use crate::kernels::{PlacementPlace, Session};
 use serde::{Deserialize, Serialize};
 
 mod convert;

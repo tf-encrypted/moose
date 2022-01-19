@@ -1,5 +1,9 @@
 use super::*;
 
+pub trait PlacementSend<S: Session, T, O> {
+    fn send(&self, sess: &S, rendezvous_key: RendezvousKey, receiver: Role, x: &T) -> O;
+}
+
 for_all_values! {( $($value:ty),* ) => (
     $(
         modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: RendezvousKey, receiver: Role] ($value) -> Unit, SendOp);
@@ -29,6 +33,10 @@ kernel! {
         (HostPlacement, (HostFixed64Tensor) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
         (HostPlacement, (HostFixed128Tensor) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
     ]
+}
+
+pub trait PlacementReceive<S: Session, O> {
+    fn receive(&self, sess: &S, rendezvous_key: RendezvousKey, sender: Role) -> O;
 }
 
 for_all_values! {( $($value:ty),* ) => (
@@ -61,6 +69,10 @@ kernel! {
         (HostPlacement, () -> HostFixed128Tensor => [runtime] attributes[rendezvous_key, sender] Self::missing_kernel),
 
     ]
+}
+
+pub trait PlacementInput<S: Session, O> {
+    fn input(&self, sess: &S, arg_name: String) -> O;
 }
 
 for_all_values! {( $($value:ty),* ) => (
@@ -137,14 +149,20 @@ kernel! {
     ]
 }
 
+pub trait PlacementOutput<S: Session, T, O> {
+    fn output(&self, sess: &S, x: &T) -> O;
+}
+
 for_all_values! {( $($value:ty),* ) => (
     $(
         modelled!(PlacementOutput::output, HostPlacement, ($value) -> $value, OutputOp);
     )*
 )}
+
 modelled!(PlacementOutput::output, HostPlacement, (Tensor) -> Tensor, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (Float32Tensor) -> Float32Tensor, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (Float64Tensor) -> Float64Tensor, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (BooleanTensor) -> BooleanTensor, OutputOp);
 
 kernel! {
     OutputOp, [
@@ -173,6 +191,10 @@ kernel! {
         (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_kernel),
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_kernel),
     ]
+}
+
+pub trait PlacementLoad<S: Session, KeyT, QueryT, O> {
+    fn load(&self, sess: &S, key: &KeyT, query: &QueryT) -> O;
 }
 
 modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> HostFloat64Tensor, LoadOp);
@@ -204,6 +226,10 @@ kernel! {
         (HostPlacement, (HostString, HostString) -> Float64Tensor => [hybrid] Self::float_kernel),
         (HostPlacement, (HostString, HostString) -> Tensor => [hybrid] Self::logical_kernel),
     ]
+}
+
+pub trait PlacementSave<S: Session, KeyT, T, O> {
+    fn save(&self, sess: &S, key: &KeyT, x: &T) -> O;
 }
 
 for_all_values! {( $($value:ty),* ) => (

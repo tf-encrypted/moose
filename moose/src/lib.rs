@@ -4702,7 +4702,6 @@ macro_rules! unmodelled {
 pub mod additive;
 pub mod boolean;
 pub mod bristol_fashion;
-pub mod common;
 pub mod compilation;
 pub mod computation;
 pub mod encrypted;
