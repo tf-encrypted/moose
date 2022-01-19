@@ -1,5 +1,5 @@
 //! Placements backed by three-party replicated secret sharing
-use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
+use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider, TruncPrProvider};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;

@@ -2736,6 +2736,7 @@ macro_rules! modelled_kernel {
                     sess: &SymbolicSession,
                     plc: &$plc,
                 | {
+                    #[allow(unused_variables)]
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
                     let op = &op;

@@ -10,6 +10,7 @@ mod misc;
 mod ops;
 mod trunc;
 pub use dabit::DaBitProvider;
+pub use trunc::TruncPrProvider;
 
 /// Placement type for two-party additive secret sharing
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]

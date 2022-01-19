@@ -141,6 +141,7 @@ modelled_kernel! {
     ]
 }
 
+/// Addition
 pub trait PlacementAdd<S: Session, T, U, O> {
     fn add(&self, sess: &S, x: &T, y: &U) -> O;
 }
@@ -230,6 +231,7 @@ modelled_kernel! {
     ]
 }
 
+/// Subtraction
 pub trait PlacementSub<S: Session, T, U, O> {
     fn sub(&self, sess: &S, x: &T, y: &U) -> O;
 }
@@ -347,6 +349,7 @@ modelled_kernel! {
     ]
 }
 
+/// Multiplication
 pub trait PlacementMul<S: Session, T, U, O> {
     fn mul(&self, sess: &S, x: &T, y: &U) -> O;
 }
@@ -432,6 +435,7 @@ modelled_kernel! {
     ]
 }
 
+/// Division
 pub trait PlacementDiv<S: Session, T, U, O> {
     fn div(&self, sess: &S, x: &T, y: &U) -> O;
 }
@@ -480,6 +484,7 @@ modelled_kernel! {
     ]
 }
 
+/// Dot product
 pub trait PlacementDot<S: Session, T, U, O> {
     fn dot(&self, sess: &S, x: &T, y: &U) -> O;
 }
@@ -538,6 +543,7 @@ modelled_kernel! {
     ]
 }
 
+/// Shift left
 pub trait PlacementShl<S: Session, T, O> {
     fn shl(&self, sess: &S, amount: usize, x: &T) -> O;
 }
@@ -566,6 +572,7 @@ modelled_kernel! {
     ]
 }
 
+/// Shift right
 pub trait PlacementShr<S: Session, T, O> {
     fn shr(&self, sess: &S, amount: usize, x: &T) -> O;
 }
@@ -578,6 +585,7 @@ modelled_kernel! {
     ]
 }
 
+/// Exclusive-or
 pub trait PlacementXor<S: Session, T, U, O> {
     fn xor(&self, sess: &S, x: &T, y: &U) -> O;
 }
@@ -601,6 +609,7 @@ modelled_kernel! {
 modelled_alias!(PlacementAdd::add, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => PlacementXor::xor); // add = xor in Z2
 modelled_alias!(PlacementSub::sub, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => PlacementXor::xor); // sub = xor in Z2
 
+/// Logical-and
 pub trait PlacementAnd<S: Session, T, U, O> {
     fn and(&self, sess: &S, x: &T, y: &U) -> O;
 }
@@ -623,6 +632,7 @@ modelled_kernel! {
 
 modelled_alias!(PlacementMul::mul, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => PlacementAnd::and); // mul = and in Z2
 
+/// Logical-or
 pub trait PlacementOr<S: Session, T, U, O> {
     fn or(&self, sess: &S, x: &T, y: &U) -> O;
 }
@@ -696,6 +706,7 @@ modelled_kernel! {
     ]
 }
 
+/// Secret share value
 pub trait PlacementShare<S: Session, T, O> {
     fn share(&self, sess: &S, x: &T) -> O;
 }
@@ -719,6 +730,7 @@ modelled_kernel! {
     ]
 }
 
+/// Reveal secret shared value
 pub trait PlacementReveal<S: Session, T, O> {
     fn reveal(&self, sess: &S, x: &T) -> O;
 }
@@ -944,6 +956,7 @@ kernel! {
     ]
 }
 
+/// Mean
 pub trait PlacementMean<S: Session, T, O> {
     fn mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
@@ -1012,6 +1025,7 @@ modelled_kernel! {
     ]
 }
 
+/// Square root
 pub trait PlacementSqrt<S: Session, T, O> {
     fn sqrt(&self, sess: &S, x: &T) -> O;
 }
@@ -1024,10 +1038,12 @@ modelled_kernel! {
     ]
 }
 
+/// Variadic addition
 pub trait PlacementAddN<S: Session, T, O> {
     fn add_n(&self, sess: &S, x: &[T]) -> O;
 }
 
+/// Sum along axis
 pub trait PlacementSum<S: Session, T, O> {
     fn sum(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
@@ -1085,6 +1101,7 @@ modelled_kernel! {
     ]
 }
 
+/// Equality
 pub trait PlacementEqual<S: Session, T, U, O> {
     fn equal(&self, sess: &S, x: &T, y: &U) -> O;
 }
@@ -1097,6 +1114,7 @@ modelled_kernel! {
     ]
 }
 
+/// Mux
 pub trait PlacementMux<S: Session, T, U, V, O> {
     fn mux(&self, sess: &S, s: &T, x: &U, y: &V) -> O;
 }
@@ -1541,10 +1559,6 @@ modelled_kernel! {
         (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::kernel),
         (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::kernel),
     ]
-}
-
-pub trait TruncPrProvider<S: Session, T, O> {
-    fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
 }
 
 pub trait PlacementAbs<S: Session, T, O> {

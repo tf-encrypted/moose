@@ -63,6 +63,10 @@ where
     }
 }
 
+pub trait TruncPrProvider<S: Session, T, O> {
+    fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
+}
+
 impl<S: Session, HostRingT> TruncPrProvider<S, AdtTensor<HostRingT>, AdtTensor<HostRingT>>
     for AdditivePlacement
 where
