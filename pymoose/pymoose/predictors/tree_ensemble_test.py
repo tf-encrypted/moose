@@ -230,6 +230,17 @@ class TreeEnsembleTest(parameterized.TestCase):
         logical_rustbytes = logical_rustref.to_bytes()
         pymoose.MooseComputation.from_bytes(logical_rustbytes)
 
+    @pytest.mark.slow
+    def test_big_compiled(self):
+        forest = self._build_forest_from_onnx("random_forest_classifier_2class_100trees", tree_ensemble.TreeEnsembleClassifier)
+        predictor = forest.predictor_factory()
+        traced = edsl.trace(predictor)
+        serialized = comp_utils.serialize_computation(traced)
+        passes = ["typing", "full", "prune", "networking", "toposort"]
+        compiled_rustref = elk_compiler.compile_computation(serialized, passes)
+        root_path = pathlib.Path(__file__).parent.absolute()
+        compiled_rustref.to_disk(str(root_path / "compiled_random_forest_classifier_2class_100trees.moose"))
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tree Ensemble predictions")
