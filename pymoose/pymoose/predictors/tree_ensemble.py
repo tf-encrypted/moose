@@ -108,77 +108,22 @@ class TreeEnsemble(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
 
         return predictor
 
-    @classmethod
-    def inner_onnx(cls, model_proto, forest_node_name):
-        forest_node = utils.find_node_in_model_proto(
-            model_proto, forest_node_name, enforce=False
-        )
-        if forest_node is None:
-            raise ValueError(
-                "Incompatible ONNX graph provided: graph must contain a "
-                f"{forest_node_name} operator."
-            )
-
-        # construct `tree_args` for `trees` argument
-        nodes_treeids_attr = utils.find_attribute_in_node(forest_node, "nodes_treeids")
-        assert nodes_treeids_attr.type == 7  # INTS
-        nodes_treeids = nodes_treeids_attr.ints
-
-        left_attr = utils.find_attribute_in_node(forest_node, "nodes_truenodeids")
-        assert left_attr.type == 7
-        left = left_attr.ints
-
-        right_attr = utils.find_attribute_in_node(forest_node, "nodes_falsenodeids")
-        assert right_attr.type == 7
-        right = right_attr.ints
-
-        split_conditions_attr = utils.find_attribute_in_node(
-            forest_node, "nodes_values"
-        )
-        assert split_conditions_attr.type == 6
-        split_conditions = split_conditions_attr.floats
-
-        split_indices_attr = utils.find_attribute_in_node(
-            forest_node, "nodes_featureids"
-        )
-        assert split_indices_attr.type == 7
-        split_indices = split_indices_attr.ints
-
-        tree_args = (nodes_treeids, left, right, split_conditions, split_indices)
-
-        n_trees = len(set(nodes_treeids))
-
-        # `n_features` arg
-        model_input = model_proto.graph.input[0]
-        input_shape = utils.find_input_shape(model_input)
-        assert len(input_shape) == 2
-        n_features = input_shape[1].dim_value
-
-        # `base_score` arg
-        base_score_attr = utils.find_attribute_in_node(
-            forest_node, "base_values", enforce=False
-        )
-        if base_score_attr is None:
-            base_score = 0.0
-        else:
-            assert base_score_attr.type == 6  # FLOATS
-            base_score = base_score_attr.floats[0]
-
-        # `learning_rate` arg
-        # NOTE: ONNX assumes the leaf weights have already been scaled by the
-        # learning rate, so we keep our forest's learning_rate scaled fixed at 1.0
-        learning_rate = 1.0
-
-        return forest_node, tree_args, n_trees, n_features, base_score, learning_rate
-
 
 class TreeEnsembleClassifier(TreeEnsemble):
     def __init__(
-        self, trees, n_features, base_score, learning_rate, n_classes, tree_classes
+        self,
+        trees,
+        n_features,
+        n_classes,
+        base_score,
+        learning_rate,
+        transform_output,
+        tree_class_map,
     ):
         super().__init__(trees, n_features, base_score, learning_rate)
         self.n_classes = n_classes
-        self.tree_classes = tree_classes
+        self.tree_class_map = tree_class_map
+        self.transform_output = transform_output
 
     @classmethod
     def from_onnx(cls, model_proto):
@@ -189,7 +134,7 @@ class TreeEnsembleClassifier(TreeEnsemble):
             n_features,
             base_score,
             learning_rate,
-        ) = cls.inner_onnx(model_proto, "TreeEnsembleClassifier")
+        ) = _onnx_base(model_proto, "TreeEnsembleClassifier")
 
         class_ids_attr = utils.find_attribute_in_node(forest_node, "class_ids")
         assert class_ids_attr.type == 7
@@ -220,6 +165,43 @@ class TreeEnsembleClassifier(TreeEnsemble):
             classlabels = classlabels_strings.strings
         n_classes = len(classlabels)
 
+        post_transform_attr = utils.find_attribute_in_node(
+            forest_node, "post_transform"
+        )
+        post_transform = post_transform_attr.s.decode()
+
+        if post_transform == "NONE" and n_classes > 2:
+            # in this case, sklearn's ONNX file stores nodes differently;
+            # each leaf & inner node has array of length n_classes instead of
+            #   having n_trees * n_classes separate trees, whereas other ONNX
+            #   files have separate trees per class.
+            # in TreeEnsembleClassifier, we currently always represent with a separate
+            # forest per class, so here we need to duplicate some trees for that
+            # representation.
+            final_class_treeids = [
+                class_id + tree_id * n_classes
+                for (tree_id, class_id) in zip(class_treeids, class_ids)
+            ]
+            # update n_trees inferred by onnx helper fn above
+            n_trees = len(set(final_class_treeids))
+            # rely on nodes_treeids being sorted to preserve sublist order.
+            # the order matters to map back into the format expected when there are
+            # separate forests for each class
+            assert nodes_treeids == sorted(nodes_treeids)
+            sublists = [
+                list(filter(lambda x: x == i, nodes_treeids))
+                for i in sorted(set(nodes_treeids))
+            ]
+            repeated_sublists = [
+                [n_classes * i + j for _ in x]
+                for j in range(n_classes)
+                for i, x in enumerate(sublists)
+            ]
+            final_nodes_treeids = [x for y in repeated_sublists for x in y]
+        else:
+            final_class_treeids = class_treeids
+            final_nodes_treeids = nodes_treeids
+
         tree_args = [
             {
                 "weights": {},
@@ -230,46 +212,77 @@ class TreeEnsembleClassifier(TreeEnsemble):
             for _ in range(n_trees)
         ]
 
-        for i, tree_id in enumerate(nodes_treeids):
-            tree_args[tree_id]["children"][0].append(left[i])
-            tree_args[tree_id]["children"][1].append(right[i])
-            tree_args[tree_id]["split_indices"].append(split_indices[i])
-            tree_args[tree_id]["split_conditions"].append(split_conditions[i])
+        for i, tree_id in enumerate(final_nodes_treeids):
+            # i % len(_) duplicates nodes from the same ONNX trees in cases when
+            # final_nodes_treeids is longer than the lists of nodes coming from ONNX
+            # this is only the case when there are not n_trees * n_classes distinct
+            # trees in the ONNX file
+            tree_args[tree_id]["children"][0].append(left[i % len(left)])
+            tree_args[tree_id]["children"][1].append(right[i % len(right)])
+            tree_args[tree_id]["split_indices"].append(
+                split_indices[i % len(split_indices)]
+            )
+            tree_args[tree_id]["split_conditions"].append(
+                split_conditions[i % len(split_conditions)]
+            )
 
-        for i, tree_id in enumerate(class_treeids):
-            tree_args[tree_id]["weights"][class_nodeids[i]] = class_weights[i]
+        for i, class_weight in enumerate(class_weights):
+            tree_args[final_class_treeids[i]]["weights"][
+                class_nodeids[i]
+            ] = class_weight
 
         trees = [DecisionTreeRegressor(**kwargs) for kwargs in tree_args]
         tree_class_map = {
-            tree_id: class_id for tree_id, class_id in zip(class_treeids, class_ids)
+            tree_id: class_id
+            for tree_id, class_id in zip(final_class_treeids, class_ids)
         }
 
+        transform_output = post_transform != "NONE"
+
         return cls(
-            trees, n_features, base_score, learning_rate, n_classes, tree_class_map
+            trees,
+            n_features,
+            n_classes,
+            base_score,
+            learning_rate,
+            transform_output,
+            tree_class_map,
         )
 
     def post_transform(self, tree_scores, fixedpoint_dtype):
         if self.n_classes == 2:
-            return self._double_sigmoid(tree_scores, fixedpoint_dtype)
+            return self._maybe_sigmoid(tree_scores, fixedpoint_dtype)
         else:
-            return self._ovr_softmax(tree_scores, axis=1)
+            logit = self._ovr_logit(
+                tree_scores, axis=1, fixedpoint_dtype=fixedpoint_dtype
+            )
+            if self.transform_output:
+                return self._temp_softmax(logit, axis=1)
+            return logit
 
-    def _double_sigmoid(self, tree_scores, fixedpoint_dtype):
-        logit = edsl.add_n(tree_scores)
-        pos_prob = edsl.sigmoid(logit)
-        # TODO match binary classification format from sklearn, etc.
+    def _maybe_sigmoid(self, tree_scores, fixedpoint_dtype):
+        base_score = self.fixedpoint_constant(
+            self.base_score, self.carole, dtype=fixedpoint_dtype
+        )
+        logit = edsl.add(edsl.add_n(tree_scores), base_score)
+        pos_prob = edsl.sigmoid(logit) if self.transform_output else logit
         # one = self.fixedpoint_constant(1, plc=self.mirrored, dtype=fixedpoint_dtype)
-        # neg_prob = edsl.sub(one, pos_prob)
+        # neg_prob = edsl.expand_dims(edsl.sub(one, pos_prob), axis=1)
         # return edsl.concatenate([neg_prob, pos_prob], axis=1)
         return pos_prob
 
-    def _ovr_softmax(self, tree_scores, axis):
+    def _ovr_logit(self, tree_scores, axis, fixedpoint_dtype):
         ovr_results = [[] for _ in range(self.n_classes)]
-        for tree_ix, model_ix in self.tree_classes.items():
+        for tree_ix, model_ix in self.tree_class_map.items():
             ovr_results[model_ix].append(tree_scores[tree_ix])
-        ovr_logits = [edsl.expand_dims(edsl.add_n(ovr), axis=1) for ovr in ovr_results]
-        logit = edsl.concatenate(ovr_logits, axis=1)
-        return self._temp_softmax(logit, axis=1)
+        base_score = self.fixedpoint_constant(
+            self.base_score, self.carole, dtype=fixedpoint_dtype
+        )
+        ovr_logits = [edsl.add(edsl.add_n(ovr), base_score) for ovr in ovr_results]
+        reformed_logits = edsl.concatenate(
+            [edsl.expand_dims(ovr, axis=axis) for ovr in ovr_logits], axis=axis
+        )
+        return reformed_logits
 
     def _temp_softmax(self, x, axis):
         # TODO replace with edsl.max(x, axis)
@@ -293,7 +306,7 @@ class TreeEnsembleRegressor(TreeEnsemble):
             n_features,
             base_score,
             learning_rate,
-        ) = cls.inner_onnx(model_proto, "TreeEnsembleRegressor")
+        ) = _onnx_base(model_proto, "TreeEnsembleRegressor")
 
         target_nodeids_attr = utils.find_attribute_in_node(
             forest_node, "target_nodeids"
@@ -343,7 +356,8 @@ class TreeEnsembleRegressor(TreeEnsemble):
         # ugly way of ensuring it's replicated;
         # normally it would be replicated just by using it in add_n @ replicated,
         # but here it's input to an op w/ variadic signature, which does not do
-        # the work of converting from host to replicated for all of its inputs
+        # the work of converting from host to replicated for all of its inputs.
+        # we could also have used `add(base_score, add_n(tree_scores))` to avoid this
         base_score = edsl.identity(base_score)
         return edsl.add_n([base_score] + tree_scores)
 
@@ -368,3 +382,62 @@ class TreeEnsembleRegressor(TreeEnsemble):
 
 def _map_json_to_onnx_leaves(json_leaves):
     return [0 if child == -1 else child for child in json_leaves]
+
+
+def _onnx_base(model_proto, forest_node_name):
+    forest_node = utils.find_node_in_model_proto(
+        model_proto, forest_node_name, enforce=False
+    )
+    if forest_node is None:
+        raise ValueError(
+            "Incompatible ONNX graph provided: graph must contain a "
+            f"{forest_node_name} operator."
+        )
+
+    # construct `tree_args` for `trees` argument
+    nodes_treeids_attr = utils.find_attribute_in_node(forest_node, "nodes_treeids")
+    assert nodes_treeids_attr.type == 7  # INTS
+    nodes_treeids = nodes_treeids_attr.ints
+
+    left_attr = utils.find_attribute_in_node(forest_node, "nodes_truenodeids")
+    assert left_attr.type == 7
+    left = left_attr.ints
+
+    right_attr = utils.find_attribute_in_node(forest_node, "nodes_falsenodeids")
+    assert right_attr.type == 7
+    right = right_attr.ints
+
+    split_conditions_attr = utils.find_attribute_in_node(forest_node, "nodes_values")
+    assert split_conditions_attr.type == 6
+    split_conditions = split_conditions_attr.floats
+
+    split_indices_attr = utils.find_attribute_in_node(forest_node, "nodes_featureids")
+    assert split_indices_attr.type == 7
+    split_indices = split_indices_attr.ints
+
+    tree_args = (nodes_treeids, left, right, split_conditions, split_indices)
+
+    n_trees = len(set(nodes_treeids))
+
+    # `n_features` arg
+    model_input = model_proto.graph.input[0]
+    input_shape = utils.find_input_shape(model_input)
+    assert len(input_shape) == 2
+    n_features = input_shape[1].dim_value
+
+    # `base_score` arg
+    base_score_attr = utils.find_attribute_in_node(
+        forest_node, "base_values", enforce=False
+    )
+    if base_score_attr is None:
+        base_score = 0.0
+    else:
+        assert base_score_attr.type == 6  # FLOATS
+        base_score = base_score_attr.floats[0]
+
+    # `learning_rate` arg
+    # NOTE: ONNX assumes the leaf weights have already been scaled by the
+    # learning rate, so we keep our forest's learning_rate scaled fixed at 1.0
+    learning_rate = 1.0
+
+    return forest_node, tree_args, n_trees, n_features, base_score, learning_rate
