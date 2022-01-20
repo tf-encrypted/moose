@@ -1061,7 +1061,7 @@ impl OnesOp {
 }
 
 impl ExpandDimsOp {
-    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         axis: Vec<u32>,
@@ -1070,29 +1070,65 @@ impl ExpandDimsOp {
     where
         HostPlacement: PlacementExpandDims<S, Float32T, Float32T>,
         HostPlacement: PlacementExpandDims<S, Float64T, Float64T>,
+        HostPlacement: PlacementExpandDims<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementExpandDims<S, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementExpandDims<S, BoolT, BoolT>,
     {
         match x {
-            AbstractTensor::Fixed64(_x) => {
-                unimplemented!()
-                // let z = plc.expand_dims(sess, axis, &x);
-                // AbstractTensor::Fixed64(z)
-            }
-            AbstractTensor::Fixed128(_x) => {
-                unimplemented!()
-                // let z = plc.expand_dims(sess, axis, &x);
-                // AbstractTensor::Fixed128(z)
+            AbstractTensor::Float64(x) => {
+                let z = plc.expand_dims(sess, axis, &x);
+                Ok(AbstractTensor::Float64(z))
             }
             AbstractTensor::Float32(x) => {
                 let z = plc.expand_dims(sess, axis, &x);
                 Ok(AbstractTensor::Float32(z))
             }
-            AbstractTensor::Float64(x) => {
+            AbstractTensor::Fixed64(x) => {
                 let z = plc.expand_dims(sess, axis, &x);
-                Ok(AbstractTensor::Float64(z))
+                Ok(AbstractTensor::Fixed64(z))
             }
-            AbstractTensor::Bool(_x) => {
-                unimplemented!()
+            AbstractTensor::Fixed128(x) => {
+                let z = plc.expand_dims(sess, axis, &x);
+                Ok(AbstractTensor::Fixed128(z))
             }
+            AbstractTensor::Bool(x) => {
+                let z = plc.expand_dims(sess, axis, &x);
+                Ok(AbstractTensor::Bool(z))
+            }
+        }
+    }
+}
+
+impl ExpandDimsOp {
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Vec<u32>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        ReplicatedPlacement: PlacementExpandDims<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementExpandDims<S, Fixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementExpandDims<S, BoolT, BoolT>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = plc.expand_dims(sess, axis, &x);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = plc.expand_dims(sess, axis, &x);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            AbstractTensor::Bool(x) => {
+                let result = plc.expand_dims(sess, axis, &x);
+                Ok(AbstractTensor::Bool(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated expand_dims for {:?}",
+                &x.ty_desc(),
+            ))),
         }
     }
 }

@@ -574,10 +574,10 @@ def expand_dims(x, axis, placement=None):
                     f"{type(ax)}"
                 )
     elif isinstance(axis, int):
-        axes = [axis]
+        axis = [axis]
     placement = placement or get_current_placement()
     return ExpandDimsExpression(
-        placement=placement, inputs=[x], axis=axes, vtype=x.vtype
+        placement=placement, inputs=[x], axis=axis, vtype=x.vtype
     )
 
 

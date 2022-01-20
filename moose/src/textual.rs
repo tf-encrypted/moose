@@ -234,8 +234,8 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         HostDivOp::from_textual,
         HostDotOp::from_textual,
         HostMeanOp::from_textual,
-        preceded(tag(HostExpandDimsOp::SHORT_NAME), cut(hostexpanddims)),
         HostReshapeOp::from_textual,
+        preceded(tag(ExpandDimsOp::SHORT_NAME), cut(expanddims)),
         HostAtLeast2DOp::from_textual,
         HostSliceOp::from_textual,
     ));
@@ -293,13 +293,13 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     alt((part1, part2, part3, part4))(input)
 }
 
-/// Parses a HostExpandDims operator
-fn hostexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+/// Parses a ExpandDims operator
+fn expanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, axis) = attributes_single("axis", vector(parse_int))(input)?;
     let (input, sig) = operator_signature(1)(input)?;
-    Ok((input, HostExpandDimsOp { sig, axis }.into()))
+    Ok((input, ExpandDimsOp { sig, axis }.into()))
 }
 
 /// Parses a PrimDeriveSeed operator.
@@ -1055,7 +1055,6 @@ impl ToTextual for Operator {
             HostMean(op) => op.to_textual(),
             HostSqrt(op) => op.to_textual(),
             HostOnes(op) => op.to_textual(),
-            HostExpandDims(op) => op.to_textual(),
             HostSqueeze(op) => op.to_textual(),
             HostReshape(op) => op.to_textual(),
             HostAtLeast2D(op) => op.to_textual(),
@@ -1105,7 +1104,6 @@ impl ToTextual for Operator {
             FloatingpointAtLeast2D(op) => op.to_textual(),
             FloatingpointOnes(op) => op.to_textual(),
             FloatingpointConcat(op) => op.to_textual(),
-            FloatingpointExpandDims(op) => op.to_textual(),
             FloatingpointTranspose(op) => op.to_textual(),
             FloatingpointInverse(op) => op.to_textual(),
             FloatingpointMean(op) => op.to_textual(),
@@ -1988,7 +1986,7 @@ mod tests {
             r#"z = Input{arg_name = "prompt"}: () -> Float32Tensor () @Host(alice)"#,
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostExpandDims {axis = [0]}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = ExpandDims {axis = [0]}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = HostAtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
