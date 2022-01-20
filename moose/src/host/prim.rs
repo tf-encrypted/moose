@@ -1,8 +1,6 @@
 use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, TAG_BYTES};
 use crate::error::{Error, Result};
-use crate::kernels::{
-    PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession, Session,
-};
+use crate::kernels::{PlacementPlace, RuntimeSession, Session};
 use crate::prng::AesRng;
 use crate::prng::{RngSeed, SEED_SIZE};
 use serde::{Deserialize, Serialize};
@@ -108,29 +106,15 @@ impl TryFrom<&[u8]> for SyncKey {
     }
 }
 
-modelled_kernel! {
-    PlacementKeyGen::gen_key, PrimPrfKeyGenOp,
-    [
-        (HostPlacement, () -> PrfKey => [runtime] Self::kernel),
-    ]
-}
-
 impl PrimPrfKeyGenOp {
-    fn kernel<S: RuntimeSession>(_sess: &S, plc: &HostPlacement) -> Result<PrfKey> {
+    pub(crate) fn kernel<S: RuntimeSession>(_sess: &S, plc: &HostPlacement) -> Result<PrfKey> {
         let raw_key = RawPrfKey(AesRng::generate_random_key());
         Ok(PrfKey(raw_key, plc.clone()))
     }
 }
 
-modelled_kernel! {
-    PlacementDeriveSeed::derive_seed, PrimDeriveSeedOp{sync_key: SyncKey},
-    [
-        (HostPlacement, (PrfKey) -> Seed => [runtime] Self::kernel),
-    ]
-}
-
 impl PrimDeriveSeedOp {
-    fn kernel<S: RuntimeSession>(
+    pub(crate) fn kernel<S: RuntimeSession>(
         sess: &S,
         plc: &HostPlacement,
         sync_key: SyncKey,

@@ -70,8 +70,6 @@ impl IdentityOp {
     }
 }
 
-modelled!(PlacementOutput::output, HostPlacement, (BooleanTensor) -> BooleanTensor, OutputOp);
-
 impl OutputOp {
     pub(crate) fn bool_kernel<S: Session, HostT, RepT>(
         sess: &S,
@@ -89,8 +87,6 @@ impl OutputOp {
         }
     }
 }
-
-modelled!(PlacementOr::or, HostPlacement, (BooleanTensor, BooleanTensor) -> BooleanTensor, BitOrOp);
 
 impl BitOrOp {
     pub(crate) fn bool_kernel<S: Session, HostT, RepT>(

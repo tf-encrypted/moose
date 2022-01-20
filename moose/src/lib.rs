@@ -2729,13 +2729,14 @@ macro_rules! modelled_kernel {
                 &$plc
             ) -> crate::error::Result<<$u as KnownType<crate::symbolic::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
                 | {
+                    #[allow(unused_variables)]
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
                     let op = &op;
@@ -2756,7 +2757,7 @@ macro_rules! modelled_kernel {
                 sess: &crate::symbolic::SymbolicSession,
                 $($($attr_id:$attr_ty),*)?
             ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
-                use crate::computation::{KnownType, NullarySignature, SymbolicValue};
+                use crate::computation::{KnownType, NullarySignature};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
@@ -2787,7 +2788,7 @@ macro_rules! modelled_kernel {
                 sess: &crate::symbolic::SymbolicSession,
                 $($($attr_id:$attr_ty),*)?
             ) -> <$u as crate::computation::SymbolicType>::Type {
-                use crate::computation::{KnownType, NullarySignature, SymbolicValue};
+                use crate::computation::{KnownType, NullarySignature};
                 use crate::kernels::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
@@ -4701,7 +4702,6 @@ macro_rules! unmodelled {
 pub mod additive;
 pub mod boolean;
 pub mod bristol_fashion;
-pub mod common;
 pub mod compilation;
 pub mod computation;
 pub mod encrypted;
