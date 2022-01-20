@@ -20,7 +20,7 @@ mod sampling;
 mod shapes;
 
 // TODO update imports elsewhere so this can be removed
-pub use crate::execution::{AsyncSession, RuntimeSession, SyncSession};
+pub use crate::execution::{AsyncSession, SyncSession};
 pub use arithmetic::*;
 pub use boolean::*;
 pub use comparison::*;
