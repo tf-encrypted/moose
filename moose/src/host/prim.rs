@@ -1,6 +1,7 @@
 use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, TAG_BYTES};
 use crate::error::{Error, Result};
-use crate::kernels::{PlacementPlace, RuntimeSession, Session};
+use crate::execution::{RuntimeSession, Session};
+use crate::kernels::PlacementPlace;
 use crate::prng::AesRng;
 use crate::prng::{RngSeed, SEED_SIZE};
 use serde::{Deserialize, Serialize};

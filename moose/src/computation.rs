@@ -1,7 +1,7 @@
 use crate::additive::*;
 use crate::error::{Error, Result};
+use crate::execution::Session;
 use crate::host::*;
-use crate::kernels::Session;
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::*;

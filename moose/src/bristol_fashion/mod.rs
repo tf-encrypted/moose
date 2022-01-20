@@ -1,6 +1,7 @@
 //! Support for applying [Bristol Fashion circuits](https://homes.esat.kuleuven.be/~nsmart/MPC/)
 
-use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor, Session};
+use crate::execution::Session;
+use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{newline, space0, u64};

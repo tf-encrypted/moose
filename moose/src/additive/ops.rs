@@ -5,6 +5,7 @@ use crate::computation::{
     Placed, ShapeOp,
 };
 use crate::error::Result;
+use crate::execution::Session;
 use crate::kernels::*;
 use macros::with_context;
 

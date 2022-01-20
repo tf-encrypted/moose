@@ -2,7 +2,8 @@ use crate::computation::{
     Computation, KnownType, Operation, Operator, Placed, Placement, SymbolicValue,
 };
 use crate::error::{Error, Result};
-use crate::kernels::{DispatchKernel, PlacementPlace, Session};
+use crate::execution::Session;
+use crate::kernels::{DispatchKernel, PlacementPlace};
 use crate::replicated::ReplicatedPlacement;
 use crate::types::ReplicatedSetup;
 use parking_lot::RwLock;

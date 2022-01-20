@@ -4,6 +4,7 @@ use super::FixedTensor;
 use crate::boolean::BoolTensor;
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::execution::Session;
 use crate::floatingpoint::FloatTensor;
 use crate::host::*;
 use crate::kernels::*;

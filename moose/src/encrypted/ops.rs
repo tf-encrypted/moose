@@ -1,6 +1,7 @@
 use super::*;
 use crate::computation::*;
 use crate::error::Result;
+use crate::execution::Session;
 use crate::fixedpoint::FixedTensor;
 use crate::host::*;
 use crate::kernels::*;

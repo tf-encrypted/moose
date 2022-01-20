@@ -2,6 +2,7 @@
 use super::*;
 use crate::computation::{HostPlacement, Placed, RepToAdtOp};
 use crate::error::Result;
+use crate::execution::Session;
 use crate::kernels::*;
 use crate::replicated::RepTensor;
 use macros::with_context;

@@ -1,6 +1,7 @@
 use crate::additive::*;
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::execution::Session;
 use crate::for_all_values;
 use crate::host::*;
 use crate::mirrored::*;
@@ -17,10 +18,9 @@ mod indexing;
 mod io;
 mod sampling;
 mod shapes;
+
 // TODO update imports elsewhere so this can be removed
-pub use crate::execution::{
-    AsyncSession, RuntimeSession, Session, SyncSession,
-};
+pub use crate::execution::{AsyncSession, RuntimeSession, SyncSession};
 pub use arithmetic::*;
 pub use boolean::*;
 pub use comparison::*;

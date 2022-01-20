@@ -2,6 +2,7 @@
 use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider, TruncPrProvider};
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::execution::Session;
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
     AbstractHostAesKey, HostBitArray, HostFixedTensor, PrfKey, Seed, SliceInfo, SyncKey,

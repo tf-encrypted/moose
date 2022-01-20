@@ -1,6 +1,7 @@
 use super::*;
 use crate::computation::RepEqualOp;
 use crate::error::Result;
+use crate::execution::Session;
 use crate::{Const, Ring};
 
 impl RepEqualOp {

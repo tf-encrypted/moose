@@ -2076,7 +2076,7 @@ macro_rules! modelled {
         impl $t<crate::kernels::SyncSession, $u> for $plc {
             fn $f(&self, sess: &crate::kernels::SyncSession, $($($attr_id:$attr_ty),*)?) -> $u {
                 use crate::computation::{KnownType, NullarySignature};
-                use crate::kernels::{Session, SyncSession};
+                use crate::execution::{Session, SyncSession};
                 use std::convert::TryInto;
 
                 let sig = NullarySignature {
@@ -2125,7 +2125,7 @@ macro_rules! modelled {
                 $($($attr_id:$attr_ty),*)?
             ) -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type {
                 use crate::computation::{KnownType, NullarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -2162,7 +2162,7 @@ macro_rules! modelled {
                 x0: &$t0
             ) -> $u {
                 use crate::computation::{KnownType, UnarySignature};
-                use crate::kernels::{Session, SyncSession};
+                use crate::execution::{Session, SyncSession};
                 use std::convert::TryInto;
 
                 let sig = UnarySignature {
@@ -2217,7 +2217,7 @@ macro_rules! modelled {
                 x0: &<$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
             ) -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type {
                 use crate::computation::{KnownType, UnarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -2246,7 +2246,7 @@ macro_rules! modelled {
         impl $t<crate::kernels::SyncSession, $t0, $t1, $u> for $plc {
             fn $f(&self, sess: &crate::kernels::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
                 use crate::computation::{KnownType, BinarySignature};
-                use crate::kernels::{Session, SyncSession};
+                use crate::execution::{Session, SyncSession};
                 use std::convert::TryInto;
 
                 let sig = BinarySignature {
@@ -2311,7 +2311,7 @@ macro_rules! modelled {
         //         x1: &<$t1 as crate::computation::PartiallySymbolicType>::Type
         //     ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
         //         use crate::computation::{KnownType, BinarySignature};
-        //         use crate::kernels::{Session};
+        //         use crate::execution::{Session};
         //         use crate::symbolic::{SymbolicSession, Symbolic};
         //         use std::convert::TryInto;
         //         let sig = BinarySignature {
@@ -2346,7 +2346,7 @@ macro_rules! modelled {
                 x1: &<$t1 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, BinarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -2376,7 +2376,7 @@ macro_rules! modelled {
         impl $t<crate::kernels::SyncSession, $t0, $t1, $t2, $u> for $plc {
             fn $f(&self, sess: &crate::kernels::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
                 use crate::computation::{KnownType, TernarySignature};
-                use crate::kernels::{Session, SyncSession};
+                use crate::execution::{Session, SyncSession};
                 use std::convert::TryInto;
 
                 let sig = TernarySignature {
@@ -2447,7 +2447,7 @@ macro_rules! modelled {
                 x2: &<$t2 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
             ) -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type {
                 use crate::computation::{KnownType, TernarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -2486,7 +2486,7 @@ macro_rules! modelled {
                 xs: &[$ts]
             ) -> $u {
                 use crate::computation::{KnownType, VariadicSignature};
-                use crate::kernels::{Session, SyncSession};
+                use crate::execution::{Session, SyncSession};
                 use std::convert::TryInto;
 
                 let sig = VariadicSignature {
@@ -2542,7 +2542,7 @@ macro_rules! modelled {
                 xs: &[<$ts as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type]
             ) -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type {
                 use crate::computation::{KnownType, VariadicSignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -2595,7 +2595,7 @@ macro_rules! modelled_kernel {
             impl $trait<crate::kernels::SyncSession, $u> for $plc {
                 fn $trait_fn(&self, sess: &crate::kernels::SyncSession, $($($attr_id:$attr_ty,)*)?) -> $u {
                     use crate::computation::{KnownType, NullarySignature};
-                    use crate::kernels::{Session, SyncSession};
+                    use crate::execution::{Session, SyncSession};
                     use std::convert::TryInto;
 
                     let sig = NullarySignature {
@@ -2698,7 +2698,7 @@ macro_rules! modelled_kernel {
                 $($($attr_id:$attr_ty,)*)?
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, NullarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -2758,7 +2758,7 @@ macro_rules! modelled_kernel {
                 $($($attr_id:$attr_ty),*)?
             ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
                 use crate::computation::{KnownType, NullarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
@@ -2789,7 +2789,7 @@ macro_rules! modelled_kernel {
                 $($($attr_id:$attr_ty),*)?
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, NullarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
@@ -2833,7 +2833,7 @@ macro_rules! modelled_kernel {
                 $($($attr_id:$attr_ty),*)?
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, NullarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -2887,7 +2887,7 @@ macro_rules! modelled_kernel {
                 $($($attr_id:$attr_ty),*)?
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, NullarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -2936,7 +2936,7 @@ macro_rules! modelled_kernel {
             impl $trait<crate::kernels::SyncSession, $t0, $u> for $plc {
                 fn $trait_fn(&self, sess: &crate::kernels::SyncSession, $($($attr_id:$attr_ty,)*)? x0: &$t0) -> $u {
                     use crate::computation::{KnownType, UnarySignature};
-                    use crate::kernels::{Session, SyncSession};
+                    use crate::execution::{Session, SyncSession};
                     use std::convert::TryInto;
 
                     let sig = UnarySignature {
@@ -3063,7 +3063,7 @@ macro_rules! modelled_kernel {
                 x0: &<$t0 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -3137,7 +3137,7 @@ macro_rules! modelled_kernel {
                 x0: &<$t0 as crate::computation::PartiallySymbolicType>::Type
             ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature, SymbolicValue};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
@@ -3172,7 +3172,7 @@ macro_rules! modelled_kernel {
                 x0: &<$t0 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature, SymbolicValue};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
@@ -3222,7 +3222,7 @@ macro_rules! modelled_kernel {
                 x0: &<$t0 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -3288,7 +3288,7 @@ macro_rules! modelled_kernel {
                 x0: &<$t0 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -3339,7 +3339,7 @@ macro_rules! modelled_kernel {
             impl $trait<crate::kernels::SyncSession, $t0, $t1, $u> for $plc {
                 fn $trait_fn(&self, sess: &crate::kernels::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
                     use crate::computation::{KnownType, BinarySignature};
-                    use crate::kernels::{Session, SyncSession};
+                    use crate::execution::{Session, SyncSession};
                     use std::convert::TryInto;
 
                     let sig = BinarySignature {
@@ -3478,7 +3478,7 @@ macro_rules! modelled_kernel {
                 x1: &<$t1 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, BinarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -3559,7 +3559,7 @@ macro_rules! modelled_kernel {
                 x1: &<$t1 as crate::computation::PartiallySymbolicType>::Type
             ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
                 use crate::computation::{KnownType, BinarySignature, SymbolicValue};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
@@ -3598,7 +3598,7 @@ macro_rules! modelled_kernel {
                 x1: &<$t1 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, BinarySignature, SymbolicValue};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
@@ -3654,7 +3654,7 @@ macro_rules! modelled_kernel {
                 x1: &<$t1 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, BinarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -3726,7 +3726,7 @@ macro_rules! modelled_kernel {
                 x1: &<$t1 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, BinarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -3784,7 +3784,7 @@ macro_rules! modelled_kernel {
                     xs: &[$ts]
                 ) -> $u {
                     use crate::computation::{KnownType, VariadicSignature};
-                    use crate::kernels::{Session, SyncSession};
+                    use crate::execution::{Session, SyncSession};
                     use std::convert::TryInto;
 
                     let sig = VariadicSignature {
@@ -3910,7 +3910,7 @@ macro_rules! modelled_kernel {
                 xs: &[$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, VariadicSignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -3997,7 +3997,7 @@ macro_rules! modelled_kernel {
                 xs: &[<$ts as crate::computation::PartiallySymbolicType>::Type]
             ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
                 use crate::computation::{KnownType, VariadicSignature, SymbolicValue};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
@@ -4032,7 +4032,7 @@ macro_rules! modelled_kernel {
                 xs: &[<$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, VariadicSignature, SymbolicValue};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
@@ -4082,7 +4082,7 @@ macro_rules! modelled_kernel {
                 xs: &[<$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 
@@ -4158,7 +4158,7 @@ macro_rules! modelled_kernel {
                 xs: &[<$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature};
-                use crate::kernels::{Session};
+                use crate::execution::{Session};
                 use crate::symbolic::{SymbolicSession};
                 use std::convert::TryInto;
 

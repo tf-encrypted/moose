@@ -1,6 +1,7 @@
 use super::*;
 use crate::computation::MaximumOp;
 use crate::error::Result;
+use crate::execution::Session;
 use macros::with_context;
 
 impl MaximumOp {
