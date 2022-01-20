@@ -1061,7 +1061,7 @@ impl OnesOp {
 }
 
 impl ExpandDimsOp {
-    pub fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         axis: Vec<u32>,
@@ -1100,7 +1100,7 @@ impl ExpandDimsOp {
 }
 
 impl ExpandDimsOp {
-    pub fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Vec<u32>,
