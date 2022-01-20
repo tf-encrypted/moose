@@ -311,16 +311,13 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         passes: Option<Vec<String>>,
     ) -> PyResult<MooseComputation> {
         let computation = create_computation_graph_from_py_bytes(computation);
-        let passes: Vec<String> = match passes {
-            None => vec![
-                "typing".into(),
-                "full".into(),
-                "prune".into(),
-                "networking".into(),
-                "toposort".into(),
-            ],
-            Some(passvec) => passvec,
-        };
+        let passes: Vec<String> = passes.unwrap_or_else(|| vec![
+            "typing".into(),
+            "full".into(),
+            "prune".into(),
+            "networking".into(),
+            "toposort".into(),
+        ]);
         let passes = into_pass(&passes).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         let computation = compile_passes(&computation, &passes)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
