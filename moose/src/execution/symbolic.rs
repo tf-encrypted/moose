@@ -354,6 +354,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
     }
 }
 
+/// Helper for execution computations symbolically.
 #[derive(Default)]
 pub struct SymbolicExecutor {
     // Placeholder for the future state we want to keep (symbolic strategy pointer, replicated setup cache, etc).
