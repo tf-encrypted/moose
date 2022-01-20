@@ -90,6 +90,7 @@ mod tests {
     use crate::compilation::compile_passes;
     use crate::compilation::Pass;
     use crate::error::Error;
+    use crate::execution::{SyncSession, TestSyncExecutor};
     use crate::host::{HostTensor, RawSeed, RawShape, Seed};
     use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
     use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
@@ -111,8 +112,8 @@ mod tests {
     ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
         match run_async {
             false => {
-                let executor = crate::kernels::TestSyncExecutor::default();
-                let session = crate::kernels::SyncSession::from_storage(
+                let executor = TestSyncExecutor::default();
+                let session = SyncSession::from_storage(
                     SessionId::try_from("foobar").unwrap(),
                     arguments,
                     hashmap!(),
@@ -321,8 +322,8 @@ mod tests {
                 let store: HashMap<String, Value> =
                     hashmap!("input_data".to_string() => input_data.clone());
                 let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::from_hashmap(store));
-                let executor = crate::kernels::TestSyncExecutor::default();
-                let session = crate::kernels::SyncSession::from_storage(
+                let executor = TestSyncExecutor::default();
+                let session = SyncSession::from_storage(
                     SessionId::try_from("foobar").unwrap(),
                     arguments,
                     hashmap!(),

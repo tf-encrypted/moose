@@ -119,8 +119,9 @@ impl InputOp {
 mod tests {
     use super::*;
     use crate::computation::SessionId;
+    use crate::execution::SyncSession;
     use crate::host::FromRawPlc;
-    use crate::kernels::{PlacementFixedpointEncode, PlacementReveal, PlacementShare, SyncSession};
+    use crate::kernels::{PlacementFixedpointEncode, PlacementReveal, PlacementShare};
     use crate::storage::LocalSyncStorage;
     use crate::types::{
         HostFloat32Tensor, HostRing64Tensor, ReplicatedFixed64Tensor, ReplicatedRing64Tensor,

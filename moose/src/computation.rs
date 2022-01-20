@@ -408,7 +408,7 @@ macro_rules! values {
         )+
 
         $(
-        impl KnownType<crate::kernels::SyncSession> for $val {
+        impl KnownType<crate::execution::SyncSession> for $val {
             type Type = $val;
             const TY: Ty = Ty::$val$(($inner::$default))?;
         }

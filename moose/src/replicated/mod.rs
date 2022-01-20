@@ -2452,10 +2452,9 @@ impl GreaterThanOp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::execution::SyncSession;
     use crate::host::{FromRawPlc, HostRingTensor};
-    use crate::kernels::{
-        PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, SyncSession,
-    };
+    use crate::kernels::{PlacementRingFixedpointDecode, PlacementRingFixedpointEncode};
     use crate::{N128, N64};
     use ndarray::array;
     use proptest::prelude::*;
