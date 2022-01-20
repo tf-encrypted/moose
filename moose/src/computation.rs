@@ -466,7 +466,7 @@ macro_rules! values {
         )+
 
         $(
-            impl KnownType<crate::kernels::AsyncSession> for $val {
+            impl KnownType<crate::execution::AsyncSession> for $val {
                 type Type = $val;
                 const TY: Ty = Ty::$val$(($inner::$default))?;
             }

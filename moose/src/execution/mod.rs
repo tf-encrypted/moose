@@ -1145,8 +1145,8 @@ mod tests {
         networking: &Arc<dyn Send + Sync + AsyncNetworking>,
         exec_storage: &Arc<dyn Send + Sync + AsyncStorage>,
         role_assignments: HashMap<Role, Identity>,
-    ) -> crate::kernels::AsyncSession {
-        crate::kernels::AsyncSession::new(
+    ) -> AsyncSession {
+        AsyncSession::new(
             SessionId::try_from("foobar").unwrap(),
             hashmap!(),
             role_assignments,

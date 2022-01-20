@@ -265,10 +265,11 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::kernels::AsyncSession>>
+            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature, AsyncValue};
-                use crate::kernels::{AsyncSession, NullaryKernel};
+                use crate::execution::{AsyncSession};
+                use crate::kernels::{NullaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -362,14 +363,15 @@ macro_rules! concrete_dispatch_kernel {
             }
         }
 
-        impl crate::kernels::DispatchKernel<crate::kernels::AsyncSession> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::kernels::AsyncSession>>
+            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, AsyncValue};
-                use crate::kernels::{AsyncSession, UnaryKernel};
+                use crate::execution::{AsyncSession};
+                use crate::kernels::{UnaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -481,14 +483,15 @@ macro_rules! concrete_dispatch_kernel {
             }
         }
 
-        impl crate::kernels::DispatchKernel<crate::kernels::AsyncSession> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::kernels::AsyncSession>>
+            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature, AsyncValue};
-                use crate::kernels::{AsyncSession, BinaryKernel};
+                use crate::execution::{AsyncSession};
+                use crate::kernels::{BinaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -601,14 +604,15 @@ macro_rules! concrete_dispatch_kernel {
             }
         }
 
-        impl crate::kernels::DispatchKernel<crate::kernels::AsyncSession> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::kernels::AsyncSession>>
+            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature, AsyncValue};
-                use crate::kernels::{AsyncSession, TernaryKernel};
+                use crate::execution::{AsyncSession};
+                use crate::kernels::{TernaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -723,14 +727,15 @@ macro_rules! concrete_dispatch_kernel {
             }
         }
 
-        impl crate::kernels::DispatchKernel<crate::kernels::AsyncSession> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::kernels::AsyncSession>>
+            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature, AsyncValue};
-                use crate::kernels::{AsyncSession, VariadicKernel};
+                use crate::execution::{AsyncSession};
+                use crate::kernels::{VariadicKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -1091,7 +1096,7 @@ macro_rules! kernel {
 
         $(
             impl crate::kernels::NullaryKernel<
-                crate::kernels::AsyncSession,
+                crate::execution::AsyncSession,
                 $plc,
                 $u
             > for $op
@@ -1100,7 +1105,7 @@ macro_rules! kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc) -> crate::error::Result<$u> + Send>
+                    Box<dyn Fn(&crate::execution::AsyncSession, &$plc) -> crate::error::Result<$u> + Send>
                 > {
                     derive_runtime_kernel![nullary, $($kp)+, self]
                 }
@@ -1242,7 +1247,7 @@ macro_rules! kernel {
 
         $(
             impl crate::kernels::UnaryKernel<
-                crate::kernels::AsyncSession,
+                crate::execution::AsyncSession,
                 $plc,
                 $t0,
                 $u
@@ -1252,7 +1257,7 @@ macro_rules! kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, $t0) -> crate::error::Result<$u> + Send>
+                    Box<dyn Fn(&crate::execution::AsyncSession, &$plc, $t0) -> crate::error::Result<$u> + Send>
                 > {
                     derive_runtime_kernel![unary, $($kp)+, self]
                 }
@@ -1443,7 +1448,7 @@ macro_rules! kernel {
 
         $(
             impl crate::kernels::BinaryKernel<
-                crate::kernels::AsyncSession,
+                crate::execution::AsyncSession,
                 $plc,
                 $t0,
                 $t1,
@@ -1454,7 +1459,7 @@ macro_rules! kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, $t0, $t1) -> crate::error::Result<$u> + Send>
+                    Box<dyn Fn(&crate::execution::AsyncSession, &$plc, $t0, $t1) -> crate::error::Result<$u> + Send>
                 > {
                     derive_runtime_kernel![binary, $($kp)+, self]
                 }
@@ -1658,7 +1663,7 @@ macro_rules! kernel {
 
         $(
             impl crate::kernels::TernaryKernel<
-                crate::kernels::AsyncSession,
+                crate::execution::AsyncSession,
                 $plc,
                 $t0,
                 $t1,
@@ -1670,7 +1675,7 @@ macro_rules! kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, $t0, $t1, $t2) -> crate::error::Result<$u> + Send>
+                    Box<dyn Fn(&crate::execution::AsyncSession, &$plc, $t0, $t1, $t2) -> crate::error::Result<$u> + Send>
                 > {
                     derive_runtime_kernel![ternary, $($kp)+, self]
                 }
@@ -1879,7 +1884,7 @@ macro_rules! kernel {
 
         $(
             impl crate::kernels::VariadicKernel<
-                crate::kernels::AsyncSession,
+                crate::execution::AsyncSession,
                 $plc,
                 $ts,
                 $u
@@ -1889,7 +1894,7 @@ macro_rules! kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, Vec<$ts>) -> crate::error::Result<$u> + Send>
+                    Box<dyn Fn(&crate::execution::AsyncSession, &$plc, Vec<$ts>) -> crate::error::Result<$u> + Send>
                 > {
                     derive_runtime_kernel![variadic, $($kp)+, self]
                 }
@@ -2098,16 +2103,16 @@ macro_rules! modelled {
             }
         }
 
-        impl crate::kernels::NullaryKernelCheck<crate::kernels::AsyncSession, $plc, $u> for $op {}
+        impl crate::kernels::NullaryKernelCheck<crate::execution::AsyncSession, $plc, $u> for $op {}
 
         impl $t<
-            crate::kernels::AsyncSession,
+            crate::execution::AsyncSession,
             $u
         > for $plc {
             #[allow(unused_variables)]
             fn $f(
                 &self,
-                sess: &crate::kernels::AsyncSession,
+                sess: &crate::execution::AsyncSession,
                 $($($attr_id:$attr_ty),*,)?
             ) -> $u {
                 unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
@@ -2185,17 +2190,17 @@ macro_rules! modelled {
             }
         }
 
-        impl crate::kernels::UnaryKernelCheck<crate::kernels::AsyncSession, $plc, $t0, $u> for $op {}
+        impl crate::kernels::UnaryKernelCheck<crate::execution::AsyncSession, $plc, $t0, $u> for $op {}
 
         impl $t<
-            crate::kernels::AsyncSession,
+            crate::execution::AsyncSession,
             $t0,
             $u
         > for $plc {
             #[allow(unused_variables)]
             fn $f(
                 &self,
-                sess: &crate::kernels::AsyncSession,
+                sess: &crate::execution::AsyncSession,
                 $($($attr_id:$attr_ty),*,)?
                 x0: &$t0
             ) -> $u {
@@ -2274,10 +2279,10 @@ macro_rules! modelled {
             }
         }
 
-        impl crate::kernels::BinaryKernelCheck<crate::kernels::AsyncSession, $plc, $t0, $t1, $u> for $op {}
+        impl crate::kernels::BinaryKernelCheck<crate::execution::AsyncSession, $plc, $t0, $t1, $u> for $op {}
 
         impl $t<
-            crate::kernels::AsyncSession,
+            crate::execution::AsyncSession,
             $t0,
             $t1,
             $u
@@ -2285,7 +2290,7 @@ macro_rules! modelled {
             #[allow(unused_variables)]
             fn $f(
                 &self,
-                sess: &crate::kernels::AsyncSession,
+                sess: &crate::execution::AsyncSession,
                 $($($attr_id:$attr_ty),*,)?
                 x0: &$t0,
                 x1: &$t1,
@@ -2405,10 +2410,10 @@ macro_rules! modelled {
             }
         }
 
-        impl crate::kernels::TernaryKernelCheck<crate::kernels::AsyncSession, $plc, $t0, $t1, $t2, $u> for $op {}
+        impl crate::kernels::TernaryKernelCheck<crate::execution::AsyncSession, $plc, $t0, $t1, $t2, $u> for $op {}
 
         impl $t<
-            crate::kernels::AsyncSession,
+            crate::execution::AsyncSession,
             $t0,
             $t1,
             $t2,
@@ -2417,7 +2422,7 @@ macro_rules! modelled {
             #[allow(unused_variables)]
             fn $f(
                 &self,
-                sess: &crate::kernels::AsyncSession,
+                sess: &crate::execution::AsyncSession,
                 $($($attr_id:$attr_ty),*,)?
                 x0: &$t0,
                 x1: &$t1,
@@ -2510,17 +2515,17 @@ macro_rules! modelled {
             }
         }
 
-        impl crate::kernels::VariadicKernelCheck<crate::kernels::AsyncSession, $plc, $ts, $u> for $op {}
+        impl crate::kernels::VariadicKernelCheck<crate::execution::AsyncSession, $plc, $ts, $u> for $op {}
 
         impl $t<
-            crate::kernels::AsyncSession,
+            crate::execution::AsyncSession,
             $ts,
             $u
         > for $plc {
             #[allow(unused_variables)]
             fn $f(
                 &self,
-                sess: &crate::kernels::AsyncSession,
+                sess: &crate::execution::AsyncSession,
                 $($($attr_id:$attr_ty),*,)?
                 xs: &[$ts]
             ) -> $u {
@@ -2624,7 +2629,7 @@ macro_rules! modelled_kernel {
         // support for AsyncSession
         $(
             impl crate::kernels::NullaryKernel<
-                crate::kernels::AsyncSession,
+                crate::execution::AsyncSession,
                 $plc,
                 $u
             > for $op
@@ -2633,20 +2638,20 @@ macro_rules! modelled_kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc) -> crate::error::Result<$u> + Send>
+                    Box<dyn Fn(&crate::execution::AsyncSession, &$plc) -> crate::error::Result<$u> + Send>
                 > {
                     derive_runtime_kernel![nullary, $(attributes[$($attr_id),+])? $($kp)+, self]
                 }
             }
 
             impl $trait<
-                crate::kernels::AsyncSession,
+                crate::execution::AsyncSession,
                 $u
             > for $plc {
                 #[allow(unused_variables)]
                 fn $trait_fn(
                     &self,
-                    sess: &crate::kernels::AsyncSession,
+                    sess: &crate::execution::AsyncSession,
                     $($($attr_id:$attr_ty,)*)?
                 ) -> $u {
                     unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
@@ -2967,7 +2972,7 @@ macro_rules! modelled_kernel {
         // support for AsyncSession
         $(
             impl crate::kernels::UnaryKernel<
-                crate::kernels::AsyncSession,
+                crate::execution::AsyncSession,
                 $plc,
                 $t0,
                 $u
@@ -2977,21 +2982,21 @@ macro_rules! modelled_kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, $t0) -> crate::error::Result<$u> + Send>
+                    Box<dyn Fn(&crate::execution::AsyncSession, &$plc, $t0) -> crate::error::Result<$u> + Send>
                 > {
                     derive_runtime_kernel![unary, $(attributes[$($attr_id),+])? $($kp)+, self]
                 }
             }
 
             impl $trait<
-                crate::kernels::AsyncSession,
+                crate::execution::AsyncSession,
                 $t0,
                 $u
             > for $plc {
                 #[allow(unused_variables)]
                 fn $trait_fn(
                     &self,
-                    sess: &crate::kernels::AsyncSession,
+                    sess: &crate::execution::AsyncSession,
                     $($($attr_id:$attr_ty,)*)?
                     x0: &$t0,
                 ) -> $u {
@@ -3371,7 +3376,7 @@ macro_rules! modelled_kernel {
         // support for AsyncSession
         $(
             impl crate::kernels::BinaryKernel<
-                crate::kernels::AsyncSession,
+                crate::execution::AsyncSession,
                 $plc,
                 $t0,
                 $t1,
@@ -3382,14 +3387,14 @@ macro_rules! modelled_kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, $t0, $t1) -> crate::error::Result<$u> + Send>
+                    Box<dyn Fn(&crate::execution::AsyncSession, &$plc, $t0, $t1) -> crate::error::Result<$u> + Send>
                 > {
                     derive_runtime_kernel![binary, $(attributes[$($attr_id),+])? $($kp)+, self]
                 }
             }
 
             impl $trait<
-                crate::kernels::AsyncSession,
+                crate::execution::AsyncSession,
                 $t0,
                 $t1,
                 $u
@@ -3397,7 +3402,7 @@ macro_rules! modelled_kernel {
                 #[allow(unused_variables)]
                 fn $trait_fn(
                     &self,
-                    sess: &crate::kernels::AsyncSession,
+                    sess: &crate::execution::AsyncSession,
                     $($($attr_id:$attr_ty),*,)?
                     x0: &$t0,
                     x1: &$t1,
@@ -3812,7 +3817,7 @@ macro_rules! modelled_kernel {
 
         $(
             impl crate::kernels::VariadicKernel<
-                crate::kernels::AsyncSession,
+                crate::execution::AsyncSession,
                 $plc,
                 $ts,
                 $u
@@ -3822,21 +3827,21 @@ macro_rules! modelled_kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::kernels::AsyncSession, &$plc, Vec<$ts>) -> crate::error::Result<$u> + Send>
+                    Box<dyn Fn(&crate::execution::AsyncSession, &$plc, Vec<$ts>) -> crate::error::Result<$u> + Send>
                 > {
                     derive_runtime_kernel![variadic, $($kp)+, self]
                 }
             }
 
             impl $trait<
-                crate::kernels::AsyncSession,
+                crate::execution::AsyncSession,
                 $ts,
                 $u
             > for $plc {
                 #[allow(unused_variables)]
                 fn $trait_fn(
                     &self,
-                    sess: &crate::kernels::AsyncSession,
+                    sess: &crate::execution::AsyncSession,
                     $($($attr_id:$attr_ty),*,)?
                     xs: &[$ts]
                 ) -> $u {

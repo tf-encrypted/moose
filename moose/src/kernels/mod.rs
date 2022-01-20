@@ -19,8 +19,6 @@ mod io;
 mod sampling;
 mod shapes;
 
-// TODO update imports elsewhere so this can be removed
-pub use crate::execution::AsyncSession;
 pub use arithmetic::*;
 pub use boolean::*;
 pub use comparison::*;
