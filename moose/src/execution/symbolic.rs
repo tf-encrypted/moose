@@ -1,5 +1,5 @@
 //! Symbolic execution of computations
-//! 
+//!
 //! This is used during compilation to lower operations.
 //! In general, it works by evaluating kernels on symbolic values and
 //! recording the underlying operations perform as new computation.
@@ -16,7 +16,7 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// Symbolic 
+/// Symbolic
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
     Symbolic(SymbolicHandle<T::Placement>),
@@ -47,7 +47,7 @@ impl<T: Placed> Symbolic<T> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct SymbolicHandle<P> {
+pub struct SymbolicHandle<P> {
     pub op: String,
     // NOTE if we had a handle to the graph we
     // could perhaps derive the placement instead
@@ -121,22 +121,26 @@ impl Default for SymbolicSession {
 
 impl SymbolicSession {
     /// Add operation to the session's underlying computation
-    pub fn add_operation<'s, O: Into<Operator> + Clone>(
+    pub fn add_operation<'s, O: Into<Operator> + Clone, P: Into<Placement> + Clone>(
         &'s self,
         operator: &O,
         operands: &[&str],
-        plc: &Placement,
-    ) -> String {
+        plc: &P,
+    ) -> SymbolicHandle<P> {
         let mut state = self.state.write();
         let op_name: String = format!("op_{}", state.ops.len());
         let op = Operation {
             name: op_name.clone(),
             kind: operator.clone().into(),
             inputs: operands.iter().map(|op| op.to_string()).collect(),
-            placement: plc.clone(),
+            placement: plc.clone().into(),
         };
         state.ops.push(op);
-        op_name
+
+        SymbolicHandle {
+            op: op_name,
+            plc: plc.clone(),
+        }
     }
 
     /// Apply a given closure to the iterator over the ops.

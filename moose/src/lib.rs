@@ -1204,15 +1204,15 @@ macro_rules! kernel {
                     <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
                 > + Send
             >> {
-                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
                 | {
-                    let op_name = sess.add_operation(&op, &[], &plc.clone().into());
-                    Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                    let h = sess.add_operation(&op, &[], &plc.clone().into());
+                    Ok(Symbolic::Symbolic(h))
                 }))
             }
         }
@@ -1283,7 +1283,7 @@ macro_rules! kernel {
                 <$t0 as KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -1308,8 +1308,8 @@ macro_rules! kernel {
                         }
                         _ => match x0 {
                             Symbolic::Symbolic(h0) => {
-                                let op_name = sess.add_operation(op, &[&h0.op], &plc.clone().into());
-                                Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                                let h = sess.add_operation(op, &[&h0.op], &plc.clone().into());
+                                Ok(Symbolic::Symbolic(h))
                             }
                             x0 => Err(crate::error::Error::Unexpected(Some(format!("Unary hybrid kernel flavor encountered Concrete argument in Symbolic-only case {:?}.", x0))))
                         }
@@ -1333,7 +1333,7 @@ macro_rules! kernel {
                 <$t0 as KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -1353,8 +1353,8 @@ macro_rules! kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         Symbolic::Symbolic(h0) => {
-                            let op_name = sess.add_operation(op, &[&h0.op], &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(op, &[&h0.op], &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         }
                     }
                 }))
@@ -1398,7 +1398,7 @@ macro_rules! kernel {
                 > + Send>>
             {
                 use crate::computation::{KnownType};
-                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -1408,8 +1408,8 @@ macro_rules! kernel {
                 | {
                     match x0 {
                         Symbolic::Symbolic(h0) => {
-                            let op_name = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         }
                         x0 => Err(crate::error::Error::Unexpected(Some(format!("Unary runtime kernel encountered Concrete argument: {:?}.", x0))))
                     }
@@ -1487,7 +1487,7 @@ macro_rules! kernel {
                 <$t1 as KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -1513,8 +1513,8 @@ macro_rules! kernel {
                         }
                         _ => match (x0, x1) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                                let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
-                                Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                                let h = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                                Ok(Symbolic::Symbolic(h))
                             }
                             _ => {
                                 Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
@@ -1542,7 +1542,7 @@ macro_rules! kernel {
                 <$t1 as KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -1563,8 +1563,8 @@ macro_rules! kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                            let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
                     }
@@ -1611,7 +1611,7 @@ macro_rules! kernel {
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
                 use crate::computation::{KnownType};
-                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -1622,8 +1622,8 @@ macro_rules! kernel {
                 | {
                     match (x0, x1) {
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                            let op_name = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         }
                         (x0, x1) => Err(crate::error::Error::Unexpected(Some(format!("Binary runtime kernel flavor encountered Concrete arguments: {:?} and {:?}", x0, x1))))
                     }
@@ -1728,7 +1728,7 @@ macro_rules! kernel {
                 <$t2 as KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
                 use std::convert::TryInto;
 
                 let k = derive_runtime_kernel![ternary, $($kp)+, self]?;
@@ -1752,8 +1752,8 @@ macro_rules! kernel {
                         }
                         _ => match (x0, x1, x2) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                                let op_name = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
-                                Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                                let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                                Ok(Symbolic::Symbolic(h))
                             }
                             (x0, x1, x2) => Err(crate::error::Error::Unexpected(Some(format!("Ternary hybrid kernel flavor encountered Concrete arguments in Symbolic-only case: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
                         }
@@ -1781,7 +1781,7 @@ macro_rules! kernel {
                 <$t2 as KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -1803,8 +1803,8 @@ macro_rules! kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                            let op_name = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         }
                         (x0, x1, x2) => Err(crate::error::Error::Unexpected(Some(format!("Ternary concrete kernel flavor encountered mixed Symbolic/Concrete arguments during compilation: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
                     }
@@ -1833,7 +1833,7 @@ macro_rules! kernel {
                 <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>
             > {
                 use crate::computation::{KnownType};
-                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();
                 Box::new(move |
@@ -1845,8 +1845,8 @@ macro_rules! kernel {
                 | {
                     match (x0, x1, x2) {
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                            let op_name = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         }
                         (x0, x1, x2) => Err(crate::error::Error::Unexpected(Some(format!("Ternary runtime kernel flavor encountered Concrete arguments during compilation: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
                     }
@@ -1939,7 +1939,7 @@ macro_rules! kernel {
                 Vec<<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type>
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -1966,8 +1966,8 @@ macro_rules! kernel {
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
                         if handles.len() == xs.len() {
                             // success; we can record in graph
-                            let op_name = sess.add_operation(op, &handles, &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(op, &handles, &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         } else {
                             Err(crate::error::Error::Unexpected(Some("Variadic hybrid kernel flavor found mixed symbolic and concrete values during compilation.".to_string())))
                         }
@@ -1991,7 +1991,7 @@ macro_rules! kernel {
                 Vec<<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type>
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
 
@@ -2020,8 +2020,8 @@ macro_rules! kernel {
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
                         if handles.len() == xs.len() {
                             // success; we can record in graph
-                            let op_name = sess.add_operation(op, &handles, &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(op, &handles, &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         } else {
                             Err(crate::error::Error::Unexpected(Some("Variadic concrete flavor found mixed symbolic and concrete value during compilation.".to_string())))
                         }
@@ -2047,7 +2047,7 @@ macro_rules! kernel {
                 <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>
             > {
                 use crate::computation::{KnownType};
-                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -2065,8 +2065,8 @@ macro_rules! kernel {
                     }).collect();
 
                     if res.len() == xs.len() {
-                        let op_name = sess.add_operation(&op, &res, &plc.clone().into());
-                        return Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }));
+                        let h = sess.add_operation(&op, &res, &plc.clone().into());
+                        return Ok(Symbolic::Symbolic(h));
                     }
 
                     Err(crate::error::Error::Unexpected(Some(format!("Variadic runtime kernel found non-Symbolic arguments for {:?}", op))))
@@ -2673,7 +2673,7 @@ macro_rules! modelled_kernel {
                 &$plc
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -2867,15 +2867,15 @@ macro_rules! modelled_kernel {
                 &$plc
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc
                 | {
-                    let op_name = sess.add_operation(&op, &[], &plc.clone().into());
-                    Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                    let h = sess.add_operation(&op, &[], &plc.clone().into());
+                    Ok(Symbolic::Symbolic(h))
                 }))
             }
         }
@@ -3017,7 +3017,7 @@ macro_rules! modelled_kernel {
                 <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -3041,8 +3041,8 @@ macro_rules! modelled_kernel {
                         }
                         _ => match x0 {
                             Symbolic::Symbolic(h0) => {
-                                let op_name = sess.add_operation(op, &[&h0.op], &plc.clone().into());
-                                Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                                let h = sess.add_operation(op, &[&h0.op], &plc.clone().into());
+                                Ok(Symbolic::Symbolic(h))
                             }
                             _ => {
                                 Err(crate::error::Error::Unexpected(Some("Expected symbolic value during compilation".to_string())))
@@ -3098,7 +3098,7 @@ macro_rules! modelled_kernel {
                 <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -3118,8 +3118,8 @@ macro_rules! modelled_kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         Symbolic::Symbolic(h0) => {
-                            let op_name = sess.add_operation(op, &[&h0.op], &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(op, &[&h0.op], &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         }
                     }
                 }))
@@ -3257,7 +3257,7 @@ macro_rules! modelled_kernel {
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
                 use crate::computation::{KnownType};
-                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -3267,8 +3267,8 @@ macro_rules! modelled_kernel {
                 | {
                     match x0 {
                         Symbolic::Symbolic(h0) => {
-                            let op_name = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Expected symbolic value during compilation".to_string())))
                     }
@@ -3425,7 +3425,7 @@ macro_rules! modelled_kernel {
                 <$t1 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -3451,8 +3451,8 @@ macro_rules! modelled_kernel {
                         }
                         _ => match (x0, x1) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                                let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
-                                Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                                let h = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                                Ok(Symbolic::Symbolic(h))
                             }
                             _ => {
                                 Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
@@ -3513,7 +3513,7 @@ macro_rules! modelled_kernel {
                 <$t1 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -3534,8 +3534,8 @@ macro_rules! modelled_kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                            let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
                     }
@@ -3689,7 +3689,7 @@ macro_rules! modelled_kernel {
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
                 use crate::computation::{KnownType};
-                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -3700,8 +3700,8 @@ macro_rules! modelled_kernel {
                 | {
                     match (x0, x1) {
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                            let op_name = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
                     }
@@ -3856,7 +3856,7 @@ macro_rules! modelled_kernel {
                 Vec<<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type>
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -3883,8 +3883,8 @@ macro_rules! modelled_kernel {
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
                         if handles.len() == xs.len() {
                             // success; we can record in graph
-                            let op_name = sess.add_operation(op, &handles, &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(op, &handles, &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         } else {
                             Err(crate::error::Error::Unexpected(Some("Variadic hybrid kernel flavor found mixed symbolic and concrete values during compilation.".to_string())))
                         }
@@ -3941,7 +3941,7 @@ macro_rules! modelled_kernel {
                 Vec<<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type>
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
 
@@ -3970,8 +3970,8 @@ macro_rules! modelled_kernel {
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
                         if handles.len() == xs.len() {
                             // success; we can record in graph
-                            let op_name = sess.add_operation(op, &handles, &plc.clone().into());
-                            Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }))
+                            let h = sess.add_operation(op, &handles, &plc.clone().into());
+                            Ok(Symbolic::Symbolic(h))
                         } else {
                             Err(crate::error::Error::Unexpected(Some("Variadic concrete flavor found mixed symbolic and concrete value during compilation.".to_string())))
                         }
@@ -4113,7 +4113,7 @@ macro_rules! modelled_kernel {
                 <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>
             > {
                 use crate::computation::{KnownType};
-                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -4131,8 +4131,8 @@ macro_rules! modelled_kernel {
                     }).collect();
 
                     if res.len() == xs.len() {
-                        let op_name = sess.add_operation(&op, &res, &plc.clone().into());
-                        return Ok(Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() }));
+                        let h = sess.add_operation(&op, &res, &plc.clone().into());
+                        return Ok(Symbolic::Symbolic(h));
                     }
 
                     Err(crate::error::Error::Unexpected(Some(format!("Variadic runtime kernel found non-Symbolic arguments for {:?}", op))))
