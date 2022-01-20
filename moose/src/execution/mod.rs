@@ -17,6 +17,7 @@ mod asynchronous;
 mod synchronous;
 pub use asynchronous::*;
 pub use synchronous::*;
+pub use crate::symbolic::{SymbolicSession};
 
 /// General session trait determining basic properties for session objects.
 pub trait Session {

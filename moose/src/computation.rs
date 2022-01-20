@@ -459,7 +459,7 @@ macro_rules! values {
         )+
 
         $(
-        impl KnownType<crate::symbolic::SymbolicSession> for $val {
+        impl KnownType<crate::execution::SymbolicSession> for $val {
             type Type = <$val as SymbolicType>::Type;
             const TY: Ty = Ty::$val$(($inner::$default))?;
         }
