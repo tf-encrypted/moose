@@ -16,7 +16,6 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// Symbolic
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
     Symbolic(SymbolicHandle<T::Placement>),
