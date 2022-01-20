@@ -1322,6 +1322,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::execution::SyncSession;
     use std::ops::{Add, Div, Mul, Sub};
 
     #[test]

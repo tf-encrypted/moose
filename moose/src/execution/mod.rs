@@ -106,6 +106,7 @@ mod tests {
     use maplit::hashmap;
     use ndarray::prelude::*;
     use std::convert::TryInto;
+    use std::rc::Rc;
 
     fn _run_computation_test(
         computation: Computation,

@@ -172,6 +172,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::execution::SyncSession;
     use crate::host::HostRingTensor;
     use crate::types::*;
     use ndarray::array;

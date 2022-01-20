@@ -290,12 +290,10 @@ impl AdtShlOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::execition::SyncSession;
+    use crate::computation::{KnownType, Operation, Operator, Placement, RingAddOp};
+    use crate::execution::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
+    use crate::execution::SyncSession;
     use crate::types::*;
-    use crate::{
-        computation::{KnownType, Operation, Operator, Placement, RingAddOp},
-        symbolic::{Symbolic, SymbolicHandle, SymbolicSession},
-    };
     use ndarray::array;
 
     #[test]
