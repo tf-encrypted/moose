@@ -1735,7 +1735,7 @@ impl ExpandDimsOp {
         let z21 = player1.expand_dims(sess, axis.clone(), x21);
 
         let z22 = player2.expand_dims(sess, axis.clone(), x22);
-        let z02 = player2.expand_dims(sess, axis.clone(), x02);
+        let z02 = player2.expand_dims(sess, axis, x02);
 
         Ok(RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
