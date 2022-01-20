@@ -1,4 +1,4 @@
-#![allow(unused_macros)]
+//! Support for executing computations
 
 use crate::computation::*;
 use crate::error::Result;
@@ -13,9 +13,9 @@ use std::sync::Arc;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
-mod asynchronous;
+pub mod asynchronous;
 pub mod symbolic;
-mod synchronous;
+pub mod synchronous;
 pub use asynchronous::*;
 pub use symbolic::*;
 pub use synchronous::*;
@@ -45,20 +45,6 @@ pub trait RuntimeSession: Session {
     fn session_id(&self) -> &SessionId;
     fn find_argument(&self, key: &str) -> Option<Value>;
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity>;
-}
-
-pub enum Kernel {
-    NullaryClosure(Arc<dyn Fn() -> Result<Value> + Send + Sync>),
-    UnaryClosure(Arc<dyn Fn(Value) -> Result<Value> + Send + Sync>),
-    BinaryClosure(Arc<dyn Fn(Value, Value) -> Result<Value> + Send + Sync>),
-    TernaryClosure(Arc<dyn Fn(Value, Value, Value) -> Result<Value> + Send + Sync>),
-    VariadicClosure(Arc<dyn Fn(Vec<Value>) -> Result<Value> + Send + Sync>),
-
-    NullaryFunction(fn() -> Result<Value>),
-    UnaryFunction(fn(Value) -> Result<Value>),
-    BinaryFunction(fn(Value, Value) -> Result<Value>),
-    TernaryFunction(fn(Value, Value, Value) -> Result<Value>),
-    VariadicFunction(fn(Vec<Value>) -> Result<Value>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Display)]

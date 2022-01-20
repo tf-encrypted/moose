@@ -1,3 +1,9 @@
+//! Symbolic execution of computations
+//! 
+//! This is used during compilation to lower operations.
+//! In general, it works by evaluating kernels on symbolic values and
+//! recording the underlying operations perform as new computation.
+
 use crate::computation::{
     Computation, KnownType, Operation, Operator, Placed, Placement, SymbolicValue,
 };
@@ -10,6 +16,7 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+/// Symbolic 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
     Symbolic(SymbolicHandle<T::Placement>),
@@ -40,7 +47,7 @@ impl<T: Placed> Symbolic<T> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct SymbolicHandle<P> {
+pub(crate) struct SymbolicHandle<P> {
     pub op: String,
     // NOTE if we had a handle to the graph we
     // could perhaps derive the placement instead
@@ -97,8 +104,9 @@ struct SymbolicSessionState {
         HashMap<ReplicatedPlacement, Arc<<ReplicatedSetup as KnownType<SymbolicSession>>::Type>>,
 }
 
+/// Session object in which symbolic execution is happening
 pub struct SymbolicSession {
-    pub strategy: Box<dyn SymbolicStrategy>,
+    pub(crate) strategy: Box<dyn SymbolicStrategy>,
     state: Arc<RwLock<SymbolicSessionState>>,
 }
 
@@ -112,6 +120,7 @@ impl Default for SymbolicSession {
 }
 
 impl SymbolicSession {
+    /// Add operation to the session's underlying computation
     pub fn add_operation<'s, O: Into<Operator> + Clone>(
         &'s self,
         operator: &O,
@@ -152,8 +161,8 @@ impl Session for SymbolicSession {
 
     type ReplicatedSetup = <ReplicatedSetup as KnownType<SymbolicSession>>::Type;
 
-    /// Produce a new replicated setup or returned a previously produced setup for the placement
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
+        // Produce a new replicated setup or returned a previously produced setup for the placement
         let state = self.state.read();
         match state.replicated_keys.get(plc) {
             Some(setup) => Arc::clone(setup),
@@ -178,7 +187,7 @@ impl Session for SymbolicSession {
     }
 }
 
-pub trait SymbolicStrategy {
+pub(crate) trait SymbolicStrategy {
     fn execute(
         &self,
         sess: &SymbolicSession,
