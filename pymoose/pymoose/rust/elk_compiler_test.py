@@ -55,23 +55,12 @@ class CompileComputation(parameterized.TestCase):
         self._trace_and_compile(passes=[])
 
     def test_successful_compilation(self):
-        self._trace_and_compile(passes=None)
-
-    def test_default_passes_arg(self):
-        comp0 = self._trace_and_compile(passes=None)
-        comp1 = self._trace_and_compile(passes=_DEFAULT_PASSES)
-        res0 = self._build_new_runtime().evaluate_compiled(
-            comp0, self.role_assignment, {}
-        )
-        res1 = self._build_new_runtime().evaluate_compiled(
-            comp1, self.role_assignment, {}
-        )
-        np.testing.assert_equal(res0, res1)
+        self._trace_and_compile()
 
     def _build_new_runtime(self):
         return LocalRuntime(self.empty_storage)
 
-    def _trace_and_compile(self, passes):
+    def _trace_and_compile(self, passes=None):
         traced = edsl.trace(_reference_computation)
         pyserialized = utils.serialize_computation(traced)
         rustref = elk_compiler.compile_computation(pyserialized, passes=passes)
