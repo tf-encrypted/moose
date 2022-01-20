@@ -4,20 +4,10 @@ use crate::computation::{HostPlacement, Placed, RepToAdtOp};
 use crate::error::Result;
 use crate::kernels::*;
 use crate::replicated::RepTensor;
-use crate::types::*;
 use macros::with_context;
 
-modelled_kernel! {
-    PlacementRepToAdt::rep_to_adt, RepToAdtOp,
-    [
-        (AdditivePlacement, (ReplicatedRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::rep_to_adt_kernel),
-        (AdditivePlacement, (ReplicatedRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::rep_to_adt_kernel),
-        (AdditivePlacement, (ReplicatedBitTensor) -> AdditiveBitTensor => [concrete] Self::rep_to_adt_kernel),
-    ]
-}
-
 impl RepToAdtOp {
-    fn rep_to_adt_kernel<S: Session, HostRingT>(
+    pub(crate) fn rep_to_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
         x: RepTensor<HostRingT>,

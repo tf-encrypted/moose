@@ -1,19 +1,10 @@
 use super::*;
 use crate::computation::RepEqualOp;
 use crate::error::Result;
-use crate::replicated::{ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor};
 use crate::{Const, Ring};
 
-modelled_kernel! {
-    PlacementEqual::equal, RepEqualOp,
-    [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
-    ]
-}
-
 impl RepEqualOp {
-    fn rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
+    pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
