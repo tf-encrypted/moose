@@ -46,7 +46,7 @@ impl ReplicatedPlacement {
     }
 }
 
-pub trait ShapeFill<S, TenT> {
+pub(crate) trait ShapeFill<S, TenT> {
     type Result;
 
     fn shape_fill<C: Into<Constant>>(
@@ -94,11 +94,11 @@ impl<HostRingT: Ring> Ring for RepTensor<HostRingT> {
     type BitLength = HostRingT::BitLength;
 }
 
-pub trait Underlying {
+pub(crate) trait Underlying {
     type TensorType;
 }
 
-pub trait MirroredCounterpart {
+pub(crate) trait MirroredCounterpart {
     type MirroredType;
 }
 
@@ -1940,11 +1940,12 @@ impl RingInjectOp {
     }
 }
 
-/// Splits a replicated secret x into 2 replicated bit tensor values (x1, x2)
-/// such that when interpreted as ring tensors, they reconstruct to x
-/// i.e. (x1 + x2) mod R = x
-/// Useful for some protocols that don't necessarily need the full bit-decomposition such as exponentiation
-pub trait PlacementSplit<S: Session, T, O1, O2> {
+/// Split a replicated secret `x` into two replicated bits `(x1, x2)`
+///
+/// This is done such that when interpreted as ring tensors, they reconstruct to `x`
+/// i.e. `(x1 + x2) = x` over the ring. This is useful for some protocols that don't
+/// necessarily need the full bit-decomposition such as exponentiation.
+pub(crate) trait PlacementSplit<S: Session, T, O1, O2> {
     fn split(&self, sess: &S, x: &T) -> (O1, O2);
 }
 
@@ -2072,11 +2073,13 @@ impl RepBitComposeOp {
     }
 }
 
-// ShrRaw takes as input a replicated secret and shifts to the right all local shares
-// It should be used carefully since
-// [x]>>amount is NOT equal to [ [x0 >> amount, x1 >> amount], [x1 >> amount, x2 >> amount], [x2 >> amount, x0>>amount]
-// Used in conjunction with split operation so that we don't use the full bit-decomposition in order to perform exact truncation
-pub trait PlacementShrRaw<S: Session, T, O> {
+/// Shift all shares of replicated secret to the right
+///
+/// It should be used carefully since `[x] >> amount` is *not* equal to
+/// `[ [x0 >> amount, x1 >> amount], [x1 >> amount, x2 >> amount], [x2 >> amount, x0>>amount]`.
+/// Used in conjunction with split operation so that we don't use the full
+/// bit-decomposition in order to perform exact truncation.
+pub(crate) trait PlacementShrRaw<S: Session, T, O> {
     fn shr_raw(&self, sess: &S, amount: usize, x: &T) -> O;
 }
 
