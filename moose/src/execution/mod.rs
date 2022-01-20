@@ -14,10 +14,13 @@ use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
 mod asynchronous;
+pub mod symbolic;
 mod synchronous;
 pub use asynchronous::*;
+pub use symbolic::*;
 pub use synchronous::*;
-pub use crate::symbolic::{SymbolicSession};
+
+pub use crate::symbolic::SymbolicSession;
 
 /// General session trait determining basic properties for session objects.
 pub trait Session {

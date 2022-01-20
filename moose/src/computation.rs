@@ -1,11 +1,11 @@
 use crate::additive::*;
 use crate::error::{Error, Result};
+use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::host::*;
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::*;
-use crate::symbolic::Symbolic;
 use crate::types::*;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;

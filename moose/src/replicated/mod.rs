@@ -2,6 +2,7 @@
 use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider, TruncPrProvider};
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
@@ -9,7 +10,6 @@ use crate::host::{
 };
 use crate::kernels::*;
 use crate::mirrored::{Mir3Tensor, MirFixedTensor, Mirrored3Placement};
-use crate::symbolic::Symbolic;
 use crate::types::*;
 use crate::{BitArray, Const, Ring};
 use macros::with_context;

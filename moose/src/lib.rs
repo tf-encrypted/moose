@@ -1158,7 +1158,7 @@ macro_rules! kernel {
             ) -> crate::error::Result<
                 <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let k = derive_runtime_kernel![nullary, $($kp)+, self]?;
 
@@ -1204,7 +1204,7 @@ macro_rules! kernel {
                     <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
                 > + Send
             >> {
-                use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -1283,7 +1283,7 @@ macro_rules! kernel {
                 <$t0 as KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -1333,7 +1333,7 @@ macro_rules! kernel {
                 <$t0 as KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -1398,7 +1398,7 @@ macro_rules! kernel {
                 > + Send>>
             {
                 use crate::computation::{KnownType};
-                use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -1487,7 +1487,7 @@ macro_rules! kernel {
                 <$t1 as KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -1542,7 +1542,7 @@ macro_rules! kernel {
                 <$t1 as KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -1611,7 +1611,7 @@ macro_rules! kernel {
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
                 use crate::computation::{KnownType};
-                use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -1728,7 +1728,7 @@ macro_rules! kernel {
                 <$t2 as KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
 
                 let k = derive_runtime_kernel![ternary, $($kp)+, self]?;
@@ -1781,7 +1781,7 @@ macro_rules! kernel {
                 <$t2 as KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -1833,7 +1833,7 @@ macro_rules! kernel {
                 <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>
             > {
                 use crate::computation::{KnownType};
-                use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
                 let op = self.clone();
                 Box::new(move |
@@ -1939,7 +1939,7 @@ macro_rules! kernel {
                 Vec<<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type>
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -1991,7 +1991,7 @@ macro_rules! kernel {
                 Vec<<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type>
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
                 let op = self.clone();
 
@@ -2047,7 +2047,7 @@ macro_rules! kernel {
                 <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>
             > {
                 use crate::computation::{KnownType};
-                use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -2135,8 +2135,7 @@ macro_rules! modelled {
                 $($($attr_id:$attr_ty),*)?
             ) -> <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type {
                 use crate::computation::{KnownType, NullarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = NullarySignature {
@@ -2227,8 +2226,7 @@ macro_rules! modelled {
                 x0: &<$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
             ) -> <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type {
                 use crate::computation::{KnownType, UnarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = UnarySignature {
@@ -2322,7 +2320,7 @@ macro_rules! modelled {
         //     ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
         //         use crate::computation::{KnownType, BinarySignature};
         //         use crate::execution::{Session};
-        //         use crate::symbolic::{SymbolicSession, Symbolic};
+        //         use crate::execution::symbolic::{SymbolicSession, Symbolic};
         //         use std::convert::TryInto;
         //         let sig = BinarySignature {
         //             arg0: <$t0 as KnownType<SymbolicSession>>::TY,
@@ -2356,8 +2354,7 @@ macro_rules! modelled {
                 x1: &<$t1 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, BinarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = BinarySignature {
@@ -2457,8 +2454,7 @@ macro_rules! modelled {
                 x2: &<$t2 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
             ) -> <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type {
                 use crate::computation::{KnownType, TernarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = TernarySignature {
@@ -2552,8 +2548,7 @@ macro_rules! modelled {
                 xs: &[<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type]
             ) -> <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type {
                 use crate::computation::{KnownType, VariadicSignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = VariadicSignature {
@@ -2678,7 +2673,7 @@ macro_rules! modelled_kernel {
                 &$plc
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -2708,8 +2703,7 @@ macro_rules! modelled_kernel {
                 $($($attr_id:$attr_ty,)*)?
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, NullarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = NullarySignature {
@@ -2739,7 +2733,7 @@ macro_rules! modelled_kernel {
                 &$plc
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -2769,7 +2763,7 @@ macro_rules! modelled_kernel {
             ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
                 use crate::computation::{KnownType, NullarySignature};
                 use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
                 let sig = NullarySignature {
@@ -2800,7 +2794,7 @@ macro_rules! modelled_kernel {
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, NullarySignature};
                 use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
                 let sig = NullarySignature {
@@ -2843,8 +2837,7 @@ macro_rules! modelled_kernel {
                 $($($attr_id:$attr_ty),*)?
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, NullarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = NullarySignature {
@@ -2874,7 +2867,7 @@ macro_rules! modelled_kernel {
                 &$plc
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -2897,8 +2890,7 @@ macro_rules! modelled_kernel {
                 $($($attr_id:$attr_ty),*)?
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, NullarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = NullarySignature {
@@ -3025,7 +3017,7 @@ macro_rules! modelled_kernel {
                 <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -3073,8 +3065,7 @@ macro_rules! modelled_kernel {
                 x0: &<$t0 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = UnarySignature {
@@ -3107,7 +3098,7 @@ macro_rules! modelled_kernel {
                 <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -3148,7 +3139,7 @@ macro_rules! modelled_kernel {
             ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature, SymbolicValue};
                 use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
                 let sig = UnarySignature {
@@ -3183,7 +3174,7 @@ macro_rules! modelled_kernel {
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature, SymbolicValue};
                 use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
                 let sig = UnarySignature {
@@ -3232,8 +3223,7 @@ macro_rules! modelled_kernel {
                 x0: &<$t0 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = UnarySignature {
@@ -3267,7 +3257,7 @@ macro_rules! modelled_kernel {
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
                 use crate::computation::{KnownType};
-                use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -3298,8 +3288,7 @@ macro_rules! modelled_kernel {
                 x0: &<$t0 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = UnarySignature {
@@ -3436,7 +3425,7 @@ macro_rules! modelled_kernel {
                 <$t1 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -3488,8 +3477,7 @@ macro_rules! modelled_kernel {
                 x1: &<$t1 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, BinarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = BinarySignature {
@@ -3525,7 +3513,7 @@ macro_rules! modelled_kernel {
                 <$t1 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -3570,7 +3558,7 @@ macro_rules! modelled_kernel {
             ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
                 use crate::computation::{KnownType, BinarySignature, SymbolicValue};
                 use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
                 let sig = BinarySignature {
@@ -3609,7 +3597,7 @@ macro_rules! modelled_kernel {
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, BinarySignature, SymbolicValue};
                 use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
                 let sig = BinarySignature {
@@ -3664,8 +3652,7 @@ macro_rules! modelled_kernel {
                 x1: &<$t1 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, BinarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = BinarySignature {
@@ -3702,7 +3689,7 @@ macro_rules! modelled_kernel {
             ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
                 use crate::computation::{KnownType};
-                use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -3736,8 +3723,7 @@ macro_rules! modelled_kernel {
                 x1: &<$t1 as crate::computation::SymbolicType>::Type
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, BinarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = BinarySignature {
@@ -3870,7 +3856,7 @@ macro_rules! modelled_kernel {
                 Vec<<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type>
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
 
                 let op = self.clone();
@@ -3920,8 +3906,7 @@ macro_rules! modelled_kernel {
                 xs: &[$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, VariadicSignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = VariadicSignature {
@@ -3956,7 +3941,7 @@ macro_rules! modelled_kernel {
                 Vec<<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type>
             ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
             {
-                use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
+                use crate::execution::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
 
                 let op = self.clone();
 
@@ -4008,7 +3993,7 @@ macro_rules! modelled_kernel {
             ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
                 use crate::computation::{KnownType, VariadicSignature, SymbolicValue};
                 use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
                 let sig = VariadicSignature {
@@ -4043,7 +4028,7 @@ macro_rules! modelled_kernel {
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, VariadicSignature, SymbolicValue};
                 use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
                 let sig = VariadicSignature {
@@ -4092,8 +4077,7 @@ macro_rules! modelled_kernel {
                 xs: &[<$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = VariadicSignature {
@@ -4129,7 +4113,7 @@ macro_rules! modelled_kernel {
                 <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>
             > {
                 use crate::computation::{KnownType};
-                use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
+                use crate::execution::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
@@ -4168,8 +4152,7 @@ macro_rules! modelled_kernel {
                 xs: &[<$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, UnarySignature};
-                use crate::execution::{Session};
-                use crate::symbolic::{SymbolicSession};
+                use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
                 let sig = UnarySignature {
@@ -4331,13 +4314,13 @@ macro_rules! moose_type {
             type Type = $atomic;
         }
 
-        impl crate::computation::CanonicalType for crate::symbolic::Symbolic<$atomic> {
+        impl crate::computation::CanonicalType for crate::execution::symbolic::Symbolic<$atomic> {
             type Type = $atomic;
         }
 
         impl From<$atomic> for <$atomic as crate::computation::SymbolicType>::Type {
             fn from(x: $atomic) -> Self {
-                crate::symbolic::Symbolic::Concrete(x)
+                crate::execution::symbolic::Symbolic::Concrete(x)
             }
         }
 
@@ -4350,7 +4333,7 @@ macro_rules! moose_type {
                 v: <$atomic as crate::computation::SymbolicType>::Type,
             ) -> crate::error::Result<Self> {
                 match v {
-                    crate::symbolic::Symbolic::Concrete(x) => Ok(x),
+                    crate::execution::symbolic::Symbolic::Concrete(x) => Ok(x),
                     _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
                 }
             }
@@ -4369,13 +4352,13 @@ macro_rules! moose_type {
             type Type = $combined;
         }
 
-        impl crate::computation::CanonicalType for crate::symbolic::Symbolic<$combined> {
+        impl crate::computation::CanonicalType for crate::execution::symbolic::Symbolic<$combined> {
             type Type = $combined;
         }
 
         impl From<$combined> for <$combined as crate::computation::SymbolicType>::Type {
             fn from(x: $combined) -> Self {
-                crate::symbolic::Symbolic::Concrete(x)
+                crate::execution::symbolic::Symbolic::Concrete(x)
             }
         }
 
@@ -4388,7 +4371,7 @@ macro_rules! moose_type {
                 v: <$combined as crate::computation::SymbolicType>::Type,
             ) -> crate::error::Result<Self> {
                 match v {
-                    crate::symbolic::Symbolic::Concrete(x) => Ok(x),
+                    crate::execution::symbolic::Symbolic::Concrete(x) => Ok(x),
                     _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
                 }
             }
@@ -4414,7 +4397,7 @@ macro_rules! moose_type {
         }
 
         impl crate::computation::CanonicalType
-            for crate::symbolic::Symbolic<
+            for crate::execution::symbolic::Symbolic<
                 $outer<<$inner as crate::computation::SymbolicType>::Type>,
             >
         {
@@ -4426,7 +4409,7 @@ macro_rules! moose_type {
             for <$combined as crate::computation::SymbolicType>::Type
         {
             fn from(x: $outer<<$inner as crate::computation::SymbolicType>::Type>) -> Self {
-                crate::symbolic::Symbolic::Concrete(x)
+                crate::execution::symbolic::Symbolic::Concrete(x)
             }
         }
 
@@ -4441,7 +4424,7 @@ macro_rules! moose_type {
                 v: <$combined as crate::computation::SymbolicType>::Type,
             ) -> crate::error::Result<Self> {
                 match v {
-                    crate::symbolic::Symbolic::Concrete(x) => Ok(x),
+                    crate::execution::symbolic::Symbolic::Concrete(x) => Ok(x),
                     _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
                 }
             }
@@ -4479,7 +4462,7 @@ macro_rules! moose_type {
         }
 
         impl crate::computation::CanonicalType
-            for crate::symbolic::Symbolic<
+            for crate::execution::symbolic::Symbolic<
                 $outer<
                     <$inner1 as crate::computation::SymbolicType>::Type,
                     <$inner2 as crate::computation::SymbolicType>::Type,
@@ -4507,7 +4490,7 @@ macro_rules! moose_type {
                     <$inner2 as crate::computation::SymbolicType>::Type,
                 >,
             ) -> Self {
-                crate::symbolic::Symbolic::Concrete(x)
+                crate::execution::symbolic::Symbolic::Concrete(x)
             }
         }
 
@@ -4525,7 +4508,7 @@ macro_rules! moose_type {
                 v: <$combined as crate::computation::SymbolicType>::Type,
             ) -> crate::error::Result<Self> {
                 match v {
-                    crate::symbolic::Symbolic::Concrete(x) => Ok(x),
+                    crate::execution::symbolic::Symbolic::Concrete(x) => Ok(x),
                     _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
                 }
             }
@@ -4567,7 +4550,7 @@ macro_rules! moose_type {
         }
 
         impl crate::computation::CanonicalType
-            for crate::symbolic::Symbolic<
+            for crate::execution::symbolic::Symbolic<
                 $outer<
                     <$inner1 as crate::computation::SymbolicType>::Type,
                     <$inner2 as crate::computation::SymbolicType>::Type,
@@ -4599,7 +4582,7 @@ macro_rules! moose_type {
                     <$inner3 as crate::computation::SymbolicType>::Type,
                 >,
             ) -> Self {
-                crate::symbolic::Symbolic::Concrete(x)
+                crate::execution::symbolic::Symbolic::Concrete(x)
             }
         }
 
@@ -4618,7 +4601,7 @@ macro_rules! moose_type {
                 v: <$combined as crate::computation::SymbolicType>::Type,
             ) -> crate::error::Result<Self> {
                 match v {
-                    crate::symbolic::Symbolic::Concrete(x) => Ok(x),
+                    crate::execution::symbolic::Symbolic::Concrete(x) => Ok(x),
                     _ => Err(crate::error::Error::Unexpected(None)), // TODO err message
                 }
             }

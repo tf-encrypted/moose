@@ -1724,10 +1724,10 @@ impl MaximumOp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::execution::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
     use crate::execution::SyncSession;
     use crate::fixedpoint::{Convert, PrefixMul};
     use crate::replicated::RepTensor;
-    use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
     use ndarray::prelude::*;
     use proptest::prelude::*;
     use std::num::Wrapping;

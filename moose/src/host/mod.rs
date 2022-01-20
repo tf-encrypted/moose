@@ -2,10 +2,10 @@
 
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::kernels::*;
 use crate::prng::AesRng;
-use crate::symbolic::Symbolic;
 use crate::types::*;
 use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
 use ndarray::prelude::*;
