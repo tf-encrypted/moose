@@ -4719,7 +4719,6 @@ pub mod networking;
 pub mod prng;
 pub mod replicated;
 pub mod storage;
-pub mod symbolic;
 pub mod textual;
 pub mod types;
 pub mod utils;
