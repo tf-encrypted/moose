@@ -286,9 +286,9 @@ class TreeEnsembleClassifier(TreeEnsemble):
 
     def _temp_softmax(self, x, axis):
         # TODO replace with edsl.max(x, axis)
-        x_bound = edsl.sub(x, edsl.sum(x, axis))
-        x_exp = edsl.exp(x_bound)
-        return edsl.div(x_exp, edsl.sum(x_exp, axis))
+        x_exp = edsl.exp(x)
+        denom = edsl.expand_dims(edsl.sum(x_exp, axis), axis)
+        return edsl.div(x_exp, denom)
 
 
 class TreeEnsembleRegressor(TreeEnsemble):

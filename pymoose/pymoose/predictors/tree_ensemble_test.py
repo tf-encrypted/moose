@@ -112,14 +112,14 @@ _SK_CLASSIFIER_MODELS = [
             [0.64666667, 0.35333333],
         ],
     ),
-    # (
-    #     "random_forest_classifier_3class",
-    #     [
-    #         [0.03571429, 0.9642857, 0.],
-    #         [0.03571429, 0.9642857, 0.],
-    #         [0.5, 0.5, 0.],
-    #     ]
-    # ),
+    (
+        "random_forest_classifier_3class",
+        [
+            [0.03571429, 0.9642857, 0.],
+            [0.03571429, 0.9642857, 0.],
+            [0.5, 0.5, 0.],
+        ]
+    ),
     # (
     #     "random_forest_classifier_3class_5trees",
     #     [
@@ -194,7 +194,7 @@ class TreeEnsembleTest(parameterized.TestCase):
         )
         actual_result = list(result_dict.values())[0]
         expected_result = np.array(expected, dtype=np.float64)
-        np.testing.assert_almost_equal(actual_result, expected_result, decimal=3)
+        np.testing.assert_almost_equal(actual_result, expected_result, decimal=2)
 
     @parameterized.parameters(
         *zip(
