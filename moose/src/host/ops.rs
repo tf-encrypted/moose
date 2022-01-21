@@ -417,7 +417,23 @@ impl HostAtLeast2DOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        let y = x.atleast_2d(to_column_vector);
+        let y = match x.0.ndim() {
+            0 => HostTensor::<T>(x.0.into_shape(IxDyn(&[1, 1])).unwrap(), x.1),
+            1 => {
+                let length = x.0.len();
+                let newshape = if to_column_vector {
+                    IxDyn(&[length, 1])
+                } else {
+                    IxDyn(&[1, length])
+                };
+                HostTensor::<T>(x.0.into_shape(newshape).unwrap(), x.1)
+            }
+            2 => x,
+            otherwise => panic!(
+                "Tensor input for `at_least_2d` must have rank <= 2, found rank {:?}.",
+                otherwise
+            ),
+        };
         Ok(plc.place(sess, y))
     }
 }

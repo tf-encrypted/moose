@@ -188,26 +188,6 @@ where
         HostTensor::<T>(x, plc.clone())
     }
 
-    fn atleast_2d(self, to_column_vector: bool) -> HostTensor<T> {
-        match self.0.ndim() {
-            0 => HostTensor::<T>(self.0.into_shape(IxDyn(&[1, 1])).unwrap(), self.1),
-            1 => {
-                let length = self.0.len();
-                let newshape = if to_column_vector {
-                    IxDyn(&[length, 1])
-                } else {
-                    IxDyn(&[1, length])
-                };
-                HostTensor::<T>(self.0.into_shape(newshape).unwrap(), self.1)
-            }
-            2 => self,
-            otherwise => panic!(
-                "Tensor input for `atleast_2d` must have rank <= 2, found rank {:?}.",
-                otherwise
-            ),
-        }
-    }
-
     fn dot(self, other: HostTensor<T>) -> HostTensor<T> {
         match (self.0.ndim(), other.0.ndim()) {
             (1, 1) => {
