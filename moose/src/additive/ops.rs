@@ -4,6 +4,7 @@ use crate::computation::{
     AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant, Placed, ShapeOp,
 };
 use crate::error::Result;
+use crate::execution::Session;
 use crate::host::HostPlacement;
 use crate::kernels::*;
 use macros::with_context;
@@ -289,11 +290,10 @@ impl AdtShlOp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::computation::{KnownType, Operation, Operator, Placement, RingAddOp};
+    use crate::execution::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
+    use crate::execution::SyncSession;
     use crate::types::*;
-    use crate::{
-        computation::{KnownType, Operation, Operator, Placement, RingAddOp},
-        symbolic::{Symbolic, SymbolicHandle, SymbolicSession},
-    };
     use ndarray::array;
 
     #[test]

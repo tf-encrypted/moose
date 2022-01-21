@@ -1,6 +1,7 @@
 use super::*;
 use crate::computation::MuxOp;
 use crate::error::Result;
+use crate::execution::Session;
 use macros::with_context;
 
 impl MuxOp {
@@ -43,6 +44,7 @@ impl MuxOp {
 
 #[cfg(test)]
 mod tests {
+    use crate::execution::SyncSession;
     use crate::host::FromRawPlc;
     use crate::host::HostPlacement;
     use crate::kernels::*;

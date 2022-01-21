@@ -1,6 +1,7 @@
 use super::*;
 use crate::computation::*;
 use crate::error::Result;
+use crate::execution::Session;
 use crate::fixedpoint::FixedTensor;
 use crate::host::*;
 use crate::kernels::*;
@@ -393,8 +394,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::execution::SyncSession;
     use crate::kernels::PlacementReveal;
-    use crate::kernels::SyncSession;
     use crate::types::{HostBitArray128, HostBitArray224};
     use aes::cipher::generic_array::sequence::Concat;
     use aes_gcm::{aead::NewAead, AeadInPlace};

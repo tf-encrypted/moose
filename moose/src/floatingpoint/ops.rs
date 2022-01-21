@@ -3,6 +3,7 @@ use crate::boolean::BoolTensor;
 use crate::computation::*;
 use crate::error::Error;
 use crate::error::Result;
+use crate::execution::Session;
 use crate::host::HostPlacement;
 use crate::kernels::*;
 use crate::mirrored::{Mir3Tensor, Mirrored3Placement};

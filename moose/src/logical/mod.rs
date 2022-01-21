@@ -2,8 +2,8 @@
 
 use crate::computation::{PartiallySymbolicType, Placed, Placement, SymbolicType};
 use crate::error::Result;
+use crate::execution::symbolic::Symbolic;
 use crate::host::HostShape;
-use crate::symbolic::Symbolic;
 use crate::types::*;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};

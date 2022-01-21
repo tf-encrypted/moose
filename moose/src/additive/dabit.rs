@@ -1,6 +1,7 @@
 //! DaBit generation for additive placements
-use super::*;
+use super::{AdditivePlacement, AdtTensor};
 use crate::computation::KnownType;
+use crate::execution::Session;
 use crate::host::{HostPlacement, SyncKey};
 use crate::kernels::*;
 use crate::types::{PrfKey, Seed};

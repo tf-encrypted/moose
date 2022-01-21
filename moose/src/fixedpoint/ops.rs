@@ -4,6 +4,7 @@ use super::FixedTensor;
 use crate::boolean::BoolTensor;
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::execution::Session;
 use crate::floatingpoint::FloatTensor;
 use crate::host::*;
 use crate::kernels::*;
@@ -1799,10 +1800,10 @@ impl MaximumOp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::execution::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
+    use crate::execution::SyncSession;
     use crate::fixedpoint::PrefixMul;
-    use crate::kernels::SyncSession;
     use crate::replicated::RepTensor;
-    use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
     use ndarray::prelude::*;
     use proptest::prelude::*;
     use std::num::Wrapping;

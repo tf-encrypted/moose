@@ -1,8 +1,15 @@
+//! Symbolic execution of computations
+//!
+//! This is used during compilation to lower operations.
+//! In general, it works by evaluating kernels on symbolic values and
+//! recording the underlying operations perform as new computation.
+
 use crate::computation::{
     Computation, KnownType, Operation, Operator, Placed, Placement, SymbolicValue,
 };
 use crate::error::{Error, Result};
-use crate::kernels::{DispatchKernel, PlacementPlace, Session};
+use crate::execution::Session;
+use crate::kernels::{DispatchKernel, PlacementPlace};
 use crate::replicated::ReplicatedPlacement;
 use crate::types::ReplicatedSetup;
 use parking_lot::RwLock;
@@ -96,8 +103,9 @@ struct SymbolicSessionState {
         HashMap<ReplicatedPlacement, Arc<<ReplicatedSetup as KnownType<SymbolicSession>>::Type>>,
 }
 
+/// Session object in which symbolic execution is happening
 pub struct SymbolicSession {
-    pub strategy: Box<dyn SymbolicStrategy>,
+    pub(crate) strategy: Box<dyn SymbolicStrategy>,
     state: Arc<RwLock<SymbolicSessionState>>,
 }
 
@@ -111,22 +119,27 @@ impl Default for SymbolicSession {
 }
 
 impl SymbolicSession {
-    pub fn add_operation<'s, O: Into<Operator> + Clone>(
+    /// Add operation to the session's underlying computation
+    pub fn add_operation<'s, O: Into<Operator> + Clone, P: Into<Placement> + Clone>(
         &'s self,
         operator: &O,
         operands: &[&str],
-        plc: &Placement,
-    ) -> String {
+        plc: &P,
+    ) -> SymbolicHandle<P> {
         let mut state = self.state.write();
         let op_name: String = format!("op_{}", state.ops.len());
         let op = Operation {
             name: op_name.clone(),
             kind: operator.clone().into(),
             inputs: operands.iter().map(|op| op.to_string()).collect(),
-            placement: plc.clone(),
+            placement: plc.clone().into(),
         };
         state.ops.push(op);
-        op_name
+
+        SymbolicHandle {
+            op: op_name,
+            plc: plc.clone(),
+        }
     }
 
     /// Apply a given closure to the iterator over the ops.
@@ -151,8 +164,8 @@ impl Session for SymbolicSession {
 
     type ReplicatedSetup = <ReplicatedSetup as KnownType<SymbolicSession>>::Type;
 
-    /// Produce a new replicated setup or returned a previously produced setup for the placement
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
+        // Produce a new replicated setup or returned a previously produced setup for the placement
         let state = self.state.read();
         match state.replicated_keys.get(plc) {
             Some(setup) => Arc::clone(setup),
@@ -177,7 +190,7 @@ impl Session for SymbolicSession {
     }
 }
 
-pub trait SymbolicStrategy {
+pub(crate) trait SymbolicStrategy {
     fn execute(
         &self,
         sess: &SymbolicSession,
@@ -338,6 +351,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
     }
 }
 
+/// Helper for execution computations symbolically.
 #[derive(Default)]
 pub struct SymbolicExecutor {
     // Placeholder for the future state we want to keep (symbolic strategy pointer, replicated setup cache, etc).

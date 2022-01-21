@@ -1,18 +1,22 @@
 use crate::additive::*;
 use crate::error::{Error, Result};
+use crate::execution::symbolic::Symbolic;
+use crate::execution::Session;
 use crate::host::*;
-use crate::kernels::Session;
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::*;
-use crate::symbolic::Symbolic;
 use crate::types::*;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
 use macros::{FromTextual, ShortName, ToTextual};
 use paste::paste;
+use petgraph::algo::toposort;
+use petgraph::graph::NodeIndex;
+use petgraph::Graph;
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::generichash;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fs::File;
 use std::path::Path;
@@ -404,7 +408,7 @@ macro_rules! values {
         )+
 
         $(
-        impl KnownType<crate::kernels::SyncSession> for $val {
+        impl KnownType<crate::execution::SyncSession> for $val {
             type Type = $val;
             const TY: Ty = Ty::$val$(($inner::$default))?;
         }
@@ -455,14 +459,14 @@ macro_rules! values {
         )+
 
         $(
-        impl KnownType<crate::symbolic::SymbolicSession> for $val {
+        impl KnownType<crate::execution::SymbolicSession> for $val {
             type Type = <$val as SymbolicType>::Type;
             const TY: Ty = Ty::$val$(($inner::$default))?;
         }
         )+
 
         $(
-            impl KnownType<crate::kernels::AsyncSession> for $val {
+            impl KnownType<crate::execution::AsyncSession> for $val {
                 type Type = $val;
                 const TY: Ty = Ty::$val$(($inner::$default))?;
             }
@@ -2011,6 +2015,84 @@ impl Computation {
         rmp_serde::encode::write(&mut file_buffer, self)
             .map_err(|e| Error::SerializationError(e.to_string()))?;
         Ok(())
+    }
+
+    pub fn as_graph(&self) -> Graph<(String, usize), ()> {
+        let mut graph = Graph::new();
+
+        let mut vertex_map: HashMap<&str, NodeIndex> = HashMap::new();
+
+        let mut send_nodes: HashMap<&RendezvousKey, NodeIndex> = HashMap::new();
+        let mut recv_nodes: HashMap<&RendezvousKey, NodeIndex> = HashMap::new();
+
+        let mut rdv_keys: HashSet<&RendezvousKey> = HashSet::new();
+
+        for (i, op) in self.operations.iter().enumerate() {
+            let vertex = graph.add_node((op.name.clone(), i));
+            match op.kind {
+                Operator::Send(ref op) => {
+                    let key = &op.rendezvous_key;
+
+                    if send_nodes.contains_key(key) {
+                        Error::MalformedComputation(format!(
+                            "Already had a send node with same rdv key at key {}",
+                            key
+                        ));
+                    }
+
+                    send_nodes.insert(key, vertex);
+                    rdv_keys.insert(key);
+                }
+                Operator::Receive(ref op) => {
+                    let key = &op.rendezvous_key;
+
+                    if recv_nodes.contains_key(key) {
+                        Error::MalformedComputation(format!(
+                            "Already had a recv node with same rdv key at key {}",
+                            key
+                        ));
+                    }
+
+                    recv_nodes.insert(key, vertex);
+                    rdv_keys.insert(key);
+                }
+                _ => {}
+            }
+            vertex_map.insert(&op.name, vertex);
+        }
+
+        for op in self.operations.iter() {
+            for ins in op.inputs.iter() {
+                graph.add_edge(vertex_map[&ins.as_ref()], vertex_map[&op.name.as_ref()], ());
+            }
+        }
+
+        for key in rdv_keys.into_iter() {
+            if !send_nodes.contains_key(key) {
+                Error::MalformedComputation(format!("No send node with rdv key {}", key));
+            }
+            if !recv_nodes.contains_key(key) {
+                Error::MalformedComputation(format!("No recv node with rdv key {}", key));
+            }
+            // add edge send->recv (send must be evaluated before recv)
+            graph.add_edge(send_nodes[key], recv_nodes[key], ());
+        }
+
+        graph
+    }
+
+    pub fn toposort(&self) -> Result<Computation> {
+        let graph = self.as_graph();
+        let toposort = toposort(&graph, None).map_err(|_| {
+            Error::MalformedComputation("There is a cycle detected in the runtime graph".into())
+        })?;
+
+        let operations = toposort
+            .iter()
+            .map(|node| self.operations[graph[*node].1].clone())
+            .collect();
+
+        Ok(Computation { operations })
     }
 }
 

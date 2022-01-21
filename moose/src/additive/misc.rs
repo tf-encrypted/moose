@@ -1,5 +1,6 @@
+use crate::execution::Session;
 use crate::host::HostPlacement;
-use crate::kernels::{PlacementAdd, PlacementShl, Session};
+use crate::kernels::{PlacementAdd, PlacementShl};
 
 pub trait BitCompose<S: Session, R> {
     fn bit_compose(&self, sess: &S, bits: &[R]) -> R;

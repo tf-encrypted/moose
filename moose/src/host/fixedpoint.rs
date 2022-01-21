@@ -20,7 +20,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::kernels::SyncSession;
+    use crate::execution::SyncSession;
     use ndarray::prelude::*;
     use proptest::prelude::*;
     use std::num::Wrapping;

@@ -1,6 +1,7 @@
 //! Support for applying [Bristol Fashion circuits](https://homes.esat.kuleuven.be/~nsmart/MPC/)
 
-use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor, Session};
+use crate::execution::Session;
+use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{newline, space0, u64};
@@ -216,8 +217,8 @@ pub fn byte_vec_to_bit_vec_be(bytes: &[u8]) -> Vec<u8> {
 mod tests {
     use super::*;
     use crate::computation::Role;
+    use crate::execution::SyncSession;
     use crate::host::{HostBitTensor, HostPlacement};
-    use crate::kernels::SyncSession;
     use crate::replicated::ReplicatedPlacement;
     use crate::types::ReplicatedBitTensor;
 
