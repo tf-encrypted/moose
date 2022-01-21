@@ -369,6 +369,47 @@ impl HostDivOp {
     }
 }
 
+impl<T> HostTensor<T>
+where
+    T: LinalgScalar,
+{
+    fn dot(self, other: HostTensor<T>) -> HostTensor<T> {
+        match (self.0.ndim(), other.0.ndim()) {
+            (1, 1) => {
+                let l = self.0.into_dimensionality::<Ix1>().unwrap();
+                let r = other.0.into_dimensionality::<Ix1>().unwrap();
+                let res = Array::from_elem([], l.dot(&r))
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap();
+                HostTensor::<T>(res, self.1)
+            }
+            (1, 2) => {
+                let l = self.0.into_dimensionality::<Ix1>().unwrap();
+                let r = other.0.into_dimensionality::<Ix2>().unwrap();
+                let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                HostTensor::<T>(res, self.1)
+            }
+            (2, 1) => {
+                let l = self.0.into_dimensionality::<Ix2>().unwrap();
+                let r = other.0.into_dimensionality::<Ix1>().unwrap();
+                let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                HostTensor::<T>(res, self.1)
+            }
+            (2, 2) => {
+                let l = self.0.into_dimensionality::<Ix2>().unwrap();
+                let r = other.0.into_dimensionality::<Ix2>().unwrap();
+                let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                HostTensor::<T>(res, self.1)
+            }
+            (self_rank, other_rank) => panic!(
+                // TODO: replace with proper error handling
+                "Dot<HostTensor> not implemented between tensors of rank {:?} and {:?}.",
+                self_rank, other_rank,
+            ),
+        }
+    }
+}
+
 impl HostDotOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
@@ -1306,6 +1347,91 @@ impl RingMulOp {
         Wrapping<T>: std::ops::Mul<Wrapping<T>, Output = Wrapping<T>>,
     {
         Ok(HostRingTensor(x.0 * y.0, plc.clone()))
+    }
+}
+
+impl<T> HostRingTensor<T>
+where
+    Wrapping<T>: LinalgScalar,
+{
+    fn dot(self, rhs: HostRingTensor<T>) -> Result<HostRingTensor<T>> {
+        match self.0.ndim() {
+            1 => match rhs.0.ndim() {
+                1 => {
+                    let l = self
+                        .0
+                        .into_dimensionality::<Ix1>()
+                        .map_err(|e| Error::KernelError(e.to_string()))?;
+                    let r = rhs
+                        .0
+                        .into_dimensionality::<Ix1>()
+                        .map_err(|e| Error::KernelError(e.to_string()))?;
+                    let res = Array::from_elem([], l.dot(&r))
+                        .into_dimensionality::<IxDyn>()
+                        .map_err(|e| Error::KernelError(e.to_string()))?;
+                    Ok(HostRingTensor(res, self.1))
+                }
+                2 => {
+                    let l = self
+                        .0
+                        .into_dimensionality::<Ix1>()
+                        .map_err(|e| Error::KernelError(e.to_string()))?;
+                    let r = rhs
+                        .0
+                        .into_dimensionality::<Ix2>()
+                        .map_err(|e| Error::KernelError(e.to_string()))?;
+                    let res = l
+                        .dot(&r)
+                        .into_dimensionality::<IxDyn>()
+                        .map_err(|e| Error::KernelError(e.to_string()))?;
+                    Ok(HostRingTensor(res, self.1))
+                }
+                other => Err(Error::KernelError(format!(
+                    "Dot<HostRingTensor> cannot handle argument of rank {:?} ",
+                    other
+                ))),
+            },
+            2 => match rhs.0.ndim() {
+                1 => {
+                    let l = self
+                        .0
+                        .into_dimensionality::<Ix2>()
+                        .map_err(|e| Error::KernelError(e.to_string()))?;
+                    let r = rhs
+                        .0
+                        .into_dimensionality::<Ix1>()
+                        .map_err(|e| Error::KernelError(e.to_string()))?;
+                    let res = l
+                        .dot(&r)
+                        .into_dimensionality::<IxDyn>()
+                        .map_err(|e| Error::KernelError(e.to_string()))?;
+                    Ok(HostRingTensor(res, self.1))
+                }
+                2 => {
+                    let l = self
+                        .0
+                        .into_dimensionality::<Ix2>()
+                        .map_err(|e| Error::KernelError(e.to_string()))?;
+                    let r = rhs
+                        .0
+                        .into_dimensionality::<Ix2>()
+                        .map_err(|e| Error::KernelError(e.to_string()))?;
+                    let res = l
+                        .dot(&r)
+                        .into_dimensionality::<IxDyn>()
+                        .map_err(|e| Error::KernelError(e.to_string()))?;
+                    Ok(HostRingTensor(res, self.1))
+                }
+                other => Err(Error::KernelError(format!(
+                    "Dot<HostRingTensor> cannot handle argument of rank {:?} ",
+                    other
+                ))),
+            },
+            other => Err(Error::KernelError(format!(
+                "Dot<HostRingTensor> not implemented for tensors of rank {:?}",
+                other
+            ))),
+        }
     }
 }
 
