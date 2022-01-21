@@ -31,6 +31,14 @@ pub struct HostPlacement {
     pub owner: Role,
 }
 
+impl From<&str> for HostPlacement {
+    fn from(role: &str) -> Self {
+        HostPlacement {
+            owner: Role::from(role),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostString(pub String, pub HostPlacement);
 
@@ -1375,21 +1383,17 @@ mod tests {
 
     #[test]
     fn test_host_shape_op() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
+
         let x = HostRingTensor::from_raw_plc(
-            array![1024u64, 5, 4]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            alice,
+            array![1024u64, 5, 4],
+            plc.clone(),
         );
 
-        let shape = x.shape();
-        let raw_shape: RawShape = shape.0;
-        let underlying = vec![3];
-        let expected: RawShape = RawShape(underlying);
-        assert_eq!(expected, raw_shape);
+        let shape = plc.shape(&sess, &x).0;
+        let expected = RawShape(vec![3]);
+        assert_eq!(expected, shape);
     }
 
     #[test]
@@ -1441,14 +1445,11 @@ mod tests {
 
     #[test]
     fn test_tensor_slice() {
-        let x_backing: ArrayD<u64> = array![[1, 2], [3, 4]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
 
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
+        let x_backing = array![[1, 2], [3, 4]];
+        let x = HostRing64Tensor::from_raw_plc(x_backing, plc.clone());
 
         let slice = SliceInfo(vec![
             SliceInfoElem {
@@ -1462,25 +1463,20 @@ mod tests {
                 step: None,
             },
         ]);
+        let y = plc.slice(&sess, slice, &x);
 
-        let sess = SyncSession::default();
-        let y = alice.slice(&sess, slice, &x);
-
-        let target: ArrayD<u64> = array![[3, 4]].into_dimensionality::<IxDyn>().unwrap();
-
-        assert_eq!(y, HostRing64Tensor::from_raw_plc(target, alice))
+        let target = array![[3, 4]];
+        let expected = HostRing64Tensor::from_raw_plc(target, plc);
+        assert_eq!(y, expected);
     }
 
     #[test]
     fn test_tensor_slice_neg_indicies() {
-        let x_backing: ArrayD<u64> = array![[1, 2], [3, 4]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
+        
+        let x_backing = array![[1, 2], [3, 4]];
+        let x = HostRing64Tensor::from_raw_plc(x_backing, plc.clone());
 
         let slice = SliceInfo(vec![
             SliceInfoElem {
@@ -1494,26 +1490,22 @@ mod tests {
                 step: Some(2),
             },
         ]);
+        let y = plc.slice(&sess, slice, &x);
 
-        let sess = SyncSession::default();
-        let y = alice.slice(&sess, slice, &x);
         // This example we take the last element of the last element in dimension 1, which is just 4.
-        let target: ArrayD<u64> = array![[4]].into_dimensionality::<IxDyn>().unwrap();
-
-        assert_eq!(y, HostRing64Tensor::from_raw_plc(target, alice))
+        let target = array![[4]];
+        let expected = HostRing64Tensor::from_raw_plc(target, plc);
+        assert_eq!(y, expected);
     }
 
     #[test]
     #[should_panic]
     fn test_tensor_slice_index_out_of_range() {
-        let x_backing: ArrayD<u64> = array![[1, 2], [3, 4]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
 
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
+        let x_backing = array![[1, 2], [3, 4]];
+        let x = HostRing64Tensor::from_raw_plc(x_backing, plc.clone());
 
         let slice = SliceInfo(vec![
             SliceInfoElem {
@@ -1532,57 +1524,51 @@ mod tests {
                 step: Some(2),
             },
         ]);
-
-        let sess = SyncSession::default();
-        let _y = alice.slice(&sess, slice, &x);
+        let _y = plc.slice(&sess, slice, &x);
         // This example we expect a panic from the underlying slice implementation.
-        let _target: ArrayD<u64> = array![[4]].into_dimensionality::<IxDyn>().unwrap();
     }
 
     #[test]
     fn test_diag() {
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
+
         let x_backing: ArrayD<f64> = array![[1.0, 2.0], [3.0, 4.0]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
 
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
+        let x = HostTensor::<f64>(x_backing, plc.clone());
+        let y = plc.diag(&sess, &x);
 
-        let x = HostTensor::<f64>(x_backing, alice.clone());
-        let sess = SyncSession::default();
-        let y = alice.diag(&sess, &x);
         let target: ArrayD<f64> = array![1.0, 4.0].into_dimensionality::<IxDyn>().unwrap();
-        assert_eq!(y, HostTensor::<f64>(target, alice))
+        let expected = HostTensor::<f64>(target, plc);
+        assert_eq!(y, expected);
     }
 
     #[test]
     fn test_index() {
-        let x_backing: ArrayD<u64> = array![[[1, 2], [3, 4]], [[4, 5], [6, 7]]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
         let sess = SyncSession::default();
-        let y = alice.index_axis(&sess, 0, 1, &x);
+        let plc = HostPlacement::from("host");
+        
+        let x_backing = array![[[1_u64, 2], [3, 4]], [[4, 5], [6, 7]]];
+        let x = HostRing64Tensor::from_raw_plc(x_backing, plc.clone());
+        let y = plc.index_axis(&sess, 0, 1, &x);
 
-        let target: ArrayD<u64> = array![[4, 5], [6, 7]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-
-        assert_eq!(y, HostRing64Tensor::from_raw_plc(target, alice))
+        let target = array![[4, 5], [6, 7]];
+        let expected = HostRing64Tensor::from_raw_plc(target, plc);
+        assert_eq!(y, expected);
     }
 
     #[test]
     fn test_transpose() {
+        
+
         let x = HostTensor::<f32>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
+
         let y = x.transpose();
         assert_eq!(
             y,
