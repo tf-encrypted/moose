@@ -289,6 +289,12 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         DemirrorOp::from_textual,
         MirrorOp::from_textual,
         MaximumOp::from_textual,
+        BitNegOp::from_textual,
+        BitOrOp::from_textual,
+        Pow2Op::from_textual,
+        ExpOp::from_textual,
+        LessOp::from_textual,
+        GreaterThanOp::from_textual,
     ));
     alt((part1, part2, part3, part4))(input)
 }
