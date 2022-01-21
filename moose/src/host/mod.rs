@@ -54,7 +54,7 @@ impl<S: Session> PlacementPlace<S, HostString> for HostPlacement {
 pub struct RawShape(pub Vec<usize>);
 
 impl RawShape {
-    pub fn extend_singletons(self, mut axis: Vec<usize>) -> Self {
+    fn extend_singletons(self, mut axis: Vec<usize>) -> Self {
         let ax = axis.pop();
         match ax {
             Some(ax) => {
@@ -65,17 +65,17 @@ impl RawShape {
         }
     }
 
-    pub fn slice(self, begin: usize, end: usize) -> Self {
+    fn slice(self, begin: usize, end: usize) -> Self {
         let slc = &self.0[begin..end];
         RawShape(slc.to_vec())
     }
 
-    pub fn unsqueeze(mut self, axis: usize) -> Self {
+    fn unsqueeze(mut self, axis: usize) -> Self {
         self.0.insert(axis, 1);
         self
     }
 
-    pub fn squeeze(mut self, axis: Option<usize>) -> Self {
+    fn squeeze(mut self, axis: Option<usize>) -> Self {
         match axis {
             Some(axis) => {
                 let removed_axis = self.0.remove(axis);
@@ -1054,7 +1054,7 @@ where
             note = "This function is only used by the old kernels, which are not aware of the placements."
         )
     )]
-    pub fn fill(shape: &RawShape, el: T) -> HostRingTensor<T> {
+    fn fill(shape: &RawShape, el: T) -> HostRingTensor<T> {
         HostRingTensor(
             ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)),
             HostPlacement {
