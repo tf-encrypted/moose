@@ -910,24 +910,6 @@ impl HostRing128Tensor {
     }
 }
 
-#[cfg(not(feature = "exclude_old_framework"))]
-impl HostRing64Tensor {
-    fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
-        let temp = &self.0 >> bit_idx;
-        let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
-        HostBitTensor::from(lsb)
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl HostRing128Tensor {
-    fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
-        let temp = &self.0 >> bit_idx;
-        let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
-        HostBitTensor::from(lsb)
-    }
-}
-
 impl<T> HostRingTensor<T>
 where
     T: Clone,
