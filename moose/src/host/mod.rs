@@ -84,10 +84,10 @@ impl RawShape {
         RawShape(slc.to_vec())
     }
 
-    fn unsqueeze(mut self, axis: usize) -> Self {
-        self.0.insert(axis, 1);
-        self
-    }
+    // fn unsqueeze(mut self, axis: usize) -> Self {
+    //     self.0.insert(axis, 1);
+    //     self
+    // }
 
     fn squeeze(mut self, axis: Option<usize>) -> Self {
         match axis {
@@ -292,36 +292,36 @@ where
     }
 }
 
-impl<T> HostTensor<T>
-where
-    T: LinalgScalar + FromPrimitive,
-{
-    fn mean(self, axis: Option<usize>) -> Result<Self> {
-        match axis {
-            Some(i) => {
-                let reduced = self.0.mean_axis(Axis(i));
-                if reduced.is_none() {
-                    return Err(Error::KernelError(
-                        "HostMeanOp cannot reduce over an empty tensor.".to_string(),
-                    ));
-                };
-                Ok(HostTensor::<T>(reduced.unwrap(), self.1))
-            }
-            None => {
-                let mean = self.0.mean();
-                if mean.is_none() {
-                    return Err(Error::KernelError(
-                        "HostMeanOp cannot reduce over an empty tensor.".to_string(),
-                    ));
-                };
-                let out = Array::from_elem([], mean.unwrap())
-                    .into_dimensionality::<IxDyn>()
-                    .map_err(|e| Error::KernelError(e.to_string()))?;
-                Ok(HostTensor::<T>(out, self.1))
-            }
-        }
-    }
-}
+// impl<T> HostTensor<T>
+// where
+//     T: LinalgScalar + FromPrimitive,
+// {
+//     fn mean(self, axis: Option<usize>) -> Result<Self> {
+//         match axis {
+//             Some(i) => {
+//                 let reduced = self.0.mean_axis(Axis(i));
+//                 if reduced.is_none() {
+//                     return Err(Error::KernelError(
+//                         "HostMeanOp cannot reduce over an empty tensor.".to_string(),
+//                     ));
+//                 };
+//                 Ok(HostTensor::<T>(reduced.unwrap(), self.1))
+//             }
+//             None => {
+//                 let mean = self.0.mean();
+//                 if mean.is_none() {
+//                     return Err(Error::KernelError(
+//                         "HostMeanOp cannot reduce over an empty tensor.".to_string(),
+//                     ));
+//                 };
+//                 let out = Array::from_elem([], mean.unwrap())
+//                     .into_dimensionality::<IxDyn>()
+//                     .map_err(|e| Error::KernelError(e.to_string()))?;
+//                 Ok(HostTensor::<T>(out, self.1))
+//             }
+//         }
+//     }
+// }
 
 #[cfg(feature = "blas")]
 impl<T> HostTensor<T>
@@ -468,22 +468,22 @@ impl<T> From<Array2<T>> for HostTensor<T> {
     }
 }
 
-#[cfg(not(feature = "exclude_old_framework"))]
-fn concatenate<T>(axis: usize, arrays: &[HostTensor<T>]) -> HostTensor<T>
-where
-    T: LinalgScalar,
-{
-    let ax = Axis(axis);
-    let inner_arrays: Vec<_> = arrays.iter().map(|a| a.0.view()).collect();
+// #[cfg(not(feature = "exclude_old_framework"))]
+// fn concatenate<T>(axis: usize, arrays: &[HostTensor<T>]) -> HostTensor<T>
+// where
+//     T: LinalgScalar,
+// {
+//     let ax = Axis(axis);
+//     let inner_arrays: Vec<_> = arrays.iter().map(|a| a.0.view()).collect();
 
-    let c = ndarray::concatenate(ax, &inner_arrays).unwrap();
-    HostTensor::<T>(
-        c,
-        HostPlacement {
-            owner: "TODO".into(),
-        },
-    )
-}
+//     let c = ndarray::concatenate(ax, &inner_arrays).unwrap();
+//     HostTensor::<T>(
+//         c,
+//         HostPlacement {
+//             owner: "TODO".into(),
+//         },
+//     )
+// }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct HostBitTensor(pub ArrayD<u8>, pub HostPlacement);
@@ -584,27 +584,27 @@ impl HostBitTensor {
     }
 }
 
-impl HostBitTensor {
-    #[cfg_attr(
-        feature = "exclude_old_framework",
-        deprecated(
-            note = "This function is only used by the old kernels, which are not aware of the placements. See BitFillOp::kernel for the new code"
-        )
-    )]
-    fn fill(shape: &RawShape, el: u8) -> HostBitTensor {
-        assert!(
-            el == 0 || el == 1,
-            "cannot fill a HostBitTensor with a value {:?}",
-            el
-        );
-        HostBitTensor(
-            ArrayD::from_elem(shape.0.as_ref(), el & 1),
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
-            },
-        )
-    }
-}
+// impl HostBitTensor {
+//     #[cfg_attr(
+//         feature = "exclude_old_framework",
+//         deprecated(
+//             note = "This function is only used by the old kernels, which are not aware of the placements. See BitFillOp::kernel for the new code"
+//         )
+//     )]
+//     fn fill(shape: &RawShape, el: u8) -> HostBitTensor {
+//         assert!(
+//             el == 0 || el == 1,
+//             "cannot fill a HostBitTensor with a value {:?}",
+//             el
+//         );
+//         HostBitTensor(
+//             ArrayD::from_elem(shape.0.as_ref(), el & 1),
+//             HostPlacement {
+//                 owner: "TODO".into(), // Fake owner for the older kernels.
+//             },
+//         )
+//     }
+// }
 
 #[allow(dead_code)]
 impl HostBitTensor {
