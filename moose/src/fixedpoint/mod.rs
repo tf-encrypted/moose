@@ -2,10 +2,11 @@
 
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::execution::symbolic::Symbolic;
+use crate::execution::Session;
 use crate::host::*;
 use crate::kernels::*;
 use crate::replicated::*;
-use crate::symbolic::Symbolic;
 use crate::types::*;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};

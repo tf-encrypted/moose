@@ -1,7 +1,8 @@
 //! Placement backed by two-party additive secret sharing
 use crate::computation::{HostPlacement, Placed, Role};
 use crate::error::Result;
-use crate::kernels::{PlacementAdd, PlacementPlace, PlacementShl, Session};
+use crate::execution::Session;
+use crate::kernels::PlacementPlace;
 use serde::{Deserialize, Serialize};
 
 mod convert;
@@ -10,6 +11,7 @@ mod misc;
 mod ops;
 mod trunc;
 pub use dabit::DaBitProvider;
+pub use trunc::TruncPrProvider;
 
 /// Placement type for two-party additive secret sharing
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]

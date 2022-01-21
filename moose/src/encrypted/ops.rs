@@ -1,6 +1,7 @@
 use super::*;
 use crate::computation::*;
 use crate::error::Result;
+use crate::execution::Session;
 use crate::fixedpoint::FixedTensor;
 use crate::host::*;
 use crate::kernels::*;
@@ -87,20 +88,6 @@ impl InputOp {
         let key = plc.input(sess, arg_name);
         Ok(AbstractAesKey::Replicated(key))
     }
-}
-
-modelled_kernel! {
-    PlacementDecrypt::decrypt, AesDecryptOp,
-    [
-        (HostPlacement, (AesKey, AesTensor) -> Tensor => [hybrid] Self::host_kernel),
-        (HostPlacement, (HostAesKey, AesTensor) -> Tensor => [hybrid] Self::host_key_kernel),
-        (HostPlacement, (HostAesKey, Fixed128AesTensor) -> Fixed128Tensor => [hybrid] Self::host_fixed_kernel),
-        (HostPlacement, (HostAesKey, HostFixed128AesTensor) -> HostFixed128Tensor => [concrete] Self::host_fixed_aes_kernel),
-        (ReplicatedPlacement, (AesKey, AesTensor) -> Tensor => [hybrid] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedAesKey, AesTensor) -> Tensor => [hybrid] Self::rep_key_kernel),
-        (ReplicatedPlacement, (ReplicatedAesKey, Fixed128AesTensor) -> Fixed128Tensor => [hybrid] Self::rep_fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedAesKey, HostFixed128AesTensor) -> ReplicatedFixed128Tensor => [concrete] Self::rep_fixed_aes_kernel),
-    ]
 }
 
 impl AesDecryptOp {
@@ -407,8 +394,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::execution::SyncSession;
     use crate::kernels::PlacementReveal;
-    use crate::kernels::SyncSession;
     use crate::types::{HostBitArray128, HostBitArray224};
     use aes::cipher::generic_array::sequence::Concat;
     use aes_gcm::{aead::NewAead, AeadInPlace};

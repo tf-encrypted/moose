@@ -18,30 +18,30 @@ repl = edsl.replicated_placement("replicated", [player0, player1, player2])
 
 
 class ConcatExample(parameterized.TestCase):
-    def _run_concat(self):
+    def _run_concat(self, axis):
         @edsl.computation
         def my_comp():
             with player0:
                 w = edsl.cast(
-                    edsl.constant(np.array([1.0, 2.0, 3.0])), dtype=edsl.fixed(14, 23)
+                    edsl.constant(np.array([[1.0, 2.0, 3.0]])), dtype=edsl.fixed(14, 23)
                 )
                 x = edsl.cast(
-                    edsl.constant(np.array([1.0, 2.0, 3.0])), dtype=edsl.fixed(14, 23)
+                    edsl.constant(np.array([[1.0, 2.0, 3.0]])), dtype=edsl.fixed(14, 23)
                 )
 
             with player1:
                 y = edsl.cast(
-                    edsl.constant(np.array([4.0, 5.0, 6.0])), dtype=edsl.fixed(14, 23)
+                    edsl.constant(np.array([[4.0, 5.0, 6.0]])), dtype=edsl.fixed(14, 23)
                 )
 
             with player2:
                 z = edsl.cast(
-                    edsl.constant(np.array([7.0, 8.0, 9.0])), dtype=edsl.fixed(14, 23)
+                    edsl.constant(np.array([[7.0, 8.0, 9.0]])), dtype=edsl.fixed(14, 23)
                 )
 
             with repl:
                 arr = [w, x, y, z]
-                result = edsl.concatenate(arr)
+                result = edsl.concatenate(arr, axis=axis)
 
             with player1:
                 result = edsl.cast(result, dtype=edsl.float64)
@@ -72,13 +72,19 @@ class ConcatExample(parameterized.TestCase):
         )
         return result
 
-    def test_concat(self):
-        result = self._run_concat()
+    @parameterized.parameters(
+        (
+            0,
+            np.array(
+                [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
+            ),
+        ),
+        (1, np.array([[1.0, 2.0, 3.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]])),
+    )
+    def test_concat(self, axis, expected):
+        result = self._run_concat(axis)
         val = list(result.values())[0]
-        assert all(
-            val
-            == np.array([1.0, 2.0, 3.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])
-        )
+        np.testing.assert_equal(val, expected)
 
 
 if __name__ == "__main__":

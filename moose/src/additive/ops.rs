@@ -5,8 +5,8 @@ use crate::computation::{
     Placed, ShapeOp,
 };
 use crate::error::Result;
+use crate::execution::Session;
 use crate::kernels::*;
-use crate::types::*;
 use macros::with_context;
 
 impl ShapeOp {
@@ -26,18 +26,8 @@ impl ShapeOp {
     }
 }
 
-modelled_kernel! {
-    PlacementFill::fill, AdtFillOp{value: Constant},
-    [
-        (AdditivePlacement, (HostShape) -> AdditiveRing64Tensor => [hybrid] Self::host_kernel),
-        (AdditivePlacement, (HostShape) -> AdditiveRing128Tensor => [hybrid] Self::host_kernel),
-        (AdditivePlacement, (AdditiveShape) -> AdditiveRing64Tensor => [concrete] Self::adt_kernel),
-        (AdditivePlacement, (AdditiveShape) -> AdditiveRing128Tensor => [concrete] Self::adt_kernel),
-    ]
-}
-
 impl AdtFillOp {
-    fn host_kernel<S: Session, ShapeT, RingT>(
+    pub(crate) fn host_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         plc: &AdditivePlacement,
         value: Constant,
@@ -57,7 +47,7 @@ impl AdtFillOp {
         Ok(AdtTensor { shares })
     }
 
-    fn adt_kernel<S: Session, ShapeT, RingT>(
+    pub(crate) fn adt_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         plc: &AdditivePlacement,
         value: Constant,
@@ -82,17 +72,8 @@ impl AdtFillOp {
     }
 }
 
-modelled_kernel! {
-    PlacementReveal::reveal, AdtRevealOp,
-    [
-        (HostPlacement, (AdditiveRing64Tensor) -> HostRing64Tensor => [hybrid] Self::kernel),
-        (HostPlacement, (AdditiveRing128Tensor) -> HostRing128Tensor => [hybrid] Self::kernel),
-        (HostPlacement, (AdditiveBitTensor) -> HostBitTensor => [hybrid] Self::kernel),
-    ]
-}
-
 impl AdtRevealOp {
-    fn kernel<S: Session, RingT>(
+    pub(crate) fn kernel<S: Session, RingT>(
         sess: &S,
         plc: &HostPlacement,
         xe: AdtTensor<RingT>,
@@ -105,24 +86,8 @@ impl AdtRevealOp {
     }
 }
 
-modelled_kernel! {
-    PlacementAdd::add, AdtAddOp,
-    [
-        (AdditivePlacement, (AdditiveRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::adt_adt_kernel),
-        (AdditivePlacement, (AdditiveRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::adt_adt_kernel),
-        (AdditivePlacement, (AdditiveBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [concrete] Self::adt_adt_kernel),
-        // TODO(Morten) replace host tensors with mirrored tensors in the below
-        (AdditivePlacement, (AdditiveRing64Tensor, HostRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::adt_host_kernel),
-        (AdditivePlacement, (AdditiveRing128Tensor, HostRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::adt_host_kernel),
-        (AdditivePlacement, (AdditiveBitTensor, HostBitTensor) -> AdditiveBitTensor => [hybrid] Self::adt_host_kernel),
-        (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::host_adt_kernel),
-        (AdditivePlacement, (HostRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::host_adt_kernel),
-        (AdditivePlacement, (HostBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [hybrid] Self::host_adt_kernel),
-    ]
-}
-
 impl AdtAddOp {
-    fn adt_adt_kernel<S: Session, HostRingT>(
+    pub(crate) fn adt_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
         x: AdtTensor<HostRingT>,
@@ -142,7 +107,7 @@ impl AdtAddOp {
         Ok(AdtTensor { shares: [z0, z1] })
     }
 
-    fn adt_host_kernel<S: Session, HostRingT>(
+    pub(crate) fn adt_host_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
         x: AdtTensor<HostRingT>,
@@ -166,7 +131,7 @@ impl AdtAddOp {
         Ok(adt.place(sess, AdtTensor { shares }))
     }
 
-    fn host_adt_kernel<S: Session, HostRingT>(
+    pub(crate) fn host_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
         x: HostRingT,
@@ -191,22 +156,8 @@ impl AdtAddOp {
     }
 }
 
-modelled_kernel! {
-    PlacementSub::sub, AdtSubOp,
-    [
-        (AdditivePlacement, (AdditiveRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::adt_adt_kernel),
-        (AdditivePlacement, (AdditiveRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::adt_adt_kernel),
-        (AdditivePlacement, (AdditiveBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [concrete] Self::adt_adt_kernel),
-        // TODO(Morten) replace host tensors with mirrored tensors in the below
-        (AdditivePlacement, (AdditiveRing64Tensor, HostRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::adt_host_kernel),
-        (AdditivePlacement, (AdditiveRing128Tensor, HostRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::adt_host_kernel),
-        (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::host_adt_kernel),
-        (AdditivePlacement, (HostRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::host_adt_kernel),
-    ]
-}
-
 impl AdtSubOp {
-    fn adt_adt_kernel<S: Session, HostRingT>(
+    pub(crate) fn adt_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
         x: AdtTensor<HostRingT>,
@@ -226,7 +177,7 @@ impl AdtSubOp {
         Ok(AdtTensor { shares: [z0, z1] })
     }
 
-    fn adt_host_kernel<S: Session, HostRingT>(
+    pub(crate) fn adt_host_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
         x: AdtTensor<HostRingT>,
@@ -250,7 +201,7 @@ impl AdtSubOp {
         Ok(adt.place(sess, AdtTensor { shares }))
     }
 
-    fn host_adt_kernel<S: Session, HostRingT>(
+    pub(crate) fn host_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
         x: HostRingT,
@@ -276,22 +227,8 @@ impl AdtSubOp {
     }
 }
 
-modelled_kernel! {
-    PlacementMul::mul, AdtMulOp,
-    [
-        // TODO(Morten) replace host tensors with mirrored tensors in the below
-        (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::host_adt_kernel),
-        (AdditivePlacement, (AdditiveRing64Tensor, HostRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::adt_host_kernel),
-        (AdditivePlacement, (AdditiveRing128Tensor, HostRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::adt_host_kernel),
-        (AdditivePlacement, (HostRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::host_adt_kernel),
-        (AdditivePlacement, (AdditiveBitTensor, HostBitTensor) -> AdditiveBitTensor => [hybrid] Self::adt_host_kernel),
-        (AdditivePlacement, (HostBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [hybrid] Self::host_adt_kernel),
-
-    ]
-}
-
 impl AdtMulOp {
-    fn host_adt_kernel<S: Session, HostRingT>(
+    pub(crate) fn host_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
         x: HostRingT,
@@ -311,7 +248,7 @@ impl AdtMulOp {
         Ok(AdtTensor { shares: [z0, z1] })
     }
 
-    fn adt_host_kernel<S: Session, HostRingT>(
+    pub(crate) fn adt_host_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
         x: AdtTensor<HostRingT>,
@@ -332,16 +269,8 @@ impl AdtMulOp {
     }
 }
 
-modelled_kernel! {
-    PlacementShl::shl, AdtShlOp{amount: usize},
-    [
-        (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::kernel),
-        (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::kernel),
-    ]
-}
-
 impl AdtShlOp {
-    fn kernel<S: Session, HostRingT>(
+    pub(crate) fn kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &AdditivePlacement,
         amount: usize,
@@ -361,10 +290,10 @@ impl AdtShlOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        computation::{KnownType, Operation, Operator, Placement, RingAddOp},
-        symbolic::{Symbolic, SymbolicHandle, SymbolicSession},
-    };
+    use crate::computation::{KnownType, Operation, Operator, Placement, RingAddOp};
+    use crate::execution::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
+    use crate::execution::SyncSession;
+    use crate::types::*;
     use ndarray::array;
 
     #[test]

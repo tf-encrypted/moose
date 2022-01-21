@@ -2,9 +2,10 @@
 
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::execution::symbolic::Symbolic;
+use crate::execution::Session;
 use crate::kernels::*;
 use crate::prng::AesRng;
-use crate::symbolic::Symbolic;
 use crate::types::*;
 use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
 use ndarray::prelude::*;
@@ -512,6 +513,21 @@ impl HostBitTensor {
     pub fn place(plc: &HostPlacement, x: ArrayD<u8>) -> HostBitTensor {
         HostBitTensor(x, plc.clone())
     }
+
+    pub fn reshape(self, newshape: HostShape) -> Self {
+        HostBitTensor(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
+    }
+
+    pub fn expand_dims(self, mut axis: Vec<usize>) -> Self {
+        let plc = (&self.1).clone();
+        axis.sort_by_key(|ax| Reverse(*ax));
+        let newshape = self.shape().0.extend_singletons(axis);
+        self.reshape(HostShape(newshape, plc))
+    }
+
+    pub fn shape(&self) -> HostShape {
+        HostShape(RawShape(self.0.shape().into()), self.1.clone())
+    }
 }
 
 impl HostBitTensor {
@@ -877,6 +893,17 @@ where
 impl<T> HostRingTensor<T> {
     pub fn place(plc: &HostPlacement, x: ArrayD<Wrapping<T>>) -> HostRingTensor<T> {
         HostRingTensor::<T>(x, plc.clone())
+    }
+
+    pub fn reshape(self, newshape: HostShape) -> Self {
+        HostRingTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
+    }
+
+    pub fn expand_dims(self, mut axis: Vec<usize>) -> Self {
+        let plc = (&self.1).clone();
+        axis.sort_by_key(|ax| Reverse(*ax));
+        let newshape = self.shape().0.extend_singletons(axis);
+        self.reshape(HostShape(newshape, plc))
     }
 }
 
@@ -1321,6 +1348,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::execution::SyncSession;
     use std::ops::{Add, Div, Mul, Sub};
 
     #[test]

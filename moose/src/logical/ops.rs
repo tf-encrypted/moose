@@ -1,6 +1,7 @@
 use super::*;
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::execution::Session;
 use crate::kernels::*;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
@@ -69,16 +70,8 @@ impl IdentityOp {
     }
 }
 
-modelled_kernel! {
-    PlacementAdd::add, AddOp,
-    [
-        (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::rep_kernel),
-    ]
-}
-
 impl AddOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
@@ -116,7 +109,7 @@ impl AddOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
@@ -269,16 +262,8 @@ impl AddNOp {
     }
 }
 
-modelled_kernel! {
-    PlacementSub::sub, SubOp,
-    [
-        (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::rep_kernel),
-    ]
-}
-
 impl SubOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
@@ -316,7 +301,7 @@ impl SubOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
@@ -345,18 +330,8 @@ impl SubOp {
     }
 }
 
-modelled!(PlacementMul::mul, HostPlacement, (Tensor, Tensor) -> Tensor, MulOp);
-
-kernel! {
-    MulOp,
-    [
-        (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] attributes[sig] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] attributes[sig] Self::rep_kernel),
-    ]
-}
-
 impl MulOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
@@ -413,7 +388,7 @@ impl MulOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         sig: Signature,
@@ -459,16 +434,8 @@ impl MulOp {
     }
 }
 
-modelled_kernel! {
-    PlacementDiv::div, DivOp,
-    [
-        (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::rep_kernel),
-    ]
-}
-
 impl DivOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
@@ -506,7 +473,7 @@ impl DivOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
@@ -535,18 +502,8 @@ impl DivOp {
     }
 }
 
-modelled!(PlacementDot::dot, HostPlacement, (Tensor, Tensor) -> Tensor, DotOp);
-
-kernel! {
-    DotOp,
-    [
-        (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] attributes[sig] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] attributes[sig] Self::rep_kernel),
-    ]
-}
-
 impl DotOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
@@ -601,7 +558,7 @@ impl DotOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         sig: Signature,
@@ -645,9 +602,6 @@ impl DotOp {
         }
     }
 }
-
-modelled!(PlacementLessThan::less, HostPlacement, (Tensor, Tensor) -> Tensor, LessOp);
-modelled!(PlacementLessThan::less, ReplicatedPlacement, (Tensor, Tensor) -> Tensor, LessOp);
 
 impl LessOp {
     pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
@@ -717,8 +671,6 @@ impl LessOp {
     }
 }
 
-modelled!(PlacementMux::mux, ReplicatedPlacement, (Tensor, Tensor, Tensor) -> Tensor, MuxOp);
-
 impl MuxOp {
     pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
@@ -751,19 +703,8 @@ impl MuxOp {
     }
 }
 
-modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);
-modelled!(PlacementCast::cast, Mirrored3Placement, (Tensor) -> Tensor, CastOp);
-
-kernel! {
-    CastOp,
-    [
-        (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::kernel),
-        (Mirrored3Placement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::mir_kernel),
-    ]
-}
-
 impl CastOp {
-    fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
@@ -828,7 +769,7 @@ impl CastOp {
         }
     }
 
-    fn mir_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn mir_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &Mirrored3Placement,
         sig: Signature,
@@ -894,15 +835,8 @@ impl CastOp {
     }
 }
 
-kernel! {
-    AtLeast2DOp, [
-        (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[to_column_vector] Self::host_kernel),
-        // (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] attributes[to_column_vector] Self::rep_kernel),
-    ]
-}
-
 impl AtLeast2DOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         to_column_vector: bool,
@@ -940,15 +874,8 @@ impl AtLeast2DOp {
     }
 }
 
-kernel! {
-    MeanOp, [
-        (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig, axis] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] attributes[sig, axis] Self::rep_kernel),
-    ]
-}
-
 impl MeanOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
@@ -999,7 +926,7 @@ impl MeanOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         sig: Signature,
@@ -1042,15 +969,8 @@ impl MeanOp {
     }
 }
 
-kernel! {
-    SumOp, [
-        (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[axis] Self::host_kernel),
-        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] attributes[axis] Self::rep_kernel),
-    ]
-}
-
 impl SumOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
@@ -1085,7 +1005,7 @@ impl SumOp {
         }
     }
 
-    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Option<u32>,
@@ -1112,19 +1032,9 @@ impl SumOp {
     }
 }
 
-modelled_kernel! {
-    PlacementOnes::ones, OnesOp,
-    [
-        (HostPlacement, (HostShape) -> Tensor => [hybrid] Self::host_kernel),
-        // We do not support the ReplicatedPlacement: PlacementFill yet, hence we do not support Ones.
-        // Also, logical Tensor can only hold Host tensors at the moment.
-        // (ReplicatedPlacement, (HostShape) -> Tensor => [hybrid] Self::rep_kernel),
-    ]
-}
-
 impl OnesOp {
     #[allow(clippy::type_complexity)]
-    fn host_kernel<S: Session>(
+    pub(crate) fn host_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
         shape: cs!(HostShape),
@@ -1151,17 +1061,8 @@ impl OnesOp {
     }
 }
 
-modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Tensor) -> Tensor, ExpandDimsOp);
-
-kernel! {
-    ExpandDimsOp,
-    [
-        (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[axis] Self::host_kernel),
-    ]
-}
-
 impl ExpandDimsOp {
-    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         axis: Vec<u32>,
@@ -1170,35 +1071,71 @@ impl ExpandDimsOp {
     where
         HostPlacement: PlacementExpandDims<S, Float32T, Float32T>,
         HostPlacement: PlacementExpandDims<S, Float64T, Float64T>,
+        HostPlacement: PlacementExpandDims<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementExpandDims<S, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementExpandDims<S, BoolT, BoolT>,
     {
         match x {
-            AbstractTensor::Fixed64(_x) => {
-                unimplemented!()
-                // let z = plc.expand_dims(sess, axis, &x);
-                // AbstractTensor::Fixed64(z)
-            }
-            AbstractTensor::Fixed128(_x) => {
-                unimplemented!()
-                // let z = plc.expand_dims(sess, axis, &x);
-                // AbstractTensor::Fixed128(z)
+            AbstractTensor::Float64(x) => {
+                let z = plc.expand_dims(sess, axis, &x);
+                Ok(AbstractTensor::Float64(z))
             }
             AbstractTensor::Float32(x) => {
                 let z = plc.expand_dims(sess, axis, &x);
                 Ok(AbstractTensor::Float32(z))
             }
-            AbstractTensor::Float64(x) => {
+            AbstractTensor::Fixed64(x) => {
                 let z = plc.expand_dims(sess, axis, &x);
-                Ok(AbstractTensor::Float64(z))
+                Ok(AbstractTensor::Fixed64(z))
             }
-            AbstractTensor::Bool(_x) => {
-                unimplemented!()
+            AbstractTensor::Fixed128(x) => {
+                let z = plc.expand_dims(sess, axis, &x);
+                Ok(AbstractTensor::Fixed128(z))
+            }
+            AbstractTensor::Bool(x) => {
+                let z = plc.expand_dims(sess, axis, &x);
+                Ok(AbstractTensor::Bool(z))
             }
         }
     }
 }
 
+impl ExpandDimsOp {
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Vec<u32>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        ReplicatedPlacement: PlacementExpandDims<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementExpandDims<S, Fixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementExpandDims<S, BoolT, BoolT>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = plc.expand_dims(sess, axis, &x);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = plc.expand_dims(sess, axis, &x);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            AbstractTensor::Bool(x) => {
+                let result = plc.expand_dims(sess, axis, &x);
+                Ok(AbstractTensor::Bool(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated expand_dims for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+}
+
 impl IndexAxisOp {
-    pub fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         axis: usize,
@@ -1238,7 +1175,7 @@ impl IndexAxisOp {
 }
 
 impl IndexAxisOp {
-    pub fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: usize,
@@ -1385,16 +1322,8 @@ impl ConcatOp {
     }
 }
 
-modelled!(PlacementTranspose::transpose, HostPlacement, (Tensor) -> Tensor, TransposeOp);
-
-kernel! {
-    TransposeOp, [
-        (HostPlacement, (Tensor) -> Tensor => [concrete] Self::kernel),
-    ]
-}
-
 impl TransposeOp {
-    pub fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
@@ -1430,15 +1359,8 @@ impl TransposeOp {
     }
 }
 
-modelled_kernel! {
-    PlacementInverse::inverse, InverseOp,
-    [
-        (HostPlacement, (Tensor) -> Tensor => [concrete] Self::kernel),
-    ]
-}
-
 impl InverseOp {
-    pub fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
@@ -1476,7 +1398,7 @@ impl InverseOp {
 
 impl LoadOp {
     #[allow(clippy::type_complexity)]
-    pub fn logical_kernel<S: Session>(
+    pub(crate) fn logical_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
         key: cs!(HostString),
@@ -1505,7 +1427,7 @@ impl LoadOp {
 }
 
 impl SaveOp {
-    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         key: cs!(HostString),
@@ -1593,7 +1515,7 @@ impl ShapeOp {
 }
 
 impl ConstantOp {
-    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
@@ -1619,7 +1541,7 @@ impl ConstantOp {
         }
     }
 
-    pub fn mir3_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn mir3_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &Mirrored3Placement,
         sig: Signature,
@@ -1647,7 +1569,7 @@ impl ConstantOp {
 }
 
 impl InputOp {
-    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
@@ -1675,7 +1597,7 @@ impl InputOp {
 }
 
 impl OutputOp {
-    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
@@ -1700,7 +1622,7 @@ impl OutputOp {
 }
 
 impl ExpOp {
-    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
@@ -1728,7 +1650,7 @@ impl ExpOp {
 }
 
 impl SigmoidOp {
-    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
@@ -1755,8 +1677,6 @@ impl SigmoidOp {
     }
 }
 
-modelled!(PlacementOr::or, HostPlacement, (Tensor, Tensor) -> Tensor, BitOrOp);
-
 impl BitOrOp {
     pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
@@ -1782,7 +1702,7 @@ impl BitOrOp {
 }
 
 impl MaximumOp {
-    pub fn rep_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn rep_logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>],

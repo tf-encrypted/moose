@@ -1,7 +1,8 @@
 use super::*;
 use crate::computation::{HostPlacement, InputOp, Signature, Ty};
 use crate::error::{Error, Result};
-use crate::kernels::{PlacementInput, Session};
+use crate::execution::Session;
+use crate::kernels::PlacementInput;
 use crate::replicated::aes::AbstractReplicatedAesKey;
 use crate::{N128, N224, N64};
 use std::marker::PhantomData;
@@ -118,8 +119,9 @@ impl InputOp {
 mod tests {
     use super::*;
     use crate::computation::SessionId;
+    use crate::execution::SyncSession;
     use crate::host::FromRawPlc;
-    use crate::kernels::{PlacementFixedpointEncode, PlacementReveal, PlacementShare, SyncSession};
+    use crate::kernels::{PlacementFixedpointEncode, PlacementReveal, PlacementShare};
     use crate::storage::LocalSyncStorage;
     use crate::types::{
         HostFloat32Tensor, HostRing64Tensor, ReplicatedFixed64Tensor, ReplicatedRing64Tensor,

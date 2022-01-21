@@ -1,6 +1,7 @@
 use super::*;
 use crate::computation::MaximumOp;
 use crate::error::Result;
+use crate::execution::Session;
 use macros::with_context;
 
 impl MaximumOp {
@@ -117,9 +118,9 @@ impl SoftmaxOp {
 mod tests {
 
     use super::*;
+    use crate::execution::SyncSession;
     use crate::fixedpoint::{Convert, FixedTensor};
     use crate::host::HostRingTensor;
-    use crate::kernels::SyncSession;
     use ndarray::prelude::*;
     use ndarray::Zip;
 

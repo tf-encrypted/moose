@@ -1,3 +1,5 @@
+//! Storage traits and helpers
+
 use crate::computation::*;
 use crate::error::{Error, Result};
 use async_trait::async_trait;

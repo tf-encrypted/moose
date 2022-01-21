@@ -1,12 +1,8 @@
 use super::*;
 use crate::computation::MuxOp;
 use crate::error::Result;
+use crate::execution::Session;
 use macros::with_context;
-
-modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, MuxOp);
-modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, MuxOp);
-modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, MuxOp);
-modelled!(PlacementMux::mux, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, MuxOp);
 
 impl MuxOp {
     pub(crate) fn rep_kernel<S: Session, RepRingT>(
@@ -49,6 +45,7 @@ impl MuxOp {
 #[cfg(test)]
 mod tests {
     use crate::computation::HostPlacement;
+    use crate::execution::SyncSession;
     use crate::host::FromRawPlc;
     use crate::kernels::*;
     use crate::replicated::ReplicatedPlacement;

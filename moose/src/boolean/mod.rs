@@ -2,6 +2,7 @@
 
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::execution::Session;
 use crate::kernels::*;
 use crate::replicated::ReplicatedPlacement;
 use crate::types::*;
@@ -70,8 +71,6 @@ impl IdentityOp {
     }
 }
 
-modelled!(PlacementOutput::output, HostPlacement, (BooleanTensor) -> BooleanTensor, OutputOp);
-
 impl OutputOp {
     pub(crate) fn bool_kernel<S: Session, HostT, RepT>(
         sess: &S,
@@ -89,8 +88,6 @@ impl OutputOp {
         }
     }
 }
-
-modelled!(PlacementOr::or, HostPlacement, (BooleanTensor, BooleanTensor) -> BooleanTensor, BitOrOp);
 
 impl BitOrOp {
     pub(crate) fn bool_kernel<S: Session, HostT, RepT>(
@@ -112,6 +109,44 @@ impl BitOrOp {
             BoolTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         Ok(BoolTensor::Host(plc.or(sess, &x, &y)))
+    }
+}
+
+impl ExpandDimsOp {
+    pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Vec<u32>,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        ReplicatedPlacement: PlacementExpandDims<S, RepT, RepT>,
+        ReplicatedPlacement: PlacementShare<S, HostT, RepT>,
+    {
+        let x = match x {
+            BoolTensor::Host(v) => plc.share(sess, &v),
+            BoolTensor::Replicated(v) => v,
+        };
+        let result = plc.expand_dims(sess, axis, &x);
+        Ok(BoolTensor::Replicated(result))
+    }
+
+    pub(crate) fn bool_host_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Vec<u32>,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementExpandDims<S, HostT, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+    {
+        let x = match x {
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+            BoolTensor::Host(v) => v,
+        };
+        let result = plc.expand_dims(sess, axis, &x);
+        Ok(BoolTensor::Host(result))
     }
 }
 

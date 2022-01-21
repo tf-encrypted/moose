@@ -1,6 +1,7 @@
 //! Truncation for additive placements
 use super::*;
 use crate::computation::{CanonicalType, HostPlacement, KnownType};
+use crate::execution::Session;
 use crate::host::{HostShape, PrfKey, Seed, SyncKey};
 use crate::kernels::*;
 use crate::replicated::RepTensor;
@@ -61,6 +62,10 @@ where
 
         (r_shared, r_top_shared, r_msb_shared)
     }
+}
+
+pub trait TruncPrProvider<S: Session, T, O> {
+    fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
 }
 
 impl<S: Session, HostRingT> TruncPrProvider<S, AdtTensor<HostRingT>, AdtTensor<HostRingT>>
@@ -167,6 +172,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::execution::SyncSession;
     use crate::host::HostRingTensor;
     use crate::types::*;
     use ndarray::array;

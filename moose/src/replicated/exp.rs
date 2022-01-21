@@ -245,8 +245,8 @@ impl ExpOp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::execution::SyncSession;
     use crate::host::HostRingTensor;
-    use crate::kernels::SyncSession;
     use ndarray::array;
 
     #[test]

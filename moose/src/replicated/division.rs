@@ -251,7 +251,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::kernels::SyncSession;
+    use crate::execution::SyncSession;
     use ndarray::array;
 
     #[test]
