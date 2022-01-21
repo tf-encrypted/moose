@@ -1,4 +1,5 @@
 use moose::computation::*;
+use moose::host::HostPlacement;
 use moose::host::{RawShape, SyncKey};
 use std::convert::TryFrom;
 

@@ -6,6 +6,7 @@ use crate::host::{RawPrfKey, RawSeed, RawShape, SliceInfo, SliceInfoElem, SyncKe
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
+use crate::host::HostPlacement;
 use crate::types::*;
 use nom::{
     branch::{alt, permutation},

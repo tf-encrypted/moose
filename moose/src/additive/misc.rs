@@ -1,4 +1,4 @@
-use crate::computation::HostPlacement;
+use crate::host::HostPlacement;
 use crate::kernels::{PlacementAdd, PlacementShl, Session};
 
 pub trait BitCompose<S: Session, R> {

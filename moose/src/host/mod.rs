@@ -27,6 +27,11 @@ mod prim;
 pub use prim::*;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct HostPlacement {
+    pub owner: Role,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostString(pub String, pub HostPlacement);
 
 impl Placed for HostString {

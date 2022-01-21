@@ -3,7 +3,7 @@ use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider, TruncPrProvid
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::FixedpointTensor;
-use crate::host::{
+use crate::host::{HostPlacement,
     AbstractHostAesKey, HostBitArray, HostFixedTensor, PrfKey, Seed, SliceInfo, SyncKey,
 };
 use crate::kernels::*;

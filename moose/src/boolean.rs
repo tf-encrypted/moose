@@ -4,6 +4,7 @@ use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::kernels::*;
 use crate::replicated::ReplicatedPlacement;
+use crate::host::HostPlacement;
 use crate::types::*;
 use serde::{Deserialize, Serialize};
 

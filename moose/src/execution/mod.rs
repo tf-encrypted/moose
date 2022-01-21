@@ -1,10 +1,10 @@
 #![allow(unused_macros)]
 
 use crate::computation::*;
+use crate::host::HostPlacement;
 use crate::error::{Error, Result};
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking, SyncNetworking};
 use crate::storage::{AsyncStorage, LocalAsyncStorage, SyncStorage};
-
 use derive_more::Display;
 use futures::future::{Map, Shared};
 use petgraph::algo::toposort;

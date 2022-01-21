@@ -5,6 +5,7 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::kernels::*;
 use crate::mirrored::{Mir3Tensor, Mirrored3Placement};
+use crate::host::HostPlacement;
 use crate::types::*;
 
 impl IdentityOp {

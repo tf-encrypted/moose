@@ -1,5 +1,6 @@
 //! Placement for mirroring operations across multiple hosts
-use crate::computation::{HostPlacement, Placed, Role};
+use crate::computation::{Placed, Role};
+use crate::host::HostPlacement;
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
 

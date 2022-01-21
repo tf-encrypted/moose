@@ -1,5 +1,6 @@
 use super::*;
-use crate::computation::{HostPlacement, InputOp, Signature, Ty};
+use crate::computation::{InputOp, Signature, Ty};
+use crate::host::{HostPlacement};
 use crate::error::{Error, Result};
 use crate::kernels::{PlacementInput, Session};
 use crate::replicated::aes::AbstractReplicatedAesKey;
