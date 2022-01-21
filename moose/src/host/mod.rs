@@ -866,49 +866,49 @@ where
     }
 }
 
-#[cfg(not(feature = "exclude_old_framework"))]
-impl HostRing64Tensor {
-    fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> HostRing64Tensor {
-        let mut rng = AesRng::from_seed(seed.0);
-        let size = shape.0.iter().product();
-        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
-        let ix = IxDyn(shape.0.as_ref());
-        HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
-    }
+// #[cfg(not(feature = "exclude_old_framework"))]
+// impl HostRing64Tensor {
+//     fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> HostRing64Tensor {
+//         let mut rng = AesRng::from_seed(seed.0);
+//         let size = shape.0.iter().product();
+//         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
+//         let ix = IxDyn(shape.0.as_ref());
+//         HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+//     }
 
-    fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
-        let mut rng = AesRng::from_seed(seed.0);
-        let size = shape.0.iter().product();
-        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
-        let ix = IxDyn(shape.0.as_ref());
-        HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
-    }
-}
+//     fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
+//         let mut rng = AesRng::from_seed(seed.0);
+//         let size = shape.0.iter().product();
+//         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
+//         let ix = IxDyn(shape.0.as_ref());
+//         HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+//     }
+// }
 
-#[cfg(not(feature = "exclude_old_framework"))]
-impl HostRing128Tensor {
-    fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
-        let mut rng = AesRng::from_seed(seed.0);
-        let size = shape.0.iter().product();
-        let values: Vec<_> = (0..size)
-            .map(|_| {
-                let upper = rng.next_u64() as u128;
-                let lower = rng.next_u64() as u128;
-                Wrapping((upper << 64) + lower)
-            })
-            .collect();
-        let ix = IxDyn(shape.0.as_ref());
-        HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
-    }
+// #[cfg(not(feature = "exclude_old_framework"))]
+// impl HostRing128Tensor {
+//     fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
+//         let mut rng = AesRng::from_seed(seed.0);
+//         let size = shape.0.iter().product();
+//         let values: Vec<_> = (0..size)
+//             .map(|_| {
+//                 let upper = rng.next_u64() as u128;
+//                 let lower = rng.next_u64() as u128;
+//                 Wrapping((upper << 64) + lower)
+//             })
+//             .collect();
+//         let ix = IxDyn(shape.0.as_ref());
+//         HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+//     }
 
-    fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
-        let mut rng = AesRng::from_seed(seed.0);
-        let size = shape.0.iter().product();
-        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
-        let ix = IxDyn(shape.0.as_ref());
-        HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
-    }
-}
+//     fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
+//         let mut rng = AesRng::from_seed(seed.0);
+//         let size = shape.0.iter().product();
+//         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
+//         let ix = IxDyn(shape.0.as_ref());
+//         HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+//     }
+// }
 
 impl<T> HostRingTensor<T>
 where
