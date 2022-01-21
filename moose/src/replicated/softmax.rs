@@ -113,6 +113,7 @@ impl SoftmaxOp {
     }
 }
 
+#[cfg(test)]
 mod tests {
 
     use super::*;
@@ -172,8 +173,27 @@ mod tests {
         };
     }
 
-    rep_approx_softmax_fixed_test!(test_rep_softmax_fixed64, softmax<i64, u64>, 0, 9, 8, 27, 0.01);
+    rep_approx_softmax_fixed_test!(test_rep_softmax_fixed64, softmax<i64, u64>, 0, 9, 8, 10, 0.01);
     rep_approx_softmax_fixed_test!(test_rep_softmax_fixed128, softmax<i128, u128>, 0, 9, 8, 27, 0.01);
+
+    #[test]
+    fn test_softmax_64() {
+        let x = array![1f64, 2.5, -3.0, 4.0, 2.0, -2.0, -2.0, -3.0, 3.0].into_dyn();
+        let mut x_max = x.index_axis(Axis(0), 0).to_owned();
+
+        for x_item in x.axis_iter(Axis(0)) {
+            Zip::from(&mut x_max)
+                .and(&x_item)
+                .for_each(|entry_a, &entry_b| *entry_a = f64::max(*entry_a, entry_b));
+        }
+        let y = x.clone() - x_max;
+        let y_exp = y.map(|item| item.exp());
+        let softmax = y_exp.clone() / y_exp.sum_axis(Axis(0));
+
+        let y_targets: Vec<_> = softmax.iter().map(|item| item.clone()).collect();
+
+        test_rep_softmax_fixed64(x, y_targets);
+    }
 
     #[test]
     fn test_softmax_128() {
