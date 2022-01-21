@@ -1679,6 +1679,7 @@ mod tests {
         assert_eq!(&plc.xor(&sess, &zero, &zero), &zero);
     }
 
+    #[test]
     fn bit_or() {
         let plc = HostPlacement::from("host");
         let sess = SyncSession::default();
@@ -1693,6 +1694,7 @@ mod tests {
         assert_eq!(&plc.or(&sess, &zero, &zero), &zero);
     }
 
+    #[test]
     fn bit_and() {
         let plc = HostPlacement::from("host");
         let sess = SyncSession::default();
