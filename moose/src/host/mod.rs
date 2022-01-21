@@ -5,7 +5,6 @@ use crate::error::{Error, Result};
 use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::kernels::*;
-use crate::prng::AesRng;
 use crate::types::*;
 use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
 use ndarray::prelude::*;
@@ -13,7 +12,6 @@ use ndarray::LinalgScalar;
 use ndarray::Slice;
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack, Scalar};
-use num_traits::FromPrimitive;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
@@ -866,50 +864,6 @@ where
     }
 }
 
-// #[cfg(not(feature = "exclude_old_framework"))]
-// impl HostRing64Tensor {
-//     fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> HostRing64Tensor {
-//         let mut rng = AesRng::from_seed(seed.0);
-//         let size = shape.0.iter().product();
-//         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
-//         let ix = IxDyn(shape.0.as_ref());
-//         HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
-//     }
-
-//     fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
-//         let mut rng = AesRng::from_seed(seed.0);
-//         let size = shape.0.iter().product();
-//         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
-//         let ix = IxDyn(shape.0.as_ref());
-//         HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
-//     }
-// }
-
-// #[cfg(not(feature = "exclude_old_framework"))]
-// impl HostRing128Tensor {
-//     fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
-//         let mut rng = AesRng::from_seed(seed.0);
-//         let size = shape.0.iter().product();
-//         let values: Vec<_> = (0..size)
-//             .map(|_| {
-//                 let upper = rng.next_u64() as u128;
-//                 let lower = rng.next_u64() as u128;
-//                 Wrapping((upper << 64) + lower)
-//             })
-//             .collect();
-//         let ix = IxDyn(shape.0.as_ref());
-//         HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
-//     }
-
-//     fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
-//         let mut rng = AesRng::from_seed(seed.0);
-//         let size = shape.0.iter().product();
-//         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
-//         let ix = IxDyn(shape.0.as_ref());
-//         HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
-//     }
-// }
-
 impl<T> HostRingTensor<T>
 where
     T: Clone,
@@ -922,40 +876,6 @@ where
         HostRingTensor(tensor, plc.into())
     }
 }
-
-impl<T> HostTensor<T>
-where
-    T: Clone,
-{
-    fn from_raw_plc<D: ndarray::Dimension, P: Into<HostPlacement>>(
-        raw_tensor: Array<T, D>,
-        plc: P,
-    ) -> HostTensor<T> {
-        HostTensor(raw_tensor.into_dyn(), plc.into())
-    }
-}
-
-// // This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
-// #[cfg(not(feature = "exclude_old_framework"))]
-// impl<T> HostRingTensor<T>
-// where
-//     Wrapping<T>: Clone,
-// {
-//     #[cfg_attr(
-//         feature = "exclude_old_framework",
-//         deprecated(
-//             note = "This function is only used by the old kernels, which are not aware of the placements."
-//         )
-//     )]
-//     fn fill(shape: &RawShape, el: T) -> HostRingTensor<T> {
-//         HostRingTensor(
-//             ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)),
-//             HostPlacement {
-//                 owner: Role::from("TODO"), // Fake owner for the old kernels
-//             },
-//         )
-//     }
-// }
 
 impl<T> HostRingTensor<T> {
     fn shape(&self) -> HostShape {
