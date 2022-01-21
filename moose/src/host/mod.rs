@@ -23,8 +23,8 @@ use std::num::Wrapping;
 mod fixedpoint;
 mod ops;
 mod prim;
-pub use prim::*;
 pub use fixedpoint::Convert;
+pub use prim::*;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostPlacement {

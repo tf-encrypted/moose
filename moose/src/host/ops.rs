@@ -929,8 +929,7 @@ impl HostTransposeOp {
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
-    ) -> Result<HostTensor<T>>
-    {
+    ) -> Result<HostTensor<T>> {
         let raw_tensor = x.0.reversed_axes();
         Ok(HostTensor(raw_tensor, plc.clone()))
     }
