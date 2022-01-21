@@ -929,24 +929,6 @@ impl<T> From<Vec<T>> for HostRingTensor<T> {
     }
 }
 
-// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<&[T]> for HostRingTensor<T>
-where
-    T: Copy,
-{
-    fn from(v: &[T]) -> HostRingTensor<T> {
-        let ix = IxDyn(&[v.len()]);
-        let v_wrapped: Vec<_> = v.iter().map(|vi| Wrapping(*vi)).collect();
-        HostRingTensor(
-            Array::from_shape_vec(ix, v_wrapped).unwrap(),
-            HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
-            },
-        )
-    }
-}
-
 #[cfg(not(feature = "exclude_old_framework"))]
 impl<T> std::ops::Shl<usize> for HostRingTensor<T>
 where
