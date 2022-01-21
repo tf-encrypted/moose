@@ -1778,7 +1778,7 @@ mod tests {
     }
 
     #[test]
-    fn bit_ops() {
+    fn bit_xor() {
         let plc = HostPlacement::from("host");
         let sess = SyncSession::default();
 
@@ -1790,73 +1790,87 @@ mod tests {
         assert_eq!(&plc.xor(&sess, &one, &zero), &one);
         assert_eq!(&plc.xor(&sess, &one, &one), &zero);
         assert_eq!(&plc.xor(&sess, &zero, &zero), &zero);
+    }
+
+    fn bit_or() {
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
+
+        let shape: HostShape = plc.from_raw(RawShape(vec![5]));
+        let zero: HostBitTensor = plc.fill(&sess, 0_u8.into(), &shape);
+        let one: HostBitTensor = plc.fill(&sess, 1_u8.into(), &shape);
 
         assert_eq!(&plc.or(&sess, &zero, &one), &one);
         assert_eq!(&plc.or(&sess, &one, &zero), &one);
         assert_eq!(&plc.or(&sess, &one, &one), &one);
         assert_eq!(&plc.or(&sess, &zero, &zero), &zero);
+    }
+
+    fn bit_and() {
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
+
+        let shape: HostShape = plc.from_raw(RawShape(vec![5]));
+        let zero: HostBitTensor = plc.fill(&sess, 0_u8.into(), &shape);
+        let one: HostBitTensor = plc.fill(&sess, 1_u8.into(), &shape);
 
         assert_eq!(&plc.and(&sess, &zero, &one), &zero);
         assert_eq!(&plc.and(&sess, &one, &zero), &zero);
-        assert_eq!(&plc.and(&sess, &one, &one), &zero);
-        assert_eq!(&plc.and(&sess, &zero, &zero), &one);
+        assert_eq!(&plc.and(&sess, &one, &one), &one);
+        assert_eq!(&plc.and(&sess, &zero, &zero), &zero);
     }
 
     #[test]
     fn ring_matrix_vector_prod() {
-        let array_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let x = HostRing64Tensor::from(array_backing);
-        let y = HostRing64Tensor::from(vec![1, 1]);
-        let z = x.dot(y).unwrap();
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
 
-        let result = HostRing64Tensor::from(vec![3, 7]);
-        assert_eq!(result, z)
+        let x: HostRing64Tensor = plc.from_raw(array![[1, 2], [3, 4]]);
+        let y: HostRing64Tensor = plc.from_raw(array![1, 1]);
+        let z = plc.dot(&sess, &x, &y);
+
+        let expected: HostRing64Tensor = plc.from_raw(array![3, 7]);
+        assert_eq!(expected, z);
     }
 
     #[test]
     fn ring_matrix_matrix_prod() {
-        let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let y_backing: ArrayD<i64> = array![[1, 0], [0, 1]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let x = HostRing64Tensor::from(x_backing);
-        let y = HostRing64Tensor::from(y_backing);
-        let z = x.dot(y).unwrap();
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
 
-        let r_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let result = HostRing64Tensor::from(r_backing);
-        assert_eq!(result, z)
+        let x: HostRing64Tensor = plc.from_raw(array![[1, 2], [3, 4]]);
+        let y: HostRing64Tensor = plc.from_raw(array![[1, 0], [0, 1]]);
+        let z = plc.dot(&sess, &x, &y);
+
+        let expected: HostRing64Tensor = plc.from_raw(array![[1, 2], [3, 4]]);
+        assert_eq!(expected, z);
     }
 
     #[test]
     fn ring_vector_prod() {
-        let x_backing = vec![1, 2];
-        let y_backing = vec![1, 1];
-        let x = HostRing64Tensor::from(x_backing);
-        let y = HostRing64Tensor::from(y_backing);
-        let z = x.dot(y).unwrap();
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
 
-        let r_backing = Array::from_elem([], Wrapping(3))
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let result = HostRing64Tensor::new(r_backing);
-        assert_eq!(result, z)
+        let x: HostRing64Tensor = plc.from_raw(array![1, 2]);
+        let y: HostRing64Tensor = plc.from_raw(array![1, 1]);
+        let z = plc.dot(&sess, &x, &y);
+
+        let expected: HostRing64Tensor = plc.from_raw(Array::from_elem([], 3));
+        assert_eq!(expected, z);
     }
 
     #[test]
     fn ring_sample() {
-        let shape = RawShape(vec![5]);
-        let seed = RawSeed([0u8; 16]);
-        let r = HostRing64Tensor::sample_uniform_seeded(&shape, &seed);
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
+
+        let shape = plc.from_raw(RawShape(vec![5]));
+        let seed = plc.from_raw(RawSeed([0u8; 16]));
+
+        let r64: HostRing64Tensor = plc.sample_uniform_seeded(&sess, &shape, &seed);
         assert_eq!(
-            r,
-            HostRing64Tensor::from(vec![
+            r64,
+            plc.from_raw(array![
                 4263935709876578662,
                 3326810793440857224,
                 17325099178452873543,
@@ -1865,10 +1879,10 @@ mod tests {
             ])
         );
 
-        let r128 = HostRing128Tensor::sample_uniform_seeded(&shape, &seed);
+        let r128: HostRing128Tensor = plc.sample_uniform_seeded(&sess, &shape, &seed);
         assert_eq!(
             r128,
-            HostRing128Tensor::from(vec![
+            plc.from_raw(array![
                 78655730786844307471556614669614075016,
                 319591670596555766473793801091584867161,
                 177455464885365520564027128957528354027,
@@ -1877,129 +1891,100 @@ mod tests {
             ])
         );
 
-        let r_bits = HostRing64Tensor::sample_bits_seeded(&shape, &seed);
-        assert_eq!(r_bits, HostRing64Tensor::from(vec![0, 1, 1, 0, 0]));
+        let r64_bits: HostRing64Tensor = plc.sample_bits_seeded(&sess, &shape, &seed);
+        assert_eq!(r64_bits, plc.from_raw(array![0, 1, 1, 0, 0]));
 
-        let r128_bits = HostRing128Tensor::sample_bits_seeded(&shape, &seed);
-        assert_eq!(r128_bits, HostRing128Tensor::from(vec![0, 1, 1, 0, 0]));
+        let r128_bits: HostRing128Tensor = plc.sample_bits_seeded(&sess, &shape, &seed);
+        assert_eq!(r128_bits, plc.from_raw(array![0, 1, 1, 0, 0]));
     }
 
     #[test]
     fn ring_fill() {
-        let r = HostRing64Tensor::fill(&RawShape(vec![2]), 1);
-        assert_eq!(r, HostRing64Tensor::from(vec![1, 1]))
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
+
+        let shape = plc.from_raw(RawShape(vec![2]));
+        let r: HostRing64Tensor = plc.fill(&sess, 1_u64.into(), &shape);
+        assert_eq!(r, plc.from_raw(array![1, 1]));
     }
 
     #[test]
     fn ring_sum_with_axis() {
-        let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let x = HostRing64Tensor::from(x_backing);
-        let out = x.sum(Some(0)).unwrap();
-        assert_eq!(out, HostRing64Tensor::from(vec![4, 6]))
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
+
+        let x: HostRing64Tensor = plc.from_raw(array![[1, 2], [3, 4]]);
+        let out = plc.sum(&sess, Some(0), &x);
+        assert_eq!(out, plc.from_raw(array![4, 6]))
     }
 
     #[test]
     fn ring_sum_without_axis() {
-        let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let x = HostRing64Tensor::from(x_backing);
-        let exp_v: u64 = 10;
-        let exp_backing = Array::from_elem([], exp_v)
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let exp = HostRing64Tensor::from(exp_backing);
-        let out = x.sum(None).unwrap();
-        assert_eq!(out, exp)
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
+
+        let x: HostRing64Tensor = plc.from_raw(array![[1, 2], [3, 4]]);
+        let out = plc.sum(&sess, None, &x);
+        assert_eq!(out, plc.from_raw(Array::from_elem([], 10_u64)))
     }
 
     #[test]
     fn ring_add_n() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
+        let plc = HostPlacement::from("host");
         let sess = SyncSession::default();
 
         // only 1 tensor
-        let x_backing: ArrayD<u64> = array![[1, 4], [9, 16], [25, 36]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let x = HostRing64Tensor::from(x_backing);
-        let expected_backing: ArrayD<u64> = array![[1, 4], [9, 16], [25, 36]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let expected = HostRing64Tensor::from_raw_plc(expected_backing, alice.clone());
-        let out = alice.add_n(&sess, &[x]);
+        let x: HostRing64Tensor = plc.from_raw(array![[1, 4], [9, 16], [25, 36]]);
+        let expected: HostRing64Tensor = plc.from_raw(array![[1, 4], [9, 16], [25, 36]]);
+        let out = plc.add_n(&sess, &[x]);
         assert_eq!(out, expected);
 
         // 64 bit
         // I'll buy you a beer if you tell me what all of these sequences are ;)
-        let x_backing: ArrayD<u64> = array![[1, 4], [9, 16], [25, 36]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let y_backing: ArrayD<u64> = array![[1, 3], [6, 10], [15, 21]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let z_backing: ArrayD<u64> = array![[1, 36], [1225, 41616], [1413721, 48024900]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let x = HostRing64Tensor::from(x_backing);
-        let y = HostRing64Tensor::from(y_backing);
-        let z = HostRing64Tensor::from(z_backing);
-        let expected_backing: ArrayD<u64> = array![[3, 43], [1240, 41642], [1413761, 48024957]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let expected = HostRing64Tensor::from_raw_plc(expected_backing, alice.clone());
-        let out = alice.add_n(&sess, &[x, y, z]);
+        let x: HostRing64Tensor = plc.from_raw(array![[1, 4], [9, 16], [25, 36]]);
+        let y: HostRing64Tensor = plc.from_raw(array![[1, 3], [6, 10], [15, 21]]);
+        let z: HostRing64Tensor = plc.from_raw(array![[1, 36], [1225, 41616], [1413721, 48024900]]);
+        let expected: HostRing64Tensor = plc.from_raw(array![[3, 43], [1240, 41642], [1413761, 48024957]]);
+        let out = plc.add_n(&sess, &[x, y, z]);
         assert_eq!(out, expected);
 
         // 128 bit
-        let w_backing: ArrayD<u128> = array![[6, 3, 10], [5, 16, 8], [4, 2, 1]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let x_backing: ArrayD<u128> = array![[40, 20, 10], [5, 16, 8], [4, 2, 1]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let y_backing: ArrayD<u128> = array![[42, 21, 64], [32, 16, 8], [4, 2, 1]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let z_backing: ArrayD<u128> = array![[256, 128, 64], [32, 16, 8], [4, 2, 1]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let w = HostRing128Tensor::from(w_backing);
-        let x = HostRing128Tensor::from(x_backing);
-        let y = HostRing128Tensor::from(y_backing);
-        let z = HostRing128Tensor::from(z_backing);
-        let expected_backing: ArrayD<u128> = array![[344, 172, 148], [74, 64, 32], [16, 8, 4]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let expected = HostRing128Tensor::from_raw_plc(expected_backing, alice.clone());
-        let out = alice.add_n(&sess, &[w, x, y, z]);
+        let w: HostRing128Tensor = plc.from_raw(array![[6, 3, 10], [5, 16, 8], [4, 2, 1]]);
+        let x: HostRing128Tensor = plc.from_raw(array![[40, 20, 10], [5, 16, 8], [4, 2, 1]]);
+        let y: HostRing128Tensor = plc.from_raw(array![[42, 21, 64], [32, 16, 8], [4, 2, 1]]);
+        let z: HostRing128Tensor = plc.from_raw(array![[256, 128, 64], [32, 16, 8], [4, 2, 1]]);
+        let expected: HostRing128Tensor = plc.from_raw(array![[344, 172, 148], [74, 64, 32], [16, 8, 4]]);
+        let out = plc.add_n(&sess, &[w, x, y, z]);
         assert_eq!(out, expected);
     }
 
     #[test]
     fn bit_extract() {
-        let shape = RawShape(vec![5]);
-        let value = 7;
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
 
-        let r0 = HostRing64Tensor::fill(&shape, value).bit_extract(0);
-        assert_eq!(HostBitTensor::fill(&shape, 1), r0,);
+        let shape = plc.from_raw(RawShape(vec![5]));
+        let value: HostRing64Tensor = plc.fill(&sess, 7_u64.into(), &shape);
 
-        let r1 = HostRing64Tensor::fill(&shape, value).bit_extract(1);
-        assert_eq!(HostBitTensor::fill(&shape, 1), r1,);
+        let r0 = plc.bit_extract(&sess, 0, &value);
+        let r0_expected: HostBitTensor = plc.from_raw(array![1, 1, 1, 1, 1]);
+        assert_eq!(r0, r0_expected);
 
-        let r2 = HostRing64Tensor::fill(&shape, value).bit_extract(2);
-        assert_eq!(HostBitTensor::fill(&shape, 1), r2,);
+        let r1 = plc.bit_extract(&sess, 1, &value);
+        let r1_expected: HostBitTensor = plc.from_raw(array![1, 1, 1, 1, 1]);
+        assert_eq!(r1, r1_expected);
 
-        let r3 = HostRing64Tensor::fill(&shape, value).bit_extract(3);
-        assert_eq!(HostBitTensor::fill(&shape, 0), r3,)
+        let r2 = plc.bit_extract(&sess, 2, &value);
+        let r2_expected: HostBitTensor = plc.from_raw(array![1, 1, 1, 1, 1]);
+        assert_eq!(r2, r2_expected);
+
+        let r3 = plc.bit_extract(&sess, 3, &value);
+        let r3_expected: HostBitTensor = plc.from_raw(array![0, 0, 0, 0, 0]);
+        assert_eq!(r3, r3_expected);
     }
 
     #[test]
-    fn test_bit_dec() {
+    fn bit_dec() {
         let x_backing: ArrayD<u64> = array![[[1, 2], [3, 4]], [[4, 5], [6, 7]]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
