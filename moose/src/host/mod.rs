@@ -858,42 +858,11 @@ impl From<ArrayD<i64>> for HostRingTensor<u64> {
     }
 }
 
-// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl From<ArrayD<i128>> for HostRingTensor<u128> {
-    fn from(a: ArrayD<i128>) -> HostRingTensor<u128> {
-        let ring_rep = a.mapv(|ai| Wrapping(ai as u128));
-        HostRingTensor(
-            ring_rep,
-            HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
-            },
-        )
-    }
-}
-
 #[cfg(not(feature = "exclude_old_framework"))]
 impl<T> HostRingTensor<T> {
     fn new(a: ArrayD<Wrapping<T>>) -> HostRingTensor<T> {
         HostRingTensor(
             a,
-            HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
-            },
-        )
-    }
-}
-
-// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<HostBitTensor> for HostRingTensor<T>
-where
-    T: From<u8>,
-{
-    fn from(b: HostBitTensor) -> HostRingTensor<T> {
-        let ring_rep = b.0.mapv(|ai| Wrapping(ai.into()));
-        HostRingTensor(
-            ring_rep,
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
             },
