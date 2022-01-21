@@ -668,6 +668,8 @@ modelled_kernel! {
     PlacementSum::sum, HostSumOp{axis: Option<u32>}, [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring_kernel),
     ]
 }
 
@@ -683,6 +685,23 @@ impl HostSumOp {
     {
         let axis = axis.map(|a| a as usize);
         Ok(plc.place(sess, x.sum(axis)?))
+    }
+
+    pub fn ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: HostRingTensor<T>,
+    ) -> Result<HostRingTensor<T>>
+    where
+        T: Clone,
+        Wrapping<T>: std::ops::Add<Wrapping<T>, Output = Wrapping<T>>,
+        HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
+        Wrapping<T>: FromPrimitive + Zero,
+    {
+        let axis = Axis(axis.unwrap() as usize);
+        let result = x.0.sum_axis(axis);
+        Ok(HostRingTensor(result.to_owned(), plc.clone()))
     }
 }
 
@@ -1272,6 +1291,20 @@ impl ShapeOp {
     }
 }
 
+impl BroadcastOp {
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T: Clone>(
+        _sess: &S,
+        plc: &HostPlacement,
+        s: HostShape,
+        x: HostRingTensor<T>,
+    ) -> Result<HostRingTensor<T>> {
+        Ok(HostRingTensor(
+            x.0.broadcast(s.0 .0).unwrap().to_owned(),
+            plc.clone(),
+        ))
+    }
+}
+
 impl HostReshapeOp {
     pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
@@ -1418,34 +1451,34 @@ impl RingDotOp {
     }
 }
 
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostRing64Tensor) -> HostRing64Tensor, RingSumOp);
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostRing128Tensor) -> HostRing128Tensor, RingSumOp);
+// modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostRing64Tensor) -> HostRing64Tensor, RingSumOp);
+// modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostRing128Tensor) -> HostRing128Tensor, RingSumOp);
 
-kernel! {
-    RingSumOp,
-    [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] attributes[axis] Self::kernel),
-    ]
-}
+// kernel! {
+//     RingSumOp,
+//     [
+//         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] attributes[axis] Self::kernel),
+//         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] attributes[axis] Self::kernel),
+//     ]
+// }
 
-impl RingSumOp {
-    fn kernel<S: RuntimeSession, T>(
-        sess: &S,
-        plc: &HostPlacement,
-        axis: Option<u32>,
-        x: HostRingTensor<T>,
-    ) -> Result<HostRingTensor<T>>
-    where
-        T: FromPrimitive + Zero,
-        Wrapping<T>: Clone,
-        Wrapping<T>: std::ops::Add<Output = Wrapping<T>>,
-        HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
-    {
-        let sum = x.sum(axis.map(|a| a as usize))?;
-        Ok(plc.place(sess, sum))
-    }
-}
+// impl RingSumOp {
+//     fn kernel<S: RuntimeSession, T>(
+//         sess: &S,
+//         plc: &HostPlacement,
+//         axis: Option<u32>,
+//         x: HostRingTensor<T>,
+//     ) -> Result<HostRingTensor<T>>
+//     where
+//         T: FromPrimitive + Zero,
+//         Wrapping<T>: Clone,
+//         Wrapping<T>: std::ops::Add<Output = Wrapping<T>>,
+//         HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
+//     {
+//         let sum = x.sum(axis.map(|a| a as usize))?;
+//         Ok(plc.place(sess, sum))
+//     }
+// }
 
 modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (HostRing64Tensor) -> HostRing64Tensor, RingShlOp);
 modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (HostRing128Tensor) -> HostRing128Tensor, RingShlOp);

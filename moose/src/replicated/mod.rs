@@ -1002,6 +1002,8 @@ impl RepMulOp {
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         ReplicatedPlacement: ZeroShareGen<S, ShapeT, RingT>,
         ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
+        ShapeT: std::fmt::Debug,
+        RingT: std::fmt::Debug,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -1985,6 +1987,44 @@ impl ShapeOp {
     }
 }
 
+impl BroadcastOp {
+    pub(crate) fn rep_ring_kernel<S: Session, ShapeT, RingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        shape: RepShape<ShapeT>,
+        x: RepTen<RingT>,
+    ) -> Result<RepTen<RingT>>
+    where
+        HostPlacement: PlacementBroadcast<S, ShapeT, RingT, RingT>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let RepShape {
+            shapes: [s0, s1, s2],
+        } = &shape;
+
+        Ok(RepTen {
+            shares: [
+                [
+                    player0.broadcast(sess, s0, x00),
+                    player0.broadcast(sess, s0, x10),
+                ],
+                [
+                    player1.broadcast(sess, s1, x11),
+                    player1.broadcast(sess, s1, x21),
+                ],
+                [
+                    player2.broadcast(sess, s2, x22),
+                    player2.broadcast(sess, s2, x02),
+                ],
+            ],
+        })
+    }
+}
+
 pub(crate) trait BinaryAdder<S: Session, RepBitT> {
     fn binary_adder(&self, sess: &S, x: &RepBitT, y: &RepBitT, ring_size: usize) -> RepBitT;
 }
@@ -2674,6 +2714,58 @@ mod tests {
     use crate::{N128, N64};
     use ndarray::array;
     use proptest::prelude::*;
+
+    #[test]
+    fn test_custom_rep_mul() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
+
+        let carole = HostPlacement {
+            owner: "carole".into(),
+        };
+
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x0_backing: ArrayD<u128> = array![
+            340282366920938463463374607431768211454,
+            340282366920938463463374607431768211454,
+        ]
+        .into_dimensionality::<IxDyn>()
+        .unwrap();
+
+        let x1_backing: ArrayD<u128> = array![1].into_dimensionality::<IxDyn>().unwrap();
+
+        let x2_backing: ArrayD<u128> = array![2].into_dimensionality::<IxDyn>().unwrap();
+
+        let sess = SyncSession::default();
+
+        let x00 = HostRing128Tensor::from_raw_plc(x0_backing.clone(), alice.clone());
+        let x10 = HostRing128Tensor::from_raw_plc(x1_backing.clone(), alice.clone());
+
+        let x11 = HostRing128Tensor::from_raw_plc(x1_backing, bob.clone());
+        let x21 = HostRing128Tensor::from_raw_plc(x2_backing.clone(), bob.clone());
+
+        let x22 = HostRing128Tensor::from_raw_plc(x2_backing, carole.clone());
+        let x02 = HostRing128Tensor::from_raw_plc(x0_backing, carole.clone());
+
+        let x = RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        };
+
+        let x_alice = alice.reveal(&sess, &x);
+        let x_alice_sq = alice.mul(&sess, &x_alice, &x_alice);
+
+        let x_squared = rep.mul(&sess, &x, &x);
+        let x_rep_alice_sq = alice.reveal(&sess, &x_squared);
+
+        assert_eq!(x_alice_sq, x_rep_alice_sq);
+    }
 
     #[test]
     fn test_ring_identity() {

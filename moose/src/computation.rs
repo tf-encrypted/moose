@@ -971,6 +971,7 @@ operators![
     Output,
     Constant,
     Shape,
+    Broadcast,
     PrimDeriveSeed,
     PrimPrfKeyGen,
     AesDecrypt,
@@ -1015,7 +1016,6 @@ operators![
     RingNeg,
     RingMul,
     RingDot,
-    RingSum,
     RingFixedpointMean,
     RingFixedpointEncode,
     RingFixedpointDecode,
@@ -1439,12 +1439,6 @@ pub struct RingMulOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RingDotOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
-pub struct RingSumOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
@@ -1883,6 +1877,11 @@ pub struct SoftmaxOp {
     pub sig: Signature,
     pub axis: Option<u32>,
     pub upmost_index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct BroadcastOp {
+    pub sig: Signature,
 }
 
 pub trait KnownPlacement {

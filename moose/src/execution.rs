@@ -1397,7 +1397,7 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value=Ring64Tensor([[1, 2], [3, 4]])}: () -> Ring64Tensor @Host(alice)
-        r = RingSum {axis = 0}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
+        r = Sum {axis = 0}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (r) @Host(alice)
         "#;
         let arguments: HashMap<String, Value> = hashmap!();

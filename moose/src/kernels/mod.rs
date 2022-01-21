@@ -133,6 +133,7 @@ impl Session for SyncSession {
         use Operator::*;
         let kernel_output = match op {
             Shape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Broadcast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitSample(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -151,7 +152,6 @@ impl Session for SyncSession {
             RingNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingShr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingFixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -615,6 +615,7 @@ impl Session for AsyncSession {
         use Operator::*;
         let kernel = match op {
             Shape(op) => DispatchKernel::compile(&op, plc)?,
+            Broadcast(op) => DispatchKernel::compile(&op, plc)?,
             RingFill(op) => DispatchKernel::compile(&op, plc)?,
             PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?,
             BitSample(op) => DispatchKernel::compile(&op, plc)?,
@@ -633,7 +634,6 @@ impl Session for AsyncSession {
             RingNeg(op) => DispatchKernel::compile(&op, plc)?,
             RingShl(op) => DispatchKernel::compile(&op, plc)?,
             RingShr(op) => DispatchKernel::compile(&op, plc)?,
-            RingSum(op) => DispatchKernel::compile(&op, plc)?,
             RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
             RingFixedpointEncode(op) => DispatchKernel::compile(&op, plc)?,
             RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?,
@@ -1009,6 +1009,10 @@ pub trait PlacementMaximum<S: Session, TS, O> {
 
 pub trait PlacementSoftmax<S: Session, T, O> {
     fn softmax(&self, sess: &S, axis: Option<u32>, upmost_index: usize, x: &T) -> O;
+}
+
+pub trait PlacementBroadcast<S: Session, ShapeT, T, O> {
+    fn broadcast(&self, sess: &S, s: &ShapeT, x: &T) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -1898,7 +1902,7 @@ kernel! {
                     Constant::Fixed(FixedpointConstant {
                         value, precision
                     }) => {
-                        (value * ((1u64 << precision) as f64)) as u64
+                        ((value * ((1u64 << precision) as f64)) as i64) as u64
                     },
                     _ => return Err(Error::UnimplementedOperator(
                         format!("Cannot fill from {:?} into a ReplicatedRing64Tensor", op.value.ty()))),
@@ -1915,7 +1919,7 @@ kernel! {
                     Constant::Fixed(FixedpointConstant {
                         value, precision
                     }) => {
-                        (value * ((1u64 << precision) as f64)) as u64
+                        ((value * ((1u64 << precision) as f64)) as i64) as u64
                     },
                     _ => return Err(Error::UnimplementedOperator(
                         format!("Cannot fill from {:?} into a Mirrored3Ring64Tensor", op.value.ty()))),
@@ -1931,7 +1935,7 @@ kernel! {
                     Constant::Ring128(v) => v,
                     Constant::Float64(v) => v as u128,
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
-                            (value * ((1u128 << precision) as f64)) as u128
+                            ((value * ((1u128 << precision) as f64)) as i128) as u128
                     },
                     _ => return Err(Error::UnimplementedOperator(
                         format!("Cannot fill from {:?} into a ReplicatedRing128Tensor", op.value.ty()))),
@@ -1947,7 +1951,7 @@ kernel! {
                     Constant::Ring128(v) => v,
                     Constant::Float64(v) => v as u128,
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
-                            (value * ((1u128 << precision) as f64)) as u128
+                            ((value * ((1u128 << precision) as f64)) as i128) as u128
                     },
                     _ => return Err(Error::UnimplementedOperator(
                         format!("Cannot fill from {:?} into a Mirrored3Ring128Tensor", op.value.ty()))),
@@ -1989,7 +1993,7 @@ kernel! {
         (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Fixed64Tensor => [hybrid] custom |op| {
                 let (ring_value, fractional_precision, integral_precision) = match op.value {
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
-                        let ring_value: u64 = (value * ((1u64 << precision) as f64)) as u64;
+                        let ring_value: u64 = ((value * ((1u64 << precision) as f64)) as i64) as u64;
                         let fractional_precision = precision as u32;
                         let integral_precision = value.log2().ceil() as u32;
                         (ring_value, fractional_precision, integral_precision)
@@ -2004,7 +2008,7 @@ kernel! {
         (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Fixed128Tensor => [hybrid] custom |op| {
                 let (ring_value, fractional_precision, integral_precision) = match op.value {
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
-                        let ring_value: u128 = (value * ((1u128 << precision) as f64)) as u128;
+                        let ring_value: u128 = ((value * ((1u128 << precision) as f64)) as i128) as u128;
                         let fractional_precision = precision as u32;
                         let integral_precision = value.log2().ceil() as u32;
                         (ring_value, fractional_precision, integral_precision)
@@ -2217,6 +2221,16 @@ modelled_kernel! {
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_fixed_kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementBroadcast::broadcast, BroadcastOp,
+    [
+        (HostPlacement, (HostShape, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_ring_kernel),
+        (HostPlacement, (HostShape, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedShape, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedShape, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_ring_kernel),
     ]
 }
 

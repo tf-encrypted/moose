@@ -1,7 +1,7 @@
 use super::*;
 
 impl FixedpointDivOp {
-    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, MirRingT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, MirRingT, HostRingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepFixedTensor<RepRingT>,
@@ -15,6 +15,10 @@ impl FixedpointDivOp {
         ReplicatedPlacement: PlacementAdd<S, MirRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirRingT>,
+        HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
+        HostPlacement: PlacementDemirror<S, MirRingT, HostRingT>,
+        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
+        ReplicatedPlacement: PlacementBroadcast<S, ShapeT, RepRingT, RepRingT>,
     {
         #![allow(clippy::many_single_char_names)]
 
@@ -45,13 +49,18 @@ impl FixedpointDivOp {
             frac_precision as usize,
             &y_st,
         );
-        // max_bits(w) = k
 
+        // max_bits(w) = k
         let alpha = 1.0_f64.as_fixedpoint(2 * frac_precision as usize);
         let rep_alpha = rep.shape_fill(sess, alpha, &x_st);
 
-        let mut a = with_context!(rep, sess, rep_alpha - &rep.mul(sess, &y_st, &w));
+        let init_prod = rep.mul(sess, &y_st, &w);
+        let init_prod_resized = rep.broadcast(sess, &rep.shape(sess, &x_st), &init_prod);
+
+        let mut a = with_context!(rep, sess, rep_alpha - init_prod_resized);
         // max_bits(a) = max(2f, k)
+
+        // add that all shares have same shape in RepMul, AdtMul,
 
         let mut b = rep.mul(sess, &x_st, &w);
 
@@ -59,10 +68,11 @@ impl FixedpointDivOp {
         b = rep.trunc_pr(sess, frac_precision, &b);
 
         for _i in 0..theta {
-            let x = rep.mul(sess, &a, &a);
-            let y = rep.mul(sess, &b, &rep.add(sess, &rep_alpha, &a));
-            a = rep.trunc_pr(sess, 2 * frac_precision, &x);
-            b = rep.trunc_pr(sess, 2 * frac_precision, &y);
+            let next_a = rep.mul(sess, &a, &a);
+            let next_b = rep.mul(sess, &b, &rep.add(sess, &rep_alpha, &a));
+
+            a = rep.trunc_pr(sess, 2 * frac_precision, &next_a);
+            b = rep.trunc_pr(sess, 2 * frac_precision, &next_b);
         }
         b = rep.mul(sess, &b, &rep.add(sess, &rep_alpha, &a));
         b = rep.trunc_pr(sess, 2 * frac_precision, &b);

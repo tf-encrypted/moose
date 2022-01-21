@@ -249,7 +249,6 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         RingSubOp::from_textual,
         RingMulOp::from_textual,
         RingDotOp::from_textual,
-        RingSumOp::from_textual,
         RingSampleSeededOp::from_textual,
         RingSampleOp::from_textual,
         RingShlOp::from_textual,
@@ -290,6 +289,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         MirrorOp::from_textual,
         MaximumOp::from_textual,
         SoftmaxOp::from_textual,
+        BroadcastOp::from_textual,
     ));
     alt((part1, part2, part3, part4))(input)
 }
@@ -1028,6 +1028,8 @@ impl ToTextual for Operator {
             Output(op) => op.to_textual(),
             Constant(op) => op.to_textual(),
             Shape(op) => op.to_textual(),
+            Broadcast(op) => op.to_textual(),
+            Softmax(op) => op.to_textual(),
             AtLeast2D(op) => op.to_textual(),
             IndexAxis(op) => op.to_textual(),
             Slice(op) => op.to_textual(),
@@ -1073,7 +1075,6 @@ impl ToTextual for Operator {
             RingSub(op) => op.to_textual(),
             RingMul(op) => op.to_textual(),
             RingDot(op) => op.to_textual(),
-            RingSum(op) => op.to_textual(),
             RingFixedpointEncode(op) => op.to_textual(),
             RingFixedpointDecode(op) => op.to_textual(),
             RingFixedpointMean(op) => op.to_textual(),
@@ -1154,7 +1155,6 @@ impl ToTextual for Operator {
             Demirror(op) => op.to_textual(),
             Mirror(op) => op.to_textual(),
             Maximum(op) => op.to_textual(),
-            Softmax(op) => op.to_textual(),
         }
     }
 }
@@ -1185,7 +1185,6 @@ op_with_axis_to_textual!(MeanOp);
 op_with_axis_to_textual!(SumOp);
 op_with_axis_to_textual!(HostMeanOp);
 op_with_axis_to_textual!(HostSumOp);
-op_with_axis_to_textual!(RingSumOp);
 op_with_axis_to_textual!(RepSumOp);
 op_with_axis_to_textual!(FixedpointSumOp);
 op_with_axis_to_textual!(FloatingpointMeanOp);
@@ -2025,9 +2024,6 @@ mod tests {
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = HostSqrt: (Float32Tensor) -> Float32Tensor () @Host(alice)",
-        )?;
-        parse_assignment::<(&str, ErrorKind)>(
-            "z = RingSum {axis = 0}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingFill {value = Ring64(42)}: (Shape) -> Ring64Tensor (s) @Host(alice)",

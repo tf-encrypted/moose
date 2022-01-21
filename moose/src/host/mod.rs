@@ -1697,6 +1697,7 @@ mod tests {
         assert_eq!(exp, sqrt)
     }
 
+    use macros::with_context;
     use rstest::rstest;
     #[rstest]
     #[case(None)]
@@ -2046,5 +2047,74 @@ mod tests {
         let x_back1_bits: HostBitTensor = alice.bit_decompose(&sess, &x_host);
 
         assert_eq!(x_back1_bits.0, y_target);
+    }
+
+    #[test]
+    fn test_host_mul() {
+        let x_backing: ArrayD<u128> = array![340282366920938463463374415046855271599]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let x = HostRing128Tensor::from_raw_plc(x_backing, alice.clone());
+        let sess = SyncSession::default();
+        let y = alice.mul(&sess, &x, &x);
+
+        let y_target: ArrayD<u128> = array![37011954726876357358499180449]
+            .into_dyn()
+            .into_shape((1,))
+            .unwrap()
+            .into_dyn();
+        let y_target = HostRing128Tensor::from_raw_plc(y_target, alice.clone());
+
+        assert_eq!(y, y_target);
+    }
+
+    #[test]
+    fn test_host_sub_bcast() {
+        let x0_backing: ArrayD<u128> = array![
+            118584477172621071893439469979797058312,
+            118584477172621071893439469979797058312,
+            118584477172621071893439469979797058312,
+            118584477172621071893439469979797058312,
+            118584477172621071893439469979797058312,
+            118584477172621071893439469979797058312,
+            118584477172621071893439469979797058312,
+            118584477172621071893439469979797058312,
+            118584477172621071893439469979797058312
+        ]
+        .into_dimensionality::<IxDyn>()
+        .unwrap();
+
+        let x1_backing: ArrayD<u128> = array![94864269500362239162936600410168665412]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let x2_backing: ArrayD<u128> = array![126833620247955152406998344656889547875]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+
+        let x0 = HostRing128Tensor::from_raw_plc(x0_backing, alice.clone());
+        let x1 = HostRing128Tensor::from_raw_plc(x1_backing, alice.clone());
+        let x2 = HostRing128Tensor::from_raw_plc(x2_backing, alice.clone());
+
+        let sess = SyncSession::default();
+        let borrowed_sess = &sess;
+
+        let x = with_context!(alice, borrowed_sess, x0 + x1 + x2);
+
+        let v0 = with_context!(alice, borrowed_sess, { x0 * x0 + x0 * x1 + x1 * x0 });
+        let v1 = with_context!(alice, borrowed_sess, { x1 * x1 + x1 * x2 + x2 * x1 });
+        let v2 = with_context!(alice, borrowed_sess, { x2 * x2 + x2 * x0 + x0 * x2 });
+
+        let sv = with_context!(alice, borrowed_sess, { v0 + v1 + v2 });
+        println!("sv: {:?}", sv);
+        assert_eq!(alice.mul(borrowed_sess, &x, &x), sv);
     }
 }
