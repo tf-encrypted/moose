@@ -1028,18 +1028,6 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Sub<HostRingTensor<T>> for HostRingTensor<T>
-where
-    Wrapping<T>: Clone,
-    Wrapping<T>: std::ops::Sub<Wrapping<T>, Output = Wrapping<T>>,
-{
-    type Output = HostRingTensor<T>;
-    fn sub(self, other: HostRingTensor<T>) -> Self::Output {
-        HostRingTensor(self.0 - other.0, self.1)
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> std::ops::Shl<usize> for HostRingTensor<T>
 where
     Wrapping<T>: Clone,
@@ -1060,18 +1048,6 @@ where
     type Output = HostRingTensor<T>;
     fn shr(self, other: usize) -> Self::Output {
         HostRingTensor(self.0 >> other, self.1)
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::BitAnd<HostRingTensor<T>> for HostRingTensor<T>
-where
-    Wrapping<T>: Clone,
-    Wrapping<T>: std::ops::BitAnd<Wrapping<T>, Output = Wrapping<T>>,
-{
-    type Output = HostRingTensor<T>;
-    fn bitand(self, other: HostRingTensor<T>) -> Self::Output {
-        HostRingTensor(self.0 & other.0, self.1)
     }
 }
 
