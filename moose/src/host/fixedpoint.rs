@@ -5,6 +5,10 @@ where
     Wrapping<T>: Clone + num_traits::Zero + std::ops::Mul<Wrapping<T>, Output = Wrapping<T>>,
     HostRingTensor<T>: Convert<HostFloat64Tensor>,
 {
+    fn mul(self, other: HostRingTensor<T>) -> HostRingTensor<T> {
+        HostRingTensor(self.0 * other.0, self.1)
+    }
+
     pub(super) fn fixedpoint_mean(
         x: Self,
         axis: Option<usize>,
@@ -13,7 +17,7 @@ where
         let mean_weight = Self::compute_mean_weight(&x, &axis)?;
         let encoded_weight = HostRingTensor::<T>::encode(&mean_weight, scaling_factor);
         let operand_sum = x.sum(axis)?;
-        Ok(operand_sum * encoded_weight)
+        Ok(operand_sum.mul(encoded_weight))
     }
 }
 
