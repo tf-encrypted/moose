@@ -21,18 +21,31 @@ class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     def post_transform(self, y):
         pass
 
-    def linear_predictor_fn(self, x, fixedpoint_dtype):
-        w = self.fixedpoint_constant(
-            self.coeffs.T, plc=self.mirrored, dtype=fixedpoint_dtype
+    @classmethod
+    def bias_trick(cls, x, plc, dtype):
+        bias_shape = edsl.slice(
+            edsl.shape(x, placement=plc), begin=0, end=1, placement=plc
         )
-        # TODO: use bias trick instead of explicit add op for intercept
+        bias = edsl.ones(bias_shape, dtype=edsl.float64, placement=plc)
+        reshaped_bias = edsl.expand_dims(bias, 1, placement=plc)
+        return edsl.cast(reshaped_bias, dtype=dtype, placement=plc)
+
+    def linear_predictor_fn(self, x, fixedpoint_dtype):
         if self.intercepts is not None:
-            b = self.fixedpoint_constant(
-                self.intercepts, plc=self.mirrored, dtype=fixedpoint_dtype
+            w = self.fixedpoint_constant(
+                np.concatenate([self.intercepts.T, self.coeffs], axis=1).T,
+                plc=self.mirrored,
+                dtype=fixedpoint_dtype,
             )
-        y = edsl.dot(x, w)
+            bias = self.bias_trick(x, plc=self.bob, dtype=fixedpoint_dtype)
+        else:
+            w = self.fixedpoint_constant(
+                self.coeffs.T, plc=self.mirrored, dtype=fixedpoint_dtype
+            )
         if self.intercepts is not None:
-            y = edsl.add(y, b)
+            x = edsl.concatenate([bias, x], axis=1)
+
+        y = edsl.dot(x, w)
         return y
 
     def predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
@@ -201,9 +214,9 @@ class LinearClassifier(LinearPredictor):
 
     def _temporary_softmax(self, x, axis):
         # TODO replace with edsl.max(x, axis)
-        x_bound = edsl.sub(x, edsl.sum(x, axis))
-        x_exp = edsl.exp(x_bound)
-        return edsl.div(x_exp, edsl.sum(x_exp, axis))
+        x_exp = edsl.exp(x)
+        denom = edsl.expand_dims(edsl.sum(x_exp, axis), axis)
+        return edsl.div(x_exp, denom)
 
 
 def _validate_model_args(coeffs, intercepts):
