@@ -3,6 +3,8 @@ import itertools
 import json
 import logging
 import pathlib
+import base64
+from pathlib import Path
 
 import numpy as np
 import onnx
@@ -227,7 +229,16 @@ class TreeEnsembleTest(parameterized.TestCase):
         serialized = comp_utils.serialize_computation(traced)
         logical_rustref = elk_compiler.compile_computation(serialized, [])
         logical_rustbytes = logical_rustref.to_bytes()
-        pymoose.MooseComputation.from_bytes(logical_rustbytes)
+
+        elk_compiler.compile_computation(serialized, ["typing", "full", "prune", "networking", "toposort"])
+
+        b = base64.b64encode(logical_rustbytes)
+
+        Path(f"{model_name}.moose").touch()
+        with open(f"{model_name}.moose", "w") as f:
+            f.write(b.decode('utf-8'))
+
+        # pymoose.MooseComputation.from_bytes(logical_rustbytes)
 
 
 if __name__ == "__main__":

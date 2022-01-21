@@ -1,5 +1,7 @@
 import itertools
 import pathlib
+import base64
+from pathlib import Path
 
 import numpy as np
 import onnx
@@ -16,34 +18,35 @@ from pymoose.predictors import predictor_utils
 _SK_REGRESSION_MODELS = [
     "ard_regression",
     "bayesian_ridge",
-    "elastic_net",
-    "elastic_net_cv",
-    "huber_regressor",
-    "lars",
-    "lars_cv",
-    "lasso",
-    "lasso_cv",
-    "lasso_lars_ic",
-    "linear_regression",
-    "orthogonal_matching_pursuit",
-    "orthogonal_matching_pursuit_cv",
-    "passive_aggressive_regressor",
-    "quantile_regressor",
-    "ransac_regressor",
-    "ridge",
-    "ridge_cv",
-    "sgd_regressor",
-    "theil_sen_regressor",
+#     "elastic_net",
+#     "elastic_net_cv",
+#     "huber_regressor",
+#     "lars",
+#     "lars_cv",
+#     "lasso",
+#     "lasso_cv",
+#     "lasso_lars_ic",
+#     "linear_regression",
+#     "orthogonal_matching_pursuit",
+#     "orthogonal_matching_pursuit_cv",
+#     "passive_aggressive_regressor",
+#     "quantile_regressor",
+#     "ransac_regressor",
+#     "ridge",
+#     "ridge_cv",
+#     "sgd_regressor",
+#     "theil_sen_regressor",
 ]
+
 _SK_CLASSIFIER_MODELS = [
-    ("logistic_regression_2class_multiclass", [0.5535523, 0.4464477]),
+    #("logistic_regression_2class_multiclass", [0.5535523, 0.4464477]),
     ("logistic_regression_3class_multiclass", [0.11341234, 0.51814332, 0.36844435]),
     ("logistic_regression_2class_multilabel", [0.56790665, 0.43209335]),
-    ("logistic_regression_3class_multilabel", [0.1371954, 0.46855493, 0.39424967]),
-    ("logistic_regression_cv_2class_multiclass", [0.5756927, 0.4243073]),
-    ("logistic_regression_cv_3class_multiclass", [0.23125406, 0.41739519, 0.35135075]),
-    ("logistic_regression_cv_2class_multilabel", [0.59146365, 0.40853635]),
-    ("logistic_regression_cv_3class_multilabel", [0.11771997, 0.47229152, 0.40998851]),
+    #("logistic_regression_3class_multilabel", [0.1371954, 0.46855493, 0.39424967]),
+    #("logistic_regression_cv_2class_multiclass", [0.5756927, 0.4243073]),
+    #("logistic_regression_cv_3class_multiclass", [0.23125406, 0.41739519, 0.35135075]),
+    #("logistic_regression_cv_2class_multilabel", [0.59146365, 0.40853635]),
+    #("logistic_regression_cv_3class_multilabel", [0.11771997, 0.47229152, 0.40998851]),
 ]
 
 
@@ -131,7 +134,16 @@ class LinearPredictorTest(parameterized.TestCase):
         serialized = comp_utils.serialize_computation(traced_predictor)
         logical_comp_rustref = elk_compiler.compile_computation(serialized, [])
         logical_comp_rustbytes = logical_comp_rustref.to_bytes()
-        pymoose.MooseComputation.from_bytes(logical_comp_rustbytes)
+
+        # make sure it can compile
+        elk_compiler.compile_computation(serialized, ["typing", "full", "prune", "networking", "toposort"])
+
+        b = base64.b64encode(logical_comp_rustbytes)
+        Path(f"{model_name}.moose").touch()
+        with open(f"{model_name}.moose", "w") as f:
+            f.write(b.decode('utf-8'))
+
+        # pymoose.MooseComputation.from_bytes(logical_comp_rustbytes)
         # NOTE: could also dump to disk as follows (but we don't in the test)
         # logical_comp_rustref.to_disk(path)
         # pymoose.MooseComputation.from_disk(path)
