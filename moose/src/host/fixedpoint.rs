@@ -1,5 +1,39 @@
 use super::*;
 
+pub trait Convert<T> {
+    type Scale: num_traits::One + Clone;
+    fn encode(x: &T, scaling_factor: Self::Scale) -> Self;
+    fn decode(x: &Self, scaling_factor: Self::Scale) -> T;
+}
+
+impl Convert<HostFloat64Tensor> for HostRing64Tensor {
+    type Scale = u64;
+    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing64Tensor {
+        let x_upshifted = &x.0 * (scaling_factor as f64);
+        let x_converted: ArrayD<u64> = x_upshifted.mapv(|el| (el as i64) as u64);
+        HostRing64Tensor::from(x_converted)
+    }
+    fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
+        let x_upshifted: ArrayD<i64> = ArrayD::from(x);
+        let x_converted = x_upshifted.mapv(|el| el as f64);
+        HostFloat64Tensor::from(x_converted / scaling_factor as f64)
+    }
+}
+
+impl Convert<HostFloat64Tensor> for HostRing128Tensor {
+    type Scale = u128;
+    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing128Tensor {
+        let x_upshifted = &x.0 * (scaling_factor as f64);
+        let x_converted: ArrayD<u128> = x_upshifted.mapv(|el| (el as i128) as u128);
+        HostRing128Tensor::from(x_converted)
+    }
+    fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
+        let x_upshifted: ArrayD<i128> = ArrayD::from(x);
+        let x_converted = x_upshifted.mapv(|el| el as f64);
+        HostFloat64Tensor::from(x_converted / scaling_factor as f64)
+    }
+}
+
 impl<T> HostRingTensor<T>
 where
     Wrapping<T>: Clone + num_traits::Zero + std::ops::Mul<Wrapping<T>, Output = Wrapping<T>>,
