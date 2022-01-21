@@ -4,6 +4,7 @@ use moose::computation::{Computation, HostPlacement, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
 use moose::host::{HostBitTensor, HostString, HostTensor};
+use moose::textual::ToTextual;
 use ndarray::IxDyn;
 use ndarray::LinalgScalar;
 use numpy::{Element, PyArrayDescr, PyArrayDyn, ToPyArray};
@@ -298,6 +299,21 @@ impl MooseComputation {
         self.computation
             .to_disk(mypath)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))
+    }
+
+    #[classmethod]
+    pub fn from_textual<'py>(_cls: &PyType, py: Python, text: &PyString) -> PyResult<Py<Self>> {
+        let text: &str = text.extract()?;
+        let computation: Computation = text
+            .try_into()
+            .map_err(|e: anyhow::Error| PyRuntimeError::new_err(e.to_string()))?;
+        let moose_comp = MooseComputation { computation };
+        Py::new(py, moose_comp)
+    }
+
+    pub fn to_textual<'py>(&mut self, py: Python<'py>) -> PyResult<PyObject> {
+        let comp_text = self.computation.to_textual();
+        Ok(comp_text.into_py(py))
     }
 }
 
