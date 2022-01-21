@@ -191,7 +191,7 @@ mod tests {
         let y_exp = y.map(|item| item.exp());
         let softmax = y_exp.clone() / y_exp.sum_axis(Axis(0));
 
-        let y_targets: Vec<_> = softmax.iter().map(|item| item.clone()).collect();
+        let y_targets: Vec<_> = softmax.iter().copied().collect();
 
         test_rep_softmax_fixed64(x, y_targets);
     }
@@ -210,7 +210,7 @@ mod tests {
         let y_exp = y.map(|item| item.exp());
         let softmax = y_exp.clone() / y_exp.sum_axis(Axis(0));
 
-        let y_targets: Vec<_> = softmax.iter().map(|item| item.clone()).collect();
+        let y_targets: Vec<_> = softmax.iter().copied().collect();
 
         test_rep_softmax_fixed128(x, y_targets);
     }

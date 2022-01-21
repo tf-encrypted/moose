@@ -2095,7 +2095,7 @@ mod tests {
             .into_shape((1,))
             .unwrap()
             .into_dyn();
-        let y_target = HostRing128Tensor::from_raw_plc(y_target, alice.clone());
+        let y_target = HostRing128Tensor::from_raw_plc(y_target, alice);
 
         assert_eq!(y, y_target);
     }
