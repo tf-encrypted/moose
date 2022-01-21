@@ -935,27 +935,27 @@ where
     }
 }
 
-// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> HostRingTensor<T>
-where
-    Wrapping<T>: Clone,
-{
-    #[cfg_attr(
-        feature = "exclude_old_framework",
-        deprecated(
-            note = "This function is only used by the old kernels, which are not aware of the placements."
-        )
-    )]
-    fn fill(shape: &RawShape, el: T) -> HostRingTensor<T> {
-        HostRingTensor(
-            ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)),
-            HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
-            },
-        )
-    }
-}
+// // This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
+// #[cfg(not(feature = "exclude_old_framework"))]
+// impl<T> HostRingTensor<T>
+// where
+//     Wrapping<T>: Clone,
+// {
+//     #[cfg_attr(
+//         feature = "exclude_old_framework",
+//         deprecated(
+//             note = "This function is only used by the old kernels, which are not aware of the placements."
+//         )
+//     )]
+//     fn fill(shape: &RawShape, el: T) -> HostRingTensor<T> {
+//         HostRingTensor(
+//             ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)),
+//             HostPlacement {
+//                 owner: Role::from("TODO"), // Fake owner for the old kernels
+//             },
+//         )
+//     }
+// }
 
 impl<T> HostRingTensor<T> {
     fn shape(&self) -> HostShape {
