@@ -1055,6 +1055,18 @@ where
     }
 }
 
+impl<T> HostTensor<T>
+where
+    T: Clone,
+{
+    fn from_raw_plc<D: ndarray::Dimension, P: Into<HostPlacement>>(
+        raw_tensor: Array<T, D>,
+        plc: P,
+    ) -> HostTensor<T> {
+        HostTensor(raw_tensor.into_dyn(), plc.into())
+    }
+}
+
 // This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
 impl<T> HostRingTensor<T>
@@ -1386,10 +1398,7 @@ mod tests {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
 
-        let x = HostRingTensor::from_raw_plc(
-            array![1024u64, 5, 4],
-            plc.clone(),
-        );
+        let x = HostRingTensor::from_raw_plc(array![1024u64, 5, 4], plc.clone());
 
         let shape = plc.shape(&sess, &x).0;
         let expected = RawShape(vec![3]);
@@ -1418,22 +1427,15 @@ mod tests {
     #[cfg(feature = "blas")]
     #[test]
     fn test_inverse() {
-        let x = HostTensor::<f32>::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
 
-        let x_inv = x.inv();
+        let x = HostTensor::<f32>::from_raw_plc(array![[1.0, 2.0], [3.0, 4.0]], plc.clone());
 
-        assert_eq!(
-            x_inv,
-            HostTensor::<f32>::from(
-                array![[-2.0, 1.0], [1.5, -0.5]]
-                    .into_dimensionality::<IxDyn>()
-                    .unwrap()
-            )
-        );
+        let x_inv = plc.inverse(&sess, &x);
+
+        let expected = HostTensor::<f32>::from_raw_plc(array![[-2.0, 1.0], [1.5, -0.5]], plc);
+        assert_eq!(x_inv, expected);
     }
 
     #[test]
@@ -1474,7 +1476,7 @@ mod tests {
     fn test_tensor_slice_neg_indicies() {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
-        
+
         let x_backing = array![[1, 2], [3, 4]];
         let x = HostRing64Tensor::from_raw_plc(x_backing, plc.clone());
 
@@ -1549,7 +1551,7 @@ mod tests {
     fn test_index() {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
-        
+
         let x_backing = array![[[1_u64, 2], [3, 4]], [[4, 5], [6, 7]]];
         let x = HostRing64Tensor::from_raw_plc(x_backing, plc.clone());
         let y = plc.index_axis(&sess, 0, 1, &x);
@@ -1561,8 +1563,6 @@ mod tests {
 
     #[test]
     fn test_transpose() {
-        
-
         let x = HostTensor::<f32>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
@@ -1732,24 +1732,14 @@ mod tests {
 
     #[test]
     fn test_kernel_sqrt() {
-        use crate::kernels::PlacementSqrt;
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
+        let plc = HostPlacement::from("host");
         let sess = SyncSession::default();
-        let x = crate::host::HostTensor::<f64>::from(
-            array![[4.0, 9.0], [16.0, 25.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let exp = crate::host::HostTensor::<f64>(
-            array![[2.0, 3.0], [4.0, 5.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            alice.clone(),
-        );
-        let sqrt = alice.sqrt(&sess, &x);
-        assert_eq!(exp, sqrt)
+
+        let x = HostTensor::<f64>::from_raw_plc(array![[4.0, 9.0], [16.0, 25.0]], plc.clone());
+        let sqrt = plc.sqrt(&sess, &x);
+
+        let expected = HostTensor::<f64>::from_raw_plc(array![[2.0, 3.0], [4.0, 5.0]], plc.clone());
+        assert_eq!(expected, sqrt)
     }
 
     use rstest::rstest;
