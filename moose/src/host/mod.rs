@@ -1388,40 +1388,49 @@ where
     }
 }
 
+trait FromRaw<T, O> {
+    fn from_raw(&self, raw: T) -> O;
+}
+
+impl<T: Clone, D: ndarray::Dimension> FromRaw<Array<T, D>, HostTensor<T>> for HostPlacement {
+    fn from_raw(&self, raw: Array<T, D>) -> HostTensor<T> {
+        HostTensor(raw.into_dyn(), self.clone())
+    }
+}
+
+impl<T: Clone, D: ndarray::Dimension> FromRaw<Array<T, D>, HostRingTensor<T>> for HostPlacement {
+    fn from_raw(&self, raw: Array<T, D>) -> HostRingTensor<T> {
+        HostRingTensor(raw.mapv(Wrapping).into_dyn(), self.clone())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::ops::{Add, Div, Mul, Sub};
+    use rstest::rstest;
 
     #[test]
     fn test_host_shape_op() {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
 
-        let x = HostRingTensor::from_raw_plc(array![1024u64, 5, 4], plc.clone());
-
+        let x: HostRing64Tensor = plc.from_raw(array![1024, 5, 4]);
         let shape = plc.shape(&sess, &x).0;
+
         let expected = RawShape(vec![3]);
         assert_eq!(expected, shape);
     }
 
     #[test]
     fn dot_prod_f32() {
-        let x = HostTensor::<f32>::from(
-            array![[1.0, -2.0], [3.0, -4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let y = x.clone();
-        let z = x.dot(y);
-        assert_eq!(
-            z,
-            HostTensor::<f32>::from(
-                array![[-5.0, 6.0], [-9.0, 10.0]]
-                    .into_dimensionality::<IxDyn>()
-                    .unwrap()
-            )
-        );
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
+
+        let x: HostFloat32Tensor = plc.from_raw(array![[1.0, -2.0], [3.0, -4.0]]);
+        let z = plc.dot(&sess, &x, &x);
+
+        let expected: HostFloat32Tensor = plc.from_raw(array![[-5.0, 6.0], [-9.0, 10.0]]);
+        assert_eq!(z, expected);
     }
 
     #[cfg(feature = "blas")]
@@ -1430,11 +1439,10 @@ mod tests {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
 
-        let x = HostTensor::<f32>::from_raw_plc(array![[1.0, 2.0], [3.0, 4.0]], plc.clone());
-
+        let x: HostFloat32Tensor = plc.from_raw(array![[1.0, 2.0], [3.0, 4.0]]);
         let x_inv = plc.inverse(&sess, &x);
 
-        let expected = HostTensor::<f32>::from_raw_plc(array![[-2.0, 1.0], [1.5, -0.5]], plc);
+        let expected: HostFloat32Tensor = plc.from_raw(array![[-2.0, 1.0], [1.5, -0.5]]);
         assert_eq!(x_inv, expected);
     }
 
@@ -1450,8 +1458,7 @@ mod tests {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
 
-        let x_backing = array![[1, 2], [3, 4]];
-        let x = HostRing64Tensor::from_raw_plc(x_backing, plc.clone());
+        let x: HostRing64Tensor = plc.from_raw(array![[1, 2], [3, 4]]);
 
         let slice = SliceInfo(vec![
             SliceInfoElem {
@@ -1467,8 +1474,7 @@ mod tests {
         ]);
         let y = plc.slice(&sess, slice, &x);
 
-        let target = array![[3, 4]];
-        let expected = HostRing64Tensor::from_raw_plc(target, plc);
+        let expected: HostRing64Tensor = plc.from_raw(array![[3, 4]]);
         assert_eq!(y, expected);
     }
 
@@ -1477,8 +1483,7 @@ mod tests {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
 
-        let x_backing = array![[1, 2], [3, 4]];
-        let x = HostRing64Tensor::from_raw_plc(x_backing, plc.clone());
+        let x: HostRing64Tensor = plc.from_raw(array![[1, 2], [3, 4]]);
 
         let slice = SliceInfo(vec![
             SliceInfoElem {
@@ -1495,8 +1500,7 @@ mod tests {
         let y = plc.slice(&sess, slice, &x);
 
         // This example we take the last element of the last element in dimension 1, which is just 4.
-        let target = array![[4]];
-        let expected = HostRing64Tensor::from_raw_plc(target, plc);
+        let expected: HostRing64Tensor = plc.from_raw(array![[4]]);
         assert_eq!(y, expected);
     }
 
@@ -1506,8 +1510,7 @@ mod tests {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
 
-        let x_backing = array![[1, 2], [3, 4]];
-        let x = HostRing64Tensor::from_raw_plc(x_backing, plc.clone());
+        let x: HostRing64Tensor = plc.from_raw(array![[1, 2], [3, 4]]);
 
         let slice = SliceInfo(vec![
             SliceInfoElem {
@@ -1535,15 +1538,10 @@ mod tests {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
 
-        let x_backing: ArrayD<f64> = array![[1.0, 2.0], [3.0, 4.0]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-
-        let x = HostTensor::<f64>(x_backing, plc.clone());
+        let x: HostFloat64Tensor = plc.from_raw(array![[1.0, 2.0], [3.0, 4.0]]);
         let y = plc.diag(&sess, &x);
 
-        let target: ArrayD<f64> = array![1.0, 4.0].into_dimensionality::<IxDyn>().unwrap();
-        let expected = HostTensor::<f64>(target, plc);
+        let expected: HostFloat64Tensor = plc.from_raw(array![1.0, 4.0]);
         assert_eq!(y, expected);
     }
 
@@ -1552,93 +1550,57 @@ mod tests {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
 
-        let x_backing = array![[[1_u64, 2], [3, 4]], [[4, 5], [6, 7]]];
-        let x = HostRing64Tensor::from_raw_plc(x_backing, plc.clone());
+        let x: HostRing64Tensor = plc.from_raw(array![[[1_u64, 2], [3, 4]], [[4, 5], [6, 7]]]);
         let y = plc.index_axis(&sess, 0, 1, &x);
 
-        let target = array![[4, 5], [6, 7]];
-        let expected = HostRing64Tensor::from_raw_plc(target, plc);
+        let expected: HostRing64Tensor = plc.from_raw(array![[4, 5], [6, 7]]);
         assert_eq!(y, expected);
     }
 
     #[test]
     fn test_transpose() {
-        let x = HostTensor::<f32>::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
 
-        let y = x.transpose();
-        assert_eq!(
-            y,
-            HostTensor::<f32>::from(
-                array![[1.0, 3.0], [2.0, 4.0]]
-                    .into_dimensionality::<IxDyn>()
-                    .unwrap()
-            )
-        );
+        let x: HostFloat32Tensor = plc.from_raw(array![[1.0, 2.0], [3.0, 4.0]]);
+        let y = plc.transpose(&sess, &x);
+
+        let expected: HostFloat32Tensor = plc.from_raw(array![[1.0, 3.0], [2.0, 4.0]]);
+        assert_eq!(y, expected);
     }
 
     #[test]
     fn test_concatenate() {
-        let a = HostTensor::<f32>::from(
-            array![[[1.0, 2.0], [3.0, 4.0]]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let b = HostTensor::<f32>::from(
-            array![[[1.0, 2.0], [3.0, 4.0]]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let expected = HostTensor::<f32>::from(
-            array![[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let conc = concatenate(0, &vec![a, b]);
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
+
+        let a: HostFloat32Tensor = plc.from_raw(array![[[1.0, 2.0], [3.0, 4.0]]]);
+        let b: HostFloat32Tensor = plc.from_raw(array![[[1.0, 2.0], [3.0, 4.0]]]);
+        let conc = plc.concatenate(&sess, 0, &vec![a, b]);
+
+        let expected: HostFloat32Tensor =
+            plc.from_raw(array![[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]]]);
         assert_eq!(conc, expected)
     }
 
     #[test]
     fn test_atleast_2d() {
-        let a = HostTensor::<f32>::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
+
+        let a: HostFloat32Tensor = plc.from_raw(array![[1.0, 2.0], [3.0, 4.0]]);
         let a_exp = a.clone();
-        let b = HostTensor::<f32>::from(
-            array![1.0, 2.0, 3.0, 4.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let b_exp = HostTensor::<f32>::from(
-            array![[1.0, 2.0, 3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let c = HostTensor::<f32>::from(
-            array![1.0, 2.0, 3.0, 4.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let c_exp = HostTensor::<f32>::from(
-            array![[1.0], [2.0], [3.0], [4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let d = HostTensor::<f32>::from(
-            Array::from_elem([], 1.0)
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let d_exp = HostTensor::<f32>::from(array![[1.0]].into_dimensionality::<IxDyn>().unwrap());
-        let ax = a.atleast_2d(true);
-        let bx = b.atleast_2d(false);
-        let cx = c.atleast_2d(true);
-        let dx = d.atleast_2d(true);
+        let b: HostFloat32Tensor = plc.from_raw(array![1.0, 2.0, 3.0, 4.0]);
+        let b_exp: HostFloat32Tensor = plc.from_raw(array![[1.0, 2.0, 3.0, 4.0]]);
+        let c: HostFloat32Tensor = plc.from_raw(array![1.0, 2.0, 3.0, 4.0]);
+        let c_exp: HostFloat32Tensor = plc.from_raw(array![[1.0], [2.0], [3.0], [4.0]]);
+        let d: HostFloat32Tensor = plc.from_raw(Array::from_elem([], 1.0));
+        let d_exp: HostFloat32Tensor = plc.from_raw(array![[1.0]]);
+
+        let ax = plc.at_least_2d(&sess, true, &a);
+        let bx = plc.at_least_2d(&sess, false, &b);
+        let cx = plc.at_least_2d(&sess, true, &c);
+        let dx = plc.at_least_2d(&sess, true, &d);
         assert_eq!(ax, a_exp);
         assert_eq!(bx, b_exp);
         assert_eq!(cx, c_exp);
@@ -1647,87 +1609,75 @@ mod tests {
 
     #[test]
     fn test_add_broadcasting() {
-        let x_1 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_1 = HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
-        let z_1 = x_1.add(y_1);
-        let z_1_exp =
-            HostTensor::<f32>::from(array![3.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
-        let x_2 = HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_2 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
-        let z_2 = x_2.add(y_2);
-        let z_2_exp =
-            HostTensor::<f32>::from(array![3.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
 
+        let x_1: HostFloat32Tensor = plc.from_raw(array![2.0]);
+        let y_1: HostFloat32Tensor = plc.from_raw(array![1.0, 2.0]);
+        let z_1 = plc.add(&sess, &x_1, &y_1);
+        let z_1_exp: HostFloat32Tensor = plc.from_raw(array![3.0, 4.0]);
         assert_eq!(z_1, z_1_exp);
+
+        let x_2: HostFloat32Tensor = plc.from_raw(array![1.0, 2.0]);
+        let y_2: HostFloat32Tensor = plc.from_raw(array![2.0]);
+        let z_2 = plc.add(&sess, &x_2, &y_2);
+        let z_2_exp: HostFloat32Tensor = plc.from_raw(array![3.0, 4.0]);
         assert_eq!(z_2, z_2_exp);
     }
 
     #[test]
     fn test_sub_broadcasting() {
-        let x_1 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_1 = HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
-        let z_1 = x_1.sub(y_1);
-        let z_1_exp =
-            HostTensor::<f32>::from(array![1.0, 0.0].into_dimensionality::<IxDyn>().unwrap());
-        let x_2 = HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_2 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
-        let z_2 = x_2.sub(y_2);
-        let z_2_exp =
-            HostTensor::<f32>::from(array![-1.0, 0.0].into_dimensionality::<IxDyn>().unwrap());
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
 
+        let x_1: HostFloat32Tensor = plc.from_raw(array![2.0]);
+        let y_1: HostFloat32Tensor = plc.from_raw(array![1.0, 2.0]);
+        let z_1 = plc.sub(&sess, &x_1, &y_1);
+        let z_1_exp: HostFloat32Tensor = plc.from_raw(array![1.0, 0.0]);
         assert_eq!(z_1, z_1_exp);
+
+        let x_2: HostFloat32Tensor = plc.from_raw(array![1.0, 2.0]);
+        let y_2: HostFloat32Tensor = plc.from_raw(array![2.0]);
+        let z_2 = plc.sub(&sess, &x_2, &y_2);
+        let z_2_exp: HostFloat32Tensor = plc.from_raw(array![-1.0, 0.0]);
+
         assert_eq!(z_2, z_2_exp);
     }
 
     #[test]
     fn test_mul_broadcasting() {
-        let x_1 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_1 = HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
-        let z_1 = x_1.mul(y_1);
-        let z_1_exp =
-            HostTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
-        let x_2 = HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_2 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
-        let z_2 = x_2.mul(y_2);
-        let z_2_exp =
-            HostTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
 
+        let x_1: HostFloat32Tensor = plc.from_raw(array![2.0]);
+        let y_1: HostFloat32Tensor = plc.from_raw(array![1.0, 2.0]);
+        let z_1 = plc.mul(&sess, &x_1, &y_1);
+        let z_1_exp: HostFloat32Tensor = plc.from_raw(array![2.0, 4.0]);
         assert_eq!(z_1, z_1_exp);
+
+        let x_2: HostFloat32Tensor = plc.from_raw(array![1.0, 2.0]);
+        let y_2: HostFloat32Tensor = plc.from_raw(array![2.0]);
+        let z_2 = plc.mul(&sess, &x_2, &y_2);
+        let z_2_exp: HostFloat32Tensor = plc.from_raw(array![2.0, 4.0]);
         assert_eq!(z_2, z_2_exp);
     }
 
     #[test]
     fn test_div_broadcasting() {
-        let x_1 = HostTensor::<f32>::from(array![1.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_1 = HostTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
-        let z_1 = x_1.div(y_1);
-        let z_1_exp =
-            HostTensor::<f32>::from(array![0.5, 0.25].into_dimensionality::<IxDyn>().unwrap());
-        let x_2 = HostTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_2 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
-        let z_2 = x_2.div(y_2);
-        let z_2_exp =
-            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
-
-        assert_eq!(z_1, z_1_exp);
-        assert_eq!(z_2, z_2_exp);
-    }
-
-    #[cfg(feature = "blas")]
-    #[test]
-    fn test_kernel_inverse() {
-        use crate::kernels::PlacementInverse;
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
         let sess = SyncSession::default();
-        let x = crate::host::HostTensor::<f64>::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let inv = alice.inverse(&sess, &x);
-        assert_eq!("[[-2, 1],\n [1.5, -0.5]]", format!("{}", inv.0));
+        let plc = HostPlacement::from("host");
+
+        let x_1: HostFloat32Tensor = plc.from_raw(array![1.0]);
+        let y_1: HostFloat32Tensor = plc.from_raw(array![2.0, 4.0]);
+        let z_1 = plc.div(&sess, &x_1, &y_1);
+        let z_1_exp: HostFloat32Tensor = plc.from_raw(array![0.5, 0.25]);
+        assert_eq!(z_1, z_1_exp);
+
+        let x_2: HostFloat32Tensor = plc.from_raw(array![2.0, 4.0]);
+        let y_2: HostFloat32Tensor = plc.from_raw(array![2.0]);
+        let z_2 = plc.div(&sess, &x_2, &y_2);
+        let z_2_exp: HostFloat32Tensor = plc.from_raw(array![1.0, 2.0]);
+        assert_eq!(z_2, z_2_exp);
     }
 
     #[test]
@@ -1735,50 +1685,39 @@ mod tests {
         let plc = HostPlacement::from("host");
         let sess = SyncSession::default();
 
-        let x = HostTensor::<f64>::from_raw_plc(array![[4.0, 9.0], [16.0, 25.0]], plc.clone());
+        let x: HostFloat64Tensor = plc.from_raw(array![[4.0, 9.0], [16.0, 25.0]]);
         let sqrt = plc.sqrt(&sess, &x);
 
-        let expected = HostTensor::<f64>::from_raw_plc(array![[2.0, 3.0], [4.0, 5.0]], plc.clone());
+        let expected: HostFloat64Tensor = plc.from_raw(array![[2.0, 3.0], [4.0, 5.0]]);
         assert_eq!(expected, sqrt)
     }
 
-    use rstest::rstest;
     #[rstest]
     #[case(None)]
     #[case(Some(2))]
     fn test_kernel_squeeze(#[case] axis: Option<u32>) {
-        use crate::kernels::PlacementSqueeze;
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
+        let plc = HostPlacement::from("host");
         let sess = SyncSession::default();
-        let x = crate::host::HostTensor::<f64>::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let x_expanded = x.expand_dims(vec![2]);
-        let exp_shape = RawShape(vec![2, 2]);
 
-        let x_squeezed = alice.squeeze(&sess, axis, &x_expanded);
+        let x: HostFloat64Tensor = plc.from_raw(array![[1.0, 2.0], [3.0, 4.0]]);
+        let x_expanded = plc.expand_dims(&sess, vec![2], &x);
+        let x_squeezed = plc.squeeze(&sess, axis, &x_expanded);
+        let shape = plc.shape(&sess, &x_squeezed);
 
-        assert_eq!(exp_shape, x_squeezed.shape().0)
+        let expected = RawShape(vec![2, 2]);
+        assert_eq!(expected, shape.0)
     }
 
     #[test]
     fn test_kernel_transpose() {
-        use crate::kernels::PlacementTranspose;
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
+        let plc = HostPlacement::from("host");
         let sess = SyncSession::default();
-        let x = crate::host::HostTensor::<f64>::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let t = alice.transpose(&sess, &x);
-        assert_eq!("[[1, 3],\n [2, 4]]", format!("{}", t.0));
+
+        let x: HostFloat64Tensor = plc.from_raw(array![[1.0, 2.0], [3.0, 4.0]]);
+        let t = plc.transpose(&sess, &x);
+
+        let expected: HostFloat64Tensor = plc.from_raw(array![[1.0, 3.0], [2.0, 4.0]]);
+        assert_eq!(expected, t);
     }
 
     #[test]
