@@ -181,7 +181,7 @@ where
         HostTensor::<T>(x, plc.clone())
     }
 
-    pub fn atleast_2d(self, to_column_vector: bool) -> HostTensor<T> {
+    fn atleast_2d(self, to_column_vector: bool) -> HostTensor<T> {
         match self.0.ndim() {
             0 => HostTensor::<T>(self.0.into_shape(IxDyn(&[1, 1])).unwrap(), self.1),
             1 => {
@@ -201,7 +201,7 @@ where
         }
     }
 
-    pub fn dot(self, other: HostTensor<T>) -> HostTensor<T> {
+    fn dot(self, other: HostTensor<T>) -> HostTensor<T> {
         match (self.0.ndim(), other.0.ndim()) {
             (1, 1) => {
                 let l = self.0.into_dimensionality::<Ix1>().unwrap();
@@ -237,7 +237,7 @@ where
         }
     }
 
-    pub fn ones(shape: HostShape) -> Self {
+    fn ones(shape: HostShape) -> Self {
         HostTensor::<T>(ArrayD::ones(shape.0 .0), shape.1)
     }
 
@@ -245,14 +245,14 @@ where
         HostTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
     }
 
-    pub fn expand_dims(self, mut axis: Vec<usize>) -> Self {
+    fn expand_dims(self, mut axis: Vec<usize>) -> Self {
         let plc = (&self.1).clone();
         axis.sort_by_key(|ax| Reverse(*ax));
         let newshape = self.shape().0.extend_singletons(axis);
         self.reshape(HostShape(newshape, plc))
     }
 
-    pub fn squeeze(self, axis: Option<usize>) -> Self {
+    fn squeeze(self, axis: Option<usize>) -> Self {
         let plc = (&self.1).clone();
         let newshape = self.shape().0.squeeze(axis);
         self.reshape(HostShape(newshape, plc))
@@ -262,7 +262,7 @@ where
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
     }
 
-    pub fn sum(self, axis: Option<usize>) -> Result<Self> {
+    fn sum(self, axis: Option<usize>) -> Result<Self> {
         if let Some(i) = axis {
             Ok(HostTensor::<T>(self.0.sum_axis(Axis(i)), self.1))
         } else {
@@ -273,7 +273,7 @@ where
         }
     }
 
-    pub fn transpose(self) -> Self {
+    fn transpose(self) -> Self {
         HostTensor::<T>(self.0.reversed_axes(), self.1)
     }
 }
@@ -282,7 +282,7 @@ impl<T> HostTensor<T>
 where
     T: LinalgScalar + FromPrimitive,
 {
-    pub fn mean(self, axis: Option<usize>) -> Result<Self> {
+    fn mean(self, axis: Option<usize>) -> Result<Self> {
         match axis {
             Some(i) => {
                 let reduced = self.0.mean_axis(Axis(i));
@@ -314,7 +314,7 @@ impl<T> HostTensor<T>
 where
     T: Scalar + Lapack,
 {
-    pub fn inv(self) -> Self {
+    fn inv(self) -> Self {
         match self.0.ndim() {
             2 => {
                 let two_dim: Array2<T> = self.0.into_dimensionality::<Ix2>().unwrap();
@@ -455,7 +455,7 @@ impl<T> From<Array2<T>> for HostTensor<T> {
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-pub fn concatenate<T>(axis: usize, arrays: &[HostTensor<T>]) -> HostTensor<T>
+fn concatenate<T>(axis: usize, arrays: &[HostTensor<T>]) -> HostTensor<T>
 where
     T: LinalgScalar,
 {
@@ -514,18 +514,18 @@ impl HostBitTensor {
         HostBitTensor(x, plc.clone())
     }
 
-    pub fn reshape(self, newshape: HostShape) -> Self {
+    fn reshape(self, newshape: HostShape) -> Self {
         HostBitTensor(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
     }
 
-    pub fn expand_dims(self, mut axis: Vec<usize>) -> Self {
+    fn expand_dims(self, mut axis: Vec<usize>) -> Self {
         let plc = (&self.1).clone();
         axis.sort_by_key(|ax| Reverse(*ax));
         let newshape = self.shape().0.extend_singletons(axis);
         self.reshape(HostShape(newshape, plc))
     }
 
-    pub fn shape(&self) -> HostShape {
+    fn shape(&self) -> HostShape {
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
     }
 }
@@ -537,7 +537,7 @@ impl HostBitTensor {
             note = "This function is only used by the old kernels, which are not aware of the placements. See BitSampleSeededOp::kernel for the new code"
         )
     )]
-    pub fn sample_uniform(shape: &RawShape) -> Self {
+    fn sample_uniform(shape: &RawShape) -> Self {
         let mut rng = AesRng::from_random_seed();
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
@@ -556,7 +556,7 @@ impl HostBitTensor {
             note = "This function is only used by the old kernels, which are not aware of the placements. See BitSampleSeededOp::kernel for the new code"
         )
     )]
-    pub fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
+    fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
@@ -577,7 +577,7 @@ impl HostBitTensor {
             note = "This function is only used by the old kernels, which are not aware of the placements. See BitFillOp::kernel for the new code"
         )
     )]
-    pub fn fill(shape: &RawShape, el: u8) -> HostBitTensor {
+    fn fill(shape: &RawShape, el: u8) -> HostBitTensor {
         assert!(
             el == 0 || el == 1,
             "cannot fill a HostBitTensor with a value {:?}",
@@ -895,11 +895,11 @@ impl<T> HostRingTensor<T> {
         HostRingTensor::<T>(x, plc.clone())
     }
 
-    pub fn reshape(self, newshape: HostShape) -> Self {
+    fn reshape(self, newshape: HostShape) -> Self {
         HostRingTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
     }
 
-    pub fn expand_dims(self, mut axis: Vec<usize>) -> Self {
+    fn expand_dims(self, mut axis: Vec<usize>) -> Self {
         let plc = (&self.1).clone();
         axis.sort_by_key(|ax| Reverse(*ax));
         let newshape = self.shape().0.extend_singletons(axis);
@@ -969,14 +969,14 @@ where
 
 // #[cfg(not(feature = "exclude_old_framework"))]
 // impl HostRing64Tensor {
-//     pub fn sample_uniform(shape: &RawShape) -> HostRing64Tensor {
+//     fn sample_uniform(shape: &RawShape) -> HostRing64Tensor {
 //         let mut rng = AesRng::from_random_seed();
 //         let size = shape.0.iter().product();
 //         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
 //         let ix = IxDyn(shape.0.as_ref());
 //         HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
 //     }
-//     pub fn sample_bits(shape: &RawShape) -> Self {
+//     fn sample_bits(shape: &RawShape) -> Self {
 //         let mut rng = AesRng::from_random_seed();
 //         let size = shape.0.iter().product();
 //         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
@@ -987,7 +987,7 @@ where
 
 #[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing128Tensor {
-    pub fn sample_uniform(shape: &RawShape) -> Self {
+    fn sample_uniform(shape: &RawShape) -> Self {
         let mut rng = AesRng::from_random_seed();
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size)
@@ -1001,7 +1001,7 @@ impl HostRing128Tensor {
         HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
 
-    pub fn sample_bits(shape: &RawShape) -> Self {
+    fn sample_bits(shape: &RawShape) -> Self {
         let mut rng = AesRng::from_random_seed();
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
@@ -1012,14 +1012,14 @@ impl HostRing128Tensor {
 
 #[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing64Tensor {
-    pub fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> HostRing64Tensor {
+    fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> HostRing64Tensor {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
         let ix = IxDyn(shape.0.as_ref());
         HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
-    pub fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
+    fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
@@ -1030,7 +1030,7 @@ impl HostRing64Tensor {
 
 #[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing128Tensor {
-    pub fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
+    fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size)
@@ -1044,7 +1044,7 @@ impl HostRing128Tensor {
         HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
 
-    pub fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
+    fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
@@ -1055,7 +1055,7 @@ impl HostRing128Tensor {
 
 #[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing64Tensor {
-    pub fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
+    fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
         let temp = &self.0 >> bit_idx;
         let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
         HostBitTensor::from(lsb)
@@ -1064,7 +1064,7 @@ impl HostRing64Tensor {
 
 #[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing128Tensor {
-    pub fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
+    fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
         let temp = &self.0 >> bit_idx;
         let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
         HostBitTensor::from(lsb)
@@ -1308,7 +1308,7 @@ impl<T> HostRingTensor<T>
 where
     Wrapping<T>: LinalgScalar,
 {
-    pub fn dot(self, rhs: HostRingTensor<T>) -> Result<HostRingTensor<T>> {
+    fn dot(self, rhs: HostRingTensor<T>) -> Result<HostRingTensor<T>> {
         match self.0.ndim() {
             1 => match rhs.0.ndim() {
                 1 => {
