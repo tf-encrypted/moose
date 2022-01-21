@@ -948,18 +948,6 @@ where
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Add<HostRingTensor<T>> for HostRingTensor<T>
-where
-    Wrapping<T>: Clone,
-    Wrapping<T>: std::ops::Add<Wrapping<T>, Output = Wrapping<T>>,
-{
-    type Output = HostRingTensor<T>;
-    fn add(self, other: HostRingTensor<T>) -> Self::Output {
-        HostRingTensor(self.0 + other.0, self.1)
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> std::ops::Shl<usize> for HostRingTensor<T>
 where
     Wrapping<T>: Clone,
