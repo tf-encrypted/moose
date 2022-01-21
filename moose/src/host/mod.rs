@@ -21,6 +21,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::num::Wrapping;
 
+mod fixedpoint;
 mod ops;
 mod prim;
 pub use prim::*;
