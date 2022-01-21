@@ -1205,7 +1205,7 @@ impl BitExtractOp {
         x: HostRing64Tensor,
     ) -> Result<HostBitTensor> {
         Ok(HostBitTensor(
-            (x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8),
+            (x.0 >> bit_idx).mapv(|ai| (ai.0 & 1) as u8),
             plc.clone(),
         ))
     }
@@ -1217,7 +1217,7 @@ impl BitExtractOp {
         x: HostRing128Tensor,
     ) -> Result<HostBitTensor> {
         Ok(HostBitTensor(
-            (x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8),
+            (x.0 >> bit_idx).mapv(|ai| (ai.0 & 1) as u8),
             plc.clone(),
         ))
     }

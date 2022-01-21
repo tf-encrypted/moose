@@ -983,18 +983,6 @@ where
     }
 }
 
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Shr<usize> for HostRingTensor<T>
-where
-    Wrapping<T>: Clone,
-    Wrapping<T>: std::ops::Shr<usize, Output = Wrapping<T>>,
-{
-    type Output = HostRingTensor<T>;
-    fn shr(self, other: usize) -> Self::Output {
-        HostRingTensor(self.0 >> other, self.1)
-    }
-}
-
 impl<T> HostRingTensor<T>
 where
     Wrapping<T>: Clone + num_traits::Zero,
