@@ -1,6 +1,7 @@
 use super::*;
 use crate::computation::RepEqualOp;
 use crate::error::Result;
+use crate::execution::Session;
 use crate::{Const, Ring};
 
 impl RepEqualOp {
@@ -42,6 +43,7 @@ impl RepEqualOp {
 #[cfg(test)]
 mod tests {
     use crate::computation::HostPlacement;
+    use crate::execution::SyncSession;
     use crate::host::{HostBitTensor, HostRingTensor};
     use crate::kernels::*;
     use crate::replicated::{ReplicatedBitTensor, ReplicatedPlacement};

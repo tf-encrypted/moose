@@ -1,350 +1,43 @@
-use super::{DispatchKernel, PlacementSetupGen};
-use crate::computation::*;
+use super::*;
 use crate::error::{Error, Result};
-use crate::execution::{Identity, SyncNetworkingImpl, SyncStorageImpl};
+use crate::execution::Identity;
 use crate::host::*;
-use crate::networking::LocalSyncNetworking;
+use crate::kernels::DispatchKernel;
 use crate::replicated::*;
-use crate::storage::LocalSyncStorage;
 use crate::types::*;
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::Arc;
 
-/// General session trait determining basic properties for session objects.
-pub trait Session {
-    type Value;
-    fn execute(
-        &self,
-        op: Operator,
-        plc: &Placement,
-        operands: Vec<Self::Value>,
-    ) -> Result<Self::Value>;
+pub type AsyncSender = oneshot::Sender<Value>;
 
-    type ReplicatedSetup;
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup>;
-}
+pub type AsyncReceiver = Shared<
+    Map<
+        oneshot::Receiver<Value>,
+        fn(anyhow::Result<Value, oneshot::error::RecvError>) -> anyhow::Result<Value, ()>,
+    >,
+>;
 
-/// Trait for sessions that are intended for run-time use only.
-///
-/// This trait is used to make a distinct between functionality that may
-/// only be executed during run-time as opposed to at compile-time, such
-/// as for instance key generation. Moreover, it also offers access to
-/// information that is only known at run-time, such as the concrete
-/// session id under which execution is happening.
-pub trait RuntimeSession: Session {
-    fn session_id(&self) -> &SessionId;
-    fn find_argument(&self, key: &str) -> Option<Value>;
-    fn find_role_assignment(&self, role: &Role) -> Result<&Identity>;
-}
+pub type AsyncTask = tokio::task::JoinHandle<Result<()>>;
 
-/// Session object for synchronous/eager execution (in new framework).
-pub struct SyncSession {
-    session_id: SessionId,
-    replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<ReplicatedSetup>>>,
-    arguments: HashMap<String, Value>,
-    role_assignments: HashMap<Role, Identity>,
-    storage: SyncStorageImpl,
-    networking: SyncNetworkingImpl,
-}
+pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
 
-impl Default for SyncSession {
-    /// Default session should only be used in tests.
-    ///
-    /// Use new() for the real sessions instead.
-    fn default() -> Self {
-        SyncSession {
-            session_id: SessionId::random(),
-            replicated_keys: Default::default(),
-            arguments: Default::default(),
-            role_assignments: Default::default(),
-            storage: Rc::new(LocalSyncStorage::default()),
-            networking: Rc::new(LocalSyncNetworking::default()),
-        }
-    }
-}
-
-impl SyncSession {
-    pub fn from_session_id(sid: SessionId) -> Self {
-        SyncSession {
-            session_id: sid,
-            replicated_keys: Default::default(),
-            arguments: Default::default(),
-            role_assignments: Default::default(),
-            storage: Rc::new(LocalSyncStorage::default()),
-            networking: Rc::new(LocalSyncNetworking::default()),
-        }
-    }
-
-    pub fn from_storage(
-        sid: SessionId,
-        arguments: HashMap<String, Value>,
-        role_assignments: HashMap<Role, Identity>,
-        storage: SyncStorageImpl,
-    ) -> Self {
-        SyncSession {
-            session_id: sid,
-            replicated_keys: Default::default(),
-            arguments,
-            role_assignments,
-            storage,
-            networking: Rc::new(LocalSyncNetworking::default()),
-        }
-    }
-
-    pub fn from_networking(
-        sid: SessionId,
-        arguments: HashMap<String, Value>,
-        role_assignments: HashMap<Role, Identity>,
-        networking: SyncNetworkingImpl,
-    ) -> Self {
-        SyncSession {
-            session_id: sid,
-            replicated_keys: Default::default(),
-            arguments,
-            role_assignments,
-            storage: Rc::new(LocalSyncStorage::default()),
-            networking,
-        }
-    }
-
-    pub fn from_roles<'a>(roles: impl Iterator<Item = &'a Role>) -> Self {
-        let own_identity = Identity::from("tester");
-        let role_assignment = roles
-            .map(|role| (role.clone(), own_identity.clone()))
-            .collect();
-        SyncSession {
-            session_id: SessionId::random(),
-            replicated_keys: Default::default(),
-            arguments: Default::default(),
-            role_assignments: role_assignment,
-            storage: Rc::new(LocalSyncStorage::default()),
-            networking: Rc::new(LocalSyncNetworking::default()),
-        }
-    }
-}
-
-impl Session for SyncSession {
-    type Value = Value;
-
-    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Result<Value> {
-        use Operator::*;
-        let kernel_output = match op {
-            Shape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            BitSample(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            BitXor(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            BitAnd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            BitNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            BitOr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            BitExtract(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingSample(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingShr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingFixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingInject(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Fill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepSetup(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepShare(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepReveal(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepAnd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepXor(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepNeg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepTruncPr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepMsb(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepAbs(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepToAdt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            AddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Index(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepDiag(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepBitCompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            AdtAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            AdtSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            AdtShl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            AdtMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            AdtFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            AdtReveal(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            AdtToRep(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            AesDecrypt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Constant(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Input(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Output(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Load(op) => {
-                use std::convert::TryInto;
-                assert_eq!(operands.len(), 2);
-                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
-                let query: HostString = operands.get(1).unwrap().clone().try_into()?;
-                self.storage
-                    .load(&key.0, &self.session_id, Some(op.sig.ret()), &query.0)?
+pub fn map_send_result(res: std::result::Result<(), Value>) -> std::result::Result<(), Error> {
+    match res {
+        Ok(_) => Ok(()),
+        Err(val) => {
+            if val.ty() == Ty::Unit {
+                // ignoring unit value is okay
+                Ok(())
+            } else {
+                Err(Error::ResultUnused)
             }
-            Save(_) => {
-                use std::convert::TryInto;
-                assert_eq!(operands.len(), 2);
-                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
-                let x = operands.get(1).unwrap().clone();
-                self.storage.save(&key.0, &self.session_id, &x)?;
-                let host = match plc {
-                    Placement::Host(host) => host,
-                    _ => unimplemented!(
-                        "SyncSession does not support running Save on non-host placements yet"
-                    ),
-                };
-                Unit(host.clone()).into()
-            }
-            HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostSqrt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FixedpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FixedpointSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FixedpointMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FixedpointDiv(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FixedpointDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FixedpointSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostDiag(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostDiv(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Sign(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointSub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointDiv(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointAtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointTranspose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointInverse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointSum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostTranspose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostInverse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Identity(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Cast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Send(op) => {
-                assert_eq!(operands.len(), 1);
-                let x = operands.get(0).unwrap();
-                self.networking.send(
-                    x,
-                    self.find_role_assignment(&op.receiver)?,
-                    &op.rendezvous_key,
-                    &self.session_id,
-                )?;
-                let host = match plc {
-                    Placement::Host(host) => host,
-                    _ => unimplemented!(
-                        "SyncSession does not support running Send on non-host placements yet"
-                    ),
-                };
-                Unit(host.clone()).into()
-            }
-            Receive(op) => self.networking.receive(
-                self.find_role_assignment(&op.sender)?,
-                &op.rendezvous_key,
-                &self.session_id,
-            )?,
-            HostReshape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            IndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Slice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Ones(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            ExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Concat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Transpose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Dot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Inverse(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Add(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Sub(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Mul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Mean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Neg(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Sum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Div(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepEqual(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Mux(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Pow2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Exp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Sigmoid(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Less(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Maximum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Demirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Mirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-        };
-        Ok(kernel_output)
-    }
-
-    type ReplicatedSetup = ReplicatedSetup;
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
-        let mut replicated_keys = self.replicated_keys.write().unwrap();
-        let setup = replicated_keys
-            .entry(plc.clone())
-            .or_insert_with(|| Arc::new(plc.gen_setup(self)));
-        Arc::clone(setup)
+        }
     }
 }
 
-impl RuntimeSession for SyncSession {
-    fn session_id(&self) -> &SessionId {
-        &self.session_id
-    }
-
-    fn find_argument(&self, key: &str) -> Option<Value> {
-        self.arguments.get(key).cloned()
-    }
-
-    fn find_role_assignment(&self, role: &Role) -> Result<&Identity> {
-        self.role_assignments
-            .get(role)
-            .ok_or_else(|| Error::Networking(format!("Missing role assignemnt for {}", role)))
-    }
-}
-
-/// Session object for asynchronous execution (in new framework).
-#[derive(Clone)]
-pub struct AsyncSession {
-    pub session_id: SessionId,
-    pub arguments: Arc<HashMap<String, Value>>,
-    pub role_assignments: Arc<HashMap<Role, Identity>>,
-    pub networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
-    pub storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
-    pub host: Arc<Placement>,
-    // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
-    pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
+pub fn map_receive_error<T>(_: T) -> Error {
+    tracing::debug!("Failed to receive on channel, sender was dropped");
+    Error::OperandUnavailable
 }
 
 pub struct AsyncSessionHandle {
@@ -405,6 +98,19 @@ impl AsyncSessionHandle {
         }
         Ok(())
     }
+}
+
+/// Session object for asynchronous execution (in new framework).
+#[derive(Clone)]
+pub struct AsyncSession {
+    pub session_id: SessionId,
+    pub arguments: Arc<HashMap<String, Value>>,
+    pub role_assignments: Arc<HashMap<Role, Identity>>,
+    pub networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
+    pub storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
+    pub host: Arc<Placement>,
+    // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
+    pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
 }
 
 impl AsyncSession {
@@ -763,28 +469,59 @@ impl RuntimeSession for AsyncSession {
 }
 
 #[derive(Default)]
-pub struct TestSyncExecutor {
-    // Placeholder for the future state we want to keep
+pub struct AsyncExecutor {
+    session_ids: HashSet<SessionId>,
 }
 
-impl TestSyncExecutor {
+impl AsyncExecutor {
+    // After execution the AsyncTasks to block on will be in session.tasks vector.
     pub fn run_computation(
-        &self,
+        &mut self,
         computation: &Computation,
-        session: &SyncSession,
-    ) -> anyhow::Result<HashMap<String, Value>> {
-        let mut env: HashMap<String, Value> = HashMap::default();
+        role_assignment: &RoleAssignment,
+        own_identity: &Identity,
+        session: &AsyncSession,
+    ) -> Result<HashMap<String, AsyncReceiver>> {
+        if !self.session_ids.insert(session.session_id.clone()) {
+            return Err(Error::SessionAlreadyExists(format!(
+                "{}",
+                session.session_id
+            )));
+        }
 
-        let output_names: Vec<String> = computation
-            .operations
-            .iter() // guessing that par_iter won't help here
-            .filter_map(|op| match op.kind {
-                Operator::Output(_) => Some(op.name.clone()),
-                _ => None,
+        // using a Vec instead of eg HashSet here since we can expect it to be very small
+        let own_roles: Vec<&Role> = role_assignment
+            .iter()
+            .filter_map(|(role, identity)| {
+                if identity == own_identity {
+                    Some(role)
+                } else {
+                    None
+                }
             })
             .collect();
 
-        for op in computation.operations.iter() {
+        let own_operations = computation
+            .operations
+            .iter() // guessing that par_iter won't help here
+            .filter(|op| match &op.placement {
+                Placement::Additive(plc) => own_roles
+                    .iter()
+                    .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
+                Placement::Host(plc) => own_roles.iter().any(|owner| *owner == &plc.owner),
+                Placement::Mirrored3(plc) => own_roles
+                    .iter()
+                    .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
+                Placement::Replicated(plc) => own_roles
+                    .iter()
+                    .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
+            })
+            .collect::<Vec<_>>();
+
+        let mut env: HashMap<String, AsyncValue> = HashMap::default();
+        let mut outputs: HashMap<String, AsyncReceiver> = HashMap::default();
+
+        for op in own_operations {
             let operator = op.kind.clone();
             let operands = op
                 .inputs
@@ -794,20 +531,172 @@ impl TestSyncExecutor {
             let value = session
                 .execute(operator, &op.placement, operands)
                 .map_err(|e| {
-                    Error::Compilation(format!(
-                        "SyncSession failed to execute computation due to an error: {:?}",
-                        e,
-                    ))
+                    Error::KernelError(format!("AsyncSession failed due to an error: {:?}", e,))
                 })?;
-            env.insert(op.name.clone(), value);
+            if matches!(op.kind, Operator::Output(_)) {
+                // If it is an output, we need to make sure we capture it for returning.
+                outputs.insert(op.name.clone(), value.clone());
+            } else {
+                // Everything else should be available in the env for other ops to use.
+                env.insert(op.name.clone(), value);
+            }
         }
 
-        let outputs: HashMap<String, Value> = output_names
-            .iter()
-            .map(|op_name| (op_name.clone(), env.get(op_name).cloned().unwrap()))
-            .collect();
         Ok(outputs)
     }
 }
 
-pub trait EmptyTypeHolder<T> {}
+pub struct AsyncTestRuntime {
+    pub identities: Vec<Identity>,
+    pub executors: HashMap<Identity, AsyncExecutor>,
+    pub runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>>,
+    pub networking: AsyncNetworkingImpl,
+}
+
+impl AsyncTestRuntime {
+    pub fn new(storage_mapping: HashMap<String, HashMap<String, Value>>) -> Self {
+        let mut executors: HashMap<Identity, AsyncExecutor> = HashMap::new();
+        let networking: Arc<dyn Send + Sync + AsyncNetworking> =
+            Arc::new(LocalAsyncNetworking::default());
+        let mut runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>> =
+            HashMap::new();
+        let mut identities = Vec::new();
+        for (identity_str, storage) in storage_mapping {
+            let identity = Identity::from(identity_str.clone()).clone();
+            identities.push(identity.clone());
+            // TODO handle Result in map predicate instead of `unwrap`
+            let storage = storage
+                .iter()
+                .map(|arg| (arg.0.to_owned(), arg.1.to_owned()))
+                .collect::<HashMap<String, Value>>();
+
+            let exec_storage: Arc<dyn Send + Sync + AsyncStorage> =
+                Arc::new(LocalAsyncStorage::from_hashmap(storage));
+            runtime_storage.insert(identity.clone(), exec_storage);
+
+            let executor = AsyncExecutor::default();
+            executors.insert(identity.clone(), executor);
+        }
+
+        AsyncTestRuntime {
+            identities,
+            executors,
+            runtime_storage,
+            networking,
+        }
+    }
+
+    pub fn evaluate_computation(
+        &mut self,
+        computation: &Computation,
+        role_assignments: HashMap<Role, Identity>,
+        arguments: HashMap<String, Value>,
+    ) -> Result<HashMap<String, Value>> {
+        let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
+        let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+
+        let (valid_role_assignments, missing_role_assignments): (
+            HashMap<Role, Identity>,
+            HashMap<Role, Identity>,
+        ) = role_assignments
+            .into_iter()
+            .partition(|kv| self.identities.contains(&kv.1));
+        if !missing_role_assignments.is_empty() {
+            let missing_roles: Vec<&Role> = missing_role_assignments.keys().collect();
+            let missing_identities: Vec<&Identity> = missing_role_assignments.values().collect();
+            return Err(Error::TestRuntime(format!("Role assignment included identities unknown to Moose runtime: missing identities {:?} for roles {:?}.",
+                missing_identities, missing_roles)));
+        }
+
+        for (own_identity, executor) in self.executors.iter_mut() {
+            let moose_session = AsyncSession::new(
+                SessionId::try_from("foobar").unwrap(),
+                arguments.clone(),
+                valid_role_assignments.clone(),
+                Arc::clone(&self.networking),
+                Arc::clone(&self.runtime_storage[own_identity]),
+                Arc::new(Placement::Host(HostPlacement {
+                    owner: own_identity.0.clone().into(),
+                })),
+            );
+            let outputs = executor
+                .run_computation(
+                    computation,
+                    &valid_role_assignments,
+                    own_identity,
+                    &moose_session,
+                )
+                .unwrap();
+
+            for (output_name, output_future) in outputs {
+                output_futures.insert(output_name, output_future);
+            }
+
+            session_handles.push(AsyncSessionHandle::for_session(&moose_session))
+        }
+
+        for handle in session_handles {
+            let result = rt.block_on(handle.join_on_first_error());
+            if let Err(e) = result {
+                return Err(Error::TestRuntime(e.to_string()));
+            }
+        }
+
+        let outputs = rt.block_on(async {
+            let mut outputs: HashMap<String, Value> = HashMap::new();
+            for (output_name, output_future) in output_futures {
+                let value = output_future.await.unwrap();
+                outputs.insert(output_name, value);
+            }
+
+            outputs
+        });
+
+        Ok(outputs)
+    }
+
+    pub fn read_value_from_storage(&self, identity: Identity, key: String) -> Result<Value> {
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+        let val = rt.block_on(async {
+            let val = self.runtime_storage[&identity]
+                .load(&key, &SessionId::try_from("foobar").unwrap(), None, "")
+                .await
+                .unwrap();
+            val
+        });
+
+        Ok(val)
+    }
+
+    pub fn write_value_to_storage(
+        &self,
+        identity: Identity,
+        key: String,
+        value: Value,
+    ) -> Result<()> {
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+        let identity_storage = match self.runtime_storage.get(&identity) {
+            Some(store) => store,
+            None => {
+                return Err(Error::TestRuntime(format!(
+                    "Runtime does not contain storage for identity {:?}.",
+                    identity.to_string()
+                )));
+            }
+        };
+
+        let result = rt.block_on(async {
+            identity_storage
+                .save(&key, &SessionId::try_from("yo").unwrap(), &value)
+                .await
+        });
+        if let Err(e) = result {
+            return Err(Error::TestRuntime(e.to_string()));
+        }
+        Ok(())
+    }
+}

@@ -2,13 +2,14 @@
 use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider, TruncPrProvider};
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::execution::symbolic::Symbolic;
+use crate::execution::Session;
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
     AbstractHostAesKey, HostBitArray, HostFixedTensor, PrfKey, Seed, SliceInfo, SyncKey,
 };
 use crate::kernels::*;
 use crate::mirrored::{Mir3Tensor, MirFixedTensor, Mirrored3Placement};
-use crate::symbolic::Symbolic;
 use crate::types::*;
 use crate::{BitArray, Const, Ring};
 use macros::with_context;
@@ -2481,10 +2482,9 @@ impl GreaterThanOp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::execution::SyncSession;
     use crate::host::{FromRawPlc, HostRingTensor};
-    use crate::kernels::{
-        PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, SyncSession,
-    };
+    use crate::kernels::{PlacementRingFixedpointDecode, PlacementRingFixedpointEncode};
     use crate::{N128, N64};
     use ndarray::array;
     use proptest::prelude::*;

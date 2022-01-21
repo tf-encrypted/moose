@@ -1,7 +1,5 @@
-use crate::{
-    computation::Computation,
-    symbolic::{SymbolicExecutor, SymbolicSession},
-};
+use crate::computation::Computation;
+use crate::execution::{SymbolicExecutor, SymbolicSession};
 
 pub fn replicated_lowering(comp: &Computation) -> anyhow::Result<Option<Computation>> {
     let sess = SymbolicSession::default();

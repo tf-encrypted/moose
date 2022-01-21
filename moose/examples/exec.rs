@@ -1,4 +1,5 @@
 use moose::computation::*;
+use moose::execution::{SyncSession, TestSyncExecutor};
 use moose::host::{RawShape, SyncKey};
 use std::convert::TryFrom;
 
@@ -75,9 +76,8 @@ fn main() {
 
     let comp = Computation { operations };
 
-    let executor = moose::kernels::TestSyncExecutor::default();
-    let session =
-        moose::kernels::SyncSession::from_session_id(SessionId::try_from("foobar").unwrap());
+    let executor = TestSyncExecutor::default();
+    let session = SyncSession::from_session_id(SessionId::try_from("foobar").unwrap());
     let outputs = executor.run_computation(&comp, &session).unwrap();
 
     println!("Outputs: {:?}", outputs);

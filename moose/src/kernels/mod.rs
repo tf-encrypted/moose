@@ -1,12 +1,15 @@
-use crate::additive::*;
-use crate::computation::*;
-use crate::error::{Error, Result};
-use crate::for_all_values;
-use crate::host::*;
-use crate::mirrored::*;
-use crate::replicated::*;
-use crate::types::*;
+//! Moose recognized kernels
 
+use crate::error::Result;
+use crate::execution::Session;
+
+use crate::additive::AdditivePlacement;
+use crate::computation::*;
+use crate::error::Error;
+use crate::for_all_values;
+use crate::mirrored::Mirrored3Placement;
+use crate::replicated::ReplicatedPlacement;
+use crate::types::*;
 mod arithmetic;
 mod boolean;
 mod comparison;
@@ -15,9 +18,9 @@ mod control_flow;
 mod conversion;
 mod indexing;
 mod io;
-mod misc;
 mod sampling;
 mod shapes;
+
 pub use arithmetic::*;
 pub use boolean::*;
 pub use comparison::*;
@@ -26,9 +29,10 @@ pub use control_flow::*;
 pub use conversion::*;
 pub use indexing::*;
 pub use io::*;
-pub use misc::*;
 pub use sampling::*;
 pub use shapes::*;
+
+use crate::host::{SliceInfo, SyncKey};
 
 pub trait DispatchKernel<S: Session> {
     #[allow(clippy::type_complexity)] // TODO

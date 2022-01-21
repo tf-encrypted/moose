@@ -1,6 +1,7 @@
 //! Truncation for additive placements
 use super::*;
 use crate::computation::{CanonicalType, HostPlacement, KnownType};
+use crate::execution::Session;
 use crate::host::{HostShape, PrfKey, Seed, SyncKey};
 use crate::kernels::*;
 use crate::replicated::RepTensor;
@@ -171,6 +172,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::execution::SyncSession;
     use crate::host::HostRingTensor;
     use crate::types::*;
     use ndarray::array;
