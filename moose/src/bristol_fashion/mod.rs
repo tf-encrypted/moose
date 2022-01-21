@@ -216,7 +216,7 @@ pub fn byte_vec_to_bit_vec_be(bytes: &[u8]) -> Vec<u8> {
 mod tests {
     use super::*;
     use crate::computation::Role;
-    use crate::host::{HostPlacement, HostBitTensor};
+    use crate::host::{HostBitTensor, HostPlacement};
     use crate::kernels::SyncSession;
     use crate::replicated::ReplicatedPlacement;
     use crate::types::ReplicatedBitTensor;

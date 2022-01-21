@@ -43,8 +43,8 @@ impl MuxOp {
 
 #[cfg(test)]
 mod tests {
-    use crate::host::HostPlacement;
     use crate::host::FromRawPlc;
+    use crate::host::HostPlacement;
     use crate::kernels::*;
     use crate::replicated::ReplicatedPlacement;
     use crate::types::*;

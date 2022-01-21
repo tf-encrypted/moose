@@ -1,7 +1,7 @@
 use super::*;
 use crate::computation::{InputOp, Signature, Ty};
-use crate::host::{HostPlacement};
 use crate::error::{Error, Result};
+use crate::host::HostPlacement;
 use crate::kernels::{PlacementInput, Session};
 use crate::replicated::aes::AbstractReplicatedAesKey;
 use crate::{N128, N224, N64};

@@ -1,8 +1,8 @@
 use super::*;
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::kernels::*;
 use crate::host::HostPlacement;
+use crate::kernels::*;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
 
