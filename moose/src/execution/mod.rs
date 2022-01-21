@@ -657,7 +657,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"
         x = Constant{value = Int64Tensor([1, 2])}: () -> Int64Tensor @Host(alice)
-        expand_dims = HostExpandDims {axis = [1]}: (Int64Tensor) -> Int64Tensor (x) @Host(alice)
+        expand_dims = ExpandDims {axis = [1]}: (Int64Tensor) -> Int64Tensor (x) @Host(alice)
         output = Output: (Int64Tensor) -> Int64Tensor (expand_dims) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =

@@ -1001,7 +1001,6 @@ operators![
     HostDot,
     HostMean,
     HostSqrt,
-    HostExpandDims,
     HostSlice,
     HostDiag,
     HostBitDec,
@@ -1062,7 +1061,6 @@ operators![
     FloatingpointAtLeast2D,
     FloatingpointOnes,
     FloatingpointConcat,
-    FloatingpointExpandDims,
     FloatingpointTranspose,
     FloatingpointInverse,
     FloatingpointMean,
@@ -1319,12 +1317,6 @@ pub struct HostOnesOp {
 pub struct HostAtLeast2DOp {
     pub sig: Signature,
     pub to_column_vector: bool,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct HostExpandDimsOp {
-    pub sig: Signature,
-    pub axis: Vec<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
@@ -1645,12 +1637,6 @@ pub struct FloatingpointOnesOp {
 pub struct FloatingpointConcatOp {
     pub sig: Signature,
     pub axis: u32,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct FloatingpointExpandDimsOp {
-    pub sig: Signature,
-    pub axis: Vec<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]

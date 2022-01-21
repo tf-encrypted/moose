@@ -355,25 +355,28 @@ class EdslTest(parameterized.TestCase):
             ),
         )
 
-    def test_unsqueeze(self):
+    @parameterized.parameters({"axis": axis} for axis in [0, [0, 1]])
+    def test_unsqueeze(self, axis):
         player0 = edsl.host_placement(name="player0")
 
         @edsl.computation
         def my_comp():
             x0 = edsl.expand_dims(
                 edsl.constant(np.array([1.0]), placement=player0),
-                axis=1,
+                axis=axis,
                 placement=player0,
             )
             return x0
 
         concrete_comp = trace(my_comp)
         op = concrete_comp.operation("expand_dims_0")
+        if isinstance(axis, int):
+            axis = [axis]
         assert op == standard_ops.ExpandDimsOperation(
             placement_name="player0",
             name="expand_dims_0",
             inputs={"x": "constant_0"},
-            axis=[1],
+            axis=axis,
             signature=OpSignature(
                 {"x": TensorType(dtypes.float64)}, TensorType(dtypes.float64),
             ),
