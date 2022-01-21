@@ -9,12 +9,32 @@ where
         HostRingTensor(self.0 * other.0, self.1)
     }
 
+    fn compute_mean_weight(&self, axis: &Option<usize>) -> Result<HostFloat64Tensor> {
+        let shape: &[usize] = self.0.shape();
+        if let Some(ax) = axis {
+            let dim_len = shape[*ax] as f64;
+            Ok(HostFloat64Tensor::from(
+                Array::from_elem([], 1.0 / dim_len)
+                    .into_dimensionality::<IxDyn>()
+                    .map_err(|e| Error::KernelError(e.to_string()))?,
+            ))
+        } else {
+            let dim_prod: usize = std::iter::Product::product(shape.iter());
+            let prod_inv = 1.0 / dim_prod as f64;
+            Ok(HostFloat64Tensor::from(
+                Array::from_elem([], prod_inv)
+                    .into_dimensionality::<IxDyn>()
+                    .map_err(|e| Error::KernelError(e.to_string()))?,
+            ))
+        }
+    }
+
     pub(super) fn fixedpoint_mean(
         x: Self,
         axis: Option<usize>,
         scaling_factor: <HostRingTensor<T> as Convert<HostFloat64Tensor>>::Scale,
     ) -> Result<HostRingTensor<T>> {
-        let mean_weight = Self::compute_mean_weight(&x, &axis)?;
+        let mean_weight = x.compute_mean_weight(&axis)?;
         let encoded_weight = HostRingTensor::<T>::encode(&mean_weight, scaling_factor);
         let operand_sum = x.sum(axis)?;
         Ok(operand_sum.mul(encoded_weight))

@@ -784,32 +784,6 @@ impl Convert<HostFloat64Tensor> for HostRing128Tensor {
 
 impl<T> HostRingTensor<T>
 where
-    Wrapping<T>: Clone + num_traits::Zero + std::ops::Mul<Wrapping<T>, Output = Wrapping<T>>,
-    HostRingTensor<T>: Convert<HostFloat64Tensor>,
-{
-    fn compute_mean_weight(x: &Self, axis: &Option<usize>) -> Result<HostFloat64Tensor> {
-        let shape: &[usize] = x.0.shape();
-        if let Some(ax) = axis {
-            let dim_len = shape[*ax] as f64;
-            Ok(HostFloat64Tensor::from(
-                Array::from_elem([], 1.0 / dim_len)
-                    .into_dimensionality::<IxDyn>()
-                    .map_err(|e| Error::KernelError(e.to_string()))?,
-            ))
-        } else {
-            let dim_prod: usize = std::iter::Product::product(shape.iter());
-            let prod_inv = 1.0 / dim_prod as f64;
-            Ok(HostFloat64Tensor::from(
-                Array::from_elem([], prod_inv)
-                    .into_dimensionality::<IxDyn>()
-                    .map_err(|e| Error::KernelError(e.to_string()))?,
-            ))
-        }
-    }
-}
-
-impl<T> HostRingTensor<T>
-where
     T: Clone,
 {
     pub fn from_raw_plc<D: ndarray::Dimension, P: Into<HostPlacement>>(
@@ -844,6 +818,7 @@ where
     }
 }
 
+// TODO(Morten) used by textual
 // This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
 impl From<ArrayD<i64>> for HostRingTensor<u64> {
