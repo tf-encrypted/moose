@@ -16,13 +16,6 @@ _bob = edsl.host_placement(name="bob")
 _carole = edsl.host_placement("carole")
 _rep = edsl.replicated_placement("replicated", [_alice, _bob, _carole])
 _fpd = edsl.fixed(24, 40)
-_DEFAULT_PASSES = [
-    "typing",
-    "full",
-    "prune",
-    "networking",
-    "toposort",
-]
 
 
 @edsl.computation
