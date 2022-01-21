@@ -1046,7 +1046,7 @@ where
 }
 
 impl<T> HostRingTensor<T> {
-    pub(crate) fn shape(&self) -> HostShape {
+    fn shape(&self) -> HostShape {
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
     }
 }
@@ -1348,6 +1348,25 @@ where
 mod tests {
     use super::*;
     use std::ops::{Add, Div, Mul, Sub};
+
+    #[test]
+    fn test_host_shape_op() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let x = HostRingTensor::from_raw_plc(
+            array![1024u64, 5, 4]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+            alice,
+        );
+
+        let shape = x.shape();
+        let raw_shape: RawShape = shape.0;
+        let underlying = vec![3];
+        let expected: RawShape = RawShape(underlying);
+        assert_eq!(expected, raw_shape);
+    }
 
     #[test]
     fn dot_prod_f32() {

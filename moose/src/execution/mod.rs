@@ -537,7 +537,8 @@ mod tests {
         let source = r#"seed = Constant{value=Seed(00000000000000000000000000000000)}: () -> Seed @Host(alice)
         xshape = Constant{value=Shape([2, 2])}: () -> Shape @Host(alice)
         sampled = RingSampleSeeded{}: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
-        output = Output: (Ring64Tensor) -> Ring64Tensor (sampled) @Host(alice)
+        shape = Shape: (Ring64Tensor) -> Shape (sampled) @Host(alice)
+        output = Output: (Shape) -> Shape (shape) @Host(alice)
         "#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -552,9 +553,8 @@ mod tests {
             run_async,
         )?;
 
-        let x_sampled: HostRing64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
-        assert_eq!(x_sampled.shape().0, RawShape(vec![2, 2]));
-
+        let output: HostShape = (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(output.0, RawShape(vec![2, 2]));
         Ok(())
     }
 

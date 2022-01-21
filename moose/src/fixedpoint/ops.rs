@@ -2658,25 +2658,6 @@ mod tests {
         test_rep_poly_eval_fixed128(x, coeffs, y_targets);
     }
 
-    #[test]
-    fn test_host_shape_op() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let x = HostRingTensor::from_raw_plc(
-            array![1024u64, 5, 4]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            alice,
-        );
-
-        let shape = x.shape();
-        let raw_shape: RawShape = shape.0;
-        let underlying = vec![3];
-        let expected: RawShape = RawShape(underlying);
-        assert_eq!(expected, raw_shape);
-    }
-
     macro_rules! rep_approx_unary_fixed_test {
         ($func_name:ident, $test_func: ident<$ti: ty, $tu: ty>, $i_precision: expr, $f_precision: expr, $err: expr) => {
             fn $func_name(x: ArrayD<f64>, y_target: Vec<f64>) {
