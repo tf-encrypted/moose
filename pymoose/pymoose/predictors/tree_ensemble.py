@@ -267,7 +267,7 @@ class TreeEnsembleClassifier(TreeEnsemble):
         logit = edsl.add(edsl.add_n(tree_scores), base_score)
         pos_prob = edsl.sigmoid(logit) if self.transform_output else logit
         pos_prob = edsl.expand_dims(pos_prob, axis=1)
-        one = self.fixedpoint_constant(1, plc=self.bob, dtype=fixedpoint_dtype)
+        one = self.fixedpoint_constant(1, plc=self.mirrored, dtype=fixedpoint_dtype)
         neg_prob = edsl.sub(one, pos_prob)
         return edsl.concatenate([neg_prob, pos_prob], axis=1)
 
