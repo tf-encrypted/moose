@@ -2,7 +2,6 @@
 
 use crate::computation::*;
 use crate::error::Result;
-use crate::host::HostPlacement;
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking, SyncNetworking};
 use crate::replicated::ReplicatedPlacement;
 use crate::storage::{AsyncStorage, LocalAsyncStorage, SyncStorage};
@@ -76,17 +75,13 @@ pub type RoleAssignment = HashMap<Role, Identity>;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compilation::compile_passes;
-    use crate::compilation::Pass;
+    use crate::compilation::{compile_passes, Pass};
     use crate::error::Error;
     use crate::execution::{SyncSession, TestSyncExecutor};
-    use crate::host::{HostTensor, RawSeed, RawShape, Seed};
+    use crate::host::{HostPlacement, HostTensor, RawSeed, RawShape, Seed};
     use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
     use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
-    use crate::types::{
-        HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostRing128Tensor, HostRing64Tensor,
-        HostShape, HostString,
-    };
+    use crate::types::*;
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;

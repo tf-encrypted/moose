@@ -20,10 +20,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::execution::SyncSession;
-    use ndarray::prelude::*;
-    use proptest::prelude::*;
-    use std::num::Wrapping;
 
     #[test]
     fn fixedpoint_mean_with_axis() {
