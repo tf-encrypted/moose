@@ -426,14 +426,12 @@ impl HostDotOp {
 
 impl HostOnesOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         shape: HostShape,
-    ) -> Result<HostTensor<T>>
-    where
-        HostPlacement: PlacementPlace<S, HostTensor<T>>,
-    {
-        Ok(plc.place(sess, HostTensor::ones(shape)))
+    ) -> Result<HostTensor<T>> {
+        let raw_shape = shape.0;
+        Ok(HostTensor::<T>(ArrayD::ones(raw_shape.0), plc.clone()))
     }
 }
 

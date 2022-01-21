@@ -189,10 +189,6 @@ where
         HostTensor::<T>(x, plc.clone())
     }
 
-    fn ones(shape: HostShape) -> Self {
-        HostTensor::<T>(ArrayD::ones(shape.0 .0), shape.1)
-    }
-
     pub fn reshape(self, newshape: HostShape) -> Self {
         HostTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
     }
