@@ -1944,7 +1944,8 @@ mod tests {
         let x: HostRing64Tensor = plc.from_raw(array![[1, 4], [9, 16], [25, 36]]);
         let y: HostRing64Tensor = plc.from_raw(array![[1, 3], [6, 10], [15, 21]]);
         let z: HostRing64Tensor = plc.from_raw(array![[1, 36], [1225, 41616], [1413721, 48024900]]);
-        let expected: HostRing64Tensor = plc.from_raw(array![[3, 43], [1240, 41642], [1413761, 48024957]]);
+        let expected: HostRing64Tensor =
+            plc.from_raw(array![[3, 43], [1240, 41642], [1413761, 48024957]]);
         let out = plc.add_n(&sess, &[x, y, z]);
         assert_eq!(out, expected);
 
@@ -1953,7 +1954,8 @@ mod tests {
         let x: HostRing128Tensor = plc.from_raw(array![[40, 20, 10], [5, 16, 8], [4, 2, 1]]);
         let y: HostRing128Tensor = plc.from_raw(array![[42, 21, 64], [32, 16, 8], [4, 2, 1]]);
         let z: HostRing128Tensor = plc.from_raw(array![[256, 128, 64], [32, 16, 8], [4, 2, 1]]);
-        let expected: HostRing128Tensor = plc.from_raw(array![[344, 172, 148], [74, 64, 32], [16, 8, 4]]);
+        let expected: HostRing128Tensor =
+            plc.from_raw(array![[344, 172, 148], [74, 64, 32], [16, 8, 4]]);
         let out = plc.add_n(&sess, &[w, x, y, z]);
         assert_eq!(out, expected);
     }
@@ -1984,41 +1986,37 @@ mod tests {
     }
 
     #[test]
-    fn bit_dec() {
-        let x_backing: ArrayD<u64> = array![[[1, 2], [3, 4]], [[4, 5], [6, 7]]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
+    fn bit_decompose1() {
+        let plc = HostPlacement::from("host");
         let sess = SyncSession::default();
-        let x_bits: HostBitTensor = alice.bit_decompose(&sess, &x);
-        let targets: Vec<_> = (0..64).map(|i| alice.bit_extract(&sess, i, &x)).collect();
+
+        let x: HostRing64Tensor = plc.from_raw(array![[[1, 2], [3, 4]], [[4, 5], [6, 7]]]);
+        let x_bits: HostBitTensor = plc.bit_decompose(&sess, &x);
+        let targets: Vec<_> = (0..64).map(|i| plc.bit_extract(&sess, i, &x)).collect();
 
         for (i, target) in targets.iter().enumerate() {
-            let sliced = alice.index_axis(&sess, 0, i, &x_bits);
+            let sliced = plc.index_axis(&sess, 0, i, &x_bits);
             assert_eq!(&sliced, target);
         }
+    }
 
-        let y_target: ArrayD<u8> = array![
-            0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0,
-            0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0,
-            1, 1, 1, 0, 1, 0
-        ]
-        .into_dyn()
-        .into_shape((64, 1))
-        .unwrap()
-        .into_dyn();
+    #[test]
+    fn bit_decompose2() {
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
 
-        let x_back1: ArrayD<u64> = array![6743216615002642708]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
+        let x: HostRing64Tensor = plc.from_raw(array![6743216615002642708]);
+        let x_bits: HostBitTensor = plc.bit_decompose(&sess, &x);
 
-        let x_host = HostRing64Tensor::from_raw_plc(x_back1, alice.clone());
-        let x_back1_bits: HostBitTensor = alice.bit_decompose(&sess, &x_host);
-
-        assert_eq!(x_back1_bits.0, y_target);
+        let expected: HostBitTensor = plc.from_raw(
+            array![
+                0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0,
+                0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1,
+                1, 0, 1, 1, 1, 0, 1, 0
+            ]
+            .into_shape((64, 1))
+            .unwrap(),
+        );
+        assert_eq!(x_bits, expected);
     }
 }
