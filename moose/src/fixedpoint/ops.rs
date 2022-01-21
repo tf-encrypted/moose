@@ -1799,7 +1799,7 @@ impl MaximumOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixedpoint::{Convert, PrefixMul};
+    use crate::fixedpoint::PrefixMul;
     use crate::kernels::SyncSession;
     use crate::replicated::RepTensor;
     use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};

@@ -1,17 +1,11 @@
 //! Abstraction layer for fixed-point values
 
 use crate::computation::*;
-use crate::error::{Error, Result};
-use crate::host::*;
+use crate::error::Result;
 use crate::kernels::*;
 use crate::replicated::*;
 use crate::symbolic::Symbolic;
-use crate::types::*;
-use ndarray::prelude::*;
-use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
-use std::num::Wrapping;
-use std::ops::Mul;
 
 mod ops;
 
@@ -38,77 +32,6 @@ where
             FixedTensor::Host(x) => Ok(x.placement()?.into()),
             FixedTensor::Mirrored3(x) => Ok(x.placement()?.into()),
             FixedTensor::Replicated(x) => Ok(x.placement()?.into()),
-        }
-    }
-}
-
-pub trait Convert<T> {
-    type Scale: One + Clone;
-    fn encode(x: &T, scaling_factor: Self::Scale) -> Self;
-    fn decode(x: &Self, scaling_factor: Self::Scale) -> T;
-}
-
-impl Convert<HostFloat64Tensor> for HostRing64Tensor {
-    type Scale = u64;
-    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing64Tensor {
-        let x_upshifted = &x.0 * (scaling_factor as f64);
-        let x_converted: ArrayD<u64> = x_upshifted.mapv(|el| (el as i64) as u64);
-        HostRing64Tensor::from(x_converted)
-    }
-    fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
-        let x_upshifted: ArrayD<i64> = ArrayD::from(x);
-        let x_converted = x_upshifted.mapv(|el| el as f64);
-        HostFloat64Tensor::from(x_converted / scaling_factor as f64)
-    }
-}
-
-impl Convert<HostFloat64Tensor> for HostRing128Tensor {
-    type Scale = u128;
-    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing128Tensor {
-        let x_upshifted = &x.0 * (scaling_factor as f64);
-        let x_converted: ArrayD<u128> = x_upshifted.mapv(|el| (el as i128) as u128);
-        HostRing128Tensor::from(x_converted)
-    }
-    fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
-        let x_upshifted: ArrayD<i128> = ArrayD::from(x);
-        let x_converted = x_upshifted.mapv(|el| el as f64);
-        HostFloat64Tensor::from(x_converted / scaling_factor as f64)
-    }
-}
-
-impl<T> HostRingTensor<T>
-where
-    Wrapping<T>: Clone + Zero + Mul<Wrapping<T>, Output = Wrapping<T>>,
-    HostRingTensor<T>: Convert<HostFloat64Tensor>,
-{
-    pub fn fixedpoint_mean(
-        x: Self,
-        axis: Option<usize>,
-        scaling_factor: <HostRingTensor<T> as Convert<HostFloat64Tensor>>::Scale,
-    ) -> Result<HostRingTensor<T>> {
-        let mean_weight = Self::compute_mean_weight(&x, &axis)?;
-        let encoded_weight = HostRingTensor::<T>::encode(&mean_weight, scaling_factor);
-        let operand_sum = x.sum(axis)?;
-        Ok(operand_sum.mul(encoded_weight))
-    }
-
-    fn compute_mean_weight(x: &Self, axis: &Option<usize>) -> Result<HostFloat64Tensor> {
-        let shape: &[usize] = x.0.shape();
-        if let Some(ax) = axis {
-            let dim_len = shape[*ax] as f64;
-            Ok(HostFloat64Tensor::from(
-                Array::from_elem([], 1.0 / dim_len)
-                    .into_dimensionality::<IxDyn>()
-                    .map_err(|e| Error::KernelError(e.to_string()))?,
-            ))
-        } else {
-            let dim_prod: usize = std::iter::Product::product(shape.iter());
-            let prod_inv = 1.0 / dim_prod as f64;
-            Ok(HostFloat64Tensor::from(
-                Array::from_elem([], prod_inv)
-                    .into_dimensionality::<IxDyn>()
-                    .map_err(|e| Error::KernelError(e.to_string()))?,
-            ))
         }
     }
 }

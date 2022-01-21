@@ -906,23 +906,94 @@ impl<T> HostRingTensor<T> {
     }
 }
 
-#[cfg(not(feature = "exclude_old_framework"))]
-impl HostRing64Tensor {
-    pub fn sample_uniform(shape: &RawShape) -> HostRing64Tensor {
-        let mut rng = AesRng::from_random_seed();
-        let size = shape.0.iter().product();
-        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
-        let ix = IxDyn(shape.0.as_ref());
-        HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+pub trait Convert<T> {
+    type Scale: num_traits::One + Clone;
+    fn encode(x: &T, scaling_factor: Self::Scale) -> Self;
+    fn decode(x: &Self, scaling_factor: Self::Scale) -> T;
+}
+
+impl Convert<HostFloat64Tensor> for HostRing64Tensor {
+    type Scale = u64;
+    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing64Tensor {
+        let x_upshifted = &x.0 * (scaling_factor as f64);
+        let x_converted: ArrayD<u64> = x_upshifted.mapv(|el| (el as i64) as u64);
+        HostRing64Tensor::from(x_converted)
     }
-    pub fn sample_bits(shape: &RawShape) -> Self {
-        let mut rng = AesRng::from_random_seed();
-        let size = shape.0.iter().product();
-        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
-        let ix = IxDyn(shape.0.as_ref());
-        HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+    fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
+        let x_upshifted: ArrayD<i64> = ArrayD::from(x);
+        let x_converted = x_upshifted.mapv(|el| el as f64);
+        HostFloat64Tensor::from(x_converted / scaling_factor as f64)
     }
 }
+
+impl Convert<HostFloat64Tensor> for HostRing128Tensor {
+    type Scale = u128;
+    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing128Tensor {
+        let x_upshifted = &x.0 * (scaling_factor as f64);
+        let x_converted: ArrayD<u128> = x_upshifted.mapv(|el| (el as i128) as u128);
+        HostRing128Tensor::from(x_converted)
+    }
+    fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
+        let x_upshifted: ArrayD<i128> = ArrayD::from(x);
+        let x_converted = x_upshifted.mapv(|el| el as f64);
+        HostFloat64Tensor::from(x_converted / scaling_factor as f64)
+    }
+}
+
+impl<T> HostRingTensor<T>
+where
+    Wrapping<T>: Clone + num_traits::Zero + std::ops::Mul<Wrapping<T>, Output = Wrapping<T>>,
+    HostRingTensor<T>: Convert<HostFloat64Tensor>,
+{
+    pub fn fixedpoint_mean(
+        x: Self,
+        axis: Option<usize>,
+        scaling_factor: <HostRingTensor<T> as Convert<HostFloat64Tensor>>::Scale,
+    ) -> Result<HostRingTensor<T>> {
+        let mean_weight = Self::compute_mean_weight(&x, &axis)?;
+        let encoded_weight = HostRingTensor::<T>::encode(&mean_weight, scaling_factor);
+        let operand_sum = x.sum(axis)?;
+        Ok(operand_sum * encoded_weight)
+    }
+
+    fn compute_mean_weight(x: &Self, axis: &Option<usize>) -> Result<HostFloat64Tensor> {
+        let shape: &[usize] = x.0.shape();
+        if let Some(ax) = axis {
+            let dim_len = shape[*ax] as f64;
+            Ok(HostFloat64Tensor::from(
+                Array::from_elem([], 1.0 / dim_len)
+                    .into_dimensionality::<IxDyn>()
+                    .map_err(|e| Error::KernelError(e.to_string()))?,
+            ))
+        } else {
+            let dim_prod: usize = std::iter::Product::product(shape.iter());
+            let prod_inv = 1.0 / dim_prod as f64;
+            Ok(HostFloat64Tensor::from(
+                Array::from_elem([], prod_inv)
+                    .into_dimensionality::<IxDyn>()
+                    .map_err(|e| Error::KernelError(e.to_string()))?,
+            ))
+        }
+    }
+}
+
+// #[cfg(not(feature = "exclude_old_framework"))]
+// impl HostRing64Tensor {
+//     pub fn sample_uniform(shape: &RawShape) -> HostRing64Tensor {
+//         let mut rng = AesRng::from_random_seed();
+//         let size = shape.0.iter().product();
+//         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
+//         let ix = IxDyn(shape.0.as_ref());
+//         HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+//     }
+//     pub fn sample_bits(shape: &RawShape) -> Self {
+//         let mut rng = AesRng::from_random_seed();
+//         let size = shape.0.iter().product();
+//         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
+//         let ix = IxDyn(shape.0.as_ref());
+//         HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+//     }
+// }
 
 #[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing128Tensor {
@@ -1098,7 +1169,7 @@ impl From<ArrayD<i128>> for HostRingTensor<u128> {
 
 #[cfg(not(feature = "exclude_old_framework"))]
 impl<T> HostRingTensor<T> {
-    pub fn new(a: ArrayD<Wrapping<T>>) -> HostRingTensor<T> {
+    fn new(a: ArrayD<Wrapping<T>>) -> HostRingTensor<T> {
         HostRingTensor(
             a,
             HostPlacement {
@@ -1332,7 +1403,7 @@ impl<T> HostRingTensor<T>
 where
     Wrapping<T>: Clone + num_traits::Zero,
 {
-    pub fn sum(self, axis: Option<usize>) -> Result<HostRingTensor<T>> {
+    fn sum(self, axis: Option<usize>) -> Result<HostRingTensor<T>> {
         if let Some(i) = axis {
             Ok(HostRingTensor(self.0.sum_axis(Axis(i)), self.1))
         } else {
