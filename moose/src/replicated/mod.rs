@@ -795,7 +795,7 @@ impl RepAddOp {
         })
     }
 
-    pub(crate) fn rep_mir_kernel<S: Session, HostRingT>(
+    pub(crate) fn rep_mir_kernel<S: Session, ShapeT, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepTen<HostRingT>,
@@ -803,22 +803,35 @@ impl RepAddOp {
     ) -> Result<RepTen<HostRingT>>
     where
         HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
+        HostPlacement: PlacementShape<S, HostRingT, ShapeT>,
+        HostPlacement: PlacementBroadcast<S, ShapeT, HostRingT, HostRingT>,
     {
-        let (player0, _player1, player2) = rep.host_placements();
+        // the shapes of shares need to be the same.
+        let (player0, player1, player2) = rep.host_placements();
 
         let MirTen {
-            values: [y0, _y1, y2],
+            values: [y0, y1, y2],
         } = y;
 
         let RepTen {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
+        let s0 = player0.shape(sess, &with_context!(player0, sess, x00 + y0));
+        let s1 = player1.shape(sess, &with_context!(player1, sess, x11 + y1));
+        let s2 = player2.shape(sess, &with_context!(player2, sess, x22 + y2));
+
         let z00 = with_context!(player0, sess, x00 + y0);
+        let z10 = player0.broadcast(sess, &s0, &x10);
+
+        let z11 = player1.broadcast(sess, &s1, &x11);
+        let z21 = player1.broadcast(sess, &s1, &x21);
+
+        let z22 = player2.broadcast(sess, &s2, &x22);
         let z02 = with_context!(player2, sess, x02 + y2);
 
         Ok(RepTen {
-            shares: [[z00, x10], [x11, x21], [x22, z02]],
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
 }

@@ -1247,6 +1247,18 @@ impl BroadcastOp {
             plc.clone(),
         ))
     }
+
+    pub(crate) fn host_bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        s: HostShape,
+        x: HostBitTensor,
+    ) -> Result<HostBitTensor> {
+        Ok(HostBitTensor(
+            x.0.broadcast(s.0 .0).unwrap().to_owned(),
+            plc.clone(),
+        ))
+    }
 }
 
 impl HostReshapeOp {

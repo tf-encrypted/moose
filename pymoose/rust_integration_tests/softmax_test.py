@@ -60,12 +60,12 @@ class SoftmaxExample(parameterized.TestCase):
             arguments={"x_uri": "x_arg"},
         )
 
-        x0 = runtime.read_value_from_storage("bob", "softmax")
+        softmax_runtime = runtime.read_value_from_storage("bob", "softmax")
 
         e_x = np.exp(x_arg - x_arg.max(axis=axis))
         softmax_numpy = e_x / np.sum(e_x, axis=axis)
 
-        np.testing.assert_almost_equal(x0, softmax_numpy, decimal=2)
+        np.testing.assert_almost_equal(softmax_runtime, softmax_numpy, decimal=2)
 
 
 if __name__ == "__main__":
