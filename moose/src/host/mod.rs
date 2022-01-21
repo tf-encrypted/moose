@@ -220,10 +220,6 @@ where
             Ok(HostTensor::<T>(out, self.1))
         }
     }
-
-    fn transpose(self) -> Self {
-        HostTensor::<T>(self.0.reversed_axes(), self.1)
-    }
 }
 
 #[cfg(feature = "blas")]

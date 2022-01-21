@@ -926,14 +926,13 @@ impl ConcatOp {
 
 impl HostTransposeOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>>
-    where
-        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        Ok(plc.place(sess, x.transpose()))
+        let raw_tensor = x.0.reversed_axes();
+        Ok(HostTensor(raw_tensor, plc.clone()))
     }
 }
 
