@@ -302,7 +302,7 @@ impl MooseComputation {
     }
 
     #[classmethod]
-    pub fn from_textual<'py>(_cls: &PyType, py: Python, text: &PyString) -> PyResult<Py<Self>> {
+    pub fn from_textual(_cls: &PyType, py: Python, text: &PyString) -> PyResult<Py<Self>> {
         let text: &str = text.extract()?;
         let computation: Computation = text
             .try_into()
@@ -311,7 +311,7 @@ impl MooseComputation {
         Py::new(py, moose_comp)
     }
 
-    pub fn to_textual<'py>(&mut self, py: Python<'py>) -> PyResult<PyObject> {
+    pub fn to_textual(&mut self, py: Python) -> PyResult<PyObject> {
         let comp_text = self.computation.to_textual();
         Ok(comp_text.into_py(py))
     }
