@@ -88,7 +88,7 @@ impl InputOp {
             // TODO(jason,morten): figure out a good way to get this static type information
             //  from the Signature (improve Ty impl in values!)
             Ty::ReplicatedFixed64Tensor => Ok((14, 23)),
-            Ty::ReplicatedFixed128Tensor => Ok((46, 40)),
+            Ty::ReplicatedFixed128Tensor => Ok((24, 40)),
             _ => Err(Error::TypeMismatch {
                 expected: "ReplicatedFixedTensor".to_string(),
                 found: sig.ret(),

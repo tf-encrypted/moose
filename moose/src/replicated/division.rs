@@ -28,7 +28,9 @@ impl FixedpointDivOp {
 
         assert!(
             2 * k as usize <= RepRingT::BitLength::VALUE,
-            "2 * (fractional_precision + integral_precision) = {}, BitLength = {}",
+            "2 * (integral_precision={} + fractional_precision={}) = {}, BitLength = {}",
+            int_precision,
+            frac_precision,
             2 * k as usize,
             RepRingT::BitLength::VALUE
         );

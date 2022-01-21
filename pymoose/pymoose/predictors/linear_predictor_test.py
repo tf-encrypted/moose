@@ -136,12 +136,14 @@ class LinearPredictorTest(parameterized.TestCase):
         logical_comp_rustbytes = logical_comp_rustref.to_bytes()
 
         # make sure it can compile
-        elk_compiler.compile_computation(serialized, ["typing", "full", "prune", "networking", "toposort"])
+        elk_compiler.compile_computation(
+            serialized, ["typing", "full", "prune", "networking", "toposort"]
+        )
 
         b = base64.b64encode(logical_comp_rustbytes)
         Path(f"{model_name}.moose").touch()
         with open(f"{model_name}.moose", "w") as f:
-            f.write(b.decode('utf-8'))
+            f.write(b.decode("utf-8"))
 
         # pymoose.MooseComputation.from_bytes(logical_comp_rustbytes)
         # NOTE: could also dump to disk as follows (but we don't in the test)
