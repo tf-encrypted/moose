@@ -1404,6 +1404,24 @@ impl<T: Clone, D: ndarray::Dimension> FromRaw<Array<T, D>, HostRingTensor<T>> fo
     }
 }
 
+impl<D: ndarray::Dimension> FromRaw<Array<u8, D>, HostBitTensor> for HostPlacement {
+    fn from_raw(&self, raw: Array<u8, D>) -> HostBitTensor {
+        HostBitTensor(raw.into_dyn(), self.clone())
+    }
+}
+
+impl FromRaw<RawShape, HostShape> for HostPlacement {
+    fn from_raw(&self, raw: RawShape) -> HostShape {
+        HostShape(raw, self.clone())
+    }
+}
+
+impl FromRaw<RawSeed, Seed> for HostPlacement {
+    fn from_raw(&self, raw: RawSeed) -> Seed {
+        Seed(raw, self.clone())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1722,79 +1740,66 @@ mod tests {
 
     #[test]
     fn test_kernel_concatenate() {
-        use crate::kernels::PlacementConcatenate;
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
+        let plc = HostPlacement::from("host");
         let sess = SyncSession::default();
-        let x = crate::host::HostTensor::<f64>::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let y = crate::host::HostTensor::<f64>::from(
-            array![[5.0, 6.0], [7.0, 8.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let c = alice.concatenate(&sess, 0, &[x, y]);
-        assert_eq!("[[1, 2],\n [3, 4],\n [5, 6],\n [7, 8]]", format!("{}", c.0));
+
+        let x: HostFloat64Tensor = plc.from_raw(array![[1.0, 2.0], [3.0, 4.0]]);
+        let y: HostFloat64Tensor = plc.from_raw(array![[5.0, 6.0], [7.0, 8.0]]);
+        let c = plc.concatenate(&sess, 0, &[x, y]);
+
+        let expected: HostFloat64Tensor =
+            plc.from_raw(array![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]]);
+        assert_eq!(expected, c);
     }
 
     #[test]
     fn bit_sample() {
-        let shape = RawShape(vec![5]);
-        let seed = RawSeed([0u8; 16]);
-        let r = HostBitTensor::sample_uniform_seeded(&shape, &seed);
-        assert_eq!(r, HostBitTensor::from(vec![0, 1, 1, 0, 0,]));
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
+
+        let shape: HostShape = plc.from_raw(RawShape(vec![5]));
+        let seed: Seed = plc.from_raw(RawSeed([0u8; 16]));
+        let r: HostBitTensor = plc.sample_uniform_seeded(&sess, &shape, &seed);
+
+        let expected: HostBitTensor = plc.from_raw(array![0, 1, 1, 0, 0]);
+        assert_eq!(r, expected);
     }
 
     #[test]
     fn bit_fill() {
-        let shape = RawShape(vec![2]);
-        let r = HostBitTensor::fill(&shape, 1);
-        assert_eq!(r, HostBitTensor::from(vec![1, 1]))
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
+
+        let shape: HostShape = plc.from_raw(RawShape(vec![2]));
+        let x: HostBitTensor = plc.fill(&sess, 1_u8.into(), &shape);
+
+        let expected: HostBitTensor = plc.from_raw(array![1, 1]);
+        assert_eq!(x, expected);
     }
 
     #[test]
     fn bit_ops() {
-        let shape = RawShape(vec![5]);
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
 
-        // test xor
-        assert_eq!(
-            HostBitTensor::fill(&shape, 0) ^ HostBitTensor::fill(&shape, 1),
-            HostBitTensor::fill(&shape, 1)
-        );
-        assert_eq!(
-            HostBitTensor::fill(&shape, 1) ^ HostBitTensor::fill(&shape, 0),
-            HostBitTensor::fill(&shape, 1)
-        );
-        assert_eq!(
-            HostBitTensor::fill(&shape, 1) ^ HostBitTensor::fill(&shape, 1),
-            HostBitTensor::fill(&shape, 0)
-        );
-        assert_eq!(
-            HostBitTensor::fill(&shape, 0) ^ HostBitTensor::fill(&shape, 0),
-            HostBitTensor::fill(&shape, 0)
-        );
+        let shape: HostShape = plc.from_raw(RawShape(vec![5]));
+        let zero = plc.fill(&sess, 0_u8.into(), &shape);
+        let one = plc.fill(&sess, 1_u8.into(), &shape);
 
-        // test and
-        assert_eq!(
-            HostBitTensor::fill(&shape, 0) & HostBitTensor::fill(&shape, 1),
-            HostBitTensor::fill(&shape, 0)
-        );
-        assert_eq!(
-            HostBitTensor::fill(&shape, 1) & HostBitTensor::fill(&shape, 0),
-            HostBitTensor::fill(&shape, 0)
-        );
-        assert_eq!(
-            HostBitTensor::fill(&shape, 1) & HostBitTensor::fill(&shape, 1),
-            HostBitTensor::fill(&shape, 1)
-        );
-        assert_eq!(
-            HostBitTensor::fill(&shape, 0) & HostBitTensor::fill(&shape, 0),
-            HostBitTensor::fill(&shape, 0)
-        );
+        assert_eq!(&plc.xor(&sess, &zero, &one), &one);
+        assert_eq!(&plc.xor(&sess, &one, &zero), &one);
+        assert_eq!(&plc.xor(&sess, &one, &one), &zero);
+        assert_eq!(&plc.xor(&sess, &zero, &zero), &zero);
+
+        assert_eq!(&plc.or(&sess, &zero, &one), &one);
+        assert_eq!(&plc.or(&sess, &one, &zero), &one);
+        assert_eq!(&plc.or(&sess, &one, &one), &one);
+        assert_eq!(&plc.or(&sess, &zero, &zero), &zero);
+
+        assert_eq!(&plc.and(&sess, &zero, &one), &zero);
+        assert_eq!(&plc.and(&sess, &one, &zero), &zero);
+        assert_eq!(&plc.and(&sess, &one, &one), &zero);
+        assert_eq!(&plc.and(&sess, &zero, &zero), &one);
     }
 
     #[test]
