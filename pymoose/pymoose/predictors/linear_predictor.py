@@ -86,7 +86,7 @@ class LinearRegressor(LinearPredictor):
             raise ValueError(
                 "LinearRegressor coefficients must be of type FLOATS, found other."
             )
-        coeffs = coeffs_attr.floats
+        coeffs = np.asarray(coeffs_attr.floats)
         # extract intercept if it's there, otherwise pass it as None
         intercepts_attr = predictor_utils.find_attribute_in_node(
             lr_node, "intercepts", enforce=False
@@ -99,6 +99,14 @@ class LinearRegressor(LinearPredictor):
             )
         else:
             intercepts = intercepts_attr.floats
+
+        # if n_targets is not None reshape into (n_targets, n_features) matrix
+        n_targets_ints = predictor_utils.find_attribute_in_node(
+            lr_node, "targets", enforce=False
+        )
+        if n_targets_ints is not None:
+            n_targets = n_targets_ints.i
+            coeffs = coeffs.reshape(n_targets, -1)
 
         return cls(coeffs=coeffs, intercepts=intercepts)
 

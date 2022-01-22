@@ -25,6 +25,7 @@ _SK_REGRESSION_MODELS = [
     "lasso_cv",
     "lasso_lars_ic",
     "linear_regression",
+    "linear_regression_2targets",
     "orthogonal_matching_pursuit",
     "orthogonal_matching_pursuit_cv",
     "passive_aggressive_regressor",
@@ -74,6 +75,7 @@ class LinearPredictorTest(parameterized.TestCase):
 
     @parameterized.parameters(*_SK_REGRESSION_MODELS)
     def test_regression_logic(self, model_name):
+        print("Model name:", model_name)
         regressor, regressor_logic = self._build_prediction_logic(
             model_name, linear_predictor.LinearRegressor
         )
@@ -91,8 +93,8 @@ class LinearPredictorTest(parameterized.TestCase):
         )
         actual_result = list(result_dict.values())[0]
         # predicting on input vector of all ones == sum of linear model's coefficients
-        expected_result = regressor.coeffs.sum() + regressor.intercepts
-        np.testing.assert_almost_equal(actual_result, expected_result)
+        expected_result = regressor.coeffs.sum() + regressor.intercepts.sum()
+        np.testing.assert_almost_equal(actual_result.sum(), expected_result)
 
     @parameterized.parameters(*_SK_CLASSIFIER_MODELS)
     def test_classification_logic(self, model_name, expected):
