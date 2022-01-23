@@ -5,7 +5,7 @@ use crate::prng::AesRng;
 use crate::{Const, Ring, N128, N224, N64};
 use ndarray::LinalgScalar;
 #[cfg(feature = "blas")]
-use ndarray_linalg::Lapack;
+use ndarray_linalg::{Inverse, Lapack, Scalar};
 use num_traits::{Float, FromPrimitive, Zero};
 use std::marker::PhantomData;
 use std::num::Wrapping;
@@ -968,32 +968,8 @@ impl HostTransposeOp {
     }
 }
 
-// TODO(Morten) inline
-#[cfg(feature = "blas")]
-impl<T: Scalar + Lapack> HostTensor<T> {
-    fn inv(self) -> Self {
-        match self.0.ndim() {
-            2 => {
-                let two_dim: Array2<T> = self.0.into_dimensionality::<Ix2>().unwrap();
-                HostTensor::<T>(
-                    two_dim
-                        .inv()
-                        .unwrap()
-                        .into_dimensionality::<IxDyn>()
-                        .unwrap(),
-                    self.1,
-                )
-            }
-            other_rank => panic!(
-                "Inverse only defined for rank 2 matrices, not rank {:?}",
-                other_rank,
-            ),
-        }
-    }
-}
-
-#[cfg(feature = "blas")]
 impl HostInverseOp {
+    #[cfg(feature = "blas")]
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
         sess: &S,
         plc: &HostPlacement,
@@ -1002,18 +978,37 @@ impl HostInverseOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        Ok(plc.place(sess, x.inv()))
+        let x = plc.place(sess, x);
+        // TODO(Morten) better error handling below
+        let x_inv = match x.0.ndim() {
+            2 => {
+                let two_dim: Array2<T> = x.0.into_dimensionality::<Ix2>().unwrap();
+                HostTensor::<T>(
+                    two_dim
+                        .inv()
+                        .unwrap()
+                        .into_dimensionality::<IxDyn>()
+                        .unwrap(),
+                    x.1,
+                )
+            }
+            other_rank => panic!(
+                "Inverse only defined for rank 2 matrices, not rank {:?}",
+                other_rank,
+            ),
+        };
+        Ok(x_inv)
     }
-}
 
-#[cfg(not(feature = "blas"))]
-impl HostInverseOp {
+    #[cfg(not(feature = "blas"))]
     pub(crate) fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         _plc: &HostPlacement,
         _x: HostTensor<T>,
     ) -> Result<HostTensor<T>> {
-        unimplemented!("Please enable 'blas' feature");
+        Err(Error::UnimplementedOperator(format!(
+            "Please enable 'blas' feature"
+        )))
     }
 }
 

@@ -10,8 +10,6 @@ use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray::Slice;
-#[cfg(feature = "blas")]
-use ndarray_linalg::{Inverse, Scalar};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
