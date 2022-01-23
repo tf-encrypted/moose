@@ -784,6 +784,20 @@ impl HostSqrtOp {
     }
 }
 
+// TODO(Morten) inline
+impl<T: LinalgScalar> HostTensor<T> {
+    fn sum(self, axis: Option<usize>) -> Result<Self> {
+        if let Some(i) = axis {
+            Ok(HostTensor::<T>(self.0.sum_axis(Axis(i)), self.1))
+        } else {
+            let out = Array::from_elem([], self.0.sum())
+                .into_dimensionality::<IxDyn>()
+                .map_err(|e| Error::KernelError(e.to_string()))?;
+            Ok(HostTensor::<T>(out, self.1))
+        }
+    }
+}
+
 impl HostSumOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
@@ -840,6 +854,16 @@ impl AddNOp {
     }
 }
 
+// TODO(Morten) inline
+impl<T: LinalgScalar> HostTensor<T> {
+    fn expand_dims(self, mut axis: Vec<usize>) -> Self {
+        let plc = (&self.1).clone();
+        axis.sort_by_key(|ax| Reverse(*ax));
+        let newshape = self.shape().0.extend_singletons(axis);
+        self.reshape(HostShape(newshape, plc))
+    }
+}
+
 impl ExpandDimsOp {
     pub(crate) fn host_int_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
@@ -869,6 +893,15 @@ impl ExpandDimsOp {
     ) -> Result<HostRingTensor<T>> {
         let axis = axis.iter().map(|a| *a as usize).collect();
         Ok(plc.place(sess, x.expand_dims(axis)))
+    }
+}
+
+// TODO(Morten) inline
+impl<T: LinalgScalar> HostTensor<T> {
+    fn squeeze(self, axis: Option<usize>) -> Self {
+        let plc = (&self.1).clone();
+        let newshape = self.shape().0.squeeze(axis);
+        self.reshape(HostShape(newshape, plc))
     }
 }
 
@@ -932,6 +965,30 @@ impl HostTransposeOp {
     ) -> Result<HostTensor<T>> {
         let raw_tensor = x.0.reversed_axes();
         Ok(HostTensor(raw_tensor, plc.clone()))
+    }
+}
+
+// TODO(Morten) inline
+#[cfg(feature = "blas")]
+impl<T: Scalar + Lapack> HostTensor<T> {
+    fn inv(self) -> Self {
+        match self.0.ndim() {
+            2 => {
+                let two_dim: Array2<T> = self.0.into_dimensionality::<Ix2>().unwrap();
+                HostTensor::<T>(
+                    two_dim
+                        .inv()
+                        .unwrap()
+                        .into_dimensionality::<IxDyn>()
+                        .unwrap(),
+                    self.1,
+                )
+            }
+            other_rank => panic!(
+                "Inverse only defined for rank 2 matrices, not rank {:?}",
+                other_rank,
+            ),
+        }
     }
 }
 

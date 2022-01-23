@@ -11,7 +11,7 @@ use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray::Slice;
 #[cfg(feature = "blas")]
-use ndarray_linalg::{Inverse, Lapack, Scalar};
+use ndarray_linalg::{Inverse, Scalar};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
@@ -35,6 +35,15 @@ impl From<&str> for HostPlacement {
     fn from(role: &str) -> Self {
         HostPlacement {
             owner: Role::from(role),
+        }
+    }
+}
+
+impl<S: Session> PlacementPlace<S, Unit> for HostPlacement {
+    fn place(&self, _sess: &S, x: Unit) -> Unit {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => Unit(self.clone()),
         }
     }
 }
@@ -172,15 +181,7 @@ impl<S: Session, T> PlacementPlace<S, HostTensor<T>> for HostPlacement {
     }
 }
 
-impl<S: Session> PlacementPlace<S, Unit> for HostPlacement {
-    fn place(&self, _sess: &S, x: Unit) -> Unit {
-        match x.placement() {
-            Ok(place) if &place == self => x,
-            _ => Unit(self.clone()),
-        }
-    }
-}
-
+// TODO(Morten) visibility
 impl<T> HostTensor<T>
 where
     T: LinalgScalar,
@@ -193,58 +194,8 @@ where
         HostTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
     }
 
-    fn expand_dims(self, mut axis: Vec<usize>) -> Self {
-        let plc = (&self.1).clone();
-        axis.sort_by_key(|ax| Reverse(*ax));
-        let newshape = self.shape().0.extend_singletons(axis);
-        self.reshape(HostShape(newshape, plc))
-    }
-
-    fn squeeze(self, axis: Option<usize>) -> Self {
-        let plc = (&self.1).clone();
-        let newshape = self.shape().0.squeeze(axis);
-        self.reshape(HostShape(newshape, plc))
-    }
-
     pub fn shape(&self) -> HostShape {
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
-    }
-
-    fn sum(self, axis: Option<usize>) -> Result<Self> {
-        if let Some(i) = axis {
-            Ok(HostTensor::<T>(self.0.sum_axis(Axis(i)), self.1))
-        } else {
-            let out = Array::from_elem([], self.0.sum())
-                .into_dimensionality::<IxDyn>()
-                .map_err(|e| Error::KernelError(e.to_string()))?;
-            Ok(HostTensor::<T>(out, self.1))
-        }
-    }
-}
-
-#[cfg(feature = "blas")]
-impl<T> HostTensor<T>
-where
-    T: Scalar + Lapack,
-{
-    fn inv(self) -> Self {
-        match self.0.ndim() {
-            2 => {
-                let two_dim: Array2<T> = self.0.into_dimensionality::<Ix2>().unwrap();
-                HostTensor::<T>(
-                    two_dim
-                        .inv()
-                        .unwrap()
-                        .into_dimensionality::<IxDyn>()
-                        .unwrap(),
-                    self.1,
-                )
-            }
-            other_rank => panic!(
-                "Inverse only defined for rank 2 matrices, not rank {:?}",
-                other_rank,
-            ),
-        }
     }
 }
 
@@ -785,18 +736,6 @@ impl From<ArrayD<i64>> for HostRingTensor<u64> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u64));
         HostRingTensor(
             ring_rep,
-            HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
-            },
-        )
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> HostRingTensor<T> {
-    fn new(a: ArrayD<Wrapping<T>>) -> HostRingTensor<T> {
-        HostRingTensor(
-            a,
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
             },
