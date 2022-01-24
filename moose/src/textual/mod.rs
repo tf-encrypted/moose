@@ -214,103 +214,30 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, op_name) = ws(alpha1)(input)?;
-    match op_name {
-        "Identity" => IdentityOp::from_textual(input),
-        "Load" => LoadOp::from_textual(input),
-        "Send" => SendOp::from_textual(input),
-        "Receive" => ReceiveOp::from_textual(input),
-        "Input" => InputOp::from_textual(input),
-        "Output" => OutputOp::from_textual(input),
-        "Constant" => ConstantOp::from_textual(input),
-        "Shape" => ShapeOp::from_textual(input),
-        "RingFill" => RingFillOp::from_textual(input),
-        "Save" => SaveOp::from_textual(input),
-        "HostAdd" => HostAddOp::from_textual(input),
-        "HostSub" => HostSubOp::from_textual(input),
-        "HostMul" => HostMulOp::from_textual(input),
-        "HostDiv" => HostDivOp::from_textual(input),
-        "HostDot" => HostDotOp::from_textual(input),
-        "HostMean" => HostMeanOp::from_textual(input),
-        "HostReshape" => HostReshapeOp::from_textual(input),
-        "HostAtLeast2D" => HostAtLeast2DOp::from_textual(input),
-        "HostSlice" => HostSliceOp::from_textual(input),
-        "HostSum" => HostSumOp::from_textual(input),
-        "HostOnes" => HostOnesOp::from_textual(input),
-        "Concat" => ConcatOp::from_textual(input),
-        "HostTranspose" => HostTransposeOp::from_textual(input),
-        "HostInverse" => HostInverseOp::from_textual(input),
-        "RingAdd" => RingAddOp::from_textual(input),
-        "RingSub" => RingSubOp::from_textual(input),
-        "RingMul" => RingMulOp::from_textual(input),
-        "RingDot" => RingDotOp::from_textual(input),
-        "RingSum" => RingSumOp::from_textual(input),
-        "RingSampleSeeded" => RingSampleSeededOp::from_textual(input),
-        "RingSample" => RingSampleOp::from_textual(input),
-        "RingShl" => RingShlOp::from_textual(input),
-        "RingShr" => RingShrOp::from_textual(input),
-        "PrimPrfKeyGen" => PrimPrfKeyGenOp::from_textual(input),
-        "RingFixedpointEncode" => RingFixedpointEncodeOp::from_textual(input),
-        "RingFixedpointDecode" => RingFixedpointDecodeOp::from_textual(input),
-        "RingFixedpointMean" => RingFixedpointMeanOp::from_textual(input),
-        "FixedpointEncode" => FixedpointEncodeOp::from_textual(input),
-        "FixedpointDecode" => FixedpointDecodeOp::from_textual(input),
-        "RingInject" => RingInjectOp::from_textual(input),
-        "BitExtract" => BitExtractOp::from_textual(input),
-        "BitSampleSeeded" => BitSampleSeededOp::from_textual(input),
-        "BitSample" => BitSampleOp::from_textual(input),
-        "BitXor" => BitXorOp::from_textual(input),
-        "BitAnd" => BitAndOp::from_textual(input),
-        "HostSqrt" => HostSqrtOp::from_textual(input),
-        "HostDiag" => HostDiagOp::from_textual(input),
-        "HostSqueeze" => HostSqueezeOp::from_textual(input),
-        "AddN" => AddNOp::from_textual(input),
-        "Add" => AddOp::from_textual(input),
-        "Sub" => SubOp::from_textual(input),
-        "Mul" => MulOp::from_textual(input),
-        "Div" => DivOp::from_textual(input),
-        "Dot" => DotOp::from_textual(input),
-        "Mean" => MeanOp::from_textual(input),
-        "RingNeg" => RingNegOp::from_textual(input),
-        "HostShlDim" => HostShlDimOp::from_textual(input),
-        "HostBitDec" => HostBitDecOp::from_textual(input),
-        "Fill" => FillOp::from_textual(input),
-        "IndexAxis" => IndexAxisOp::from_textual(input),
-        "Demirror" => DemirrorOp::from_textual(input),
-        "Mirror" => MirrorOp::from_textual(input),
-        "Maximum" => MaximumOp::from_textual(input),
-        "BitNeg" => BitNegOp::from_textual(input),
-        "BitOr" => BitOrOp::from_textual(input),
-        "Pow2" => Pow2Op::from_textual(input),
-        "Exp" => ExpOp::from_textual(input),
-        "Less" => LessOp::from_textual(input),
-        "GreaterThan" => GreaterThanOp::from_textual(input),
-        "ExpandDims" => expanddims(input),
-        "PrimDeriveSeed" => prim_derive_seed(input),
-        _ => Err(Error(make_error(input, ErrorKind::Tag))),
+    Operator::get_from_textual(op_name)(input)
+}
+
+impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E> for ExpandDimsOp {
+    fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
+        let (input, axis) = attributes_single("axis", vector(parse_int))(input)?;
+        let (input, sig) = operator_signature(1)(input)?;
+        Ok((input, ExpandDimsOp { sig, axis }.into()))
     }
 }
 
-/// Parses a ExpandDims operator
-fn expanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, axis) = attributes_single("axis", vector(parse_int))(input)?;
-    let (input, sig) = operator_signature(1)(input)?;
-    Ok((input, ExpandDimsOp { sig, axis }.into()))
-}
-
-/// Parses a PrimDeriveSeed operator.
-fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, sync_key) =
-        attributes_single("sync_key", map_res(vector(parse_int), SyncKey::try_from))(input)
-            .map_err(|_: nom::Err<nom::error::Error<&str>>| {
-                Error(make_error(input, ErrorKind::MapRes))
-            })?;
-    let (input, opt_sig) = opt(operator_signature(0))(input)?;
-    let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
-    Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
+impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
+    for PrimDeriveSeedOp
+{
+    fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
+        let (input, sync_key) =
+            attributes_single("sync_key", map_res(vector(parse_int), SyncKey::try_from))(input)
+                .map_err(|_: nom::Err<nom::error::Error<&str>>| {
+                    Error(make_error(input, ErrorKind::MapRes))
+                })?;
+        let (input, opt_sig) = opt(operator_signature(0))(input)?;
+        let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
+        Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
+    }
 }
 
 /// Parses list of arguments.
