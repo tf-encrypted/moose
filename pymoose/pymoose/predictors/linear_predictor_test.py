@@ -25,10 +25,10 @@ _SK_REGRESSION_MODELS = [
     ("lasso_cv", [228.68959623, 52.25189918]),
     ("lasso_lars_ic", [229.15556878, 52.25108639]),
     ("linear_regression", [229.15556878, 52.25108639]),
-    ("linear_regression_2targets", [
-        [286.51203231, 263.60647448],
-        [-4.26446802, 49.64789211],
-    ]),
+    (
+        "linear_regression_2targets",
+        [[286.51203231, 263.60647448], [-4.26446802, 49.64789211],],
+    ),
     ("orthogonal_matching_pursuit", [107.84179564, -29.4706721]),
     ("orthogonal_matching_pursuit_cv", [229.15556878, 52.25108639]),
     ("passive_aggressive_regressor", [236.36241952, 56.54396034]),
