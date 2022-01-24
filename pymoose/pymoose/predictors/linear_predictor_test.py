@@ -78,7 +78,6 @@ class LinearPredictorTest(parameterized.TestCase):
 
     @parameterized.parameters(*_SK_REGRESSION_MODELS)
     def test_regression_logic(self, model_name, expected):
-        print("Model name:", model_name)
         regressor, regressor_logic = self._build_prediction_logic(
             model_name, linear_predictor.LinearRegressor
         )
