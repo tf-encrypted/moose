@@ -962,10 +962,10 @@ macro_rules! operators {
             }
 
             pub fn get_from_textual<'a, E: 'a + nom::error::ParseError<&'a str> + nom::error::ContextError<&'a str>>(name: &'a str) -> impl FnMut(&'a str) -> std::result::Result<(&str, Operator), nom::Err<E>> {
-                use crate::textual::FromTextual;
+                use crate::textual::{FromTextual, parse_operator_error};
                 match name {
                     $(paste! {[<$t Op>]::SHORT_NAME} => paste! {[<$t Op>]::from_textual},)+
-                    _ => unimplemented!("TODO"),
+                    _ => parse_operator_error,
                 }
             }
         }

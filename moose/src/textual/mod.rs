@@ -209,11 +209,20 @@ pub trait FromTextual<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> {
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E>;
 }
 
+/// A specific helper function to be called from the computation when failing to parse an operator.
+///
+/// Defined here instead of a lambda to avoid leaking too much textual internals into the computation.
+pub fn parse_operator_error<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    Err(Error(make_error(input, ErrorKind::Tag)))
+}
+
 /// Parses operator - maps names to structs.
 fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, op_name) = ws(alpha1)(input)?;
+    let (input, op_name) = ws(alphanumeric1)(input)?;
     Operator::get_from_textual(op_name)(input)
 }
 
