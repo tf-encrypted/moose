@@ -197,6 +197,7 @@ where
     }
 }
 
+// TODO(Morten) remove but used by textual
 // This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<ArrayD<T>> for HostTensor<T>
@@ -213,102 +214,13 @@ where
     }
 }
 
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Add for HostTensor<T>
-where
-    T: LinalgScalar,
-{
-    type Output = HostTensor<T>;
-    fn add(self, other: HostTensor<T>) -> Self::Output {
-        match self.0.broadcast(other.0.dim()) {
-            Some(self_broadcasted) => {
-                HostTensor::<T>(self_broadcasted.to_owned() + other.0, self.1.clone())
-            }
-            None => HostTensor::<T>(self.0 + other.0, self.1.clone()),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Sub for HostTensor<T>
-where
-    T: LinalgScalar,
-{
-    type Output = HostTensor<T>;
-    fn sub(self, other: HostTensor<T>) -> Self::Output {
-        match self.0.broadcast(other.0.dim()) {
-            Some(self_broadcasted) => {
-                HostTensor::<T>(self_broadcasted.to_owned() - other.0, self.1.clone())
-            }
-            None => HostTensor::<T>(self.0 - other.0, self.1.clone()),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Mul for HostTensor<T>
-where
-    T: LinalgScalar,
-{
-    type Output = HostTensor<T>;
-    fn mul(self, other: HostTensor<T>) -> Self::Output {
-        match self.0.broadcast(other.0.dim()) {
-            Some(self_broadcasted) => {
-                HostTensor::<T>(self_broadcasted.to_owned() * other.0, self.1.clone())
-            }
-            None => HostTensor::<T>(self.0 * other.0, self.1.clone()),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Div for HostTensor<T>
-where
-    T: LinalgScalar,
-{
-    type Output = HostTensor<T>;
-    fn div(self, other: HostTensor<T>) -> Self::Output {
-        match self.0.broadcast(other.0.dim()) {
-            Some(self_broadcasted) => {
-                HostTensor::<T>(self_broadcasted.to_owned() / other.0, self.1.clone())
-            }
-            None => HostTensor::<T>(self.0 / other.0, self.1.clone()),
-        }
-    }
-}
-
+// TODO(Morten) used by textual
 // This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<Vec<T>> for HostTensor<T> {
     fn from(v: Vec<T>) -> HostTensor<T> {
         HostTensor(
             Array::from(v).into_dyn(),
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernel
-            },
-        )
-    }
-}
-
-// This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<Array1<T>> for HostTensor<T> {
-    fn from(v: Array1<T>) -> HostTensor<T> {
-        HostTensor(
-            v.into_dyn(),
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernel
-            },
-        )
-    }
-}
-
-// This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<Array2<T>> for HostTensor<T> {
-    fn from(v: Array2<T>) -> HostTensor<T> {
-        HostTensor(
-            v.into_dyn(),
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the old kernel
             },
@@ -390,16 +302,9 @@ impl HostBitTensor {
         let data = slice.to_vec();
         Self::from_vec_plc(data, plc)
     }
-
-    pub(crate) fn from_array_plc<const N: usize>(
-        array: [u8; N],
-        plc: HostPlacement,
-    ) -> HostBitTensor {
-        let data = array.to_vec();
-        Self::from_vec_plc(data, plc)
-    }
 }
 
+// TODO(Morten) remove but currently used by textual
 // This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
 impl From<ArrayD<u8>> for HostBitTensor {
@@ -414,6 +319,7 @@ impl From<ArrayD<u8>> for HostBitTensor {
     }
 }
 
+// TODO(Morten) remove but currently used by textual
 // This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
 impl From<Vec<u8>> for HostBitTensor {
@@ -425,43 +331,6 @@ impl From<Vec<u8>> for HostBitTensor {
                 owner: "TODO".into(), // Fake owner for the older kernels.
             },
         )
-    }
-}
-
-// This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl From<&[u8]> for HostBitTensor {
-    fn from(v: &[u8]) -> HostBitTensor {
-        let ix = IxDyn(&[v.len()]);
-        let v_wrapped: Vec<_> = v.iter().map(|vi| *vi & 1).collect();
-        HostBitTensor(
-            Array::from_shape_vec(ix, v_wrapped).unwrap(),
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
-            },
-        )
-    }
-}
-
-impl From<HostBitTensor> for ArrayD<u8> {
-    fn from(b: HostBitTensor) -> ArrayD<u8> {
-        b.0
-    }
-}
-
-impl std::ops::BitXor for HostBitTensor {
-    type Output = HostBitTensor;
-    fn bitxor(self, other: Self) -> Self::Output {
-        assert_eq!(self.1, other.1);
-        HostBitTensor(self.0 ^ other.0, self.1)
-    }
-}
-
-impl std::ops::BitAnd for HostBitTensor {
-    type Output = HostBitTensor;
-    fn bitand(self, other: Self) -> Self::Output {
-        assert_eq!(self.1, other.1);
-        HostBitTensor(self.0 & other.0, self.1)
     }
 }
 

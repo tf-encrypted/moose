@@ -302,7 +302,7 @@ impl RingFixedpointMeanOp {
 
 impl HostAddOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
         y: HostTensor<T>,
@@ -310,13 +310,13 @@ impl HostAddOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        Ok(plc.place(sess, x + y))
+        Ok(HostTensor(x.0 + y.0, plc.clone()))
     }
 }
 
 impl HostSubOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
         y: HostTensor<T>,
@@ -324,13 +324,13 @@ impl HostSubOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        Ok(plc.place(sess, x - y))
+        Ok(HostTensor(x.0 - y.0, plc.clone()))
     }
 }
 
 impl HostMulOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
         y: HostTensor<T>,
@@ -338,13 +338,13 @@ impl HostMulOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        Ok(plc.place(sess, x * y))
+        Ok(HostTensor(x.0 * y.0, plc.clone()))
     }
 }
 
 impl HostDivOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
         y: HostTensor<T>,
@@ -352,7 +352,10 @@ impl HostDivOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        Ok(plc.place(sess, x / y))
+        match x.0.broadcast(y.0.dim()) {
+            Some(x_broadcasted) => Ok(HostTensor::<T>(x_broadcasted.to_owned() / y.0, plc.clone())),
+            None => Ok(HostTensor::<T>(x.0 / y.0, plc.clone())),
+        }
     }
 
     pub(crate) fn ring_kernel<S: RuntimeSession, T>(
