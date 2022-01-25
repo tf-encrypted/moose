@@ -123,7 +123,10 @@ class LinearPredictorTest(parameterized.TestCase):
         np.testing.assert_almost_equal(actual_result, expected_result, decimal=2)
 
     @parameterized.parameters(
-        *zip(_SK_REGRESSION_MODELS, itertools.repeat(linear_predictor.LinearRegressor)),
+        *zip(
+            map(lambda x: x[0], _SK_REGRESSION_MODELS),
+            itertools.repeat(linear_predictor.LinearRegressor),
+        ),
         *zip(
             map(lambda x: x[0], _SK_CLASSIFIER_MODELS),
             itertools.repeat(linear_predictor.LinearClassifier),
