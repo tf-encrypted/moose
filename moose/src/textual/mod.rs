@@ -1295,31 +1295,57 @@ impl ToTextual for Value {
 impl ToTextual for Constant {
     fn to_textual(&self) -> String {
         match self {
-            Constant::HostInt8Tensor(x) => format!("Int8Tensor({})", x.0.to_textual()),
-            Constant::HostInt16Tensor(x) => format!("Int16Tensor({})", x.0.to_textual()),
-            Constant::HostInt32Tensor(x) => format!("Int32Tensor({})", x.0.to_textual()),
-            Constant::HostInt64Tensor(x) => format!("Int64Tensor({})", x.0.to_textual()),
-            Constant::HostUint8Tensor(x) => format!("Uint8Tensor({})", x.0.to_textual()),
-            Constant::HostUint16Tensor(x) => format!("Uint16Tensor({})", x.0.to_textual()),
-            Constant::HostUint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
-            Constant::HostUint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
-            Constant::HostFloat32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
-            Constant::HostFloat64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
-            Constant::HostRing64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
-            Constant::HostRing128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
-            Constant::Float32(x) => format!("Float32({})", x),
-            Constant::Float64(x) => format!("Float64({})", x),
-            Constant::String(x) => format!("String({})", x.to_textual()),
-            Constant::Ring64(x) => format!("Ring64({})", x),
-            Constant::Ring128(x) => format!("Ring128({})", x),
+            Constant::HostInt8Tensor(x) => {
+                format!("{}({})", self.ty().short_name(), x.0.to_textual())
+            }
+            Constant::HostInt16Tensor(x) => {
+                format!("{}({})", self.ty().short_name(), x.0.to_textual())
+            }
+            Constant::HostInt32Tensor(x) => {
+                format!("{}({})", self.ty().short_name(), x.0.to_textual())
+            }
+            Constant::HostInt64Tensor(x) => {
+                format!("{}({})", self.ty().short_name(), x.0.to_textual())
+            }
+            Constant::HostUint8Tensor(x) => {
+                format!("{}({})", self.ty().short_name(), x.0.to_textual())
+            }
+            Constant::HostUint16Tensor(x) => {
+                format!("{}({})", self.ty().short_name(), x.0.to_textual())
+            }
+            Constant::HostUint32Tensor(x) => {
+                format!("{}({})", self.ty().short_name(), x.0.to_textual())
+            }
+            Constant::HostUint64Tensor(x) => {
+                format!("{}({})", self.ty().short_name(), x.0.to_textual())
+            }
+            Constant::HostFloat32Tensor(x) => {
+                format!("{}({})", self.ty().short_name(), x.0.to_textual())
+            }
+            Constant::HostFloat64Tensor(x) => {
+                format!("{}({})", self.ty().short_name(), x.0.to_textual())
+            }
+            Constant::HostRing64Tensor(x) => {
+                format!("{}({})", self.ty().short_name(), x.0.to_textual())
+            }
+            Constant::HostRing128Tensor(x) => {
+                format!("{}({})", self.ty().short_name(), x.0.to_textual())
+            }
+            Constant::Float32(x) => format!("{}({})", self.ty().short_name(), x),
+            Constant::Float64(x) => format!("{}({})", self.ty().short_name(), x),
+            Constant::String(x) => format!("{}({})", self.ty().short_name(), x.to_textual()),
+            Constant::Ring64(x) => format!("{}({})", self.ty().short_name(), x),
+            Constant::Ring128(x) => format!("{}({})", self.ty().short_name(), x),
             Constant::Fixed(FixedpointConstant { value, precision }) => {
-                format!("Fixed({}, {})", value, precision)
+                format!("{}({}, {})", self.ty().short_name(), value, precision)
             }
             Constant::RawShape(RawShape(x)) => format!("Shape({:?})", x),
             Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
-            Constant::Bit(x) => format!("Bit({})", x),
-            Constant::HostBitTensor(x) => format!("HostBitTensor({})", x.0.to_textual()),
+            Constant::Bit(x) => format!("{}({})", self.ty().short_name(), x),
+            Constant::HostBitTensor(x) => {
+                format!("{}({})", self.ty().short_name(), x.0.to_textual())
+            }
         }
     }
 }
