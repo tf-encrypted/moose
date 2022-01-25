@@ -2,7 +2,7 @@
 
 use crate::additive::AdditivePlacement;
 use crate::computation::*;
-use crate::host::{HostPlacement, FromRaw, RawPrfKey, RawSeed, RawShape, SliceInfo, SliceInfoElem, SyncKey};
+use crate::host::{HostPlacement, RawPrfKey, RawSeed, RawShape, SliceInfo, SliceInfoElem, SyncKey};
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
@@ -1626,6 +1626,7 @@ impl ToTextual for [u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::host::FromRaw;
     use rstest::rstest;
     use std::convert::TryInto;
 

@@ -578,6 +578,7 @@ impl<T> HostRingTensor<T> {
     }
 }
 
+// TODO(Morten) remove, used by textual
 // This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<ArrayD<T>> for HostRingTensor<T>
@@ -607,6 +608,7 @@ impl From<&HostRingTensor<u128>> for ArrayD<i128> {
     }
 }
 
+// TODO(Morten) remove, used by textual
 // This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<Vec<T>> for HostRingTensor<T> {
@@ -620,18 +622,6 @@ impl<T> From<Vec<T>> for HostRingTensor<T> {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
             },
         )
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Shl<usize> for HostRingTensor<T>
-where
-    Wrapping<T>: Clone,
-    Wrapping<T>: std::ops::Shl<usize, Output = Wrapping<T>>,
-{
-    type Output = HostRingTensor<T>;
-    fn shl(self, other: usize) -> Self::Output {
-        HostRingTensor(self.0 << other, self.1)
     }
 }
 
