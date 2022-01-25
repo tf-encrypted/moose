@@ -85,44 +85,27 @@ mod tests {
     fn fixedpoint_mean_with_axis() {
         let plc = HostPlacement::from("alice");
 
-        let x_backing = HostFloat64Tensor::from_raw_plc(
-            array![[1., 2.], [3., 4.]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            plc.clone(),
-        );
+        let x: HostFloat64Tensor = plc.from_raw(array![[1., 2.], [3., 4.]]);
         let encoding_factor = 2u64.pow(16);
         let decoding_factor = 2u64.pow(32);
-        let x = HostRing64Tensor::encode(&x_backing, encoding_factor);
-        let out = HostRing64Tensor::fixedpoint_mean(x, Some(0), encoding_factor).unwrap();
-        let dec = HostRing64Tensor::decode(&out, decoding_factor);
-        assert_eq!(
-            dec,
-            HostFloat64Tensor::from_raw_plc(
-                array![2., 3.].into_dimensionality::<IxDyn>().unwrap(),
-                plc
-            )
-        );
+        let x_encoded = HostRing64Tensor::encode(&x, encoding_factor);
+        let mean_encoded =
+            HostRing64Tensor::fixedpoint_mean(x_encoded, Some(0), encoding_factor).unwrap();
+        let mean = HostRing64Tensor::decode(&mean_encoded, decoding_factor);
+        assert_eq!(mean, plc.from_raw(array![2., 3.]));
     }
 
     #[test]
     fn fixedpoint_mean_no_axis() {
         let plc = HostPlacement::from("alice");
 
-        let x_backing = HostFloat64Tensor::from_raw_plc(
-            array![[1., 2.], [3., 4.]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            plc.clone(),
-        );
+        let x: HostFloat64Tensor = plc.from_raw(array![[1., 2.], [3., 4.]]);
         let encoding_factor = 2u64.pow(16);
         let decoding_factor = 2u64.pow(32);
-        let x = HostRing64Tensor::encode(&x_backing, encoding_factor);
-        let out = HostRing64Tensor::fixedpoint_mean(x, None, encoding_factor).unwrap();
-        let dec = HostRing64Tensor::decode(&out, decoding_factor);
-        assert_eq!(
-            dec.0.into_shape((1,)).unwrap(),
-            array![2.5].into_shape((1,)).unwrap()
-        );
+        let x_encoded = HostRing64Tensor::encode(&x, encoding_factor);
+        let mean_encoded =
+            HostRing64Tensor::fixedpoint_mean(x_encoded, None, encoding_factor).unwrap();
+        let mean = HostRing64Tensor::decode(&mean_encoded, decoding_factor);
+        assert_eq!(mean, plc.from_raw(Array::from_elem([], 2.5)));
     }
 }
