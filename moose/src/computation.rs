@@ -316,6 +316,18 @@ impl From<FixedpointConstant> for Constant {
     }
 }
 
+macro_rules! anything_to_underscore {
+    ($($_:tt)*) => {
+        _
+    };
+}
+// TODO: This should not be needed as soon as we find a format for the Tensor and its DType.
+macro_rules! anything_to_float64 {
+    ($($_:tt)*) => {
+        TensorDType::Float64
+    };
+}
+
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
 macro_rules! values {
@@ -332,6 +344,37 @@ macro_rules! values {
             Ring64,
             Ring128,
             Fixed,
+        }
+
+        impl Ty {
+            pub fn from_name(name: &str) -> Option<Self> {
+                match name {
+                    "Unknown" => Some(Ty::Unknown),
+                    $(stringify!($val) => Some(Ty::$val$((anything_to_float64!{$inner}))?),)+
+                    "Bit" => Some(Ty::Bit),
+                    "Float32" => Some(Ty::Float32),
+                    "Float64" => Some(Ty::Float64),
+                    "Ring64" => Some(Ty::Ring64),
+                    "Ring128" => Some(Ty::Ring128),
+                    "Fixed" => Some(Ty::Fixed),
+                    _ => None,
+                }
+            }
+        }
+
+        impl HasShortName for Ty {
+            fn short_name(&self) -> &str {
+                match self {
+                    Ty::Unknown => "Unknown",
+                    $(Ty::$val$((anything_to_underscore!{$inner}))? => stringify!($val),)+ // TODO: Should we output `inner` in any form?
+                    Ty::Bit => "Bit",
+                    Ty::Float32 => "Float32",
+                    Ty::Float64 => "Float64",
+                    Ty::Ring64 => "Ring64",
+                    Ty::Ring128 => "Ring128",
+                    Ty::Fixed => "Fixed",
+                }
+            }
         }
 
         #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

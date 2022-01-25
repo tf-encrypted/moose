@@ -3,7 +3,6 @@
 use crate::additive::AdditivePlacement;
 use crate::computation::*;
 use crate::host::{RawPrfKey, RawSeed, RawShape, SliceInfo, SliceInfoElem, SyncKey};
-use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
 use crate::types::*;
@@ -373,48 +372,9 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Ty, E> {
     let (i, type_name) = alphanumeric1(input)?;
-    match type_name {
-        "Unknown" => Ok((i, Ty::Unknown)),
-        "Shape" => Ok((i, Ty::HostShape)),
-        "Seed" => Ok((i, Ty::Seed)),
-        "PrfKey" => Ok((i, Ty::PrfKey)),
-        "String" => Ok((i, Ty::HostString)),
-        "BitTensor" => Ok((i, Ty::HostBitTensor)),
-        "BitArray64" => Ok((i, Ty::HostBitArray64)),
-        "BitArray128" => Ok((i, Ty::HostBitArray128)),
-        "BitArray256" => Ok((i, Ty::HostBitArray256)),
-        "Ring64Tensor" => Ok((i, Ty::HostRing64Tensor)),
-        "Ring128Tensor" => Ok((i, Ty::HostRing128Tensor)),
-        "Float32Tensor" => Ok((i, Ty::HostFloat32Tensor)),
-        "Float64Tensor" => Ok((i, Ty::HostFloat64Tensor)),
-        "Int8Tensor" => Ok((i, Ty::HostInt8Tensor)),
-        "Int16Tensor" => Ok((i, Ty::HostInt16Tensor)),
-        "Int32Tensor" => Ok((i, Ty::HostInt32Tensor)),
-        "Int64Tensor" => Ok((i, Ty::HostInt64Tensor)),
-        "Uint8Tensor" => Ok((i, Ty::HostUint8Tensor)),
-        "Uint16Tensor" => Ok((i, Ty::HostUint16Tensor)),
-        "Uint32Tensor" => Ok((i, Ty::HostUint32Tensor)),
-        "Uint64Tensor" => Ok((i, Ty::HostUint64Tensor)),
-        "HostFixed64Tensor" => Ok((i, Ty::HostFixed64Tensor)),
-        "HostFixed128Tensor" => Ok((i, Ty::HostFixed128Tensor)),
-        "Replicated64Tensor" => Ok((i, Ty::ReplicatedRing64Tensor)),
-        "Replicated128Tensor" => Ok((i, Ty::ReplicatedRing128Tensor)),
-        "ReplicatedBitTensor" => Ok((i, Ty::ReplicatedBitTensor)),
-        "ReplicatedSetup" => Ok((i, Ty::ReplicatedSetup)),
-        "Additive64Tensor" => Ok((i, Ty::AdditiveRing64Tensor)),
-        "Additive128Tensor" => Ok((i, Ty::AdditiveRing128Tensor)),
-        "ReplicatedShape" => Ok((i, Ty::ReplicatedShape)),
-        "AdditiveBitTensor" => Ok((i, Ty::AdditiveBitTensor)),
-        "AdditiveShape" => Ok((i, Ty::AdditiveShape)),
-        "Fixed64Tensor" => Ok((i, Ty::Fixed64Tensor)),
-        "Fixed128Tensor" => Ok((i, Ty::Fixed128Tensor)),
-        "BooleanTensor" => Ok((i, Ty::BooleanTensor)),
-        "Unit" => Ok((i, Ty::Unit)),
-        "Float32" => Ok((i, Ty::Float32)),
-        "Float64" => Ok((i, Ty::Float64)),
-        "Ring64" => Ok((i, Ty::Ring64)),
-        "Ring128" => Ok((i, Ty::Ring128)),
-        "Tensor" => Ok((i, Ty::Tensor(TensorDType::Float64))), // TODO: Find the way to represent inner in the textual
+    let result = Ty::from_name(type_name);
+    match result {
+        Some(ty) => Ok((i, ty)),
         _ => Err(Error(make_error(input, ErrorKind::Tag))),
     }
 }
@@ -1234,72 +1194,7 @@ impl ToTextual for RingSampleSeededOp {
 
 impl ToTextual for Ty {
     fn to_textual(&self) -> String {
-        match self {
-            Ty::Unit => "Unit".to_string(),
-            Ty::HostString => "String".to_string(),
-            Ty::Float32 => "Float32".to_string(),
-            Ty::Float64 => "Float64".to_string(),
-            Ty::Ring64 => "Ring64".to_string(),
-            Ty::Ring128 => "Ring128".to_string(),
-            Ty::Fixed => "Fixed".to_string(),
-            Ty::Tensor(i) => format!("Tensor({})", i), // TODO (lvorona) Come up with a textual format here
-            Ty::HostRing64Tensor => "Ring64Tensor".to_string(),
-            Ty::HostRing128Tensor => "Ring128Tensor".to_string(),
-            Ty::Bit => "Bit".to_string(),
-            Ty::HostBitTensor => "BitTensor".to_string(),
-            Ty::HostBitArray64 => "BitArray64".to_string(),
-            Ty::HostBitArray128 => "BitArray128".to_string(),
-            Ty::HostBitArray224 => "BitArray224".to_string(),
-            Ty::HostBitArray256 => "BitArray256".to_string(),
-            Ty::HostShape => "Shape".to_string(),
-            Ty::Seed => "Seed".to_string(),
-            Ty::PrfKey => "PrfKey".to_string(),
-            Ty::HostFloat32Tensor => "Float32Tensor".to_string(),
-            Ty::HostFloat64Tensor => "Float64Tensor".to_string(),
-            Ty::HostInt8Tensor => "Int8Tensor".to_string(),
-            Ty::HostInt16Tensor => "Int16Tensor".to_string(),
-            Ty::HostInt32Tensor => "Int32Tensor".to_string(),
-            Ty::HostInt64Tensor => "Int64Tensor".to_string(),
-            Ty::HostUint8Tensor => "Uint8Tensor".to_string(),
-            Ty::HostUint16Tensor => "Uint16Tensor".to_string(),
-            Ty::HostUint32Tensor => "Uint32Tensor".to_string(),
-            Ty::HostUint64Tensor => "Uint64Tensor".to_string(),
-            Ty::Unknown => "Unknown".to_string(),
-            Ty::HostFixed64Tensor => "HostFixed64Tensor".to_string(),
-            Ty::HostFixed128Tensor => "HostFixed128Tensor".to_string(),
-            Ty::ReplicatedRing64Tensor => "ReplicatedRing64Tensor".to_string(),
-            Ty::ReplicatedRing128Tensor => "ReplicatedRing128Tensor".to_string(),
-            Ty::ReplicatedFixed64Tensor => "ReplicatedFixed64Tensor".to_string(),
-            Ty::ReplicatedFixed128Tensor => "ReplicatedFixed128Tensor".to_string(),
-            Ty::ReplicatedBitTensor => "ReplicatedBitTensor".to_string(),
-            Ty::ReplicatedBitArray64 => "ReplicatedBitArray64".to_string(),
-            Ty::ReplicatedBitArray128 => "ReplicatedBitArray128".to_string(),
-            Ty::ReplicatedBitArray224 => "ReplicatedBitArray224".to_string(),
-            Ty::ReplicatedSetup => "ReplicatedSetup".to_string(),
-            Ty::ReplicatedShape => "ReplicatedShape".to_string(),
-            Ty::AdditiveBitTensor => "AdditiveBitTensor".to_string(),
-            Ty::AdditiveRing64Tensor => "Additive64Tensor".to_string(),
-            Ty::AdditiveRing128Tensor => "Additive128Tensor".to_string(),
-            Ty::AdditiveShape => "AdditiveShape".to_string(),
-            Ty::BooleanTensor => "BooleanTensor".to_string(),
-            Ty::Fixed64Tensor => "Fixed64Tensor".to_string(),
-            Ty::Fixed128Tensor => "Fixed128Tensor".to_string(),
-            Ty::Float32Tensor => "Float32Tensor".to_string(),
-            Ty::Float64Tensor => "Float64Tensor".to_string(),
-            Ty::Mirrored3Ring64Tensor => "Mirrored3Ring64Tensor".to_string(),
-            Ty::Mirrored3Ring128Tensor => "Mirrored3Ring128Tensor".to_string(),
-            Ty::Mirrored3BitTensor => "Mirrored3BitTensor".to_string(),
-            Ty::Mirrored3Float32 => "Mirrored3Float32".to_string(),
-            Ty::Mirrored3Float64 => "Mirrored3Float64".to_string(),
-            Ty::Mirrored3Fixed64Tensor => "Mirrored3Fixed64Tensor".to_string(),
-            Ty::Mirrored3Fixed128Tensor => "Mirrored3Fixed128Tensor".to_string(),
-            Ty::HostFixed128AesTensor => "HostFixed128AesTensor".to_string(),
-            Ty::HostAesKey => "HostAesKey".to_string(),
-            Ty::ReplicatedAesKey => "ReplicatedAesKey".to_string(),
-            Ty::Fixed128AesTensor => "Fixed128AesTensor".to_string(),
-            Ty::AesTensor => "AesTensor".to_string(),
-            Ty::AesKey => "AesKey".to_string(),
-        }
+        self.short_name().to_string()
     }
 }
 
@@ -1325,7 +1220,7 @@ impl ToTextual for Value {
             Value::HostRing64Tensor(x) => format_to_textual!("Ring64Tensor({}) {}", x.0, x.1),
             Value::HostRing128Tensor(x) => format_to_textual!("Ring128Tensor({}) {}", x.0, x.1),
             // TODO: Hosted floats for values
-            Value::Float32(x) => format!("Float32({}) @Host(TODO)", x),
+            Value::Float32(x) => format!("{}({}) @Host(TODO)", self.ty().short_name(), x),
             Value::Float64(x) => format!("Float64({}) @Host(TODO)", x),
             Value::Fixed(x) => format!("Fixed[{}]({})", x.precision, x.value),
             Value::HostString(x) => format_to_textual!("String({}) {}", x.0, x.1),
