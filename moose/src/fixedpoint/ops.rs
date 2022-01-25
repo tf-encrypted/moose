@@ -2199,7 +2199,6 @@ mod tests {
             test_host_dot128(a, b, target);
         }
 
-
         #[test]
         fn test_fuzzy_host_div64((a,b) in pairwise_bounded_same_length64(2 * 15))
         {
