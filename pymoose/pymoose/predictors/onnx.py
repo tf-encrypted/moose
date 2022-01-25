@@ -1,5 +1,3 @@
-from pyexpat import model
-
 from pymoose.predictors import linear_predictor
 from pymoose.predictors import tree_ensemble
 
@@ -32,17 +30,15 @@ def from_onnx(model_proto):
     else:
         raise ValueError(
             "Incompatible ONNX graph provided: graph must contain a LinearRegressor "
-            "or LinearClassifier or TreeEnsembleRegressor or TreeEnsembleClassifier node, "
-            f"found: {unrocognized_ops}"
+            "or LinearClassifier or TreeEnsembleRegressor or TreeEnsembleClassifier "
+            f"node, found: {unrocognized_ops}"
         )
 
     if model_type == "LinearRegressor":
-        model = linear_predictor.LinearRegressor.from_onnx(model_proto)
+        return linear_predictor.LinearRegressor.from_onnx(model_proto)
     elif model_type == "LinearClassifier":
-        model = linear_predictor.LinearClassifier.from_onnx(model_proto)
+        return linear_predictor.LinearClassifier.from_onnx(model_proto)
     elif model_type == "TreeEnsembleRegressor":
-        model = tree_ensemble.TreeEnsembleRegressor.from_onnx(model_proto)
+        return tree_ensemble.TreeEnsembleRegressor.from_onnx(model_proto)
     elif model_type == "TreeEnsembleClassifier":
-        model = tree_ensemble.TreeEnsembleClassifier.from_onnx(model_proto)
-
-    return model
+        return tree_ensemble.TreeEnsembleClassifier.from_onnx(model_proto)

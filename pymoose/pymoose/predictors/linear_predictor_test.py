@@ -27,7 +27,7 @@ _SK_REGRESSION_MODELS = [
     ("linear_regression", [229.15556878, 52.25108639]),
     (
         "linear_regression_2targets",
-        [[286.51203231, 263.60647448], [-4.26446802, 49.64789211],],
+        [[286.51203231, 263.60647448], [-4.26446802, 49.64789211]],
     ),
     ("orthogonal_matching_pursuit", [107.84179564, -29.4706721]),
     ("orthogonal_matching_pursuit_cv", [229.15556878, 52.25108639]),
