@@ -1,7 +1,7 @@
 //! Parser for computations defined in Python
 
 use moose::computation::*;
-use moose::host::{RawShape, SliceInfo, SliceInfoElem};
+use moose::host::{HostPlacement, RawShape, SliceInfo, SliceInfoElem};
 use moose::logical::TensorDType;
 use moose::mirrored::Mirrored3Placement;
 use moose::replicated::ReplicatedPlacement;

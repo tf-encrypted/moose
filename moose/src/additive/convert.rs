@@ -1,8 +1,9 @@
 //! Conversion for additive placements
 use super::*;
-use crate::computation::{HostPlacement, Placed, RepToAdtOp};
+use crate::computation::{Placed, RepToAdtOp};
 use crate::error::Result;
 use crate::execution::Session;
+use crate::host::HostPlacement;
 use crate::kernels::*;
 use crate::replicated::RepTensor;
 use macros::with_context;

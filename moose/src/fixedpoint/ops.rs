@@ -1802,7 +1802,7 @@ mod tests {
     use super::*;
     use crate::execution::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
     use crate::execution::SyncSession;
-    use crate::fixedpoint::{Convert, PrefixMul};
+    use crate::fixedpoint::PrefixMul;
     use crate::replicated::RepTensor;
     use ndarray::prelude::*;
     use proptest::prelude::*;
@@ -1862,42 +1862,6 @@ mod tests {
 
         let x_decoded_long = HostRing128Tensor::decode(&x_encoded.tensor, scaling_factor_long);
         assert_eq!(x_decoded_long, x);
-    }
-
-    #[test]
-    fn fixedpoint_mean_with_axis() {
-        let x_backing = HostFloat64Tensor::from(
-            array![[1., 2.], [3., 4.]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let encoding_factor = 2u64.pow(16);
-        let decoding_factor = 2u64.pow(32);
-        let x = HostRing64Tensor::encode(&x_backing, encoding_factor);
-        let out = HostRing64Tensor::fixedpoint_mean(x, Some(0), encoding_factor).unwrap();
-        let dec = HostRing64Tensor::decode(&out, decoding_factor);
-        assert_eq!(
-            dec,
-            HostFloat64Tensor::from(array![2., 3.].into_dimensionality::<IxDyn>().unwrap())
-        );
-    }
-
-    #[test]
-    fn fixedpoint_mean_no_axis() {
-        let x_backing = HostFloat64Tensor::from(
-            array![[1., 2.], [3., 4.]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let encoding_factor = 2u64.pow(16);
-        let decoding_factor = 2u64.pow(32);
-        let x = HostRing64Tensor::encode(&x_backing, encoding_factor);
-        let out = HostRing64Tensor::fixedpoint_mean(x, None, encoding_factor).unwrap();
-        let dec = HostRing64Tensor::decode(&out, decoding_factor);
-        assert_eq!(
-            dec.0.into_shape((1,)).unwrap(),
-            array![2.5].into_shape((1,)).unwrap()
-        );
     }
 
     fn new_host_fixed_tensor<HostRingT>(x: HostRingT) -> HostFixedTensor<HostRingT> {
@@ -2657,25 +2621,6 @@ mod tests {
         let y_targets = vec![6f64, 17., 34., 57.];
 
         test_rep_poly_eval_fixed128(x, coeffs, y_targets);
-    }
-
-    #[test]
-    fn test_host_shape_op() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let x = HostRingTensor::from_raw_plc(
-            array![1024u64, 5, 4]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            alice,
-        );
-
-        let shape = x.shape();
-        let raw_shape: RawShape = shape.0;
-        let underlying = vec![3];
-        let expected: RawShape = RawShape(underlying);
-        assert_eq!(expected, raw_shape);
     }
 
     macro_rules! rep_approx_unary_fixed_test {

@@ -1,9 +1,9 @@
 use crate::computation::PyComputation;
 use moose::compilation::{compile_passes, into_pass, Pass};
-use moose::computation::{Computation, HostPlacement, Role, Value};
+use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
-use moose::host::{HostBitTensor, HostString, HostTensor};
+use moose::host::{HostBitTensor, HostPlacement, HostString, HostTensor};
 use ndarray::IxDyn;
 use ndarray::LinalgScalar;
 use numpy::{Element, PyArrayDescr, PyArrayDyn, ToPyArray};
