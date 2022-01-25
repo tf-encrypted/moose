@@ -7,6 +7,7 @@ use crate::additive::AdditivePlacement;
 use crate::computation::*;
 use crate::error::Error;
 use crate::for_all_values;
+use crate::host::HostPlacement;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
 use crate::types::*;

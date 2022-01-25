@@ -2,6 +2,7 @@
 
 use crate::additive::AdditivePlacement;
 use crate::computation::*;
+use crate::host::HostPlacement;
 use crate::host::{RawPrfKey, RawSeed, RawShape, SliceInfo, SliceInfoElem, SyncKey};
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;

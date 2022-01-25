@@ -1,6 +1,6 @@
 use moose::computation::*;
 use moose::execution::{SyncSession, TestSyncExecutor};
-use moose::host::{RawShape, SyncKey};
+use moose::host::{HostPlacement, RawShape, SyncKey};
 use std::convert::TryFrom;
 
 fn main() {

@@ -119,8 +119,9 @@ mod tests {
 
     use super::*;
     use crate::execution::SyncSession;
-    use crate::fixedpoint::{Convert, FixedTensor};
+    use crate::fixedpoint::{FixedTensor};
     use crate::host::HostRingTensor;
+    use crate::host::Convert;
     use ndarray::prelude::*;
     use ndarray::Zip;
 
@@ -189,11 +190,11 @@ mod tests {
         }
         let y = x.clone() - x_max;
         let y_exp = y.map(|item| item.exp());
+
         let softmax = y_exp.clone() / y_exp.sum_axis(Axis(0));
+        let expected: Vec<_> = softmax.iter().copied().collect();
 
-        let y_targets: Vec<_> = softmax.iter().copied().collect();
-
-        test_rep_softmax_fixed64(x, y_targets);
+        test_rep_softmax_fixed64(x, expected);
     }
 
     #[test]
@@ -210,8 +211,7 @@ mod tests {
         let y_exp = y.map(|item| item.exp());
         let softmax = y_exp.clone() / y_exp.sum_axis(Axis(0));
 
-        let y_targets: Vec<_> = softmax.iter().copied().collect();
-
-        test_rep_softmax_fixed128(x, y_targets);
+        let expected: Vec<_> = softmax.iter().copied().collect();
+        test_rep_softmax_fixed128(x, expected);
     }
 }
