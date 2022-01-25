@@ -797,7 +797,7 @@ where
     }
 }
 
-trait FromRaw<T, O> {
+pub(crate) trait FromRaw<T, O> {
     fn from_raw(&self, raw: T) -> O;
 }
 
@@ -1442,5 +1442,4 @@ mod tests {
         let expected: HostRing128Tensor = plc.from_raw(array![37011954726876357358499180449]);
         assert_eq!(y, expected);
     }
-
 }

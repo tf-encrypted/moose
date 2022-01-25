@@ -119,9 +119,9 @@ mod tests {
 
     use super::*;
     use crate::execution::SyncSession;
-    use crate::fixedpoint::{FixedTensor};
-    use crate::host::HostRingTensor;
+    use crate::fixedpoint::FixedTensor;
     use crate::host::Convert;
+    use crate::host::HostRingTensor;
     use ndarray::prelude::*;
     use ndarray::Zip;
 

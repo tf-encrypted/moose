@@ -2575,7 +2575,7 @@ impl GreaterThanOp {
 mod tests {
     use super::*;
     use crate::execution::SyncSession;
-    use crate::host::{FromRawPlc, HostRingTensor};
+    use crate::host::{FromRaw, FromRawPlc, HostRingTensor, RawShape};
     use crate::kernels::{PlacementRingFixedpointDecode, PlacementRingFixedpointEncode};
     use crate::{N128, N64};
     use ndarray::array;
@@ -3221,6 +3221,13 @@ mod tests {
                 let alice = HostPlacement {
                     owner: "alice".into(),
                 };
+                let bob = HostPlacement {
+                    owner: "bob".into(),
+                };
+                let carole = HostPlacement {
+                    owner: "carole".into(),
+                };
+
                 let rep = ReplicatedPlacement {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
@@ -3234,8 +3241,16 @@ mod tests {
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
-                let y_mir: MirTen<HostRingTensor<$tt>> =
-                    mir3.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
+
+                let s0 = alice.from_raw(RawShape(vec![1]));
+                let s1 = bob.from_raw(RawShape(vec![1]));
+                let s2 = carole.from_raw(RawShape(vec![1]));
+
+                let mir_shape = ReplicatedShape {
+                    shapes: [s0, s1, s2],
+                };
+
+                let y_mir: MirTen<HostRingTensor<$tt>> = mir3.fill(&sess, ys.into(), &mir_shape);
 
                 let result_rep_mir = rep.$test_func(&sess, &x_shared, &y_mir);
                 let opened_result = alice.reveal(&sess, &result_rep_mir);
