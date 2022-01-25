@@ -5,7 +5,7 @@ use crate::prng::AesRng;
 use crate::{Const, Ring, N128, N224, N64};
 use ndarray::LinalgScalar;
 #[cfg(feature = "blas")]
-use ndarray_linalg::{Inverse, Lapack, Scalar};
+use ndarray_linalg::{Inverse, Lapack};
 use num_traits::{Float, FromPrimitive, Zero};
 use std::marker::PhantomData;
 use std::num::Wrapping;
