@@ -297,8 +297,8 @@ where
 ///
 /// Accepts input in the form of
 ///
-/// `: (Float32Tensor, Float32Tensor) -> Float32Tensor`
-/// `: ([Float32Tensor]) -> Float32Tensor`
+/// `: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor`
+/// `: ([HostFloat32Tensor]) -> HostFloat32Tensor`
 ///
 /// * `arg_count` - the number of required arguments
 pub fn operator_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
@@ -314,7 +314,7 @@ pub fn operator_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str
 ///
 /// Accepts input in the form of
 ///
-/// `(Float32Tensor, Float32Tensor) -> Float32Tensor`
+/// `(HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor`
 ///
 /// * `arg_count` - the number of required arguments
 fn fixed_arrity_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
@@ -353,7 +353,7 @@ fn fixed_arrity_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str
 ///
 /// Accepts input in the form of
 ///
-/// `[Float32Tensor] -> Float32Tensor`
+/// `[HostFloat32Tensor] -> HostFloat32Tensor`
 fn variadic_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Signature, E> {
     move |input: &'a str| {
@@ -407,50 +407,50 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
         constant_literal_helper("PrfKey", parse_hex, |v| Constant::RawPrfKey(RawPrfKey(v))),
         constant_literal_helper("Float32", float, Constant::Float32),
         constant_literal_helper("Float64", double, Constant::Float64),
-        constant_literal_helper("String", string, Constant::String),
+        constant_literal_helper("HostString", string, Constant::String),
         map(ws(string), Constant::String), // Alternative syntax for strings - no type
         constant_literal_helper("Ring64", parse_int, Constant::Ring64),
         constant_literal_helper("Ring128", parse_int, Constant::Ring128),
-        constant_literal_helper("Shape", vector(parse_int), |v| {
+        constant_literal_helper("HostShape", vector(parse_int), |v| {
             Constant::RawShape(RawShape(v))
         }),
         constant_literal_helper("Bit", parse_int, Constant::Bit),
         // 1D arrays
         alt((
-            constant_literal_helper("Int8Tensor", vector(parse_int), |v| {
+            constant_literal_helper("HostInt8Tensor", vector(parse_int), |v| {
                 Constant::HostInt8Tensor(v.into())
             }),
-            constant_literal_helper("Int16Tensor", vector(parse_int), |v| {
+            constant_literal_helper("HostInt16Tensor", vector(parse_int), |v| {
                 Constant::HostInt16Tensor(v.into())
             }),
-            constant_literal_helper("Int32Tensor", vector(parse_int), |v| {
+            constant_literal_helper("HostInt32Tensor", vector(parse_int), |v| {
                 Constant::HostInt32Tensor(v.into())
             }),
-            constant_literal_helper("Int64Tensor", vector(parse_int), |v| {
+            constant_literal_helper("HostInt64Tensor", vector(parse_int), |v| {
                 Constant::HostInt64Tensor(v.into())
             }),
-            constant_literal_helper("Uint8Tensor", vector(parse_int), |v| {
+            constant_literal_helper("HostUint8Tensor", vector(parse_int), |v| {
                 Constant::HostUint8Tensor(v.into())
             }),
-            constant_literal_helper("Uint16Tensor", vector(parse_int), |v| {
+            constant_literal_helper("HostUint16Tensor", vector(parse_int), |v| {
                 Constant::HostUint16Tensor(v.into())
             }),
-            constant_literal_helper("Uint32Tensor", vector(parse_int), |v| {
+            constant_literal_helper("HostUint32Tensor", vector(parse_int), |v| {
                 Constant::HostUint32Tensor(v.into())
             }),
-            constant_literal_helper("Uint64Tensor", vector(parse_int), |v| {
+            constant_literal_helper("HostUint64Tensor", vector(parse_int), |v| {
                 Constant::HostUint64Tensor(v.into())
             }),
-            constant_literal_helper("Float32Tensor", vector(float), |v| {
+            constant_literal_helper("HostFloat32Tensor", vector(float), |v| {
                 Constant::HostFloat32Tensor(v.into())
             }),
-            constant_literal_helper("Float64Tensor", vector(double), |v| {
+            constant_literal_helper("HostFloat64Tensor", vector(double), |v| {
                 Constant::HostFloat64Tensor(v.into())
             }),
-            constant_literal_helper("Ring64Tensor", vector(parse_int), |v| {
+            constant_literal_helper("HostRing64Tensor", vector(parse_int), |v| {
                 Constant::HostRing64Tensor(v.into())
             }),
-            constant_literal_helper("Ring128Tensor", vector(parse_int), |v| {
+            constant_literal_helper("HostRing128Tensor", vector(parse_int), |v| {
                 Constant::HostRing128Tensor(v.into())
             }),
             constant_literal_helper("HostBitTensor", vector(parse_int), |v| {
@@ -459,43 +459,43 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
         )),
         // 2D arrays
         alt((
-            constant_literal_helper("Int8Tensor", vector2(parse_int), |v| {
+            constant_literal_helper("HostInt8Tensor", vector2(parse_int), |v| {
                 Constant::HostInt8Tensor(v.into())
             }),
-            constant_literal_helper("Int16Tensor", vector2(parse_int), |v| {
+            constant_literal_helper("HostInt16Tensor", vector2(parse_int), |v| {
                 Constant::HostInt16Tensor(v.into())
             }),
-            constant_literal_helper("Int32Tensor", vector2(parse_int), |v| {
+            constant_literal_helper("HostInt32Tensor", vector2(parse_int), |v| {
                 Constant::HostInt32Tensor(v.into())
             }),
-            constant_literal_helper("Int64Tensor", vector2(parse_int), |v| {
+            constant_literal_helper("HostInt64Tensor", vector2(parse_int), |v| {
                 Constant::HostInt64Tensor(v.into())
             }),
-            constant_literal_helper("Uint8Tensor", vector2(parse_int), |v| {
+            constant_literal_helper("HostUint8Tensor", vector2(parse_int), |v| {
                 Constant::HostUint8Tensor(v.into())
             }),
-            constant_literal_helper("Uint16Tensor", vector2(parse_int), |v| {
+            constant_literal_helper("HostUint16Tensor", vector2(parse_int), |v| {
                 Constant::HostUint16Tensor(v.into())
             }),
-            constant_literal_helper("Uint32Tensor", vector2(parse_int), |v| {
+            constant_literal_helper("HostUint32Tensor", vector2(parse_int), |v| {
                 Constant::HostUint32Tensor(v.into())
             }),
-            constant_literal_helper("Uint64Tensor", vector2(parse_int), |v| {
+            constant_literal_helper("HostUint64Tensor", vector2(parse_int), |v| {
                 Constant::HostUint64Tensor(v.into())
             }),
-            constant_literal_helper("Float32Tensor", vector2(float), |v| {
+            constant_literal_helper("HostFloat32Tensor", vector2(float), |v| {
                 Constant::HostFloat32Tensor(v.into())
             }),
-            constant_literal_helper("Float64Tensor", vector2(double), |v| {
+            constant_literal_helper("HostFloat64Tensor", vector2(double), |v| {
                 Constant::HostFloat64Tensor(v.into())
             }),
             constant_literal_helper(
-                "Ring64Tensor",
+                "HostRing64Tensor",
                 vector2(parse_int),
                 |v: ndarray::ArrayD<u64>| Constant::HostRing64Tensor(v.into()),
             ),
             constant_literal_helper(
-                "Ring128Tensor",
+                "HostRing128Tensor",
                 vector2(parse_int),
                 |v: ndarray::ArrayD<u128>| Constant::HostRing128Tensor(v.into()),
             ),
@@ -1199,48 +1199,55 @@ impl ToTextual for Ty {
 }
 
 macro_rules! format_to_textual {
-    ($format:expr, $($member:expr),*) => {
-        format!($format, $($member.to_textual(),)*)
+    ($format:expr, $ty:expr, $($member:expr),*) => {
+        format!($format, $ty.short_name(), $($member.to_textual(),)*)
     };
 }
 
 impl ToTextual for Value {
     fn to_textual(&self) -> String {
         match self {
-            Value::HostInt8Tensor(x) => format_to_textual!("Int8Tensor({}) {}", x.0, x.1),
-            Value::HostInt16Tensor(x) => format_to_textual!("Int16Tensor({}) {}", x.0, x.1),
-            Value::HostInt32Tensor(x) => format_to_textual!("Int32Tensor({}) {}", x.0, x.1),
-            Value::HostInt64Tensor(x) => format_to_textual!("Int64Tensor({}) {}", x.0, x.1),
-            Value::HostUint8Tensor(x) => format_to_textual!("Uint8Tensor({}) {}", x.0, x.1),
-            Value::HostUint16Tensor(x) => format_to_textual!("Uint16Tensor({}) {}", x.0, x.1),
-            Value::HostUint32Tensor(x) => format_to_textual!("Uint32Tensor({}) {}", x.0, x.1),
-            Value::HostUint64Tensor(x) => format_to_textual!("Uint64Tensor({}) {}", x.0, x.1),
-            Value::HostFloat32Tensor(x) => format_to_textual!("Float32Tensor({}) {}", x.0, x.1),
-            Value::HostFloat64Tensor(x) => format_to_textual!("Float64Tensor({}) {}", x.0, x.1),
-            Value::HostRing64Tensor(x) => format_to_textual!("Ring64Tensor({}) {}", x.0, x.1),
-            Value::HostRing128Tensor(x) => format_to_textual!("Ring128Tensor({}) {}", x.0, x.1),
+            Value::HostInt8Tensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
+            Value::HostInt16Tensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
+            Value::HostInt32Tensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
+            Value::HostInt64Tensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
+            Value::HostUint8Tensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
+            Value::HostUint16Tensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
+            Value::HostUint32Tensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
+            Value::HostUint64Tensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
+            Value::HostFloat32Tensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
+            Value::HostFloat64Tensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
+            Value::HostRing64Tensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
+            Value::HostRing128Tensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
             // TODO: Hosted floats for values
             Value::Float32(x) => format!("{}({}) @Host(TODO)", self.ty().short_name(), x),
-            Value::Float64(x) => format!("Float64({}) @Host(TODO)", x),
-            Value::Fixed(x) => format!("Fixed[{}]({})", x.precision, x.value),
-            Value::HostString(x) => format_to_textual!("String({}) {}", x.0, x.1),
-            Value::Ring64(x) => format!("Ring64({})", x),
-            Value::Ring128(x) => format!("Ring128({})", x),
-            Value::HostShape(x) => format!("Shape({:?}) {}", x.0 .0, x.1.to_textual()),
-            Value::Seed(x) => format_to_textual!("Seed({}) {}", x.0 .0, x.1),
-            Value::PrfKey(x) => format_to_textual!("PrfKey({}) {}", x.0 .0, x.1),
-            Value::Bit(x) => format!("Bit({})", x),
-            Value::Unit(_) => "Unit".to_string(),
-            Value::HostBitTensor(x) => format_to_textual!("HostBitTensor({}) {}", x.0, x.1),
+            Value::Float64(x) => format!("{}({}) @Host(TODO)", self.ty().short_name(), x),
+            Value::Fixed(x) => format!("{}[{}]({})", self.ty().short_name(), x.precision, x.value),
+            Value::HostString(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
+            Value::Ring64(x) => format!("{}({})", self.ty().short_name(), x),
+            Value::Ring128(x) => format!("{}({})", self.ty().short_name(), x),
+            Value::HostShape(x) => format!(
+                "{}({:?}) {}",
+                self.ty().short_name(),
+                x.0 .0,
+                x.1.to_textual()
+            ),
+            Value::Seed(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
+            Value::PrfKey(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
+            Value::Bit(x) => format!("{}({})", self.ty().short_name(), x),
+            Value::Unit(_) => self.ty().short_name().to_string(),
+            Value::HostBitTensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
             Value::HostFixed64Tensor(x) => format_to_textual!(
-                "HostFixed64Tensor[{}/{}]({}) {}",
+                "{}[{}/{}]({}) {}",
+                self.ty(),
                 x.integral_precision,
                 x.fractional_precision,
                 x.tensor.0,
                 x.tensor.1
             ),
             Value::HostFixed128Tensor(x) => format_to_textual!(
-                "HostFixed128Tensor[{}/{}]({}) {}",
+                "{}[{}/{}]({}) {}",
+                self.ty(),
                 x.integral_precision,
                 x.fractional_precision,
                 x.tensor.0,
@@ -1491,27 +1498,28 @@ mod tests {
         assert_eq!(parsed_f64, Constant::Float64(1.23));
         let (_, parsed_str) = constant_literal::<(&str, ErrorKind)>("\"abc\"")?;
         assert_eq!(parsed_str, Constant::String("abc".into()));
-        let (_, parsed_str) = constant_literal::<(&str, ErrorKind)>("String(\"abc\")")?;
+        let (_, parsed_str) = constant_literal::<(&str, ErrorKind)>("HostString(\"abc\")")?;
         assert_eq!(parsed_str, Constant::String("abc".into()));
         let (_, parsed_str) = constant_literal::<(&str, ErrorKind)>("\"1.23\"")?;
         assert_eq!(parsed_str, Constant::String("1.23".into()));
         let (_, parsed_str) = constant_literal::<(&str, ErrorKind)>("\"1. 2\\\"3\"")?;
         assert_eq!(parsed_str, Constant::String("1. 2\"3".into()));
         let (_, parsed_ring64_tensor) =
-            constant_literal::<(&str, ErrorKind)>("Ring64Tensor([1,2,3])")?;
+            constant_literal::<(&str, ErrorKind)>("HostRing64Tensor([1,2,3])")?;
         assert_eq!(
             parsed_ring64_tensor,
             Constant::HostRing64Tensor(vec![1, 2, 3].into())
         );
         let (_, parsed_ring128_tensor) =
-            constant_literal::<(&str, ErrorKind)>("Ring128Tensor([1,2,3])")?;
+            constant_literal::<(&str, ErrorKind)>("HostRing128Tensor([1,2,3])")?;
         assert_eq!(
             parsed_ring128_tensor,
             Constant::HostRing128Tensor(vec![1, 2, 3].into())
         );
-        let (_, parsed_shape) = constant_literal::<(&str, ErrorKind)>("Shape([1,2,3])")?;
+        let (_, parsed_shape) = constant_literal::<(&str, ErrorKind)>("HostShape([1,2,3])")?;
         assert_eq!(parsed_shape, Constant::RawShape(RawShape(vec![1, 2, 3])));
-        let (_, parsed_u8_tensor) = constant_literal::<(&str, ErrorKind)>("Uint8Tensor([1,2,3])")?;
+        let (_, parsed_u8_tensor) =
+            constant_literal::<(&str, ErrorKind)>("HostUint8Tensor([1,2,3])")?;
         assert_eq!(
             parsed_u8_tensor,
             Constant::HostUint8Tensor(vec![1, 2, 3].into())
@@ -1534,10 +1542,10 @@ mod tests {
     #[test]
     fn test_array_literal_non_square() -> Result<(), anyhow::Error> {
         let parsed_f32: Constant =
-            "Float32Tensor([[1.0, 11, 12, 13], [3.0, 21, 22, 23]])".try_into()?;
+            "HostFloat32Tensor([[1.0, 11, 12, 13], [3.0, 21, 22, 23]])".try_into()?;
         assert_eq!(
             parsed_f32.to_textual(),
-            "Float32Tensor([[1.0, 11.0, 12.0, 13.0], [3.0, 21.0, 22.0, 23.0]])"
+            "HostFloat32Tensor([[1.0, 11.0, 12.0, 13.0], [3.0, 21.0, 22.0, 23.0]])"
         );
         Ok(())
     }
@@ -1546,7 +1554,7 @@ mod tests {
     fn test_array_literal() -> Result<(), anyhow::Error> {
         use ndarray::prelude::*;
         use std::convert::TryInto;
-        let parsed_f32: Constant = "Float32Tensor([[1.0, 2.0], [3.0, 4.0]])".try_into()?;
+        let parsed_f32: Constant = "HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])".try_into()?;
 
         let x = HostFloat32Tensor::from(
             array![[1.0, 2.0], [3.0, 4.0]]
@@ -1556,7 +1564,7 @@ mod tests {
 
         assert_eq!(parsed_f32, Constant::HostFloat32Tensor(x));
 
-        let parsed_ring64: Constant = "Ring64Tensor([[1, 2], [3, 4]])".try_into()?;
+        let parsed_ring64: Constant = "HostRing64Tensor([[1, 2], [3, 4]])".try_into()?;
 
         let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
@@ -1573,7 +1581,7 @@ mod tests {
         let (_, parsed_type) = parse_type::<(&str, ErrorKind)>("Unit")?;
         assert_eq!(parsed_type, Ty::Unit);
         let (_, parsed) = operator_signature::<(&str, ErrorKind)>(0)(
-            ": (Float32Tensor, Float64Tensor) -> Uint16Tensor",
+            ": (HostFloat32Tensor, HostFloat64Tensor) -> HostUint16Tensor",
         )?;
         assert_eq!(
             parsed,
@@ -1584,8 +1592,9 @@ mod tests {
             ),
         );
 
-        let (_, parsed) =
-            operator_signature::<(&str, ErrorKind)>(0)(": [Float32Tensor] -> Float32Tensor")?;
+        let (_, parsed) = operator_signature::<(&str, ErrorKind)>(0)(
+            ": [HostFloat32Tensor] -> HostFloat32Tensor",
+        )?;
         assert_eq!(
             parsed,
             Signature::variadic(Ty::HostFloat32Tensor, Ty::HostFloat32Tensor),
@@ -1606,7 +1615,7 @@ mod tests {
     #[test]
     fn test_constant() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x = Constant{value = Float32Tensor([1.0])}: () -> Float32Tensor () @Host(alice)",
+            "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor () @Host(alice)",
         )?;
         assert_eq!(op.name, "x");
         assert_eq!(
@@ -1625,7 +1634,7 @@ mod tests {
                 .unwrap(),
         );
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor () @Replicated(alice, bob, charlie)",
+            "x = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor () @Replicated(alice, bob, charlie)",
         )?;
         assert_eq!(
             op.kind,
@@ -1640,7 +1649,7 @@ mod tests {
     #[test]
     fn test_stdbinary() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)",
+            "z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
         assert_eq!(
@@ -1654,7 +1663,7 @@ mod tests {
             })
         );
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)",
+            "z = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
         assert_eq!(
@@ -1698,7 +1707,7 @@ mod tests {
     #[test]
     fn test_send() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            r#"send = Send{rendezvous_key = 30313233343536373839616263646566, receiver = "bob"}: (Float32Tensor) -> Unit() @Host(alice)"#,
+            r#"send = Send{rendezvous_key = 30313233343536373839616263646566, receiver = "bob"}: (HostFloat32Tensor) -> Unit() @Host(alice)"#,
         )?;
         assert_eq!(op.name, "send");
         assert_eq!(
@@ -1715,7 +1724,7 @@ mod tests {
     #[test]
     fn test_receive() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            r#"receive = Receive{rendezvous_key = 30313233343536373839616263646566, sender = "bob"} : () -> Float32Tensor () @Host(alice)"#,
+            r#"receive = Receive{rendezvous_key = 30313233343536373839616263646566, sender = "bob"} : () -> HostFloat32Tensor () @Host(alice)"#,
         )?;
         assert_eq!(op.name, "receive");
         assert_eq!(
@@ -1732,7 +1741,7 @@ mod tests {
     #[test]
     fn test_output() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = Output: (Ring64Tensor) -> Ring64Tensor (x10) @Host(alice)",
+            "z = Output: (HostRing64Tensor) -> HostRing64Tensor (x10) @Host(alice)",
         )?;
         assert_eq!(op.name, "z");
         Ok(())
@@ -1741,7 +1750,7 @@ mod tests {
     #[test]
     fn test_ring_sample() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x10 = RingSampleSeeded{max_value = 1}: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
+            "x10 = RingSampleSeeded{max_value = 1}: (HostShape, Seed) -> HostRing64Tensor (shape, seed) @Host(alice)",
         )?;
         assert_eq!(op.name, "x10");
         Ok(())
@@ -1749,7 +1758,7 @@ mod tests {
 
     #[test]
     fn test_slice_option() -> Result<(), anyhow::Error> {
-        let input = "x10 = HostSlice{slice = {start = 1, end = 10, step = -1}}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)";
+        let input = "x10 = HostSlice{slice = {start = 1, end = 10, step = -1}}: (HostRing64Tensor) -> HostRing64Tensor (x) @Host(alice)";
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(input)?;
         assert_eq!(op.name, "x10");
         assert_eq!(
@@ -1769,7 +1778,7 @@ mod tests {
 
     #[test]
     fn test_slice() -> Result<(), anyhow::Error> {
-        let input = "x10 = HostSlice{slice = {start = 1, end = 10, step = 1}}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)";
+        let input = "x10 = HostSlice{slice = {start = 1, end = 10, step = 1}}: (HostRing64Tensor) -> HostRing64Tensor (x) @Host(alice)";
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(input)?;
         assert_eq!(op.name, "x10");
         assert_eq!(
@@ -1790,7 +1799,7 @@ mod tests {
     #[test]
     fn test_fixedpoint_ring_mean() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = RingFixedpointMean{axis = 0, scaling_base = 3, scaling_exp = 1} : () -> Float32Tensor () @Host(alice)",
+            "op = RingFixedpointMean{axis = 0, scaling_base = 3, scaling_exp = 1} : () -> HostFloat32Tensor () @Host(alice)",
         )?;
         assert_eq!(
             op.kind,
@@ -1803,7 +1812,7 @@ mod tests {
         );
 
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = RingFixedpointMean{scaling_base = 3, scaling_exp = 1} : () -> Float32Tensor () @Host(alice)",
+            "op = RingFixedpointMean{scaling_base = 3, scaling_exp = 1} : () -> HostFloat32Tensor () @Host(alice)",
         )?;
         assert_eq!(
             op.kind,
@@ -1821,11 +1830,11 @@ mod tests {
     #[test]
     fn test_underscore() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x_shape = Constant{value = Shape([2, 2])}: () -> Shape () @Host(alice)",
+            "x_shape = Constant{value = HostShape([2, 2])}: () -> HostShape () @Host(alice)",
         )?;
         assert_eq!(op.name, "x_shape");
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z_result = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x_shape, y_shape) @Host(carole)",
+            "z_result = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x_shape, y_shape) @Host(carole)",
         )?;
         assert_eq!(op.name, "z_result");
         assert_eq!(op.inputs, vec!["x_shape", "y_shape"]);
@@ -1837,59 +1846,59 @@ mod tests {
         // The following tests are verifying that each valid line is parsed successfuly.
         // It does not assert on the result.
         parse_assignment::<(&str, ErrorKind)>(
-            r#"z = Input{arg_name = "prompt"}: () -> Float32Tensor () @Host(alice)"#,
+            r#"z = Input{arg_name = "prompt"}: () -> HostFloat32Tensor () @Host(alice)"#,
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = ExpandDims {axis = [0]}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = ExpandDims {axis = [0]}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostAtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = HostAtLeast2D {to_column_vector = false}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostSlice {slice = {start = 1, end = 2}}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = HostSlice {slice = {start = 1, end = 2}}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostDiag: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = HostDiag: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostSqrt: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = HostSqrt: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingSum {axis = 0}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = RingSum {axis = 0}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingFill {value = Ring64(42)}: (Shape) -> Ring64Tensor (s) @Host(alice)",
+            "z = RingFill {value = Ring64(42)}: (HostShape) -> HostRing64Tensor (s) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingShl {amount = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = RingShl {amount = 2}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingShr {amount = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = RingShr {amount = 2}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingFixedpointDecode {scaling_base = 3, scaling_exp = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = RingFixedpointDecode {scaling_base = 3, scaling_exp = 2}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingFixedpointEncode {scaling_base = 3, scaling_exp = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = RingFixedpointEncode {scaling_base = 3, scaling_exp = 2}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingInject {bit_idx = 2} : (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = RingInject {bit_idx = 2} : (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = BitExtract {bit_idx = 2} : (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = BitExtract {bit_idx = 2} : (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = BitSampleSeeded: (Shape, Seed) -> BitTensor (shape, seed) @Host(alice)",
+            "z = BitSampleSeeded: (HostShape, Seed) -> HostBitTensor (shape, seed) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = BitXor: (BitTensor, BitTensor) -> BitTensor (x, y) @Host(alice)",
+            "z = BitXor: (HostBitTensor, HostBitTensor) -> HostBitTensor (x, y) @Host(alice)",
         )?;
 
         parse_assignment::<(&str, ErrorKind)>(
-            "load = Load: (String, String) -> Float64Tensor (xuri, xconstant) @Host(alice)",
+            "load = Load: (HostString, HostString) -> HostFloat64Tensor (xuri, xconstant) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "addN = AddN: [String] -> String (xuri, xconstant) @Host(alice)",
+            "addN = AddN: [HostString] -> HostString (xuri, xconstant) @Host(alice)",
         )?;
 
         Ok(())
@@ -1898,10 +1907,10 @@ mod tests {
     #[test]
     fn test_sample_computation() -> Result<(), anyhow::Error> {
         let (_, comp) = parse_computation::<(&str, ErrorKind)>(
-            "x = Constant{value = Float32Tensor([1.0])}: () -> Float32Tensor() @Host(alice)
-            y = Constant{value = Float32Tensor([2.0])}: () -> Float32Tensor () @Host(bob)
-            // ignore = Constant([1.0]: Float32Tensor) @Host(alice)
-            z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+            "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor() @Host(alice)
+            y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
+            // ignore = Constant([1.0]: HostFloat32Tensor) @Host(alice)
+            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
             ",
         )?;
         assert_eq!(comp.operations.len(), 3);
@@ -1942,15 +1951,15 @@ mod tests {
 
     #[test]
     fn test_sample_computation_err() {
-        let data = r#"a = Constant{value = "a"}: () -> Float32Tensor () @Host(alice)
-            err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
-            b = Constant{value = "b"}: () -> Float32Tensor () @Host(alice)"#;
+        let data = r#"a = Constant{value = "a"}: () -> HostFloat32Tensor () @Host(alice)
+            err = HostAdd: (HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
+            b = Constant{value = "b"}: () -> HostFloat32Tensor () @Host(alice)"#;
         let emsg = r#"0: at line 2, in Tag:
-            err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+            err = HostAdd: (HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
                             ^
 
 1: at line 2, in Alt:
-            err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+            err = HostAdd: (HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
                            ^
 
 "#;
@@ -1964,9 +1973,9 @@ mod tests {
     fn test_computation_try_into() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
         let comp: Computation =
-            "x = Constant{value = Float32Tensor([1.0])}: () -> Float32Tensor @Host(alice)
-            y = Constant{value = Float32Tensor([2.0])}: () -> Float32Tensor () @Host(bob)
-            z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)"
+            "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
+            y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
+            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
                 .try_into()?;
         assert_eq!(comp.operations.len(), 3);
         Ok(())
@@ -1974,29 +1983,29 @@ mod tests {
 
     #[test]
     fn test_constant_try_into() -> Result<(), anyhow::Error> {
-        let v: Constant = "Float32Tensor([1.0, 2.0, 3.0])".try_into()?;
+        let v: Constant = "HostFloat32Tensor([1.0, 2.0, 3.0])".try_into()?;
         assert_eq!(v, Constant::HostFloat32Tensor(vec![1.0, 2.0, 3.0].into()));
         Ok(())
     }
 
     #[rstest]
-    #[case("Int8Tensor([2, 3]) @Host(alice)")]
-    #[case("Int16Tensor([2, 3]) @Host(alice)")]
-    #[case("Int32Tensor([2, 3]) @Host(alice)")]
-    #[case("Int64Tensor([2, 3]) @Host(alice)")]
-    #[case("Uint8Tensor([2, 3]) @Host(alice)")]
-    #[case("Uint16Tensor([2, 3]) @Host(alice)")]
-    #[case("Uint32Tensor([2, 3]) @Host(alice)")]
-    #[case("Uint64Tensor([2, 3]) @Host(alice)")]
-    #[case("Float32Tensor([2.1, 3.2]) @Host(alice)")]
-    #[case("Float64Tensor([2.1, 3.2]) @Host(alice)")]
-    #[case("Ring64Tensor([2, 3]) @Host(alice)")]
-    #[case("Ring128Tensor([2, 3]) @Host(alice)")]
+    #[case("HostInt8Tensor([2, 3]) @Host(alice)")]
+    #[case("HostInt16Tensor([2, 3]) @Host(alice)")]
+    #[case("HostInt32Tensor([2, 3]) @Host(alice)")]
+    #[case("HostInt64Tensor([2, 3]) @Host(alice)")]
+    #[case("HostUint8Tensor([2, 3]) @Host(alice)")]
+    #[case("HostUint16Tensor([2, 3]) @Host(alice)")]
+    #[case("HostUint32Tensor([2, 3]) @Host(alice)")]
+    #[case("HostUint64Tensor([2, 3]) @Host(alice)")]
+    #[case("HostFloat32Tensor([2.1, 3.2]) @Host(alice)")]
+    #[case("HostFloat64Tensor([2.1, 3.2]) @Host(alice)")]
+    #[case("HostRing64Tensor([2, 3]) @Host(alice)")]
+    #[case("HostRing128Tensor([2, 3]) @Host(alice)")]
     #[case("Float32(2.1) @Host(TODO)")]
     #[case("Float64(2.1) @Host(TODO)")]
-    #[case("String(\"hi\") @Host(alice)")]
+    #[case("HostString(\"hi\") @Host(alice)")]
     #[case("HostBitTensor([0, 1, 1, 0]) @Host(alice)")]
-    #[case("Shape([3, 2]) @Host(alice)")]
+    #[case("HostShape([3, 2]) @Host(alice)")]
     #[case("Seed(529c2fc9bf573d077f45f42b19cfb8d4) @Host(alice)")]
     #[case("PrfKey(00000000000000000000000000000000) @Host(alice)")]
     #[case("HostFixed64Tensor[7/12]([2, 42, 12]) @Host(alice)")]
@@ -2012,9 +2021,9 @@ mod tests {
     fn test_whitespace() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
         let source = r#"
-        x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
+        x = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
 
-        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
+        y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
 
         "#;
         let comp: Computation = source.try_into()?;
@@ -2025,12 +2034,12 @@ mod tests {
     #[test]
     fn test_computation_into_text() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
-        let comp: Computation = "x = Constant{value = Float32Tensor([1.0])}: () -> Float32Tensor @Host(alice)
-            y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
-            z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, carole)
+        let comp: Computation = "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
+            y = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
+            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, carole)
             seed = PrimDeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
             seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)}: () -> Seed @Host(alice)
-            o = Output: (Float32Tensor) -> Float32Tensor (z) @Host(alice)"
+            o = Output: (HostFloat32Tensor) -> HostFloat32Tensor (z) @Host(alice)"
             .try_into()?;
         let textual = comp.to_textual();
         // After serializing it into the textual IR we need to make sure it parses back the same
