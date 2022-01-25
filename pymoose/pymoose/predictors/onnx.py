@@ -12,28 +12,28 @@ def from_onnx(model_proto):
         "TreeEnsembleClassifier",
     ]
 
-    recognized_op = []
-    unrocognized_op = []
+    recognized_ops = []
+    unrocognized_ops = []
     for node in model_proto.graph.node:
         node_type = node.op_type
         if node_type in supported_op_type:
-            recognized_op.append(node_type)
+            recognized_ops.append(node_type)
         else:
-            unrocognized_op.append(node_type)
+            unrocognized_ops.append(node_type)
 
-    if len(recognized_op) == 1:
-        model_type = recognized_op.pop()
-    elif len(recognized_op) > 1:
+    if len(recognized_ops) == 1:
+        model_type = recognized_ops.pop()
+    elif len(recognized_ops) > 1:
         raise ValueError(
             "Incompatible ONNX graph provided: graph must contain at most "
             "one node of type LinearRegressor or LinearClassifier or "
-            f"TreeEnsembleRegressor or TreeEnsembleClassifier, found {recognized_op}"
+            f"TreeEnsembleRegressor or TreeEnsembleClassifier, found {recognized_ops}"
         )
     else:
         raise ValueError(
             "Incompatible ONNX graph provided: graph must contain a LinearRegressor "
             "or LinearClassifier or TreeEnsembleRegressor or TreeEnsembleClassifier node, "
-            f"found: {unrocognized_op}"
+            f"found: {unrocognized_ops}"
         )
 
     if model_type == "LinearRegressor":
