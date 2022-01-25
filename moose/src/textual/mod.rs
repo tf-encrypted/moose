@@ -2,8 +2,7 @@
 
 use crate::additive::AdditivePlacement;
 use crate::computation::*;
-use crate::host::HostPlacement;
-use crate::host::{RawPrfKey, RawSeed, RawShape, SliceInfo, SliceInfoElem, SyncKey};
+use crate::host::{HostPlacement, FromRaw, RawPrfKey, RawSeed, RawShape, SliceInfo, SliceInfoElem, SyncKey};
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
@@ -1693,23 +1692,15 @@ mod tests {
     fn test_array_literal() -> Result<(), anyhow::Error> {
         use ndarray::prelude::*;
         use std::convert::TryInto;
+
+        let plc = HostPlacement::from("TODO");
+
         let parsed_f32: Constant = "Float32Tensor([[1.0, 2.0], [3.0, 4.0]])".try_into()?;
-
-        let x = HostFloat32Tensor::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-
+        let x = plc.from_raw(array![[1.0, 2.0], [3.0, 4.0]]);
         assert_eq!(parsed_f32, Constant::HostFloat32Tensor(x));
 
         let parsed_ring64: Constant = "Ring64Tensor([[1, 2], [3, 4]])".try_into()?;
-
-        let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let x = HostRing64Tensor::from(x_backing);
-
+        let x = plc.from_raw(array![[1, 2], [3, 4]]);
         assert_eq!(parsed_ring64, Constant::HostRing64Tensor(x));
 
         Ok(())

@@ -595,21 +595,6 @@ where
     }
 }
 
-// TODO(Morten) used by textual
-// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl From<ArrayD<i64>> for HostRingTensor<u64> {
-    fn from(a: ArrayD<i64>) -> HostRingTensor<u64> {
-        let ring_rep = a.mapv(|ai| Wrapping(ai as u64));
-        HostRingTensor(
-            ring_rep,
-            HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
-            },
-        )
-    }
-}
-
 impl From<&HostRingTensor<u64>> for ArrayD<i64> {
     fn from(r: &HostRingTensor<u64>) -> ArrayD<i64> {
         r.0.mapv(|element| element.0 as i64)
@@ -666,7 +651,7 @@ where
     }
 }
 
-trait FromRaw<T, O> {
+pub(crate) trait FromRaw<T, O> {
     fn from_raw(&self, raw: T) -> O;
 }
 
