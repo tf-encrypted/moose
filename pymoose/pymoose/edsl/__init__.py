@@ -95,6 +95,7 @@ __all__ = [
     save,
     slice,
     shape,
+    softmax,
     square,
     squeeze,
     sigmoid,

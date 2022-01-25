@@ -6,9 +6,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from pymoose import edsl
-from pymoose.computation.standard import IntType
 from pymoose.computation.standard import StringType
-from pymoose.edsl.base import index_axis
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 

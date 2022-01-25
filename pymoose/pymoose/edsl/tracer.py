@@ -76,7 +76,6 @@ from pymoose.edsl.base import SoftmaxExpression
 from pymoose.edsl.base import SqueezeExpression
 from pymoose.edsl.base import SumExpression
 from pymoose.edsl.base import TransposeExpression
-from pymoose.edsl.base import softmax
 from pymoose.rust import elk_compiler
 
 
