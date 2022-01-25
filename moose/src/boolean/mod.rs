@@ -3,6 +3,7 @@
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::Session;
+use crate::host::HostPlacement;
 use crate::kernels::*;
 use crate::replicated::ReplicatedPlacement;
 use crate::types::*;

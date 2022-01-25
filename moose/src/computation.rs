@@ -2018,11 +2018,6 @@ impl From<&str> for Role {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct HostPlacement {
-    pub owner: Role,
-}
-
 pub trait Placed {
     type Placement;
 

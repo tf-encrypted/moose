@@ -1,7 +1,8 @@
 use super::*;
-use crate::computation::{HostPlacement, InputOp, Signature, Ty};
+use crate::computation::{InputOp, Signature, Ty};
 use crate::error::{Error, Result};
 use crate::execution::Session;
+use crate::host::HostPlacement;
 use crate::kernels::PlacementInput;
 use crate::replicated::aes::AbstractReplicatedAesKey;
 use crate::{N128, N224, N64};
@@ -88,7 +89,7 @@ impl InputOp {
             // TODO(jason,morten): figure out a good way to get this static type information
             //  from the Signature (improve Ty impl in values!)
             Ty::ReplicatedFixed64Tensor => Ok((14, 23)),
-            Ty::ReplicatedFixed128Tensor => Ok((46, 40)),
+            Ty::ReplicatedFixed128Tensor => Ok((24, 40)),
             _ => Err(Error::TypeMismatch {
                 expected: "ReplicatedFixedTensor".to_string(),
                 found: sig.ret(),

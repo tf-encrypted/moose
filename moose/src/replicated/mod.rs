@@ -6,7 +6,8 @@ use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
-    AbstractHostAesKey, HostBitArray, HostFixedTensor, PrfKey, Seed, SliceInfo, SyncKey,
+    AbstractHostAesKey, HostBitArray, HostFixedTensor, HostPlacement, PrfKey, Seed, SliceInfo,
+    SyncKey,
 };
 use crate::kernels::*;
 use crate::mirrored::{Mir3Tensor, MirFixedTensor, Mirrored3Placement};

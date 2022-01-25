@@ -1,11 +1,11 @@
 //! Various operations for additive placements
 use super::*;
 use crate::computation::{
-    AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant, HostPlacement,
-    Placed, ShapeOp,
+    AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant, Placed, ShapeOp,
 };
 use crate::error::Result;
 use crate::execution::Session;
+use crate::host::HostPlacement;
 use crate::kernels::*;
 use macros::with_context;
 

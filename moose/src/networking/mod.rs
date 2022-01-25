@@ -152,6 +152,7 @@ impl AsyncNetworking for LocalAsyncNetworking {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::host::HostPlacement;
     use std::convert::TryInto;
 
     #[test]

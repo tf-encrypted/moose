@@ -14,26 +14,30 @@ from pymoose.predictors import linear_predictor
 from pymoose.predictors import predictor_utils
 
 _SK_REGRESSION_MODELS = [
-    "ard_regression",
-    "bayesian_ridge",
-    "elastic_net",
-    "elastic_net_cv",
-    "huber_regressor",
-    "lars",
-    "lars_cv",
-    "lasso",
-    "lasso_cv",
-    "lasso_lars_ic",
-    "linear_regression",
-    "orthogonal_matching_pursuit",
-    "orthogonal_matching_pursuit_cv",
-    "passive_aggressive_regressor",
-    "quantile_regressor",
-    "ransac_regressor",
-    "ridge",
-    "ridge_cv",
-    "sgd_regressor",
-    "theil_sen_regressor",
+    ("ard_regression", [229.01876595, 52.28809679]),
+    ("bayesian_ridge", [229.09049241, 52.24556655]),
+    ("elastic_net", [147.18095356, 42.07852916]),
+    ("elastic_net_cv", [206.35095678, 50.08868147]),
+    ("huber_regressor", [230.20332624, 52.069104]),
+    ("lars", [229.15556878, 52.25108639]),
+    ("lars_cv", [229.15556878, 52.25108639]),
+    ("lasso", [224.35101761, 52.25267607]),
+    ("lasso_cv", [228.68959623, 52.25189918]),
+    ("lasso_lars_ic", [229.15556878, 52.25108639]),
+    ("linear_regression", [229.15556878, 52.25108639]),
+    (
+        "linear_regression_2targets",
+        [[286.51203231, 263.60647448], [-4.26446802, 49.64789211]],
+    ),
+    ("orthogonal_matching_pursuit", [107.84179564, -29.4706721]),
+    ("orthogonal_matching_pursuit_cv", [229.15556878, 52.25108639]),
+    ("passive_aggressive_regressor", [236.36241952, 56.54396034]),
+    ("quantile_regressor", [9.9146497, 9.91464969]),
+    ("ransac_regressor", [229.15556878, 52.25108639]),
+    ("ridge", [226.60022295, 52.03102657]),
+    ("ridge_cv", [228.89720599, 52.22914582]),
+    ("sgd_regressor", [229.10920079, 52.24079892]),
+    ("theil_sen_regressor", [233.23775367, 51.64095974]),
 ]
 _SK_CLASSIFIER_MODELS = [
     ("logistic_regression_2class_multiclass", [0.5535523, 0.4464477]),
@@ -73,7 +77,7 @@ class LinearPredictorTest(parameterized.TestCase):
         return predictor, predictor_no_aes
 
     @parameterized.parameters(*_SK_REGRESSION_MODELS)
-    def test_regression_logic(self, model_name):
+    def test_regression_logic(self, model_name, expected):
         regressor, regressor_logic = self._build_prediction_logic(
             model_name, linear_predictor.LinearRegressor
         )
@@ -83,16 +87,17 @@ class LinearPredictorTest(parameterized.TestCase):
         runtime = testing.LocalMooseRuntime(storage_mapping=storage)
         role_assignment = {plc.name: plc.name for plc in regressor.host_placements}
 
-        input_x = np.array([[1.0, 1.0, 1.0, 1.0]], dtype=np.float64)
+        input_x = np.array(
+            [[1.0, 1.0, 1.0, 1.0], [-0.9, 1.3, 0.6, -0.4]], dtype=np.float64
+        )
         result_dict = runtime.evaluate_computation(
             computation=traced_predictor,
             role_assignment=role_assignment,
             arguments={"x": input_x},
         )
         actual_result = list(result_dict.values())[0]
-        # predicting on input vector of all ones == sum of linear model's coefficients
-        expected_result = regressor.coeffs.sum() + regressor.intercepts
-        np.testing.assert_almost_equal(actual_result, expected_result)
+        expected_result = np.asarray(expected).reshape((2, -1))
+        np.testing.assert_almost_equal(actual_result, expected_result, decimal=5)
 
     @parameterized.parameters(*_SK_CLASSIFIER_MODELS)
     def test_classification_logic(self, model_name, expected):
@@ -118,7 +123,10 @@ class LinearPredictorTest(parameterized.TestCase):
         np.testing.assert_almost_equal(actual_result, expected_result, decimal=2)
 
     @parameterized.parameters(
-        *zip(_SK_REGRESSION_MODELS, itertools.repeat(linear_predictor.LinearRegressor)),
+        *zip(
+            map(lambda x: x[0], _SK_REGRESSION_MODELS),
+            itertools.repeat(linear_predictor.LinearRegressor),
+        ),
         *zip(
             map(lambda x: x[0], _SK_CLASSIFIER_MODELS),
             itertools.repeat(linear_predictor.LinearClassifier),

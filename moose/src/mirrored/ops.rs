@@ -2,7 +2,7 @@ use super::*;
 use crate::computation::*;
 use crate::error::Result;
 use crate::execution::Session;
-use crate::host::HostFixedTensor;
+use crate::host::{HostFixedTensor, HostPlacement};
 use crate::kernels::*;
 use crate::replicated::{RepFixedTensor, RepTensor, ReplicatedPlacement};
 

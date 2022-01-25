@@ -270,6 +270,7 @@ mod tests {
 
     #[test]
     fn test_binary_adder() {
+        let sess = SyncSession::default();
         let alice = HostPlacement {
             owner: "alice".into(),
         };
@@ -279,9 +280,7 @@ mod tests {
 
         let x = HostRing64Tensor::from_raw_plc(array![3884509700957842751u64], alice.clone());
         let y = HostRing64Tensor::from_raw_plc(array![13611438098135434720u64], alice.clone());
-        let expected_output = x.clone() + y.clone();
-
-        let sess = SyncSession::default();
+        let expected_output = alice.add(&sess, &x, &y);
 
         let x_bit = alice.bit_decompose(&sess, &x);
         let y_bit = alice.bit_decompose(&sess, &y);
