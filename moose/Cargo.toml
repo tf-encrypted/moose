@@ -11,10 +11,9 @@ categories = ["", ""]
 edition = "2018"
 
 [features]
-default = ["new_async_session", "blas"]
+default = ["blas"]
 blas = ["ndarray-linalg"]
 exclude_old_framework = []
-new_async_session = []
 
 [dependencies]
 aes = "~0.7"
