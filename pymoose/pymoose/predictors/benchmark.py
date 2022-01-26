@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
     start_compile = time.perf_counter()
     rust_compiled = elk_compiler.compile_computation(
-        comp_bin, ["typing", "full", "prune", "networking", "typing", "toposort"]
+        comp_bin, compiler_passes
     )
     end_compile = time.perf_counter()
     print(f"Compile time {end_compile - start_compile:0.4f} seconds")
