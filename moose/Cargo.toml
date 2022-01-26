@@ -13,7 +13,6 @@ edition = "2018"
 [features]
 default = ["blas"]
 blas = ["ndarray-linalg"]
-exclude_old_framework = []
 
 [dependencies]
 aes = "~0.7"

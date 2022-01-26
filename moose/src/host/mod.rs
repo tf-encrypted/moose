@@ -199,7 +199,6 @@ where
 
 // TODO(Morten) remove but used by textual
 // This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<ArrayD<T>> for HostTensor<T>
 where
     T: LinalgScalar,
@@ -215,8 +214,6 @@ where
 }
 
 // TODO(Morten) used by textual
-// This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<Vec<T>> for HostTensor<T> {
     fn from(v: Vec<T>) -> HostTensor<T> {
         HostTensor(
@@ -305,8 +302,6 @@ impl HostBitTensor {
 }
 
 // TODO(Morten) remove but currently used by textual
-// This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
 impl From<ArrayD<u8>> for HostBitTensor {
     fn from(a: ArrayD<u8>) -> HostBitTensor {
         let wrapped = a.mapv(|ai| (ai & 1) as u8);
@@ -320,8 +315,6 @@ impl From<ArrayD<u8>> for HostBitTensor {
 }
 
 // TODO(Morten) remove but currently used by textual
-// This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
 impl From<Vec<u8>> for HostBitTensor {
     fn from(v: Vec<u8>) -> HostBitTensor {
         let ix = IxDyn(&[v.len()]);
@@ -579,8 +572,6 @@ impl<T> HostRingTensor<T> {
 }
 
 // TODO(Morten) remove, used by textual
-// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<ArrayD<T>> for HostRingTensor<T>
 where
     T: Clone,
@@ -609,8 +600,6 @@ impl From<&HostRingTensor<u128>> for ArrayD<i128> {
 }
 
 // TODO(Morten) remove, used by textual
-// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<Vec<T>> for HostRingTensor<T> {
     fn from(v: Vec<T>) -> HostRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
