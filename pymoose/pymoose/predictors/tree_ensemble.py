@@ -257,7 +257,7 @@ class TreeEnsembleClassifier(TreeEnsemble):
                 tree_scores, axis=1, fixedpoint_dtype=fixedpoint_dtype
             )
             if self.transform_output:
-                return edsl.softmax(logit, axis=1, upmost_index=self.n_classes - 1)
+                return edsl.softmax(logit, axis=1, upmost_index=self.n_classes)
             return logit
 
     def _maybe_sigmoid(self, tree_scores, fixedpoint_dtype):
