@@ -301,19 +301,6 @@ impl HostBitTensor {
     }
 }
 
-// TODO(Morten) remove but currently used by textual
-impl From<Vec<u8>> for HostBitTensor {
-    fn from(v: Vec<u8>) -> HostBitTensor {
-        let ix = IxDyn(&[v.len()]);
-        HostBitTensor(
-            Array::from_shape_vec(ix, v).unwrap(),
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
-            },
-        )
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct HostBitArray<HostBitTensorT, N>(pub HostBitTensorT, pub PhantomData<N>);
 
@@ -570,21 +557,6 @@ impl From<&HostRingTensor<u128>> for ArrayD<i128> {
     }
 }
 
-// TODO(Morten) remove, used by textual
-impl<T> From<Vec<T>> for HostRingTensor<T> {
-    fn from(v: Vec<T>) -> HostRingTensor<T> {
-        let ix = IxDyn(&[v.len()]);
-        use vec_utils::VecExt;
-        let v_wrapped: Vec<_> = v.map(Wrapping);
-        HostRingTensor(
-            Array::from_shape_vec(ix, v_wrapped).unwrap(),
-            HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
-            },
-        )
-    }
-}
-
 impl<T> HostRingTensor<T>
 where
     Wrapping<T>: Clone + num_traits::Zero,
@@ -603,6 +575,15 @@ where
 
 pub trait FromRaw<T, O> {
     fn from_raw(&self, raw: T) -> O;
+}
+
+impl<T, O> FromRaw<Vec<T>, O> for HostPlacement
+where
+    HostPlacement: FromRaw<Array1<T>, O>,
+{
+    fn from_raw(&self, raw: Vec<T>) -> O {
+        self.from_raw(Array::from_vec(raw))
+    }
 }
 
 impl<T: Clone, D: ndarray::Dimension> FromRaw<Array<T, D>, HostTensor<T>> for HostPlacement {

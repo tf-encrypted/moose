@@ -557,13 +557,19 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
                 Constant::HostFloat64Tensor(v.into())
             }),
             constant_literal_helper("Ring64Tensor", vector(parse_int), |v| {
-                Constant::HostRing64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostRing64Tensor(t)
             }),
             constant_literal_helper("Ring128Tensor", vector(parse_int), |v| {
-                Constant::HostRing128Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostRing128Tensor(t)
             }),
             constant_literal_helper("HostBitTensor", vector(parse_int), |v| {
-                Constant::HostBitTensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostBitTensor(t)
             }),
         )),
         // 2D arrays
@@ -1658,15 +1664,16 @@ mod tests {
         assert_eq!(parsed_str, Constant::String("1. 2\"3".into()));
         let (_, parsed_ring64_tensor) =
             constant_literal::<(&str, ErrorKind)>("Ring64Tensor([1,2,3])")?;
+        let plc = HostPlacement::from("TODO");
         assert_eq!(
             parsed_ring64_tensor,
-            Constant::HostRing64Tensor(vec![1, 2, 3].into())
+            Constant::HostRing64Tensor(plc.from_raw(vec![1, 2, 3]))
         );
         let (_, parsed_ring128_tensor) =
             constant_literal::<(&str, ErrorKind)>("Ring128Tensor([1,2,3])")?;
         assert_eq!(
             parsed_ring128_tensor,
-            Constant::HostRing128Tensor(vec![1, 2, 3].into())
+            Constant::HostRing128Tensor(plc.from_raw(vec![1, 2, 3]))
         );
         let (_, parsed_shape) = constant_literal::<(&str, ErrorKind)>("Shape([1,2,3])")?;
         assert_eq!(parsed_shape, Constant::RawShape(RawShape(vec![1, 2, 3])));
