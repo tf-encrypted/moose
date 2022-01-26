@@ -80,7 +80,7 @@ class TreeEnsemble(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         pass
 
     def forest_fn(self, x, fixedpoint_dtype):
-        return [
+        forest_scores = [
             tree(
                 x,
                 self.n_features,
@@ -89,6 +89,12 @@ class TreeEnsemble(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
             )
             for tree in self.trees
         ]
+        # if any of the trees are degenerate, they will return a non-replicated value.
+        # we want post_transform to expect a collection of replicated values, since its
+        # variadic ops will not necessarily know to move their results from source
+        # placements to replicated placement.
+        # it's a bit ugly, but it works for now.
+        return list(map(edsl.identity, forest_scores))
 
     def predictor_factory(self, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE):
         # TODO[jason] make it more ergonomic for edsl.computation to bind args during
@@ -353,13 +359,8 @@ class TreeEnsembleRegressor(TreeEnsemble):
         base_score = self.fixedpoint_constant(
             self.base_score, self.carole, dtype=fixedpoint_dtype
         )
-        # ugly way of ensuring it's replicated;
-        # normally it would be replicated just by using it in add_n @ replicated,
-        # but here it's input to an op w/ variadic signature, which does not do
-        # the work of converting from host to replicated for all of its inputs.
-        # we could also have used `add(base_score, add_n(tree_scores))` to avoid this
-        base_score = edsl.identity(base_score)
-        return edsl.add_n([base_score] + tree_scores)
+        penultimate_score = edsl.add_n(tree_scores)
+        return edsl.add(base_score, penultimate_score)
 
     @classmethod
     def _unbundle_forest(cls, model_json):
