@@ -123,7 +123,7 @@ class LinearClassifier(LinearPredictor):
         elif multitask or n_classes == 1:
             self._post_transform = lambda x: self._normalized_sigmoid(x, axis=1)
         elif n_classes > 1:
-            self._post_transform = lambda x: edsl.softmax(x, axis=1, upmost_index=n_classes)
+            self._post_transform = lambda x: edsl.softmax(x, axis=1, upmost_index=n_classes - 1)
         else:
             raise ValueError(
                 "Improper `multitask` argument to LinearClassifier model, expected "
