@@ -114,7 +114,7 @@ class LinearRegressor(LinearPredictor):
 class LinearClassifier(LinearPredictor):
     def __init__(self, coeffs, intercepts=None, multitask=False, transform_output=True):
         super().__init__(coeffs, intercepts)
-        n_classes = self.coeffs.shape[-1]
+        n_classes = self.coeffs.shape[0]
         if multitask and n_classes == 1:
             raise ValueError("Invalid argument: multitask=True found with n_classes=1.")
         # infer post_transform
