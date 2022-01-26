@@ -404,103 +404,107 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
     input: &'a str,
 ) -> IResult<&'a str, Constant, E> {
     alt((
-        constant_literal_helper("Seed", parse_hex, |v| Constant::RawSeed(RawSeed(v))),
-        constant_literal_helper("PrfKey", parse_hex, |v| Constant::RawPrfKey(RawPrfKey(v))),
-        constant_literal_helper("Float32", float, Constant::Float32),
-        constant_literal_helper("Float64", double, Constant::Float64),
-        constant_literal_helper("HostString", string, Constant::String),
+        constant_literal_helper(Ty::Seed.short_name(), parse_hex, |v| {
+            Constant::RawSeed(RawSeed(v))
+        }),
+        constant_literal_helper(Ty::PrfKey.short_name(), parse_hex, |v| {
+            Constant::RawPrfKey(RawPrfKey(v))
+        }),
+        constant_literal_helper(Ty::Float32.short_name(), float, Constant::Float32),
+        constant_literal_helper(Ty::Float64.short_name(), double, Constant::Float64),
+        constant_literal_helper(Ty::HostString.short_name(), string, Constant::String),
         map(ws(string), Constant::String), // Alternative syntax for strings - no type
-        constant_literal_helper("Ring64", parse_int, Constant::Ring64),
-        constant_literal_helper("Ring128", parse_int, Constant::Ring128),
-        constant_literal_helper("HostShape", vector(parse_int), |v| {
+        constant_literal_helper(Ty::Ring64.short_name(), parse_int, Constant::Ring64),
+        constant_literal_helper(Ty::Ring128.short_name(), parse_int, Constant::Ring128),
+        constant_literal_helper(Ty::HostShape.short_name(), vector(parse_int), |v| {
             Constant::RawShape(RawShape(v))
         }),
-        constant_literal_helper("Bit", parse_int, Constant::Bit),
+        constant_literal_helper(Ty::Bit.short_name(), parse_int, Constant::Bit),
         // 1D arrays
         alt((
-            constant_literal_helper("HostInt8Tensor", vector(parse_int), |v| {
+            constant_literal_helper(Ty::HostInt8Tensor.short_name(), vector(parse_int), |v| {
                 Constant::HostInt8Tensor(v.into())
             }),
-            constant_literal_helper("HostInt16Tensor", vector(parse_int), |v| {
+            constant_literal_helper(Ty::HostInt16Tensor.short_name(), vector(parse_int), |v| {
                 Constant::HostInt16Tensor(v.into())
             }),
-            constant_literal_helper("HostInt32Tensor", vector(parse_int), |v| {
+            constant_literal_helper(Ty::HostInt32Tensor.short_name(), vector(parse_int), |v| {
                 Constant::HostInt32Tensor(v.into())
             }),
-            constant_literal_helper("HostInt64Tensor", vector(parse_int), |v| {
+            constant_literal_helper(Ty::HostInt64Tensor.short_name(), vector(parse_int), |v| {
                 Constant::HostInt64Tensor(v.into())
             }),
-            constant_literal_helper("HostUint8Tensor", vector(parse_int), |v| {
+            constant_literal_helper(Ty::HostUint8Tensor.short_name(), vector(parse_int), |v| {
                 Constant::HostUint8Tensor(v.into())
             }),
-            constant_literal_helper("HostUint16Tensor", vector(parse_int), |v| {
+            constant_literal_helper(Ty::HostUint16Tensor.short_name(), vector(parse_int), |v| {
                 Constant::HostUint16Tensor(v.into())
             }),
-            constant_literal_helper("HostUint32Tensor", vector(parse_int), |v| {
+            constant_literal_helper(Ty::HostUint32Tensor.short_name(), vector(parse_int), |v| {
                 Constant::HostUint32Tensor(v.into())
             }),
-            constant_literal_helper("HostUint64Tensor", vector(parse_int), |v| {
+            constant_literal_helper(Ty::HostUint64Tensor.short_name(), vector(parse_int), |v| {
                 Constant::HostUint64Tensor(v.into())
             }),
-            constant_literal_helper("HostFloat32Tensor", vector(float), |v| {
+            constant_literal_helper(Ty::HostFloat32Tensor.short_name(), vector(float), |v| {
                 Constant::HostFloat32Tensor(v.into())
             }),
-            constant_literal_helper("HostFloat64Tensor", vector(double), |v| {
+            constant_literal_helper(Ty::HostFloat64Tensor.short_name(), vector(double), |v| {
                 Constant::HostFloat64Tensor(v.into())
             }),
-            constant_literal_helper("HostRing64Tensor", vector(parse_int), |v| {
+            constant_literal_helper(Ty::HostRing64Tensor.short_name(), vector(parse_int), |v| {
                 Constant::HostRing64Tensor(v.into())
             }),
-            constant_literal_helper("HostRing128Tensor", vector(parse_int), |v| {
+            constant_literal_helper(Ty::HostRing128Tensor.short_name(), vector(parse_int), |v| {
                 Constant::HostRing128Tensor(v.into())
             }),
-            constant_literal_helper("HostBitTensor", vector(parse_int), |v| {
+            constant_literal_helper(Ty::HostBitTensor.short_name(), vector(parse_int), |v| {
                 Constant::HostBitTensor(v.into())
             }),
         )),
         // 2D arrays
         alt((
-            constant_literal_helper("HostInt8Tensor", vector2(parse_int), |v| {
+            constant_literal_helper(Ty::HostInt8Tensor.short_name(), vector2(parse_int), |v| {
                 Constant::HostInt8Tensor(v.into())
             }),
-            constant_literal_helper("HostInt16Tensor", vector2(parse_int), |v| {
+            constant_literal_helper(Ty::HostInt16Tensor.short_name(), vector2(parse_int), |v| {
                 Constant::HostInt16Tensor(v.into())
             }),
-            constant_literal_helper("HostInt32Tensor", vector2(parse_int), |v| {
+            constant_literal_helper(Ty::HostInt32Tensor.short_name(), vector2(parse_int), |v| {
                 Constant::HostInt32Tensor(v.into())
             }),
-            constant_literal_helper("HostInt64Tensor", vector2(parse_int), |v| {
+            constant_literal_helper(Ty::HostInt64Tensor.short_name(), vector2(parse_int), |v| {
                 Constant::HostInt64Tensor(v.into())
             }),
-            constant_literal_helper("HostUint8Tensor", vector2(parse_int), |v| {
+            constant_literal_helper(Ty::HostUint8Tensor.short_name(), vector2(parse_int), |v| {
                 Constant::HostUint8Tensor(v.into())
             }),
-            constant_literal_helper("HostUint16Tensor", vector2(parse_int), |v| {
+            constant_literal_helper(Ty::HostUint16Tensor.short_name(), vector2(parse_int), |v| {
                 Constant::HostUint16Tensor(v.into())
             }),
-            constant_literal_helper("HostUint32Tensor", vector2(parse_int), |v| {
+            constant_literal_helper(Ty::HostUint32Tensor.short_name(), vector2(parse_int), |v| {
                 Constant::HostUint32Tensor(v.into())
             }),
-            constant_literal_helper("HostUint64Tensor", vector2(parse_int), |v| {
+            constant_literal_helper(Ty::HostUint64Tensor.short_name(), vector2(parse_int), |v| {
                 Constant::HostUint64Tensor(v.into())
             }),
-            constant_literal_helper("HostFloat32Tensor", vector2(float), |v| {
+            constant_literal_helper(Ty::HostFloat32Tensor.short_name(), vector2(float), |v| {
                 Constant::HostFloat32Tensor(v.into())
             }),
-            constant_literal_helper("HostFloat64Tensor", vector2(double), |v| {
+            constant_literal_helper(Ty::HostFloat64Tensor.short_name(), vector2(double), |v| {
                 Constant::HostFloat64Tensor(v.into())
             }),
             constant_literal_helper(
-                "HostRing64Tensor",
+                Ty::HostRing64Tensor.short_name(),
                 vector2(parse_int),
                 |v: ndarray::ArrayD<u64>| Constant::HostRing64Tensor(v.into()),
             ),
             constant_literal_helper(
-                "HostRing128Tensor",
+                Ty::HostRing128Tensor.short_name(),
                 vector2(parse_int),
                 |v: ndarray::ArrayD<u128>| Constant::HostRing128Tensor(v.into()),
             ),
-            constant_literal_helper("HostBitTensor", vector2(parse_int), |v| {
+            constant_literal_helper(Ty::HostBitTensor.short_name(), vector2(parse_int), |v| {
                 Constant::HostBitTensor(v.into())
             }),
         )),
@@ -536,7 +540,7 @@ fn host_fixed64_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Value, E> {
     let (input, (_, integral_precision, _, fractional_precision, _, tensor, placement)) =
         preceded(
-            tag("HostFixed64Tensor"),
+            tag(Ty::HostFixed64Tensor.short_name()),
             tuple((
                 ws(tag("[")),
                 parse_int,
@@ -571,7 +575,7 @@ fn host_fixed128_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
 ) -> IResult<&'a str, Value, E> {
     let (input, (_, integral_precision, _, fractional_precision, _, tensor, placement)) =
         preceded(
-            tag("HostFixed128Tensor"),
+            tag(Ty::HostFixed128Tensor.short_name()),
             tuple((
                 ws(tag("[")),
                 parse_int,
