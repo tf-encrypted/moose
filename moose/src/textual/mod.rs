@@ -2,7 +2,9 @@
 
 use crate::additive::AdditivePlacement;
 use crate::computation::*;
-use crate::host::{HostPlacement, RawPrfKey, RawSeed, RawShape, SliceInfo, SliceInfoElem, SyncKey};
+use crate::host::{
+    FromRaw, HostPlacement, RawPrfKey, RawSeed, RawShape, SliceInfo, SliceInfoElem, SyncKey,
+};
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
@@ -599,15 +601,25 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
             constant_literal_helper(
                 "Ring64Tensor",
                 vector2(parse_int),
-                |v: ndarray::ArrayD<u64>| Constant::HostRing64Tensor(v.into()),
+                |v: ndarray::ArrayD<u64>| {
+                    let plc = HostPlacement::from("TODO");
+                    let t = plc.from_raw(v);
+                    Constant::HostRing64Tensor(t)
+                },
             ),
             constant_literal_helper(
                 "Ring128Tensor",
                 vector2(parse_int),
-                |v: ndarray::ArrayD<u128>| Constant::HostRing128Tensor(v.into()),
+                |v: ndarray::ArrayD<u128>| {
+                    let plc = HostPlacement::from("TODO");
+                    let t = plc.from_raw(v);
+                    Constant::HostRing128Tensor(t)
+                },
             ),
             constant_literal_helper("HostBitTensor", vector2(parse_int), |v| {
-                Constant::HostBitTensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostBitTensor(t)
             }),
         )),
     ))(input)

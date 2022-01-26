@@ -302,19 +302,6 @@ impl HostBitTensor {
 }
 
 // TODO(Morten) remove but currently used by textual
-impl From<ArrayD<u8>> for HostBitTensor {
-    fn from(a: ArrayD<u8>) -> HostBitTensor {
-        let wrapped = a.mapv(|ai| (ai & 1) as u8);
-        HostBitTensor(
-            wrapped,
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
-            },
-        )
-    }
-}
-
-// TODO(Morten) remove but currently used by textual
 impl From<Vec<u8>> for HostBitTensor {
     fn from(v: Vec<u8>) -> HostBitTensor {
         let ix = IxDyn(&[v.len()]);
@@ -571,22 +558,6 @@ impl<T> HostRingTensor<T> {
     }
 }
 
-// TODO(Morten) remove, used by textual
-impl<T> From<ArrayD<T>> for HostRingTensor<T>
-where
-    T: Clone,
-{
-    fn from(a: ArrayD<T>) -> HostRingTensor<T> {
-        let wrapped = a.mapv(Wrapping);
-        HostRingTensor(
-            wrapped,
-            HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
-            },
-        )
-    }
-}
-
 impl From<&HostRingTensor<u64>> for ArrayD<i64> {
     fn from(r: &HostRingTensor<u64>) -> ArrayD<i64> {
         r.0.mapv(|element| element.0 as i64)
@@ -630,7 +601,7 @@ where
     }
 }
 
-pub(crate) trait FromRaw<T, O> {
+pub trait FromRaw<T, O> {
     fn from_raw(&self, raw: T) -> O;
 }
 
@@ -648,7 +619,7 @@ impl<T: Clone, D: ndarray::Dimension> FromRaw<Array<T, D>, HostRingTensor<T>> fo
 
 impl<D: ndarray::Dimension> FromRaw<Array<u8, D>, HostBitTensor> for HostPlacement {
     fn from_raw(&self, raw: Array<u8, D>) -> HostBitTensor {
-        HostBitTensor(raw.into_dyn(), self.clone())
+        HostBitTensor(raw.mapv(|ai| (ai & 1)).into_dyn(), self.clone())
     }
 }
 
