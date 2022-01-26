@@ -250,6 +250,7 @@ class TreeEnsembleClassifier(TreeEnsemble):
         )
 
     def post_transform(self, tree_scores, fixedpoint_dtype):
+        tree_scores = [edsl.identity(score) for score in tree_scores]
         if self.n_classes == 2:
             return self._maybe_sigmoid(tree_scores, fixedpoint_dtype)
         else:
