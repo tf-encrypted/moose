@@ -1341,16 +1341,20 @@ impl ShapeOp {
 }
 
 impl BroadcastOp {
-    pub(crate) fn host_ring_kernel<S: RuntimeSession, T: Clone>(
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T: Clone + std::fmt::Debug>(
         _sess: &S,
         plc: &HostPlacement,
         s: HostShape,
         x: HostRingTensor<T>,
-    ) -> Result<HostRingTensor<T>> {
-        Ok(HostRingTensor(
-            x.0.broadcast(s.0 .0).unwrap().to_owned(),
-            plc.clone(),
-        ))
+    ) -> Result<HostRingTensor<T>>
+    {
+        match x.0.broadcast(s.clone().0 .0) {
+            Some(y) => Ok(HostRingTensor(y.to_owned(), plc.clone())),
+            None => Err(Error::KernelError(format!(
+                "Tensor {:?} not broadcastable to shape {:?}.",
+                x, s
+            ))),
+        }
     }
 
     pub(crate) fn host_bit_kernel<S: RuntimeSession>(

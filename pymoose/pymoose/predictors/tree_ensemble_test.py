@@ -138,6 +138,10 @@ class TreeEnsembleTest(parameterized.TestCase):
         else:
             raise ValueError()
 
+        force_logits_list = ["hist_gradient_boosting_classifier_3class", "xgboost_classifier_3class", "xgboost_classifier_3class_5trees"]
+        if model_name in force_logits_list:
+            predictor.transform_output = False
+
         @edsl.computation
         def predictor_no_aes(x: edsl.Argument(predictor.alice, dtype=edsl.float64)):
             with predictor.alice:
@@ -163,6 +167,7 @@ class TreeEnsembleTest(parameterized.TestCase):
         predictor, predictor_logic = self._build_prediction_logic(
             model_name, "onnx", predictor_cls
         )
+
         traced_model_comp = edsl.trace(predictor_logic)
         storage = {plc.name: {} for plc in predictor.host_placements}
         runtime = LocalMooseRuntime(storage_mapping=storage)
