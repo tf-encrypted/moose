@@ -138,14 +138,6 @@ class TreeEnsembleTest(parameterized.TestCase):
         else:
             raise ValueError()
 
-        force_logits_list = [
-            "hist_gradient_boosting_classifier_3class",
-            "xgboost_classifier_3class",
-            "xgboost_classifier_3class_5trees",
-        ]
-        if model_name in force_logits_list:
-            predictor.transform_output = False
-
         @edsl.computation
         def predictor_no_aes(x: edsl.Argument(predictor.alice, dtype=edsl.float64)):
             with predictor.alice:

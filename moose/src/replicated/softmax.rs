@@ -75,15 +75,12 @@ impl SoftmaxOp {
         ReplicatedPlacement: PlacementDiv<S, RepFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementSum<S, RepFixedT, RepFixedT>,
     {
-        // x (4, 3), axis=1
         let axis = axis.unwrap();
         let xs: Vec<_> = (0..upmost_index)
             .map(|index| rep.index_axis(sess, axis as usize, index, &x))
             .collect();
-        // xs [4, 4, 4]
 
-        let xmax = rep.expand_dims(sess, vec![axis as u32], &rep.maximum(sess, &xs));
-        // xmax (4, 1)
+        let xmax = rep.expand_dims(sess, [axis].to_vec(), &rep.maximum(sess, &xs));
 
         // let xmax_broadcast = RepFixedTensor {
         //     tensor: rep.broadcast(sess, &rep.shape(sess, &x), &xmax),
@@ -119,7 +116,7 @@ impl SoftmaxOp {
         let threshold_ring = rep.ring_inject(sess, 0, &threshold);
         let normalized = rep.mux(sess, &threshold_ring, &zeros_rep, &e_x);
 
-        let e_x_sum = rep.sum(sess, Some(axis), &normalized);
+        let e_x_sum = rep.expand_dims(sess, [axis].to_vec(), &rep.sum(sess, Some(axis), &normalized));
         let softmax = rep.div(sess, &normalized, &e_x_sum);
 
         Ok(softmax)
@@ -178,9 +175,10 @@ mod tests {
                 };
 
                 let result = Convert::decode(&opened_exp.tensor, (2 as $tu).pow($f_precision));
+                let result: Vec<_> = result.0.iter().copied().collect();
                 // operation precision is not as accurate as the fixed point precision
                 for i in 0..y_target.len() {
-                    let error = (result.0[i] - y_target[i]).abs();
+                    let error = (result[i] - y_target[i]).abs();
                     assert!(error < $err, "failed at index {:?}, error is {:?}", i, error);
                 }
             }
@@ -189,6 +187,8 @@ mod tests {
 
     rep_approx_softmax_fixed_test!(test_rep_softmax_fixed64, softmax<i64, u64>, 0, 9, 8, 10, 0.01);
     rep_approx_softmax_fixed_test!(test_rep_softmax_fixed128, softmax<i128, u128>, 0, 9, 8, 27, 0.01);
+    rep_approx_softmax_fixed_test!(test_rep_softmax_fixed128_3col, softmax<i128, u128>, 1, 3, 24, 40, 0.015);
+    rep_approx_softmax_fixed_test!(test_rep_softmax_fixed128_4col, softmax<i128, u128>, 1, 4, 24, 40, 0.015);
 
     #[test]
     fn test_softmax_64() {
@@ -219,11 +219,58 @@ mod tests {
                 .and(&x_item)
                 .for_each(|entry_a, &entry_b| *entry_a = f64::max(*entry_a, entry_b));
         }
-        let y = x.clone() - x_max;
+        let y = x.clone() - x_max.insert_axis(Axis(1));
         let y_exp = y.map(|item| item.exp());
-        let softmax = y_exp.clone() / y_exp.sum_axis(Axis(0));
+        let softmax = y_exp.clone() / y_exp.sum_axis(Axis(0)).insert_axis(Axis(1));
 
         let expected: Vec<_> = softmax.iter().copied().collect();
         test_rep_softmax_fixed128(x, expected);
+    }
+
+    #[test]
+    fn test_softmax_3_4() {
+        let x = array![
+            [0.90102809f64, 0.65720883, -0.02816407, 0.0535739],
+            [0.61216721, 0.20281131, 1.7734221, -0.69106256],
+            [-0.08150293, -1.50330937, -0.99238243, -2.65759917],
+        ]
+        .into_dyn();
+        let mut x_max = x.index_axis(Axis(1), 0).to_owned();
+
+        for x_item in x.axis_iter(Axis(1)) {
+            Zip::from(&mut x_max)
+                .and(&x_item)
+                .for_each(|entry_a, &entry_b| *entry_a = f64::max(*entry_a, entry_b));
+        }
+        let y = x.clone() - x_max.insert_axis(Axis(1));
+        let y_exp = y.map(|item| item.exp());
+        let y_exp_sum = y_exp.sum_axis(Axis(1)).insert_axis(Axis(1));
+        let softmax = y_exp.clone() / y_exp_sum;
+
+        let expected: Vec<_> = softmax.iter().copied().collect();
+        test_rep_softmax_fixed128_4col(x, expected);
+    }
+
+    #[test]
+    fn test_softmax_3_3() {
+        let x = array![
+            [-1.35f64, -0.63, -1.37],
+            [-1.35, -0.63, -1.26],
+            [-1.35, -1.34, -0.72]
+        ]
+        .into_dyn();
+        let mut x_max = x.index_axis(Axis(1), 0).to_owned();
+
+        for x_item in x.axis_iter(Axis(1)) {
+            Zip::from(&mut x_max)
+                .and(&x_item)
+                .for_each(|entry_a, &entry_b| *entry_a = f64::max(*entry_a, entry_b));
+        }
+        let y = x.clone() - x_max.insert_axis(Axis(1));
+        let y_exp = y.map(|item| item.exp());
+        let softmax = y_exp.clone() / y_exp.sum_axis(Axis(1)).insert_axis(Axis(1));
+
+        let expected: Vec<_> = softmax.iter().copied().collect();
+        test_rep_softmax_fixed128_3col(x, expected);
     }
 }
