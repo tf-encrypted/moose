@@ -63,7 +63,6 @@ impl SoftmaxOp {
         ReplicatedPlacement: PlacementSub<S, RepFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementMaximum<S, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementExpandDims<S, RepFixedT, RepFixedT>,
-        // ReplicatedPlacement: PlacementBroadcast<S, ShapeT, RepFixedT, RepFixedT>,
         RepFixedTensor<RepRingT>: Into<RepFixedT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
         ReplicatedPlacement: PlacementShape<S, RepFixedT, ShapeT>,
@@ -81,12 +80,6 @@ impl SoftmaxOp {
             .collect();
 
         let xmax = rep.expand_dims(sess, [axis].to_vec(), &rep.maximum(sess, &xs));
-
-        // let xmax_broadcast = RepFixedTensor {
-        //     tensor: rep.broadcast(sess, &rep.shape(sess, &x), &xmax),
-        //     integral_precision: xmax.integral_precision(),
-        //     fractional_precision: xmax.fractional_precision(),
-        // }.into();
         let max_diff = rep.sub(sess, &x, &xmax);
 
         let e_x = rep.exp(sess, &max_diff);
@@ -116,7 +109,11 @@ impl SoftmaxOp {
         let threshold_ring = rep.ring_inject(sess, 0, &threshold);
         let normalized = rep.mux(sess, &threshold_ring, &zeros_rep, &e_x);
 
-        let e_x_sum = rep.expand_dims(sess, [axis].to_vec(), &rep.sum(sess, Some(axis), &normalized));
+        let e_x_sum = rep.expand_dims(
+            sess,
+            [axis].to_vec(),
+            &rep.sum(sess, Some(axis), &normalized),
+        );
         let softmax = rep.div(sess, &normalized, &e_x_sum);
 
         Ok(softmax)
