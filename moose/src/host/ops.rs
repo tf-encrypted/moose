@@ -563,34 +563,33 @@ impl HostDiagOp {
 
 impl IndexAxisOp {
     pub(crate) fn host_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        _sess: &S,
+        sess: &S,
         plc: &HostPlacement,
         axis: usize,
         index: usize,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>>
     where
-        T: Clone,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        let axis = Axis(axis);
-        let result = x.0.index_axis(axis, index);
-        Ok(HostTensor(result.to_owned(), plc.clone()))
+        Ok(plc.place(sess, x.index_axis(axis, index)?))
     }
 
     pub(crate) fn host_bit_kernel<S: RuntimeSession>(
-        _sess: &S,
+        sess: &S,
         plc: &HostPlacement,
         axis: usize,
         index: usize,
         x: HostBitTensor,
-    ) -> Result<HostBitTensor> {
-        let axis = Axis(axis);
-        let result = x.0.index_axis(axis, index);
-        Ok(HostBitTensor(result.to_owned(), plc.clone()))
+    ) -> Result<HostBitTensor>
+    where
+        HostPlacement: PlacementPlace<S, HostBitTensor>,
+    {
+        Ok(plc.place(sess, x.index_axis(axis, index)?))
     }
 
     pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
-        _sess: &S,
+        sess: &S,
         plc: &HostPlacement,
         axis: usize,
         index: usize,
@@ -598,10 +597,9 @@ impl IndexAxisOp {
     ) -> Result<HostRingTensor<T>>
     where
         T: Clone,
+        HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
     {
-        let axis = Axis(axis);
-        let result = x.0.index_axis(axis, index);
-        Ok(HostRingTensor(result.to_owned(), plc.clone()))
+        Ok(plc.place(sess, x.index_axis(axis, index)?))
     }
 }
 

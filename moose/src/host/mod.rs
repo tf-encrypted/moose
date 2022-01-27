@@ -195,6 +195,32 @@ where
     pub fn shape(&self) -> HostShape {
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
     }
+
+    pub fn index_axis(&self, axis: usize, index: usize) -> Result<HostTensor<T>> {
+        if axis >= self.0.ndim() {
+            return Err(Error::InvalidArgument(
+                format!(
+                    "axis too large in index axis, used axis {} with dimension {}",
+                    axis,
+                    self.0.ndim()
+                )
+                .to_string(),
+            ));
+        }
+        if index >= self.0.shape()[axis] {
+            return Err(Error::InvalidArgument(
+                format!(
+                    "index too large in index axis, used index {} in shape {:?}",
+                    index,
+                    self.0.shape()
+                )
+                .to_string(),
+            ));
+        }
+        let axis = Axis(axis);
+        let result = self.0.index_axis(axis, index);
+        Ok(HostTensor(result.to_owned(), self.1.clone()))
+    }
 }
 
 // This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
@@ -372,6 +398,32 @@ impl HostBitTensor {
 
     fn shape(&self) -> HostShape {
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
+    }
+
+    fn index_axis(self, axis: usize, index: usize) -> Result<HostBitTensor> {
+        if axis >= self.0.ndim() {
+            return Err(Error::InvalidArgument(
+                format!(
+                    "axis too large in index axis, used axis {} with dimension {}",
+                    axis,
+                    self.0.ndim()
+                )
+                .to_string(),
+            ));
+        }
+        if index >= self.0.shape()[axis] {
+            return Err(Error::InvalidArgument(
+                format!(
+                    "index too large in index axis, used index {} in shape {:?}",
+                    index,
+                    self.0.shape()
+                )
+                .to_string(),
+            ));
+        }
+        let axis = Axis(axis);
+        let result = self.0.index_axis(axis, index);
+        Ok(HostBitTensor(result.to_owned(), self.1))
     }
 }
 
@@ -794,6 +846,37 @@ where
                 .map_err(|e| Error::KernelError(e.to_string()))?;
             Ok(HostRingTensor(out, self.1))
         }
+    }
+}
+
+impl<T> HostRingTensor<T>
+where
+    T: Clone,
+{
+    fn index_axis(self, axis: usize, index: usize) -> Result<HostRingTensor<T>> {
+        if axis >= self.0.ndim() {
+            return Err(Error::InvalidArgument(
+                format!(
+                    "axis too large in index axis, used axis {} with dimension {}",
+                    axis,
+                    self.0.ndim()
+                )
+                .to_string(),
+            ));
+        }
+        if index >= self.0.shape()[axis] {
+            return Err(Error::InvalidArgument(
+                format!(
+                    "index too large in index axis, used index {} in shape {:?}",
+                    index,
+                    self.0.shape()
+                )
+                .to_string(),
+            ));
+        }
+        let axis = Axis(axis);
+        let result = self.0.index_axis(axis, index);
+        Ok(HostRingTensor(result.to_owned(), self.1))
     }
 }
 
