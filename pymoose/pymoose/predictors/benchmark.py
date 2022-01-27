@@ -23,9 +23,9 @@ from pymoose.predictors import tree_ensemble
 from pymoose.testing import LocalMooseRuntime
 
 
-def _build_forest_from_onnx(model_name, predictor_cls):
+def _build_from_onnx(model_name, predictor_cls):
     root_path = pathlib.Path(__file__).parent.absolute()
-    fixture_path = root_path / "fixtures" / f"{model_name}.onnx"
+    fixture_path = root_path / "fixtures/benchmark" / f"{model_name}.onnx"
     with open(fixture_path, "rb") as model_fixture:
         forest_onnx = load_model(model_fixture)
     forest_model = predictor_cls.from_onnx(forest_onnx)
@@ -41,9 +41,9 @@ def _build_forest_from_json(predictor_cls):
     return forest_model
 
 
-def _build_prediction_logic(model_name, onnx_or_json, predictor_cls):
+def _build_forest_prediction_logic(model_name, onnx_or_json, predictor_cls):
     if onnx_or_json == "onnx":
-        predictor = _build_forest_from_onnx(model_name, predictor_cls)
+        predictor = _build_from_onnx(model_name, predictor_cls)
     elif onnx_or_json == "json":
         predictor = _build_forest_from_json()
     else:
@@ -59,6 +59,23 @@ def _build_prediction_logic(model_name, onnx_or_json, predictor_cls):
         return predictor.handle_output(y, prediction_handler=predictor.bob)
 
     return predictor, predictor_no_aes
+
+
+def _build_linear_reg_prediction_logic(model_name, predictor_cls):
+        predictor = _build_from_onnx(model_name, predictor_cls)
+
+        @edsl.computation
+        def predictor_no_aes(x: edsl.Argument(predictor.alice, dtype=edsl.float64)):
+            with predictor.alice:
+                x_fixed = edsl.cast(x, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
+            with predictor.replicated:
+                y = predictor.linear_predictor_fn(
+                    x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE
+                )
+                y = predictor.post_transform(y)
+            return predictor.handle_output(y, prediction_handler=predictor.bob)
+
+        return predictor, predictor_no_aes
 
 
 if __name__ == "__main__":
@@ -85,9 +102,14 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"Got unexpected model type: {args.model_type}")
 
-    predictor, predictor_logic = _build_prediction_logic(
-        args.onnx_model, "onnx", predictor_cls
-    )
+    if (args.model_type == "linear_regressor") or (args.model_type=="linear_classifier"):
+        predictor, predictor_logic = _build_linear_reg_prediction_logic(
+        args.onnx_model, predictor_cls
+        )
+    else:
+        predictor, predictor_logic = _build_forest_prediction_logic(
+            args.onnx_model, "onnx", predictor_cls
+        )
     traced_model_comp = edsl.trace(predictor_logic)
     storage = {plc.name: {} for plc in predictor.host_placements}
     runtime = LocalMooseRuntime(storage_mapping=storage)
