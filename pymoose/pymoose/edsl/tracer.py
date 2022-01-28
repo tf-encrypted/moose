@@ -461,21 +461,21 @@ class AstTracer:
             )
         )
 
-    def visit_SoftmaxExpression(self, exp_expression):
-        assert isinstance(exp_expression, SoftmaxExpression)
-        (x_expression,) = exp_expression.inputs
+    def visit_SoftmaxExpression(self, softmax_expression):
+        assert isinstance(softmax_expression, SoftmaxExpression)
+        (x_expression,) = softmax_expression.inputs
         x_operation = self.visit(x_expression)
-        placement = self.visit_placement_expression(exp_expression.placement)
+        placement = self.visit_placement_expression(softmax_expression.placement)
         return self.computation.add_operation(
             SoftmaxOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("sigmoid"),
-                axis=exp_expression.axis,
-                upmost_index=exp_expression.upmost_index,
+                axis=softmax_expression.axis,
+                upmost_index=softmax_expression.upmost_index,
                 inputs={"x": x_operation.name},
                 signature=OpSignature(
                     input_types={"x": x_operation.return_type},
-                    return_type=exp_expression.vtype,
+                    return_type=softmax_expression.vtype,
                 ),
             )
         )
