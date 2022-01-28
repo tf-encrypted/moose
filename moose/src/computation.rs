@@ -975,6 +975,7 @@ operators![
     Output,
     Constant,
     Shape,
+    Broadcast,
     PrimDeriveSeed,
     PrimPrfKeyGen,
     AesDecrypt,
@@ -1006,7 +1007,6 @@ operators![
     HostBitDec,
     HostReshape,
     HostSqueeze,
-    HostSum,
     HostOnes,
     HostTranspose,
     HostInverse,
@@ -1018,7 +1018,6 @@ operators![
     RingNeg,
     RingMul,
     RingDot,
-    RingSum,
     RingFixedpointMean,
     RingFixedpointEncode,
     RingFixedpointDecode,
@@ -1045,7 +1044,6 @@ operators![
     FixedpointDot,
     FixedpointTruncPr,
     FixedpointMean,
-    FixedpointSum,
     Pow2,
     Exp,
     Sigmoid,
@@ -1064,7 +1062,6 @@ operators![
     FloatingpointTranspose,
     FloatingpointInverse,
     FloatingpointMean,
-    FloatingpointSum,
     // Additive operators
     AdtReveal,
     AdtFill,
@@ -1089,7 +1086,6 @@ operators![
     RepNeg,
     RepFixedpointMean,
     RepShl,
-    RepSum,
     AddN,
     RepTruncPr,
     RepToAdt,
@@ -1102,6 +1098,7 @@ operators![
     RepEqual,
     Mux,
     Maximum,
+    Softmax,
     // Mirrored Operators
     Demirror,
     Mirror,
@@ -1198,7 +1195,7 @@ pub struct OnesOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct ExpandDimsOp {
     pub sig: Signature,
-    pub axis: Vec<u32>,
+    pub axis: Vec<usize>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
@@ -1255,10 +1252,10 @@ pub struct SigmoidOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
 pub struct SumOp {
     pub sig: Signature,
-    pub axis: Option<u32>,
+    pub axis: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
@@ -1329,12 +1326,6 @@ pub struct HostSqueezeOp {
 
 pub struct HostReshapeOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
-pub struct HostSumOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
@@ -1434,12 +1425,6 @@ pub struct RingMulOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RingDotOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
-pub struct RingSumOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
@@ -1586,12 +1571,6 @@ pub struct FixedpointMeanOp {
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct FixedpointSumOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct NegOp {
     pub sig: Signature,
@@ -1651,12 +1630,6 @@ pub struct FloatingpointInverseOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FloatingpointMeanOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct FloatingpointSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
@@ -1779,12 +1752,6 @@ pub struct AddNOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepSumOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct RepTruncPrOp {
     pub sig: Signature,
@@ -1864,6 +1831,19 @@ pub struct MirrorOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct MaximumOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct SoftmaxOp {
+    pub sig: Signature,
+    // axis can be optional (in which case we need to do a softmax over every entry)
+    pub axis: usize,
+    pub upmost_index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct BroadcastOp {
     pub sig: Signature,
 }
 

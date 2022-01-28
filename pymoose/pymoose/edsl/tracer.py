@@ -37,6 +37,7 @@ from pymoose.computation.standard import SaveOperation
 from pymoose.computation.standard import ShapeOperation
 from pymoose.computation.standard import SigmoidOperation
 from pymoose.computation.standard import SliceOperation
+from pymoose.computation.standard import SoftmaxOperation
 from pymoose.computation.standard import SqueezeOperation
 from pymoose.computation.standard import SubOperation
 from pymoose.computation.standard import SumOperation
@@ -71,6 +72,7 @@ from pymoose.edsl.base import SaveExpression
 from pymoose.edsl.base import ShapeExpression
 from pymoose.edsl.base import SigmoidExpression
 from pymoose.edsl.base import SliceExpression
+from pymoose.edsl.base import SoftmaxExpression
 from pymoose.edsl.base import SqueezeExpression
 from pymoose.edsl.base import SumExpression
 from pymoose.edsl.base import TransposeExpression
@@ -455,6 +457,25 @@ class AstTracer:
                 signature=OpSignature(
                     input_types={"x": x_operation.return_type},
                     return_type=exp_expression.vtype,
+                ),
+            )
+        )
+
+    def visit_SoftmaxExpression(self, softmax_expression):
+        assert isinstance(softmax_expression, SoftmaxExpression)
+        (x_expression,) = softmax_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(softmax_expression.placement)
+        return self.computation.add_operation(
+            SoftmaxOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("sigmoid"),
+                axis=softmax_expression.axis,
+                upmost_index=softmax_expression.upmost_index,
+                inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=softmax_expression.vtype,
                 ),
             )
         )

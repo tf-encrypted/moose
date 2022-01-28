@@ -62,6 +62,7 @@ class ReducemaxLogicExample(parameterized.TestCase):
         )
 
         x0 = runtime.read_value_from_storage("bob", "reduce_max")
+
         np.testing.assert_almost_equal(x0, x_arg.max(axis=2))
 
 

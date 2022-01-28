@@ -676,21 +676,9 @@ mod tests {
     }
 
     #[rstest]
-    #[case("HostSum", None, "Float32(10.0) @Host(alice)", true, true)]
-    #[case(
-        "HostSum",
-        Some(0),
-        "Float32Tensor([4.0, 6.0]) @Host(alice)",
-        false,
-        true
-    )]
-    #[case(
-        "HostSum",
-        Some(1),
-        "Float32Tensor([3.0, 7.0]) @Host(alice)",
-        false,
-        true
-    )]
+    #[case("Sum", None, "Float32(10.0) @Host(alice)", true, true)]
+    #[case("Sum", Some(0), "Float32Tensor([4.0, 6.0]) @Host(alice)", false, true)]
+    #[case("Sum", Some(1), "Float32Tensor([3.0, 7.0]) @Host(alice)", false, true)]
     #[case("HostMean", None, "Float32(2.5) @Host(alice)", true, true)]
     #[case(
         "HostMean",
@@ -706,21 +694,9 @@ mod tests {
         false,
         true
     )]
-    #[case("HostSum", None, "Float32(10.0) @Host(alice)", true, false)]
-    #[case(
-        "HostSum",
-        Some(0),
-        "Float32Tensor([4.0, 6.0]) @Host(alice)",
-        false,
-        false
-    )]
-    #[case(
-        "HostSum",
-        Some(1),
-        "Float32Tensor([3.0, 7.0]) @Host(alice)",
-        false,
-        false
-    )]
+    #[case("Sum", None, "Float32(10.0) @Host(alice)", true, false)]
+    #[case("Sum", Some(0), "Float32Tensor([4.0, 6.0]) @Host(alice)", false, false)]
+    #[case("Sum", Some(1), "Float32Tensor([3.0, 7.0]) @Host(alice)", false, false)]
     #[case("HostMean", None, "Float32(2.5) @Host(alice)", true, false)]
     #[case(
         "HostMean",
@@ -1060,7 +1036,7 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value=Ring64Tensor([[1, 2], [3, 4]])}: () -> Ring64Tensor @Host(alice)
-        r = RingSum {axis = 0}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
+        r = Sum {axis = 0}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (r) @Host(alice)
         "#;
         let arguments: HashMap<String, Value> = hashmap!();

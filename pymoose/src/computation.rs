@@ -40,6 +40,7 @@ enum PyOperation {
     std_InverseOperation(PyInverseOperation),
     std_MeanOperation(PyMeanOperation),
     std_SigmoidOperation(PySigmoidOperation),
+    std_SoftmaxOperation(PySoftmaxOperation),
     std_SqrtOperation(PySqrtOperation),
     std_SumOperation(PySumOperation),
     std_DivOperation(PyDivOperation),
@@ -301,7 +302,7 @@ struct PyExpandDimsOperation {
     inputs: Inputs,
     placement_name: String,
     signature: PyOpSignature,
-    axis: Vec<u32>,
+    axis: Vec<usize>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -318,6 +319,16 @@ struct PySigmoidOperation {
     inputs: Inputs,
     placement_name: String,
     signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
+struct PySoftmaxOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+    axis: usize,
+    upmost_index: u32,
 }
 
 #[derive(Deserialize, Debug)]
@@ -384,7 +395,7 @@ struct PySumOperation {
     inputs: Inputs,
     placement_name: String,
     signature: PyOpSignature,
-    axis: Option<u32>,
+    axis: Option<usize>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -816,6 +827,18 @@ impl TryFrom<PyComputation> for Computation {
                     std_SigmoidOperation(op) => Ok(Operation {
                         kind: SigmoidOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_SoftmaxOperation(op) => Ok(Operation {
+                        kind: SoftmaxOp {
+                            sig: Signature::from_unary(&op.signature, "x")?,
+                            axis: op.axis,
+                            upmost_index: op.upmost_index as usize,
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])

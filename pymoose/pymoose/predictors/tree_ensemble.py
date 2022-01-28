@@ -263,7 +263,7 @@ class TreeEnsembleClassifier(TreeEnsemble):
                 tree_scores, axis=1, fixedpoint_dtype=fixedpoint_dtype
             )
             if self.transform_output:
-                return self._temp_softmax(logit, axis=1)
+                return edsl.softmax(logit, axis=1, upmost_index=self.n_classes)
             return logit
 
     def _maybe_sigmoid(self, tree_scores, fixedpoint_dtype):
@@ -289,12 +289,6 @@ class TreeEnsembleClassifier(TreeEnsemble):
             [edsl.expand_dims(ovr, axis=axis) for ovr in ovr_logits], axis=axis
         )
         return reformed_logits
-
-    def _temp_softmax(self, x, axis):
-        # TODO replace with edsl.max(x, axis)
-        x_exp = edsl.exp(x)
-        denom = edsl.expand_dims(edsl.sum(x_exp, axis), axis)
-        return edsl.div(x_exp, denom)
 
 
 class TreeEnsembleRegressor(TreeEnsemble):

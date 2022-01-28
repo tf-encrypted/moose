@@ -163,6 +163,7 @@ class TreeEnsembleTest(parameterized.TestCase):
         predictor, predictor_logic = self._build_prediction_logic(
             model_name, "onnx", predictor_cls
         )
+
         traced_model_comp = edsl.trace(predictor_logic)
         storage = {plc.name: {} for plc in predictor.host_placements}
         runtime = LocalMooseRuntime(storage_mapping=storage)

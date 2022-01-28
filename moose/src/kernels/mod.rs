@@ -222,3 +222,34 @@ modelled_kernel! {
         (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::bit_kernel),
     ]
 }
+
+pub trait PlacementSoftmax<S: Session, T, O> {
+    fn softmax(&self, sess: &S, axis: usize, upmost_index: usize, x: &T) -> O;
+}
+
+modelled_kernel! {
+    PlacementSoftmax::softmax, SoftmaxOp{axis: usize, upmost_index: usize},
+    [
+        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] Self::logical_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_fixed_kernel),
+    ]
+}
+
+pub trait PlacementBroadcast<S: Session, ShapeT, T, O> {
+    fn broadcast(&self, sess: &S, s: &ShapeT, x: &T) -> O;
+}
+
+modelled_kernel! {
+    PlacementBroadcast::broadcast, BroadcastOp,
+    [
+        (HostPlacement, (HostShape, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_ring_kernel),
+        (HostPlacement, (HostShape, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_ring_kernel),
+        (HostPlacement, (HostShape, HostBitTensor) -> HostBitTensor => [runtime] Self::host_bit_kernel),
+        (ReplicatedPlacement, (ReplicatedShape, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedShape, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedShape, ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::rep_ring_kernel),
+    ]
+}

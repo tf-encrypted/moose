@@ -971,10 +971,10 @@ impl MeanOp {
 }
 
 impl SumOp {
-    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
@@ -1006,10 +1006,10 @@ impl SumOp {
         }
     }
 
-    pub(crate) fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
@@ -1066,7 +1066,7 @@ impl ExpandDimsOp {
     pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
@@ -1105,7 +1105,7 @@ impl ExpandDimsOp {
     pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
@@ -1761,5 +1761,35 @@ impl MaximumOp {
             _ => unimplemented!(),
         };
         Ok(out)
+    }
+}
+
+impl SoftmaxOp {
+    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        ReplicatedPlacement: PlacementSoftmax<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementSoftmax<S, Fixed128T, Fixed128T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = plc.softmax(sess, axis, upmost_index, &x);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = plc.softmax(sess, axis, upmost_index, &x);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated softmax for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
     }
 }
