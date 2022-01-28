@@ -242,7 +242,7 @@ mod tests {
         let y = x.clone() - x_max.insert_axis(Axis(1));
         let y_exp = y.map(|item| item.exp());
         let y_exp_sum = y_exp.sum_axis(Axis(1)).insert_axis(Axis(1));
-        let softmax = y_exp.clone() / y_exp_sum;
+        let softmax = y_exp / y_exp_sum;
 
         let expected: Vec<_> = softmax.iter().copied().collect();
         test_rep_softmax_fixed128_4col(x, expected);
@@ -265,7 +265,8 @@ mod tests {
         }
         let y = x.clone() - x_max.insert_axis(Axis(1));
         let y_exp = y.map(|item| item.exp());
-        let softmax = y_exp.clone() / y_exp.sum_axis(Axis(1)).insert_axis(Axis(1));
+        let y_exp_sum = y_exp.sum_axis(Axis(1)).insert_axis(Axis(1));
+        let softmax = y_exp / y_exp_sum;
 
         let expected: Vec<_> = softmax.iter().copied().collect();
         test_rep_softmax_fixed128_3col(x, expected);

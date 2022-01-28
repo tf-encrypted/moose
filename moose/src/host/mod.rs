@@ -204,7 +204,6 @@ where
                     axis,
                     self.0.ndim()
                 )
-                .to_string(),
             ));
         }
         if index >= self.0.shape()[axis] {
@@ -214,7 +213,6 @@ where
                     index,
                     self.0.shape()
                 )
-                .to_string(),
             ));
         }
         let axis = Axis(axis);
@@ -408,7 +406,6 @@ impl HostBitTensor {
                     axis,
                     self.0.ndim()
                 )
-                .to_string(),
             ));
         }
         if index >= self.0.shape()[axis] {
@@ -418,7 +415,6 @@ impl HostBitTensor {
                     index,
                     self.0.shape()
                 )
-                .to_string(),
             ));
         }
         let axis = Axis(axis);
@@ -861,7 +857,6 @@ where
                     axis,
                     self.0.ndim()
                 )
-                .to_string(),
             ));
         }
         if index >= self.0.shape()[axis] {
@@ -871,7 +866,6 @@ where
                     index,
                     self.0.shape()
                 )
-                .to_string(),
             ));
         }
         let axis = Axis(axis);
