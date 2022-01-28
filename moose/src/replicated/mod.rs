@@ -1267,8 +1267,8 @@ impl ConcatOp {
     }
 }
 
-impl RepSumOp {
-    pub(crate) fn kernel<S: Session, RingT>(
+impl SumOp {
+    pub(crate) fn rep_ring_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         axis: Option<u32>,

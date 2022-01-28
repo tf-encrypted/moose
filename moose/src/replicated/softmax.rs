@@ -202,7 +202,6 @@ mod tests {
         let softmax = y_exp / y_exp_sum;
 
         let expected: Vec<_> = softmax.iter().copied().collect();
-
         test_rep_softmax_fixed64(x, expected);
     }
 

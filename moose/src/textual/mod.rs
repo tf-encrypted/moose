@@ -241,7 +241,6 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         HostSliceOp::from_textual,
     ));
     let part2 = alt((
-        HostSumOp::from_textual,
         HostOnesOp::from_textual,
         ConcatOp::from_textual,
         HostTransposeOp::from_textual,
@@ -1066,7 +1065,6 @@ impl ToTextual for Operator {
             HostDiag(op) => op.to_textual(),
             HostShlDim(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
-            HostSum(op) => op.to_textual(),
             HostTranspose(op) => op.to_textual(),
             HostInverse(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
@@ -1098,7 +1096,6 @@ impl ToTextual for Operator {
             FixedpointDot(op) => op.to_textual(),
             FixedpointTruncPr(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
-            FixedpointSum(op) => op.to_textual(),
             FloatingpointAdd(op) => op.to_textual(),
             FloatingpointSub(op) => op.to_textual(),
             FloatingpointMul(op) => op.to_textual(),
@@ -1110,13 +1107,11 @@ impl ToTextual for Operator {
             FloatingpointTranspose(op) => op.to_textual(),
             FloatingpointInverse(op) => op.to_textual(),
             FloatingpointMean(op) => op.to_textual(),
-            FloatingpointSum(op) => op.to_textual(),
             RepSetup(op) => op.to_textual(),
             RepShare(op) => op.to_textual(),
             RepReveal(op) => op.to_textual(),
             RepDot(op) => op.to_textual(),
             RepFixedpointMean(op) => op.to_textual(),
-            RepSum(op) => op.to_textual(),
             AddN(op) => op.to_textual(),
             RepAdd(op) => op.to_textual(),
             RepSub(op) => op.to_textual(),
@@ -1183,11 +1178,7 @@ macro_rules! op_with_axis_to_textual {
 op_with_axis_to_textual!(MeanOp);
 op_with_axis_to_textual!(SumOp);
 op_with_axis_to_textual!(HostMeanOp);
-op_with_axis_to_textual!(HostSumOp);
-op_with_axis_to_textual!(RepSumOp);
-op_with_axis_to_textual!(FixedpointSumOp);
 op_with_axis_to_textual!(FloatingpointMeanOp);
-op_with_axis_to_textual!(FloatingpointSumOp);
 op_with_axis_to_textual!(HostSqueezeOp);
 
 impl ToTextual for FixedpointMeanOp {

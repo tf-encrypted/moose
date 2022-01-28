@@ -839,7 +839,7 @@ impl FixedpointTruncPrOp {
     }
 }
 
-impl FixedpointSumOp {
+impl SumOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
@@ -861,7 +861,7 @@ impl FixedpointSumOp {
         Ok(FixedTensor::Host(result))
     }
 
-    pub(crate) fn rep_kernel<S: Session, RingT, MirT, RepT>(
+    pub(crate) fn fixed_rep_kernel<S: Session, RingT, MirT, RepT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Option<u32>,
@@ -882,7 +882,7 @@ impl FixedpointSumOp {
         Ok(FixedTensor::Replicated(result))
     }
 
-    pub(crate) fn hostfixed_kernel<S: Session, HostRingT>(
+    pub(crate) fn fixed_hostfixed_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
@@ -899,7 +899,7 @@ impl FixedpointSumOp {
         })
     }
 
-    pub(crate) fn repfixed_kernel<S: Session, RepRingT>(
+    pub(crate) fn fixed_repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Option<u32>,

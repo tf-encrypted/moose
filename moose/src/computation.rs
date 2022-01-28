@@ -1007,7 +1007,6 @@ operators![
     HostBitDec,
     HostReshape,
     HostSqueeze,
-    HostSum,
     HostOnes,
     HostTranspose,
     HostInverse,
@@ -1045,7 +1044,6 @@ operators![
     FixedpointDot,
     FixedpointTruncPr,
     FixedpointMean,
-    FixedpointSum,
     Pow2,
     Exp,
     Sigmoid,
@@ -1064,7 +1062,6 @@ operators![
     FloatingpointTranspose,
     FloatingpointInverse,
     FloatingpointMean,
-    FloatingpointSum,
     // Additive operators
     AdtReveal,
     AdtFill,
@@ -1089,7 +1086,6 @@ operators![
     RepNeg,
     RepFixedpointMean,
     RepShl,
-    RepSum,
     AddN,
     RepTruncPr,
     RepToAdt,
@@ -1330,12 +1326,6 @@ pub struct HostSqueezeOp {
 
 pub struct HostReshapeOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
-pub struct HostSumOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
@@ -1581,12 +1571,6 @@ pub struct FixedpointMeanOp {
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct FixedpointSumOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct NegOp {
     pub sig: Signature,
@@ -1646,12 +1630,6 @@ pub struct FloatingpointInverseOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FloatingpointMeanOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct FloatingpointSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
@@ -1772,12 +1750,6 @@ pub struct RepFixedpointMeanOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct AddNOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepSumOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]

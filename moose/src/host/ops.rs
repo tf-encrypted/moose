@@ -796,8 +796,8 @@ impl<T: LinalgScalar> HostTensor<T> {
     }
 }
 
-impl HostSumOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl SumOp {
+    pub(crate) fn host_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
@@ -810,7 +810,7 @@ impl HostSumOp {
         Ok(plc.place(sess, x.sum(axis)?))
     }
 
-    pub fn ring_kernel<S: RuntimeSession, T>(
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
