@@ -23,6 +23,7 @@ use nom::{
 };
 use std::convert::TryFrom;
 use std::str::FromStr;
+use std::thread;
 
 impl TryFrom<&str> for Computation {
     type Error = anyhow::Error;
@@ -92,29 +93,73 @@ pub fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
     }
 }
 
+/// Parses the computation and returns a simple error if it fails. It is only about 10% faster than the verbose version.
+pub fn fast_parse_computation(source: &str) -> anyhow::Result<Computation> {
+    match parse_computation::<(&str, ErrorKind)>(source) {
+        Ok((_, computation)) => Ok(computation),
+        e => Err(anyhow::anyhow!("Failed to parse {} due to {:?}", source, e)),
+    }
+}
+
+pub fn parallel_parse_computation(source: String) -> anyhow::Result<Computation> {
+    // TODO: The function below is a quick test to check if parallelising the parser is a good idea or not.
+    let len = source.len();
+    let split1 = len / 3;
+    let s = &source[split1..];
+    let split1 = split1 + s.find('\n').unwrap();
+    let split2 = 2 * len / 3;
+    let s = &source[split2..];
+    let split2 = split2 + s.find('\n').unwrap();
+
+    let first = source[..split1].to_string();
+    let second = source[split1..split2].to_string();
+    let third = source[split2..].to_string();
+
+    let part1 = thread::spawn(move || parse_operations::<(&str, ErrorKind)>(&first).unwrap().1);
+    let part2 = thread::spawn(move || parse_operations::<(&str, ErrorKind)>(&second).unwrap().1);
+    let part3 = thread::spawn(move || parse_operations::<(&str, ErrorKind)>(&third).unwrap().1);
+    let mut part1 = part1.join().unwrap();
+    let mut part2 = part2.join().unwrap();
+    let mut part3 = part3.join().unwrap();
+    part1.append(&mut part2);
+    part1.append(&mut part3);
+    Ok(Computation { operations: part1 })
+}
+
+fn parse_operations<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Vec<Operation>, E> {
+    // A decent guess for the initial capacity of the vector.
+    let capacity = 4 + input.len() / 100;
+    let (input, operations) = fold_many0(
+        parse_line,
+        || Vec::with_capacity(capacity),
+        |mut acc: Vec<_>, item| {
+            acc.push(item);
+            acc
+        },
+    )(input)?;
+    Ok((input, operations))
+}
+
 /// Parses the computation line by line.
 fn parse_computation<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Computation, E> {
-    let body = all_consuming(map(
-        separated_list0(many1(multispace1), cut(parse_line)),
-        |operations| Computation {
-            operations: operations.into_iter().flatten().collect(),
-        },
-    ));
-    // Allow any number of empty lines around the body
-    delimited(many0(multispace1), body, many0(multispace1))(input)
+    let (input, operations) = parse_operations(input)?;
+    Ok((input, Computation { operations }))
 }
 
 /// Parses a single logical line of the textual IR
 fn parse_line<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, Option<Operation>, E> {
-    alt((
-        recognize_comment,
-        map(parse_assignment, Some),
-        value(None, eof),
-    ))(input)
+) -> IResult<&'a str, Operation, E> {
+    let (input, _) = many0(recognize_comment)(input)?;
+    let (input, _) = many0(multispace1)(input)?;
+    let (input, op) = parse_assignment(input)?;
+    let (input, _) = many0(multispace1)(input)?;
+    let (input, _) = opt(eof)(input)?;
+    Ok((input, op))
 }
 
 /// Recognizes and consumes away a comment
@@ -224,6 +269,48 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, op_name) = ws(alphanumeric1)(input)?;
     Operator::get_from_textual(op_name)(input)
+}
+
+impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E> for SendOp {
+    fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
+        let (input, _) = ws(tag("{"))(input)?;
+        let (input, (_, _, rendezvous_key)) =
+            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex))(input)?;
+        let (input, _) = ws(tag(","))(input)?;
+        let (input, (_, _, receiver)) = tuple((tag("receiver"), ws(tag("=")), string))(input)?;
+        let (input, _) = ws(tag("}"))(input)?;
+        let (input, sig) = operator_signature(1)(input)?;
+        Ok((
+            input,
+            SendOp {
+                sig,
+                rendezvous_key: RendezvousKey::from_bytes(rendezvous_key),
+                receiver: Role::from(receiver),
+            }
+            .into(),
+        ))
+    }
+}
+
+impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E> for ReceiveOp {
+    fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
+        let (input, _) = ws(tag("{"))(input)?;
+        let (input, (_, _, rendezvous_key)) =
+            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex))(input)?;
+        let (input, _) = ws(tag(","))(input)?;
+        let (input, (_, _, sender)) = tuple((tag("sender"), ws(tag("=")), string))(input)?;
+        let (input, _) = ws(tag("}"))(input)?;
+        let (input, sig) = operator_signature(0)(input)?;
+        Ok((
+            input,
+            ReceiveOp {
+                sig,
+                rendezvous_key: RendezvousKey::from_bytes(rendezvous_key),
+                sender: Role::from(sender),
+            }
+            .into(),
+        ))
+    }
 }
 
 impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E> for ExpandDimsOp {

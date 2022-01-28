@@ -1169,7 +1169,7 @@ pub struct IdentityOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 
 pub struct SendOp {
     pub sig: Signature,
@@ -1177,7 +1177,7 @@ pub struct SendOp {
     pub receiver: Role,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 
 pub struct ReceiveOp {
     pub sig: Signature,
