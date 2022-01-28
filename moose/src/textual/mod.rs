@@ -2064,6 +2064,37 @@ mod tests {
     }
 
     #[test]
+    fn test_verbose_parse_computation() -> Result<(), anyhow::Error> {
+        let comp: Computation = verbose_parse_computation("x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
+            y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
+            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
+                )?;
+        assert_eq!(comp.operations.len(), 3);
+        Ok(())
+    }
+
+    #[test]
+    fn test_fast_parse_computation() -> Result<(), anyhow::Error> {
+        let comp: Computation = fast_parse_computation("x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
+            y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
+            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
+                )?;
+        assert_eq!(comp.operations.len(), 3);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parallel_parse_computation() -> Result<(), anyhow::Error> {
+        let comp: Computation = parallel_parse_computation("x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
+            y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
+            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
+            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
+                )?;
+        assert_eq!(comp.operations.len(), 4);
+        Ok(())
+    }
+
+    #[test]
     fn test_constant_try_into() -> Result<(), anyhow::Error> {
         let v: Constant = "HostFloat32Tensor([1.0, 2.0, 3.0])".try_into()?;
         assert_eq!(v, Constant::HostFloat32Tensor(vec![1.0, 2.0, 3.0].into()));
