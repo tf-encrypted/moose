@@ -11,6 +11,8 @@ install-release: pydep pylib-release
 
 pylib:
 	cd pymoose && python setup.py develop
+	# Release wheel file
+	cd pymoose && maturin build
 
 install: pydep pylib
 
