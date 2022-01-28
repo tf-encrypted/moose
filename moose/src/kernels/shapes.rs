@@ -33,11 +33,11 @@ modelled_kernel! {
 }
 
 pub trait PlacementExpandDims<S: Session, T, O> {
-    fn expand_dims(&self, sess: &S, axis: Vec<u32>, x: &T) -> O;
+    fn expand_dims(&self, sess: &S, axis: Vec<usize>, x: &T) -> O;
 }
 
 modelled_kernel! {
-    PlacementExpandDims::expand_dims, ExpandDimsOp{axis: Vec<u32>},
+    PlacementExpandDims::expand_dims, ExpandDimsOp{axis: Vec<usize>},
     [
 
         (HostPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::bool_host_kernel),

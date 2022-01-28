@@ -54,6 +54,7 @@ SUPPORTED_TYPES = [
     std_dialect.OnesOperation,
     std_dialect.OutputOperation,
     std_dialect.SigmoidOperation,
+    std_dialect.SoftmaxOperation,
     std_dialect.ReshapeOperation,
     std_dialect.SaveOperation,
     std_dialect.ShapeConstant,

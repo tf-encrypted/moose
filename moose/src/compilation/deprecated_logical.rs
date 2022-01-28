@@ -42,16 +42,6 @@ fn lower_op(op: &Operation) -> Operation {
             inputs: op.inputs.clone(),
             placement: op.placement.clone(),
         },
-        (Placement::Host(_), Operator::Sum(ref i)) => Operation {
-            name: op.name.clone(),
-            kind: HostSumOp {
-                sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
-                axis: i.axis,
-            }
-            .into(),
-            inputs: op.inputs.clone(),
-            placement: op.placement.clone(),
-        },
         (Placement::Host(_), Operator::Add(ref i)) => Operation {
             name: op.name.clone(),
             kind: HostAddOp {

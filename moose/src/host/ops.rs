@@ -563,34 +563,33 @@ impl HostDiagOp {
 
 impl IndexAxisOp {
     pub(crate) fn host_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        _sess: &S,
+        sess: &S,
         plc: &HostPlacement,
         axis: usize,
         index: usize,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>>
     where
-        T: Clone,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        let axis = Axis(axis);
-        let result = x.0.index_axis(axis, index);
-        Ok(HostTensor(result.to_owned(), plc.clone()))
+        Ok(plc.place(sess, x.index_axis(axis, index)?))
     }
 
     pub(crate) fn host_bit_kernel<S: RuntimeSession>(
-        _sess: &S,
+        sess: &S,
         plc: &HostPlacement,
         axis: usize,
         index: usize,
         x: HostBitTensor,
-    ) -> Result<HostBitTensor> {
-        let axis = Axis(axis);
-        let result = x.0.index_axis(axis, index);
-        Ok(HostBitTensor(result.to_owned(), plc.clone()))
+    ) -> Result<HostBitTensor>
+    where
+        HostPlacement: PlacementPlace<S, HostBitTensor>,
+    {
+        Ok(plc.place(sess, x.index_axis(axis, index)?))
     }
 
     pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
-        _sess: &S,
+        sess: &S,
         plc: &HostPlacement,
         axis: usize,
         index: usize,
@@ -598,10 +597,9 @@ impl IndexAxisOp {
     ) -> Result<HostRingTensor<T>>
     where
         T: Clone,
+        HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
     {
-        let axis = Axis(axis);
-        let result = x.0.index_axis(axis, index);
-        Ok(HostRingTensor(result.to_owned(), plc.clone()))
+        Ok(plc.place(sess, x.index_axis(axis, index)?))
     }
 }
 
@@ -798,11 +796,11 @@ impl<T: LinalgScalar> HostTensor<T> {
     }
 }
 
-impl HostSumOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl SumOp {
+    pub(crate) fn host_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>>
     where
@@ -810,6 +808,22 @@ impl HostSumOp {
     {
         let axis = axis.map(|a| a as usize);
         Ok(plc.place(sess, x.sum(axis)?))
+    }
+
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<usize>,
+        x: HostRingTensor<T>,
+    ) -> Result<HostRingTensor<T>>
+    where
+        T: FromPrimitive + Zero,
+        Wrapping<T>: Clone,
+        Wrapping<T>: std::ops::Add<Wrapping<T>, Output = Wrapping<T>>,
+        HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
+    {
+        let sum = x.sum(axis.map(|a| a as usize))?;
+        Ok(plc.place(sess, sum))
     }
 }
 
@@ -868,30 +882,27 @@ impl ExpandDimsOp {
     pub(crate) fn host_int_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>> {
-        let axis = axis.iter().map(|a| *a as usize).collect();
         Ok(plc.place(sess, x.expand_dims(axis)))
     }
 
     pub(crate) fn host_bit_kernel<S: RuntimeSession>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let axis = axis.iter().map(|a| *a as usize).collect();
         Ok(plc.place(sess, x.expand_dims(axis)))
     }
 
     pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: HostRingTensor<T>,
     ) -> Result<HostRingTensor<T>> {
-        let axis = axis.iter().map(|a| *a as usize).collect();
         Ok(plc.place(sess, x.expand_dims(axis)))
     }
 }
@@ -1324,6 +1335,38 @@ impl ShapeOp {
     }
 }
 
+impl BroadcastOp {
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T: Clone + std::fmt::Debug>(
+        _sess: &S,
+        plc: &HostPlacement,
+        s: HostShape,
+        x: HostRingTensor<T>,
+    ) -> Result<HostRingTensor<T>> {
+        match x.0.broadcast(s.clone().0 .0) {
+            Some(y) => Ok(HostRingTensor(y.to_owned(), plc.clone())),
+            None => Err(Error::KernelError(format!(
+                "Tensor {:?} not broadcastable to shape {:?}.",
+                x, s
+            ))),
+        }
+    }
+
+    pub(crate) fn host_bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        s: HostShape,
+        x: HostBitTensor,
+    ) -> Result<HostBitTensor> {
+        match x.0.broadcast(s.clone().0 .0) {
+            Some(y) => Ok(HostBitTensor(y.to_owned(), plc.clone())),
+            None => Err(Error::KernelError(format!(
+                "Tensor {:?} not broadcastable to shape {:?}.",
+                x, s
+            ))),
+        }
+    }
+}
+
 impl HostReshapeOp {
     pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
@@ -1497,24 +1540,6 @@ impl RingDotOp {
     {
         let dot = x.dot(y)?;
         Ok(HostRingTensor(dot.0, plc.clone()))
-    }
-}
-
-impl RingSumOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
-        sess: &S,
-        plc: &HostPlacement,
-        axis: Option<u32>,
-        x: HostRingTensor<T>,
-    ) -> Result<HostRingTensor<T>>
-    where
-        T: FromPrimitive + Zero,
-        Wrapping<T>: Clone,
-        Wrapping<T>: std::ops::Add<Output = Wrapping<T>>,
-        HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
-    {
-        let sum = x.sum(axis.map(|a| a as usize))?;
-        Ok(plc.place(sess, sum))
     }
 }
 

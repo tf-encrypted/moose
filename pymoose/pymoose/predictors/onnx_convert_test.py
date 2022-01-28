@@ -2,13 +2,13 @@ import argparse
 import logging
 import pathlib
 
+import onnx
 from absl.testing import absltest
 from absl.testing import parameterized
-from onnx import load_model
 
 from pymoose.logger import get_logger
 from pymoose.predictors import linear_predictor
-from pymoose.predictors import onnx
+from pymoose.predictors import onnx_convert
 from pymoose.predictors import tree_ensemble
 
 _SK_MODELS = [
@@ -26,13 +26,13 @@ class PredictoOnnxTest(parameterized.TestCase):
         root_path = pathlib.Path(__file__).parent.absolute()
         fixture_path = root_path / "fixtures" / f"{onnx_fixture}.onnx"
         with open(fixture_path, "rb") as model_fixture:
-            onnx_proto = load_model(model_fixture)
+            onnx_proto = onnx.load_model(model_fixture)
         return onnx_proto
 
     @parameterized.parameters(*_SK_MODELS)
     def test_regression_logic(self, model_name, predictor_cls):
         model_proto = self._load_onnx(model_name)
-        model = onnx.from_onnx(model_proto)
+        model = onnx_convert.from_onnx(model_proto)
         assert isinstance(model, predictor_cls)
 
 
