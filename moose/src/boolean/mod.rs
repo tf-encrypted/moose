@@ -117,7 +117,7 @@ impl ExpandDimsOp {
     pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: BoolTensor<HostT, RepT>,
     ) -> Result<BoolTensor<HostT, RepT>>
     where
@@ -135,7 +135,7 @@ impl ExpandDimsOp {
     pub(crate) fn bool_host_kernel<S: Session, HostT, RepT>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: BoolTensor<HostT, RepT>,
     ) -> Result<BoolTensor<HostT, RepT>>
     where

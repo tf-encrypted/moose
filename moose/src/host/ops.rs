@@ -882,30 +882,27 @@ impl ExpandDimsOp {
     pub(crate) fn host_int_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>> {
-        let axis = axis.iter().map(|a| *a as usize).collect();
         Ok(plc.place(sess, x.expand_dims(axis)))
     }
 
     pub(crate) fn host_bit_kernel<S: RuntimeSession>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let axis = axis.iter().map(|a| *a as usize).collect();
         Ok(plc.place(sess, x.expand_dims(axis)))
     }
 
     pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: HostRingTensor<T>,
     ) -> Result<HostRingTensor<T>> {
-        let axis = axis.iter().map(|a| *a as usize).collect();
         Ok(plc.place(sess, x.expand_dims(axis)))
     }
 }

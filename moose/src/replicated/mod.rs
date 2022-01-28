@@ -1637,7 +1637,7 @@ impl ExpandDimsOp {
     pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: RepTen<HostRingT>,
     ) -> Result<RepTen<HostRingT>>
     where

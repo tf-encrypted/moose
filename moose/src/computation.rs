@@ -1199,7 +1199,7 @@ pub struct OnesOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct ExpandDimsOp {
     pub sig: Signature,
-    pub axis: Vec<u32>,
+    pub axis: Vec<usize>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
@@ -1862,10 +1862,12 @@ pub struct MaximumOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct SoftmaxOp {
     pub sig: Signature,
-    pub axis: Option<u32>,
+    // we make axis mandatory for now as it's impossible to get the last dimension of a tensor
+    // without help from the user
+    pub axis: usize,
     pub upmost_index: usize,
 }
 

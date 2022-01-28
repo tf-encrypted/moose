@@ -1301,28 +1301,6 @@ impl ToTextual for RingSampleSeededOp {
     }
 }
 
-impl ToTextual for SoftmaxOp {
-    fn to_textual(&self) -> String {
-        match self {
-            SoftmaxOp {
-                sig,
-                axis: Some(a),
-                upmost_index,
-            } => format!(
-                "Softmax{{max_value = {}}}: {} {}",
-                a,
-                sig.to_textual(),
-                upmost_index
-            ),
-            SoftmaxOp {
-                sig,
-                axis: None,
-                upmost_index,
-            } => format!("Softmax{{}}: {} {}", sig.to_textual(), upmost_index),
-        }
-    }
-}
-
 impl ToTextual for Ty {
     fn to_textual(&self) -> String {
         match self {
@@ -1617,6 +1595,7 @@ use_debug_to_textual!(String);
 use_debug_to_textual!(usize);
 use_debug_to_textual!(u32);
 use_debug_to_textual!(Vec<u32>);
+use_debug_to_textual!(Vec<usize>);
 use_debug_to_textual!(u64);
 use_debug_to_textual!(bool);
 use_debug_to_textual!(RawShape);

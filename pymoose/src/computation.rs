@@ -302,7 +302,7 @@ struct PyExpandDimsOperation {
     inputs: Inputs,
     placement_name: String,
     signature: PyOpSignature,
-    axis: Vec<u32>,
+    axis: Vec<usize>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -327,7 +327,7 @@ struct PySoftmaxOperation {
     inputs: Inputs,
     placement_name: String,
     signature: PyOpSignature,
-    axis: Option<u32>,
+    axis: usize,
     upmost_index: u32,
 }
 

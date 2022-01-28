@@ -198,22 +198,18 @@ where
 
     pub fn index_axis(&self, axis: usize, index: usize) -> Result<HostTensor<T>> {
         if axis >= self.0.ndim() {
-            return Err(Error::InvalidArgument(
-                format!(
-                    "axis too large in index axis, used axis {} with dimension {}",
-                    axis,
-                    self.0.ndim()
-                )
-            ));
+            return Err(Error::InvalidArgument(format!(
+                "axis too large in index axis, used axis {} with dimension {}",
+                axis,
+                self.0.ndim()
+            )));
         }
         if index >= self.0.shape()[axis] {
-            return Err(Error::InvalidArgument(
-                format!(
-                    "index too large in index axis, used index {} in shape {:?}",
-                    index,
-                    self.0.shape()
-                )
-            ));
+            return Err(Error::InvalidArgument(format!(
+                "index too large in index axis, used index {} in shape {:?}",
+                index,
+                self.0.shape()
+            )));
         }
         let axis = Axis(axis);
         let result = self.0.index_axis(axis, index);
@@ -400,22 +396,18 @@ impl HostBitTensor {
 
     fn index_axis(self, axis: usize, index: usize) -> Result<HostBitTensor> {
         if axis >= self.0.ndim() {
-            return Err(Error::InvalidArgument(
-                format!(
-                    "axis too large in index axis, used axis {} with dimension {}",
-                    axis,
-                    self.0.ndim()
-                )
-            ));
+            return Err(Error::InvalidArgument(format!(
+                "axis too large in index axis, used axis {} with dimension {}",
+                axis,
+                self.0.ndim()
+            )));
         }
         if index >= self.0.shape()[axis] {
-            return Err(Error::InvalidArgument(
-                format!(
-                    "index too large in index axis, used index {} in shape {:?}",
-                    index,
-                    self.0.shape()
-                )
-            ));
+            return Err(Error::InvalidArgument(format!(
+                "index too large in index axis, used index {} in shape {:?}",
+                index,
+                self.0.shape()
+            )));
         }
         let axis = Axis(axis);
         let result = self.0.index_axis(axis, index);
@@ -851,22 +843,18 @@ where
 {
     fn index_axis(self, axis: usize, index: usize) -> Result<HostRingTensor<T>> {
         if axis >= self.0.ndim() {
-            return Err(Error::InvalidArgument(
-                format!(
-                    "axis too large in index axis, used axis {} with dimension {}",
-                    axis,
-                    self.0.ndim()
-                )
-            ));
+            return Err(Error::InvalidArgument(format!(
+                "axis too large in index axis, used axis {} with dimension {}",
+                axis,
+                self.0.ndim()
+            )));
         }
         if index >= self.0.shape()[axis] {
-            return Err(Error::InvalidArgument(
-                format!(
-                    "index too large in index axis, used index {} in shape {:?}",
-                    index,
-                    self.0.shape()
-                )
-            ));
+            return Err(Error::InvalidArgument(format!(
+                "index too large in index axis, used index {} in shape {:?}",
+                index,
+                self.0.shape()
+            )));
         }
         let axis = Axis(axis);
         let result = self.0.index_axis(axis, index);

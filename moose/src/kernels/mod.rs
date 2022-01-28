@@ -224,11 +224,11 @@ modelled_kernel! {
 }
 
 pub trait PlacementSoftmax<S: Session, T, O> {
-    fn softmax(&self, sess: &S, axis: Option<u32>, upmost_index: usize, x: &T) -> O;
+    fn softmax(&self, sess: &S, axis: usize, upmost_index: usize, x: &T) -> O;
 }
 
 modelled_kernel! {
-    PlacementSoftmax::softmax, SoftmaxOp{axis: Option<u32>, upmost_index: usize},
+    PlacementSoftmax::softmax, SoftmaxOp{axis: usize, upmost_index: usize},
     [
         (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] Self::logical_kernel),
         (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_kernel),
