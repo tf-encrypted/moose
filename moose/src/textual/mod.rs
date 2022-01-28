@@ -15,7 +15,7 @@ use nom::{
     error::{
         context, convert_error, make_error, ContextError, ErrorKind, ParseError, VerboseError,
     },
-    multi::{fill, fold_many0, many0, many1, separated_list0},
+    multi::{fill, fold_many0, many0, separated_list0},
     number::complete::{double, float},
     sequence::{delimited, pair, preceded, tuple},
     Err::{Error, Failure},
@@ -101,7 +101,7 @@ pub fn fast_parse_computation(source: &str) -> anyhow::Result<Computation> {
     }
 }
 
-pub fn parallel_parse_computation(source: String) -> anyhow::Result<Computation> {
+pub fn parallel_parse_computation(source: &str) -> anyhow::Result<Computation> {
     // TODO: The function below is a quick test to check if parallelising the parser is a good idea or not.
     let len = source.len();
     let split1 = len / 3;
@@ -131,14 +131,14 @@ fn parse_operations<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Vec<Operation>, E> {
     // A decent guess for the initial capacity of the vector.
     let capacity = 4 + input.len() / 100;
-    let (input, operations) = fold_many0(
+    let (input, operations) = all_consuming(fold_many0(
         parse_line,
         || Vec::with_capacity(capacity),
         |mut acc: Vec<_>, item| {
             acc.push(item);
             acc
         },
-    )(input)?;
+    ))(input)?;
     Ok((input, operations))
 }
 
