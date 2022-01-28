@@ -1837,8 +1837,7 @@ pub struct MaximumOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct SoftmaxOp {
     pub sig: Signature,
-    // we make axis mandatory for now as it's impossible to get the last dimension of a tensor
-    // without help from the user
+    // axis can be optional (in which case we need to do a softmax over every entry)
     pub axis: usize,
     pub upmost_index: usize,
 }
