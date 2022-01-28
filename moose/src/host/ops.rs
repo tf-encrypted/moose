@@ -1357,10 +1357,13 @@ impl BroadcastOp {
         s: HostShape,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        Ok(HostBitTensor(
-            x.0.broadcast(s.0 .0).unwrap().to_owned(),
-            plc.clone(),
-        ))
+        match x.0.broadcast(s.clone().0 .0) {
+            Some(y) => Ok(HostBitTensor(y.to_owned(), plc.clone())),
+            None => Err(Error::KernelError(format!(
+                "Tensor {:?} not broadcastable to shape {:?}.",
+                x, s
+            ))),
+        }
     }
 }
 
