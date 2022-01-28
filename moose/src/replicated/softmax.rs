@@ -111,7 +111,7 @@ impl SoftmaxOp {
         let e_x_sum = rep.expand_dims(
             sess,
             [axis].to_vec(),
-            &rep.sum(sess, Some(axis as u32), &normalized),
+            &rep.sum(sess, Some(axis), &normalized),
         );
         let softmax = rep.div(sess, &normalized, &e_x_sum);
 

@@ -507,11 +507,11 @@ kernel! {
 
 /// Sum along axis
 pub trait PlacementSum<S: Session, T, O> {
-    fn sum(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+    fn sum(&self, sess: &S, axis: Option<usize>, x: &T) -> O;
 }
 
 modelled_kernel! {
-    PlacementSum::sum, SumOp{axis: Option<u32>},
+    PlacementSum::sum, SumOp{axis: Option<usize>},
     [
         (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_host_kernel),
         (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_host_kernel),

@@ -395,7 +395,7 @@ struct PySumOperation {
     inputs: Inputs,
     placement_name: String,
     signature: PyOpSignature,
-    axis: Option<u32>,
+    axis: Option<usize>,
 }
 
 #[derive(Deserialize, Debug)]

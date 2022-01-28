@@ -50,7 +50,7 @@ impl SumOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: FloatTensor<HostFloatT, MirroredT>,
     ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where

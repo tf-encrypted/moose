@@ -843,7 +843,7 @@ impl SumOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
@@ -864,7 +864,7 @@ impl SumOp {
     pub(crate) fn fixed_rep_kernel<S: Session, RingT, MirT, RepT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: FixedTensor<RingT, MirT, RepT>,
     ) -> Result<FixedTensor<RingT, MirT, RepT>>
     where
@@ -885,7 +885,7 @@ impl SumOp {
     pub(crate) fn fixed_hostfixed_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: HostFixedTensor<HostRingT>,
     ) -> Result<HostFixedTensor<HostRingT>>
     where
@@ -902,7 +902,7 @@ impl SumOp {
     pub(crate) fn fixed_repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: RepFixedTensor<RepRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where

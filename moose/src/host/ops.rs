@@ -800,7 +800,7 @@ impl SumOp {
     pub(crate) fn host_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>>
     where
@@ -813,7 +813,7 @@ impl SumOp {
     pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: HostRingTensor<T>,
     ) -> Result<HostRingTensor<T>>
     where

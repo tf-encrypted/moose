@@ -974,7 +974,7 @@ impl SumOp {
     pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
@@ -1009,7 +1009,7 @@ impl SumOp {
     pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where

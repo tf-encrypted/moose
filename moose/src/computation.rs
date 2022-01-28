@@ -1255,7 +1255,7 @@ pub struct SigmoidOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
 pub struct SumOp {
     pub sig: Signature,
-    pub axis: Option<u32>,
+    pub axis: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]

@@ -1271,7 +1271,7 @@ impl SumOp {
     pub(crate) fn rep_ring_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: RepTen<RingT>,
     ) -> Result<RepTen<RingT>>
     where
