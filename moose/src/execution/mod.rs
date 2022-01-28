@@ -686,8 +686,20 @@ mod tests {
 
     #[rstest]
     #[case("Sum", None, "Float32(10.0) @Host(alice)", true, true)]
-    #[case("Sum", Some(0), "Float32Tensor([4.0, 6.0]) @Host(alice)", false, true)]
-    #[case("Sum", Some(1), "Float32Tensor([3.0, 7.0]) @Host(alice)", false, true)]
+    #[case(
+        "Sum",
+        Some(0),
+        "HostFloat32Tensor([4.0, 6.0]) @Host(alice)",
+        false,
+        true
+    )]
+    #[case(
+        "Sum",
+        Some(1),
+        "HostFloat32Tensor([3.0, 7.0]) @Host(alice)",
+        false,
+        true
+    )]
     #[case("HostMean", None, "Float32(2.5) @Host(alice)", true, true)]
     #[case(
         "HostMean",
@@ -704,8 +716,20 @@ mod tests {
         true
     )]
     #[case("Sum", None, "Float32(10.0) @Host(alice)", true, false)]
-    #[case("Sum", Some(0), "Float32Tensor([4.0, 6.0]) @Host(alice)", false, false)]
-    #[case("Sum", Some(1), "Float32Tensor([3.0, 7.0]) @Host(alice)", false, false)]
+    #[case(
+        "Sum",
+        Some(0),
+        "HostFloat32Tensor([4.0, 6.0]) @Host(alice)",
+        false,
+        false
+    )]
+    #[case(
+        "Sum",
+        Some(1),
+        "HostFloat32Tensor([3.0, 7.0]) @Host(alice)",
+        false,
+        false
+    )]
     #[case("HostMean", None, "Float32(2.5) @Host(alice)", true, false)]
     #[case(
         "HostMean",
@@ -1045,35 +1069,6 @@ mod tests {
             }
             _ => Err(anyhow::anyhow!("Failed to parse test case type")),
         }
-    }
-
-    #[rstest]
-    #[case("HostRing64Tensor([4, 6]) @Host(alice)", true)]
-    #[case("HostRing64Tensor([4, 6]) @Host(alice)", false)]
-    fn test_ring_sum(
-        #[case] expected_result: Value,
-        #[case] run_async: bool,
-    ) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value=HostRing64Tensor([[1, 2], [3, 4]])}: () -> HostRing64Tensor @Host(alice)
-        r = RingSum {axis = 0}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
-        output = Output: (HostRing64Tensor) -> HostRing64Tensor (r) @Host(alice)
-        "#;
-        let arguments: HashMap<String, Value> = hashmap!();
-        let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
-
-        let comp_result: HostRing64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
-        assert_eq!(expected_result, comp_result.into());
-        Ok(())
     }
 
     #[rstest]

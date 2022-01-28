@@ -261,9 +261,6 @@ pub fn parse_operator_error<'a, E: 'a + ParseError<&'a str> + ContextError<&'a s
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     Err(Error(make_error(input, ErrorKind::Tag)))
-        SoftmaxOp::from_textual,
-        BroadcastOp::from_textual,
-        SumOp::from_textual,
 }
 
 /// Parses operator - maps names to structs.
