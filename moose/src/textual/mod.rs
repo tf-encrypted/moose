@@ -11,7 +11,7 @@ use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
     character::complete::{alpha1, alphanumeric1, char, digit1, multispace1, space0},
-    combinator::{all_consuming, cut, eof, map, map_opt, map_res, opt, recognize, value, verify},
+    combinator::{all_consuming, cut, map, map_opt, map_res, opt, recognize, value, verify},
     error::{
         context, convert_error, make_error, ContextError, ErrorKind, ParseError, VerboseError,
     },
@@ -21,9 +21,9 @@ use nom::{
     Err::{Error, Failure},
     IResult,
 };
+use rayon::prelude::*;
 use std::convert::TryFrom;
 use std::str::FromStr;
-use std::thread;
 
 impl TryFrom<&str> for Computation {
     type Error = anyhow::Error;
@@ -88,7 +88,7 @@ pub fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
             "Failed to parse computation\n{}",
             convert_error(source, e)
         )),
-        Err(e) => Err(anyhow::anyhow!("Failed to parse {} due to {}", source, e)),
+        Err(e) => Err(anyhow::anyhow!("Failed to parse computation due to {}", e)),
         Ok((_, computation)) => Ok(computation),
     }
 }
@@ -97,33 +97,48 @@ pub fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
 pub fn fast_parse_computation(source: &str) -> anyhow::Result<Computation> {
     match parse_computation::<(&str, ErrorKind)>(source) {
         Ok((_, computation)) => Ok(computation),
-        e => Err(anyhow::anyhow!("Failed to parse {} due to {:?}", source, e)),
+        e => Err(anyhow::anyhow!(
+            "Failed to parse computation due to {:?}",
+            e
+        )),
     }
 }
 
-pub fn parallel_parse_computation(source: &str) -> anyhow::Result<Computation> {
-    // TODO: The function below is a quick test to check if parallelising the parser is a good idea or not.
-    let len = source.len();
-    let split1 = len / 3;
-    let s = &source[split1..];
-    let split1 = split1 + s.find('\n').unwrap();
-    let split2 = 2 * len / 3;
-    let s = &source[split2..];
-    let split2 = split2 + s.find('\n').unwrap();
+pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result<Computation> {
+    // Split the source into `chunks` parts at line breaks.
+    let mut parts = Vec::<String>::with_capacity(chunks);
+    let mut left: usize = 0;
+    let step = source.len() / chunks;
+    for _ in 0..chunks {
+        let right = left + step;
+        let right = if right > source.len() {
+            source.len()
+        } else {
+            // Find the next line break or use the end of string, if there is none.
+            source[right..]
+                .find('\n')
+                .map(|i| i + right + 1)
+                .unwrap_or(source.len())
+        };
+        if left != right {
+            parts.push(source[left..right].to_string());
+        }
+        left = right;
+    }
+    let portions: Vec<_> = parts
+        .par_iter()
+        .map(|s| {
+            parse_operations::<(&str, ErrorKind)>(&s)
+                .map(|t| t.1) // Dropping the remainder
+                .map_err(|e| anyhow::anyhow!("Failed to parse computation due to {}", e))
+        })
+        .collect();
+    let mut operations = Vec::new();
+    for p in portions {
+        operations.append(&mut p?);
+    }
 
-    let first = source[..split1].to_string();
-    let second = source[split1..split2].to_string();
-    let third = source[split2..].to_string();
-
-    let part1 = thread::spawn(move || parse_operations::<(&str, ErrorKind)>(&first).unwrap().1);
-    let part2 = thread::spawn(move || parse_operations::<(&str, ErrorKind)>(&second).unwrap().1);
-    let part3 = thread::spawn(move || parse_operations::<(&str, ErrorKind)>(&third).unwrap().1);
-    let mut part1 = part1.join().unwrap();
-    let mut part2 = part2.join().unwrap();
-    let mut part3 = part3.join().unwrap();
-    part1.append(&mut part2);
-    part1.append(&mut part3);
-    Ok(Computation { operations: part1 })
+    Ok(Computation { operations })
 }
 
 fn parse_operations<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
@@ -158,7 +173,6 @@ fn parse_line<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, _) = many0(multispace1)(input)?;
     let (input, op) = parse_assignment(input)?;
     let (input, _) = many0(multispace1)(input)?;
-    let (input, _) = opt(eof)(input)?;
     Ok((input, op))
 }
 
@@ -2087,10 +2101,8 @@ mod tests {
     fn test_parallel_parse_computation() -> Result<(), anyhow::Error> {
         let comp: Computation = parallel_parse_computation("x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
-            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
-            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
-                )?;
-        assert_eq!(comp.operations.len(), 4);
+            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)", 3)?;
+        assert_eq!(comp.operations.len(), 3);
         Ok(())
     }
 
