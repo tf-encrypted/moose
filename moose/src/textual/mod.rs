@@ -128,7 +128,7 @@ pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result
     let portions: Vec<_> = parts
         .par_iter()
         .map(|s| {
-            parse_operations::<(&str, ErrorKind)>(&s)
+            parse_operations::<(&str, ErrorKind)>(s)
                 .map(|t| t.1) // Dropping the remainder
                 .map_err(|e| anyhow::anyhow!("Failed to parse computation due to {}", e))
         })
