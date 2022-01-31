@@ -735,7 +735,7 @@ impl RepNegOp {
     }
 }
 
-impl RepAddOp {
+impl AddOp {
     pub(crate) fn rep_rep_kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -971,7 +971,7 @@ impl RepSubOp {
     }
 }
 
-impl RepMulOp {
+impl MulOp {
     pub(crate) fn rep_rep_kernel<S: Session, RingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,

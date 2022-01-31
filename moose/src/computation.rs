@@ -995,9 +995,7 @@ operators![
     Sum,
     Div,
     // Host operators
-    HostAdd,
     HostSub,
-    HostMul,
     HostDiv,
     HostDot,
     HostMean,
@@ -1013,10 +1011,8 @@ operators![
     HostAtLeast2D,
     HostShlDim,
     Sign,
-    RingAdd,
     RingSub,
     RingNeg,
-    RingMul,
     RingDot,
     RingFixedpointMean,
     RingFixedpointEncode,
@@ -1037,9 +1033,7 @@ operators![
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
-    FixedpointAdd,
     FixedpointSub,
-    FixedpointMul,
     FixedpointDiv,
     FixedpointDot,
     FixedpointTruncPr,
@@ -1051,9 +1045,7 @@ operators![
     Less,
     GreaterThan,
     // Floating-point operators
-    FloatingpointAdd,
     FloatingpointSub,
-    FloatingpointMul,
     FloatingpointDiv,
     FloatingpointDot,
     FloatingpointAtLeast2D,
@@ -1065,9 +1057,7 @@ operators![
     // Additive operators
     AdtReveal,
     AdtFill,
-    AdtAdd,
     AdtSub,
-    AdtMul,
     AdtShl,
     AdtToRep,
     // Replicated operators
@@ -1076,9 +1066,7 @@ operators![
     RepShare,
     RepReveal,
     Fill,
-    RepAdd,
     RepSub,
-    RepMul,
     RepMsb,
     RepDot,
     RepAnd,
@@ -1260,19 +1248,7 @@ pub struct SumOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 
-pub struct HostAddOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-
 pub struct HostSubOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-
-pub struct HostMulOp {
     pub sig: Signature,
 }
 
@@ -1403,22 +1379,12 @@ pub struct AesDecryptOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RingAddOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RingSubOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RingNegOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RingMulOp {
     pub sig: Signature,
 }
 
@@ -1535,17 +1501,7 @@ pub struct FixedpointDecodeOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct FixedpointAddOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct FixedpointSubOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct FixedpointMulOp {
     pub sig: Signature,
 }
 
@@ -1577,17 +1533,7 @@ pub struct NegOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct FloatingpointAddOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct FloatingpointSubOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct FloatingpointMulOp {
     pub sig: Signature,
 }
 
@@ -1654,17 +1600,7 @@ pub struct AdtRevealOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct AdtAddOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct AdtSubOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct AdtMulOp {
     pub sig: Signature,
 }
 
@@ -1705,17 +1641,7 @@ pub struct RepRevealOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct RepAddOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct RepSubOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct RepMulOp {
     pub sig: Signature,
 }
 

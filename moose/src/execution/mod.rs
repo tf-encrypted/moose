@@ -227,7 +227,7 @@ mod tests {
     fn test_standard_input(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Input {arg_name = "x"}: () -> Int64Tensor @Host(alice)
         y = Input {arg_name = "y"}: () -> Int64Tensor @Host(alice)
-        z = HostAdd: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(alice)
+        z = Add: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(alice)
         output = Output: (Int64Tensor) -> Int64Tensor (z) @Host(alice)
         "#;
         let x: Value = "Int64Tensor([5]) @Host(alice)".try_into()?;
@@ -372,13 +372,13 @@ mod tests {
     }
 
     #[rstest]
-    #[case("HostAdd", "Int64Tensor([8]) @Host(alice)", true)]
+    #[case("Add", "Int64Tensor([8]) @Host(alice)", true)]
     #[case("HostSub", "Int64Tensor([2]) @Host(alice)", true)]
-    #[case("HostMul", "Int64Tensor([15]) @Host(alice)", true)]
+    #[case("Mul", "Int64Tensor([15]) @Host(alice)", true)]
     #[case("HostDiv", "Int64Tensor([1]) @Host(alice)", true)]
-    #[case("HostAdd", "Int64Tensor([8]) @Host(alice)", false)]
+    #[case("Add", "Int64Tensor([8]) @Host(alice)", false)]
     #[case("HostSub", "Int64Tensor([2]) @Host(alice)", false)]
-    #[case("HostMul", "Int64Tensor([15]) @Host(alice)", false)]
+    #[case("Mul", "Int64Tensor([15]) @Host(alice)", false)]
     #[case("HostDiv", "Int64Tensor([1]) @Host(alice)", false)]
     fn test_standard_op(
         #[case] test_op: String,
@@ -835,11 +835,11 @@ mod tests {
     }
 
     #[rstest]
-    #[case("RingAdd", "Ring64Tensor([5]) @Host(alice)", true)]
-    #[case("RingMul", "Ring64Tensor([6]) @Host(alice)", true)]
+    #[case("Add", "Ring64Tensor([5]) @Host(alice)", true)]
+    #[case("Mul", "Ring64Tensor([6]) @Host(alice)", true)]
     #[case("RingSub", "Ring64Tensor([1]) @Host(alice)", true)]
-    #[case("RingAdd", "Ring64Tensor([5]) @Host(alice)", false)]
-    #[case("RingMul", "Ring64Tensor([6]) @Host(alice)", false)]
+    #[case("Add", "Ring64Tensor([5]) @Host(alice)", false)]
+    #[case("Mul", "Ring64Tensor([6]) @Host(alice)", false)]
     #[case("RingSub", "Ring64Tensor([1]) @Host(alice)", false)]
     fn test_ring_binop_invocation(
         #[case] test_op: String,

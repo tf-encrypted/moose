@@ -229,9 +229,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         ShapeOp::from_textual,
         RingFillOp::from_textual,
         SaveOp::from_textual,
-        HostAddOp::from_textual,
         HostSubOp::from_textual,
-        HostMulOp::from_textual,
         HostDivOp::from_textual,
         HostDotOp::from_textual,
         HostMeanOp::from_textual,
@@ -245,9 +243,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         ConcatOp::from_textual,
         HostTransposeOp::from_textual,
         HostInverseOp::from_textual,
-        RingAddOp::from_textual,
         RingSubOp::from_textual,
-        RingMulOp::from_textual,
         RingDotOp::from_textual,
         RingSampleSeededOp::from_textual,
         RingSampleOp::from_textual,
@@ -1051,9 +1047,7 @@ impl ToTextual for Operator {
             BitNeg(op) => op.to_textual(),
             BitOr(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
-            HostAdd(op) => op.to_textual(),
             HostSub(op) => op.to_textual(),
-            HostMul(op) => op.to_textual(),
             HostDiv(op) => op.to_textual(),
             HostDot(op) => op.to_textual(),
             HostMean(op) => op.to_textual(),
@@ -1070,9 +1064,7 @@ impl ToTextual for Operator {
             HostInverse(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
             RingNeg(op) => op.to_textual(),
-            RingAdd(op) => op.to_textual(),
             RingSub(op) => op.to_textual(),
-            RingMul(op) => op.to_textual(),
             RingDot(op) => op.to_textual(),
             RingFixedpointEncode(op) => op.to_textual(),
             RingFixedpointDecode(op) => op.to_textual(),
@@ -1090,16 +1082,12 @@ impl ToTextual for Operator {
             AesDecrypt(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
-            FixedpointAdd(op) => op.to_textual(),
             FixedpointSub(op) => op.to_textual(),
-            FixedpointMul(op) => op.to_textual(),
             FixedpointDiv(op) => op.to_textual(),
             FixedpointDot(op) => op.to_textual(),
             FixedpointTruncPr(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
-            FloatingpointAdd(op) => op.to_textual(),
             FloatingpointSub(op) => op.to_textual(),
-            FloatingpointMul(op) => op.to_textual(),
             FloatingpointDiv(op) => op.to_textual(),
             FloatingpointDot(op) => op.to_textual(),
             FloatingpointAtLeast2D(op) => op.to_textual(),
@@ -1114,18 +1102,14 @@ impl ToTextual for Operator {
             RepDot(op) => op.to_textual(),
             RepFixedpointMean(op) => op.to_textual(),
             AddN(op) => op.to_textual(),
-            RepAdd(op) => op.to_textual(),
             RepSub(op) => op.to_textual(),
-            RepMul(op) => op.to_textual(),
             RepAnd(op) => op.to_textual(),
             RepXor(op) => op.to_textual(),
             RepNeg(op) => op.to_textual(),
             RepTruncPr(op) => op.to_textual(),
             AdtReveal(op) => op.to_textual(),
             AdtFill(op) => op.to_textual(),
-            AdtAdd(op) => op.to_textual(),
             AdtSub(op) => op.to_textual(),
-            AdtMul(op) => op.to_textual(),
             AdtShl(op) => op.to_textual(),
             AdtToRep(op) => op.to_textual(),
             RepAbs(op) => op.to_textual(),
@@ -1781,12 +1765,12 @@ mod tests {
     #[test]
     fn test_stdbinary() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)",
+            "z = Add: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
         assert_eq!(
             op.kind,
-            Operator::HostAdd(HostAddOp {
+            Operator::Add(AddOp {
                 sig: Signature::binary(
                     Ty::HostFloat32Tensor,
                     Ty::HostFloat32Tensor,
@@ -1795,12 +1779,12 @@ mod tests {
             })
         );
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)",
+            "z = Mul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
         assert_eq!(
             op.kind,
-            Operator::HostMul(HostMulOp {
+            Operator::Mul(MulOp {
                 sig: Signature::binary(
                     Ty::HostFloat32Tensor,
                     Ty::HostFloat32Tensor,
@@ -1966,7 +1950,7 @@ mod tests {
         )?;
         assert_eq!(op.name, "x_shape");
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z_result = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x_shape, y_shape) @Host(carole)",
+            "z_result = Add: (Float32Tensor, Float32Tensor) -> Float32Tensor (x_shape, y_shape) @Host(carole)",
         )?;
         assert_eq!(op.name, "z_result");
         assert_eq!(op.inputs, vec!["x_shape", "y_shape"]);
@@ -2039,7 +2023,7 @@ mod tests {
             "x = Constant{value = Float32Tensor([1.0])}: () -> Float32Tensor() @Host(alice)
             y = Constant{value = Float32Tensor([2.0])}: () -> Float32Tensor () @Host(bob)
             // ignore = Constant([1.0]: Float32Tensor) @Host(alice)
-            z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+            z = Add: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
             ",
         )?;
         assert_eq!(comp.operations.len(), 3);
@@ -2060,7 +2044,7 @@ mod tests {
         assert_eq!(comp.operations[2].name, "z");
         assert_eq!(
             comp.operations[2].kind,
-            Operator::HostAdd(HostAddOp {
+            Operator::Add(AddOp {
                 sig: Signature::binary(
                     Ty::HostFloat32Tensor,
                     Ty::HostFloat32Tensor,
@@ -2081,14 +2065,14 @@ mod tests {
     #[test]
     fn test_sample_computation_err() {
         let data = r#"a = Constant{value = "a"}: () -> Float32Tensor () @Host(alice)
-            err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+            err = Add: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
             b = Constant{value = "b"}: () -> Float32Tensor () @Host(alice)"#;
         let emsg = r#"0: at line 2, in Tag:
-            err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+            err = Add: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
                             ^
 
 1: at line 2, in Alt:
-            err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+            err = Add: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
                            ^
 
 "#;
@@ -2104,7 +2088,7 @@ mod tests {
         let comp: Computation =
             "x = Constant{value = Float32Tensor([1.0])}: () -> Float32Tensor @Host(alice)
             y = Constant{value = Float32Tensor([2.0])}: () -> Float32Tensor () @Host(bob)
-            z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)"
+            z = Add: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)"
                 .try_into()?;
         assert_eq!(comp.operations.len(), 3);
         Ok(())
@@ -2165,7 +2149,7 @@ mod tests {
         use std::convert::TryInto;
         let comp: Computation = "x = Constant{value = Float32Tensor([1.0])}: () -> Float32Tensor @Host(alice)
             y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
-            z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, carole)
+            z = Add: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, carole)
             seed = PrimDeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
             seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)}: () -> Seed @Host(alice)
             o = Output: (Float32Tensor) -> Float32Tensor (z) @Host(alice)"

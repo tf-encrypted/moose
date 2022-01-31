@@ -85,7 +85,7 @@ impl FloatingpointAtLeast2DOp {
     }
 }
 
-impl FloatingpointAddOp {
+impl AddOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
@@ -169,7 +169,7 @@ impl FloatingpointSubOp {
     }
 }
 
-impl FloatingpointMulOp {
+impl MulOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,

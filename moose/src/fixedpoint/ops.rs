@@ -241,7 +241,7 @@ impl FixedpointDecodeOp {
     }
 }
 
-impl FixedpointAddOp {
+impl AddOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
@@ -457,7 +457,7 @@ impl FixedpointSubOp {
     }
 }
 
-impl FixedpointMulOp {
+impl MulOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,

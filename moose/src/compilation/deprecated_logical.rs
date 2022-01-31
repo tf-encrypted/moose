@@ -44,7 +44,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Add(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostAddOp {
+            kind: AddOp {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -70,7 +70,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Mul(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostMulOp {
+            kind: MulOp {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -294,7 +294,7 @@ mod tests {
             .to_textual();
         // The computation should now contain the modified type information
         assert!(comp.contains(
-            "mul = HostMul: (Float64Tensor, Float64Tensor) -> Float64Tensor (x, y) @Host(alice)"
+            "mul = Mul: (Float64Tensor, Float64Tensor) -> Float64Tensor (x, y) @Host(alice)"
         ));
         assert!(comp.contains(
             "save = Save: (String, Float64Tensor) -> Unit (constant_0, mean) @Host(alice)"

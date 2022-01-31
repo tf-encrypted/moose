@@ -300,8 +300,8 @@ impl RingFixedpointMeanOp {
     }
 }
 
-impl HostAddOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl AddOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -328,8 +328,8 @@ impl HostSubOp {
     }
 }
 
-impl HostMulOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl MulOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -339,6 +339,19 @@ impl HostMulOp {
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         Ok(plc.place(sess, x * y))
+    }
+
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRingTensor<T>,
+        y: HostRingTensor<T>,
+    ) -> Result<HostRingTensor<T>>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: std::ops::Mul<Wrapping<T>, Output = Wrapping<T>>,
+    {
+        Ok(HostRingTensor(x.0 * y.0, plc.clone()))
     }
 }
 
@@ -1381,8 +1394,8 @@ impl HostReshapeOp {
     }
 }
 
-impl RingAddOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+impl AddOp {
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRingTensor<T>,
@@ -1423,21 +1436,6 @@ impl RingNegOp {
     {
         use std::ops::Neg;
         Ok(HostRingTensor(x.0.neg(), plc.clone()))
-    }
-}
-
-impl RingMulOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        plc: &HostPlacement,
-        x: HostRingTensor<T>,
-        y: HostRingTensor<T>,
-    ) -> Result<HostRingTensor<T>>
-    where
-        Wrapping<T>: Clone,
-        Wrapping<T>: std::ops::Mul<Wrapping<T>, Output = Wrapping<T>>,
-    {
-        Ok(HostRingTensor(x.0 * y.0, plc.clone()))
     }
 }
 

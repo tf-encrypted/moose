@@ -11,7 +11,7 @@ use moose::{
 fn runtime_simple_computation(c: &mut Criterion) {
     let source = r#"x = Input {arg_name = "x"}: () -> Int64Tensor @Host(alice)
     y = Input {arg_name = "y"}: () -> Int64Tensor @Host(alice)
-    z = HostAdd: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(alice)
+    z = Add: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(alice)
     output = Output: (Int64Tensor) -> Int64Tensor (z) @Host(alice)
     "#;
     let computation: Computation = source.try_into().unwrap();
