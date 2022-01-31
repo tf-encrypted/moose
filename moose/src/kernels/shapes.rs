@@ -57,7 +57,6 @@ modelled_kernel! {
     ]
 }
 
-
 pub trait PlacementExpandDims<S: Session, T, O> {
     fn expand_dims(&self, sess: &S, axis: Vec<usize>, x: &T) -> O;
 }
