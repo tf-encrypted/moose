@@ -564,6 +564,72 @@ impl HostDiagOp {
     }
 }
 
+impl<T: LinalgScalar> HostTensor<T> {
+    fn index_axis(&self, axis: usize, index: usize) -> Result<HostTensor<T>> {
+        if axis >= self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "axis too large in index axis, used axis {} with dimension {}",
+                axis,
+                self.0.ndim()
+            )));
+        }
+        if index >= self.0.shape()[axis] {
+            return Err(Error::InvalidArgument(format!(
+                "index too large in index axis, used index {} in shape {:?}",
+                index,
+                self.0.shape()
+            )));
+        }
+        let axis = Axis(axis);
+        let result = self.0.index_axis(axis, index);
+        Ok(HostTensor(result.to_owned(), self.1.clone()))
+    }
+}
+
+impl<T: Clone> HostRingTensor<T> {
+    fn index_axis(self, axis: usize, index: usize) -> Result<HostRingTensor<T>> {
+        if axis >= self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "axis too large in index axis, used axis {} with dimension {}",
+                axis,
+                self.0.ndim()
+            )));
+        }
+        if index >= self.0.shape()[axis] {
+            return Err(Error::InvalidArgument(format!(
+                "index too large in index axis, used index {} in shape {:?}",
+                index,
+                self.0.shape()
+            )));
+        }
+        let axis = Axis(axis);
+        let result = self.0.index_axis(axis, index);
+        Ok(HostRingTensor(result.to_owned(), self.1))
+    }
+}
+
+impl HostBitTensor {
+    fn index_axis(self, axis: usize, index: usize) -> Result<HostBitTensor> {
+        if axis >= self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "axis too large in index axis, used axis {} with dimension {}",
+                axis,
+                self.0.ndim()
+            )));
+        }
+        if index >= self.0.shape()[axis] {
+            return Err(Error::InvalidArgument(format!(
+                "index too large in index axis, used index {} in shape {:?}",
+                index,
+                self.0.shape()
+            )));
+        }
+        let axis = Axis(axis);
+        let result = self.0.index_axis(axis, index);
+        Ok(HostBitTensor(result.to_owned(), self.1))
+    }
+}
+
 impl IndexAxisOp {
     pub(crate) fn host_float_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
