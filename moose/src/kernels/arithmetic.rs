@@ -745,3 +745,15 @@ modelled_kernel! {
         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::kernel),
     ]
 }
+
+pub trait PlacementLog2<S: Session, T, O> {
+    fn log2(&self, sess: &S, x: &T) -> O;
+}
+
+modelled_kernel! {
+    PlacementLog2::log2, Log2Op,
+    [
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::rep_rep_kernel),
+    ]
+}

@@ -1099,6 +1099,7 @@ operators![
     Mux,
     Maximum,
     Softmax,
+    Log2,
     // Mirrored Operators
     Demirror,
     Mirror,
@@ -1844,6 +1845,11 @@ pub struct SoftmaxOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct BroadcastOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct Log2Op {
     pub sig: Signature,
 }
 

@@ -291,6 +291,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         SoftmaxOp::from_textual,
         BroadcastOp::from_textual,
         SumOp::from_textual,
+        Log2Op::from_textual,
     ));
     alt((part1, part2, part3, part4))(input)
 }
@@ -1145,6 +1146,7 @@ impl ToTextual for Operator {
             Pow2(op) => op.to_textual(),
             Exp(op) => op.to_textual(),
             Sigmoid(op) => op.to_textual(),
+            Log2(op) => op.to_textual(),
             Less(op) => op.to_textual(),
             GreaterThan(op) => op.to_textual(),
             Demirror(op) => op.to_textual(),
