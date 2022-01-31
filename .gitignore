@@ -25,3 +25,6 @@
 
 # vim swap files
 *.sw?
+
+*.whl
+*.so

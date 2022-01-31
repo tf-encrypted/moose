@@ -27,13 +27,6 @@ rmp-serde = "~0.15"
 serde = { version="~1.0", features=["derive"] }
 serde_bytes="~0.11"
 
-[package.metadata.maturin]
-classifier = [
-  "Programming Language :: Rust",
-  "Operating System :: POSIX :: Linux",
-]
-requires-python = ">=3.6"
-
 [dependencies.pyo3]
 version = "~0.14"
 
