@@ -851,7 +851,7 @@ impl AddOp {
     }
 }
 
-impl RepSubOp {
+impl SubOp {
     pub(crate) fn rep_rep_kernel<S: Session, R>(
         sess: &S,
         rep: &ReplicatedPlacement,

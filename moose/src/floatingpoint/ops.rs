@@ -145,7 +145,7 @@ impl AddNOp {
     }
 }
 
-impl FloatingpointSubOp {
+impl SubOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,

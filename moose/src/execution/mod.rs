@@ -373,11 +373,11 @@ mod tests {
 
     #[rstest]
     #[case("Add", "Int64Tensor([8]) @Host(alice)", true)]
-    #[case("HostSub", "Int64Tensor([2]) @Host(alice)", true)]
+    #[case("Sub", "Int64Tensor([2]) @Host(alice)", true)]
     #[case("Mul", "Int64Tensor([15]) @Host(alice)", true)]
     #[case("HostDiv", "Int64Tensor([1]) @Host(alice)", true)]
     #[case("Add", "Int64Tensor([8]) @Host(alice)", false)]
-    #[case("HostSub", "Int64Tensor([2]) @Host(alice)", false)]
+    #[case("Sub", "Int64Tensor([2]) @Host(alice)", false)]
     #[case("Mul", "Int64Tensor([15]) @Host(alice)", false)]
     #[case("HostDiv", "Int64Tensor([1]) @Host(alice)", false)]
     fn test_standard_op(
@@ -837,10 +837,10 @@ mod tests {
     #[rstest]
     #[case("Add", "Ring64Tensor([5]) @Host(alice)", true)]
     #[case("Mul", "Ring64Tensor([6]) @Host(alice)", true)]
-    #[case("RingSub", "Ring64Tensor([1]) @Host(alice)", true)]
+    #[case("Sub", "Ring64Tensor([1]) @Host(alice)", true)]
     #[case("Add", "Ring64Tensor([5]) @Host(alice)", false)]
     #[case("Mul", "Ring64Tensor([6]) @Host(alice)", false)]
-    #[case("RingSub", "Ring64Tensor([1]) @Host(alice)", false)]
+    #[case("Sub", "Ring64Tensor([1]) @Host(alice)", false)]
     fn test_ring_binop_invocation(
         #[case] test_op: String,
         #[case] expected_result: Value,

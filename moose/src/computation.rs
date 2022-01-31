@@ -995,7 +995,6 @@ operators![
     Sum,
     Div,
     // Host operators
-    HostSub,
     HostDiv,
     HostDot,
     HostMean,
@@ -1011,7 +1010,6 @@ operators![
     HostAtLeast2D,
     HostShlDim,
     Sign,
-    RingSub,
     RingNeg,
     RingDot,
     RingFixedpointMean,
@@ -1033,7 +1031,6 @@ operators![
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
-    FixedpointSub,
     FixedpointDiv,
     FixedpointDot,
     FixedpointTruncPr,
@@ -1045,7 +1042,6 @@ operators![
     Less,
     GreaterThan,
     // Floating-point operators
-    FloatingpointSub,
     FloatingpointDiv,
     FloatingpointDot,
     FloatingpointAtLeast2D,
@@ -1057,7 +1053,6 @@ operators![
     // Additive operators
     AdtReveal,
     AdtFill,
-    AdtSub,
     AdtShl,
     AdtToRep,
     // Replicated operators
@@ -1066,7 +1061,6 @@ operators![
     RepShare,
     RepReveal,
     Fill,
-    RepSub,
     RepMsb,
     RepDot,
     RepAnd,
@@ -1248,12 +1242,6 @@ pub struct SumOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 
-pub struct HostSubOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-
 pub struct HostDivOp {
     pub sig: Signature,
 }
@@ -1379,11 +1367,6 @@ pub struct AesDecryptOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RingSubOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RingNegOp {
     pub sig: Signature,
 }
@@ -1501,11 +1484,6 @@ pub struct FixedpointDecodeOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct FixedpointSubOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct FixedpointDivOp {
     pub sig: Signature,
 }
@@ -1529,11 +1507,6 @@ pub struct FixedpointMeanOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct NegOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct FloatingpointSubOp {
     pub sig: Signature,
 }
 
@@ -1600,11 +1573,6 @@ pub struct AdtRevealOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct AdtSubOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct AdtShlOp {
     pub sig: Signature,
     pub amount: usize,
@@ -1637,11 +1605,6 @@ pub struct RepShareOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct RepRevealOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct RepSubOp {
     pub sig: Signature,
 }
 

@@ -367,7 +367,7 @@ impl AddOp {
     }
 }
 
-impl FixedpointSubOp {
+impl SubOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,

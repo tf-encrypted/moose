@@ -57,7 +57,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Sub(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostSubOp {
+            kind: SubOp {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
