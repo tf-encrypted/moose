@@ -1761,3 +1761,43 @@ impl IdentityOp {
         })
     }
 }
+
+impl MuxOp {
+    pub(crate) fn host_float_int_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        _sess: &S,
+        plc: &HostPlacement,
+        s: HostBitTensor,
+        x: HostTensor<T>,
+        y: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        T: From<u8>,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
+        let s_t: ArrayD<T> = s.0.mapv(|item| item.into()); // How to convert to a new type!!!!
+        let res = s_t * (x.0 - y.0.clone()) + y.0;
+        Ok(HostTensor::<T>(res, plc.clone()))
+    }
+
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        s: HostBitTensor,
+        x: HostRingTensor<T>,
+        y: HostRingTensor<T>,
+    ) -> Result<HostRingTensor<T>>
+    where
+        T: LinalgScalar + FromPrimitive,
+        T: From<u8>,
+        Wrapping<T>: Clone,
+        Wrapping<T>: std::ops::Add<Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Sub<Output = Wrapping<T>>,
+        Wrapping<T>: std::ops::Mul<Output = Wrapping<T>>,
+    {
+        // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
+        let s_t: ArrayD<Wrapping<T>> = s.0.mapv(|item| Wrapping(item.into())); // How to convert to a new type!!!!
+        let res = s_t * (x.0 - y.0.clone()) + y.0;
+        Ok(HostRingTensor::<T>(res, plc.clone()))
+    }
+}

@@ -702,6 +702,46 @@ impl MuxOp {
             ))),
         }
     }
+
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &HostPlacement,
+        s: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        HostPlacement: PlacementMux<S, BoolT, Fixed64T, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementMux<S, BoolT, Fixed128T, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementMux<S, BoolT, Float32T, Float32T, Float32T>,
+        HostPlacement: PlacementMux<S, BoolT, Float64T, Float64T, Float64T>,
+    {
+        match (s, x, y) {
+            (AbstractTensor::Bool(s), AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let result = plc.mux(sess, &s, &x, &y);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            (AbstractTensor::Bool(s), AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let result = plc.mux(sess, &s, &x, &y);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            (AbstractTensor::Bool(s), AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+                let result = plc.mux(sess, &s, &x, &y);
+                Ok(AbstractTensor::Float32(result))
+            }
+            (AbstractTensor::Bool(s), AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+                let result = plc.mux(sess, &s, &x, &y);
+                Ok(AbstractTensor::Float64(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (s, x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing host mux op for {:?}, {:?} and {:?}",
+                &s.ty_desc(),
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
+        }
+    }
 }
 
 impl CastOp {
