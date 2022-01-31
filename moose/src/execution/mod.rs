@@ -1068,7 +1068,7 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let template_source = r#"x = Constant{value=Ring64Tensor([4, 4])}: () -> Ring64Tensor @Host(alice)
-        res = RingShr {amount = 1}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
+        res = Shr {amount = 1}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
         "#;
         let source = template_source.replace("Ring64Tensor", type_str.as_str());

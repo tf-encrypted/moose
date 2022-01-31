@@ -233,26 +233,14 @@ pub trait PlacementShl<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementShl::shl, RepShlOp{amount: usize},
+    PlacementShl::shl, ShlOp{amount: usize},
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::kernel),
-    ]
-}
-
-modelled_kernel! {
-    PlacementShl::shl, RingShlOp{amount: usize},
-    [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
-    ]
-}
-
-modelled_kernel! {
-    PlacementShl::shl, AdtShlOp{amount: usize},
-    [
-        (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::kernel),
-        (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_kernel),
+        (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveRing64Tensor => [concrete] Self::adt_kernel),
+        (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveRing128Tensor => [concrete] Self::adt_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring_kernel),
     ]
 }
 
@@ -262,10 +250,10 @@ pub trait PlacementShr<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementShr::shr, RingShrOp{amount: usize},
+    PlacementShr::shr, ShrOp{amount: usize},
     [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring_kernel),
     ]
 }
 
@@ -275,10 +263,10 @@ pub trait PlacementSqrt<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementSqrt::sqrt, HostSqrtOp,
+    PlacementSqrt::sqrt, SqrtOp,
     [
-        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::host_kernel),
     ]
 }
 

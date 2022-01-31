@@ -781,8 +781,8 @@ impl HostMeanOp {
     }
 }
 
-impl HostSqrtOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: 'static + Float>(
+impl SqrtOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: 'static + Float>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -1541,8 +1541,8 @@ impl DotOp {
     }
 }
 
-impl RingShlOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+impl ShlOp {
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         amount: usize,
@@ -1556,8 +1556,8 @@ impl RingShlOp {
     }
 }
 
-impl RingShrOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+impl ShrOp {
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         amount: usize,

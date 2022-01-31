@@ -678,7 +678,7 @@ impl RepXorOp {
     }
 }
 
-impl RepNegOp {
+impl NegOp {
     pub(crate) fn rep_bit_kernel<S: Session, HostBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -1604,8 +1604,8 @@ impl FillOp {
     }
 }
 
-impl RepShlOp {
-    pub(crate) fn kernel<S: Session, HostRingT>(
+impl ShlOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         amount: usize,
