@@ -187,7 +187,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Inverse(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostInverseOp {
+            kind: InverseOp {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
             }
             .into(),

@@ -536,8 +536,8 @@ impl HostSliceOp {
     }
 }
 
-impl HostDiagOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+impl DiagOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -992,9 +992,9 @@ impl HostTransposeOp {
     }
 }
 
-impl HostInverseOp {
+impl InverseOp {
     #[cfg(feature = "blas")]
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
         sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -1025,7 +1025,7 @@ impl HostInverseOp {
     }
 
     #[cfg(not(feature = "blas"))]
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         _plc: &HostPlacement,
         _x: HostTensor<T>,

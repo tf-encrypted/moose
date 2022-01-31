@@ -1,7 +1,7 @@
 //! Various operations for additive placements
 use super::*;
 use crate::computation::{
-    AddOp, AdtFillOp, AdtRevealOp, ShlOp, Constant, MulOp, Placed, ShapeOp, SubOp,
+    AddOp, AdtFillOp, AdtRevealOp, Constant, MulOp, Placed, ShapeOp, ShlOp, SubOp,
 };
 use crate::error::Result;
 use crate::execution::Session;

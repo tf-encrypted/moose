@@ -1710,8 +1710,8 @@ impl IndexOp {
     }
 }
 
-impl RepDiagOp {
-    pub(crate) fn kernel<S: Session, HostRingT>(
+impl DiagOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: RepTen<HostRingT>,

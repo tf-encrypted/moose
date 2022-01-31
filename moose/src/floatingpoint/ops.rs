@@ -365,8 +365,8 @@ impl FloatingpointTransposeOp {
     }
 }
 
-impl FloatingpointInverseOp {
-    pub(crate) fn kernel<S: Session, HostFloatT, MirroredT>(
+impl InverseOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT, MirroredT>,

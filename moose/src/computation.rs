@@ -1001,13 +1001,12 @@ operators![
     // Host operators
     HostMean,
     HostSlice,
-    HostDiag,
+    Diag,
     HostBitDec,
     HostReshape,
     HostSqueeze,
     HostOnes,
     HostTranspose,
-    HostInverse,
     HostAtLeast2D,
     HostShlDim,
     Sign,
@@ -1040,7 +1039,6 @@ operators![
     FloatingpointOnes,
     FloatingpointConcat,
     FloatingpointTranspose,
-    FloatingpointInverse,
     FloatingpointMean,
     // Additive operators
     AdtReveal,
@@ -1059,7 +1057,6 @@ operators![
     RepTruncPr,
     RepToAdt,
     Index,
-    RepDiag,
     RepSlice,
     RepBitDec,
     RepBitCompose,
@@ -1273,11 +1270,6 @@ pub struct HostTransposeOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostInverseOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 
 pub struct ShapeOp {
     pub sig: Signature,
@@ -1291,7 +1283,7 @@ pub struct HostSliceOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostDiagOp {
+pub struct DiagOp {
     pub sig: Signature,
 }
 
@@ -1482,11 +1474,6 @@ pub struct FloatingpointTransposeOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct FloatingpointInverseOp {
-    pub sig: Signature,
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FloatingpointMeanOp {
     pub sig: Signature,
@@ -1593,11 +1580,6 @@ pub struct RepShlDimOp {
 pub struct IndexOp {
     pub sig: Signature,
     pub index: usize,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct RepDiagOp {
-    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
