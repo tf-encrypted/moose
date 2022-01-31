@@ -504,7 +504,7 @@ impl DivOp {
 }
 
 impl DotOp {
-    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
@@ -559,7 +559,7 @@ impl DotOp {
         }
     }
 
-    pub(crate) fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         sig: Signature,

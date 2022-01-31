@@ -423,8 +423,8 @@ where
     }
 }
 
-impl HostDotOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl DotOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -1524,8 +1524,8 @@ where
     }
 }
 
-impl RingDotOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+impl DotOp {
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRingTensor<T>,

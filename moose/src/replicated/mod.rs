@@ -1090,7 +1090,7 @@ impl MulOp {
     }
 }
 
-impl RepDotOp {
+impl DotOp {
     pub(crate) fn rep_rep_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,

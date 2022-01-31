@@ -62,7 +62,7 @@ mod tests {
         y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         mul = Mul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         add = Add: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
+        dot = Dot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         z = Output: (Float32Tensor) -> Float32Tensor (mul) @Host(alice)"#;
 
         let comp = prune_graph(&source.try_into()?)?.unwrap();
@@ -128,7 +128,7 @@ mod tests {
         y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         mul = Mul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         add = Add: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
+        dot = Dot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         z = Output: (Float32Tensor) -> Float32Tensor (mul) @Host(alice)
         z2 = Output: (Float32Tensor) -> Float32Tensor (add) @Host(alice)"#;
 

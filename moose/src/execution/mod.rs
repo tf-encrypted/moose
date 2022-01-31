@@ -431,7 +431,7 @@ mod tests {
         let source = r#"
         x0 = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         x1 = Constant{value=Float32Tensor([[1.0, 0.0], [0.0, 1.0]])}: () -> Float32Tensor @Host(bob)
-        res = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x0, x1) @Host(alice)
+        res = Dot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x0, x1) @Host(alice)
         output = Output: (Float32Tensor) -> Float32Tensor (res) @Host(alice)
         "#;
         let computation: Computation = source.try_into()?;
@@ -926,7 +926,7 @@ mod tests {
         let source = format!(
             r#"x = Constant{{value={}}}: () -> Ring64Tensor @Host(alice)
         y = Constant{{value={}}}: () -> Ring64Tensor @Host(alice)
-        res = RingDot : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor (x, y) @Host(alice)
+        res = Dot : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor (x, y) @Host(alice)
         output = Output : (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
         "#,
             x_str, y_str

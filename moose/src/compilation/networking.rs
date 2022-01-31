@@ -128,7 +128,7 @@ mod tests {
         x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         mul = Mul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
+        dot = Dot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         mean = HostMean{}: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
 
         let comp = NetworkingPass::pass(&source.try_into()?)?
@@ -139,7 +139,7 @@ mod tests {
             "mul = Mul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp.contains(
-            "dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
+            "dot = Dot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
         ));
         assert!(
             comp.contains("mean = HostMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)")
@@ -153,7 +153,7 @@ mod tests {
         x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
         y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
         mul = Mul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
+        dot = Dot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         mean = HostMean{}: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
         let comp = NetworkingPass::pass(&source.try_into()?)?
             .unwrap()
@@ -165,7 +165,7 @@ mod tests {
         ));
         assert!(comp.contains(r#"receive_0 = Receive{rendezvous_key = 00000000000000000000000000000000, sender = "bob"}: () -> Float32Tensor () @Host(alice)"#));
         assert!(comp.contains("mul = Mul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
-        assert!(comp.contains("dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
+        assert!(comp.contains("dot = Dot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
         assert!(
             comp.contains("mean = HostMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)")
         );
