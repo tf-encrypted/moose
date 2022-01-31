@@ -4,7 +4,6 @@ flake8-black==0.1.1
 flake8-isort==4.0.0
 flake8==3.8.3
 isort==5.4.2
-maturin==0.12.6
 msgpack==1.0.2
 numpy==1.21.2
 onnx~=1.10.0
