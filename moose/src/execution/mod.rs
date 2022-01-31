@@ -1113,9 +1113,6 @@ mod tests {
             role_assignments,
             Arc::clone(networking),
             Arc::clone(exec_storage),
-            Arc::new(Placement::Host(HostPlacement {
-                owner: "localhost".into(),
-            })),
         )
     }
 

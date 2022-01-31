@@ -110,7 +110,6 @@ pub struct AsyncSession {
     pub role_assignments: Arc<HashMap<Role, Identity>>,
     pub networking: AsyncNetworkingImpl,
     pub storage: AsyncStorageImpl,
-    pub host: Arc<Placement>,
     // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
     pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
 }
@@ -122,7 +121,6 @@ impl AsyncSession {
         role_assignments: HashMap<Role, Identity>,
         networking: AsyncNetworkingImpl,
         storage: AsyncStorageImpl,
-        host: Arc<Placement>,
     ) -> Self {
         AsyncSession {
             session_id,
@@ -130,7 +128,6 @@ impl AsyncSession {
             role_assignments: Arc::new(role_assignments),
             networking,
             storage,
-            host,
             tasks: Default::default(),
         }
     }
@@ -614,9 +611,6 @@ impl AsyncTestRuntime {
                 valid_role_assignments.clone(),
                 Arc::clone(&self.networking),
                 Arc::clone(&self.runtime_storage[own_identity]),
-                Arc::new(Placement::Host(HostPlacement {
-                    owner: own_identity.0.clone().into(),
-                })),
             );
             let outputs = executor
                 .run_computation(
