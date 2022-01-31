@@ -511,3 +511,32 @@ impl OutputOp {
         Ok(FloatTensor::Host(plc.output(sess, &x)))
     }
 }
+
+impl MuxOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT, HostBitT, RepBitT>(
+        sess: &S,
+        plc: &HostPlacement,
+        s: BoolTensor<HostBitT, RepBitT>,
+        x: FloatTensor<HostFloatT, MirroredT>,
+        y: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementMux<S, HostBitT, HostFloatT, HostFloatT, HostFloatT>,
+    {
+        let s = match s {
+            BoolTensor::Host(v) => v,
+            BoolTensor::Replicated(_v) => unimplemented!(),
+        };
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+        let y = match y {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+
+        let z = plc.mux(sess, &s, &x, &y);
+        Ok(FloatTensor::Host(z))
+    }
+}

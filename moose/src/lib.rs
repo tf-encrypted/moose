@@ -1836,7 +1836,7 @@ macro_rules! kernel {
                 use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();
-                Box::new(move |
+                Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
                     x0: <$t0 as KnownType<SymbolicSession>>::Type,
@@ -1850,7 +1850,7 @@ macro_rules! kernel {
                         }
                         (x0, x1, x2) => Err(crate::error::Error::Unexpected(Some(format!("Ternary runtime kernel flavor encountered Concrete arguments during compilation: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
                     }
-                })
+                }))
             }
         }
     };
