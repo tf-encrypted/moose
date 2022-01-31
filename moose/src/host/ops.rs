@@ -348,25 +348,25 @@ where
                 let res = Array::from_elem([], l.dot(&r))
                     .into_dimensionality::<IxDyn>()
                     .unwrap();
-                HostTensor::<T>(res, self.1)
+                HostTensor(res, self.1)
             }
             (1, 2) => {
                 let l = self.0.into_dimensionality::<Ix1>().unwrap();
                 let r = other.0.into_dimensionality::<Ix2>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                HostTensor::<T>(res, self.1)
+                HostTensor(res, self.1)
             }
             (2, 1) => {
                 let l = self.0.into_dimensionality::<Ix2>().unwrap();
                 let r = other.0.into_dimensionality::<Ix1>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                HostTensor::<T>(res, self.1)
+                HostTensor(res, self.1)
             }
             (2, 2) => {
                 let l = self.0.into_dimensionality::<Ix2>().unwrap();
                 let r = other.0.into_dimensionality::<Ix2>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                HostTensor::<T>(res, self.1)
+                HostTensor(res, self.1)
             }
             (self_rank, other_rank) => panic!(
                 // TODO: replace with proper error handling
@@ -398,7 +398,7 @@ impl HostOnesOp {
         shape: HostShape,
     ) -> Result<HostTensor<T>> {
         let raw_shape = shape.0;
-        Ok(HostTensor::<T>(ArrayD::ones(raw_shape.0), plc.clone()))
+        Ok(HostTensor(ArrayD::ones(raw_shape.0), plc.clone()))
     }
 }
 
@@ -424,7 +424,7 @@ impl HostAtLeast2DOp {
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         let y = match x.0.ndim() {
-            0 => HostTensor::<T>(x.0.into_shape(IxDyn(&[1, 1])).unwrap(), x.1),
+            0 => HostTensor(x.0.into_shape(IxDyn(&[1, 1])).unwrap(), x.1),
             1 => {
                 let length = x.0.len();
                 let newshape = if to_column_vector {
@@ -432,7 +432,7 @@ impl HostAtLeast2DOp {
                 } else {
                     IxDyn(&[1, length])
                 };
-                HostTensor::<T>(x.0.into_shape(newshape).unwrap(), x.1)
+                HostTensor(x.0.into_shape(newshape).unwrap(), x.1)
             }
             2 => x,
             otherwise => panic!(
