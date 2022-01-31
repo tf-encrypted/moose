@@ -6,6 +6,7 @@ pydep:
 
 pylib-release:
 	cd pymoose && python setup.py install
+	cd pymoose && python setup.py bdist_wheel
 
 install-release: pydep pylib-release
 
