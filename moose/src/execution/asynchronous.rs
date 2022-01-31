@@ -102,7 +102,7 @@ impl AsyncSessionHandle {
     }
 }
 
-/// Session object for asynchronous execution (in new framework).
+/// Session object for asynchronous execution.
 #[derive(Clone)]
 pub struct AsyncSession {
     pub session_id: SessionId,
