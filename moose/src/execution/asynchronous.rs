@@ -136,34 +136,29 @@ impl AsyncSession {
 impl AsyncSession {
     fn storage_load(
         &self,
-        op: &LoadOp,
+        op: LoadOp,
         _plc: &HostPlacement,
         operands: Vec<AsyncValue>,
     ) -> Result<AsyncValue> {
         use std::convert::TryInto;
+
         assert_eq!(operands.len(), 2);
         let sess = self.clone();
-        let op = op.clone();
-        // let plc = plc.clone();
-        let (sender, result) = new_async_value();
-        let tasks = std::sync::Arc::clone(&self.tasks);
-        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+
+        let (sender, receiver) = new_async_value();
+        let task = tokio::spawn(async move {
             let operands = futures::future::join_all(operands).await;
             let key: HostString = operands
                 .get(0)
-                .ok_or_else(|| {
-                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0))
-                })?
+                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 0)))?
                 .clone()
-                .map_err(crate::execution::map_receive_error)?
+                .map_err(map_receive_error)?
                 .try_into()?;
             let query: HostString = operands
                 .get(1)
-                .ok_or_else(|| {
-                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 1))
-                })?
+                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 1)))?
                 .clone()
-                .map_err(crate::execution::map_receive_error)?
+                .map_err(map_receive_error)?
                 .try_into()?;
 
             let value: Value = sess
@@ -172,126 +167,116 @@ impl AsyncSession {
                 .await?;
             // TODO: Hmm, placement of a Value does not work like this... But perhaps it should?
             // let value = plc.place(&sess, value);
-            crate::execution::map_send_result(sender.send(value))?;
+            map_send_result(sender.send(value))?;
             Ok(())
         });
-        let mut tasks = tasks.write().unwrap();
+        let mut tasks = self.tasks.write().unwrap();
         tasks.push(task);
 
-        Ok(result)
+        Ok(receiver)
     }
 
-    fn storage_save(
-        &self,
-        _op: &SaveOp,
-        plc: &HostPlacement,
-        operands: Vec<AsyncValue>,
-    ) -> Result<AsyncValue> {
+    fn storage_save(&self, plc: &HostPlacement, operands: Vec<AsyncValue>) -> Result<AsyncValue> {
         use std::convert::TryInto;
+
         assert_eq!(operands.len(), 2);
-        let sess = self.clone();
+        let sess = self.clone(); // TODO(Morten) avoid clone
         let plc = plc.clone();
-        let (sender, result) = new_async_value();
-        let tasks = std::sync::Arc::clone(&self.tasks);
-        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+
+        let (sender, receiver) = new_async_value();
+        let task = tokio::spawn(async move {
             let operands = futures::future::join_all(operands).await;
             let key: HostString = operands
                 .get(0)
-                .ok_or_else(|| {
-                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0))
-                })?
+                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 0)))?
                 .clone()
-                .map_err(crate::execution::map_receive_error)?
+                .map_err(map_receive_error)?
                 .try_into()?;
             let x: Value = operands
                 .get(1)
-                .ok_or_else(|| {
-                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 1))
-                })?
+                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 1)))?
                 .clone()
-                .map_err(crate::execution::map_receive_error)?;
+                .map_err(map_receive_error)?;
 
             sess.storage.save(&key.0, &sess.session_id, &x).await?;
+
             let result = Unit(plc);
-            crate::execution::map_send_result(sender.send(result.into()))?;
+            map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let mut tasks = tasks.write().unwrap();
+        let mut tasks = self.tasks.write().unwrap();
         tasks.push(task);
 
-        Ok(result)
+        Ok(receiver)
     }
 
     fn networking_receive(
         &self,
-        op: &ReceiveOp,
+        op: ReceiveOp,
         _plc: &HostPlacement,
         operands: Vec<AsyncValue>,
     ) -> Result<AsyncValue> {
         assert_eq!(operands.len(), 0);
         let sess = self.clone();
-        let op = op.clone();
-        // let plc = plc.clone();
-        let (sender, result) = new_async_value();
-        let tasks = std::sync::Arc::clone(&self.tasks);
-        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+
+        let (sender, receiver) = new_async_value();
+        let task = tokio::spawn(async move {
             let net_sender = sess.find_role_assignment(&op.sender)?;
 
-            let value: Value = sess
+            let value = sess
                 .networking
                 .receive(net_sender, &op.rendezvous_key, &sess.session_id)
                 .await?;
             // TODO: Hmm, placement of a Value does not work like this... But perhaps it should?
             // let value = plc.place(&sess, value);
-            crate::execution::map_send_result(sender.send(value))?;
+            map_send_result(sender.send(value))?;
             Ok(())
         });
-        let mut tasks = tasks.write().unwrap();
+        let mut tasks = self.tasks.write().unwrap();
         tasks.push(task);
 
-        Ok(result)
+        Ok(receiver)
     }
 
     fn networking_send(
         &self,
-        op: &SendOp,
+        op: SendOp,
         plc: &HostPlacement,
         operands: Vec<AsyncValue>,
     ) -> Result<AsyncValue> {
         assert_eq!(operands.len(), 1);
-        let sess = self.clone();
+
+        let sess = self.clone(); // TODO(Morten) avoid
         let plc = plc.clone();
-        let op = op.clone();
-        let (sender, result) = new_async_value();
-        let tasks = std::sync::Arc::clone(&self.tasks);
-        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+
+        let (sender, receiver) = new_async_value();
+        let task = tokio::spawn(async move {
             let receiver = sess.find_role_assignment(&op.receiver)?;
             let operands = futures::future::join_all(operands).await;
-            let x: Value = operands
+            let x = operands
                 .get(0)
-                .ok_or_else(|| {
-                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0))
-                })?
+                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 0)))?
                 .clone()
-                .map_err(crate::execution::map_receive_error)?;
+                .map_err(map_receive_error)?;
 
             sess.networking
                 .send(&x, receiver, &op.rendezvous_key, &sess.session_id)
                 .await?;
+
             let result = Unit(plc);
-            crate::execution::map_send_result(sender.send(result.into()))?;
+            map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let mut tasks = tasks.write().unwrap();
+        let mut tasks = self.tasks.write().unwrap();
         tasks.push(task);
 
-        Ok(result)
+        Ok(receiver)
     }
 }
 
 pub(crate) type AsyncValue = crate::execution::AsyncReceiver;
 
-pub(crate) fn new_async_value() -> (AsyncSender, AsyncValue) {
+pub(crate) fn new_async_value() -> (AsyncSender, AsyncReceiver) {
     // TODO(Morten) make second attempt at inlining
     use futures::FutureExt;
     fn remove_err<T, E>(r: std::result::Result<T, E>) -> std::result::Result<T, ()> {
@@ -299,8 +284,7 @@ pub(crate) fn new_async_value() -> (AsyncSender, AsyncValue) {
     }
 
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    let shared_receiver: crate::execution::AsyncReceiver =
-        receiver.map(remove_err as fn(_) -> _).shared();
+    let shared_receiver = receiver.map(remove_err as fn(_) -> _).shared();
     (sender, shared_receiver)
 }
 
@@ -316,10 +300,10 @@ impl Session for AsyncSession {
         use Placement::*;
         let kernel = match (op, plc) {
             // The kernels that are doing funny things to the async context, such as awaiting for more than their inputs.
-            (Load(op), Host(plc)) => return self.storage_load(&op, plc, operands),
-            (Save(op), Host(plc)) => return self.storage_save(&op, plc, operands),
-            (Send(op), Host(plc)) => return self.networking_send(&op, plc, operands),
-            (Receive(op), Host(plc)) => return self.networking_receive(&op, plc, operands),
+            (Load(op), Host(plc)) => return self.storage_load(op, plc, operands),
+            (Save(_), Host(plc)) => return self.storage_save(plc, operands),
+            (Send(op), Host(plc)) => return self.networking_send(op, plc, operands),
+            (Receive(op), Host(plc)) => return self.networking_receive(op, plc, operands),
 
             // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
             (Shape(op), _) => DispatchKernel::compile(&op, plc)?,
