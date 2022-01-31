@@ -1,4 +1,4 @@
-//! Placement for plaintext operations on a single role
+//! Placement for plaintext operations by a single role
 
 use crate::computation::*;
 use crate::error::{Error, Result};
@@ -24,6 +24,7 @@ mod prim;
 pub use fixedpoint::Convert;
 pub use prim::*;
 
+/// Placement type for single role plaintext operations
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostPlacement {
     pub owner: Role,
@@ -131,19 +132,18 @@ impl<S: Session> PlacementPlace<S, HostShape> for HostPlacement {
     }
 }
 
-/// One slice for slicing op
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SliceInfoElem {
-    /// start index; negative are counted from the back of the axis
+    /// Start index; negative are counted from the back of the axis.
     pub start: isize,
-    /// end index; negative are counted from the back of the axis; when not present
+    /// End index; negative are counted from the back of the axis; when not present
     /// the default is the full length of the axis.
     pub end: Option<isize>,
-    /// step size in elements; the default is 1, for every element.
+    /// Step size in elements; the default is 1, for every element.
     pub step: Option<isize>,
 }
 
-/// An ndarray slice needs a SliceInfoElem for each shape dimension
+// Slicing needs a SliceInfoElem for each shape dimension
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SliceInfo(pub Vec<SliceInfoElem>);
 
@@ -349,7 +349,7 @@ impl PartiallySymbolicType for HostBitArray256 {
     type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N256>;
 }
 
-impl<HostBitT: Placed, N> From<HostBitArray<HostBitT, N>> for Symbolic<HostBitArray<HostBitT, N>>
+impl<HostBitT, N> From<HostBitArray<HostBitT, N>> for Symbolic<HostBitArray<HostBitT, N>>
 where
     HostBitT: Placed<Placement = HostPlacement>,
 {
