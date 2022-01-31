@@ -482,10 +482,10 @@ pub trait PlacementAbs<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementAbs::abs, RepAbsOp,
+    PlacementAbs::abs, AbsOp,
     [
-        (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::kernel),
-        (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::kernel),
+        (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
+        (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_kernel),
     ]
 }
 

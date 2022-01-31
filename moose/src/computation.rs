@@ -997,6 +997,7 @@ operators![
     Sqrt,
     Shl,
     Shr,
+    Abs,
     // Host operators
     HostMean,
     HostSlice,
@@ -1035,7 +1036,6 @@ operators![
     Less,
     GreaterThan,
     // Floating-point operators
-    FloatingpointDiv,
     FloatingpointAtLeast2D,
     FloatingpointOnes,
     FloatingpointConcat,
@@ -1047,7 +1047,6 @@ operators![
     AdtFill,
     AdtToRep,
     // Replicated operators
-    RepAbs,
     RepSetup,
     RepShare,
     RepReveal,
@@ -1456,13 +1455,8 @@ pub struct FixedpointMeanOp {
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct NegOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct FloatingpointDivOp {
     pub sig: Signature,
 }
 
@@ -1524,7 +1518,7 @@ pub struct AdtToRepOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct RepAbsOp {
+pub struct AbsOp {
     pub sig: Signature,
 }
 

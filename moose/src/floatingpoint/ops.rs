@@ -193,7 +193,7 @@ impl MulOp {
     }
 }
 
-impl FloatingpointDivOp {
+impl DivOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,

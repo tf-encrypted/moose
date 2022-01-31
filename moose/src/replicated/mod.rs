@@ -1826,8 +1826,8 @@ impl RepMsbOp {
     }
 }
 
-impl RepAbsOp {
-    pub(crate) fn kernel<S: Session, RepRingT, MirRingT>(
+impl AbsOp {
+    pub(crate) fn rep_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
