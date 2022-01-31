@@ -355,8 +355,8 @@ impl MulOp {
     }
 }
 
-impl HostDivOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl DivOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -1224,8 +1224,8 @@ impl BitXorOp {
     }
 }
 
-impl BitNegOp {
-    pub(crate) fn kernel<S: RuntimeSession>(
+impl NegOp {
+    pub(crate) fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostBitTensor,
@@ -1424,8 +1424,8 @@ impl SubOp {
     }
 }
 
-impl RingNegOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+impl NegOp {
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRingTensor<T>,

@@ -375,11 +375,11 @@ mod tests {
     #[case("Add", "Int64Tensor([8]) @Host(alice)", true)]
     #[case("Sub", "Int64Tensor([2]) @Host(alice)", true)]
     #[case("Mul", "Int64Tensor([15]) @Host(alice)", true)]
-    #[case("HostDiv", "Int64Tensor([1]) @Host(alice)", true)]
+    #[case("Div", "Int64Tensor([1]) @Host(alice)", true)]
     #[case("Add", "Int64Tensor([8]) @Host(alice)", false)]
     #[case("Sub", "Int64Tensor([2]) @Host(alice)", false)]
     #[case("Mul", "Int64Tensor([15]) @Host(alice)", false)]
-    #[case("HostDiv", "Int64Tensor([1]) @Host(alice)", false)]
+    #[case("Div", "Int64Tensor([1]) @Host(alice)", false)]
     fn test_standard_op(
         #[case] test_op: String,
         #[case] expected_result: Value,

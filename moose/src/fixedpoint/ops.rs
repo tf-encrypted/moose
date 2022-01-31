@@ -583,7 +583,7 @@ impl MulOp {
     }
 }
 
-impl FixedpointDivOp {
+impl DivOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,

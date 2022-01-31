@@ -995,7 +995,6 @@ operators![
     Sum,
     Div,
     // Host operators
-    HostDiv,
     HostDot,
     HostMean,
     HostSqrt,
@@ -1031,7 +1030,6 @@ operators![
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
-    FixedpointDiv,
     FixedpointDot,
     FixedpointTruncPr,
     FixedpointMean,
@@ -1240,12 +1238,6 @@ pub struct SumOp {
     pub axis: Option<usize>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-
-pub struct HostDivOp {
-    pub sig: Signature,
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct SignOp {
     pub sig: Signature,
@@ -1367,11 +1359,6 @@ pub struct AesDecryptOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RingNegOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RingDotOp {
     pub sig: Signature,
 }
@@ -1441,11 +1428,6 @@ pub struct BitAndOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct BitNegOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct BitOrOp {
     pub sig: Signature,
 }
@@ -1481,11 +1463,6 @@ pub struct FixedpointEncodeOp {
 pub struct FixedpointDecodeOp {
     pub sig: Signature,
     pub fractional_precision: u32,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct FixedpointDivOp {
-    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
