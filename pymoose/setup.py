@@ -14,10 +14,7 @@ setuptools.setup(
     setup_requires=["setuptools-rust~=0.11.5"],
     rust_extensions=[
         setuptools_rust.RustExtension(
-            "pymoose.rust.moose_runtime", "./Cargo.toml", features=["extension-module"]
-        ),
-        setuptools_rust.RustExtension(
-            "pymoose.rust.elk_compiler", "./Cargo.toml", features=["extension-module"]
+            "pymoose.rust", "./Cargo.toml", features=["extension-module"]
         ),
     ],
     zip_safe=False,
