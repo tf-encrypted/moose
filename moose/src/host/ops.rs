@@ -264,42 +264,6 @@ impl SaveOp {
     }
 }
 
-impl RingFixedpointMeanOp {
-    pub(crate) fn ring64_kernel<S: RuntimeSession>(
-        sess: &S,
-        plc: &HostPlacement,
-        axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
-        x: HostRing64Tensor,
-    ) -> Result<HostRing64Tensor>
-    where
-        HostPlacement: PlacementPlace<S, HostRing64Tensor>,
-    {
-        let scaling_factor = u64::pow(scaling_base, scaling_exp);
-        let axis = axis.map(|a| a as usize);
-        let mean = HostRing64Tensor::fixedpoint_mean(x, axis, scaling_factor)?;
-        Ok(plc.place(sess, mean))
-    }
-
-    pub(crate) fn ring128_kernel<S: RuntimeSession>(
-        sess: &S,
-        plc: &HostPlacement,
-        axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
-        x: HostRing128Tensor,
-    ) -> Result<HostRing128Tensor>
-    where
-        HostPlacement: PlacementPlace<S, HostRing128Tensor>,
-    {
-        let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
-        let axis = axis.map(|a| a as usize);
-        let mean = HostRing128Tensor::fixedpoint_mean(x, axis, scaling_factor)?;
-        Ok(plc.place(sess, mean))
-    }
-}
-
 impl HostAddOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
