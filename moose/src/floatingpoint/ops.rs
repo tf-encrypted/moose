@@ -46,11 +46,11 @@ impl FloatingpointMeanOp {
     }
 }
 
-impl FloatingpointSumOp {
+impl SumOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: FloatTensor<HostFloatT, MirroredT>,
     ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
@@ -306,7 +306,7 @@ impl ExpandDimsOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: FloatTensor<HostFloatT, MirroredT>,
     ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where

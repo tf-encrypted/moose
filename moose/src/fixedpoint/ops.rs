@@ -839,11 +839,11 @@ impl FixedpointTruncPrOp {
     }
 }
 
-impl FixedpointSumOp {
+impl SumOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
@@ -861,10 +861,10 @@ impl FixedpointSumOp {
         Ok(FixedTensor::Host(result))
     }
 
-    pub(crate) fn rep_kernel<S: Session, RingT, MirT, RepT>(
+    pub(crate) fn fixed_rep_kernel<S: Session, RingT, MirT, RepT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: FixedTensor<RingT, MirT, RepT>,
     ) -> Result<FixedTensor<RingT, MirT, RepT>>
     where
@@ -882,10 +882,10 @@ impl FixedpointSumOp {
         Ok(FixedTensor::Replicated(result))
     }
 
-    pub(crate) fn hostfixed_kernel<S: Session, HostRingT>(
+    pub(crate) fn fixed_hostfixed_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: HostFixedTensor<HostRingT>,
     ) -> Result<HostFixedTensor<HostRingT>>
     where
@@ -899,10 +899,10 @@ impl FixedpointSumOp {
         })
     }
 
-    pub(crate) fn repfixed_kernel<S: Session, RepRingT>(
+    pub(crate) fn fixed_repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: RepFixedTensor<RepRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
@@ -921,7 +921,7 @@ impl ExpandDimsOp {
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
@@ -941,7 +941,7 @@ impl ExpandDimsOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
@@ -961,7 +961,7 @@ impl ExpandDimsOp {
     pub(crate) fn repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: RepFixedTensor<RepRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
@@ -978,7 +978,7 @@ impl ExpandDimsOp {
     pub(crate) fn hostfixed_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Vec<u32>,
+        axis: Vec<usize>,
         x: HostFixedTensor<HostRingT>,
     ) -> Result<HostFixedTensor<HostRingT>>
     where
@@ -1794,6 +1794,30 @@ impl MaximumOp {
             fractional_precision,
             integral_precision,
         })
+    }
+}
+
+impl SoftmaxOp {
+    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementSoftmax<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+
+        let z = plc.softmax(sess, axis, upmost_index, &x);
+        Ok(FixedTensor::Replicated(z))
     }
 }
 

@@ -66,7 +66,7 @@ _SK_CLASSIFIER_MODELS = [
     ),
     (
         "gradient_boosting_classifier_2class",
-        [[0.54741548, 0.45258452], [0.54741548, 0.45258452], [0.54741548, 0.45258452],],
+        [[0.54741548, 0.45258452], [0.54741548, 0.45258452], [0.54741548, 0.45258452]],
     ),
     (
         "gradient_boosting_classifier_3class",
@@ -78,7 +78,7 @@ _SK_CLASSIFIER_MODELS = [
     ),
     (
         "hist_gradient_boosting_classifier_2class",
-        [[0.54566526, 0.45433474], [0.54566526, 0.45433474], [0.54566526, 0.45433474],],
+        [[0.54566526, 0.45433474], [0.54566526, 0.45433474], [0.54566526, 0.45433474]],
     ),
     (
         "hist_gradient_boosting_classifier_3class",
@@ -94,11 +94,11 @@ _SK_CLASSIFIER_MODELS = [
     ),
     (
         "random_forest_classifier_2class_5trees",
-        [[0.50857143, 0.49142857], [0.72857143, 0.27142857], [0.64666667, 0.35333333],],
+        [[0.50857143, 0.49142857], [0.72857143, 0.27142857], [0.64666667, 0.35333333]],
     ),
     (
         "random_forest_classifier_3class",
-        [[0.03571429, 0.9642857, 0.0], [0.03571429, 0.9642857, 0.0], [0.5, 0.5, 0.0],],
+        [[0.03571429, 0.9642857, 0.0], [0.03571429, 0.9642857, 0.0], [0.5, 0.5, 0.0]],
     ),
     (
         "random_forest_classifier_3class_5trees",
@@ -163,6 +163,7 @@ class TreeEnsembleTest(parameterized.TestCase):
         predictor, predictor_logic = self._build_prediction_logic(
             model_name, "onnx", predictor_cls
         )
+
         traced_model_comp = edsl.trace(predictor_logic)
         storage = {plc.name: {} for plc in predictor.host_placements}
         runtime = LocalMooseRuntime(storage_mapping=storage)

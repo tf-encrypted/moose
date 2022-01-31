@@ -6,14 +6,12 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from pymoose import edsl
-from pymoose import elk_compiler
-from pymoose.computation import utils
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(parameterized.TestCase):
-    def _setup_exp_comp(self):
+    def _setup_exp_comp(self, x_array):
         alice = edsl.host_placement(name="alice")
         bob = edsl.host_placement(name="bob")
         carole = edsl.host_placement(name="carole")
@@ -22,7 +20,7 @@ class ReplicatedExample(parameterized.TestCase):
         @edsl.computation
         def my_exp_comp():
             with bob:
-                x = edsl.constant(np.array([2], dtype=np.float64))
+                x = edsl.constant(x_array)
                 x_enc = edsl.cast(x, dtype=edsl.fixed(8, 27))
 
             with rep:
@@ -35,30 +33,12 @@ class ReplicatedExample(parameterized.TestCase):
 
         return my_exp_comp
 
-    def test_exp_example_serde(self):
-        exp_comp = self._setup_exp_comp()
-        traced_exp_comp = edsl.trace(exp_comp)
-        comp_bin = utils.serialize_computation(traced_exp_comp)
-        # Compile in Rust
-        # If this does not error, rust was able to deserialize the pycomputation
-        elk_compiler.compile_computation(comp_bin, [])
-
-    def test_exp_example_compile(self):
-        exp_comp = self._setup_exp_comp()
-        traced_exp_comp = edsl.trace(exp_comp)
-        comp_bin = utils.serialize_computation(traced_exp_comp)
-        _ = elk_compiler.compile_computation(
-            comp_bin,
-            [
-                "typing",
-                "full",
-                "toposort",
-                # "print",
-            ],
-        )
-
-    def test_exp_example_execute(self):
-        exp_comp = self._setup_exp_comp()
+    @parameterized.parameters(
+        ([1, 0, 2, 3],), ([-1, 0, -2, -3.5],), ([-4.132, 0, -2, -3.5],),
+    )
+    def test_exp_example_execute(self, x):
+        x_arg = np.array(x, dtype=np.float64)
+        exp_comp = self._setup_exp_comp(x_arg)
         traced_exp_comp = edsl.trace(exp_comp)
         storage = {
             "alice": {},
@@ -72,7 +52,7 @@ class ReplicatedExample(parameterized.TestCase):
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
-        np.testing.assert_almost_equal(actual_result, np.exp([2]))
+        np.testing.assert_almost_equal(actual_result, np.exp(x_arg), decimal=5)
 
 
 if __name__ == "__main__":

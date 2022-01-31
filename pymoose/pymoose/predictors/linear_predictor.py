@@ -114,7 +114,7 @@ class LinearRegressor(LinearPredictor):
 class LinearClassifier(LinearPredictor):
     def __init__(self, coeffs, intercepts=None, multitask=False, transform_output=True):
         super().__init__(coeffs, intercepts)
-        n_classes = self.coeffs.shape[-1]
+        n_classes = self.coeffs.shape[0]
         if multitask and n_classes == 1:
             raise ValueError("Invalid argument: multitask=True found with n_classes=1.")
         # infer post_transform
@@ -123,7 +123,9 @@ class LinearClassifier(LinearPredictor):
         elif multitask or n_classes == 1:
             self._post_transform = lambda x: self._normalized_sigmoid(x, axis=1)
         elif n_classes > 1:
-            self._post_transform = lambda x: self._temporary_softmax(x, axis=1)
+            self._post_transform = lambda x: edsl.softmax(
+                x, axis=1, upmost_index=n_classes
+            )
         else:
             raise ValueError(
                 "Improper `multitask` argument to LinearClassifier model, expected "
@@ -219,12 +221,6 @@ class LinearClassifier(LinearPredictor):
     def _normalized_sigmoid(self, x, axis):
         y = edsl.sigmoid(x)
         return edsl.div(y, edsl.sum(y, axis))
-
-    def _temporary_softmax(self, x, axis):
-        # TODO replace with edsl.max(x, axis)
-        x_exp = edsl.exp(x)
-        denom = edsl.expand_dims(edsl.sum(x_exp, axis), axis)
-        return edsl.div(x_exp, denom)
 
 
 def _validate_model_args(coeffs, intercepts):

@@ -50,7 +50,7 @@ kernel! {
                     Constant::Fixed(FixedpointConstant {
                         value, precision
                     }) => {
-                        (value * ((1u64 << precision) as f64)) as u64
+                        ((value * ((1u64 << precision) as f64)) as i64) as u64
                     },
                     _ => return Err(Error::UnimplementedOperator(
                         format!("Cannot fill from {:?} into a ReplicatedRing64Tensor", op.value.ty()))),
@@ -67,7 +67,7 @@ kernel! {
                     Constant::Fixed(FixedpointConstant {
                         value, precision
                     }) => {
-                        (value * ((1u64 << precision) as f64)) as u64
+                        ((value * ((1u64 << precision) as f64)) as i64) as u64
                     },
                     _ => return Err(Error::UnimplementedOperator(
                         format!("Cannot fill from {:?} into a Mirrored3Ring64Tensor", op.value.ty()))),
@@ -83,7 +83,7 @@ kernel! {
                     Constant::Ring128(v) => v,
                     Constant::Float64(v) => v as u128,
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
-                            (value * ((1u128 << precision) as f64)) as u128
+                        ((value * ((1u128 << precision) as f64)) as i128) as u128
                     },
                     _ => return Err(Error::UnimplementedOperator(
                         format!("Cannot fill from {:?} into a ReplicatedRing128Tensor", op.value.ty()))),
@@ -99,7 +99,7 @@ kernel! {
                     Constant::Ring128(v) => v,
                     Constant::Float64(v) => v as u128,
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
-                            (value * ((1u128 << precision) as f64)) as u128
+                        ((value * ((1u128 << precision) as f64)) as i128) as u128
                     },
                     _ => return Err(Error::UnimplementedOperator(
                         format!("Cannot fill from {:?} into a Mirrored3Ring128Tensor", op.value.ty()))),
@@ -141,7 +141,7 @@ kernel! {
         (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Fixed64Tensor => [hybrid] custom |op| {
                 let (ring_value, fractional_precision, integral_precision) = match op.value {
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
-                        let ring_value: u64 = (value * ((1u64 << precision) as f64)) as u64;
+                        let ring_value: u64 = ((value * ((1u64 << precision) as f64)) as i64) as u64;
                         let fractional_precision = precision as u32;
                         let integral_precision = value.log2().ceil() as u32;
                         (ring_value, fractional_precision, integral_precision)
@@ -156,7 +156,7 @@ kernel! {
         (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Fixed128Tensor => [hybrid] custom |op| {
                 let (ring_value, fractional_precision, integral_precision) = match op.value {
                     Constant::Fixed(FixedpointConstant{value, precision}) => {
-                        let ring_value: u128 = (value * ((1u128 << precision) as f64)) as u128;
+                        let ring_value: u128 = ((value * ((1u128 << precision) as f64)) as i128) as u128;
                         let fractional_precision = precision as u32;
                         let integral_precision = value.log2().ceil() as u32;
                         (ring_value, fractional_precision, integral_precision)
