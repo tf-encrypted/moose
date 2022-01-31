@@ -579,21 +579,6 @@ impl Placed for Unit {
     }
 }
 
-pub type AsyncValue = crate::execution::AsyncReceiver;
-
-pub fn new_async_value() -> (crate::execution::AsyncSender, AsyncValue) {
-    // TODO(Morten) make second attempt at inlining
-    use futures::FutureExt;
-    fn remove_err<T, E>(r: std::result::Result<T, E>) -> std::result::Result<T, ()> {
-        r.map_err(|_| ())
-    }
-
-    let (sender, receiver) = tokio::sync::oneshot::channel();
-    let shared_receiver: crate::execution::AsyncReceiver =
-        receiver.map(remove_err as fn(_) -> _).shared();
-    (sender, shared_receiver)
-}
-
 pub type CompiledKernel<S> =
     Box<dyn Fn(&S, Vec<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send>;
 

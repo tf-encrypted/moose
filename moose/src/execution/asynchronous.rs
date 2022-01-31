@@ -131,7 +131,9 @@ impl AsyncSession {
             tasks: Default::default(),
         }
     }
+}
 
+impl AsyncSession {
     fn storage_load(
         &self,
         op: &LoadOp,
@@ -143,7 +145,7 @@ impl AsyncSession {
         let sess = self.clone();
         let op = op.clone();
         // let plc = plc.clone();
-        let (sender, result) = crate::computation::new_async_value();
+        let (sender, result) = new_async_value();
         let tasks = std::sync::Arc::clone(&self.tasks);
         let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
             let operands = futures::future::join_all(operands).await;
@@ -189,7 +191,7 @@ impl AsyncSession {
         assert_eq!(operands.len(), 2);
         let sess = self.clone();
         let plc = plc.clone();
-        let (sender, result) = crate::computation::new_async_value();
+        let (sender, result) = new_async_value();
         let tasks = std::sync::Arc::clone(&self.tasks);
         let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
             let operands = futures::future::join_all(operands).await;
@@ -230,7 +232,7 @@ impl AsyncSession {
         let sess = self.clone();
         let op = op.clone();
         // let plc = plc.clone();
-        let (sender, result) = crate::computation::new_async_value();
+        let (sender, result) = new_async_value();
         let tasks = std::sync::Arc::clone(&self.tasks);
         let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
             let net_sender = sess.find_role_assignment(&op.sender)?;
@@ -260,7 +262,7 @@ impl AsyncSession {
         let sess = self.clone();
         let plc = plc.clone();
         let op = op.clone();
-        let (sender, result) = crate::computation::new_async_value();
+        let (sender, result) = new_async_value();
         let tasks = std::sync::Arc::clone(&self.tasks);
         let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
             let receiver = sess.find_role_assignment(&op.receiver)?;
@@ -287,6 +289,21 @@ impl AsyncSession {
     }
 }
 
+pub(crate) type AsyncValue = crate::execution::AsyncReceiver;
+
+pub(crate) fn new_async_value() -> (AsyncSender, AsyncValue) {
+    // TODO(Morten) make second attempt at inlining
+    use futures::FutureExt;
+    fn remove_err<T, E>(r: std::result::Result<T, E>) -> std::result::Result<T, ()> {
+        r.map_err(|_| ())
+    }
+
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    let shared_receiver: crate::execution::AsyncReceiver =
+        receiver.map(remove_err as fn(_) -> _).shared();
+    (sender, shared_receiver)
+}
+
 impl Session for AsyncSession {
     type Value = AsyncValue;
     fn execute(
@@ -295,156 +312,147 @@ impl Session for AsyncSession {
         plc: &Placement,
         operands: Vec<Self::Value>,
     ) -> Result<Self::Value> {
-        // The kernels that are doing funny things to the async context, such as awaiting for more than their inputs.
-        match (&op, plc) {
-            (Operator::Load(op), Placement::Host(plc)) => {
-                return self.storage_load(op, plc, operands)
-            }
-            (Operator::Save(op), Placement::Host(plc)) => {
-                return self.storage_save(op, plc, operands)
-            }
-            (Operator::Send(op), Placement::Host(plc)) => {
-                return self.networking_send(op, plc, operands)
-            }
-            (Operator::Receive(op), Placement::Host(plc)) => {
-                return self.networking_receive(op, plc, operands)
-            }
-            _ => (),
-        };
-        // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
         use Operator::*;
-        let kernel = match op {
-            Shape(op) => DispatchKernel::compile(&op, plc)?,
-            Broadcast(op) => DispatchKernel::compile(&op, plc)?,
-            RingFill(op) => DispatchKernel::compile(&op, plc)?,
-            PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?,
-            BitSample(op) => DispatchKernel::compile(&op, plc)?,
-            BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)?,
-            BitXor(op) => DispatchKernel::compile(&op, plc)?,
-            BitAnd(op) => DispatchKernel::compile(&op, plc)?,
-            BitNeg(op) => DispatchKernel::compile(&op, plc)?,
-            BitOr(op) => DispatchKernel::compile(&op, plc)?,
-            BitExtract(op) => DispatchKernel::compile(&op, plc)?,
-            RingSample(op) => DispatchKernel::compile(&op, plc)?,
-            RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)?,
-            RingAdd(op) => DispatchKernel::compile(&op, plc)?,
-            RingSub(op) => DispatchKernel::compile(&op, plc)?,
-            RingMul(op) => DispatchKernel::compile(&op, plc)?,
-            RingDot(op) => DispatchKernel::compile(&op, plc)?,
-            RingNeg(op) => DispatchKernel::compile(&op, plc)?,
-            RingShl(op) => DispatchKernel::compile(&op, plc)?,
-            RingShr(op) => DispatchKernel::compile(&op, plc)?,
-            RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
-            RingFixedpointEncode(op) => DispatchKernel::compile(&op, plc)?,
-            RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?,
-            RingInject(op) => DispatchKernel::compile(&op, plc)?,
-            Fill(op) => DispatchKernel::compile(&op, plc)?,
-            RepSetup(op) => DispatchKernel::compile(&op, plc)?,
-            RepShare(op) => DispatchKernel::compile(&op, plc)?,
-            RepReveal(op) => DispatchKernel::compile(&op, plc)?,
-            RepAdd(op) => DispatchKernel::compile(&op, plc)?,
-            RepSub(op) => DispatchKernel::compile(&op, plc)?,
-            RepMul(op) => DispatchKernel::compile(&op, plc)?,
-            RepDot(op) => DispatchKernel::compile(&op, plc)?,
-            RepTruncPr(op) => DispatchKernel::compile(&op, plc)?,
-            RepMsb(op) => DispatchKernel::compile(&op, plc)?,
-            RepNeg(op) => DispatchKernel::compile(&op, plc)?,
-            RepAbs(op) => DispatchKernel::compile(&op, plc)?,
-            RepToAdt(op) => DispatchKernel::compile(&op, plc)?,
-            RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
-            RepShl(op) => DispatchKernel::compile(&op, plc)?,
-            RepDiag(op) => DispatchKernel::compile(&op, plc)?,
-            RepSlice(op) => DispatchKernel::compile(&op, plc)?,
-            RepBitDec(op) => DispatchKernel::compile(&op, plc)?,
-            RepShlDim(op) => DispatchKernel::compile(&op, plc)?,
-            RepAnd(op) => DispatchKernel::compile(&op, plc)?,
-            RepXor(op) => DispatchKernel::compile(&op, plc)?,
-            RepBitCompose(op) => DispatchKernel::compile(&op, plc)?,
-            AdtAdd(op) => DispatchKernel::compile(&op, plc)?,
-            AdtSub(op) => DispatchKernel::compile(&op, plc)?,
-            AdtShl(op) => DispatchKernel::compile(&op, plc)?,
-            AdtMul(op) => DispatchKernel::compile(&op, plc)?,
-            AdtFill(op) => DispatchKernel::compile(&op, plc)?,
-            AdtReveal(op) => DispatchKernel::compile(&op, plc)?,
-            AdtToRep(op) => DispatchKernel::compile(&op, plc)?,
-            PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)?,
-            Constant(op) => DispatchKernel::compile(&op, plc)?,
-            HostOnes(op) => DispatchKernel::compile(&op, plc)?,
-            Input(op) => DispatchKernel::compile(&op, plc)?,
-            Output(op) => DispatchKernel::compile(&op, plc)?,
-            Load(op) => DispatchKernel::compile(&op, plc)?,
-            Save(op) => DispatchKernel::compile(&op, plc)?,
-            HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)?,
-            HostMean(op) => DispatchKernel::compile(&op, plc)?,
-            HostSqrt(op) => DispatchKernel::compile(&op, plc)?,
-            FixedpointEncode(op) => DispatchKernel::compile(&op, plc)?,
-            FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?,
-            FixedpointAdd(op) => DispatchKernel::compile(&op, plc)?,
-            FixedpointSub(op) => DispatchKernel::compile(&op, plc)?,
-            FixedpointMul(op) => DispatchKernel::compile(&op, plc)?,
-            FixedpointDiv(op) => DispatchKernel::compile(&op, plc)?,
-            FixedpointDot(op) => DispatchKernel::compile(&op, plc)?,
-            FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)?,
-            FixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
-            HostSlice(op) => DispatchKernel::compile(&op, plc)?,
-            HostDiag(op) => DispatchKernel::compile(&op, plc)?,
-            HostShlDim(op) => DispatchKernel::compile(&op, plc)?,
-            HostAdd(op) => DispatchKernel::compile(&op, plc)?,
-            HostSub(op) => DispatchKernel::compile(&op, plc)?,
-            HostMul(op) => DispatchKernel::compile(&op, plc)?,
-            HostDiv(op) => DispatchKernel::compile(&op, plc)?,
-            HostDot(op) => DispatchKernel::compile(&op, plc)?,
-            HostSqueeze(op) => DispatchKernel::compile(&op, plc)?,
-            Sign(op) => DispatchKernel::compile(&op, plc)?,
-            FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)?,
-            FloatingpointSub(op) => DispatchKernel::compile(&op, plc)?,
-            FloatingpointMul(op) => DispatchKernel::compile(&op, plc)?,
-            FloatingpointDiv(op) => DispatchKernel::compile(&op, plc)?,
-            FloatingpointDot(op) => DispatchKernel::compile(&op, plc)?,
-            FloatingpointAtLeast2D(op) => DispatchKernel::compile(&op, plc)?,
-            FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)?,
-            FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?,
-            FloatingpointTranspose(op) => DispatchKernel::compile(&op, plc)?,
-            FloatingpointInverse(op) => DispatchKernel::compile(&op, plc)?,
-            FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?,
-            HostTranspose(op) => DispatchKernel::compile(&op, plc)?,
-            HostInverse(op) => DispatchKernel::compile(&op, plc)?,
-            HostBitDec(op) => DispatchKernel::compile(&op, plc)?,
-            Identity(op) => DispatchKernel::compile(&op, plc)?,
-            Cast(op) => DispatchKernel::compile(&op, plc)?,
-            Send(op) => DispatchKernel::compile(&op, plc)?,
-            Receive(op) => DispatchKernel::compile(&op, plc)?,
-            HostReshape(op) => DispatchKernel::compile(&op, plc)?,
-            AtLeast2D(op) => DispatchKernel::compile(&op, plc)?,
-            Slice(op) => DispatchKernel::compile(&op, plc)?,
-            Ones(op) => DispatchKernel::compile(&op, plc)?,
-            ExpandDims(op) => DispatchKernel::compile(&op, plc)?,
-            Concat(op) => DispatchKernel::compile(&op, plc)?,
-            Transpose(op) => DispatchKernel::compile(&op, plc)?,
-            Dot(op) => DispatchKernel::compile(&op, plc)?,
-            Inverse(op) => DispatchKernel::compile(&op, plc)?,
-            Add(op) => DispatchKernel::compile(&op, plc)?,
-            Sub(op) => DispatchKernel::compile(&op, plc)?,
-            Mul(op) => DispatchKernel::compile(&op, plc)?,
-            Mean(op) => DispatchKernel::compile(&op, plc)?,
-            Sum(op) => DispatchKernel::compile(&op, plc)?,
-            Div(op) => DispatchKernel::compile(&op, plc)?,
-            AddN(op) => DispatchKernel::compile(&op, plc)?,
-            Exp(op) => DispatchKernel::compile(&op, plc)?,
-            Pow2(op) => DispatchKernel::compile(&op, plc)?,
-            Neg(op) => DispatchKernel::compile(&op, plc)?,
-            RepEqual(op) => DispatchKernel::compile(&op, plc)?,
-            Mux(op) => DispatchKernel::compile(&op, plc)?,
-            Less(op) => DispatchKernel::compile(&op, plc)?,
-            GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
-            IndexAxis(op) => DispatchKernel::compile(&op, plc)?,
-            Index(op) => DispatchKernel::compile(&op, plc)?,
-            Sigmoid(op) => DispatchKernel::compile(&op, plc)?,
-            Maximum(op) => DispatchKernel::compile(&op, plc)?,
-            Softmax(op) => DispatchKernel::compile(&op, plc)?,
-            Demirror(op) => DispatchKernel::compile(&op, plc)?,
-            Mirror(op) => DispatchKernel::compile(&op, plc)?,
-            AesDecrypt(op) => DispatchKernel::compile(&op, plc)?,
+        use Placement::*;
+        let kernel = match (op, plc) {
+            // The kernels that are doing funny things to the async context, such as awaiting for more than their inputs.
+            (Load(op), Host(plc)) => return self.storage_load(&op, plc, operands),
+            (Save(op), Host(plc)) => return self.storage_save(&op, plc, operands),
+            (Send(op), Host(plc)) => return self.networking_send(&op, plc, operands),
+            (Receive(op), Host(plc)) => return self.networking_receive(&op, plc, operands),
+
+            // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
+            (Shape(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Broadcast(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingFill(op), _) => DispatchKernel::compile(&op, plc)?,
+            (PrimPrfKeyGen(op), _) => DispatchKernel::compile(&op, plc)?,
+            (BitSample(op), _) => DispatchKernel::compile(&op, plc)?,
+            (BitSampleSeeded(op), _) => DispatchKernel::compile(&op, plc)?,
+            (BitXor(op), _) => DispatchKernel::compile(&op, plc)?,
+            (BitAnd(op), _) => DispatchKernel::compile(&op, plc)?,
+            (BitNeg(op), _) => DispatchKernel::compile(&op, plc)?,
+            (BitOr(op), _) => DispatchKernel::compile(&op, plc)?,
+            (BitExtract(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingSample(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingSampleSeeded(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingAdd(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingSub(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingMul(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingDot(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingNeg(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingShl(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingShr(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingFixedpointMean(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingFixedpointEncode(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingFixedpointDecode(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RingInject(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Fill(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepSetup(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepShare(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepReveal(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepAdd(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepSub(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepMul(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepDot(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepTruncPr(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepMsb(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepNeg(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepAbs(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepToAdt(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepFixedpointMean(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepShl(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepDiag(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepSlice(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepBitDec(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepShlDim(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepAnd(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepXor(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepBitCompose(op), _) => DispatchKernel::compile(&op, plc)?,
+            (AdtAdd(op), _) => DispatchKernel::compile(&op, plc)?,
+            (AdtSub(op), _) => DispatchKernel::compile(&op, plc)?,
+            (AdtShl(op), _) => DispatchKernel::compile(&op, plc)?,
+            (AdtMul(op), _) => DispatchKernel::compile(&op, plc)?,
+            (AdtFill(op), _) => DispatchKernel::compile(&op, plc)?,
+            (AdtReveal(op), _) => DispatchKernel::compile(&op, plc)?,
+            (AdtToRep(op), _) => DispatchKernel::compile(&op, plc)?,
+            (PrimDeriveSeed(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Constant(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostOnes(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Input(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Output(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Load(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Save(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostAtLeast2D(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostMean(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostSqrt(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FixedpointEncode(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FixedpointDecode(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FixedpointAdd(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FixedpointSub(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FixedpointMul(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FixedpointDiv(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FixedpointDot(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FixedpointTruncPr(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FixedpointMean(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostSlice(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostDiag(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostShlDim(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostAdd(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostSub(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostMul(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostDiv(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostDot(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostSqueeze(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Sign(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FloatingpointAdd(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FloatingpointSub(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FloatingpointMul(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FloatingpointDiv(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FloatingpointDot(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FloatingpointAtLeast2D(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FloatingpointOnes(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FloatingpointConcat(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FloatingpointTranspose(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FloatingpointInverse(op), _) => DispatchKernel::compile(&op, plc)?,
+            (FloatingpointMean(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostTranspose(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostInverse(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostBitDec(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Identity(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Cast(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Send(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Receive(op), _) => DispatchKernel::compile(&op, plc)?,
+            (HostReshape(op), _) => DispatchKernel::compile(&op, plc)?,
+            (AtLeast2D(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Slice(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Ones(op), _) => DispatchKernel::compile(&op, plc)?,
+            (ExpandDims(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Concat(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Transpose(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Dot(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Inverse(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Add(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Sub(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Mul(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Mean(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Sum(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Div(op), _) => DispatchKernel::compile(&op, plc)?,
+            (AddN(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Exp(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Pow2(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Neg(op), _) => DispatchKernel::compile(&op, plc)?,
+            (RepEqual(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Mux(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Less(op), _) => DispatchKernel::compile(&op, plc)?,
+            (GreaterThan(op), _) => DispatchKernel::compile(&op, plc)?,
+            (IndexAxis(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Index(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Sigmoid(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Maximum(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Softmax(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Demirror(op), _) => DispatchKernel::compile(&op, plc)?,
+            (Mirror(op), _) => DispatchKernel::compile(&op, plc)?,
+            (AesDecrypt(op), _) => DispatchKernel::compile(&op, plc)?,
         };
         kernel(self, operands)
     }
@@ -559,8 +567,7 @@ pub struct AsyncTestRuntime {
 impl AsyncTestRuntime {
     pub fn new(storage_mapping: HashMap<String, HashMap<String, Value>>) -> Self {
         let mut executors: HashMap<Identity, AsyncExecutor> = HashMap::new();
-        let networking: AsyncNetworkingImpl =
-            Arc::new(LocalAsyncNetworking::default());
+        let networking: AsyncNetworkingImpl = Arc::new(LocalAsyncNetworking::default());
         let mut runtime_storage: HashMap<Identity, AsyncStorageImpl> = HashMap::new();
         let mut identities = Vec::new();
         for (identity_str, storage) in storage_mapping {

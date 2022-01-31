@@ -267,8 +267,8 @@ macro_rules! concrete_dispatch_kernel {
                 plc: &crate::computation::Placement
             ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
             {
-                use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature, AsyncValue};
-                use crate::execution::{AsyncSession};
+                use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
+                use crate::execution::{AsyncSession, AsyncValue};
                 use crate::kernels::{NullaryKernel};
                 use std::convert::TryInto;
 
@@ -289,7 +289,7 @@ macro_rules! concrete_dispatch_kernel {
                                 let sess = sess.clone();
                                 let plc = plc.clone();
                                 let k = <$op as NullaryKernel<AsyncSession, $plc, $u>>::compile(&op, &plc)?;
-                                let (sender, result) = crate::computation::new_async_value(); // This creates a channel
+                                let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
@@ -369,8 +369,8 @@ macro_rules! concrete_dispatch_kernel {
                 plc: &crate::computation::Placement
             ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
             {
-                use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, AsyncValue};
-                use crate::execution::{AsyncSession};
+                use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature};
+                use crate::execution::{AsyncSession, AsyncValue};
                 use crate::kernels::{UnaryKernel};
                 use std::convert::TryInto;
 
@@ -393,7 +393,7 @@ macro_rules! concrete_dispatch_kernel {
                                 let sess = sess.clone();
                                 let plc = plc.clone();
                                 let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(&op, &plc)?;
-                                let (sender, result) = crate::computation::new_async_value(); // This creates a channel
+                                let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
@@ -489,8 +489,8 @@ macro_rules! concrete_dispatch_kernel {
                 plc: &crate::computation::Placement
             ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
             {
-                use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature, AsyncValue};
-                use crate::execution::{AsyncSession};
+                use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
+                use crate::execution::{AsyncSession, AsyncValue};
                 use crate::kernels::{BinaryKernel};
                 use std::convert::TryInto;
 
@@ -513,7 +513,7 @@ macro_rules! concrete_dispatch_kernel {
                                 let sess = sess.clone();
                                 let plc = plc.clone();
                                 let k = <$op as BinaryKernel<AsyncSession, $plc, $t0, $t1, $u>>::compile(&op, &plc)?;
-                                let (sender, result) = crate::computation::new_async_value(); // This creates a channel
+                                let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
@@ -610,8 +610,8 @@ macro_rules! concrete_dispatch_kernel {
                 plc: &crate::computation::Placement
             ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
             {
-                use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature, AsyncValue};
-                use crate::execution::{AsyncSession};
+                use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature};
+                use crate::execution::{AsyncSession, AsyncValue};
                 use crate::kernels::{TernaryKernel};
                 use std::convert::TryInto;
 
@@ -635,7 +635,7 @@ macro_rules! concrete_dispatch_kernel {
                                 let sess = sess.clone();
                                 let plc = plc.clone();
                                 let k = <$op as TernaryKernel<AsyncSession, $plc, $t0, $t1, $t2, $u>>::compile(&op, &plc)?;
-                                let (sender, result) = crate::computation::new_async_value(); // This creates a channel
+                                let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
@@ -733,8 +733,8 @@ macro_rules! concrete_dispatch_kernel {
                 plc: &crate::computation::Placement
             ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
             {
-                use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature, AsyncValue};
-                use crate::execution::{AsyncSession};
+                use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature};
+                use crate::execution::{AsyncSession, AsyncValue};
                 use crate::kernels::{VariadicKernel};
                 use std::convert::TryInto;
 
@@ -755,7 +755,7 @@ macro_rules! concrete_dispatch_kernel {
                                 let sess = sess.clone();
                                 let plc = plc.clone();
                                 let k = <$op as VariadicKernel<AsyncSession, $plc, $ts, $u>>::compile(&op, &plc)?;
-                                let (sender, result) = crate::computation::new_async_value(); // This creates a channel
+                                let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
