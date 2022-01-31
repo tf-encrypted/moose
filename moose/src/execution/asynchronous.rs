@@ -21,6 +21,8 @@ pub type AsyncTask = tokio::task::JoinHandle<Result<()>>;
 
 pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
 
+pub type AsyncStorageImpl = Arc<dyn AsyncStorage + Send + Sync>;
+
 pub fn map_send_result(res: std::result::Result<(), Value>) -> std::result::Result<(), Error> {
     match res {
         Ok(_) => Ok(()),
@@ -106,8 +108,8 @@ pub struct AsyncSession {
     pub session_id: SessionId,
     pub arguments: Arc<HashMap<String, Value>>,
     pub role_assignments: Arc<HashMap<Role, Identity>>,
-    pub networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
-    pub storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
+    pub networking: AsyncNetworkingImpl,
+    pub storage: AsyncStorageImpl,
     pub host: Arc<Placement>,
     // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
     pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
@@ -118,8 +120,8 @@ impl AsyncSession {
         session_id: SessionId,
         arguments: HashMap<String, Value>,
         role_assignments: HashMap<Role, Identity>,
-        networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
-        storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
+        networking: AsyncNetworkingImpl,
+        storage: AsyncStorageImpl,
         host: Arc<Placement>,
     ) -> Self {
         AsyncSession {
@@ -461,7 +463,7 @@ impl RuntimeSession for AsyncSession {
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity> {
         self.role_assignments
             .get(role)
-            .ok_or_else(|| Error::Networking(format!("Missing role assignemnt for {}", role)))
+            .ok_or_else(|| Error::Networking(format!("Missing role assignment for {}", role)))
     }
 }
 
@@ -546,17 +548,16 @@ impl AsyncExecutor {
 pub struct AsyncTestRuntime {
     pub identities: Vec<Identity>,
     pub executors: HashMap<Identity, AsyncExecutor>,
-    pub runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>>,
+    pub runtime_storage: HashMap<Identity, AsyncStorageImpl>,
     pub networking: AsyncNetworkingImpl,
 }
 
 impl AsyncTestRuntime {
     pub fn new(storage_mapping: HashMap<String, HashMap<String, Value>>) -> Self {
         let mut executors: HashMap<Identity, AsyncExecutor> = HashMap::new();
-        let networking: Arc<dyn Send + Sync + AsyncNetworking> =
+        let networking: AsyncNetworkingImpl =
             Arc::new(LocalAsyncNetworking::default());
-        let mut runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>> =
-            HashMap::new();
+        let mut runtime_storage: HashMap<Identity, AsyncStorageImpl> = HashMap::new();
         let mut identities = Vec::new();
         for (identity_str, storage) in storage_mapping {
             let identity = Identity::from(identity_str.clone()).clone();
@@ -567,8 +568,7 @@ impl AsyncTestRuntime {
                 .map(|arg| (arg.0.to_owned(), arg.1.to_owned()))
                 .collect::<HashMap<String, Value>>();
 
-            let exec_storage: Arc<dyn Send + Sync + AsyncStorage> =
-                Arc::new(LocalAsyncStorage::from_hashmap(storage));
+            let exec_storage: AsyncStorageImpl = Arc::new(LocalAsyncStorage::from_hashmap(storage));
             runtime_storage.insert(identity.clone(), exec_storage);
 
             let executor = AsyncExecutor::default();

@@ -1,3 +1,5 @@
+//! Synchronous/eager execution of computations
+
 use super::*;
 use crate::error::{Error, Result};
 use crate::execution::Identity;
@@ -14,7 +16,7 @@ use std::sync::Arc;
 pub type SyncNetworkingImpl = Rc<dyn SyncNetworking>;
 pub type SyncStorageImpl = Rc<dyn SyncStorage>;
 
-/// Session object for synchronous/eager execution (in new framework).
+/// Session object for synchronous/eager execution.
 pub struct SyncSession {
     session_id: SessionId,
     replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<ReplicatedSetup>>>,
@@ -24,10 +26,10 @@ pub struct SyncSession {
     networking: SyncNetworkingImpl,
 }
 
+/// Default session should only be used in tests.
+///
+/// Use `new()` for the real sessions instead.
 impl Default for SyncSession {
-    /// Default session should only be used in tests.
-    ///
-    /// Use new() for the real sessions instead.
     fn default() -> Self {
         SyncSession {
             session_id: SessionId::random(),
@@ -167,6 +169,7 @@ impl Session for SyncSession {
             HostOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Input(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Output(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            // TODO(Morten) we should verify type of loaded value
             Load(op) => {
                 use std::convert::TryInto;
                 assert_eq!(operands.len(), 2);
@@ -245,6 +248,7 @@ impl Session for SyncSession {
                 };
                 Unit(host.clone()).into()
             }
+            // TODO(Morten) we should verify type of received value
             Receive(op) => self.networking.receive(
                 self.find_role_assignment(&op.sender)?,
                 &op.rendezvous_key,
@@ -303,7 +307,7 @@ impl RuntimeSession for SyncSession {
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity> {
         self.role_assignments
             .get(role)
-            .ok_or_else(|| Error::Networking(format!("Missing role assignemnt for {}", role)))
+            .ok_or_else(|| Error::Networking(format!("Missing role assignment for {}", role)))
     }
 }
 
