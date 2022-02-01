@@ -11,10 +11,8 @@ categories = ["", ""]
 edition = "2018"
 
 [features]
-default = ["new_async_session", "blas"]
+default = ["blas"]
 blas = ["ndarray-linalg"]
-exclude_old_framework = []
-new_async_session = []
 
 [dependencies]
 aes = "~0.7"
@@ -40,6 +38,7 @@ paste = "~1.0"
 petgraph = "~0.5"
 rand = "~0.8"
 rand_chacha = "~0.3"
+rayon = "1.5"
 rmp-serde = {version="0.15.5", features=["serde128"] }
 serde = { version="~1.0", features=["derive"] }
 serde_bytes="~0.11"

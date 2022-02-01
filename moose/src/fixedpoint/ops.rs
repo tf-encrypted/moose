@@ -1834,11 +1834,9 @@ mod tests {
 
     #[test]
     fn ring_fixedpoint() {
-        let x = HostFloat64Tensor::from(
-            array![1.0, -2.0, 3.0, -4.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
+        let plc = HostPlacement::from("TODO");
+
+        let x = plc.from_raw(array![1.0, -2.0, 3.0, -4.0]);
 
         let scaling_factor = 2u64.pow(16);
         let x_encoded = HostFixed64Tensor {
@@ -1850,7 +1848,7 @@ mod tests {
         assert_eq!(
             x_encoded,
             HostFixed64Tensor {
-                tensor: HostRing64Tensor::from(vec![
+                tensor: plc.from_raw(array![
                     65536,
                     18446744073709420544,
                     196608,
@@ -1873,7 +1871,7 @@ mod tests {
         assert_eq!(
             x_encoded,
             HostFixed128Tensor {
-                tensor: HostRing128Tensor::from(vec![
+                tensor: plc.from_raw(array![
                     1208925819614629174706176,
                     340282366920936045611735378173418799104,
                     3626777458843887524118528,
@@ -2222,7 +2220,6 @@ mod tests {
             let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
             test_host_dot128(a, b, target);
         }
-
 
         #[test]
         fn test_fuzzy_host_div64((a,b) in pairwise_bounded_same_length64(2 * 15))

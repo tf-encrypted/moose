@@ -53,13 +53,13 @@ mod tests {
     #[test]
     fn test_all_on_one_host() -> std::result::Result<(), anyhow::Error> {
         let source = r#"
-        x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
-        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
-        mul = Mul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        dot = Dot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        mean = HostMean{}: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)
-        constant_0 = Constant{value = String("regression_weights")}: () -> String () @Host(alice)
-        save = Save: (String, Unknown) -> Unit (constant_0, mean) @Host(alice)
+        x = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
+        y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
+        mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
+        dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
+        mean = HostMean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)
+        constant_0 = Constant{value = HostString("regression_weights")}: () -> HostString () @Host(alice)
+        save = Save: (HostString, Unknown) -> Unit (constant_0, mean) @Host(alice)
         "#;
 
         let comp = update_types_one_hop(&source.try_into()?)?
@@ -67,7 +67,7 @@ mod tests {
             .to_textual();
         // The computation should now contain the type information
         assert!(comp.contains(
-            "save = Save: (String, Float32Tensor) -> Unit (constant_0, mean) @Host(alice)"
+            "save = Save: (HostString, HostFloat32Tensor) -> Unit (constant_0, mean) @Host(alice)"
         ));
         Ok(())
     }

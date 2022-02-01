@@ -256,12 +256,6 @@ pub fn from_textual_derive(input: TokenStream) -> TokenStream {
     let item_struct = syn::parse::<syn::ItemStruct>(input).unwrap();
 
     let name = &item_struct.ident;
-    // Note, we only need to truncate the name by the charaters to get rid of the `Op` suffix.
-    // If we refactor to not have that suffix anymore we can just use `stringify!(#name)` inside `quote!` below.
-    let mut ident_string = name.to_string();
-    if ident_string.ends_with("Op") {
-        ident_string.truncate(ident_string.len() - 2);
-    }
 
     // Grab all the field names (except `sig`) as a comma-separated list
     let mut attr_count = 0;
@@ -314,8 +308,8 @@ pub fn from_textual_derive(input: TokenStream) -> TokenStream {
             fn from_textual(input: &'a str) -> nom::IResult<&'a str, Operator, E> {
                 use nom::branch::permutation;
                 use nom::bytes::complete::tag;
-                use nom::combinator::{cut, opt, map};
-                use nom::sequence::{delimited, preceded};
+                use nom::combinator::{opt, map};
+                use nom::sequence::delimited;
                 use crate::textual::ws;
 
                 let parser = |input: &'a str| {
@@ -326,7 +320,7 @@ pub fn from_textual_derive(input: TokenStream) -> TokenStream {
                         #attributes
                     }.into()))
                 };
-                preceded(tag(#ident_string), cut(parser))(input)
+                parser(input)
             }
         }
     };
