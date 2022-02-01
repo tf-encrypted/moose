@@ -2,8 +2,9 @@
 
 use crate::additive::AdditivePlacement;
 use crate::computation::*;
-use crate::host::HostPlacement;
-use crate::host::{RawPrfKey, RawSeed, RawShape, SliceInfo, SliceInfoElem, SyncKey};
+use crate::host::{
+    FromRaw, HostPlacement, RawPrfKey, RawSeed, RawShape, SliceInfo, SliceInfoElem, SyncKey,
+};
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
@@ -557,13 +558,19 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
                 Constant::HostFloat64Tensor(v.into())
             }),
             constant_literal_helper("Ring64Tensor", vector(parse_int), |v| {
-                Constant::HostRing64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostRing64Tensor(t)
             }),
             constant_literal_helper("Ring128Tensor", vector(parse_int), |v| {
-                Constant::HostRing128Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostRing128Tensor(t)
             }),
             constant_literal_helper("HostBitTensor", vector(parse_int), |v| {
-                Constant::HostBitTensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostBitTensor(t)
             }),
         )),
         // 2D arrays
@@ -601,15 +608,25 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
             constant_literal_helper(
                 "Ring64Tensor",
                 vector2(parse_int),
-                |v: ndarray::ArrayD<u64>| Constant::HostRing64Tensor(v.into()),
+                |v: ndarray::ArrayD<u64>| {
+                    let plc = HostPlacement::from("TODO");
+                    let t = plc.from_raw(v);
+                    Constant::HostRing64Tensor(t)
+                },
             ),
             constant_literal_helper(
                 "Ring128Tensor",
                 vector2(parse_int),
-                |v: ndarray::ArrayD<u128>| Constant::HostRing128Tensor(v.into()),
+                |v: ndarray::ArrayD<u128>| {
+                    let plc = HostPlacement::from("TODO");
+                    let t = plc.from_raw(v);
+                    Constant::HostRing128Tensor(t)
+                },
             ),
             constant_literal_helper("HostBitTensor", vector2(parse_int), |v| {
-                Constant::HostBitTensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostBitTensor(t)
             }),
         )),
     ))(input)
@@ -1621,6 +1638,7 @@ impl ToTextual for [u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::host::FromRaw;
     use rstest::rstest;
     use std::convert::TryInto;
 
@@ -1640,15 +1658,16 @@ mod tests {
         assert_eq!(parsed_str, Constant::String("1. 2\"3".into()));
         let (_, parsed_ring64_tensor) =
             constant_literal::<(&str, ErrorKind)>("Ring64Tensor([1,2,3])")?;
+        let plc = HostPlacement::from("TODO");
         assert_eq!(
             parsed_ring64_tensor,
-            Constant::HostRing64Tensor(vec![1, 2, 3].into())
+            Constant::HostRing64Tensor(plc.from_raw(vec![1, 2, 3]))
         );
         let (_, parsed_ring128_tensor) =
             constant_literal::<(&str, ErrorKind)>("Ring128Tensor([1,2,3])")?;
         assert_eq!(
             parsed_ring128_tensor,
-            Constant::HostRing128Tensor(vec![1, 2, 3].into())
+            Constant::HostRing128Tensor(plc.from_raw(vec![1, 2, 3]))
         );
         let (_, parsed_shape) = constant_literal::<(&str, ErrorKind)>("Shape([1,2,3])")?;
         assert_eq!(parsed_shape, Constant::RawShape(RawShape(vec![1, 2, 3])));
@@ -1687,23 +1706,15 @@ mod tests {
     fn test_array_literal() -> Result<(), anyhow::Error> {
         use ndarray::prelude::*;
         use std::convert::TryInto;
+
+        let plc = HostPlacement::from("TODO");
+
         let parsed_f32: Constant = "Float32Tensor([[1.0, 2.0], [3.0, 4.0]])".try_into()?;
-
-        let x = HostFloat32Tensor::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-
+        let x = plc.from_raw(array![[1.0, 2.0], [3.0, 4.0]]);
         assert_eq!(parsed_f32, Constant::HostFloat32Tensor(x));
 
         let parsed_ring64: Constant = "Ring64Tensor([[1, 2], [3, 4]])".try_into()?;
-
-        let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let x = HostRing64Tensor::from(x_backing);
-
+        let x = plc.from_raw(array![[1, 2], [3, 4]]);
         assert_eq!(parsed_ring64, Constant::HostRing64Tensor(x));
 
         Ok(())
