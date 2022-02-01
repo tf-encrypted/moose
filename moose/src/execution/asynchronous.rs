@@ -525,11 +525,19 @@ impl AsyncExecutor {
                 .iter()
                 .map(|input_name| env.get(input_name).unwrap().clone())
                 .collect();
+            let span = tracing::info_span!(
+                "AsyncExecutor::run_computation executing operator: {}",
+                operator = tracing::field::debug(&op)
+            )
+            .entered();
+            println!("op: {:?}", op);
+            println!("tracing op: {:?}", tracing::field::debug(&op));
             let value = session
                 .execute(operator, &op.placement, operands)
                 .map_err(|e| {
                     Error::KernelError(format!("AsyncSession failed due to an error: {:?}", e,))
                 })?;
+            span.exit();
             if matches!(op.kind, Operator::Output(_)) {
                 // If it is an output, we need to make sure we capture it for returning.
                 outputs.insert(op.name.clone(), value.clone());
