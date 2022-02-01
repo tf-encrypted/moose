@@ -481,7 +481,7 @@ mod tests {
     fn test_standard_inverse(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value=Float32Tensor([[3.0, 2.0], [2.0, 3.0]])} : () -> Float32Tensor @Host(alice)
         x_inv = Inverse : (Float32Tensor) -> Float32Tensor (x) @Host(alice)
-        output = Output: (Float32Tensor) -> Float32Tensor (x_inv) @Host(alice)
+        output = Output : (Float32Tensor) -> Float32Tensor (x_inv) @Host(alice)
         "#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =

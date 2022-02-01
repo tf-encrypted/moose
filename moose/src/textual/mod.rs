@@ -281,6 +281,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         SoftmaxOp::from_textual,
         BroadcastOp::from_textual,
         SumOp::from_textual,
+        InverseOp::from_textual,
     ));
     alt((part1, part2, part3, part4))(input)
 }
