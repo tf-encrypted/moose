@@ -1774,6 +1774,9 @@ impl MuxOp {
         T: From<u8>,
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
+        // Seems to be the right approach for now but in the future this
+        // expression could be implemented at the HostPlacement level
+        // (Add, Sub & Mul) instead of ndarray
         // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
         let s_t: ArrayD<T> = s.0.mapv(|item| item.into()); // How to convert to a new type!!!!
         let res = s_t * (x.0 - y.0.clone()) + y.0;
@@ -1795,6 +1798,9 @@ impl MuxOp {
         Wrapping<T>: std::ops::Sub<Output = Wrapping<T>>,
         Wrapping<T>: std::ops::Mul<Output = Wrapping<T>>,
     {
+        // Seems to be the right approach for now but in the future this
+        // expression could be implemented at the HostPlacement level
+        // (Add, Sub & Mul) instead of ndarray
         // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
         let s_t: ArrayD<Wrapping<T>> = s.0.mapv(|item| Wrapping(item.into())); // How to convert to a new type!!!!
         let res = s_t * (x.0 - y.0.clone()) + y.0;
