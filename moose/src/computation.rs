@@ -1008,7 +1008,6 @@ operators![
     HostReshape,
     HostSqueeze,
     HostOnes,
-    HostTranspose,
     HostInverse,
     HostShlDim,
     Sign,
@@ -1057,7 +1056,6 @@ operators![
     FloatingpointDot,
     FloatingpointOnes,
     FloatingpointConcat,
-    FloatingpointTranspose,
     FloatingpointInverse,
     FloatingpointMean,
     // Additive operators
@@ -1316,11 +1314,6 @@ pub struct HostSqueezeOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 
 pub struct HostReshapeOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostTransposeOp {
     pub sig: Signature,
 }
 
@@ -1601,11 +1594,6 @@ pub struct FloatingpointOnesOp {
 pub struct FloatingpointConcatOp {
     pub sig: Signature,
     pub axis: u32,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct FloatingpointTransposeOp {
-    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]

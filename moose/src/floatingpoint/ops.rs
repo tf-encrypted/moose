@@ -346,8 +346,8 @@ impl FloatingpointConcatOp {
     }
 }
 
-impl FloatingpointTransposeOp {
-    pub(crate) fn kernel<S: Session, HostFloatT, MirroredT>(
+impl TransposeOp {
+    pub(crate) fn float_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT, MirroredT>,

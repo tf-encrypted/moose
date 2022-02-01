@@ -777,7 +777,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"
         s = Constant{value=Int64Tensor([[1,2], [3, 4]])}: () -> Int64Tensor @Host(alice)
-        r = HostTranspose : (Int64Tensor) -> Int64Tensor (s) @Host(alice)
+        r = Transpose : (Int64Tensor) -> Int64Tensor (s) @Host(alice)
         output = Output : (Int64Tensor) -> Int64Tensor (r) @Host(alice)
         "#;
         let arguments: HashMap<String, Value> = hashmap!();

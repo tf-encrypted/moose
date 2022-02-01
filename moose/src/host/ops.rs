@@ -968,8 +968,8 @@ impl ConcatOp {
     }
 }
 
-impl HostTransposeOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl TransposeOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,

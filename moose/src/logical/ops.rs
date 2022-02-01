@@ -1324,13 +1324,13 @@ impl ConcatOp {
 }
 
 impl TransposeOp {
-    pub(crate) fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
-        // HostPlacement: PlacementTranspose<S, Float32T, Float32T>,
+        HostPlacement: PlacementTranspose<S, Float32T, Float32T>,
         HostPlacement: PlacementTranspose<S, Float64T, Float64T>,
     {
         match x {
@@ -1344,10 +1344,9 @@ impl TransposeOp {
                 // let z = plc.transpose(sess, &x);
                 // AbstractTensor::Fixed128(z)
             }
-            AbstractTensor::Float32(_x) => {
-                unimplemented!()
-                // let z = plc.transpose(sess, &x);
-                // AbstractTensor::Float32(z)
+            AbstractTensor::Float32(x) => {
+                let z = plc.transpose(sess, &x);
+                Ok(AbstractTensor::Float32(z))
             }
             AbstractTensor::Float64(x) => {
                 let z = plc.transpose(sess, &x);
