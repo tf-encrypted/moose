@@ -264,8 +264,8 @@ impl SaveOp {
     }
 }
 
-impl HostAddOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl AddOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -278,8 +278,8 @@ impl HostAddOp {
     }
 }
 
-impl HostSubOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl SubOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -292,8 +292,8 @@ impl HostSubOp {
     }
 }
 
-impl HostMulOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl MulOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -304,10 +304,23 @@ impl HostMulOp {
     {
         Ok(HostTensor(x.0 * y.0, plc.clone()))
     }
+
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRingTensor<T>,
+        y: HostRingTensor<T>,
+    ) -> Result<HostRingTensor<T>>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: std::ops::Mul<Wrapping<T>, Output = Wrapping<T>>,
+    {
+        Ok(HostRingTensor(x.0 * y.0, plc.clone()))
+    }
 }
 
-impl HostDivOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl DivOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -377,8 +390,8 @@ where
     }
 }
 
-impl HostDotOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl DotOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -490,8 +503,8 @@ impl HostSliceOp {
     }
 }
 
-impl HostDiagOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+impl DiagOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -801,8 +814,8 @@ impl HostMeanOp {
     }
 }
 
-impl HostSqrtOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: 'static + Float>(
+impl SqrtOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: 'static + Float>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -1012,9 +1025,9 @@ impl HostTransposeOp {
     }
 }
 
-impl HostInverseOp {
+impl InverseOp {
     #[cfg(feature = "blas")]
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
         sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -1045,7 +1058,7 @@ impl HostInverseOp {
     }
 
     #[cfg(not(feature = "blas"))]
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         _plc: &HostPlacement,
         _x: HostTensor<T>,
@@ -1244,8 +1257,8 @@ impl BitXorOp {
     }
 }
 
-impl BitNegOp {
-    pub(crate) fn kernel<S: RuntimeSession>(
+impl NegOp {
+    pub(crate) fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostBitTensor,
@@ -1414,8 +1427,8 @@ impl HostReshapeOp {
     }
 }
 
-impl RingAddOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+impl AddOp {
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRingTensor<T>,
@@ -1429,8 +1442,8 @@ impl RingAddOp {
     }
 }
 
-impl RingSubOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+impl SubOp {
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRingTensor<T>,
@@ -1444,8 +1457,8 @@ impl RingSubOp {
     }
 }
 
-impl RingNegOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+impl NegOp {
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRingTensor<T>,
@@ -1456,21 +1469,6 @@ impl RingNegOp {
     {
         use std::ops::Neg;
         Ok(HostRingTensor(x.0.neg(), plc.clone()))
-    }
-}
-
-impl RingMulOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        plc: &HostPlacement,
-        x: HostRingTensor<T>,
-        y: HostRingTensor<T>,
-    ) -> Result<HostRingTensor<T>>
-    where
-        Wrapping<T>: Clone,
-        Wrapping<T>: std::ops::Mul<Wrapping<T>, Output = Wrapping<T>>,
-    {
-        Ok(HostRingTensor(x.0 * y.0, plc.clone()))
     }
 }
 
@@ -1559,8 +1557,8 @@ where
     }
 }
 
-impl RingDotOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+impl DotOp {
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRingTensor<T>,
@@ -1576,8 +1574,8 @@ impl RingDotOp {
     }
 }
 
-impl RingShlOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+impl ShlOp {
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         amount: usize,
@@ -1591,8 +1589,8 @@ impl RingShlOp {
     }
 }
 
-impl RingShrOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+impl ShrOp {
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         amount: usize,

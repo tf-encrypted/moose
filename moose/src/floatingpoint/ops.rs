@@ -85,7 +85,7 @@ impl FloatingpointAtLeast2DOp {
     }
 }
 
-impl FloatingpointAddOp {
+impl AddOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
@@ -145,7 +145,7 @@ impl AddNOp {
     }
 }
 
-impl FloatingpointSubOp {
+impl SubOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
@@ -169,7 +169,7 @@ impl FloatingpointSubOp {
     }
 }
 
-impl FloatingpointMulOp {
+impl MulOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
@@ -193,7 +193,7 @@ impl FloatingpointMulOp {
     }
 }
 
-impl FloatingpointDivOp {
+impl DivOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
@@ -217,7 +217,7 @@ impl FloatingpointDivOp {
     }
 }
 
-impl FloatingpointDotOp {
+impl DotOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
@@ -365,8 +365,8 @@ impl FloatingpointTransposeOp {
     }
 }
 
-impl FloatingpointInverseOp {
-    pub(crate) fn kernel<S: Session, HostFloatT, MirroredT>(
+impl InverseOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT, MirroredT>,
