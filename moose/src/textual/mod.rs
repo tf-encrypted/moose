@@ -238,7 +238,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         HostReshapeOp::from_textual,
         preceded(tag(ExpandDimsOp::SHORT_NAME), cut(expanddims)),
         HostAtLeast2DOp::from_textual,
-        HostSliceOp::from_textual,
+        SliceOp::from_textual,
     ));
     let part2 = alt((
         HostOnesOp::from_textual,
@@ -1033,7 +1033,7 @@ impl ToTextual for Operator {
             Softmax(op) => op.to_textual(),
             AtLeast2D(op) => op.to_textual(),
             IndexAxis(op) => op.to_textual(),
-            // Slice(op) => op.to_textual(),
+            Slice(op) => op.to_textual(),
             Ones(op) => op.to_textual(),
             ExpandDims(op) => op.to_textual(),
             Concat(op) => op.to_textual(),
@@ -1062,7 +1062,6 @@ impl ToTextual for Operator {
             HostSqueeze(op) => op.to_textual(),
             HostReshape(op) => op.to_textual(),
             HostAtLeast2D(op) => op.to_textual(),
-            HostSlice(op) => op.to_textual(),
             HostDiag(op) => op.to_textual(),
             HostShlDim(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
@@ -1889,12 +1888,12 @@ mod tests {
 
     #[test]
     fn test_slice_option() -> Result<(), anyhow::Error> {
-        let input = "x10 = HostSlice{slice = {start = 1, end = 10, step = -1}}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)";
+        let input = "x10 = Slice{slice = {start = 1, end = 10, step = -1}}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)";
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(input)?;
         assert_eq!(op.name, "x10");
         assert_eq!(
             op.kind,
-            Operator::HostSlice(HostSliceOp {
+            Operator::Slice(SliceOp {
                 sig: Signature::unary(Ty::HostRing64Tensor, Ty::HostRing64Tensor),
                 slice: SliceInfo(vec![SliceInfoElem {
                     start: 1,
@@ -1909,12 +1908,12 @@ mod tests {
 
     #[test]
     fn test_slice() -> Result<(), anyhow::Error> {
-        let input = "x10 = HostSlice{slice = {start = 1, end = 10, step = 1}}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)";
+        let input = "x10 = Slice{slice = {start = 1, end = 10, step = 1}}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)";
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(input)?;
         assert_eq!(op.name, "x10");
         assert_eq!(
             op.kind,
-            Operator::HostSlice(HostSliceOp {
+            Operator::Slice(SliceOp {
                 sig: Signature::unary(Ty::HostRing64Tensor, Ty::HostRing64Tensor),
                 slice: SliceInfo(vec![SliceInfoElem {
                     start: 1,
@@ -1986,7 +1985,7 @@ mod tests {
             "z = HostAtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostSlice {slice = {start = 1, end = 2}}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = Slice {slice = {start = 1, end = 2}}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = HostDiag: (Float32Tensor) -> Float32Tensor () @Host(alice)",

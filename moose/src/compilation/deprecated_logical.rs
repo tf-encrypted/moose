@@ -148,16 +148,16 @@ fn lower_op(op: &Operation) -> Operation {
             inputs: op.inputs.clone(),
             placement: op.placement.clone(),
         },
-        // (Placement::Host(_), Operator::Slice(ref i)) => Operation {
-        //     name: op.name.clone(),
-        //     kind: HostSliceOp {
-        //         sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
-        //         slice: i.slice.clone(),
-        //     }
-        //     .into(),
-        //     inputs: op.inputs.clone(),
-        //     placement: op.placement.clone(),
-        // },
+        (Placement::Host(_), Operator::Slice(ref i)) => Operation {
+            name: op.name.clone(),
+            kind: SliceOp {
+                sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
+                slice: i.slice.clone(),
+            }
+            .into(),
+            inputs: op.inputs.clone(),
+            placement: op.placement.clone(),
+        },
         (Placement::Host(_), Operator::Ones(ref i)) => Operation {
             name: op.name.clone(),
             kind: HostOnesOp {

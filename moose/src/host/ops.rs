@@ -477,7 +477,7 @@ impl HostAtLeast2DOp {
     }
 }
 
-impl HostSliceOp {
+impl SliceOp {
     pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,

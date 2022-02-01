@@ -54,7 +54,7 @@ pub trait PlacementSlice<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementSlice::slice, HostSliceOp{slice: SliceInfo},
+    PlacementSlice::slice, SliceOp{slice: SliceInfo},
     [
         (HostPlacement, (HostShape) -> HostShape => [runtime] Self::shape_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),

@@ -966,7 +966,7 @@ operators![
     AesDecrypt,
     AtLeast2D,
     IndexAxis,
-    // Slice,
+    Slice,
     Ones,
     ExpandDims,
     Concat,
@@ -987,7 +987,6 @@ operators![
     HostDot,
     HostMean,
     HostSqrt,
-    HostSlice,
     HostDiag,
     HostBitDec,
     HostReshape,
@@ -1165,11 +1164,11 @@ pub struct IndexAxisOp {
     pub index: usize,
 }
 
-// #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-// pub struct SliceOp {
-//     pub sig: Signature,
-//     pub slice: SliceInfo,
-// }
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct SliceOp {
+    pub sig: Signature,
+    pub slice: SliceInfo,
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct OnesOp {
@@ -1326,13 +1325,6 @@ pub struct HostInverseOp {
 
 pub struct ShapeOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-
-pub struct HostSliceOp {
-    pub sig: Signature,
-    pub slice: SliceInfo,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
