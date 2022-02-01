@@ -204,7 +204,7 @@ pub trait PlacementReshape<S: Session, T, ShapeT, O> {
 }
 
 modelled_kernel! {
-    PlacementReshape::reshape, HostReshapeOp,
+    PlacementReshape::reshape, ReshapeOp,
     [
         (HostPlacement, (HostRing64Tensor, HostShape) -> HostRing64Tensor => [runtime] Self::ring_kernel),
         (HostPlacement, (HostRing128Tensor, HostShape) -> HostRing128Tensor => [runtime] Self::ring_kernel),

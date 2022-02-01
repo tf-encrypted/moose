@@ -1169,7 +1169,7 @@ impl ShapeOp {
     }
 }
 
-impl HostReshapeOp {
+impl ReshapeOp {
     pub(crate) fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1183,7 +1183,7 @@ impl HostReshapeOp {
     }
 }
 
-impl HostReshapeOp {
+impl ReshapeOp {
     pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1413,7 +1413,7 @@ impl BroadcastOp {
     }
 }
 
-impl HostReshapeOp {
+impl ReshapeOp {
     pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
