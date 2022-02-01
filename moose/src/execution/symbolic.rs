@@ -21,12 +21,12 @@ use std::sync::Arc;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
     /// The value is really symbolic
-    /// 
+    ///
     /// It exists only as a handle to an operation.
     Symbolic(SymbolicHandle<T::Placement>),
 
     /// The value is actually not symbolic
-    /// 
+    ///
     /// It (partially) exists, although some sub-components may be handles
     Concrete(T),
 }
