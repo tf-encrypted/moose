@@ -189,7 +189,6 @@ impl Session for SyncSession {
                 };
                 Unit(host.clone()).into()
             }
-            HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqrt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -217,7 +216,6 @@ impl Session for SyncSession {
             FloatingpointMul(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointDiv(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointDot(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointAtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointTranspose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

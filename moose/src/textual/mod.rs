@@ -237,7 +237,6 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         HostMeanOp::from_textual,
         HostReshapeOp::from_textual,
         preceded(tag(ExpandDimsOp::SHORT_NAME), cut(expanddims)),
-        HostAtLeast2DOp::from_textual,
         HostSliceOp::from_textual,
     ));
     let part2 = alt((
@@ -1061,7 +1060,6 @@ impl ToTextual for Operator {
             HostOnes(op) => op.to_textual(),
             HostSqueeze(op) => op.to_textual(),
             HostReshape(op) => op.to_textual(),
-            HostAtLeast2D(op) => op.to_textual(),
             HostSlice(op) => op.to_textual(),
             HostDiag(op) => op.to_textual(),
             HostShlDim(op) => op.to_textual(),
@@ -1102,7 +1100,6 @@ impl ToTextual for Operator {
             FloatingpointMul(op) => op.to_textual(),
             FloatingpointDiv(op) => op.to_textual(),
             FloatingpointDot(op) => op.to_textual(),
-            FloatingpointAtLeast2D(op) => op.to_textual(),
             FloatingpointOnes(op) => op.to_textual(),
             FloatingpointConcat(op) => op.to_textual(),
             FloatingpointTranspose(op) => op.to_textual(),
@@ -1984,7 +1981,7 @@ mod tests {
             "z = ExpandDims {axis = [0]}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostAtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = AtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = HostSlice {slice = {start = 1, end = 2}}: (Float32Tensor) -> Float32Tensor () @Host(alice)",

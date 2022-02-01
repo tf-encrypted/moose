@@ -446,8 +446,8 @@ impl ShapeOp {
     }
 }
 
-impl HostAtLeast2DOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar>(
+impl AtLeast2DOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
         sess: &S,
         plc: &HostPlacement,
         to_column_vector: bool,

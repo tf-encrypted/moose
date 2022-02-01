@@ -1010,7 +1010,6 @@ operators![
     HostOnes,
     HostTranspose,
     HostInverse,
-    HostAtLeast2D,
     HostShlDim,
     Sign,
     RingAdd,
@@ -1056,7 +1055,6 @@ operators![
     FloatingpointMul,
     FloatingpointDiv,
     FloatingpointDot,
-    FloatingpointAtLeast2D,
     FloatingpointOnes,
     FloatingpointConcat,
     FloatingpointTranspose,
@@ -1307,13 +1305,6 @@ pub struct HostSqrtOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct HostOnesOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-
-pub struct HostAtLeast2DOp {
-    pub sig: Signature,
-    pub to_column_vector: bool,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
@@ -1599,12 +1590,6 @@ pub struct FloatingpointDivOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct FloatingpointDotOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct FloatingpointAtLeast2DOp {
-    pub sig: Signature,
-    pub to_column_vector: bool,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
