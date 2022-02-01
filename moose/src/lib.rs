@@ -2660,7 +2660,6 @@ macro_rules! modelled_kernel {
         )+
     };
 
-
     (__nullary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::NullaryKernel<
             crate::execution::SymbolicSession,
@@ -3893,7 +3892,6 @@ macro_rules! modelled_kernel {
             }
         }
 
-
         impl $trait<
             crate::execution::SymbolicSession,
             <$ts as crate::computation::SymbolicType>::Type,
@@ -3925,7 +3923,6 @@ macro_rules! modelled_kernel {
             }
         }
     };
-
 
     (__variadic concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
         impl crate::kernels::VariadicKernel<
@@ -4172,9 +4169,6 @@ macro_rules! modelled_kernel {
             }
         }
     };
-
-
-
 
     // The rules rewriting attributes into each kernel line.
     // Can work for any arity and kind of kernel, but needs a rule per attribute count.

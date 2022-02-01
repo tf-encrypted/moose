@@ -108,6 +108,54 @@ impl Session for SyncSession {
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Result<Value> {
         use Operator::*;
         let kernel_output = match op {
+            Send(op) => {
+                assert_eq!(operands.len(), 1);
+                let x = operands.get(0).unwrap();
+                self.networking.send(
+                    x,
+                    self.find_role_assignment(&op.receiver)?,
+                    &op.rendezvous_key,
+                    &self.session_id,
+                )?;
+                let host = match plc {
+                    Placement::Host(host) => host,
+                    _ => unimplemented!(
+                        "SyncSession does not support running Send on non-host placements yet"
+                    ),
+                };
+                Unit(host.clone()).into()
+            }
+            // TODO(Morten) we should verify type of received value
+            Receive(op) => self.networking.receive(
+                self.find_role_assignment(&op.sender)?,
+                &op.rendezvous_key,
+                &self.session_id,
+            )?,
+            // TODO(Morten) we should verify type of loaded value
+            Load(op) => {
+                use std::convert::TryInto;
+                assert_eq!(operands.len(), 2);
+                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
+                let query: HostString = operands.get(1).unwrap().clone().try_into()?;
+                self.storage
+                    .load(&key.0, &self.session_id, Some(op.sig.ret()), &query.0)?
+            }
+            Save(_) => {
+                use std::convert::TryInto;
+                assert_eq!(operands.len(), 2);
+                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
+                let x = operands.get(1).unwrap().clone();
+                self.storage.save(&key.0, &self.session_id, &x)?;
+                let host = match plc {
+                    Placement::Host(host) => host,
+                    _ => unimplemented!(
+                        "SyncSession does not support running Save on non-host placements yet"
+                    ),
+                };
+                Unit(host.clone()).into()
+            }
+
+            // The regular kernels
             Shape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Broadcast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -168,29 +216,6 @@ impl Session for SyncSession {
             HostOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Input(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Output(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            // TODO(Morten) we should verify type of loaded value
-            Load(op) => {
-                use std::convert::TryInto;
-                assert_eq!(operands.len(), 2);
-                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
-                let query: HostString = operands.get(1).unwrap().clone().try_into()?;
-                self.storage
-                    .load(&key.0, &self.session_id, Some(op.sig.ret()), &query.0)?
-            }
-            Save(_) => {
-                use std::convert::TryInto;
-                assert_eq!(operands.len(), 2);
-                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
-                let x = operands.get(1).unwrap().clone();
-                self.storage.save(&key.0, &self.session_id, &x)?;
-                let host = match plc {
-                    Placement::Host(host) => host,
-                    _ => unimplemented!(
-                        "SyncSession does not support running Save on non-host placements yet"
-                    ),
-                };
-                Unit(host.clone()).into()
-            }
             HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostSqrt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -229,29 +254,6 @@ impl Session for SyncSession {
             HostBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Identity(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Cast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Send(op) => {
-                assert_eq!(operands.len(), 1);
-                let x = operands.get(0).unwrap();
-                self.networking.send(
-                    x,
-                    self.find_role_assignment(&op.receiver)?,
-                    &op.rendezvous_key,
-                    &self.session_id,
-                )?;
-                let host = match plc {
-                    Placement::Host(host) => host,
-                    _ => unimplemented!(
-                        "SyncSession does not support running Send on non-host placements yet"
-                    ),
-                };
-                Unit(host.clone()).into()
-            }
-            // TODO(Morten) we should verify type of received value
-            Receive(op) => self.networking.receive(
-                self.find_role_assignment(&op.sender)?,
-                &op.rendezvous_key,
-                &self.session_id,
-            )?,
             HostReshape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             IndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
