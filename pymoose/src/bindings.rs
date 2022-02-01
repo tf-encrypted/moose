@@ -10,6 +10,7 @@ use ndarray::LinalgScalar;
 use numpy::{Element, PyArrayDescr, PyArrayDyn, ToPyArray};
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::types::{PyBytes, PyFloat, PyString, PyType};
+use pyo3::wrap_pymodule;
 use pyo3::{exceptions::PyTypeError, prelude::*, AsPyPointer};
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -349,5 +350,13 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 fn moose_runtime(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LocalRuntime>()?;
     m.add_class::<MooseComputation>()?;
+    Ok(())
+}
+
+#[pymodule]
+#[pyo3(name = "rust")]
+fn pymoose_bindings(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_wrapped(wrap_pymodule!(elk_compiler))?;
+    m.add_wrapped(wrap_pymodule!(moose_runtime))?;
     Ok(())
 }
