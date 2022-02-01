@@ -136,7 +136,7 @@ mod tests {
         let body = (0..100)
             .map(|i| {
                 format!(
-                    "x{} = RingSampleSeeded{{}}: (HostShape, Seed) -> HostRing64Tensor (shape, seed) @Host(alice)",
+                    "x{} = SampleSeeded{{}}: (HostShape, Seed) -> HostRing64Tensor (shape, seed) @Host(alice)",
                     i
                 )
             })
@@ -200,7 +200,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"seed = Constant{value=Seed(00000000000000000000000000000000)}: () -> Seed @Host(alice)
         xshape = Constant{value=HostShape([2, 2])}: () -> HostShape @Host(alice)
-        sampled = RingSampleSeeded{}: (HostShape, Seed) -> HostRing64Tensor (xshape, seed) @Host(alice)
+        sampled = SampleSeeded{}: (HostShape, Seed) -> HostRing64Tensor (xshape, seed) @Host(alice)
         shape = Shape: (HostRing64Tensor) -> HostShape (sampled) @Host(alice)
         output = Output: (HostShape) -> HostShape (shape) @Host(alice)
         "#;

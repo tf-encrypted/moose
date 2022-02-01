@@ -1064,13 +1064,11 @@ operators![
     RingFixedpointMean,
     RingFixedpointEncode,
     RingFixedpointDecode,
-    RingSample,
-    RingSampleSeeded,
+    Sample,
+    SampleSeeded,
     RingInject,
     RingFill,
     BitExtract,
-    BitSample,
-    BitSampleSeeded,
     BitXor,
     BitAnd,
     BitOr,
@@ -1393,13 +1391,13 @@ pub struct RingFixedpointMeanOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
-pub struct RingSampleOp {
+pub struct SampleOp {
     pub sig: Signature,
     pub max_value: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
-pub struct RingSampleSeededOp {
+pub struct SampleSeededOp {
     pub sig: Signature,
     pub max_value: Option<u64>,
 }
@@ -1426,16 +1424,6 @@ pub struct RingInjectOp {
 pub struct BitExtractOp {
     pub sig: Signature,
     pub bit_idx: usize,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitSampleOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitSampleSeededOp {
-    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
