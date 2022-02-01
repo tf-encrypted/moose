@@ -1723,6 +1723,63 @@ impl MuxOp {
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
         })
     }
+
+    pub(crate) fn fixed_host_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostBitT,
+        RepBitT,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        s: BoolTensor<HostBitT, RepBitT>,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementMux<S, HostBitT, HostFixedT, HostFixedT, HostFixedT>,
+    {
+        let s = match s {
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+            BoolTensor::Host(v) => v,
+        };
+        let x = match x {
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Host(v) => v,
+        };
+        let y = match y {
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Host(v) => v,
+        };
+        let z = plc.mux(sess, &s, &x, &y);
+        Ok(FixedTensor::Host(z))
+    }
+
+    pub(crate) fn host_bit_fixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        s: m!(HostBitTensor),
+        x: HostFixedTensor<HostRingT>,
+        y: HostFixedTensor<HostRingT>,
+    ) -> Result<HostFixedTensor<HostRingT>>
+    where
+        HostBitTensor: KnownType<S>,
+        HostPlacement: PlacementMux<S, m!(HostBitTensor), HostRingT, HostRingT, HostRingT>,
+    {
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+        Ok(HostFixedTensor {
+            tensor: plc.mux(sess, &s, &x.tensor, &y.tensor),
+            fractional_precision: x.fractional_precision,
+            integral_precision: u32::max(x.integral_precision, y.integral_precision),
+        })
+    }
 }
 
 impl MaximumOp {
