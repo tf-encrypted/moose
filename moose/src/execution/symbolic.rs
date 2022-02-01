@@ -3,6 +3,7 @@
 //! This is used during compilation to lower operations.
 //! In general, it works by evaluating kernels on symbolic values and
 //! recording the underlying operations perform as new computation.
+//! Values are generally wrapped in the `Symbolic` enum.
 
 use crate::computation::{
     Computation, KnownType, Operation, Operator, Placed, Placement, SymbolicValue,
@@ -16,9 +17,17 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+/// Wrapper for values used in `SymbolicSession`s
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
+    /// The value is really symbolic
+    /// 
+    /// It exists only as a handle to an operation.
     Symbolic(SymbolicHandle<T::Placement>),
+
+    /// The value is actually not symbolic
+    /// 
+    /// It (partially) exists, although some sub-components may be handles
     Concrete(T),
 }
 

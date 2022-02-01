@@ -235,7 +235,6 @@ impl AdtMulOp {
         y: AdtTensor<HostRingT>,
     ) -> Result<AdtTensor<HostRingT>>
     where
-        HostRingT: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementMul<S, HostRingT, HostRingT, HostRingT>,
     {
         let (player0, player1) = adt.host_placements();
@@ -255,7 +254,6 @@ impl AdtMulOp {
         y: HostRingT,
     ) -> Result<AdtTensor<HostRingT>>
     where
-        HostRingT: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementMul<S, HostRingT, HostRingT, HostRingT>,
     {
         let (player0, player1) = adt.host_placements();
