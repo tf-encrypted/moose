@@ -264,45 +264,9 @@ impl SaveOp {
     }
 }
 
-impl RingFixedpointMeanOp {
-    pub(crate) fn ring64_kernel<S: RuntimeSession>(
-        sess: &S,
-        plc: &HostPlacement,
-        axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
-        x: HostRing64Tensor,
-    ) -> Result<HostRing64Tensor>
-    where
-        HostPlacement: PlacementPlace<S, HostRing64Tensor>,
-    {
-        let scaling_factor = u64::pow(scaling_base, scaling_exp);
-        let axis = axis.map(|a| a as usize);
-        let mean = HostRing64Tensor::fixedpoint_mean(x, axis, scaling_factor)?;
-        Ok(plc.place(sess, mean))
-    }
-
-    pub(crate) fn ring128_kernel<S: RuntimeSession>(
-        sess: &S,
-        plc: &HostPlacement,
-        axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
-        x: HostRing128Tensor,
-    ) -> Result<HostRing128Tensor>
-    where
-        HostPlacement: PlacementPlace<S, HostRing128Tensor>,
-    {
-        let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
-        let axis = axis.map(|a| a as usize);
-        let mean = HostRing128Tensor::fixedpoint_mean(x, axis, scaling_factor)?;
-        Ok(plc.place(sess, mean))
-    }
-}
-
 impl HostAddOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
         y: HostTensor<T>,
@@ -310,13 +274,13 @@ impl HostAddOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        Ok(plc.place(sess, x + y))
+        Ok(HostTensor(x.0 + y.0, plc.clone()))
     }
 }
 
 impl HostSubOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
         y: HostTensor<T>,
@@ -324,13 +288,13 @@ impl HostSubOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        Ok(plc.place(sess, x - y))
+        Ok(HostTensor(x.0 - y.0, plc.clone()))
     }
 }
 
 impl HostMulOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
         y: HostTensor<T>,
@@ -338,13 +302,13 @@ impl HostMulOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        Ok(plc.place(sess, x * y))
+        Ok(HostTensor(x.0 * y.0, plc.clone()))
     }
 }
 
 impl HostDivOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
         y: HostTensor<T>,
@@ -352,7 +316,10 @@ impl HostDivOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        Ok(plc.place(sess, x / y))
+        match x.0.broadcast(y.0.dim()) {
+            Some(x_broadcasted) => Ok(HostTensor::<T>(x_broadcasted.to_owned() / y.0, plc.clone())),
+            None => Ok(HostTensor::<T>(x.0 / y.0, plc.clone())),
+        }
     }
 
     pub(crate) fn ring_kernel<S: RuntimeSession, T>(
@@ -381,25 +348,25 @@ where
                 let res = Array::from_elem([], l.dot(&r))
                     .into_dimensionality::<IxDyn>()
                     .unwrap();
-                HostTensor::<T>(res, self.1)
+                HostTensor(res, self.1)
             }
             (1, 2) => {
                 let l = self.0.into_dimensionality::<Ix1>().unwrap();
                 let r = other.0.into_dimensionality::<Ix2>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                HostTensor::<T>(res, self.1)
+                HostTensor(res, self.1)
             }
             (2, 1) => {
                 let l = self.0.into_dimensionality::<Ix2>().unwrap();
                 let r = other.0.into_dimensionality::<Ix1>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                HostTensor::<T>(res, self.1)
+                HostTensor(res, self.1)
             }
             (2, 2) => {
                 let l = self.0.into_dimensionality::<Ix2>().unwrap();
                 let r = other.0.into_dimensionality::<Ix2>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                HostTensor::<T>(res, self.1)
+                HostTensor(res, self.1)
             }
             (self_rank, other_rank) => panic!(
                 // TODO: replace with proper error handling
@@ -431,7 +398,7 @@ impl HostOnesOp {
         shape: HostShape,
     ) -> Result<HostTensor<T>> {
         let raw_shape = shape.0;
-        Ok(HostTensor::<T>(ArrayD::ones(raw_shape.0), plc.clone()))
+        Ok(HostTensor(ArrayD::ones(raw_shape.0), plc.clone()))
     }
 }
 
@@ -457,7 +424,7 @@ impl AtLeast2DOp {
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         let y = match x.0.ndim() {
-            0 => HostTensor::<T>(x.0.into_shape(IxDyn(&[1, 1])).unwrap(), x.1),
+            0 => HostTensor(x.0.into_shape(IxDyn(&[1, 1])).unwrap(), x.1),
             1 => {
                 let length = x.0.len();
                 let newshape = if to_column_vector {
@@ -465,7 +432,7 @@ impl AtLeast2DOp {
                 } else {
                     IxDyn(&[1, length])
                 };
-                HostTensor::<T>(x.0.into_shape(newshape).unwrap(), x.1)
+                HostTensor(x.0.into_shape(newshape).unwrap(), x.1)
             }
             2 => x,
             otherwise => panic!(
@@ -558,6 +525,72 @@ impl HostDiagOp {
                 .into_dimensionality::<IxDyn>()
                 .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostBitTensor(diag, plc.clone()))
+    }
+}
+
+impl<T: LinalgScalar> HostTensor<T> {
+    fn index_axis(&self, axis: usize, index: usize) -> Result<HostTensor<T>> {
+        if axis >= self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "axis too large in index axis, used axis {} with dimension {}",
+                axis,
+                self.0.ndim()
+            )));
+        }
+        if index >= self.0.shape()[axis] {
+            return Err(Error::InvalidArgument(format!(
+                "index too large in index axis, used index {} in shape {:?}",
+                index,
+                self.0.shape()
+            )));
+        }
+        let axis = Axis(axis);
+        let result = self.0.index_axis(axis, index);
+        Ok(HostTensor(result.to_owned(), self.1.clone()))
+    }
+}
+
+impl<T: Clone> HostRingTensor<T> {
+    fn index_axis(self, axis: usize, index: usize) -> Result<HostRingTensor<T>> {
+        if axis >= self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "axis too large in index axis, used axis {} with dimension {}",
+                axis,
+                self.0.ndim()
+            )));
+        }
+        if index >= self.0.shape()[axis] {
+            return Err(Error::InvalidArgument(format!(
+                "index too large in index axis, used index {} in shape {:?}",
+                index,
+                self.0.shape()
+            )));
+        }
+        let axis = Axis(axis);
+        let result = self.0.index_axis(axis, index);
+        Ok(HostRingTensor(result.to_owned(), self.1))
+    }
+}
+
+impl HostBitTensor {
+    fn index_axis(self, axis: usize, index: usize) -> Result<HostBitTensor> {
+        if axis >= self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "axis too large in index axis, used axis {} with dimension {}",
+                axis,
+                self.0.ndim()
+            )));
+        }
+        if index >= self.0.shape()[axis] {
+            return Err(Error::InvalidArgument(format!(
+                "index too large in index axis, used index {} in shape {:?}",
+                index,
+                self.0.shape()
+            )));
+        }
+        let axis = Axis(axis);
+        let result = self.0.index_axis(axis, index);
+        Ok(HostBitTensor(result.to_owned(), self.1))
     }
 }
 

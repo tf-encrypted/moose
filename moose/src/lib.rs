@@ -4722,7 +4722,6 @@ pub mod replicated;
 pub mod storage;
 pub mod textual;
 pub mod types;
-pub mod utils;
 
 #[doc(inline)]
 pub use error::{Error, Result};

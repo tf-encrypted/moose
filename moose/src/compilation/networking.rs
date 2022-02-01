@@ -125,89 +125,89 @@ mod tests {
     #[test]
     fn test_all_on_one_host() -> std::result::Result<(), anyhow::Error> {
         let source = r#"
-        x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
-        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
-        mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        mean = HostMean{}: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
+        x = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
+        y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
+        mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
+        dot = HostDot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
+        mean = HostMean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"#;
 
         let comp = NetworkingPass::pass(&source.try_into()?)?
             .unwrap()
             .to_textual();
         // Networking should not introduce any changes to such a computation
         assert!(comp.contains(
-            "mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
+            "mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp.contains(
-            "dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
+            "dot = HostDot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
-        assert!(
-            comp.contains("mean = HostMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)")
-        );
+        assert!(comp.contains(
+            "mean = HostMean: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"
+        ));
         Ok(())
     }
 
     #[test]
     fn test_regular_jumps() -> std::result::Result<(), anyhow::Error> {
         let source = r#"
-        x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
-        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
-        mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        mean = HostMean{}: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
+        x = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
+        y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
+        mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
+        dot = HostDot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
+        mean = HostMean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"#;
         let comp = NetworkingPass::pass(&source.try_into()?)?
             .unwrap()
             .to_textual();
 
         // Networking should introduce one new networking operation (not 2) for the 2 jumps. And leave the mean unchaged (dot already on the right host)
         assert!(comp.contains(
-            r#"send_0 = Send{rendezvous_key = 00000000000000000000000000000000, receiver = "alice"}: (Float32Tensor) -> Unit (y) @Host(bob)"#
+            r#"send_0 = Send{rendezvous_key = 00000000000000000000000000000000, receiver = "alice"}: (HostFloat32Tensor) -> Unit (y) @Host(bob)"#
         ));
-        assert!(comp.contains(r#"receive_0 = Receive{rendezvous_key = 00000000000000000000000000000000, sender = "bob"}: () -> Float32Tensor () @Host(alice)"#));
-        assert!(comp.contains("mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
-        assert!(comp.contains("dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
-        assert!(
-            comp.contains("mean = HostMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)")
-        );
+        assert!(comp.contains(r#"receive_0 = Receive{rendezvous_key = 00000000000000000000000000000000, sender = "bob"}: () -> HostFloat32Tensor () @Host(alice)"#));
+        assert!(comp.contains("mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, receive_0) @Host(alice)"));
+        assert!(comp.contains("dot = HostDot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, receive_0) @Host(alice)"));
+        assert!(comp.contains(
+            "mean = HostMean: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"
+        ));
         Ok(())
     }
 
     #[test]
     fn test_jumps_cache() -> std::result::Result<(), anyhow::Error> {
         let source = r#"
-        x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
-        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
-        mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(bob)
-        add = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(bob)"#;
+        x = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
+        y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
+        mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(bob)
+        add = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(bob)"#;
         let comp = NetworkingPass::pass(&source.try_into()?)?
             .unwrap()
             .to_textual();
         // Should have one send/receive pair per each variable being sent
         assert!(comp.contains(
-            r#"send_0 = Send{rendezvous_key = 00000000000000000000000000000000, receiver = "bob"}: (Float32Tensor) -> Unit (x) @Host(alice)"#
+            r#"send_0 = Send{rendezvous_key = 00000000000000000000000000000000, receiver = "bob"}: (HostFloat32Tensor) -> Unit (x) @Host(alice)"#
         ));
-        assert!(comp.contains(r#"receive_0 = Receive{rendezvous_key = 00000000000000000000000000000000, sender = "alice"}: () -> Float32Tensor () @Host(bob)"#));
+        assert!(comp.contains(r#"receive_0 = Receive{rendezvous_key = 00000000000000000000000000000000, sender = "alice"}: () -> HostFloat32Tensor () @Host(bob)"#));
         assert!(comp.contains(
-            r#"send_1 = Send{rendezvous_key = 01000000000000000000000000000000, receiver = "bob"}: (Float32Tensor) -> Unit (y) @Host(alice)"#
+            r#"send_1 = Send{rendezvous_key = 01000000000000000000000000000000, receiver = "bob"}: (HostFloat32Tensor) -> Unit (y) @Host(alice)"#
         ));
-        assert!(comp.contains(r#"receive_1 = Receive{rendezvous_key = 01000000000000000000000000000000, sender = "alice"}: () -> Float32Tensor () @Host(bob)"#));
+        assert!(comp.contains(r#"receive_1 = Receive{rendezvous_key = 01000000000000000000000000000000, sender = "alice"}: () -> HostFloat32Tensor () @Host(bob)"#));
         // Should use the same pair of operators for both computations on both (asserting for no extra jumps)
-        assert!(comp.contains(r#"add = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (receive_0, receive_1) @Host(bob)"#));
-        assert!(comp.contains(r#"mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (receive_0, receive_1) @Host(bob)"#));
+        assert!(comp.contains(r#"add = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (receive_0, receive_1) @Host(bob)"#));
+        assert!(comp.contains(r#"mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (receive_0, receive_1) @Host(bob)"#));
         Ok(())
     }
 
     #[test]
     fn test_ignore_replicated() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
-        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
-        mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, charlie)"#;
+        let source = r#"x = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
+        y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
+        mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, charlie)"#;
 
         let comp = NetworkingPass::pass(&source.try_into()?)?
             .unwrap()
             .to_textual();
         // Networking should not make any changes to the replicated placement (should probably never see it in real life)
-        assert!(comp.contains("mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, charlie)"));
+        assert!(comp.contains("mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, charlie)"));
         Ok(())
     }
 }

@@ -3,7 +3,8 @@ use moose::compilation::{compile_passes, into_pass, Pass};
 use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
-use moose::host::{HostBitTensor, HostPlacement, HostString, HostTensor};
+use moose::host::{FromRaw, HostBitTensor, HostPlacement, HostString, HostTensor};
+use moose::textual::{parallel_parse_computation, ToTextual};
 use ndarray::IxDyn;
 use ndarray::LinalgScalar;
 use numpy::{Element, PyArrayDescr, PyArrayDyn, ToPyArray};
@@ -59,8 +60,9 @@ where
 }
 
 fn pyobj_tensor_to_host_bit_tensor(py: Python, obj: &PyObject) -> HostBitTensor {
+    let plc = HostPlacement::from("TODO");
     let pyarray = obj.cast_as::<PyArrayDyn<bool>>(py).unwrap();
-    HostBitTensor::from(
+    plc.from_raw(
         pyarray
             .to_owned_array()
             .map(|b| *b as u8)
@@ -298,6 +300,20 @@ impl MooseComputation {
         self.computation
             .to_disk(mypath)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))
+    }
+
+    #[classmethod]
+    pub fn from_textual(_cls: &PyType, py: Python, text: &PyString) -> PyResult<Py<Self>> {
+        let text: &str = text.extract()?;
+        let computation: Computation = parallel_parse_computation(text, 3)
+            .map_err(|e: anyhow::Error| PyRuntimeError::new_err(e.to_string()))?;
+        let moose_comp = MooseComputation { computation };
+        Py::new(py, moose_comp)
+    }
+
+    pub fn to_textual(&mut self, py: Python) -> PyResult<PyObject> {
+        let comp_text = self.computation.to_textual();
+        Ok(comp_text.into_py(py))
     }
 }
 
