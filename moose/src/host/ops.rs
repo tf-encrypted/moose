@@ -962,8 +962,8 @@ impl<T: LinalgScalar> HostTensor<T> {
     }
 }
 
-impl HostSqueezeOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl SqueezeOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,

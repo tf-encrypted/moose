@@ -1036,6 +1036,7 @@ operators![
     Ones,
     ExpandDims,
     Concat,
+    Squeeze,
     Transpose,
     Dot,
     Inverse,
@@ -1055,7 +1056,6 @@ operators![
     Diag,
     HostBitDec,
     HostReshape,
-    HostSqueeze,
     HostOnes,
     HostShlDim,
     Sign,
@@ -1217,6 +1217,12 @@ pub struct ConcatOp {
     pub axis: u32,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
+pub struct SqueezeOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct TransposeOp {
     pub sig: Signature,
@@ -1290,12 +1296,6 @@ pub struct SqrtOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct HostOnesOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
-pub struct HostSqueezeOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
