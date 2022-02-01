@@ -140,32 +140,3 @@ impl PrimDeriveSeedOp {
         Ok(Seed(RawSeed(raw_seed), plc.clone()))
     }
 }
-
-// TODO deprecated
-impl RawSeed {
-    #[cfg_attr(
-        feature = "exclude_old_framework",
-        deprecated(
-            note = "This function is only used by the old kernels, which are not aware of the placements."
-        )
-    )]
-    pub fn from_prf(key: &RawPrfKey, sync_key: &SyncKey) -> RawSeed {
-        let nonce = &sync_key.0;
-        let raw_seed = crate::utils::derive_seed(&key.0, nonce);
-        RawSeed(raw_seed)
-    }
-}
-
-// TODO deprecated
-impl RawPrfKey {
-    #[cfg_attr(
-        feature = "exclude_old_framework",
-        deprecated(
-            note = "This function is only used by the old kernels, which are not aware of the placements."
-        )
-    )]
-    pub fn generate() -> RawPrfKey {
-        let raw_key = AesRng::generate_random_key();
-        RawPrfKey(raw_key)
-    }
-}

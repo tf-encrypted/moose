@@ -2579,7 +2579,9 @@ mod tests {
     use crate::kernels::{PlacementRingFixedpointDecode, PlacementRingFixedpointEncode};
     use crate::{N128, N64};
     use ndarray::array;
+    use ndarray::prelude::*;
     use proptest::prelude::*;
+    use rstest::rstest;
 
     #[test]
     fn test_ring_identity() {
@@ -2765,9 +2767,6 @@ mod tests {
 
         assert!(num_traits::abs(2.0 - decoded_result.0[[]]) < 0.01);
     }
-
-    use ndarray::prelude::*;
-    use rstest::rstest;
 
     #[test]
     fn test_rep_add_n() {
@@ -3517,7 +3516,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = HostBitTensor::from_raw_plc(xs.clone(), alice.clone());
+        let x: HostBitTensor = alice.from_raw(xs.clone());
 
         let sess = SyncSession::default();
 
@@ -3526,14 +3525,17 @@ mod tests {
         let x_ring64: ReplicatedRing64Tensor = rep.ring_inject(&sess, 0, &x_shared);
         let x_ring128: ReplicatedRing128Tensor = rep.ring_inject(&sess, 0, &x_shared);
 
-        let target64 = HostRing64Tensor::from_raw_plc(xs.map(|x| *x as u64), alice.clone());
-        let target128 = HostRing128Tensor::from_raw_plc(xs.map(|x| *x as u128), alice.clone());
+        let target64: HostRing64Tensor = alice.from_raw(xs.map(|x| *x as u64));
+        let target128: HostRing128Tensor = alice.from_raw(xs.map(|x| *x as u128));
 
         assert_eq!(alice.reveal(&sess, &x_ring64), target64);
         assert_eq!(alice.reveal(&sess, &x_ring128), target128);
 
         let shifted_x_ring64: ReplicatedRing64Tensor = rep.ring_inject(&sess, 20, &x_shared);
-        assert_eq!(alice.reveal(&sess, &shifted_x_ring64), target64 << 20);
+        assert_eq!(
+            alice.reveal(&sess, &shifted_x_ring64),
+            alice.shl(&sess, 20, &target64)
+        );
     }
 
     rep_unary_func_test!(test_rep_abs64, abs<u64>);
