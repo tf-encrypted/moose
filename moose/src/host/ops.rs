@@ -477,24 +477,8 @@ impl HostAtLeast2DOp {
     }
 }
 
-impl SliceOp {
-    // TODO(lvorona): type inferring fails if I try to make it more generic and have one kernel work for all the types
-    pub(crate) fn kernel<S: Session>(
-        sess: &S,
-        plc: &HostPlacement,
-        slice_info: SliceInfo,
-        x: cs!(HostShape),
-    ) -> Result<cs!(HostShape)>
-    where
-        HostShape: KnownType<S>,
-        HostPlacement: PlacementSlice<S, cs!(HostShape), cs!(HostShape)>,
-    {
-        Ok(plc.slice(sess, slice_info, &x))
-    }
-}
-
 impl HostSliceOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         slice_info: SliceInfo,

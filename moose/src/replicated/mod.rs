@@ -1739,8 +1739,8 @@ impl RepDiagOp {
     }
 }
 
-impl RepSliceOp {
-    pub(crate) fn shape_kernel<S: Session, ShapeT>(
+impl HostSliceOp {
+    pub(crate) fn rep_kernel<S: Session, ShapeT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         slice: SliceInfo,

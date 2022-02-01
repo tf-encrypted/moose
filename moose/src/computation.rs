@@ -966,7 +966,7 @@ operators![
     AesDecrypt,
     AtLeast2D,
     IndexAxis,
-    Slice,
+    // Slice,
     Ones,
     ExpandDims,
     Concat,
@@ -1076,7 +1076,6 @@ operators![
     RepToAdt,
     Index,
     RepDiag,
-    RepSlice,
     RepBitDec,
     RepBitCompose,
     RepShlDim,
@@ -1166,11 +1165,11 @@ pub struct IndexAxisOp {
     pub index: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct SliceOp {
-    pub sig: Signature,
-    pub slice: SliceInfo,
-}
+// #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
+// pub struct SliceOp {
+//     pub sig: Signature,
+//     pub slice: SliceInfo,
+// }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct OnesOp {
@@ -1776,12 +1775,6 @@ pub struct IndexOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct RepDiagOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
-pub struct RepSliceOp {
-    pub sig: Signature,
-    pub slice: SliceInfo,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]

@@ -4655,52 +4655,6 @@ pub trait BitArray {
     type Len: Const;
 }
 
-macro_rules! unmodelled {
-    /*
-    Nullary
-    */
-    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? () -> $u:ty, $op:ident) => {
-        impl crate::kernels::NullaryKernelCheck<crate::execution::SyncSession, $plc, $u> for $op {}
-    };
-
-    /*
-    Unary
-    */
-    ($plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty) -> $u:ty, $op:ident) => {
-        impl crate::kernels::UnaryKernelCheck<crate::execution::SyncSession, $plc, $t0, $u>
-            for $op
-        {
-        }
-    };
-
-    /*
-    Binary
-    */
-    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
-        impl crate::kernels::BinaryKernelCheck<crate::execution::SyncSession, $plc, $t0, $t1, $u>
-            for $op
-        {
-        }
-    };
-
-    /*
-    Ternary
-    */
-    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
-        impl
-            crate::kernels::TernaryKernelCheck<
-                crate::execution::SyncSession,
-                $plc,
-                $t0,
-                $t1,
-                $t2,
-                $u,
-            > for $op
-        {
-        }
-    };
-}
-
 pub mod additive;
 pub mod boolean;
 pub mod bristol_fashion;
