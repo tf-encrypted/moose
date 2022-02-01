@@ -85,7 +85,7 @@ impl AtLeast2DOp {
     }
 }
 
-impl FloatingpointAddOp {
+impl AddOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
@@ -145,7 +145,7 @@ impl AddNOp {
     }
 }
 
-impl FloatingpointSubOp {
+impl SubOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
@@ -169,7 +169,7 @@ impl FloatingpointSubOp {
     }
 }
 
-impl FloatingpointMulOp {
+impl MulOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
@@ -193,7 +193,7 @@ impl FloatingpointMulOp {
     }
 }
 
-impl FloatingpointDivOp {
+impl DivOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
@@ -217,7 +217,7 @@ impl FloatingpointDivOp {
     }
 }
 
-impl FloatingpointDotOp {
+impl DotOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
@@ -365,8 +365,8 @@ impl TransposeOp {
     }
 }
 
-impl FloatingpointInverseOp {
-    pub(crate) fn kernel<S: Session, HostFloatT, MirroredT>(
+impl InverseOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         x: FloatTensor<HostFloatT, MirroredT>,
@@ -509,5 +509,36 @@ impl OutputOp {
         };
 
         Ok(FloatTensor::Host(plc.output(sess, &x)))
+    }
+}
+
+impl MuxOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT, HostBitT, RepBitT>(
+        sess: &S,
+        plc: &HostPlacement,
+        s: BoolTensor<HostBitT, RepBitT>,
+        x: FloatTensor<HostFloatT, MirroredT>,
+        y: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
+        HostPlacement: PlacementDemirror<S, MirroredT, HostFloatT>,
+        HostPlacement: PlacementMux<S, HostBitT, HostFloatT, HostFloatT, HostFloatT>,
+    {
+        let s = match s {
+            BoolTensor::Host(v) => v,
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(v) => plc.demirror(sess, &v),
+        };
+        let y = match y {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(v) => plc.demirror(sess, &v),
+        };
+
+        let z = plc.mux(sess, &s, &x, &y);
+        Ok(FloatTensor::Host(z))
     }
 }

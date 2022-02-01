@@ -35,7 +35,7 @@ mod tests {
         let source = r#"
         x = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
-        mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
+        mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#;
 
         let comp = prune_graph(&source.try_into()?)?.unwrap();
@@ -49,7 +49,7 @@ mod tests {
             "y = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor () @Host(alice)"
         ));
         assert!(comp.contains(
-            "mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
+            "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp
             .contains("z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
@@ -61,9 +61,9 @@ mod tests {
         let source = r#"
         x = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
-        mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
-        add = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
-        dot = HostDot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
+        mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
+        add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
+        dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#;
 
         let comp = prune_graph(&source.try_into()?)?.unwrap();
@@ -77,7 +77,7 @@ mod tests {
             "y = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor () @Host(alice)"
         ));
         assert!(comp.contains(
-            "mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
+            "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp
             .contains("z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
@@ -93,8 +93,8 @@ mod tests {
         recv_mul = Receive {rendezvous_key=30303030303030303030303030303031, sender="bob"} : () -> HostFloat32Tensor () @Host(alice)
         send_add = Send {rendezvous_key=30303030303030303030303030303032, receiver="alice"}: (HostFloat32Tensor) -> Unit (y) @Host(bob)
         recv_add = Receive {rendezvous_key=30303030303030303030303030303032, sender="bob"} : () -> HostFloat32Tensor () @Host(alice)
-        mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_mul) @Host(alice)
-        add = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_add) @Host(alice)
+        mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_mul) @Host(alice)
+        add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_add) @Host(alice)
         z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#;
 
         let comp = prune_graph(&source.try_into()?)?.unwrap();
@@ -108,7 +108,7 @@ mod tests {
             "y = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor () @Host(bob)"
         ));
         assert!(comp.contains(
-            "mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_mul) @Host(alice)"
+            "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_mul) @Host(alice)"
         ));
         assert!(comp.contains(
             r#"send_mul = Send{rendezvous_key = 30303030303030303030303030303031, receiver = "alice"}: (HostFloat32Tensor) -> Unit (y) @Host(bob)"#
@@ -117,7 +117,7 @@ mod tests {
             r#"recv_mul = Receive{rendezvous_key = 30303030303030303030303030303031, sender = "bob"}: () -> HostFloat32Tensor () @Host(alice)"#
         ));
         assert!(comp.contains(
-            "mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_mul) @Host(alice)"
+            "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_mul) @Host(alice)"
         ));
         assert!(comp
             .contains("z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
@@ -129,9 +129,9 @@ mod tests {
         let source = r#"
         x = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
-        mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
-        add = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
-        dot = HostDot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
+        mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
+        add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
+        dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)
         z2 = Output: (HostFloat32Tensor) -> HostFloat32Tensor (add) @Host(alice)"#;
 
@@ -146,12 +146,12 @@ mod tests {
             "y = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor () @Host(alice)"
         ));
         assert!(comp.contains(
-            "mul = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
+            "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp
             .contains("z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
         assert!(comp.contains(
-            "add = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
+            "add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp
             .contains("z2 = Output: (HostFloat32Tensor) -> HostFloat32Tensor (add) @Host(alice)"));

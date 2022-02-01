@@ -11,7 +11,7 @@ use moose::{
 fn runtime_simple_computation(c: &mut Criterion) {
     let source = r#"x = Input {arg_name = "x"}: () -> Int64Tensor @Host(alice)
     y = Input {arg_name = "y"}: () -> Int64Tensor @Host(alice)
-    z = HostAdd: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(alice)
+    z = Add: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(alice)
     output = Output: (Int64Tensor) -> Int64Tensor (z) @Host(alice)
     "#;
     let computation: Computation = source.try_into().unwrap();
@@ -40,7 +40,7 @@ fn runtime_two_hosts(c: &mut Criterion) {
     let source = r#"
     x0 = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
     x1 = Constant{value=Float32Tensor([[1.0, 0.0], [0.0, 1.0]])}: () -> Float32Tensor @Host(bob)
-    res = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x0, x1) @Host(alice)
+    res = Dot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x0, x1) @Host(alice)
     output = Output: (Float32Tensor) -> Float32Tensor (res) @Host(alice)
     "#;
     let computation: Computation = source.try_into().unwrap();
