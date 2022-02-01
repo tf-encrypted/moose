@@ -66,7 +66,7 @@ impl Log2Op {
 
 /// Internal trait for converting int to float number generation
 /// Computes v, p, s, z such that (1 − 2s) · (1 − z) · v · 2 p = x.
-trait Int2FL<S: Session, RepRingT> {
+pub(crate) trait Int2FL<S: Session, RepRingT> {
     fn int2fl(
         &self,
         sess: &S,
@@ -80,6 +80,8 @@ impl<S: Session, RepRingT, MirRingT, N: Const> Int2FL<S, RepRingT> for Replicate
 where
     RepRingT: Clone + Ring<BitLength = N>,
     RepBitArray<ReplicatedBitTensor, N>: KnownType<S>,
+    HostRing64Tensor: KnownType<S>,
+
     ReplicatedBitTensor: KnownType<S>,
 
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
@@ -126,6 +128,8 @@ where
     ) -> (RepRingT, RepRingT, RepRingT, RepRingT) {
         let rep = self;
 
+        let lambda = k - 1;
+
         // hack because fill op doesn't work without adding too many un-necessary type constrains
         let zero = rep.sub(sess, x, x);
 
@@ -134,26 +138,39 @@ where
         let sign = rep.msb(sess, x);
         let is_zero = rep.equal(sess, x, &zero);
 
+        // x positive
         let x_pos = rep.mux(sess, &sign, &rep.neg(sess, x), x);
         let x_pos_bits = rep.bit_decompose(sess, &x_pos);
+        let x_pos_bits_rev: Vec<_> = (0..lambda)
+            .map(|i| rep.index(sess, i, &x_pos_bits))
+            .rev()
+            .collect();
 
-        let x_pos_bits: Vec<_> = (0..k).map(|i| rep.index(sess, i, &x_pos_bits)).collect();
-
-        let x_pos_rev: Vec<_> = x_pos_bits.into_iter().rev().collect();
-        let b = rep.prefix_or(sess, x_pos_rev);
-        let b_ring: Vec<_> = (0..k).map(|i| rep.ring_inject(sess, 0, &b[i])).collect();
+        // from msb(x) every bit will be set to 1
+        let b = rep.prefix_or(sess, x_pos_bits_rev);
+        let b_ring: Vec<_> = (0..lambda)
+            .map(|i| rep.ring_inject(sess, 0, &b[i]))
+            .collect();
 
         let ones = rep.shape_fill(sess, 1_u8, x);
-        let neg_b_sum = (0..k).fold(zero.clone(), |acc, i| {
+        // the following computes bit_compose(1 - bi), basically the amount that x needs to be
+        // scaled up so that msb_index(x_upshifted) = lam-1
+        let neg_b_sum = (0..lambda).fold(zero.clone(), |acc, i| {
             let neg = rep.sub(sess, &ones, &b_ring[i]);
             rep.add(sess, &acc, &rep.shl(sess, i, &neg))
         });
 
-        let x_shifted = with_context!(rep, sess, x_pos * (ones + neg_b_sum));
-        let x_norm = rep.trunc_pr(sess, f as u32, &x_shifted);
+        // add 1 to multiply with a power of 2 and do a bit shift by log(neg_b_sum)
+        let x_upshifted = with_context!(rep, sess, x_pos * (ones + neg_b_sum));
 
-        let bit_count = (0..k).fold(zero, |acc, i| rep.add(sess, &acc, &b_ring[i]));
+        // we truncate x_upshifted but be sure to leave out f bits
+        // we have k-1 bits in total because the input x has signed k bits,
+        let x_norm = rep.trunc_pr(sess, (k - 1 - f) as u32, &x_upshifted);
+
+        let bit_count = (0..lambda).fold(zero, |acc, i| rep.add(sess, &acc, &b_ring[i]));
         let ften = rep.shape_fill(sess, f as u8, &bit_count);
+
+        // we need to exclude f bits since we consider the number to be scaled by 2^f
         let p_res = with_context!(rep, sess, (bit_count - ften) * (ones - is_zero));
 
         (x_norm, p_res, sign, is_zero)
@@ -165,6 +182,7 @@ mod tests {
     use crate::execution::SyncSession;
     use crate::host::{FromRaw, HostPlacement};
     use crate::kernels::*;
+    use crate::replicated::log::Int2FL;
     use crate::replicated::{ReplicatedBitTensor, ReplicatedPlacement};
     use crate::types::{HostBitTensor, HostRing64Tensor};
     use ndarray::array;
@@ -184,8 +202,8 @@ mod tests {
         };
 
         let sess = SyncSession::default();
-        let x: HostRing64Tensor = alice.from_raw(array![1024u64, 5, 4]);
 
+        let x: HostRing64Tensor = alice.from_raw(array![1024u64, 5, 4]);
         let y: HostRing64Tensor = bob.from_raw(array![1024u64, 4, 5]);
 
         let x_shared = rep.share(&sess, &x);
@@ -196,5 +214,40 @@ mod tests {
 
         let opened_result = alice.reveal(&sess, &res);
         assert_eq!(opened_result, expected);
+    }
+
+    #[test]
+    fn test_int2fl() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let sess = SyncSession::default();
+
+        let x: HostRing64Tensor = alice.from_raw(array![2u64, 10, 32, 0, -4_i64 as u64]);
+        let x_shared = rep.share(&sess, &x);
+
+        let (v, p, s, z) = rep.int2fl(&sess, &x_shared, 32, 5);
+        let (vc, pc, sc, zc) = (
+            alice.reveal(&sess, &v),
+            alice.reveal(&sess, &p),
+            alice.reveal(&sess, &s),
+            alice.reveal(&sess, &z),
+        );
+
+        let twop = pc.0.mapv(|x| 2_f64.powf(x.0 as i64 as f64));
+        let z_neg = zc.0.mapv(|x| 1_f64 - (x.0 as f64));
+        let sign = sc.0.mapv(|x| 1_f64 - 2_f64 * (x.0 as f64));
+        let vc_i64 = vc.0.mapv(|x| x.0 as f64);
+
+        // (1-2s) * (1-z) * v * 2^p == x
+        let expected =
+            (sign * z_neg * vc_i64 * twop).mapv(|x| std::num::Wrapping((x as i64) as u64));
+
+        assert_eq!(expected, x.0);
     }
 }
