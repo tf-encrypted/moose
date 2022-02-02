@@ -228,7 +228,7 @@ mod tests {
     fn test_standard_input(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Input {arg_name = "x"}: () -> HostInt64Tensor @Host(alice)
         y = Input {arg_name = "y"}: () -> HostInt64Tensor @Host(alice)
-        z = HostAdd: (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor (x, y) @Host(alice)
+        z = Add: (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor (x, y) @Host(alice)
         output = Output: (HostInt64Tensor) -> HostInt64Tensor (z) @Host(alice)
         "#;
         let x: Value = "HostInt64Tensor([5]) @Host(alice)".try_into()?;
@@ -381,14 +381,14 @@ mod tests {
     }
 
     #[rstest]
-    #[case("HostAdd", "HostInt64Tensor([8]) @Host(alice)", true)]
-    #[case("HostSub", "HostInt64Tensor([2]) @Host(alice)", true)]
-    #[case("HostMul", "HostInt64Tensor([15]) @Host(alice)", true)]
-    #[case("HostDiv", "HostInt64Tensor([1]) @Host(alice)", true)]
-    #[case("HostAdd", "HostInt64Tensor([8]) @Host(alice)", false)]
-    #[case("HostSub", "HostInt64Tensor([2]) @Host(alice)", false)]
-    #[case("HostMul", "HostInt64Tensor([15]) @Host(alice)", false)]
-    #[case("HostDiv", "HostInt64Tensor([1]) @Host(alice)", false)]
+    #[case("Add", "HostInt64Tensor([8]) @Host(alice)", true)]
+    #[case("Sub", "HostInt64Tensor([2]) @Host(alice)", true)]
+    #[case("Mul", "HostInt64Tensor([15]) @Host(alice)", true)]
+    #[case("Div", "HostInt64Tensor([1]) @Host(alice)", true)]
+    #[case("Add", "HostInt64Tensor([8]) @Host(alice)", false)]
+    #[case("Sub", "HostInt64Tensor([2]) @Host(alice)", false)]
+    #[case("Mul", "HostInt64Tensor([15]) @Host(alice)", false)]
+    #[case("Div", "HostInt64Tensor([1]) @Host(alice)", false)]
     fn test_standard_op(
         #[case] test_op: String,
         #[case] expected_result: Value,
@@ -440,7 +440,7 @@ mod tests {
         let source = r#"
         x0 = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         x1 = Constant{value=HostFloat32Tensor([[1.0, 0.0], [0.0, 1.0]])}: () -> HostFloat32Tensor @Host(bob)
-        res = HostDot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x0, x1) @Host(alice)
+        res = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x0, x1) @Host(alice)
         output = Output: (HostFloat32Tensor) -> HostFloat32Tensor (res) @Host(alice)
         "#;
         let computation: Computation = source.try_into()?;
@@ -489,7 +489,7 @@ mod tests {
     #[case(false)]
     fn test_standard_inverse(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value=HostFloat32Tensor([[3.0, 2.0], [2.0, 3.0]])} : () -> HostFloat32Tensor @Host(alice)
-        x_inv = HostInverse : (HostFloat32Tensor) -> HostFloat32Tensor (x) @Host(alice)
+        x_inv = Inverse : (HostFloat32Tensor) -> HostFloat32Tensor (x) @Host(alice)
         output = Output: (HostFloat32Tensor) -> HostFloat32Tensor (x_inv) @Host(alice)
         "#;
         let arguments: HashMap<String, Value> = hashmap!();
@@ -868,12 +868,12 @@ mod tests {
     }
 
     #[rstest]
-    #[case("RingAdd", "HostRing64Tensor([5]) @Host(alice)", true)]
-    #[case("RingMul", "HostRing64Tensor([6]) @Host(alice)", true)]
-    #[case("RingSub", "HostRing64Tensor([1]) @Host(alice)", true)]
-    #[case("RingAdd", "HostRing64Tensor([5]) @Host(alice)", false)]
-    #[case("RingMul", "HostRing64Tensor([6]) @Host(alice)", false)]
-    #[case("RingSub", "HostRing64Tensor([1]) @Host(alice)", false)]
+    #[case("Add", "HostRing64Tensor([5]) @Host(alice)", true)]
+    #[case("Mul", "HostRing64Tensor([6]) @Host(alice)", true)]
+    #[case("Sub", "HostRing64Tensor([1]) @Host(alice)", true)]
+    #[case("Add", "HostRing64Tensor([5]) @Host(alice)", false)]
+    #[case("Mul", "HostRing64Tensor([6]) @Host(alice)", false)]
+    #[case("Sub", "HostRing64Tensor([1]) @Host(alice)", false)]
     fn test_ring_binop_invocation(
         #[case] test_op: String,
         #[case] expected_result: Value,
@@ -959,7 +959,7 @@ mod tests {
         let source = format!(
             r#"x = Constant{{value={}}}: () -> HostRing64Tensor @Host(alice)
         y = Constant{{value={}}}: () -> HostRing64Tensor @Host(alice)
-        res = RingDot : (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor (x, y) @Host(alice)
+        res = Dot : (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor (x, y) @Host(alice)
         output = Output : (HostRing64Tensor) -> HostRing64Tensor (res) @Host(alice)
         "#,
             x_str, y_str
@@ -1082,7 +1082,7 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let template_source = r#"x = Constant{value=HostRing64Tensor([4, 4])}: () -> HostRing64Tensor @Host(alice)
-        res = RingShr {amount = 1}: (HostRing64Tensor) -> HostRing64Tensor (x) @Host(alice)
+        res = Shr {amount = 1}: (HostRing64Tensor) -> HostRing64Tensor (x) @Host(alice)
         output = Output: (HostRing64Tensor) -> HostRing64Tensor (res) @Host(alice)
         "#;
         let source = template_source.replace("HostRing64Tensor", type_str.as_str());

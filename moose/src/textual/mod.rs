@@ -1062,39 +1062,27 @@ impl ToTextual for Operator {
             Div(op) => op.to_textual(),
             BitXor(op) => op.to_textual(),
             BitAnd(op) => op.to_textual(),
-            BitNeg(op) => op.to_textual(),
             BitOr(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
-            HostAdd(op) => op.to_textual(),
-            HostSub(op) => op.to_textual(),
-            HostMul(op) => op.to_textual(),
-            HostDiv(op) => op.to_textual(),
-            HostDot(op) => op.to_textual(),
             HostMean(op) => op.to_textual(),
-            HostSqrt(op) => op.to_textual(),
+            Sqrt(op) => op.to_textual(),
             HostOnes(op) => op.to_textual(),
             HostSqueeze(op) => op.to_textual(),
             HostReshape(op) => op.to_textual(),
             HostAtLeast2D(op) => op.to_textual(),
             HostSlice(op) => op.to_textual(),
-            HostDiag(op) => op.to_textual(),
+            Diag(op) => op.to_textual(),
             HostShlDim(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
             HostTranspose(op) => op.to_textual(),
-            HostInverse(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
-            RingNeg(op) => op.to_textual(),
-            RingAdd(op) => op.to_textual(),
-            RingSub(op) => op.to_textual(),
-            RingMul(op) => op.to_textual(),
-            RingDot(op) => op.to_textual(),
             RingFixedpointEncode(op) => op.to_textual(),
             RingFixedpointDecode(op) => op.to_textual(),
             RingFixedpointMean(op) => op.to_textual(),
             RingSample(op) => op.to_textual(),
             RingSampleSeeded(op) => op.to_textual(),
-            RingShl(op) => op.to_textual(),
-            RingShr(op) => op.to_textual(),
+            Shl(op) => op.to_textual(),
+            Shr(op) => op.to_textual(),
             RingInject(op) => op.to_textual(),
             BitExtract(op) => op.to_textual(),
             BitSample(op) => op.to_textual(),
@@ -1104,51 +1092,29 @@ impl ToTextual for Operator {
             AesDecrypt(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
-            FixedpointAdd(op) => op.to_textual(),
-            FixedpointSub(op) => op.to_textual(),
-            FixedpointMul(op) => op.to_textual(),
-            FixedpointDiv(op) => op.to_textual(),
-            FixedpointDot(op) => op.to_textual(),
             FixedpointTruncPr(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
-            FloatingpointAdd(op) => op.to_textual(),
-            FloatingpointSub(op) => op.to_textual(),
-            FloatingpointMul(op) => op.to_textual(),
-            FloatingpointDiv(op) => op.to_textual(),
-            FloatingpointDot(op) => op.to_textual(),
             FloatingpointAtLeast2D(op) => op.to_textual(),
             FloatingpointOnes(op) => op.to_textual(),
             FloatingpointConcat(op) => op.to_textual(),
             FloatingpointTranspose(op) => op.to_textual(),
-            FloatingpointInverse(op) => op.to_textual(),
             FloatingpointMean(op) => op.to_textual(),
             RepSetup(op) => op.to_textual(),
             RepShare(op) => op.to_textual(),
             RepReveal(op) => op.to_textual(),
-            RepDot(op) => op.to_textual(),
             RepFixedpointMean(op) => op.to_textual(),
             AddN(op) => op.to_textual(),
-            RepAdd(op) => op.to_textual(),
-            RepSub(op) => op.to_textual(),
-            RepMul(op) => op.to_textual(),
             RepAnd(op) => op.to_textual(),
             RepXor(op) => op.to_textual(),
-            RepNeg(op) => op.to_textual(),
             RepTruncPr(op) => op.to_textual(),
             AdtReveal(op) => op.to_textual(),
             AdtFill(op) => op.to_textual(),
-            AdtAdd(op) => op.to_textual(),
-            AdtSub(op) => op.to_textual(),
-            AdtMul(op) => op.to_textual(),
-            AdtShl(op) => op.to_textual(),
             AdtToRep(op) => op.to_textual(),
-            RepAbs(op) => op.to_textual(),
+            Abs(op) => op.to_textual(),
             Fill(op) => op.to_textual(),
             RepMsb(op) => op.to_textual(),
-            RepShl(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
             Index(op) => op.to_textual(),
-            RepDiag(op) => op.to_textual(),
             RepBitDec(op) => op.to_textual(),
             RepBitCompose(op) => op.to_textual(),
             RepSlice(op) => op.to_textual(),
@@ -1759,12 +1725,12 @@ mod tests {
     #[test]
     fn test_stdbinary() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)",
+            "z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
         assert_eq!(
             op.kind,
-            Operator::HostAdd(HostAddOp {
+            Operator::Add(AddOp {
                 sig: Signature::binary(
                     Ty::HostFloat32Tensor,
                     Ty::HostFloat32Tensor,
@@ -1773,12 +1739,12 @@ mod tests {
             })
         );
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = HostMul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)",
+            "z = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
         assert_eq!(
             op.kind,
-            Operator::HostMul(HostMulOp {
+            Operator::Mul(MulOp {
                 sig: Signature::binary(
                     Ty::HostFloat32Tensor,
                     Ty::HostFloat32Tensor,
@@ -1944,7 +1910,7 @@ mod tests {
         )?;
         assert_eq!(op.name, "x_shape");
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z_result = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x_shape, y_shape) @Host(carole)",
+            "z_result = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x_shape, y_shape) @Host(carole)",
         )?;
         assert_eq!(op.name, "z_result");
         assert_eq!(op.inputs, vec!["x_shape", "y_shape"]);
@@ -1968,19 +1934,19 @@ mod tests {
             "z = HostSlice {slice = {start = 1, end = 2}}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostDiag: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
+            "z = Diag: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostSqrt: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
+            "z = Sqrt: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingFill {value = Ring64(42)}: (HostShape) -> HostRing64Tensor (s) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingShl {amount = 2}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
+            "z = Shl {amount = 2}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingShr {amount = 2}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
+            "z = Shr {amount = 2}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingFixedpointDecode {scaling_base = 3, scaling_exp = 2}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
@@ -2017,7 +1983,7 @@ mod tests {
             "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor() @Host(alice)
             y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
             // ignore = Constant([1.0]: HostFloat32Tensor) @Host(alice)
-            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
+            z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
             ",
         )?;
         assert_eq!(comp.operations.len(), 3);
@@ -2038,7 +2004,7 @@ mod tests {
         assert_eq!(comp.operations[2].name, "z");
         assert_eq!(
             comp.operations[2].kind,
-            Operator::HostAdd(HostAddOp {
+            Operator::Add(AddOp {
                 sig: Signature::binary(
                     Ty::HostFloat32Tensor,
                     Ty::HostFloat32Tensor,
@@ -2059,14 +2025,14 @@ mod tests {
     #[test]
     fn test_sample_computation_err() {
         let data = r#"a = Constant{value = "a"}: () -> HostFloat32Tensor () @Host(alice)
-            err = HostAdd: (HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
+            err = Add: (HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
             b = Constant{value = "b"}: () -> HostFloat32Tensor () @Host(alice)"#;
         let emsg = r#"0: at line 2, in Tag:
-            err = HostAdd: (HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
+            err = Add: (HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
                             ^
 
 1: at line 2, in Alt:
-            err = HostAdd: (HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
+            err = Add: (HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)
                            ^
 
 "#;
@@ -2082,7 +2048,7 @@ mod tests {
         let comp: Computation =
             "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
-            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
+            z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
                 .try_into()?;
         assert_eq!(comp.operations.len(), 3);
         Ok(())
@@ -2092,7 +2058,7 @@ mod tests {
     fn test_verbose_parse_computation() -> Result<(), anyhow::Error> {
         let comp: Computation = verbose_parse_computation("x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
-            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
+            z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
                 )?;
         assert_eq!(comp.operations.len(), 3);
         Ok(())
@@ -2102,7 +2068,7 @@ mod tests {
     fn test_fast_parse_computation() -> Result<(), anyhow::Error> {
         let comp: Computation = fast_parse_computation("x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
-            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
+            z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
                 )?;
         assert_eq!(comp.operations.len(), 3);
         Ok(())
@@ -2112,7 +2078,7 @@ mod tests {
     fn test_parallel_parse_computation() -> Result<(), anyhow::Error> {
         let comp: Computation = parallel_parse_computation("x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
-            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)", 3)?;
+            z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)", 3)?;
         assert_eq!(comp.operations.len(), 3);
         Ok(())
     }
@@ -2172,7 +2138,7 @@ mod tests {
         use std::convert::TryInto;
         let comp: Computation = "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
-            z = HostAdd: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, carole)
+            z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, carole)
             seed = PrimDeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
             seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)}: () -> Seed @Host(alice)
             o = Output: (HostFloat32Tensor) -> HostFloat32Tensor (z) @Host(alice)"
