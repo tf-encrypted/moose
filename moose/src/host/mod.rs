@@ -197,22 +197,6 @@ where
     }
 }
 
-// TODO(Morten) remove but used by textual
-// This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-impl<T> From<ArrayD<T>> for HostTensor<T>
-where
-    T: LinalgScalar,
-{
-    fn from(v: ArrayD<T>) -> HostTensor<T> {
-        HostTensor::<T>(
-            v,
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernels
-            },
-        )
-    }
-}
-
 // TODO(Morten) used by textual
 impl<T> From<Vec<T>> for HostTensor<T> {
     fn from(v: Vec<T>) -> HostTensor<T> {

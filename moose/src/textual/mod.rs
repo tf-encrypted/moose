@@ -525,34 +525,54 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
         // 1D arrays
         alt((
             constant_literal_helper(Ty::HostInt8Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostInt8Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt8Tensor(t)
             }),
             constant_literal_helper(Ty::HostInt16Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostInt16Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt16Tensor(t)
             }),
             constant_literal_helper(Ty::HostInt32Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostInt32Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt32Tensor(t)
             }),
             constant_literal_helper(Ty::HostInt64Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostInt64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt64Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint8Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostUint8Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint8Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint16Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostUint16Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint16Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint32Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostUint32Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint32Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint64Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostUint64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint64Tensor(t)
             }),
             constant_literal_helper(Ty::HostFloat32Tensor.short_name(), vector(float), |v| {
-                Constant::HostFloat32Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostFloat32Tensor(t)
             }),
             constant_literal_helper(Ty::HostFloat64Tensor.short_name(), vector(double), |v| {
-                Constant::HostFloat64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostFloat64Tensor(t)
             }),
             constant_literal_helper(Ty::HostRing64Tensor.short_name(), vector(parse_int), |v| {
                 let plc = HostPlacement::from("TODO");
@@ -573,34 +593,54 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
         // 2D arrays
         alt((
             constant_literal_helper(Ty::HostInt8Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostInt8Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt8Tensor(t)
             }),
             constant_literal_helper(Ty::HostInt16Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostInt16Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt16Tensor(t)
             }),
             constant_literal_helper(Ty::HostInt32Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostInt32Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt32Tensor(t)
             }),
             constant_literal_helper(Ty::HostInt64Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostInt64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt64Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint8Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostUint8Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint8Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint16Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostUint16Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint16Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint32Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostUint32Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint32Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint64Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostUint64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint64Tensor(t)
             }),
             constant_literal_helper(Ty::HostFloat32Tensor.short_name(), vector2(float), |v| {
-                Constant::HostFloat32Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostFloat32Tensor(t)
             }),
             constant_literal_helper(Ty::HostFloat64Tensor.short_name(), vector2(double), |v| {
-                Constant::HostFloat64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostFloat64Tensor(t)
             }),
             constant_literal_helper(
                 Ty::HostRing64Tensor.short_name(),
@@ -1702,11 +1742,8 @@ mod tests {
 
         // 2D tensor
         use ndarray::prelude::*;
-        let x = HostFloat32Tensor::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
+        let host = HostPlacement::from("TODO");
+        let x = host.from_raw(array![[1.0, 2.0], [3.0, 4.0]]);
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
             "x = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor () @Replicated(alice, bob, charlie)",
         )?;
