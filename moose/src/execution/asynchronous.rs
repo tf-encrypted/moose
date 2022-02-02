@@ -21,6 +21,8 @@ pub type AsyncTask = tokio::task::JoinHandle<Result<()>>;
 
 pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
 
+pub type AsyncStorageImpl = Arc<dyn AsyncStorage + Send + Sync>;
+
 pub fn map_send_result(res: std::result::Result<(), Value>) -> std::result::Result<(), Error> {
     match res {
         Ok(_) => Ok(()),
@@ -100,15 +102,14 @@ impl AsyncSessionHandle {
     }
 }
 
-/// Session object for asynchronous execution (in new framework).
+/// Session object for asynchronous execution.
 #[derive(Clone)]
 pub struct AsyncSession {
     pub session_id: SessionId,
     pub arguments: Arc<HashMap<String, Value>>,
     pub role_assignments: Arc<HashMap<Role, Identity>>,
-    pub networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
-    pub storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
-    pub host: Arc<Placement>,
+    pub networking: AsyncNetworkingImpl,
+    pub storage: AsyncStorageImpl,
     // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
     pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
 }
@@ -118,9 +119,8 @@ impl AsyncSession {
         session_id: SessionId,
         arguments: HashMap<String, Value>,
         role_assignments: HashMap<Role, Identity>,
-        networking: Arc<dyn Send + Sync + crate::networking::AsyncNetworking>,
-        storage: Arc<dyn Send + Sync + crate::storage::AsyncStorage>,
-        host: Arc<Placement>,
+        networking: AsyncNetworkingImpl,
+        storage: AsyncStorageImpl,
     ) -> Self {
         AsyncSession {
             session_id,
@@ -128,41 +128,37 @@ impl AsyncSession {
             role_assignments: Arc::new(role_assignments),
             networking,
             storage,
-            host,
             tasks: Default::default(),
         }
     }
+}
 
+impl AsyncSession {
     fn storage_load(
         &self,
-        op: &LoadOp,
+        op: LoadOp,
         _plc: &HostPlacement,
         operands: Vec<AsyncValue>,
     ) -> Result<AsyncValue> {
         use std::convert::TryInto;
+
         assert_eq!(operands.len(), 2);
         let sess = self.clone();
-        let op = op.clone();
-        // let plc = plc.clone();
-        let (sender, result) = crate::computation::new_async_value();
-        let tasks = std::sync::Arc::clone(&self.tasks);
-        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+
+        let (sender, receiver) = new_async_value();
+        let task = tokio::spawn(async move {
             let operands = futures::future::join_all(operands).await;
             let key: HostString = operands
                 .get(0)
-                .ok_or_else(|| {
-                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0))
-                })?
+                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 0)))?
                 .clone()
-                .map_err(crate::execution::map_receive_error)?
+                .map_err(map_receive_error)?
                 .try_into()?;
             let query: HostString = operands
                 .get(1)
-                .ok_or_else(|| {
-                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 1))
-                })?
+                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 1)))?
                 .clone()
-                .map_err(crate::execution::map_receive_error)?
+                .map_err(map_receive_error)?
                 .try_into()?;
 
             let value: Value = sess
@@ -171,121 +167,125 @@ impl AsyncSession {
                 .await?;
             // TODO: Hmm, placement of a Value does not work like this... But perhaps it should?
             // let value = plc.place(&sess, value);
-            crate::execution::map_send_result(sender.send(value))?;
+            map_send_result(sender.send(value))?;
             Ok(())
         });
-        let mut tasks = tasks.write().unwrap();
+        let mut tasks = self.tasks.write().unwrap();
         tasks.push(task);
 
-        Ok(result)
+        Ok(receiver)
     }
 
-    fn storage_save(
-        &self,
-        _op: &SaveOp,
-        plc: &HostPlacement,
-        operands: Vec<AsyncValue>,
-    ) -> Result<AsyncValue> {
+    fn storage_save(&self, plc: &HostPlacement, operands: Vec<AsyncValue>) -> Result<AsyncValue> {
         use std::convert::TryInto;
+
         assert_eq!(operands.len(), 2);
-        let sess = self.clone();
+        let sess = self.clone(); // TODO(Morten) avoid clone
         let plc = plc.clone();
-        let (sender, result) = crate::computation::new_async_value();
-        let tasks = std::sync::Arc::clone(&self.tasks);
-        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+
+        let (sender, receiver) = new_async_value();
+        let task = tokio::spawn(async move {
             let operands = futures::future::join_all(operands).await;
             let key: HostString = operands
                 .get(0)
-                .ok_or_else(|| {
-                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0))
-                })?
+                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 0)))?
                 .clone()
-                .map_err(crate::execution::map_receive_error)?
+                .map_err(map_receive_error)?
                 .try_into()?;
             let x: Value = operands
                 .get(1)
-                .ok_or_else(|| {
-                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 1))
-                })?
+                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 1)))?
                 .clone()
-                .map_err(crate::execution::map_receive_error)?;
+                .map_err(map_receive_error)?;
 
             sess.storage.save(&key.0, &sess.session_id, &x).await?;
+
             let result = Unit(plc);
-            crate::execution::map_send_result(sender.send(result.into()))?;
+            map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let mut tasks = tasks.write().unwrap();
+        let mut tasks = self.tasks.write().unwrap();
         tasks.push(task);
 
-        Ok(result)
+        Ok(receiver)
     }
 
     fn networking_receive(
         &self,
-        op: &ReceiveOp,
+        op: ReceiveOp,
         _plc: &HostPlacement,
         operands: Vec<AsyncValue>,
     ) -> Result<AsyncValue> {
         assert_eq!(operands.len(), 0);
         let sess = self.clone();
-        let op = op.clone();
-        // let plc = plc.clone();
-        let (sender, result) = crate::computation::new_async_value();
-        let tasks = std::sync::Arc::clone(&self.tasks);
-        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+
+        let (sender, receiver) = new_async_value();
+        let task = tokio::spawn(async move {
             let net_sender = sess.find_role_assignment(&op.sender)?;
 
-            let value: Value = sess
+            let value = sess
                 .networking
                 .receive(net_sender, &op.rendezvous_key, &sess.session_id)
                 .await?;
             // TODO: Hmm, placement of a Value does not work like this... But perhaps it should?
             // let value = plc.place(&sess, value);
-            crate::execution::map_send_result(sender.send(value))?;
+            map_send_result(sender.send(value))?;
             Ok(())
         });
-        let mut tasks = tasks.write().unwrap();
+        let mut tasks = self.tasks.write().unwrap();
         tasks.push(task);
 
-        Ok(result)
+        Ok(receiver)
     }
 
     fn networking_send(
         &self,
-        op: &SendOp,
+        op: SendOp,
         plc: &HostPlacement,
         operands: Vec<AsyncValue>,
     ) -> Result<AsyncValue> {
         assert_eq!(operands.len(), 1);
-        let sess = self.clone();
+
+        let sess = self.clone(); // TODO(Morten) avoid
         let plc = plc.clone();
-        let op = op.clone();
-        let (sender, result) = crate::computation::new_async_value();
-        let tasks = std::sync::Arc::clone(&self.tasks);
-        let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+
+        let (sender, receiver) = new_async_value();
+        let task = tokio::spawn(async move {
             let receiver = sess.find_role_assignment(&op.receiver)?;
             let operands = futures::future::join_all(operands).await;
-            let x: Value = operands
+            let x = operands
                 .get(0)
-                .ok_or_else(|| {
-                    crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0))
-                })?
+                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 0)))?
                 .clone()
-                .map_err(crate::execution::map_receive_error)?;
+                .map_err(map_receive_error)?;
 
             sess.networking
                 .send(&x, receiver, &op.rendezvous_key, &sess.session_id)
                 .await?;
+
             let result = Unit(plc);
-            crate::execution::map_send_result(sender.send(result.into()))?;
+            map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let mut tasks = tasks.write().unwrap();
+        let mut tasks = self.tasks.write().unwrap();
         tasks.push(task);
 
-        Ok(result)
+        Ok(receiver)
     }
+}
+
+pub(crate) type AsyncValue = crate::execution::AsyncReceiver;
+
+pub(crate) fn new_async_value() -> (AsyncSender, AsyncReceiver) {
+    // TODO(Morten) make second attempt at inlining
+    use futures::FutureExt;
+    fn remove_err<T, E>(r: std::result::Result<T, E>) -> std::result::Result<T, ()> {
+        r.map_err(|_| ())
+    }
+
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    let shared_receiver = receiver.map(remove_err as fn(_) -> _).shared();
+    (sender, shared_receiver)
 }
 
 impl Session for AsyncSession {
@@ -296,25 +296,40 @@ impl Session for AsyncSession {
         plc: &Placement,
         operands: Vec<Self::Value>,
     ) -> Result<Self::Value> {
-        // The kernels that are doing funny things to the async context, such as awaiting for more than their inputs.
-        match (&op, plc) {
-            (Operator::Load(op), Placement::Host(plc)) => {
-                return self.storage_load(op, plc, operands)
-            }
-            (Operator::Save(op), Placement::Host(plc)) => {
-                return self.storage_save(op, plc, operands)
-            }
-            (Operator::Send(op), Placement::Host(plc)) => {
-                return self.networking_send(op, plc, operands)
-            }
-            (Operator::Receive(op), Placement::Host(plc)) => {
-                return self.networking_receive(op, plc, operands)
-            }
-            _ => (),
-        };
-        // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
         use Operator::*;
+        use Placement::*;
         let kernel = match op {
+            // The kernels that are doing funny things to the async context, such as awaiting for more than their inputs.
+            Load(op) => {
+                return if let Host(plc) = plc {
+                    self.storage_load(op, plc, operands)
+                } else {
+                    unimplemented!()
+                }
+            }
+            Save(_) => {
+                return if let Host(plc) = plc {
+                    self.storage_save(plc, operands)
+                } else {
+                    unimplemented!()
+                }
+            }
+            Send(op) => {
+                return if let Host(plc) = plc {
+                    self.networking_send(op, plc, operands)
+                } else {
+                    unimplemented!()
+                }
+            }
+            Receive(op) => {
+                return if let Host(plc) = plc {
+                    self.networking_receive(op, plc, operands)
+                } else {
+                    unimplemented!()
+                }
+            }
+
+            // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
             Shape(op) => DispatchKernel::compile(&op, plc)?,
             Broadcast(op) => DispatchKernel::compile(&op, plc)?,
             RingFill(op) => DispatchKernel::compile(&op, plc)?,
@@ -328,8 +343,6 @@ impl Session for AsyncSession {
             BitExtract(op) => DispatchKernel::compile(&op, plc)?,
             RingSample(op) => DispatchKernel::compile(&op, plc)?,
             RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)?,
-            Shl(op) => DispatchKernel::compile(&op, plc)?,
-            Shr(op) => DispatchKernel::compile(&op, plc)?,
             RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
             RingFixedpointEncode(op) => DispatchKernel::compile(&op, plc)?,
             RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?,
@@ -340,12 +353,10 @@ impl Session for AsyncSession {
             RepReveal(op) => DispatchKernel::compile(&op, plc)?,
             RepTruncPr(op) => DispatchKernel::compile(&op, plc)?,
             Msb(op) => DispatchKernel::compile(&op, plc)?,
-            Abs(op) => DispatchKernel::compile(&op, plc)?,
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?,
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
-            Diag(op) => DispatchKernel::compile(&op, plc)?,
-            RepSlice(op) => DispatchKernel::compile(&op, plc)?,
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?,
+            BitCompose(op) => DispatchKernel::compile(&op, plc)?,
             AdtFill(op) => DispatchKernel::compile(&op, plc)?,
             AdtReveal(op) => DispatchKernel::compile(&op, plc)?,
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?,
@@ -354,33 +365,27 @@ impl Session for AsyncSession {
             HostOnes(op) => DispatchKernel::compile(&op, plc)?,
             Input(op) => DispatchKernel::compile(&op, plc)?,
             Output(op) => DispatchKernel::compile(&op, plc)?,
-            Load(op) => DispatchKernel::compile(&op, plc)?,
-            Save(op) => DispatchKernel::compile(&op, plc)?,
+            AtLeast2D(op) => DispatchKernel::compile(&op, plc)?,
             HostMean(op) => DispatchKernel::compile(&op, plc)?,
-            Sqrt(op) => DispatchKernel::compile(&op, plc)?,
             FixedpointEncode(op) => DispatchKernel::compile(&op, plc)?,
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?,
             FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)?,
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
-            HostSlice(op) => DispatchKernel::compile(&op, plc)?,
             HostShlDim(op) => DispatchKernel::compile(&op, plc)?,
             Sign(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?,
+            Transpose(op) => DispatchKernel::compile(&op, plc)?,
+            Squeeze(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?,
             BitDec(op) => DispatchKernel::compile(&op, plc)?,
             Identity(op) => DispatchKernel::compile(&op, plc)?,
             Cast(op) => DispatchKernel::compile(&op, plc)?,
-            Send(op) => DispatchKernel::compile(&op, plc)?,
-            Receive(op) => DispatchKernel::compile(&op, plc)?,
-            AtLeast2D(op) => DispatchKernel::compile(&op, plc)?,
+            Reshape(op) => DispatchKernel::compile(&op, plc)?,
             Slice(op) => DispatchKernel::compile(&op, plc)?,
             Ones(op) => DispatchKernel::compile(&op, plc)?,
             ExpandDims(op) => DispatchKernel::compile(&op, plc)?,
             Concat(op) => DispatchKernel::compile(&op, plc)?,
-            Reshape(op) => DispatchKernel::compile(&op, plc)?,
-            Squeeze(op) => DispatchKernel::compile(&op, plc)?,
-            Transpose(op) => DispatchKernel::compile(&op, plc)?,
             Dot(op) => DispatchKernel::compile(&op, plc)?,
             Inverse(op) => DispatchKernel::compile(&op, plc)?,
             Add(op) => DispatchKernel::compile(&op, plc)?,
@@ -391,22 +396,34 @@ impl Session for AsyncSession {
             Div(op) => DispatchKernel::compile(&op, plc)?,
             AddN(op) => DispatchKernel::compile(&op, plc)?,
             Exp(op) => DispatchKernel::compile(&op, plc)?,
-            Mux(op) => DispatchKernel::compile(&op, plc)?,
+            Pow2(op) => DispatchKernel::compile(&op, plc)?,
+            Neg(op) => DispatchKernel::compile(&op, plc)?,
             Equal(op) => DispatchKernel::compile(&op, plc)?,
+            Mux(op) => DispatchKernel::compile(&op, plc)?,
             Less(op) => DispatchKernel::compile(&op, plc)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
             IndexAxis(op) => DispatchKernel::compile(&op, plc)?,
+            Index(op) => DispatchKernel::compile(&op, plc)?,
+            Sigmoid(op) => DispatchKernel::compile(&op, plc)?,
             Maximum(op) => DispatchKernel::compile(&op, plc)?,
             Softmax(op) => DispatchKernel::compile(&op, plc)?,
             Demirror(op) => DispatchKernel::compile(&op, plc)?,
             Mirror(op) => DispatchKernel::compile(&op, plc)?,
-            _ => todo!(),
+            AesDecrypt(op) => DispatchKernel::compile(&op, plc)?,
+            Sqrt(op) => DispatchKernel::compile(&op, plc)?,
+            Shl(op) => DispatchKernel::compile(&op, plc)?,
+            Shr(op) => DispatchKernel::compile(&op, plc)?,
+            Abs(op) => DispatchKernel::compile(&op, plc)?,
+            Diag(op) => DispatchKernel::compile(&op, plc)?,
         };
         kernel(self, operands)
     }
+}
 
-    type ReplicatedSetup = ReplicatedSetup;
-    fn replicated_setup(&self, _plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
+impl SetupGeneration<ReplicatedPlacement> for AsyncSession {
+    type Setup = ReplicatedSetup;
+
+    fn setup(&self, _plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
         unimplemented!()
     }
 }
@@ -423,7 +440,7 @@ impl RuntimeSession for AsyncSession {
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity> {
         self.role_assignments
             .get(role)
-            .ok_or_else(|| Error::Networking(format!("Missing role assignemnt for {}", role)))
+            .ok_or_else(|| Error::Networking(format!("Missing role assignment for {}", role)))
     }
 }
 
@@ -508,17 +525,15 @@ impl AsyncExecutor {
 pub struct AsyncTestRuntime {
     pub identities: Vec<Identity>,
     pub executors: HashMap<Identity, AsyncExecutor>,
-    pub runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>>,
+    pub runtime_storage: HashMap<Identity, AsyncStorageImpl>,
     pub networking: AsyncNetworkingImpl,
 }
 
 impl AsyncTestRuntime {
     pub fn new(storage_mapping: HashMap<String, HashMap<String, Value>>) -> Self {
         let mut executors: HashMap<Identity, AsyncExecutor> = HashMap::new();
-        let networking: Arc<dyn Send + Sync + AsyncNetworking> =
-            Arc::new(LocalAsyncNetworking::default());
-        let mut runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>> =
-            HashMap::new();
+        let networking: AsyncNetworkingImpl = Arc::new(LocalAsyncNetworking::default());
+        let mut runtime_storage: HashMap<Identity, AsyncStorageImpl> = HashMap::new();
         let mut identities = Vec::new();
         for (identity_str, storage) in storage_mapping {
             let identity = Identity::from(identity_str.clone()).clone();
@@ -529,8 +544,7 @@ impl AsyncTestRuntime {
                 .map(|arg| (arg.0.to_owned(), arg.1.to_owned()))
                 .collect::<HashMap<String, Value>>();
 
-            let exec_storage: Arc<dyn Send + Sync + AsyncStorage> =
-                Arc::new(LocalAsyncStorage::from_hashmap(storage));
+            let exec_storage: AsyncStorageImpl = Arc::new(LocalAsyncStorage::from_hashmap(storage));
             runtime_storage.insert(identity.clone(), exec_storage);
 
             let executor = AsyncExecutor::default();
@@ -576,9 +590,6 @@ impl AsyncTestRuntime {
                 valid_role_assignments.clone(),
                 Arc::clone(&self.networking),
                 Arc::clone(&self.runtime_storage[own_identity]),
-                Arc::new(Placement::Host(HostPlacement {
-                    owner: own_identity.0.clone().into(),
-                })),
             );
             let outputs = executor
                 .run_computation(

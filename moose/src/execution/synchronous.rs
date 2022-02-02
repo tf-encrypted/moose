@@ -1,6 +1,7 @@
+//! Synchronous/eager execution of computations
+
 use super::*;
 use crate::error::{Error, Result};
-use crate::execution::Identity;
 use crate::host::*;
 use crate::kernels::{DispatchKernel, PlacementSetupGen};
 use crate::networking::LocalSyncNetworking;
@@ -14,7 +15,7 @@ use std::sync::Arc;
 pub type SyncNetworkingImpl = Rc<dyn SyncNetworking>;
 pub type SyncStorageImpl = Rc<dyn SyncStorage>;
 
-/// Session object for synchronous/eager execution (in new framework).
+/// Session object for synchronous/eager execution.
 pub struct SyncSession {
     session_id: SessionId,
     replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<ReplicatedSetup>>>,
@@ -24,10 +25,10 @@ pub struct SyncSession {
     networking: SyncNetworkingImpl,
 }
 
+/// Default session should only be used in tests.
+///
+/// Use `new()` for the real sessions instead.
 impl Default for SyncSession {
-    /// Default session should only be used in tests.
-    ///
-    /// Use new() for the real sessions instead.
     fn default() -> Self {
         SyncSession {
             session_id: SessionId::random(),
@@ -106,6 +107,54 @@ impl Session for SyncSession {
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Result<Value> {
         use Operator::*;
         let kernel_output = match op {
+            Send(op) => {
+                assert_eq!(operands.len(), 1);
+                let x = operands.get(0).unwrap();
+                self.networking.send(
+                    x,
+                    self.find_role_assignment(&op.receiver)?,
+                    &op.rendezvous_key,
+                    &self.session_id,
+                )?;
+                let host = match plc {
+                    Placement::Host(host) => host,
+                    _ => unimplemented!(
+                        "SyncSession does not support running Send on non-host placements yet"
+                    ),
+                };
+                Unit(host.clone()).into()
+            }
+            // TODO(Morten) we should verify type of received value
+            Receive(op) => self.networking.receive(
+                self.find_role_assignment(&op.sender)?,
+                &op.rendezvous_key,
+                &self.session_id,
+            )?,
+            // TODO(Morten) we should verify type of loaded value
+            Load(op) => {
+                use std::convert::TryInto;
+                assert_eq!(operands.len(), 2);
+                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
+                let query: HostString = operands.get(1).unwrap().clone().try_into()?;
+                self.storage
+                    .load(&key.0, &self.session_id, Some(op.sig.ret()), &query.0)?
+            }
+            Save(_) => {
+                use std::convert::TryInto;
+                assert_eq!(operands.len(), 2);
+                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
+                let x = operands.get(1).unwrap().clone();
+                self.storage.save(&key.0, &self.session_id, &x)?;
+                let host = match plc {
+                    Placement::Host(host) => host,
+                    _ => unimplemented!(
+                        "SyncSession does not support running Save on non-host placements yet"
+                    ),
+                };
+                Unit(host.clone()).into()
+            }
+
+            // The regular kernels
             Shape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Broadcast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -135,7 +184,6 @@ impl Session for SyncSession {
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Index(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitCompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -147,35 +195,12 @@ impl Session for SyncSession {
             HostOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Input(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Output(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Load(op) => {
-                use std::convert::TryInto;
-                assert_eq!(operands.len(), 2);
-                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
-                let query: HostString = operands.get(1).unwrap().clone().try_into()?;
-                self.storage
-                    .load(&key.0, &self.session_id, Some(op.sig.ret()), &query.0)?
-            }
-            Save(_) => {
-                use std::convert::TryInto;
-                assert_eq!(operands.len(), 2);
-                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
-                let x = operands.get(1).unwrap().clone();
-                self.storage.save(&key.0, &self.session_id, &x)?;
-                let host = match plc {
-                    Placement::Host(host) => host,
-                    _ => unimplemented!(
-                        "SyncSession does not support running Save on non-host placements yet"
-                    ),
-                };
-                Unit(host.clone()).into()
-            }
             HostMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sqrt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Diag(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             HostShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             ExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -187,28 +212,6 @@ impl Session for SyncSession {
             BitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Identity(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Cast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Send(op) => {
-                assert_eq!(operands.len(), 1);
-                let x = operands.get(0).unwrap();
-                self.networking.send(
-                    x,
-                    self.find_role_assignment(&op.receiver)?,
-                    &op.rendezvous_key,
-                    &self.session_id,
-                )?;
-                let host = match plc {
-                    Placement::Host(host) => host,
-                    _ => unimplemented!(
-                        "SyncSession does not support running Send on non-host placements yet"
-                    ),
-                };
-                Unit(host.clone()).into()
-            }
-            Receive(op) => self.networking.receive(
-                self.find_role_assignment(&op.sender)?,
-                &op.rendezvous_key,
-                &self.session_id,
-            )?,
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             IndexAxis(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Slice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -239,9 +242,12 @@ impl Session for SyncSession {
         };
         Ok(kernel_output)
     }
+}
 
-    type ReplicatedSetup = ReplicatedSetup;
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
+impl SetupGeneration<ReplicatedPlacement> for SyncSession {
+    type Setup = RepSetup<PrfKey>;
+
+    fn setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
         let mut replicated_keys = self.replicated_keys.write().unwrap();
         let setup = replicated_keys
             .entry(plc.clone())
@@ -262,7 +268,7 @@ impl RuntimeSession for SyncSession {
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity> {
         self.role_assignments
             .get(role)
-            .ok_or_else(|| Error::Networking(format!("Missing role assignemnt for {}", role)))
+            .ok_or_else(|| Error::Networking(format!("Missing role assignment for {}", role)))
     }
 }
 

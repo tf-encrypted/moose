@@ -195,13 +195,13 @@ impl SaveOp {
     pub fn bool_kernel<S: Session, HostT, RepT>(
         sess: &S,
         plc: &HostPlacement,
-        key: cs!(HostString),
+        key: m!(HostString),
         x: BoolTensor<HostT, RepT>,
-    ) -> Result<cs!(Unit)>
+    ) -> Result<m!(Unit)>
     where
         HostString: KnownType<S>,
         Unit: KnownType<S>,
-        HostPlacement: PlacementSave<S, cs!(HostString), HostT, cs!(Unit)>,
+        HostPlacement: PlacementSave<S, m!(HostString), HostT, m!(Unit)>,
     {
         let x = match x {
             BoolTensor::Replicated(_v) => unimplemented!(),

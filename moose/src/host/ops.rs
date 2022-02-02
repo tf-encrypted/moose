@@ -400,7 +400,9 @@ impl DotOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        Ok(plc.place(sess, x.dot(y)))
+        let x = plc.place(sess, x);
+        let y = plc.place(sess, y);
+        Ok(x.dot(y))
     }
 }
 
@@ -436,8 +438,9 @@ impl AtLeast2DOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        let y = match x.0.ndim() {
-            0 => HostTensor(x.0.into_shape(IxDyn(&[1, 1])).unwrap(), x.1),
+        let x = plc.place(sess, x);
+        match x.0.ndim() {
+            0 => Ok(HostTensor(x.0.into_shape(IxDyn(&[1, 1])).unwrap(), x.1)),
             1 => {
                 let length = x.0.len();
                 let newshape = if to_column_vector {
@@ -445,36 +448,19 @@ impl AtLeast2DOp {
                 } else {
                     IxDyn(&[1, length])
                 };
-                HostTensor(x.0.into_shape(newshape).unwrap(), x.1)
+                Ok(HostTensor(x.0.into_shape(newshape).unwrap(), x.1))
             }
-            2 => x,
-            otherwise => panic!(
+            2 => Ok(x),
+            otherwise => Err(Error::InvalidArgument(format!(
                 "Tensor input for `at_least_2d` must have rank <= 2, found rank {:?}.",
                 otherwise
-            ),
-        };
-        Ok(plc.place(sess, y))
+            ))),
+        }
     }
 }
 
 impl SliceOp {
-    // TODO(lvorona): type inferring fails if I try to make it more generic and have one kernel work for all the types
-    pub(crate) fn kernel<S: Session>(
-        sess: &S,
-        plc: &HostPlacement,
-        slice_info: SliceInfo,
-        x: cs!(HostShape),
-    ) -> Result<cs!(HostShape)>
-    where
-        HostShape: KnownType<S>,
-        HostPlacement: PlacementSlice<S, cs!(HostShape), cs!(HostShape)>,
-    {
-        Ok(plc.slice(sess, slice_info, &x))
-    }
-}
-
-impl HostSliceOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         slice_info: SliceInfo,
@@ -618,7 +604,8 @@ impl IndexAxisOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        Ok(plc.place(sess, x.index_axis(axis, index)?))
+        let x = plc.place(sess, x);
+        x.index_axis(axis, index)
     }
 
     pub(crate) fn host_bit_kernel<S: RuntimeSession>(
@@ -631,7 +618,8 @@ impl IndexAxisOp {
     where
         HostPlacement: PlacementPlace<S, HostBitTensor>,
     {
-        Ok(plc.place(sess, x.index_axis(axis, index)?))
+        let x = plc.place(sess, x);
+        x.index_axis(axis, index)
     }
 
     pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
@@ -645,7 +633,8 @@ impl IndexAxisOp {
         T: Clone,
         HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
     {
-        Ok(plc.place(sess, x.index_axis(axis, index)?))
+        let x = plc.place(sess, x);
+        x.index_axis(axis, index)
     }
 }
 
@@ -828,7 +817,6 @@ impl SqrtOp {
     }
 }
 
-// TODO(Morten) inline
 impl<T: LinalgScalar> HostTensor<T> {
     fn sum(self, axis: Option<usize>) -> Result<Self> {
         if let Some(i) = axis {
@@ -853,7 +841,8 @@ impl SumOp {
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         let axis = axis.map(|a| a as usize);
-        Ok(plc.place(sess, x.sum(axis)?))
+        let x = plc.place(sess, x);
+        x.sum(axis)
     }
 
     pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
@@ -868,8 +857,9 @@ impl SumOp {
         Wrapping<T>: std::ops::Add<Wrapping<T>, Output = Wrapping<T>>,
         HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
     {
-        let sum = x.sum(axis.map(|a| a as usize))?;
-        Ok(plc.place(sess, sum))
+        let axis = axis.map(|a| a as usize);
+        let x = plc.place(sess, x);
+        x.sum(axis)
     }
 }
 
@@ -931,7 +921,8 @@ impl ExpandDimsOp {
         axis: Vec<usize>,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>> {
-        Ok(plc.place(sess, x.expand_dims(axis)))
+        let x = plc.place(sess, x);
+        Ok(x.expand_dims(axis))
     }
 
     pub(crate) fn host_bit_kernel<S: RuntimeSession>(
@@ -940,7 +931,8 @@ impl ExpandDimsOp {
         axis: Vec<usize>,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        Ok(plc.place(sess, x.expand_dims(axis)))
+        let x = plc.place(sess, x);
+        Ok(x.expand_dims(axis))
     }
 
     pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
@@ -949,16 +941,8 @@ impl ExpandDimsOp {
         axis: Vec<usize>,
         x: HostRingTensor<T>,
     ) -> Result<HostRingTensor<T>> {
-        Ok(plc.place(sess, x.expand_dims(axis)))
-    }
-}
-
-// TODO(Morten) inline
-impl<T: LinalgScalar> HostTensor<T> {
-    fn squeeze(self, axis: Option<usize>) -> Self {
-        let plc = (&self.1).clone();
-        let newshape = self.shape().0.squeeze(axis);
-        self.reshape(HostShape(newshape, plc))
+        let x = plc.place(sess, x);
+        Ok(x.expand_dims(axis))
     }
 }
 
@@ -972,8 +956,10 @@ impl SqueezeOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
+        let x = plc.place(sess, x);
         let axis = axis.map(|a| a as usize);
-        Ok(plc.place(sess, x.squeeze(axis)))
+        let newshape = HostShape(x.shape().0.squeeze(axis), plc.clone());
+        Ok(x.reshape(newshape))
     }
 }
 

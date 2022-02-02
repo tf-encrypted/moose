@@ -150,7 +150,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Slice(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostSliceOp {
+            kind: SliceOp {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 slice: i.slice.clone(),
             }
