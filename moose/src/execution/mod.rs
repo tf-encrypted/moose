@@ -810,7 +810,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"
         s = Constant{value=HostInt64Tensor([[1,2], [3, 4]])}: () -> HostInt64Tensor @Host(alice)
-        r = HostTranspose : (HostInt64Tensor) -> HostInt64Tensor (s) @Host(alice)
+        r = Transpose : (HostInt64Tensor) -> HostInt64Tensor (s) @Host(alice)
         output = Output : (HostInt64Tensor) -> HostInt64Tensor (r) @Host(alice)
         "#;
         let arguments: HashMap<String, Value> = hashmap!();
@@ -844,7 +844,7 @@ mod tests {
         let source = format!(
             r#"
             x = Constant{{value=HostFloat64Tensor([1.0, 1.0, 1.0])}}: () -> HostFloat64Tensor @Host(alice)
-        res = HostAtLeast2D {{ to_column_vector = {} }} : (HostFloat64Tensor) -> HostFloat64Tensor (x) @Host(alice)
+        res = AtLeast2D {{ to_column_vector = {} }} : (HostFloat64Tensor) -> HostFloat64Tensor (x) @Host(alice)
         output = Output : (HostFloat64Tensor) -> HostFloat64Tensor (res) @Host(alice)
         "#,
             to_column_vector

@@ -1051,6 +1051,8 @@ impl ToTextual for Operator {
             Ones(op) => op.to_textual(),
             ExpandDims(op) => op.to_textual(),
             Concat(op) => op.to_textual(),
+            Reshape(op) => op.to_textual(),
+            Squeeze(op) => op.to_textual(),
             Transpose(op) => op.to_textual(),
             Dot(op) => op.to_textual(),
             Inverse(op) => op.to_textual(),
@@ -1067,14 +1069,10 @@ impl ToTextual for Operator {
             HostMean(op) => op.to_textual(),
             Sqrt(op) => op.to_textual(),
             HostOnes(op) => op.to_textual(),
-            HostSqueeze(op) => op.to_textual(),
-            HostReshape(op) => op.to_textual(),
-            HostAtLeast2D(op) => op.to_textual(),
             HostSlice(op) => op.to_textual(),
             Diag(op) => op.to_textual(),
             HostShlDim(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
-            HostTranspose(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
             RingFixedpointEncode(op) => op.to_textual(),
             RingFixedpointDecode(op) => op.to_textual(),
@@ -1094,10 +1092,8 @@ impl ToTextual for Operator {
             FixedpointDecode(op) => op.to_textual(),
             FixedpointTruncPr(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
-            FloatingpointAtLeast2D(op) => op.to_textual(),
             FloatingpointOnes(op) => op.to_textual(),
             FloatingpointConcat(op) => op.to_textual(),
-            FloatingpointTranspose(op) => op.to_textual(),
             FloatingpointMean(op) => op.to_textual(),
             RepSetup(op) => op.to_textual(),
             RepShare(op) => op.to_textual(),
@@ -1117,12 +1113,12 @@ impl ToTextual for Operator {
             RepBitCompose(op) => op.to_textual(),
             RepSlice(op) => op.to_textual(),
             RepShlDim(op) => op.to_textual(),
-            RepEqual(op) => op.to_textual(),
             Mux(op) => op.to_textual(),
             Neg(op) => op.to_textual(),
             Pow2(op) => op.to_textual(),
             Exp(op) => op.to_textual(),
             Sigmoid(op) => op.to_textual(),
+            Equal(op) => op.to_textual(),
             Less(op) => op.to_textual(),
             GreaterThan(op) => op.to_textual(),
             Demirror(op) => op.to_textual(),
@@ -1158,7 +1154,7 @@ op_with_axis_to_textual!(MeanOp);
 op_with_axis_to_textual!(SumOp);
 op_with_axis_to_textual!(HostMeanOp);
 op_with_axis_to_textual!(FloatingpointMeanOp);
-op_with_axis_to_textual!(HostSqueezeOp);
+op_with_axis_to_textual!(SqueezeOp);
 
 impl ToTextual for FixedpointMeanOp {
     fn to_textual(&self) -> String {
@@ -1926,7 +1922,7 @@ mod tests {
             "z = ExpandDims {axis = [0]}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostAtLeast2D {to_column_vector = false}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
+            "z = AtLeast2D {to_column_vector = false}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = HostSlice {slice = {start = 1, end = 2}}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",

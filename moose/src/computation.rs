@@ -1036,6 +1036,8 @@ operators![
     Ones,
     ExpandDims,
     Concat,
+    Reshape,
+    Squeeze,
     Transpose,
     Dot,
     Inverse,
@@ -1054,11 +1056,7 @@ operators![
     HostSlice,
     Diag,
     HostBitDec,
-    HostReshape,
-    HostSqueeze,
     HostOnes,
-    HostTranspose,
-    HostAtLeast2D,
     HostShlDim,
     Sign,
     RingFixedpointMean,
@@ -1083,13 +1081,12 @@ operators![
     Exp,
     Sigmoid,
     Neg,
+    Equal,
     Less,
     GreaterThan,
     // Floating-point operators
-    FloatingpointAtLeast2D,
     FloatingpointOnes,
     FloatingpointConcat,
-    FloatingpointTranspose,
     FloatingpointMean,
     // Additive operators
     AdtReveal,
@@ -1110,7 +1107,6 @@ operators![
     RepBitDec,
     RepBitCompose,
     RepShlDim,
-    RepEqual,
     Mux,
     Maximum,
     Softmax,
@@ -1220,6 +1216,17 @@ pub struct ConcatOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct ReshapeOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
+pub struct SqueezeOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct TransposeOp {
     pub sig: Signature,
 }
@@ -1291,30 +1298,6 @@ pub struct SqrtOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct HostOnesOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-
-pub struct HostAtLeast2DOp {
-    pub sig: Signature,
-    pub to_column_vector: bool,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
-pub struct HostSqueezeOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-
-pub struct HostReshapeOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostTransposeOp {
     pub sig: Signature,
 }
 
@@ -1462,6 +1445,11 @@ pub struct ExpOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct EqualOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct LessOp {
     pub sig: Signature,
 }
@@ -1502,12 +1490,6 @@ pub struct NegOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct FloatingpointAtLeast2DOp {
-    pub sig: Signature,
-    pub to_column_vector: bool,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct FloatingpointOnesOp {
     pub sig: Signature,
 }
@@ -1516,11 +1498,6 @@ pub struct FloatingpointOnesOp {
 pub struct FloatingpointConcatOp {
     pub sig: Signature,
     pub axis: u32,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct FloatingpointTransposeOp {
-    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
@@ -1634,11 +1611,6 @@ pub struct RepBitDecOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RepBitComposeOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepEqualOp {
     pub sig: Signature,
 }
 
