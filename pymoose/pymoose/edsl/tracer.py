@@ -341,7 +341,6 @@ class AstTracer:
         }[op_name]
         lhs_type = lhs_operation.return_type
         rhs_type = rhs_operation.return_type
-        # TODO(Morten) we should derive a type from lhs_operation and rhs_operation
         assert lhs_type == rhs_type, (
             lhs_operation,
             rhs_operation,

@@ -144,7 +144,6 @@ impl FixedpointEncodeOp {
     where
         HostPlacement: PlacementRingFixedpointEncode<S, HostFloatT, HostRingT>,
     {
-        // TODO(Morten) inline this function?
         let y = plc.fixedpoint_ring_encode(sess, 2, fractional_precision, &x);
         Ok(HostFixedTensor {
             tensor: y,
@@ -235,7 +234,6 @@ impl FixedpointDecodeOp {
     where
         HostPlacement: PlacementRingFixedpointDecode<S, HostRingT, HostFloatT>,
     {
-        // TODO(Morten) inline this function?
         assert_eq!(x.fractional_precision, precision);
         Ok(plc.fixedpoint_ring_decode(sess, 2, precision, &x.tensor))
     }

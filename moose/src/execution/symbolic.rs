@@ -3,22 +3,29 @@
 //! This is used during compilation to lower operations.
 //! In general, it works by evaluating kernels on symbolic values and
 //! recording the underlying operations perform as new computation.
+//! Values are generally wrapped in the `Symbolic` enum.
 
-use crate::computation::{
-    Computation, KnownType, Operation, Operator, Placed, Placement, SymbolicValue,
-};
+use super::{Session, SetupGeneration};
+use crate::computation::{Computation, Operation, Operator, Placed, Placement, SymbolicValue};
 use crate::error::{Error, Result};
-use crate::execution::Session;
+use crate::host::PrfKey;
 use crate::kernels::{DispatchKernel, PlacementPlace};
-use crate::replicated::ReplicatedPlacement;
-use crate::types::ReplicatedSetup;
+use crate::replicated::{RepSetup, ReplicatedPlacement};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+/// Wrapper for values used in `SymbolicSession`s
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
+    /// The value is really symbolic
+    ///
+    /// It exists only as a handle to an operation.
     Symbolic(SymbolicHandle<T::Placement>),
+
+    /// The value is actually not symbolic
+    ///
+    /// It (partially) exists, although some sub-components may be handles
     Concrete(T),
 }
 
@@ -99,8 +106,7 @@ where
 #[derive(Default)]
 struct SymbolicSessionState {
     pub ops: Vec<Operation>,
-    pub replicated_keys:
-        HashMap<ReplicatedPlacement, Arc<<ReplicatedSetup as KnownType<SymbolicSession>>::Type>>,
+    pub replicated_keys: HashMap<ReplicatedPlacement, Arc<RepSetup<Symbolic<PrfKey>>>>,
 }
 
 /// Session object in which symbolic execution is happening
@@ -161,10 +167,12 @@ impl Session for SymbolicSession {
     ) -> Result<Self::Value> {
         self.strategy.execute(self, op, plc, operands)
     }
+}
 
-    type ReplicatedSetup = <ReplicatedSetup as KnownType<SymbolicSession>>::Type;
+impl SetupGeneration<ReplicatedPlacement> for SymbolicSession {
+    type Setup = RepSetup<Symbolic<PrfKey>>;
 
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
+    fn setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
         // Produce a new replicated setup or returned a previously produced setup for the placement
         let state = self.state.read();
         match state.replicated_keys.get(plc) {
@@ -258,7 +266,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Index(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Diag(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepSlice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepBitDec(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepBitCompose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -267,7 +274,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Sqrt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            HostSlice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostOnes(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Sign(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

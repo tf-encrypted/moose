@@ -1,11 +1,10 @@
 //! Parser for computations defined in Python
 
 use moose::computation::*;
-use moose::host::{HostPlacement, RawShape, SliceInfo, SliceInfoElem};
+use moose::host::{FromRaw, HostPlacement, RawShape, SliceInfo, SliceInfoElem};
 use moose::logical::TensorDType;
 use moose::mirrored::Mirrored3Placement;
 use moose::replicated::ReplicatedPlacement;
-use moose::types::{HostFloat32Tensor, HostFloat64Tensor};
 use ndarray::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -558,7 +557,8 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
             } => {
                 let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
                 let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
-                Ok(HostFloat32Tensor::from(tensor).into())
+                let plc = HostPlacement::from("TODO");
+                Ok(Constant::HostFloat32Tensor(plc.from_raw(tensor)))
             }
             PyNdarray::float64 {
                 ref items,
@@ -566,7 +566,8 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
             } => {
                 let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
                 let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
-                Ok(HostFloat64Tensor::from(tensor).into())
+                let plc = HostPlacement::from("TODO");
+                Ok(Constant::HostFloat64Tensor(plc.from_raw(tensor)))
             }
         },
     }

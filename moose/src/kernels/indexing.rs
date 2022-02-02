@@ -54,28 +54,11 @@ pub trait PlacementSlice<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementSlice::slice, HostSliceOp{slice: SliceInfo},
+    PlacementSlice::slice, SliceOp{slice: SliceInfo},
     [
         (HostPlacement, (HostShape) -> HostShape => [runtime] Self::shape_kernel),
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
-    ]
-}
-
-modelled_kernel! {
-    PlacementSlice::slice, RepSliceOp{slice: SliceInfo},
-    [
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedShape => [concrete] Self::shape_kernel),
-    ]
-}
-
-unmodelled!(HostPlacement, attributes[slice: SliceInfo] (HostShape) -> HostShape, SliceOp);
-
-kernel! {
-    SliceOp,
-    [
-        (HostPlacement, (HostShape) -> HostShape => [hybrid] attributes[slice] Self::kernel),
-        // (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [hybrid] attributes[slice] Self::kernel),
-        // (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [hybrid] attributes[slice] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedShape => [concrete] Self::rep_kernel),
     ]
 }

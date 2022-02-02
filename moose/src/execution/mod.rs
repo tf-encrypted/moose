@@ -3,7 +3,6 @@
 use crate::computation::*;
 use crate::error::Result;
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking, SyncNetworking};
-use crate::replicated::ReplicatedPlacement;
 use crate::storage::{AsyncStorage, LocalAsyncStorage, SyncStorage};
 use derive_more::Display;
 use futures::future::{Map, Shared};
@@ -29,9 +28,11 @@ pub trait Session {
         plc: &Placement,
         operands: Vec<Self::Value>,
     ) -> Result<Self::Value>;
+}
 
-    type ReplicatedSetup;
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup>;
+pub trait SetupGeneration<P> {
+    type Setup;
+    fn setup(&self, plc: &P) -> Arc<Self::Setup>;
 }
 
 /// Trait for sessions that are intended for run-time use only.
@@ -632,7 +633,7 @@ mod tests {
     #[case(false)]
     fn test_shape_slice(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value = HostShape([2, 3, 4, 5])}: () -> HostShape @Host(alice)
-        slice = HostSlice {slice = {start = 1, end = 3}}: (HostShape) -> HostShape (x) @Host(alice)
+        slice = Slice {slice = {start = 1, end = 3}}: (HostShape) -> HostShape (x) @Host(alice)
         output = Output: (HostShape) -> HostShape (slice) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -1127,9 +1128,6 @@ mod tests {
             role_assignments,
             Arc::clone(networking),
             Arc::clone(exec_storage),
-            Arc::new(Placement::Host(HostPlacement {
-                owner: "localhost".into(),
-            })),
         )
     }
 
