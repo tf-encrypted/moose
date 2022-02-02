@@ -9,22 +9,17 @@ use crate::replicated::{RepFixedTensor, RepTensor, ReplicatedPlacement};
 impl MirrorOp {
     pub(crate) fn kernel<S: Session, HostT>(
         sess: &S,
-        mir: &Mirrored3Placement,
+        plc: &Mirrored3Placement,
         x: HostT,
     ) -> Result<Mir3Tensor<HostT>>
     where
-        HostPlacement: PlacementPlace<S, HostT>,
         HostT: Clone,
+        Mirrored3Placement: PlacementPlace<S, Mir3Tensor<HostT>>,
     {
-        let (player0, player1, player2) = &mir.host_placements();
-
-        Ok(Mir3Tensor {
-            values: [
-                player0.place(sess, x.clone()),
-                player1.place(sess, x.clone()),
-                player2.place(sess, x),
-            ],
-        })
+        let x_mirrored = Mir3Tensor {
+            values: [x.clone(), x.clone(), x],
+        };
+        Ok(plc.place(sess, x_mirrored))
     }
 
     pub(crate) fn fixed_kernel<S: Session, HostRingT, MirRingT>(
