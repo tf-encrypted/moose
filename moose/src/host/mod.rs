@@ -197,18 +197,6 @@ where
     }
 }
 
-// TODO(Morten) used by textual
-impl<T> From<Vec<T>> for HostTensor<T> {
-    fn from(v: Vec<T>) -> HostTensor<T> {
-        HostTensor(
-            Array::from(v).into_dyn(),
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernel
-            },
-        )
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct HostBitTensor(pub ArrayD<u8>, pub HostPlacement);
 

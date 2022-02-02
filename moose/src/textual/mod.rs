@@ -1644,7 +1644,7 @@ mod tests {
             constant_literal::<(&str, ErrorKind)>("HostUint8Tensor([1,2,3])")?;
         assert_eq!(
             parsed_u8_tensor,
-            Constant::HostUint8Tensor(vec![1, 2, 3].into())
+            Constant::HostUint8Tensor(plc.from_raw(vec![1, 2, 3]))
         );
         let (_, parsed_seed) =
             constant_literal::<(&str, ErrorKind)>("Seed(529c2fc9bf573d077f45f42b19cfb8d4)")?;
@@ -1728,6 +1728,8 @@ mod tests {
 
     #[test]
     fn test_constant() -> Result<(), anyhow::Error> {
+        let host = HostPlacement::from("TODO");
+
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
             "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor () @Host(alice)",
         )?;
@@ -1736,13 +1738,12 @@ mod tests {
             op.kind,
             Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
-                value: Constant::HostFloat32Tensor(vec![1.0].into())
+                value: Constant::HostFloat32Tensor(host.from_raw(vec![1.0]))
             })
         );
 
         // 2D tensor
         use ndarray::prelude::*;
-        let host = HostPlacement::from("TODO");
         let x = host.from_raw(array![[1.0, 2.0], [3.0, 4.0]]);
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
             "x = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor () @Replicated(alice, bob, charlie)",
@@ -2014,6 +2015,8 @@ mod tests {
 
     #[test]
     fn test_sample_computation() -> Result<(), anyhow::Error> {
+        let host = HostPlacement::from("TODO");
+
         let (_, comp) = parse_computation::<(&str, ErrorKind)>(
             "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor() @Host(alice)
             y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
@@ -2026,14 +2029,14 @@ mod tests {
             comp.operations[0].kind,
             Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
-                value: Constant::HostFloat32Tensor(vec![1.0].into())
+                value: Constant::HostFloat32Tensor(host.from_raw(vec![1.0]))
             })
         );
         assert_eq!(
             comp.operations[1].kind,
             Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
-                value: Constant::HostFloat32Tensor(vec![2.0].into())
+                value: Constant::HostFloat32Tensor(host.from_raw(vec![2.0]))
             })
         );
         assert_eq!(comp.operations[2].name, "z");
@@ -2120,8 +2123,12 @@ mod tests {
 
     #[test]
     fn test_constant_try_into() -> Result<(), anyhow::Error> {
+        let host = HostPlacement::from("TODO");
         let v: Constant = "HostFloat32Tensor([1.0, 2.0, 3.0])".try_into()?;
-        assert_eq!(v, Constant::HostFloat32Tensor(vec![1.0, 2.0, 3.0].into()));
+        assert_eq!(
+            v,
+            Constant::HostFloat32Tensor(host.from_raw(vec![1.0, 2.0, 3.0]))
+        );
         Ok(())
     }
 
