@@ -1,19 +1,3 @@
-// Returns the context-specific type for the given basic type.
-macro_rules! cs {
-    ($canonical_type:ty) => {
-        <$canonical_type as KnownType<S>>::Type
-    };
-}
-
-macro_rules! st {
-    ($partially_canonical_type:ty) => {
-        <<$partially_canonical_type as crate::computation::CanonicalType>::Type as KnownType<S>>::Type
-    };
-    ($partially_canonical_type:ty, $s:ty) => {
-        <<$partially_canonical_type as crate::computation::CanonicalType>::Type as KnownType<$s>>::Type
-    };
-}
-
 /// Map a type to its canonical type
 ///
 /// Using this macro requires adding the following trait bound:

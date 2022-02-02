@@ -1333,8 +1333,8 @@ impl AdtToRepOp {
         HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, HostRingT>,
         HostPlacement: PlacementDeriveSeed<S, KeyT, SeedT>,
         AdditivePlacement: PlacementSub<S, AdtTen<HostRingT>, AdtTen<HostRingT>, AdtTen<HostRingT>>,
-        AdtTen<HostRingT>: Into<st!(AdtTen<HostRingT>, S)>,
-        HostPlacement: PlacementReveal<S, st!(AdtTen<HostRingT>, S), HostRingT>,
+        AdtTen<HostRingT>: Into<m!(c!(AdtTen<HostRingT>))>,
+        HostPlacement: PlacementReveal<S, m!(c!(AdtTen<HostRingT>)), HostRingT>,
         ReplicatedPlacement: PlacementPlace<S, RepTen<HostRingT>>,
     {
         let AdtTen { shares: [x0, x1] } = &x;
@@ -1994,14 +1994,14 @@ impl RingInjectOp {
     where
         AdtTen<HostRingT>: CanonicalType,
         <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-        AdtTen<HostRingT>: Into<st!(AdtTen<HostRingT>)>,
+        AdtTen<HostRingT>: Into<m!(c!(AdtTen<HostRingT>))>,
 
         AdtTen<HostBitT>: CanonicalType,
         <AdtTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
-        AdtTen<HostBitT>: Into<st!(AdtTen<HostBitT>)>,
+        AdtTen<HostBitT>: Into<m!(c!(AdtTen<HostBitT>))>,
 
         AdtTen<HostRingT>: Into<AdtRingT>,
-        st!(AdtTen<HostRingT>): TryInto<AdtTen<HostRingT>>,
+        m!(c!(AdtTen<HostRingT>)): TryInto<AdtTen<HostRingT>>,
         AdtRingT: TryInto<AdtTen<HostRingT>>,
 
         HostPlacement: PlacementShape<S, HostBitT, HostShapeT>,
@@ -2015,7 +2015,7 @@ impl RingInjectOp {
         AdditivePlacement: PlacementMul<S, AdtRingT, HostRingT, AdtRingT>,
         AdditivePlacement: PlacementSub<S, AdtRingT, AdtRingT, AdtRingT>,
         AdditivePlacement: PlacementShl<S, AdtRingT, AdtRingT>,
-        HostPlacement: PlacementReveal<S, st!(AdtTen<HostBitT>), HostBitT>,
+        HostPlacement: PlacementReveal<S, m!(c!(AdtTen<HostBitT>)), HostBitT>,
         HostPlacement: PlacementRingInject<S, HostBitT, HostRingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -2106,15 +2106,15 @@ where
     HostShape: KnownType<S>,
     HostBitT: Clone,
 
-    HostPlacement: PlacementFill<S, cs!(HostShape), HostBitT>,
-    HostPlacement: PlacementShape<S, HostBitT, cs!(HostShape)>,
+    HostPlacement: PlacementFill<S, m!(HostShape), HostBitT>,
+    HostPlacement: PlacementShape<S, HostBitT, m!(HostShape)>,
     HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
 
     RepTen<HostBitT>: CanonicalType,
     <RepTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
-    st!(RepTen<HostBitT>): TryInto<RepTen<HostBitT>>,
+    m!(c!(RepTen<HostBitT>)): TryInto<RepTen<HostBitT>>,
 
-    ReplicatedPlacement: PlacementShare<S, HostBitT, st!(RepTen<HostBitT>)>,
+    ReplicatedPlacement: PlacementShare<S, HostBitT, m!(c!(RepTen<HostBitT>))>,
     HostPlacement: PlacementBitDec<S, HostRingT, HostBitT>,
     // ReplicatedPlacement: PlacementSetupGen<S, S::Setup>,
 {
@@ -2264,12 +2264,9 @@ where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
     HostPlacement: PlacementDeriveSeed<S, m!(PrfKey), m!(Seed)>,
-    S: SetupGeneration<ReplicatedPlacement, Setup=RepSetup<m!(PrfKey)>>,
+    S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<m!(PrfKey)>>,
 {
-    fn gen_seeds(
-        &self,
-        sess: &S,
-    ) -> AbstractReplicatedSeeds<m!(Seed)> {
+    fn gen_seeds(&self, sess: &S) -> AbstractReplicatedSeeds<m!(Seed)> {
         let (player0, player1, player2) = self.host_placements();
 
         let setup = sess.setup(self);

@@ -123,8 +123,8 @@ where
     ReplicatedShape: KnownType<S>,
     ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
-    ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
+    ReplicatedPlacement: PlacementFill<S, m!(ReplicatedShape), RepRingT>,
+    ReplicatedPlacement: PlacementShape<S, RepRingT, m!(ReplicatedShape)>,
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
 {

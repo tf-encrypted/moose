@@ -269,12 +269,12 @@ impl FloatingpointOnesOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        shape: cs!(HostShape),
+        shape: m!(HostShape),
     ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostShape: KnownType<S>,
         HostFloat64Tensor: KnownType<S>,
-        HostPlacement: PlacementOnes<S, cs!(HostShape), HostFloatT>,
+        HostPlacement: PlacementOnes<S, m!(HostShape), HostFloatT>,
     {
         let z = plc.ones(sess, &shape);
         Ok(FloatTensor::Host(z))
@@ -388,14 +388,14 @@ impl LoadOp {
     pub(crate) fn float_kernel<S: Session, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        key: cs!(HostString),
-        query: cs!(HostString),
-    ) -> Result<FloatTensor<cs!(HostFloat64Tensor), MirroredT>>
+        key: m!(HostString),
+        query: m!(HostString),
+    ) -> Result<FloatTensor<m!(HostFloat64Tensor), MirroredT>>
     where
         HostString: KnownType<S>,
         HostFloat32Tensor: KnownType<S>,
         HostFloat64Tensor: KnownType<S>,
-        HostPlacement: PlacementLoad<S, cs!(HostString), cs!(HostString), cs!(HostFloat64Tensor)>,
+        HostPlacement: PlacementLoad<S, m!(HostString), m!(HostString), m!(HostFloat64Tensor)>,
     {
         let z = plc.load(sess, &key, &query);
         Ok(FloatTensor::Host(z))
@@ -406,13 +406,13 @@ impl SaveOp {
     pub(crate) fn float_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
-        key: cs!(HostString),
+        key: m!(HostString),
         x: FloatTensor<HostFloatT, MirroredT>,
-    ) -> Result<cs!(Unit)>
+    ) -> Result<m!(Unit)>
     where
         HostString: KnownType<S>,
         Unit: KnownType<S>,
-        HostPlacement: PlacementSave<S, cs!(HostString), HostFloatT, cs!(Unit)>,
+        HostPlacement: PlacementSave<S, m!(HostString), HostFloatT, m!(Unit)>,
     {
         let x = match x {
             FloatTensor::Host(v) => v,

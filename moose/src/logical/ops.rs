@@ -1078,14 +1078,14 @@ impl OnesOp {
     pub(crate) fn host_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
-        shape: cs!(HostShape),
+        shape: m!(HostShape),
     ) -> Result<
         AbstractTensor<
-            cs!(Fixed64Tensor),
-            cs!(Fixed128Tensor),
-            cs!(Float32Tensor),
-            cs!(Float64Tensor),
-            cs!(BooleanTensor),
+            m!(Fixed64Tensor),
+            m!(Fixed128Tensor),
+            m!(Float32Tensor),
+            m!(Float64Tensor),
+            m!(BooleanTensor),
         >,
     >
     where
@@ -1095,7 +1095,7 @@ impl OnesOp {
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
         BooleanTensor: KnownType<S>,
-        HostPlacement: PlacementOnes<S, cs!(HostShape), cs!(Float64Tensor)>,
+        HostPlacement: PlacementOnes<S, m!(HostShape), m!(Float64Tensor)>,
     {
         let result = plc.ones(sess, &shape);
         Ok(AbstractTensor::Float64(result))
@@ -1442,15 +1442,15 @@ impl LoadOp {
     pub(crate) fn logical_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
-        key: cs!(HostString),
-        query: cs!(HostString),
+        key: m!(HostString),
+        query: m!(HostString),
     ) -> Result<
         AbstractTensor<
-            cs!(Fixed64Tensor),
-            cs!(Fixed128Tensor),
-            cs!(Float32Tensor),
-            cs!(Float64Tensor),
-            cs!(BooleanTensor),
+            m!(Fixed64Tensor),
+            m!(Fixed128Tensor),
+            m!(Float32Tensor),
+            m!(Float64Tensor),
+            m!(BooleanTensor),
         >,
     >
     where
@@ -1460,7 +1460,7 @@ impl LoadOp {
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
         BooleanTensor: KnownType<S>,
-        HostPlacement: PlacementLoad<S, cs!(HostString), cs!(HostString), cs!(Float64Tensor)>,
+        HostPlacement: PlacementLoad<S, m!(HostString), m!(HostString), m!(Float64Tensor)>,
     {
         let z = plc.load(sess, &key, &query);
         Ok(AbstractTensor::Float64(z))
@@ -1471,17 +1471,17 @@ impl SaveOp {
     pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
-        key: cs!(HostString),
+        key: m!(HostString),
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
-    ) -> Result<cs!(Unit)>
+    ) -> Result<m!(Unit)>
     where
         HostString: KnownType<S>,
         Unit: KnownType<S>,
-        // HostPlacement: PlacementSave<S, cs!(HostString), Fixed64T, cs!(Unit)>,
-        // HostPlacement: PlacementSave<S, cs!(HostString), Fixed128T, cs!(Unit)>,
-        HostPlacement: PlacementSave<S, cs!(HostString), Float32T, cs!(Unit)>,
-        HostPlacement: PlacementSave<S, cs!(HostString), Float64T, cs!(Unit)>,
-        HostPlacement: PlacementSave<S, cs!(HostString), BoolT, cs!(Unit)>,
+        // HostPlacement: PlacementSave<S, m!(HostString), Fixed64T, m!(Unit)>,
+        // HostPlacement: PlacementSave<S, m!(HostString), Fixed128T, m!(Unit)>,
+        HostPlacement: PlacementSave<S, m!(HostString), Float32T, m!(Unit)>,
+        HostPlacement: PlacementSave<S, m!(HostString), Float64T, m!(Unit)>,
+        HostPlacement: PlacementSave<S, m!(HostString), BoolT, m!(Unit)>,
     {
         match x {
             AbstractTensor::Fixed64(_x) => {
