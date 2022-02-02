@@ -62,7 +62,7 @@ impl RepEqualOp {
 }
 
 impl Log2Op {
-    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, HostRingT>( // RepFixedT
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepFixedTensor<RepRingT>,
@@ -90,13 +90,11 @@ impl Log2Op {
             m!(c!(RepFixedTensor<RepRingT>)),
             m!(c!(RepFixedTensor<RepRingT>)),
         >,
+        ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
 
         HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
         HostRingT: std::fmt::Debug,
     {
-
-        let (player0, player1, player2) = rep.host_placements();
-
         let total_precision = x.fractional_precision + x.integral_precision;
 
         let (v, p, _s, _z) = rep.int2fl(
@@ -113,22 +111,52 @@ impl Log2Op {
         }
         .into();
 
-        println!("v: {:?}", player0.reveal(sess, &v));
-        println!("p: {:?}", player0.reveal(sess, &p));
-
         let p2524 = rep.polynomial_eval(sess, P_2524.to_vec(), v_fixed.clone());
+
         let q2524 = rep.polynomial_eval(sess, Q_2524.to_vec(), v_fixed);
 
         let quotient = rep.div(sess, &p2524, &q2524);
         let p_fixed = RepFixedTensor {
-            tensor: p,
+            tensor: rep.shl(sess, x.fractional_precision as usize, &p),
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
         }
         .into();
 
         let result = with_context!(rep, sess, p_fixed + quotient);
+
         Ok(result.try_into().ok().unwrap())
+    }
+}
+
+impl LnOp {
+    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, MirFixedT, HostFixedT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepFixedT,
+    ) -> Result<RepFixedT>
+    where
+        RepFixedT: FixedpointTensor,
+        ReplicatedPlacement: ShapeFill<S, RepFixedT, Result = MirFixedT>,
+        ReplicatedPlacement: PlacementLog2<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementMul<S, MirFixedT, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementTruncPr<S, RepFixedT, RepFixedT>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        MirFixedT: std::fmt::Debug,
+        HostFixedT: std::fmt::Debug,
+    {
+        let ln2 = rep.shape_fill(
+            sess,
+            2.0_f64
+                .ln()
+                .as_fixedpoint(x.fractional_precision() as usize),
+            &x,
+        );
+
+        let log2 = rep.log2(sess, &x);
+        let result = rep.mul(sess, &ln2, &log2);
+
+        Ok(rep.trunc_pr(sess, x.fractional_precision(), &result))
     }
 }
 
@@ -248,12 +276,73 @@ where
 #[cfg(test)]
 mod tests {
     use crate::execution::SyncSession;
-    use crate::host::{FromRaw, FromRawScaled, HostPlacement};
+    use crate::fixedpoint::FixedTensor;
+    use crate::host::{Convert, FromRaw, FromRawScaled, HostPlacement};
     use crate::kernels::*;
     use crate::replicated::log::Int2FL;
     use crate::replicated::{ReplicatedBitTensor, ReplicatedPlacement};
-    use crate::types::{HostBitTensor, HostRing64Tensor, HostFixed128Tensor};
+    use crate::types::{HostBitTensor, HostFixed128Tensor, HostFixed64Tensor, HostRing64Tensor};
     use ndarray::array;
+    use ndarray::prelude::*;
+
+    macro_rules! rep_approx_log_fixed_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $ret_ty:ident, $f_precision: expr, $i_precision: expr, $err: expr) => {
+            fn $func_name(x: ArrayD<f64>, y_target: Vec<f64>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let sess = SyncSession::default();
+
+                let x: $ret_ty = alice.from_raw_scaled(x, $f_precision, $i_precision);
+                let x = FixedTensor::Host(x);
+
+                let log_result = rep.$test_func(&sess, &x);
+
+                let opened_log = match log_result {
+                    FixedTensor::Replicated(r) => alice.reveal(&sess, &r),
+                    _ => panic!("Should not produce an non-replicated tensor on a replicated placement"),
+                };
+
+                let result = Convert::decode(&opened_log.tensor, (2 as $tt).pow($f_precision));
+                let result: Vec<_> = result.0.iter().copied().collect();
+                // operation precision is not as accurate as the fixed point precision
+                for i in 0..y_target.len() {
+                    let error = (result[i] - y_target[i]).abs();
+                    assert!(error < $err, "failed comparing {:?} against {:?}, error is {:?}", result[i], y_target[i], error);
+                }
+            }
+        };
+    }
+
+    rep_approx_log_fixed_test!(
+        test_rep_log2_fixed64,
+        log2<u64>,
+        HostFixed64Tensor,
+        8,
+        10,
+        0.01
+    );
+    rep_approx_log_fixed_test!(
+        test_rep_log2_fixed128,
+        log2<u128>,
+        HostFixed128Tensor,
+        10,
+        30,
+        0.01
+    );
+    rep_approx_log_fixed_test!(test_rep_ln_fixed64, ln<u64>, HostFixed64Tensor, 8, 20, 0.01);
+    rep_approx_log_fixed_test!(
+        test_rep_ln_fixed128,
+        ln<u128>,
+        HostFixed128Tensor,
+        10,
+        30,
+        0.01
+    );
 
     #[test]
     fn test_equal() {
@@ -321,23 +410,15 @@ mod tests {
 
     #[test]
     fn test_log2() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
+        let x = array![1.0_f64, 2.0, 4.0, 8.0, 4.5, 10.5].into_dyn();
+        let expected = x.mapv(|item| item.log2()).iter().copied().collect();
+        test_rep_log2_fixed64(x, expected);
+    }
 
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
-
-        let sess = SyncSession::default();
-
-        let x: HostFixed128Tensor = alice.from_raw_scaled(array![2.0, 4.0, 8.0, 4.5, 10.5], 10, 10);
-
-        println!("encoded x: {:?}", x);
-        let x_shared = rep.share(&sess, &x);
-
-        println!("x_revealed: {:?}", alice.reveal(&sess, &x_shared));
-        let log2x = rep.log2(&sess, &x_shared);
-        println!("{:?}", alice.reveal(&sess, &log2x));
+    #[test]
+    fn test_ln() {
+        let x = array![1.0_f64, 2.5, 3.0, 4.0, 5.0].into_dyn();
+        let expected = x.mapv(|item| item.ln()).iter().copied().collect();
+        test_rep_ln_fixed64(x, expected);
     }
 }

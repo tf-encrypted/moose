@@ -1100,6 +1100,7 @@ operators![
     Maximum,
     Softmax,
     Log2,
+    Ln,
     // Mirrored Operators
     Demirror,
     Mirror,
@@ -1850,6 +1851,11 @@ pub struct BroadcastOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct Log2Op {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct LnOp {
     pub sig: Signature,
 }
 
