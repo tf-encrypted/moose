@@ -1796,8 +1796,8 @@ impl RepShlDimOp {
     }
 }
 
-impl RepMsbOp {
-    pub(crate) fn bit_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, N: Const>(
+impl MsbOp {
+    pub(crate) fn rep_bit_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
@@ -1812,7 +1812,7 @@ impl RepMsbOp {
         Ok(rep.index(sess, N::VALUE - 1, &bits))
     }
 
-    pub(crate) fn ring_kernel<S: Session, RepRingT, RepBitT>(
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,

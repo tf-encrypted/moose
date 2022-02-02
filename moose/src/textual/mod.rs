@@ -1110,7 +1110,7 @@ impl ToTextual for Operator {
             AdtToRep(op) => op.to_textual(),
             Abs(op) => op.to_textual(),
             Fill(op) => op.to_textual(),
-            RepMsb(op) => op.to_textual(),
+            Msb(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
             Index(op) => op.to_textual(),
             RepBitDec(op) => op.to_textual(),

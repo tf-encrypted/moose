@@ -1100,7 +1100,7 @@ operators![
     RepShare,
     RepReveal,
     Fill,
-    RepMsb,
+    Msb,
     RepFixedpointMean,
     AddN,
     RepTruncPr,
@@ -1559,7 +1559,7 @@ pub struct AbsOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepMsbOp {
+pub struct MsbOp {
     pub sig: Signature,
 }
 
