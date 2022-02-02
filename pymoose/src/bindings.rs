@@ -264,6 +264,8 @@ impl MooseComputation {
     }
 }
 
+const DEFAULT_PARSE_CHUNKS: usize = 12;
+
 #[pymethods]
 impl MooseComputation {
     #[classmethod]
@@ -302,7 +304,7 @@ impl MooseComputation {
     #[classmethod]
     pub fn from_textual(_cls: &PyType, py: Python, text: &PyString) -> PyResult<Py<Self>> {
         let text: &str = text.extract()?;
-        let computation: Computation = parallel_parse_computation(text, 3)
+        let computation: Computation = parallel_parse_computation(text, DEFAULT_PARSE_CHUNKS)
             .map_err(|e: anyhow::Error| PyRuntimeError::new_err(e.to_string()))?;
         let moose_comp = MooseComputation { computation };
         Py::new(py, moose_comp)
