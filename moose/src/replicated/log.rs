@@ -2,7 +2,14 @@ use super::*;
 use crate::computation::RepEqualOp;
 use crate::error::Result;
 use crate::execution::Session;
+use crate::fixedpoint::PolynomialEval;
 use crate::{Const, Ring};
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref P_2524: Vec<f64> = vec![-2.05466671951, -8.8626599391, 6.10585199015, 4.81147460989];
+    static ref Q_2524: Vec<f64> = vec![0.353553425277, 4.54517087629, 6.42784209029, 1.0];
+}
 
 impl RepEqualOp {
     pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
@@ -55,12 +62,73 @@ impl RepEqualOp {
 }
 
 impl Log2Op {
-    pub(crate) fn rep_rep_kernel<S: Session, RepRingT>(
-        _sess: &S,
-        _rep: &ReplicatedPlacement,
-        _x: RepFixedTensor<RepRingT>,
-    ) -> Result<RepFixedTensor<RepRingT>> {
-        unimplemented!()
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, HostRingT>( // RepFixedT
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
+    where
+        RepFixedTensor<RepRingT>: CanonicalType,
+        <RepFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
+
+        m!(c!(RepFixedTensor<RepRingT>)): TryInto<RepFixedTensor<RepRingT>>,
+        m!(c!(RepFixedTensor<RepRingT>)): Clone,
+
+        RepFixedTensor<RepRingT>: Into<m!(c!(RepFixedTensor<RepRingT>))>,
+
+        ReplicatedPlacement: Int2FL<S, RepRingT>,
+        ReplicatedPlacement: PolynomialEval<S, m!(c!(RepFixedTensor<RepRingT>))>,
+        ReplicatedPlacement: PlacementDiv<
+            S,
+            m!(c!(RepFixedTensor<RepRingT>)),
+            m!(c!(RepFixedTensor<RepRingT>)),
+            m!(c!(RepFixedTensor<RepRingT>)),
+        >,
+        ReplicatedPlacement: PlacementAdd<
+            S,
+            m!(c!(RepFixedTensor<RepRingT>)),
+            m!(c!(RepFixedTensor<RepRingT>)),
+            m!(c!(RepFixedTensor<RepRingT>)),
+        >,
+
+        HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
+        HostRingT: std::fmt::Debug,
+    {
+
+        let (player0, player1, player2) = rep.host_placements();
+
+        let total_precision = x.fractional_precision + x.integral_precision;
+
+        let (v, p, _s, _z) = rep.int2fl(
+            sess,
+            &x.tensor,
+            total_precision as usize,
+            x.fractional_precision as usize,
+        );
+
+        let v_fixed = RepFixedTensor {
+            tensor: v,
+            integral_precision: x.integral_precision,
+            fractional_precision: x.fractional_precision,
+        }
+        .into();
+
+        println!("v: {:?}", player0.reveal(sess, &v));
+        println!("p: {:?}", player0.reveal(sess, &p));
+
+        let p2524 = rep.polynomial_eval(sess, P_2524.to_vec(), v_fixed.clone());
+        let q2524 = rep.polynomial_eval(sess, Q_2524.to_vec(), v_fixed);
+
+        let quotient = rep.div(sess, &p2524, &q2524);
+        let p_fixed = RepFixedTensor {
+            tensor: p,
+            integral_precision: x.integral_precision,
+            fractional_precision: x.fractional_precision,
+        }
+        .into();
+
+        let result = with_context!(rep, sess, p_fixed + quotient);
+        Ok(result.try_into().ok().unwrap())
     }
 }
 
@@ -180,11 +248,11 @@ where
 #[cfg(test)]
 mod tests {
     use crate::execution::SyncSession;
-    use crate::host::{FromRaw, HostPlacement};
+    use crate::host::{FromRaw, FromRawScaled, HostPlacement};
     use crate::kernels::*;
     use crate::replicated::log::Int2FL;
     use crate::replicated::{ReplicatedBitTensor, ReplicatedPlacement};
-    use crate::types::{HostBitTensor, HostRing64Tensor};
+    use crate::types::{HostBitTensor, HostRing64Tensor, HostFixed128Tensor};
     use ndarray::array;
 
     #[test]
@@ -249,5 +317,27 @@ mod tests {
             (sign * z_neg * vc_i64 * twop).mapv(|x| std::num::Wrapping((x as i64) as u64));
 
         assert_eq!(expected, x.0);
+    }
+
+    #[test]
+    fn test_log2() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let sess = SyncSession::default();
+
+        let x: HostFixed128Tensor = alice.from_raw_scaled(array![2.0, 4.0, 8.0, 4.5, 10.5], 10, 10);
+
+        println!("encoded x: {:?}", x);
+        let x_shared = rep.share(&sess, &x);
+
+        println!("x_revealed: {:?}", alice.reveal(&sess, &x_shared));
+        let log2x = rep.log2(&sess, &x_shared);
+        println!("{:?}", alice.reveal(&sess, &log2x));
     }
 }
