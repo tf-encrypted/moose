@@ -1055,7 +1055,7 @@ operators![
     HostMean,
     HostSlice,
     Diag,
-    HostBitDec,
+    BitDec,
     HostOnes,
     HostShlDim,
     Sign,
@@ -1104,7 +1104,6 @@ operators![
     RepToAdt,
     Index,
     RepSlice,
-    RepBitDec,
     RepBitCompose,
     RepShlDim,
     Mux,
@@ -1327,7 +1326,7 @@ pub struct HostShlDimOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostBitDecOp {
+pub struct BitDecOp {
     pub sig: Signature,
 }
 
@@ -1602,11 +1601,6 @@ pub struct IndexOp {
 pub struct RepSliceOp {
     pub sig: Signature,
     pub slice: SliceInfo,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepBitDecOp {
-    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]

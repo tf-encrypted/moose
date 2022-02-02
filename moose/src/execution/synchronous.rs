@@ -136,7 +136,6 @@ impl Session for SyncSession {
             AddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Index(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepBitCompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -185,7 +184,7 @@ impl Session for SyncSession {
             FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            HostBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            BitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Identity(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Cast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Send(op) => {

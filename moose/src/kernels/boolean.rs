@@ -80,20 +80,14 @@ pub trait PlacementBitDec<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementBitDec::bit_decompose, HostBitDecOp,
+    PlacementBitDec::bit_decompose, BitDecOp,
     [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
-        (HostPlacement, (HostRing64Tensor) -> HostBitTensor => [runtime] Self::bit64_kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostBitTensor => [runtime] Self::bit128_kernel),
-    ]
-}
-
-modelled_kernel! {
-    PlacementBitDec::bit_decompose, RepBitDecOp,
-    [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedBitArray64 => [hybrid] Self::ring_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedBitArray128 => [hybrid] Self::ring_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_ring64_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_ring128_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostBitTensor => [runtime] Self::host_bit64_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostBitTensor => [runtime] Self::host_bit128_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedBitArray64 => [hybrid] Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedBitArray128 => [hybrid] Self::rep_ring_kernel),
     ]
 }
 

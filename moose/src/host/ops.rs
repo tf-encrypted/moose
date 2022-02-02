@@ -696,8 +696,8 @@ impl HostShlDimOp {
     }
 }
 
-impl HostBitDecOp {
-    pub(crate) fn ring64_kernel<S: RuntimeSession>(
+impl BitDecOp {
+    pub(crate) fn host_ring64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing64Tensor,
@@ -718,7 +718,7 @@ impl HostBitDecOp {
         Ok(HostRingTensor(result, plc.clone()))
     }
 
-    pub(crate) fn ring128_kernel<S: RuntimeSession>(
+    pub(crate) fn host_ring128_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing128Tensor,
@@ -737,7 +737,7 @@ impl HostBitDecOp {
         Ok(HostRingTensor(result, plc.clone()))
     }
 
-    pub(crate) fn bit64_kernel<S: RuntimeSession>(
+    pub(crate) fn host_bit64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing64Tensor,
@@ -757,7 +757,7 @@ impl HostBitDecOp {
         Ok(HostBitTensor(result.map(|v| v.0 as u8), plc.clone()))
     }
 
-    pub(crate) fn bit128_kernel<S: RuntimeSession>(
+    pub(crate) fn host_bit128_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing128Tensor,
