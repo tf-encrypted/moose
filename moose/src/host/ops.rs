@@ -946,15 +946,6 @@ impl ExpandDimsOp {
     }
 }
 
-// TODO(Morten) inline
-impl<T: LinalgScalar> HostTensor<T> {
-    fn squeeze(self, axis: Option<usize>) -> Self {
-        let plc = (&self.1).clone();
-        let newshape = self.shape().0.squeeze(axis);
-        self.reshape(HostShape(newshape, plc))
-    }
-}
-
 impl HostSqueezeOp {
     pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
@@ -967,7 +958,8 @@ impl HostSqueezeOp {
     {
         let x = plc.place(sess, x);
         let axis = axis.map(|a| a as usize);
-        Ok(x.squeeze(axis))
+        let newshape = HostShape(x.shape().0.squeeze(axis), plc.clone());
+        Ok(x.reshape(newshape))
     }
 }
 
