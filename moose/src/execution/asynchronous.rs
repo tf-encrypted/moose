@@ -338,7 +338,6 @@ impl Session for AsyncSession {
             BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)?,
             Xor(op) => DispatchKernel::compile(&op, plc)?,
             And(op) => DispatchKernel::compile(&op, plc)?,
-            Neg(op) => DispatchKernel::compile(&op, plc)?,
             Or(op) => DispatchKernel::compile(&op, plc)?,
             BitExtract(op) => DispatchKernel::compile(&op, plc)?,
             RingSample(op) => DispatchKernel::compile(&op, plc)?,
