@@ -30,18 +30,12 @@ pub trait PlacementAnd<S: Session, T, U, O> {
 }
 
 modelled_kernel! {
-    PlacementAnd::and, RepAndOp,
+    PlacementAnd::and, AndOp,
     [
-        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [transparent] Self::bit_kernel),
-    ]
-}
-
-modelled_kernel! {
-    PlacementAnd::and, BitAndOp,
-    [
-        (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => [runtime] Self::bit_kernel),
-        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring_kernel),
-        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring_kernel),
+        (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_ring_kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
     ]
 }
 
@@ -53,7 +47,7 @@ pub trait PlacementOr<S: Session, T, U, O> {
 }
 
 modelled_kernel! {
-    PlacementOr::or, BitOrOp,
+    PlacementOr::or, OrOp,
     [
         (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::logical_host_kernel),
         (HostPlacement, (BooleanTensor, BooleanTensor) -> BooleanTensor => [concrete] Self::bool_kernel),

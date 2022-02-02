@@ -1071,9 +1071,9 @@ operators![
     BitExtract,
     BitSample,
     BitSampleSeeded,
-    BitXor,
-    BitAnd,
-    BitOr,
+    Xor,
+    And,
+    Or,
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
@@ -1101,8 +1101,6 @@ operators![
     RepReveal,
     Fill,
     RepMsb,
-    RepAnd,
-    RepXor,
     RepFixedpointMean,
     AddN,
     RepTruncPr,
@@ -1439,17 +1437,17 @@ pub struct BitSampleSeededOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitXorOp {
+pub struct XorOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitAndOp {
+pub struct AndOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitOrOp {
+pub struct OrOp {
     pub sig: Signature,
 }
 
@@ -1577,16 +1575,6 @@ pub struct RepShareOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RepRevealOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepAndOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepXorOp {
     pub sig: Signature,
 }
 

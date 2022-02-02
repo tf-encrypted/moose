@@ -648,8 +648,8 @@ impl IdentityOp {
     }
 }
 
-impl RepAndOp {
-    pub(crate) fn bit_kernel<S: Session, RepT>(
+impl AndOp {
+    pub(crate) fn rep_kernel<S: Session, RepT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepT,

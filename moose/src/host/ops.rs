@@ -1267,8 +1267,8 @@ impl NegOp {
     }
 }
 
-impl BitAndOp {
-    pub(crate) fn bit_kernel<S: RuntimeSession>(
+impl AndOp {
+    pub(crate) fn host_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostBitTensor,
@@ -1277,7 +1277,7 @@ impl BitAndOp {
         Ok(HostBitTensor(x.0 & y.0, plc.clone()))
     }
 
-    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRingTensor<T>,
@@ -1291,7 +1291,7 @@ impl BitAndOp {
     }
 }
 
-impl BitOrOp {
+impl OrOp {
     pub(crate) fn host_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
