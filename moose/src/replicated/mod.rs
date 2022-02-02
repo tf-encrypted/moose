@@ -663,8 +663,8 @@ impl AndOp {
     }
 }
 
-impl RepXorOp {
-    pub(crate) fn bit_kernel<S: Session, X1, X2, Y>(
+impl XorOp {
+    pub(crate) fn rep_kernel<S: Session, X1, X2, Y>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: X1,

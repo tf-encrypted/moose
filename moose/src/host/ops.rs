@@ -1246,8 +1246,8 @@ impl BitSampleSeededOp {
     }
 }
 
-impl BitXorOp {
-    pub(crate) fn kernel<S: RuntimeSession>(
+impl XorOp {
+    pub(crate) fn host_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostBitTensor,
