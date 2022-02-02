@@ -1,7 +1,7 @@
 //! Various operations for additive placements
 use super::*;
 use crate::computation::{
-    AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant, Placed, ShapeOp,
+    AddOp, AdtFillOp, AdtRevealOp, Constant, MulOp, Placed, ShapeOp, ShlOp, SubOp,
 };
 use crate::error::Result;
 use crate::execution::Session;
@@ -86,7 +86,7 @@ impl AdtRevealOp {
     }
 }
 
-impl AdtAddOp {
+impl AddOp {
     pub(crate) fn adt_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
@@ -156,7 +156,7 @@ impl AdtAddOp {
     }
 }
 
-impl AdtSubOp {
+impl SubOp {
     pub(crate) fn adt_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
@@ -227,7 +227,7 @@ impl AdtSubOp {
     }
 }
 
-impl AdtMulOp {
+impl MulOp {
     pub(crate) fn host_adt_kernel<S: Session, HostRingT>(
         sess: &S,
         adt: &AdditivePlacement,
@@ -267,8 +267,8 @@ impl AdtMulOp {
     }
 }
 
-impl AdtShlOp {
-    pub(crate) fn kernel<S: Session, HostRingT>(
+impl ShlOp {
+    pub(crate) fn adt_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &AdditivePlacement,
         amount: usize,
@@ -288,7 +288,7 @@ impl AdtShlOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::computation::{KnownType, Operation, Operator, Placement, RingAddOp};
+    use crate::computation::{AddOp, KnownType, Operation, Operator, Placement};
     use crate::execution::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
     use crate::execution::SyncSession;
     use crate::types::*;
@@ -390,7 +390,7 @@ mod tests {
             Some(op) => assert!(matches!(
                 op,
                 Operation {
-                    kind: Operator::AdtAdd(AdtAddOp { sig: _ }),
+                    kind: Operator::Add(AddOp { sig: _ }),
                     ..
                 }
             )),
@@ -465,7 +465,7 @@ mod tests {
             assert!(iter.any(|o| matches!(o,
                 Operation {
                     name,
-                    kind: Operator::RingAdd(RingAddOp { sig: _ }),
+                    kind: Operator::Add(AddOp { sig: _ }),
                     inputs,
                     placement: Placement::Host(HostPlacement { owner }),
                     ..
@@ -478,7 +478,7 @@ mod tests {
             assert!(iter.any(|o| matches!(o,
                 Operation {
                     name,
-                    kind: Operator::RingAdd(RingAddOp { sig: _ }),
+                    kind: Operator::Add(AddOp { sig: _ }),
                     inputs,
                     placement: Placement::Host(HostPlacement { owner }),
                     ..

@@ -59,7 +59,7 @@ fn main() {
     for i in 0..10_000_000 {
         operations.push(Operation {
             name: format!("y{}", i),
-            kind: RingMulOp {
+            kind: MulOp {
                 sig: Signature::binary(
                     Ty::HostRing64Tensor,
                     Ty::HostRing64Tensor,

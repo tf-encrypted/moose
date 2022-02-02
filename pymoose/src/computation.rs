@@ -925,7 +925,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SqrtOperation(op) => Ok(Operation {
-                        kind: HostSqrtOp {
+                        kind: SqrtOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
                         .into(),

@@ -678,7 +678,7 @@ impl RepXorOp {
     }
 }
 
-impl RepNegOp {
+impl NegOp {
     pub(crate) fn rep_bit_kernel<S: Session, HostBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -735,7 +735,7 @@ impl RepNegOp {
     }
 }
 
-impl RepAddOp {
+impl AddOp {
     pub(crate) fn rep_rep_kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -851,7 +851,7 @@ impl RepAddOp {
     }
 }
 
-impl RepSubOp {
+impl SubOp {
     pub(crate) fn rep_rep_kernel<S: Session, R>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -971,7 +971,7 @@ impl RepSubOp {
     }
 }
 
-impl RepMulOp {
+impl MulOp {
     pub(crate) fn rep_rep_kernel<S: Session, RingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -1090,7 +1090,7 @@ impl RepMulOp {
     }
 }
 
-impl RepDotOp {
+impl DotOp {
     pub(crate) fn rep_rep_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -1604,8 +1604,8 @@ impl FillOp {
     }
 }
 
-impl RepShlOp {
-    pub(crate) fn kernel<S: Session, HostRingT>(
+impl ShlOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         amount: usize,
@@ -1710,8 +1710,8 @@ impl IndexOp {
     }
 }
 
-impl RepDiagOp {
-    pub(crate) fn kernel<S: Session, HostRingT>(
+impl DiagOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: RepTen<HostRingT>,
@@ -1826,8 +1826,8 @@ impl RepMsbOp {
     }
 }
 
-impl RepAbsOp {
-    pub(crate) fn kernel<S: Session, RepRingT, MirRingT>(
+impl AbsOp {
+    pub(crate) fn rep_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
