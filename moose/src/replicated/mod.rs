@@ -2178,7 +2178,6 @@ impl RepBitComposeOp {
     ) -> Result<RepRingT>
     where
         RepRingT: Ring<BitLength = N>,
-
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
