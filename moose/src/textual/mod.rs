@@ -1962,7 +1962,7 @@ mod tests {
             "z = BitSampleSeeded: (HostShape, Seed) -> HostBitTensor (shape, seed) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = BitXor: (HostBitTensor, HostBitTensor) -> HostBitTensor (x, y) @Host(alice)",
+            "z = Xor: (HostBitTensor, HostBitTensor) -> HostBitTensor (x, y) @Host(alice)",
         )?;
 
         parse_assignment::<(&str, ErrorKind)>(
