@@ -817,7 +817,6 @@ impl SqrtOp {
     }
 }
 
-// TODO(Morten) inline
 impl<T: LinalgScalar> HostTensor<T> {
     fn sum(self, axis: Option<usize>) -> Result<Self> {
         if let Some(i) = axis {
