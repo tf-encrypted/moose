@@ -428,8 +428,8 @@ impl ShapeOp {
     }
 }
 
-impl HostAtLeast2DOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar>(
+impl AtLeast2DOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
         sess: &S,
         plc: &HostPlacement,
         to_column_vector: bool,
@@ -946,8 +946,8 @@ impl ExpandDimsOp {
     }
 }
 
-impl HostSqueezeOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl SqueezeOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
@@ -1000,8 +1000,8 @@ impl ConcatOp {
     }
 }
 
-impl HostTransposeOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl TransposeOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -1155,21 +1155,7 @@ impl ShapeOp {
     }
 }
 
-impl HostReshapeOp {
-    pub(crate) fn bit_kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        x: HostBitTensor,
-        shape: HostShape,
-    ) -> Result<HostBitTensor> {
-        let res =
-            x.0.into_shape(shape.0 .0)
-                .map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostBitTensor(res, plc.clone()))
-    }
-}
-
-impl HostReshapeOp {
+impl ReshapeOp {
     pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1183,6 +1169,30 @@ impl HostReshapeOp {
             x.0.into_shape(shape.0 .0)
                 .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostTensor::<T>(res, plc.clone()))
+    }
+
+    pub(crate) fn host_bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostBitTensor,
+        shape: HostShape,
+    ) -> Result<HostBitTensor> {
+        let res =
+            x.0.into_shape(shape.0 .0)
+                .map_err(|e| Error::KernelError(e.to_string()))?;
+        Ok(HostBitTensor(res, plc.clone()))
+    }
+
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRingTensor<T>,
+        shape: HostShape,
+    ) -> Result<HostRingTensor<T>> {
+        let res =
+            x.0.into_shape(shape.0 .0)
+                .map_err(|e| Error::KernelError(e.to_string()))?;
+        Ok(HostRingTensor::<T>(res, plc.clone()))
     }
 }
 
@@ -1396,20 +1406,6 @@ impl BroadcastOp {
                 x, s
             ))),
         }
-    }
-}
-
-impl HostReshapeOp {
-    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        plc: &HostPlacement,
-        x: HostRingTensor<T>,
-        shape: HostShape,
-    ) -> Result<HostRingTensor<T>> {
-        let res =
-            x.0.into_shape(shape.0 .0)
-                .map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostRingTensor::<T>(res, plc.clone()))
     }
 }
 
