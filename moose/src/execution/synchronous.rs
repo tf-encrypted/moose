@@ -136,7 +136,7 @@ impl Session for SyncSession {
             AddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Index(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSlice(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepBitCompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            BitCompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtReveal(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

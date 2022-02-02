@@ -96,7 +96,7 @@ pub trait PlacementBitCompose<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementBitCompose::bit_compose, RepBitComposeOp,
+    PlacementBitCompose::bit_compose, BitComposeOp,
     [
         (ReplicatedPlacement, (ReplicatedBitArray64) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedBitArray128) -> ReplicatedRing128Tensor => [transparent] Self::rep_kernel),

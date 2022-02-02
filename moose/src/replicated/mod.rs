@@ -2170,7 +2170,7 @@ impl BitDecOp {
     }
 }
 
-impl RepBitComposeOp {
+impl BitComposeOp {
     pub(crate) fn rep_kernel<S: Session, ShapeT, RepRingT, RepBitArrayT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,

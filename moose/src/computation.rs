@@ -1104,7 +1104,7 @@ operators![
     RepToAdt,
     Index,
     RepSlice,
-    RepBitCompose,
+    BitCompose,
     RepShlDim,
     Mux,
     Maximum,
@@ -1604,7 +1604,7 @@ pub struct RepSliceOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepBitComposeOp {
+pub struct BitComposeOp {
     pub sig: Signature,
 }
 
