@@ -6,13 +6,11 @@
 //! Values are generally wrapped in the `Symbolic` enum.
 
 use super::{Session, SetupGeneration};
-use crate::computation::{
-    Computation, KnownType, Operation, Operator, Placed, Placement, SymbolicValue,
-};
+use crate::computation::{Computation, Operation, Operator, Placed, Placement, SymbolicValue};
 use crate::error::{Error, Result};
+use crate::host::PrfKey;
 use crate::kernels::{DispatchKernel, PlacementPlace};
-use crate::replicated::ReplicatedPlacement;
-use crate::types::ReplicatedSetup;
+use crate::replicated::{RepSetup, ReplicatedPlacement};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -108,8 +106,7 @@ where
 #[derive(Default)]
 struct SymbolicSessionState {
     pub ops: Vec<Operation>,
-    pub replicated_keys:
-        HashMap<ReplicatedPlacement, Arc<<ReplicatedSetup as KnownType<SymbolicSession>>::Type>>,
+    pub replicated_keys: HashMap<ReplicatedPlacement, Arc<RepSetup<Symbolic<PrfKey>>>>,
 }
 
 /// Session object in which symbolic execution is happening
@@ -173,7 +170,7 @@ impl Session for SymbolicSession {
 }
 
 impl SetupGeneration<ReplicatedPlacement> for SymbolicSession {
-    type Setup = <ReplicatedSetup as KnownType<SymbolicSession>>::Type;
+    type Setup = RepSetup<Symbolic<PrfKey>>;
 
     fn setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
         // Produce a new replicated setup or returned a previously produced setup for the placement

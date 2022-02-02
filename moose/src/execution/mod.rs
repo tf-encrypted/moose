@@ -3,7 +3,6 @@
 use crate::computation::*;
 use crate::error::Result;
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking, SyncNetworking};
-use crate::replicated::ReplicatedPlacement;
 use crate::storage::{AsyncStorage, LocalAsyncStorage, SyncStorage};
 use derive_more::Display;
 use futures::future::{Map, Shared};

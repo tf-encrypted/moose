@@ -252,7 +252,7 @@ impl Session for SyncSession {
 }
 
 impl SetupGeneration<ReplicatedPlacement> for SyncSession {
-    type Setup = ReplicatedSetup;
+    type Setup = RepSetup<PrfKey>;
 
     fn setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
         let mut replicated_keys = self.replicated_keys.write().unwrap();

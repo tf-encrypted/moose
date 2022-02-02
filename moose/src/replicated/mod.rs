@@ -418,9 +418,7 @@ impl RepShareOp {
         x: RingT,
     ) -> Result<RepTen<RingT>>
     where
-        S: SetupGeneration<ReplicatedPlacement>,
-        <S as SetupGeneration<ReplicatedPlacement>>::Setup: Clone,
-        <S as SetupGeneration<ReplicatedPlacement>>::Setup: TryInto<RepSetup<KeyT>>,
+        S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<KeyT>>,
         RingT: Clone + Placed<Placement = HostPlacement>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, RingT>,
@@ -432,13 +430,10 @@ impl RepShareOp {
     {
         let x_player = x.placement()?;
 
-        let setup = match (*sess.setup(plc)).clone().try_into() {
-            Ok(setup) => setup,
-            _ => todo!("not sure what to do with the symbolic setup yet"), // TODO: perhaps a custom kernel could instead output a symbolic op
-        };
+        let setup = sess.setup(plc);
         let RepSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
-        } = &setup;
+        } = setup.as_ref();
 
         let (player0, player1, player2) = plc.host_placements();
 
@@ -2320,9 +2315,7 @@ impl<S: Session, RingT, HostShapeT> ZeroShareGen<S, HostShapeT, RingT> for Repli
 where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
-    S: SetupGeneration<ReplicatedPlacement>,
-    <S as SetupGeneration<ReplicatedPlacement>>::Setup: Clone,
-    <S as SetupGeneration<ReplicatedPlacement>>::Setup: TryInto<RepSetup<m!(PrfKey)>>,
+    S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<m!(PrfKey)>>,
     HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(Seed), RingT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
     ReplicatedPlacement: ReplicatedSeedsGen<S, m!(PrfKey), m!(Seed)>,
@@ -2332,11 +2325,7 @@ where
         sess: &S,
         shape: &RepShape<HostShapeT>,
     ) -> AbstractReplicatedZeroShare<RingT> {
-        let setup = match (*sess.setup(self)).clone().try_into() {
-            Ok(setup) => setup,
-            _ => todo!("not sure what to do with the symbolic setup yet"), // TODO: perhaps a custom kernel could instead output a symbolic op
-        };
-
+        let setup = sess.setup(self);
         let (player0, player1, player2) = self.host_placements();
 
         let RepShape {
@@ -2345,7 +2334,7 @@ where
 
         let AbstractReplicatedSeeds {
             seeds: [[s00, s10], [s11, s21], [s22, s02]],
-        } = &self.gen_seeds(sess, &setup);
+        } = &self.gen_seeds(sess, setup.as_ref());
 
         let r00 = player0.sample_uniform_seeded(sess, shape0, s00);
         let r10 = player0.sample_uniform_seeded(sess, shape0, s10);
