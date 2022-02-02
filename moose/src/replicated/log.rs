@@ -1,10 +1,10 @@
 use super::*;
-use crate::computation::RepEqualOp;
+use crate::computation::EqualOp;
 use crate::error::Result;
 use crate::execution::Session;
 use crate::{Const, Ring};
 
-impl RepEqualOp {
+impl EqualOp {
     pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,

@@ -1081,6 +1081,7 @@ operators![
     Exp,
     Sigmoid,
     Neg,
+    Equal,
     Less,
     GreaterThan,
     // Floating-point operators
@@ -1108,7 +1109,6 @@ operators![
     RepBitDec,
     RepBitCompose,
     RepShlDim,
-    RepEqual,
     Mux,
     Maximum,
     Softmax,
@@ -1447,6 +1447,11 @@ pub struct ExpOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct EqualOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct LessOp {
     pub sig: Signature,
 }
@@ -1618,11 +1623,6 @@ pub struct RepBitDecOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RepBitComposeOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepEqualOp {
     pub sig: Signature,
 }
 
