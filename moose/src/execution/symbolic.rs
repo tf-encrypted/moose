@@ -5,11 +5,11 @@
 //! recording the underlying operations perform as new computation.
 //! Values are generally wrapped in the `Symbolic` enum.
 
+use super::{Session, SetupGeneration};
 use crate::computation::{
     Computation, KnownType, Operation, Operator, Placed, Placement, SymbolicValue,
 };
 use crate::error::{Error, Result};
-use crate::execution::Session;
 use crate::kernels::{DispatchKernel, PlacementPlace};
 use crate::replicated::ReplicatedPlacement;
 use crate::types::ReplicatedSetup;
@@ -170,10 +170,12 @@ impl Session for SymbolicSession {
     ) -> Result<Self::Value> {
         self.strategy.execute(self, op, plc, operands)
     }
+}
 
-    type ReplicatedSetup = <ReplicatedSetup as KnownType<SymbolicSession>>::Type;
+impl SetupGeneration<ReplicatedPlacement> for SymbolicSession {
+    type Setup = <ReplicatedSetup as KnownType<SymbolicSession>>::Type;
 
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
+    fn setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
         // Produce a new replicated setup or returned a previously produced setup for the placement
         let state = self.state.read();
         match state.replicated_keys.get(plc) {

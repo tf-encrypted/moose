@@ -404,9 +404,12 @@ impl Session for AsyncSession {
         };
         kernel(self, operands)
     }
+}
 
-    type ReplicatedSetup = ReplicatedSetup;
-    fn replicated_setup(&self, _plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
+impl SetupGeneration<ReplicatedPlacement> for AsyncSession {
+    type Setup = ReplicatedSetup;
+
+    fn setup(&self, _plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
         unimplemented!()
     }
 }

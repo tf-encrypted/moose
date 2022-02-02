@@ -3,7 +3,7 @@ use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider, TruncPrProvid
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::symbolic::Symbolic;
-use crate::execution::Session;
+use crate::execution::{Session, SetupGeneration};
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
     AbstractHostAesKey, HostBitArray, HostFixedTensor, HostPlacement, PrfKey, Seed, SliceInfo,
@@ -418,8 +418,9 @@ impl RepShareOp {
         x: RingT,
     ) -> Result<RepTen<RingT>>
     where
-        <S as Session>::ReplicatedSetup: Clone,
-        <S as Session>::ReplicatedSetup: TryInto<RepSetup<KeyT>>,
+        S: SetupGeneration<ReplicatedPlacement>,
+        <S as SetupGeneration<ReplicatedPlacement>>::Setup: Clone,
+        <S as SetupGeneration<ReplicatedPlacement>>::Setup: TryInto<RepSetup<KeyT>>,
         RingT: Clone + Placed<Placement = HostPlacement>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, RingT>,
@@ -431,7 +432,7 @@ impl RepShareOp {
     {
         let x_player = x.placement()?;
 
-        let setup = match (*sess.replicated_setup(plc)).clone().try_into() {
+        let setup = match (*sess.setup(plc)).clone().try_into() {
             Ok(setup) => setup,
             _ => todo!("not sure what to do with the symbolic setup yet"), // TODO: perhaps a custom kernel could instead output a symbolic op
         };
@@ -2120,7 +2121,7 @@ where
 
     ReplicatedPlacement: PlacementShare<S, HostBitT, st!(RepTen<HostBitT>)>,
     HostPlacement: PlacementBitDec<S, HostRingT, HostBitT>,
-    ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+    // ReplicatedPlacement: PlacementSetupGen<S, S::Setup>,
 {
     fn split(&self, sess: &S, x: &RepTen<HostRingT>) -> (RepTen<HostBitT>, RepTen<HostBitT>) {
         let (player0, player1, player2) = self.host_placements();
@@ -2319,8 +2320,9 @@ impl<S: Session, RingT, HostShapeT> ZeroShareGen<S, HostShapeT, RingT> for Repli
 where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
-    <S as Session>::ReplicatedSetup: Clone,
-    <S as Session>::ReplicatedSetup: TryInto<RepSetup<m!(PrfKey)>>,
+    S: SetupGeneration<ReplicatedPlacement>,
+    <S as SetupGeneration<ReplicatedPlacement>>::Setup: Clone,
+    <S as SetupGeneration<ReplicatedPlacement>>::Setup: TryInto<RepSetup<m!(PrfKey)>>,
     HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(Seed), RingT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
     ReplicatedPlacement: ReplicatedSeedsGen<S, m!(PrfKey), m!(Seed)>,
@@ -2330,7 +2332,7 @@ where
         sess: &S,
         shape: &RepShape<HostShapeT>,
     ) -> AbstractReplicatedZeroShare<RingT> {
-        let setup = match (*sess.replicated_setup(self)).clone().try_into() {
+        let setup = match (*sess.setup(self)).clone().try_into() {
             Ok(setup) => setup,
             _ => todo!("not sure what to do with the symbolic setup yet"), // TODO: perhaps a custom kernel could instead output a symbolic op
         };

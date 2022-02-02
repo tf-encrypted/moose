@@ -29,9 +29,11 @@ pub trait Session {
         plc: &Placement,
         operands: Vec<Self::Value>,
     ) -> Result<Self::Value>;
+}
 
-    type ReplicatedSetup;
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup>;
+pub trait SetupGeneration<P> {
+    type Setup;
+    fn setup(&self, plc: &P) -> Arc<Self::Setup>;
 }
 
 /// Trait for sessions that are intended for run-time use only.

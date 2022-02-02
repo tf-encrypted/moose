@@ -2,7 +2,6 @@
 
 use super::*;
 use crate::error::{Error, Result};
-use crate::execution::Identity;
 use crate::host::*;
 use crate::kernels::{DispatchKernel, PlacementSetupGen};
 use crate::networking::LocalSyncNetworking;
@@ -250,9 +249,12 @@ impl Session for SyncSession {
         };
         Ok(kernel_output)
     }
+}
 
-    type ReplicatedSetup = ReplicatedSetup;
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
+impl SetupGeneration<ReplicatedPlacement> for SyncSession {
+    type Setup = ReplicatedSetup;
+
+    fn setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
         let mut replicated_keys = self.replicated_keys.write().unwrap();
         let setup = replicated_keys
             .entry(plc.clone())
