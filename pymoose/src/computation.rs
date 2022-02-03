@@ -881,7 +881,7 @@ impl TryFrom<PyComputation> for Computation {
                         })
                     }
                     std_DecryptOperation(op) => Ok(Operation {
-                        kind: AesDecryptOp {
+                        kind: DecryptOp {
                             sig: Signature::from_binary(&op.signature, "key", "ciphertext")?,
                         }
                         .into(),
