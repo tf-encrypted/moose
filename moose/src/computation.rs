@@ -1014,7 +1014,7 @@ operators![
     Broadcast,
     PrimDeriveSeed,
     PrimPrfKeyGen,
-    AesDecrypt,
+    Decrypt,
     AtLeast2D,
     IndexAxis,
     Slice,
@@ -1338,7 +1338,7 @@ pub struct PrimPrfKeyGenOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct AesDecryptOp {
+pub struct DecryptOp {
     pub sig: Signature,
 }
 
@@ -1528,7 +1528,7 @@ pub struct ShareOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepRevealOp {
+pub struct RevealOp {
     pub sig: Signature,
 }
 

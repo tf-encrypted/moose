@@ -349,7 +349,7 @@ impl Session for AsyncSession {
             Fill(op) => DispatchKernel::compile(&op, plc)?,
             RepSetup(op) => DispatchKernel::compile(&op, plc)?,
             Share(op) => DispatchKernel::compile(&op, plc)?,
-            RepReveal(op) => DispatchKernel::compile(&op, plc)?,
+            Reveal(op) => DispatchKernel::compile(&op, plc)?,
             RepTruncPr(op) => DispatchKernel::compile(&op, plc)?,
             RepMsb(op) => DispatchKernel::compile(&op, plc)?,
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?,
