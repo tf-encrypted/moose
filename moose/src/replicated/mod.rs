@@ -1,5 +1,6 @@
 //! Placements backed by three-party replicated secret sharing
-use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider, TruncPrProvider};
+
+use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::symbolic::Symbolic;
@@ -64,13 +65,93 @@ impl ReplicatedPlacement {
 /// Secret tensor used by replicated placements
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RepTensor<HostRingT> {
-    pub shares: [[HostRingT; 2]; 3],
+    pub(crate) shares: [[HostRingT; 2]; 3],
+}
+
+impl<HostTenT> Placed for RepTensor<HostTenT>
+where
+    HostTenT: Placed<Placement = HostPlacement>,
+{
+    type Placement = ReplicatedPlacement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        let RepTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = self;
+
+        let owner0 = x00.placement()?.owner;
+        let owner1 = x11.placement()?.owner;
+        let owner2 = x22.placement()?.owner;
+
+        if x10.placement()?.owner == owner0
+            && x21.placement()?.owner == owner1
+            && x02.placement()?.owner == owner2
+        {
+            let owners = [owner0, owner1, owner2];
+            Ok(ReplicatedPlacement { owners })
+        } else {
+            Err(Error::MalformedPlacement)
+        }
+    }
+}
+
+impl<S: Session, HostRingT> PlacementPlace<S, RepTensor<HostRingT>> for ReplicatedPlacement
+where
+    RepTensor<HostRingT>: Placed<Placement = ReplicatedPlacement>,
+    HostPlacement: PlacementPlace<S, HostRingT>,
+{
+    fn place(&self, sess: &S, x: RepTensor<HostRingT>) -> RepTensor<HostRingT> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                let RepTensor {
+                    shares: [[x00, x10], [x11, x21], [x22, x02]],
+                } = x;
+
+                let (player0, player1, player2) = self.host_placements();
+                RepTensor {
+                    shares: [
+                        [player0.place(sess, x00), player0.place(sess, x10)],
+                        [player1.place(sess, x11), player1.place(sess, x21)],
+                        [player2.place(sess, x22), player2.place(sess, x02)],
+                    ],
+                }
+            }
+        }
+    }
 }
 
 impl<HostRingT: Ring> Ring for RepTensor<HostRingT> {
     type BitLength = HostRingT::BitLength;
 }
 
+/// Public shape for replicated placements
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct RepShape<HostShapeT> {
+    pub shapes: [HostShapeT; 3],
+}
+
+impl<HostShapeT> Placed for RepShape<HostShapeT>
+where
+    HostShapeT: Placed<Placement = HostPlacement>,
+{
+    type Placement = ReplicatedPlacement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        let RepShape {
+            shapes: [s0, s1, s2],
+        } = self;
+
+        let owner0 = s0.placement()?.owner;
+        let owner1 = s1.placement()?.owner;
+        let owner2 = s2.placement()?.owner;
+
+        let owners = [owner0, owner1, owner2];
+        Ok(ReplicatedPlacement { owners })
+    }
+}
+
+/// Replicated bit array of fixed size
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RepBitArray<RepBitTensorT, N>(RepBitTensorT, PhantomData<N>);
 
@@ -82,7 +163,6 @@ impl<RepBitTensorT: Placed, N: Const> BitArray for Symbolic<RepBitArray<RepBitTe
     type Len = N;
 }
 
-// TODO implement using moose_type macro
 impl<RepBitTensorT: Placed, N> Placed for RepBitArray<RepBitTensorT, N> {
     type Placement = RepBitTensorT::Placement;
 
@@ -90,6 +170,8 @@ impl<RepBitTensorT: Placed, N> Placed for RepBitArray<RepBitTensorT, N> {
         self.0.placement()
     }
 }
+
+// TODO implement using moose_type macro
 
 impl<N> PartiallySymbolicType for RepBitArray<ReplicatedBitTensor, N> {
     type Type = RepBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>;
@@ -129,86 +211,7 @@ where
     }
 }
 
-impl<HostTenT> Placed for RepTensor<HostTenT>
-where
-    HostTenT: Placed<Placement = HostPlacement>,
-{
-    type Placement = ReplicatedPlacement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        let RepTensor {
-            shares: [[x00, x10], [x11, x21], [x22, x02]],
-        } = self;
-
-        let owner0 = x00.placement()?.owner;
-        let owner1 = x11.placement()?.owner;
-        let owner2 = x22.placement()?.owner;
-
-        if x10.placement()?.owner == owner0
-            && x21.placement()?.owner == owner1
-            && x02.placement()?.owner == owner2
-        {
-            let owners = [owner0, owner1, owner2];
-            Ok(ReplicatedPlacement { owners })
-        } else {
-            Err(Error::MalformedPlacement)
-        }
-    }
-}
-
-impl<S: Session, R> PlacementPlace<S, RepTensor<R>> for ReplicatedPlacement
-where
-    RepTen<R>: Placed<Placement = ReplicatedPlacement>,
-    HostPlacement: PlacementPlace<S, R>,
-{
-    fn place(&self, sess: &S, x: RepTen<R>) -> RepTen<R> {
-        match x.placement() {
-            Ok(place) if &place == self => x,
-            _ => {
-                let RepTen {
-                    shares: [[x00, x10], [x11, x21], [x22, x02]],
-                } = x;
-
-                let (player0, player1, player2) = self.host_placements();
-                RepTen {
-                    shares: [
-                        [player0.place(sess, x00), player0.place(sess, x10)],
-                        [player1.place(sess, x11), player1.place(sess, x21)],
-                        [player2.place(sess, x22), player2.place(sess, x02)],
-                    ],
-                }
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct RepShape<S> {
-    pub shapes: [S; 3],
-}
-
-impl<KeyT> Placed for RepShape<KeyT>
-where
-    KeyT: Placed<Placement = HostPlacement>,
-{
-    type Placement = ReplicatedPlacement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        let RepShape {
-            shapes: [s0, s1, s2],
-        } = self;
-
-        let owner0 = s0.placement()?.owner;
-        let owner1 = s1.placement()?.owner;
-        let owner2 = s2.placement()?.owner;
-
-        let owners = [owner0, owner1, owner2];
-        Ok(ReplicatedPlacement { owners })
-    }
-}
-
 // Type aliases to shorten out impl in replicated protocols
-pub(crate) type RepTen<T> = RepTensor<T>;
 pub(crate) type AdtTen<T> = AdtTensor<T>;
 pub(crate) type MirTen<T> = Mir3Tensor<T>;
 

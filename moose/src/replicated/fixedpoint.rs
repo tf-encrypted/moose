@@ -1,4 +1,5 @@
 use super::*;
+use crate::additive::{AdditivePlacement, TruncPrProvider};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct RepFixedTensor<RepRingT> {
@@ -51,14 +52,14 @@ impl RepFixedpointMeanOp {
         axis: Option<u32>,
         scaling_base: u64,
         scaling_exp: u32,
-        x: RepTen<HostRingT>,
-    ) -> Result<RepTen<HostRingT>>
+        x: RepTensor<HostRingT>,
+    ) -> Result<RepTensor<HostRingT>>
     where
         HostPlacement: PlacementMeanAsFixedpoint<S, HostRingT, HostRingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -69,7 +70,7 @@ impl RepFixedpointMeanOp {
         let z22 = player2.mean_as_fixedpoint(sess, axis, scaling_base, scaling_exp, x22);
         let z02 = player2.mean_as_fixedpoint(sess, axis, scaling_base, scaling_exp, x02);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -80,12 +81,12 @@ impl RepTruncPrOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         amount: u32,
-        xe: RepTen<HostRingT>,
-    ) -> Result<RepTen<HostRingT>>
+        xe: RepTensor<HostRingT>,
+    ) -> Result<RepTensor<HostRingT>>
     where
-        AdditivePlacement: PlacementRepToAdt<S, RepTen<HostRingT>, AdtTen<HostRingT>>,
+        AdditivePlacement: PlacementRepToAdt<S, RepTensor<HostRingT>, AdtTen<HostRingT>>,
         AdditivePlacement: TruncPrProvider<S, AdtTen<HostRingT>, AdtTen<HostRingT>>,
-        ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<HostRingT>, RepTen<HostRingT>>,
+        ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<HostRingT>, RepTensor<HostRingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 

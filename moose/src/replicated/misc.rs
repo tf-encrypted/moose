@@ -1,4 +1,5 @@
 use super::*;
+use crate::mirrored::{Mir3Tensor, MirFixedTensor, Mirrored3Placement};
 
 impl ReplicatedPlacement {
     pub fn prefix_op<S, RepT>(
@@ -61,18 +62,18 @@ pub(crate) trait PlacementShrRaw<S: Session, T, O> {
 }
 
 impl<S: Session, HostRingT: Placed<Placement = HostPlacement>>
-    PlacementShrRaw<S, Symbolic<RepTen<HostRingT>>, Symbolic<RepTen<HostRingT>>>
+    PlacementShrRaw<S, Symbolic<RepTensor<HostRingT>>, Symbolic<RepTensor<HostRingT>>>
     for ReplicatedPlacement
 where
-    ReplicatedPlacement: PlacementShrRaw<S, RepTen<HostRingT>, RepTen<HostRingT>>,
-    RepTen<HostRingT>: Into<Symbolic<RepTen<HostRingT>>>,
+    ReplicatedPlacement: PlacementShrRaw<S, RepTensor<HostRingT>, RepTensor<HostRingT>>,
+    RepTensor<HostRingT>: Into<Symbolic<RepTensor<HostRingT>>>,
 {
     fn shr_raw(
         &self,
         sess: &S,
         amount: usize,
-        x: &Symbolic<RepTen<HostRingT>>,
-    ) -> Symbolic<RepTen<HostRingT>> {
+        x: &Symbolic<RepTensor<HostRingT>>,
+    ) -> Symbolic<RepTensor<HostRingT>> {
         let concrete_x = match x {
             Symbolic::Concrete(x) => x,
             Symbolic::Symbolic(_) => {
@@ -84,12 +85,12 @@ where
     }
 }
 
-impl<S: Session, HostRingT> PlacementShrRaw<S, RepTen<HostRingT>, RepTen<HostRingT>>
+impl<S: Session, HostRingT> PlacementShrRaw<S, RepTensor<HostRingT>, RepTensor<HostRingT>>
     for ReplicatedPlacement
 where
     HostPlacement: PlacementShr<S, HostRingT, HostRingT>,
 {
-    fn shr_raw(&self, sess: &S, amount: usize, x: &RepTen<HostRingT>) -> RepTen<HostRingT> {
+    fn shr_raw(&self, sess: &S, amount: usize, x: &RepTensor<HostRingT>) -> RepTensor<HostRingT> {
         let (player0, player1, player2) = self.host_placements();
         let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
@@ -104,7 +105,7 @@ where
         let z22 = player2.shr(sess, amount, x22);
         let z02 = player2.shr(sess, amount, x02);
 
-        RepTen {
+        RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
     }

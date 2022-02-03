@@ -1,6 +1,7 @@
 //! Support for various conversion operators
 
 use super::*;
+use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
 
 impl RepShareOp {
     pub(crate) fn aeskey_kernel<S: Session, HostBitArrayT, RepBitArrayT>(
@@ -46,7 +47,7 @@ impl RepShareOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         x: RingT,
-    ) -> Result<RepTen<RingT>>
+    ) -> Result<RepTensor<RingT>>
     where
         S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<KeyT>>,
         RingT: Clone + Placed<Placement = HostPlacement>,
@@ -56,7 +57,7 @@ impl RepShareOp {
         HostPlacement: PlacementDeriveSeed<S, KeyT, SeedT>,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
-        ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
+        ReplicatedPlacement: PlacementPlace<S, RepTensor<RingT>>,
     {
         let x_player = x.placement()?;
 
@@ -152,7 +153,7 @@ impl RepShareOp {
             }
         };
 
-        Ok(plc.place(sess, RepTen { shares }))
+        Ok(plc.place(sess, RepTensor { shares }))
     }
 }
 
@@ -200,13 +201,13 @@ impl RepRevealOp {
     pub(crate) fn ring_kernel<S: Session, R: Clone>(
         sess: &S,
         receiver: &HostPlacement,
-        xe: RepTen<R>,
+        xe: RepTensor<R>,
     ) -> Result<R>
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<S, R, R, R>,
     {
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &xe;
 
@@ -238,8 +239,8 @@ impl RingInjectOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         bit_idx: usize,
-        x: RepTen<HostBitT>,
-    ) -> Result<RepTen<HostRingT>>
+        x: RepTensor<HostBitT>,
+    ) -> Result<RepTensor<HostRingT>>
     where
         AdtTen<HostRingT>: CanonicalType,
         <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
@@ -254,11 +255,11 @@ impl RingInjectOp {
         AdtRingT: TryInto<AdtTen<HostRingT>>,
 
         HostPlacement: PlacementShape<S, HostBitT, HostShapeT>,
-        ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<HostRingT>, RepTen<HostRingT>>,
+        ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<HostRingT>, RepTensor<HostRingT>>,
         AdditivePlacement: PlacementFill<S, HostShapeT, AdtRingT>,
         HostPlacement: PlacementFill<S, HostShapeT, HostRingT>,
         AdditivePlacement: DaBitProvider<S, HostShapeT, AdtTen<HostRingT>, AdtTen<HostBitT>>,
-        AdditivePlacement: PlacementRepToAdt<S, RepTen<HostBitT>, AdtTen<HostBitT>>,
+        AdditivePlacement: PlacementRepToAdt<S, RepTensor<HostBitT>, AdtTen<HostBitT>>,
         AdditivePlacement: PlacementAdd<S, AdtTen<HostBitT>, AdtTen<HostBitT>, AdtTen<HostBitT>>,
         AdditivePlacement: PlacementAdd<S, AdtRingT, HostRingT, AdtRingT>,
         AdditivePlacement: PlacementMul<S, AdtRingT, HostRingT, AdtRingT>,
@@ -313,7 +314,7 @@ impl AdtToRepOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AdtTen<HostRingT>,
-    ) -> Result<RepTen<HostRingT>>
+    ) -> Result<RepTensor<HostRingT>>
     where
         HostRingT: Placed<Placement = HostPlacement> + Clone,
         AdtTen<HostRingT>: CanonicalType,
@@ -325,7 +326,7 @@ impl AdtToRepOp {
         AdditivePlacement: PlacementSub<S, AdtTen<HostRingT>, AdtTen<HostRingT>, AdtTen<HostRingT>>,
         AdtTen<HostRingT>: Into<m!(c!(AdtTen<HostRingT>))>,
         HostPlacement: PlacementReveal<S, m!(c!(AdtTen<HostRingT>)), HostRingT>,
-        ReplicatedPlacement: PlacementPlace<S, RepTen<HostRingT>>,
+        ReplicatedPlacement: PlacementPlace<S, RepTensor<HostRingT>>,
     {
         let AdtTen { shares: [x0, x1] } = &x;
 
@@ -410,6 +411,6 @@ impl AdtToRepOp {
                 }
             }
         };
-        Ok(rep.place(sess, RepTen { shares }))
+        Ok(rep.place(sess, RepTensor { shares }))
     }
 }

@@ -6,19 +6,19 @@ impl AddOp {
     pub(crate) fn rep_rep_kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<HostRingT>,
-        y: RepTen<HostRingT>,
-    ) -> Result<RepTen<HostRingT>>
+        x: RepTensor<HostRingT>,
+        y: RepTensor<HostRingT>,
+    ) -> Result<RepTensor<HostRingT>>
     where
         HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let RepTen {
+        let RepTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
@@ -31,7 +31,7 @@ impl AddOp {
         let z22 = with_context!(player2, sess, x22 + y22);
         let z02 = with_context!(player2, sess, x02 + y02);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -40,8 +40,8 @@ impl AddOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: MirTen<HostRingT>,
-        y: RepTen<HostRingT>,
-    ) -> Result<RepTen<HostRingT>>
+        y: RepTensor<HostRingT>,
+    ) -> Result<RepTensor<HostRingT>>
     where
         HostPlacement: PlacementShape<S, HostRingT, ShapeT>,
         HostPlacement: PlacementBroadcast<S, ShapeT, HostRingT, HostRingT>,
@@ -53,7 +53,7 @@ impl AddOp {
             values: [x0, x1, x2],
         } = x;
 
-        let RepTen {
+        let RepTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = y;
 
@@ -71,7 +71,7 @@ impl AddOp {
         let z21 = player1.broadcast(sess, &s1, &y21);
         let z22 = player2.broadcast(sess, &s2, &y22);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -79,9 +79,9 @@ impl AddOp {
     pub(crate) fn rep_mir_kernel<S: Session, ShapeT, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<HostRingT>,
+        x: RepTensor<HostRingT>,
         y: MirTen<HostRingT>,
-    ) -> Result<RepTen<HostRingT>>
+    ) -> Result<RepTensor<HostRingT>>
     where
         HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
         HostPlacement: PlacementShape<S, HostRingT, ShapeT>,
@@ -94,7 +94,7 @@ impl AddOp {
             values: [y0, y1, y2],
         } = y;
 
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
@@ -112,7 +112,7 @@ impl AddOp {
         let z21 = player1.broadcast(sess, &s1, &x21);
         let z22 = player2.broadcast(sess, &s2, &x22);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -122,8 +122,8 @@ impl AddNOp {
     pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        xs: &[RepTen<HostRingT>],
-    ) -> Result<RepTen<HostRingT>>
+        xs: &[RepTensor<HostRingT>],
+    ) -> Result<RepTensor<HostRingT>>
     where
         HostPlacement: PlacementAddN<S, HostRingT, HostRingT>,
         HostRingT: Clone,
@@ -137,7 +137,7 @@ impl AddNOp {
         let mut z22s: Vec<HostRingT> = Vec::new();
         let mut z02s: Vec<HostRingT> = Vec::new();
         for x in xs.iter() {
-            let RepTen {
+            let RepTensor {
                 shares: [[x00, x10], [x11, x21], [x22, x02]],
             } = &x;
 
@@ -156,7 +156,7 @@ impl AddNOp {
         let z22 = player2.add_n(sess, &z22s);
         let z02 = player2.add_n(sess, &z02s);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -167,15 +167,15 @@ impl SumOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         axis: Option<usize>,
-        x: RepTen<RingT>,
-    ) -> Result<RepTen<RingT>>
+        x: RepTensor<RingT>,
+    ) -> Result<RepTensor<RingT>>
     where
         HostPlacement: PlacementSum<S, RingT, RingT>,
-        ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
+        ReplicatedPlacement: PlacementPlace<S, RepTensor<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -186,7 +186,7 @@ impl SumOp {
         let z22 = player2.sum(sess, axis, x22);
         let z02 = player2.sum(sess, axis, x02);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -196,19 +196,19 @@ impl SubOp {
     pub(crate) fn rep_rep_kernel<S: Session, R>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<R>,
-        y: RepTen<R>,
-    ) -> Result<RepTen<R>>
+        x: RepTensor<R>,
+        y: RepTensor<R>,
+    ) -> Result<RepTensor<R>>
     where
         HostPlacement: PlacementSub<S, R, R, R>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let RepTen {
+        let RepTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
@@ -221,7 +221,7 @@ impl SubOp {
         let z22 = with_context!(player2, sess, x22 - y22);
         let z02 = with_context!(player2, sess, x02 - y02);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -230,8 +230,8 @@ impl SubOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: MirTen<R>,
-        y: RepTen<R>,
-    ) -> Result<RepTen<R>>
+        y: RepTensor<R>,
+    ) -> Result<RepTensor<R>>
     where
         HostPlacement: PlacementSub<S, R, R, R>,
         HostPlacement: PlacementShape<S, R, ShapeT>,
@@ -244,7 +244,7 @@ impl SubOp {
             values: [x0, x1, x2],
         } = &x;
 
-        let RepTen {
+        let RepTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
@@ -266,7 +266,7 @@ impl SubOp {
         let z21 = player1.broadcast(sess, &s1, &z21);
         let z22 = player2.broadcast(sess, &s2, &z22);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -274,9 +274,9 @@ impl SubOp {
     pub(crate) fn rep_mir_kernel<S: Session, R, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<R>,
+        x: RepTensor<R>,
         y: MirTen<R>,
-    ) -> Result<RepTen<R>>
+    ) -> Result<RepTensor<R>>
     where
         HostPlacement: PlacementSub<S, R, R, R>,
         HostPlacement: PlacementShape<S, R, ShapeT>,
@@ -288,7 +288,7 @@ impl SubOp {
             values: [y0, y1, y2],
         } = y;
 
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
@@ -306,7 +306,7 @@ impl SubOp {
         let z21 = player1.broadcast(sess, &s1, &x21);
         let z22 = player2.broadcast(sess, &s2, &x22);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -316,24 +316,24 @@ impl MulOp {
     pub(crate) fn rep_rep_kernel<S: Session, RingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<RingT>,
-        y: RepTen<RingT>,
-    ) -> Result<RepTen<RingT>>
+        x: RepTensor<RingT>,
+        y: RepTensor<RingT>,
+    ) -> Result<RepTensor<RingT>>
     where
         RingT: Clone,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         ReplicatedPlacement: ZeroShareGen<S, ShapeT, RingT>,
-        ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
+        ReplicatedPlacement: PlacementPlace<S, RepTensor<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let RepTen {
+        let RepTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
@@ -358,7 +358,7 @@ impl MulOp {
 
         Ok(rep.place(
             sess,
-            RepTen {
+            RepTensor {
                 shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
             },
         ))
@@ -368,14 +368,14 @@ impl MulOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: MirTen<RingT>,
-        y: RepTen<RingT>,
-    ) -> Result<RepTen<RingT>>
+        y: RepTensor<RingT>,
+    ) -> Result<RepTensor<RingT>>
     where
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let RepTen {
+        let RepTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
@@ -392,7 +392,7 @@ impl MulOp {
         let z22 = with_context!(player2, sess, x2 * y22);
         let z02 = with_context!(player2, sess, x2 * y02);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -400,15 +400,15 @@ impl MulOp {
     pub(crate) fn rep_mir_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<RingT>,
+        x: RepTensor<RingT>,
         y: MirTen<RingT>,
-    ) -> Result<RepTen<RingT>>
+    ) -> Result<RepTensor<RingT>>
     where
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -425,7 +425,7 @@ impl MulOp {
         let z22 = with_context!(player2, sess, x22 * y2);
         let z02 = with_context!(player2, sess, x02 * y2);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -435,24 +435,24 @@ impl DotOp {
     pub(crate) fn rep_rep_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<RingT>,
-        y: RepTen<RingT>,
-    ) -> Result<RepTen<RingT>>
+        x: RepTensor<RingT>,
+        y: RepTensor<RingT>,
+    ) -> Result<RepTensor<RingT>>
     where
         RingT: Clone,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: PlacementDot<S, RingT, RingT, RingT>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         ReplicatedPlacement: ZeroShareGen<S, ShapeT, RingT>,
-        ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
+        ReplicatedPlacement: PlacementPlace<S, RepTensor<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let RepTen {
+        let RepTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
@@ -483,7 +483,7 @@ impl DotOp {
 
         Ok(rep.place(
             sess,
-            RepTen {
+            RepTensor {
                 shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
             },
         ))
@@ -524,14 +524,14 @@ impl NegOp {
     pub(crate) fn rep_bit_kernel<S: Session, HostBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<HostBitT>,
-    ) -> Result<RepTen<HostBitT>>
+        x: RepTensor<HostBitT>,
+    ) -> Result<RepTensor<HostBitT>>
     where
         HostPlacement: PlacementNeg<S, HostBitT, HostBitT>,
     {
         let (player0, _player1, player2) = rep.host_placements();
 
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
@@ -545,7 +545,7 @@ impl NegOp {
         let y22 = x22;
         let y02 = player2.neg(sess, &x02);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         })
     }
@@ -553,14 +553,14 @@ impl NegOp {
     pub(crate) fn rep_rep_kernel<S: Session, HostRepT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<HostRepT>,
-    ) -> Result<RepTen<HostRepT>>
+        x: RepTensor<HostRepT>,
+    ) -> Result<RepTensor<HostRepT>>
     where
         HostPlacement: PlacementNeg<S, HostRepT, HostRepT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
@@ -571,7 +571,7 @@ impl NegOp {
         let y22 = player2.neg(sess, &x22);
         let y02 = player2.neg(sess, &x02);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         })
     }
@@ -582,8 +582,8 @@ impl ShlOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         amount: usize,
-        x: RepTen<HostRingT>,
-    ) -> Result<RepTen<HostRingT>>
+        x: RepTensor<HostRingT>,
+    ) -> Result<RepTensor<HostRingT>>
     where
         HostPlacement: PlacementShl<S, HostRingT, HostRingT>,
     {
@@ -600,7 +600,7 @@ impl ShlOp {
         let z22 = player2.shl(sess, amount, x22);
         let z02 = player2.shl(sess, amount, x02);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }

@@ -1,6 +1,8 @@
 //! Support for various operators that do not fit elsewhere
 
 use super::*;
+use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
+use crate::mirrored::{Mir3Tensor, MirFixedTensor, Mirrored3Placement};
 
 impl IdentityOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
@@ -22,8 +24,8 @@ impl IdentityOp {
     pub(crate) fn rep_inner_kernel<S: Session, HostT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<HostT>,
-    ) -> Result<RepTen<HostT>>
+        x: RepTensor<HostT>,
+    ) -> Result<RepTensor<HostT>>
     where
         HostPlacement: PlacementIdentity<S, HostT, HostT>,
     {
@@ -48,8 +50,8 @@ impl ConcatOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: u32,
-        xs: &[RepTen<HostRingT>],
-    ) -> Result<RepTen<HostRingT>>
+        xs: &[RepTensor<HostRingT>],
+    ) -> Result<RepTensor<HostRingT>>
     where
         HostPlacement: PlacementConcatenate<S, HostRingT, HostRingT>,
         HostRingT: Clone,
@@ -63,7 +65,7 @@ impl ConcatOp {
 
         let (player0, player1, player2) = plc.host_placements();
         for x in xs.iter() {
-            let RepTen {
+            let RepTensor {
                 shares: [[x00, x10], [x11, x21], [x22, x02]],
             } = &x;
 
@@ -80,7 +82,7 @@ impl ConcatOp {
         let z21 = player1.concatenate(sess, axis, &z21s);
         let z22 = player2.concatenate(sess, axis, &z22s);
         let z02 = player2.concatenate(sess, axis, &z02s);
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -92,7 +94,7 @@ impl FillOp {
         rep: &ReplicatedPlacement,
         value: u64,
         rep_shape: RepShape<ShapeT>,
-    ) -> Result<RepTen<RingT>>
+    ) -> Result<RepTensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -118,7 +120,7 @@ impl FillOp {
             ],
         ];
 
-        Ok(RepTen { shares })
+        Ok(RepTensor { shares })
     }
 
     pub(crate) fn ring128_kernel<S: Session, ShapeT, RingT>(
@@ -126,7 +128,7 @@ impl FillOp {
         rep: &ReplicatedPlacement,
         value: u128,
         rep_shape: RepShape<ShapeT>,
-    ) -> Result<RepTen<RingT>>
+    ) -> Result<RepTensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -152,7 +154,7 @@ impl FillOp {
             ],
         ];
 
-        Ok(RepTen { shares })
+        Ok(RepTensor { shares })
     }
 
     pub(crate) fn mir_ring64_kernel<S: Session, ShapeT, RingT>(
@@ -208,7 +210,7 @@ impl FillOp {
         rep: &ReplicatedPlacement,
         value: u8,
         rep_shape: RepShape<ShapeT>,
-    ) -> Result<RepTen<RingT>>
+    ) -> Result<RepTensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -234,7 +236,7 @@ impl FillOp {
             ],
         ];
 
-        Ok(RepTen { shares })
+        Ok(RepTensor { shares })
     }
 
     pub(crate) fn mir_bit_kernel<S: Session, ShapeT, RingT>(
@@ -267,13 +269,13 @@ impl ExpandDimsOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Vec<usize>,
-        x: RepTen<HostRingT>,
-    ) -> Result<RepTen<HostRingT>>
+        x: RepTensor<HostRingT>,
+    ) -> Result<RepTensor<HostRingT>>
     where
         HostPlacement: PlacementExpandDims<S, HostRingT, HostRingT>,
     {
         let (player0, player1, player2) = plc.host_placements();
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -286,7 +288,7 @@ impl ExpandDimsOp {
         let z22 = player2.expand_dims(sess, axis.clone(), x22);
         let z02 = player2.expand_dims(sess, axis, x02);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -298,13 +300,13 @@ impl IndexAxisOp {
         plc: &ReplicatedPlacement,
         axis: usize,
         index: usize,
-        x: RepTen<HostRingT>,
-    ) -> Result<RepTen<HostRingT>>
+        x: RepTensor<HostRingT>,
+    ) -> Result<RepTensor<HostRingT>>
     where
         HostPlacement: PlacementIndexAxis<S, HostRingT, HostRingT>,
     {
         let (player0, player1, player2) = plc.host_placements();
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -317,7 +319,7 @@ impl IndexAxisOp {
         let z22 = player2.index_axis(sess, axis, index, x22);
         let z02 = player2.index_axis(sess, axis, index, x02);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -343,13 +345,13 @@ impl DiagOp {
     pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: RepTen<HostRingT>,
-    ) -> Result<RepTen<HostRingT>>
+        x: RepTensor<HostRingT>,
+    ) -> Result<RepTensor<HostRingT>>
     where
         HostPlacement: PlacementDiag<S, HostRingT, HostRingT>,
     {
         let (player0, player1, player2) = plc.host_placements();
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -362,7 +364,7 @@ impl DiagOp {
         let z22 = player2.diag(sess, x22);
         let z02 = player2.diag(sess, x02);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -400,13 +402,13 @@ impl RepShlDimOp {
         plc: &ReplicatedPlacement,
         amount: usize,
         bit_length: usize,
-        x: RepTen<HostBitT>,
-    ) -> Result<RepTen<HostBitT>>
+        x: RepTensor<HostBitT>,
+    ) -> Result<RepTensor<HostBitT>>
     where
         HostPlacement: PlacementShlDim<S, HostBitT, HostBitT>,
     {
         let (player0, player1, player2) = plc.host_placements();
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
@@ -419,7 +421,7 @@ impl RepShlDimOp {
         let z22 = player2.shl_dim(sess, amount, bit_length, &x22);
         let z02 = player2.shl_dim(sess, amount, bit_length, &x02);
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
@@ -429,13 +431,13 @@ impl ShapeOp {
     pub(crate) fn rep_kernel<S: Session, RingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: RepTen<RingT>,
+        x: RepTensor<RingT>,
     ) -> Result<RepShape<ShapeT>>
     where
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
     {
         let (player0, player1, player2) = rep.host_placements();
-        let RepTen {
+        let RepTensor {
             shares: [[x00, _x10], [x11, _x21], [x22, _x02]],
         } = &x;
         Ok(RepShape {
@@ -464,13 +466,13 @@ impl BroadcastOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         shape: RepShape<ShapeT>,
-        x: RepTen<RingT>,
-    ) -> Result<RepTen<RingT>>
+        x: RepTensor<RingT>,
+    ) -> Result<RepTensor<RingT>>
     where
         HostPlacement: PlacementBroadcast<S, ShapeT, RingT, RingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -478,7 +480,7 @@ impl BroadcastOp {
             shapes: [s0, s1, s2],
         } = &shape;
 
-        Ok(RepTen {
+        Ok(RepTensor {
             shares: [
                 [
                     player0.broadcast(sess, s0, x00),

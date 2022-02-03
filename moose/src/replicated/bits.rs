@@ -18,20 +18,21 @@ impl<
     >
     PlacementSplit<
         S,
-        Symbolic<RepTen<HostRingT>>,
-        Symbolic<RepTen<HostBitT>>,
-        Symbolic<RepTen<HostBitT>>,
+        Symbolic<RepTensor<HostRingT>>,
+        Symbolic<RepTensor<HostBitT>>,
+        Symbolic<RepTensor<HostBitT>>,
     > for ReplicatedPlacement
 where
-    ReplicatedPlacement: PlacementSplit<S, RepTen<HostRingT>, RepTen<HostBitT>, RepTen<HostBitT>>,
-    RepTen<HostRingT>: Into<Symbolic<RepTen<HostRingT>>>,
-    RepTen<HostBitT>: Into<Symbolic<RepTen<HostBitT>>>,
+    ReplicatedPlacement:
+        PlacementSplit<S, RepTensor<HostRingT>, RepTensor<HostBitT>, RepTensor<HostBitT>>,
+    RepTensor<HostRingT>: Into<Symbolic<RepTensor<HostRingT>>>,
+    RepTensor<HostBitT>: Into<Symbolic<RepTensor<HostBitT>>>,
 {
     fn split(
         &self,
         sess: &S,
-        x: &Symbolic<RepTen<HostRingT>>,
-    ) -> (Symbolic<RepTen<HostBitT>>, Symbolic<RepTen<HostBitT>>) {
+        x: &Symbolic<RepTensor<HostRingT>>,
+    ) -> (Symbolic<RepTensor<HostBitT>>, Symbolic<RepTensor<HostBitT>>) {
         let concrete_x = match x {
             Symbolic::Concrete(x) => x,
             Symbolic::Symbolic(_) => {
@@ -44,7 +45,8 @@ where
 }
 
 impl<S: Session, HostRingT, HostBitT>
-    PlacementSplit<S, RepTen<HostRingT>, RepTen<HostBitT>, RepTen<HostBitT>> for ReplicatedPlacement
+    PlacementSplit<S, RepTensor<HostRingT>, RepTensor<HostBitT>, RepTensor<HostBitT>>
+    for ReplicatedPlacement
 where
     HostShape: KnownType<S>,
     HostBitT: Clone,
@@ -53,18 +55,22 @@ where
     HostPlacement: PlacementShape<S, HostBitT, m!(HostShape)>,
     HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
 
-    RepTen<HostBitT>: CanonicalType,
-    <RepTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
-    m!(c!(RepTen<HostBitT>)): TryInto<RepTen<HostBitT>>,
+    RepTensor<HostBitT>: CanonicalType,
+    <RepTensor<HostBitT> as CanonicalType>::Type: KnownType<S>,
+    m!(c!(RepTensor<HostBitT>)): TryInto<RepTensor<HostBitT>>,
 
-    ReplicatedPlacement: PlacementShare<S, HostBitT, m!(c!(RepTen<HostBitT>))>,
+    ReplicatedPlacement: PlacementShare<S, HostBitT, m!(c!(RepTensor<HostBitT>))>,
     HostPlacement: PlacementBitDec<S, HostRingT, HostBitT>,
     // ReplicatedPlacement: PlacementSetupGen<S, S::Setup>,
 {
-    fn split(&self, sess: &S, x: &RepTen<HostRingT>) -> (RepTen<HostBitT>, RepTen<HostBitT>) {
+    fn split(
+        &self,
+        sess: &S,
+        x: &RepTensor<HostRingT>,
+    ) -> (RepTensor<HostBitT>, RepTensor<HostBitT>) {
         let (player0, player1, player2) = self.host_placements();
 
-        let RepTen {
+        let RepTensor {
             shares: [[x00, x10], [_x11, x21], [x22, _x02]],
         } = &x;
 
@@ -80,7 +86,7 @@ where
         let p2_zero = player2.fill(sess, 0_u8.into(), &player2.shape(sess, &x2_on_2));
 
         let rep_bsl = self.share(sess, &bsl);
-        let rep_bsr = RepTen {
+        let rep_bsr = RepTensor {
             shares: [
                 [p0_zero.clone(), p0_zero],
                 [p1_zero, x2_on_1],
