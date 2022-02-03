@@ -1150,7 +1150,7 @@ impl ToTextual for Operator {
             RepToAdt(op) => op.to_textual(),
             Index(op) => op.to_textual(),
             BitDecompose(op) => op.to_textual(),
-            RepBitCompose(op) => op.to_textual(),
+            BitCompose(op) => op.to_textual(),
             RepShlDim(op) => op.to_textual(),
             Mux(op) => op.to_textual(),
             Neg(op) => op.to_textual(),
