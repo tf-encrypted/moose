@@ -4,6 +4,7 @@ use super::*;
 use crate::computation::MaximumOp;
 use crate::error::Result;
 use crate::execution::Session;
+use crate::fixedpoint::FixedpointTensor;
 use macros::with_context;
 
 impl MaximumOp {
@@ -128,7 +129,7 @@ mod tests {
     use crate::execution::SyncSession;
     use crate::fixedpoint::FixedTensor;
     use crate::host::Convert;
-    use crate::host::HostRingTensor;
+    use crate::host::{HostFixedTensor, HostRingTensor};
     use ndarray::prelude::*;
     use ndarray::Zip;
 

@@ -1,17 +1,10 @@
 //! Placements backed by three-party replicated secret sharing
 
-use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::execution::symbolic::Symbolic;
-use crate::execution::{Session, SetupGeneration};
-use crate::fixedpoint::FixedpointTensor;
-use crate::host::{
-    AbstractHostAesKey, HostBitArray, HostFixedTensor, HostPlacement, PrfKey, Seed, SliceInfo,
-    SyncKey,
-};
+use crate::execution::{symbolic::Symbolic, Session};
+use crate::host::HostPlacement;
 use crate::kernels::*;
-use crate::mirrored::{Mir3Tensor, MirFixedTensor, Mirrored3Placement};
 use crate::types::*;
 use crate::{BitArray, Const, Ring};
 use macros::with_context;
@@ -215,8 +208,9 @@ where
 mod tests {
     use super::*;
     use crate::execution::SyncSession;
-    use crate::host::{FromRaw, FromRawPlc, HostRingTensor, RawShape};
+    use crate::host::{FromRaw, FromRawPlc, HostBitArray, HostRingTensor, RawShape};
     use crate::kernels::{PlacementRingFixedpointDecode, PlacementRingFixedpointEncode};
+    use crate::mirrored::{Mir3Tensor, Mirrored3Placement};
     use crate::{N128, N64};
     use ndarray::array;
     use ndarray::prelude::*;

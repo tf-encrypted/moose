@@ -1,5 +1,6 @@
 use super::*;
-use crate::additive::{AdditivePlacement, TruncPrProvider};
+use crate::additive::{AdditivePlacement, AdtTensor, TruncPrProvider};
+use crate::mirrored::MirFixedTensor;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct RepFixedTensor<RepRingT> {

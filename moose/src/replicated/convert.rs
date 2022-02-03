@@ -2,6 +2,8 @@
 
 use super::*;
 use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
+use crate::execution::SetupGeneration;
+use crate::host::{AbstractHostAesKey, HostBitArray, HostFixedTensor, SyncKey};
 
 impl RepShareOp {
     pub(crate) fn aeskey_kernel<S: Session, HostBitArrayT, RepBitArrayT>(

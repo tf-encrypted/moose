@@ -1,6 +1,8 @@
 //! Support for arithmetic operators
 
 use super::*;
+use crate::fixedpoint::FixedpointTensor;
+use crate::mirrored::Mir3Tensor;
 
 impl AddOp {
     pub(crate) fn rep_rep_kernel<S: Session, HostRingT>(

@@ -1,5 +1,5 @@
 use super::*;
-use crate::mirrored::{Mir3Tensor, MirFixedTensor, Mirrored3Placement};
+use crate::mirrored::{Mir3Tensor, Mirrored3Placement};
 
 impl ReplicatedPlacement {
     pub fn prefix_op<S, RepT>(

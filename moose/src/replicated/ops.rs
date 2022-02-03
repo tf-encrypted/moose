@@ -1,8 +1,8 @@
 //! Support for various operators that do not fit elsewhere
 
 use super::*;
-use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
-use crate::mirrored::{Mir3Tensor, MirFixedTensor, Mirrored3Placement};
+use crate::host::SliceInfo;
+use crate::mirrored::{Mir3Tensor, Mirrored3Placement};
 
 impl IdentityOp {
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(

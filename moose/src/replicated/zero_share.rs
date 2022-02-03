@@ -1,6 +1,8 @@
 //! Support for generating zero-shares
 
 use super::*;
+use crate::execution::SetupGeneration;
+use crate::host::{PrfKey, Seed, SyncKey};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct AbstractReplicatedZeroShare<R> {
