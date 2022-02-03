@@ -1038,7 +1038,6 @@ operators![
     Abs,
     HostMean,
     Diag,
-    HostBitDec,
     HostOnes,
     HostShlDim,
     Sign,
@@ -1088,7 +1087,7 @@ operators![
     RepTruncPr,
     RepToAdt,
     Index,
-    RepBitDecompose,
+    BitDecompose,
     RepBitCompose,
     RepShlDim,
     Mux,
@@ -1301,11 +1300,6 @@ pub struct HostShlDimOp {
     pub sig: Signature,
     pub amount: usize,
     pub bit_length: usize,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostBitDecOp {
-    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
@@ -1586,7 +1580,7 @@ pub struct IndexOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepBitDecomposeOp {
+pub struct BitDecomposeOp {
     pub sig: Signature,
 }
 

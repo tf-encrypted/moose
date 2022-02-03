@@ -685,7 +685,7 @@ impl HostShlDimOp {
     }
 }
 
-impl HostBitDecOp {
+impl BitDecomposeOp {
     pub(crate) fn ring64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,

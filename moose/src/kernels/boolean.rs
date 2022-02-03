@@ -92,18 +92,12 @@ pub trait PlacementBitDecompose<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementBitDecompose::bit_decompose, HostBitDecOp,
+    PlacementBitDecompose::bit_decompose, BitDecomposeOp,
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostBitTensor => [runtime] Self::bit64_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostBitTensor => [runtime] Self::bit128_kernel),
-    ]
-}
-
-modelled_kernel! {
-    PlacementBitDecompose::bit_decompose, RepBitDecomposeOp,
-    [
         (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedBitArray64 => [hybrid] Self::ring_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedBitArray128 => [hybrid] Self::ring_kernel),
     ]
