@@ -1293,8 +1293,8 @@ impl SumOp {
     }
 }
 
-impl RepTruncPrOp {
-    pub(crate) fn kernel<S: Session, HostRingT>(
+impl TruncPrOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         amount: u32,
@@ -1761,8 +1761,8 @@ impl SliceOp {
     }
 }
 
-impl RepShlDimOp {
-    pub(crate) fn kernel<S: Session, HostBitT>(
+impl ShlDimOp {
+    pub(crate) fn rep_bit_kernel<S: Session, HostBitT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         amount: usize,

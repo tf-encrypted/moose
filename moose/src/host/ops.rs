@@ -652,8 +652,8 @@ impl IndexOp {
     }
 }
 
-impl HostShlDimOp {
-    pub(crate) fn bit_kernel<S: RuntimeSession>(
+impl ShlDimOp {
+    pub(crate) fn host_bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         amount: usize,
