@@ -3,7 +3,7 @@
 use super::*;
 
 impl DivOp {
-    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, MirRingT, HostRingT, ShapeT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, MirRingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepFixedTensor<RepRingT>,
@@ -17,8 +17,6 @@ impl DivOp {
         ReplicatedPlacement: PlacementAdd<S, MirRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirRingT>,
-        HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
-        HostPlacement: PlacementDemirror<S, MirRingT, HostRingT>,
         ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
         ReplicatedPlacement: PlacementBroadcast<S, ShapeT, RepRingT, RepRingT>,
     {
@@ -253,45 +251,36 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::execution::SyncSession;
-    use ndarray::array;
+    use crate::prelude::*;
+    use ndarray::prelude::*;
 
     #[test]
     fn test_norm() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
-
-        let x = HostRing64Tensor::from_raw_plc(array![896u64], alice.clone());
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         let sess = SyncSession::default();
 
+        let x: HostRing64Tensor = alice.from_raw(array![896u64]);
         let x_shared = rep.share(&sess, &x);
 
         let (upshifted, topmost) = rep.norm(&sess, 12, &x_shared);
 
-        let topmost_target = HostRing64Tensor::from_raw_plc(array![4u64], alice.clone());
-        let upshifted_target = HostRing64Tensor::from_raw_plc(array![3584], alice.clone());
-
+        let topmost_target: HostRing64Tensor = alice.from_raw(array![4u64]);
+        let upshifted_target: HostRing64Tensor = alice.from_raw(array![3584]);
         assert_eq!(topmost_target, alice.reveal(&sess, &topmost));
         assert_eq!(upshifted_target, alice.reveal(&sess, &upshifted));
     }
 
     #[test]
     fn test_binary_adder() {
-        let sess = SyncSession::default();
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
-        let x = HostRing64Tensor::from_raw_plc(array![3884509700957842751u64], alice.clone());
-        let y = HostRing64Tensor::from_raw_plc(array![13611438098135434720u64], alice.clone());
+        let sess = SyncSession::default();
+
+        let x: HostRing64Tensor = alice.from_raw(array![3884509700957842751u64]);
+        let y: HostRing64Tensor = alice.from_raw(array![13611438098135434720u64]);
         let expected_output = alice.add(&sess, &x, &y);
 
         let x_bit = alice.bit_decompose(&sess, &x);
@@ -308,17 +297,13 @@ mod tests {
 
     #[test]
     fn test_approximate_reciprocal() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
-
-        // 3.5 * 2^8
-        let x = HostRing64Tensor::from_raw_plc(array![896u64], alice.clone());
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         let sess = SyncSession::default();
+
+        // 3.5 * 2^8
+        let x: HostRing64Tensor = alice.from_raw(array![896u64]);
 
         let expected_output = array![74i64];
 
