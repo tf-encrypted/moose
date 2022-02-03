@@ -278,7 +278,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Index(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Diag(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepBitDec(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            RepBitDecompose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepBitCompose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AdtFill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

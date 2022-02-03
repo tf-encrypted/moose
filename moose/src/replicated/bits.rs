@@ -98,7 +98,7 @@ where
     }
 }
 
-impl RepBitDecOp {
+impl RepBitDecomposeOp {
     pub(crate) fn ring_kernel<S: Session, RepRingT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,

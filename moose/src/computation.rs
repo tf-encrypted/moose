@@ -1088,7 +1088,7 @@ operators![
     RepTruncPr,
     RepToAdt,
     Index,
-    RepBitDec,
+    RepBitDecompose,
     RepBitCompose,
     RepShlDim,
     Mux,
@@ -1586,7 +1586,7 @@ pub struct IndexOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepBitDecOp {
+pub struct RepBitDecomposeOp {
     pub sig: Signature,
 }
 

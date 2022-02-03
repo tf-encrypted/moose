@@ -186,7 +186,7 @@ impl Session for SyncSession {
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Index(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepBitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RepBitDecompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepBitCompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

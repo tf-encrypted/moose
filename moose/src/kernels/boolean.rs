@@ -102,7 +102,7 @@ modelled_kernel! {
 }
 
 modelled_kernel! {
-    PlacementBitDec::bit_decompose, RepBitDecOp,
+    PlacementBitDec::bit_decompose, RepBitDecomposeOp,
     [
         (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedBitArray64 => [hybrid] Self::ring_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedBitArray128 => [hybrid] Self::ring_kernel),

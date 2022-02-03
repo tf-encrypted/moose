@@ -354,7 +354,7 @@ impl Session for AsyncSession {
             RepMsb(op) => DispatchKernel::compile(&op, plc)?,
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?,
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
-            RepBitDec(op) => DispatchKernel::compile(&op, plc)?,
+            RepBitDecompose(op) => DispatchKernel::compile(&op, plc)?,
             RepShlDim(op) => DispatchKernel::compile(&op, plc)?,
             RepAnd(op) => DispatchKernel::compile(&op, plc)?,
             RepXor(op) => DispatchKernel::compile(&op, plc)?,
