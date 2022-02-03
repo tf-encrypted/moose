@@ -1040,7 +1040,6 @@ operators![
     Diag,
     BitDecompose,
     HostOnes,
-    HostShlDim,
     Sign,
     RingFixedpointMean,
     RingFixedpointEncode,
@@ -1058,7 +1057,6 @@ operators![
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
-    FixedpointTruncPr,
     FixedpointMean,
     Pow2,
     Exp,
@@ -1082,11 +1080,11 @@ operators![
     Msb,
     RepFixedpointMean,
     AddN,
-    RepTruncPr,
+    TruncPr,
     RepToAdt,
     Index,
     BitCompose,
-    RepShlDim,
+    ShlDim,
     Mux,
     Maximum,
     Softmax,
@@ -1293,13 +1291,6 @@ pub struct DiagOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostShlDimOp {
-    pub sig: Signature,
-    pub amount: usize,
-    pub bit_length: usize,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct BitDecomposeOp {
     pub sig: Signature,
 }
@@ -1445,12 +1436,6 @@ pub struct FixedpointDecodeOp {
     pub fractional_precision: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct FixedpointTruncPrOp {
-    pub sig: Signature,
-    pub precision: u32, // TODO(Morten) rename to amount?
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
 pub struct FixedpointMeanOp {
     pub sig: Signature,
@@ -1537,7 +1522,7 @@ pub struct AddNOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepTruncPrOp {
+pub struct TruncPrOp {
     pub sig: Signature,
     pub amount: u32,
 }
@@ -1554,7 +1539,7 @@ pub struct FillOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepShlDimOp {
+pub struct ShlDimOp {
     pub sig: Signature,
     pub amount: usize,
     pub bit_length: usize,
