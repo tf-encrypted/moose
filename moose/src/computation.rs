@@ -1072,13 +1072,12 @@ operators![
     FloatingpointConcat,
     FloatingpointMean,
     // Additive operators
-    AdtReveal,
     AdtFill,
     AdtToRep,
     // Replicated operators
     RepSetup,
     Share,
-    RepReveal,
+    Reveal,
     Fill,
     RepMsb,
     RepAnd,
@@ -1495,11 +1494,6 @@ pub struct RingFixedpointDecodeOp {
     pub sig: Signature,
     pub scaling_base: u64,
     pub scaling_exp: u32,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct AdtRevealOp {
-    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]

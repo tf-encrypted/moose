@@ -130,7 +130,7 @@ pub trait PlacementDecrypt<S: Session, KeyT, C, O> {
 }
 
 modelled_kernel! {
-    PlacementDecrypt::decrypt, AesDecryptOp,
+    PlacementDecrypt::decrypt, DecryptOp,
     [
         (HostPlacement, (AesKey, AesTensor) -> Tensor => [hybrid] Self::host_kernel),
         (HostPlacement, (HostAesKey, AesTensor) -> Tensor => [hybrid] Self::host_key_kernel),
