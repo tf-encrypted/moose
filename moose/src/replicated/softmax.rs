@@ -148,14 +148,11 @@ mod tests {
     macro_rules! rep_approx_softmax_fixed_test {
         ($func_name:ident, $test_func: ident<$ti: ty, $tu: ty>, $axis: expr, $upmost_index: expr, $i_precision: expr, $f_precision: expr, $err: expr) => {
             fn $func_name(x: ArrayD<f64>, y_target: Vec<f64>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let sess = SyncSession::default();
+
                 let encode = |item: &f64| -> $tu {
                     let tmp: $ti = (2f64.powf($f_precision as f64) * item) as $ti;
                     tmp as $tu
