@@ -3,22 +3,29 @@
 //! This is used during compilation to lower operations.
 //! In general, it works by evaluating kernels on symbolic values and
 //! recording the underlying operations perform as new computation.
+//! Values are generally wrapped in the `Symbolic` enum.
 
-use crate::computation::{
-    Computation, KnownType, Operation, Operator, Placed, Placement, SymbolicValue,
-};
+use super::{Session, SetupGeneration};
+use crate::computation::{Computation, Operation, Operator, Placed, Placement, SymbolicValue};
 use crate::error::{Error, Result};
-use crate::execution::Session;
+use crate::host::PrfKey;
 use crate::kernels::{DispatchKernel, PlacementPlace};
-use crate::replicated::ReplicatedPlacement;
-use crate::types::ReplicatedSetup;
+use crate::replicated::{RepSetup, ReplicatedPlacement};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+/// Wrapper for values used in `SymbolicSession`s
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
+    /// The value is really symbolic
+    ///
+    /// It exists only as a handle to an operation.
     Symbolic(SymbolicHandle<T::Placement>),
+
+    /// The value is actually not symbolic
+    ///
+    /// It (partially) exists, although some sub-components may be handles
     Concrete(T),
 }
 
@@ -99,8 +106,7 @@ where
 #[derive(Default)]
 struct SymbolicSessionState {
     pub ops: Vec<Operation>,
-    pub replicated_keys:
-        HashMap<ReplicatedPlacement, Arc<<ReplicatedSetup as KnownType<SymbolicSession>>::Type>>,
+    pub replicated_keys: HashMap<ReplicatedPlacement, Arc<RepSetup<Symbolic<PrfKey>>>>,
 }
 
 /// Session object in which symbolic execution is happening
@@ -161,10 +167,12 @@ impl Session for SymbolicSession {
     ) -> Result<Self::Value> {
         self.strategy.execute(self, op, plc, operands)
     }
+}
 
-    type ReplicatedSetup = <ReplicatedSetup as KnownType<SymbolicSession>>::Type;
+impl SetupGeneration<ReplicatedPlacement> for SymbolicSession {
+    type Setup = RepSetup<Symbolic<PrfKey>>;
 
-    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::ReplicatedSetup> {
+    fn setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
         // Produce a new replicated setup or returned a previously produced setup for the placement
         let state = self.state.read();
         match state.replicated_keys.get(plc) {
@@ -225,10 +233,10 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RingFill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Fill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            AesDecrypt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            BitXor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            BitAnd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            BitOr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Decrypt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Xor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            And(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Or(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitExtract(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Sample(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             SampleSeeded(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -237,18 +245,15 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingInject(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepSetup(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepShare(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepReveal(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepTruncPr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Share(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Reveal(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            TruncPr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AddN(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Shl(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Shr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepMsb(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Msb(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Abs(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepAnd(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepXor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepEqual(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Mux(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Maximum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Softmax(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -257,38 +262,27 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Index(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Diag(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepSlice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepBitDec(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepBitCompose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            BitCompose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            ShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AdtFill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            AdtReveal(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Sqrt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            HostSlice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            HostShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostOnes(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Sign(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Pow2(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Exp(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Equal(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Less(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            HostTranspose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            HostBitDec(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            BitDecompose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Identity(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            HostReshape(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            FloatingpointAtLeast2D(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            FloatingpointTranspose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             IndexAxis(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -296,6 +290,8 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Ones(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             ExpandDims(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Concat(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Reshape(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Squeeze(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Transpose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Inverse(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Add(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

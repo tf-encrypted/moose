@@ -702,6 +702,46 @@ impl MuxOp {
             ))),
         }
     }
+
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+        sess: &S,
+        plc: &HostPlacement,
+        s: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    where
+        HostPlacement: PlacementMux<S, BoolT, Fixed64T, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementMux<S, BoolT, Fixed128T, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementMux<S, BoolT, Float32T, Float32T, Float32T>,
+        HostPlacement: PlacementMux<S, BoolT, Float64T, Float64T, Float64T>,
+    {
+        match (s, x, y) {
+            (AbstractTensor::Bool(s), AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let result = plc.mux(sess, &s, &x, &y);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            (AbstractTensor::Bool(s), AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let result = plc.mux(sess, &s, &x, &y);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            (AbstractTensor::Bool(s), AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+                let result = plc.mux(sess, &s, &x, &y);
+                Ok(AbstractTensor::Float32(result))
+            }
+            (AbstractTensor::Bool(s), AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+                let result = plc.mux(sess, &s, &x, &y);
+                Ok(AbstractTensor::Float64(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            (s, x, y) => Err(Error::UnimplementedOperator(format!(
+                "Missing host mux op for {:?}, {:?} and {:?}",
+                &s.ty_desc(),
+                &x.ty_desc(),
+                &y.ty_desc()
+            ))),
+        }
+    }
 }
 
 impl CastOp {
@@ -837,7 +877,7 @@ impl CastOp {
 }
 
 impl AtLeast2DOp {
-    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         to_column_vector: bool,
@@ -1038,14 +1078,14 @@ impl OnesOp {
     pub(crate) fn host_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
-        shape: cs!(HostShape),
+        shape: m!(HostShape),
     ) -> Result<
         AbstractTensor<
-            cs!(Fixed64Tensor),
-            cs!(Fixed128Tensor),
-            cs!(Float32Tensor),
-            cs!(Float64Tensor),
-            cs!(BooleanTensor),
+            m!(Fixed64Tensor),
+            m!(Fixed128Tensor),
+            m!(Float32Tensor),
+            m!(Float64Tensor),
+            m!(BooleanTensor),
         >,
     >
     where
@@ -1055,7 +1095,7 @@ impl OnesOp {
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
         BooleanTensor: KnownType<S>,
-        HostPlacement: PlacementOnes<S, cs!(HostShape), cs!(Float64Tensor)>,
+        HostPlacement: PlacementOnes<S, m!(HostShape), m!(Float64Tensor)>,
     {
         let result = plc.ones(sess, &shape);
         Ok(AbstractTensor::Float64(result))
@@ -1324,13 +1364,13 @@ impl ConcatOp {
 }
 
 impl TransposeOp {
-    pub(crate) fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
-        // HostPlacement: PlacementTranspose<S, Float32T, Float32T>,
+        HostPlacement: PlacementTranspose<S, Float32T, Float32T>,
         HostPlacement: PlacementTranspose<S, Float64T, Float64T>,
     {
         match x {
@@ -1344,10 +1384,9 @@ impl TransposeOp {
                 // let z = plc.transpose(sess, &x);
                 // AbstractTensor::Fixed128(z)
             }
-            AbstractTensor::Float32(_x) => {
-                unimplemented!()
-                // let z = plc.transpose(sess, &x);
-                // AbstractTensor::Float32(z)
+            AbstractTensor::Float32(x) => {
+                let z = plc.transpose(sess, &x);
+                Ok(AbstractTensor::Float32(z))
             }
             AbstractTensor::Float64(x) => {
                 let z = plc.transpose(sess, &x);
@@ -1402,15 +1441,15 @@ impl LoadOp {
     pub(crate) fn logical_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
-        key: cs!(HostString),
-        query: cs!(HostString),
+        key: m!(HostString),
+        query: m!(HostString),
     ) -> Result<
         AbstractTensor<
-            cs!(Fixed64Tensor),
-            cs!(Fixed128Tensor),
-            cs!(Float32Tensor),
-            cs!(Float64Tensor),
-            cs!(BooleanTensor),
+            m!(Fixed64Tensor),
+            m!(Fixed128Tensor),
+            m!(Float32Tensor),
+            m!(Float64Tensor),
+            m!(BooleanTensor),
         >,
     >
     where
@@ -1420,7 +1459,7 @@ impl LoadOp {
         Float32Tensor: KnownType<S>,
         Float64Tensor: KnownType<S>,
         BooleanTensor: KnownType<S>,
-        HostPlacement: PlacementLoad<S, cs!(HostString), cs!(HostString), cs!(Float64Tensor)>,
+        HostPlacement: PlacementLoad<S, m!(HostString), m!(HostString), m!(Float64Tensor)>,
     {
         let z = plc.load(sess, &key, &query);
         Ok(AbstractTensor::Float64(z))
@@ -1431,17 +1470,17 @@ impl SaveOp {
     pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,
-        key: cs!(HostString),
+        key: m!(HostString),
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
-    ) -> Result<cs!(Unit)>
+    ) -> Result<m!(Unit)>
     where
         HostString: KnownType<S>,
         Unit: KnownType<S>,
-        // HostPlacement: PlacementSave<S, cs!(HostString), Fixed64T, cs!(Unit)>,
-        // HostPlacement: PlacementSave<S, cs!(HostString), Fixed128T, cs!(Unit)>,
-        HostPlacement: PlacementSave<S, cs!(HostString), Float32T, cs!(Unit)>,
-        HostPlacement: PlacementSave<S, cs!(HostString), Float64T, cs!(Unit)>,
-        HostPlacement: PlacementSave<S, cs!(HostString), BoolT, cs!(Unit)>,
+        // HostPlacement: PlacementSave<S, m!(HostString), Fixed64T, m!(Unit)>,
+        // HostPlacement: PlacementSave<S, m!(HostString), Fixed128T, m!(Unit)>,
+        HostPlacement: PlacementSave<S, m!(HostString), Float32T, m!(Unit)>,
+        HostPlacement: PlacementSave<S, m!(HostString), Float64T, m!(Unit)>,
+        HostPlacement: PlacementSave<S, m!(HostString), BoolT, m!(Unit)>,
     {
         match x {
             AbstractTensor::Fixed64(_x) => {
@@ -1678,7 +1717,7 @@ impl SigmoidOp {
     }
 }
 
-impl BitOrOp {
+impl OrOp {
     pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &HostPlacement,

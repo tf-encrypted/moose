@@ -144,7 +144,6 @@ impl FixedpointEncodeOp {
     where
         HostPlacement: PlacementRingFixedpointEncode<S, HostFloatT, HostRingT>,
     {
-        // TODO(Morten) inline this function?
         let y = plc.fixedpoint_ring_encode(sess, 2, fractional_precision, &x);
         Ok(HostFixedTensor {
             tensor: y,
@@ -235,7 +234,6 @@ impl FixedpointDecodeOp {
     where
         HostPlacement: PlacementRingFixedpointDecode<S, HostRingT, HostFloatT>,
     {
-        // TODO(Morten) inline this function?
         assert_eq!(x.fractional_precision, precision);
         Ok(plc.fixedpoint_ring_decode(sess, 2, precision, &x.tensor))
     }
@@ -760,11 +758,11 @@ impl DotOp {
     }
 }
 
-impl FixedpointTruncPrOp {
+impl TruncPrOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
-        precision: u32,
+        amount: u32,
         x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
@@ -778,14 +776,14 @@ impl FixedpointTruncPrOp {
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
-        let z = plc.trunc_pr(sess, precision, &v);
+        let z = plc.trunc_pr(sess, amount, &v);
         Ok(FixedTensor::Host(z))
     }
 
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        precision: u32,
+        amount: u32,
         x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
@@ -799,24 +797,24 @@ impl FixedpointTruncPrOp {
             FixedTensor::Replicated(x) => x,
         };
 
-        let z = plc.trunc_pr(sess, precision, &v);
+        let z = plc.trunc_pr(sess, amount, &v);
         Ok(FixedTensor::Replicated(z))
     }
 
     pub(crate) fn hostfixed_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &HostPlacement,
-        precision: u32,
+        amount: u32,
         x: HostFixedTensor<HostRingT>,
     ) -> Result<HostFixedTensor<HostRingT>>
     where
         HostPlacement: PlacementShr<S, HostRingT, HostRingT>,
     {
         // NOTE(Morten) we assume fixedpoint base is 2 so that truncation becomes (integer) division by 2**precision
-        let z = plc.shr(sess, precision as usize, &x.tensor);
+        let z = plc.shr(sess, amount as usize, &x.tensor);
         Ok(HostFixedTensor {
             tensor: z,
-            fractional_precision: x.fractional_precision - precision,
+            fractional_precision: x.fractional_precision - amount,
             integral_precision: x.integral_precision,
         })
     }
@@ -824,16 +822,16 @@ impl FixedpointTruncPrOp {
     pub(crate) fn repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        precision: u32,
+        amount: u32,
         x: RepFixedTensor<RepRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
     {
-        let z = plc.trunc_pr(sess, precision, &x.tensor);
+        let z = plc.trunc_pr(sess, amount, &x.tensor);
         Ok(RepFixedTensor {
             tensor: z,
-            fractional_precision: x.fractional_precision - precision,
+            fractional_precision: x.fractional_precision - amount,
             integral_precision: x.integral_precision,
         })
     }
@@ -1718,6 +1716,63 @@ impl MuxOp {
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         Ok(RepFixedTensor {
+            tensor: plc.mux(sess, &s, &x.tensor, &y.tensor),
+            fractional_precision: x.fractional_precision,
+            integral_precision: u32::max(x.integral_precision, y.integral_precision),
+        })
+    }
+
+    pub(crate) fn fixed_host_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostBitT,
+        RepBitT,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        s: BoolTensor<HostBitT, RepBitT>,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementMux<S, HostBitT, HostFixedT, HostFixedT, HostFixedT>,
+    {
+        let s = match s {
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+            BoolTensor::Host(v) => v,
+        };
+        let x = match x {
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Host(v) => v,
+        };
+        let y = match y {
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Host(v) => v,
+        };
+        let z = plc.mux(sess, &s, &x, &y);
+        Ok(FixedTensor::Host(z))
+    }
+
+    pub(crate) fn host_bit_fixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        s: m!(HostBitTensor),
+        x: HostFixedTensor<HostRingT>,
+        y: HostFixedTensor<HostRingT>,
+    ) -> Result<HostFixedTensor<HostRingT>>
+    where
+        HostBitTensor: KnownType<S>,
+        HostPlacement: PlacementMux<S, m!(HostBitTensor), HostRingT, HostRingT, HostRingT>,
+    {
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+        Ok(HostFixedTensor {
             tensor: plc.mux(sess, &s, &x.tensor, &y.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: u32::max(x.integral_precision, y.integral_precision),

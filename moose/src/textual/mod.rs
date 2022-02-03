@@ -525,34 +525,54 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
         // 1D arrays
         alt((
             constant_literal_helper(Ty::HostInt8Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostInt8Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt8Tensor(t)
             }),
             constant_literal_helper(Ty::HostInt16Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostInt16Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt16Tensor(t)
             }),
             constant_literal_helper(Ty::HostInt32Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostInt32Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt32Tensor(t)
             }),
             constant_literal_helper(Ty::HostInt64Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostInt64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt64Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint8Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostUint8Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint8Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint16Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostUint16Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint16Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint32Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostUint32Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint32Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint64Tensor.short_name(), vector(parse_int), |v| {
-                Constant::HostUint64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint64Tensor(t)
             }),
             constant_literal_helper(Ty::HostFloat32Tensor.short_name(), vector(float), |v| {
-                Constant::HostFloat32Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostFloat32Tensor(t)
             }),
             constant_literal_helper(Ty::HostFloat64Tensor.short_name(), vector(double), |v| {
-                Constant::HostFloat64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostFloat64Tensor(t)
             }),
             constant_literal_helper(Ty::HostRing64Tensor.short_name(), vector(parse_int), |v| {
                 let plc = HostPlacement::from("TODO");
@@ -573,34 +593,54 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
         // 2D arrays
         alt((
             constant_literal_helper(Ty::HostInt8Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostInt8Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt8Tensor(t)
             }),
             constant_literal_helper(Ty::HostInt16Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostInt16Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt16Tensor(t)
             }),
             constant_literal_helper(Ty::HostInt32Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostInt32Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt32Tensor(t)
             }),
             constant_literal_helper(Ty::HostInt64Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostInt64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostInt64Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint8Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostUint8Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint8Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint16Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostUint16Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint16Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint32Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostUint32Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint32Tensor(t)
             }),
             constant_literal_helper(Ty::HostUint64Tensor.short_name(), vector2(parse_int), |v| {
-                Constant::HostUint64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostUint64Tensor(t)
             }),
             constant_literal_helper(Ty::HostFloat32Tensor.short_name(), vector2(float), |v| {
-                Constant::HostFloat32Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostFloat32Tensor(t)
             }),
             constant_literal_helper(Ty::HostFloat64Tensor.short_name(), vector2(double), |v| {
-                Constant::HostFloat64Tensor(v.into())
+                let plc = HostPlacement::from("TODO");
+                let t = plc.from_raw(v);
+                Constant::HostFloat64Tensor(t)
             }),
             constant_literal_helper(
                 Ty::HostRing64Tensor.short_name(),
@@ -1051,6 +1091,8 @@ impl ToTextual for Operator {
             Ones(op) => op.to_textual(),
             ExpandDims(op) => op.to_textual(),
             Concat(op) => op.to_textual(),
+            Reshape(op) => op.to_textual(),
+            Squeeze(op) => op.to_textual(),
             Transpose(op) => op.to_textual(),
             Dot(op) => op.to_textual(),
             Inverse(op) => op.to_textual(),
@@ -1060,21 +1102,16 @@ impl ToTextual for Operator {
             Mean(op) => op.to_textual(),
             Sum(op) => op.to_textual(),
             Div(op) => op.to_textual(),
-            BitXor(op) => op.to_textual(),
-            BitAnd(op) => op.to_textual(),
-            BitOr(op) => op.to_textual(),
+            Xor(op) => op.to_textual(),
+            And(op) => op.to_textual(),
+            Or(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
             HostMean(op) => op.to_textual(),
             Sqrt(op) => op.to_textual(),
             HostOnes(op) => op.to_textual(),
-            HostSqueeze(op) => op.to_textual(),
-            HostReshape(op) => op.to_textual(),
-            HostAtLeast2D(op) => op.to_textual(),
-            HostSlice(op) => op.to_textual(),
             Diag(op) => op.to_textual(),
-            HostShlDim(op) => op.to_textual(),
-            HostBitDec(op) => op.to_textual(),
-            HostTranspose(op) => op.to_textual(),
+            ShlDim(op) => op.to_textual(),
+            BitDecompose(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
             RingFixedpointEncode(op) => op.to_textual(),
             RingFixedpointDecode(op) => op.to_textual(),
@@ -1087,42 +1124,33 @@ impl ToTextual for Operator {
             BitExtract(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
-            AesDecrypt(op) => op.to_textual(),
+            Decrypt(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
-            FixedpointTruncPr(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
-            FloatingpointAtLeast2D(op) => op.to_textual(),
             FloatingpointOnes(op) => op.to_textual(),
             FloatingpointConcat(op) => op.to_textual(),
-            FloatingpointTranspose(op) => op.to_textual(),
             FloatingpointMean(op) => op.to_textual(),
             RepSetup(op) => op.to_textual(),
-            RepShare(op) => op.to_textual(),
-            RepReveal(op) => op.to_textual(),
+            Share(op) => op.to_textual(),
+            Reveal(op) => op.to_textual(),
             RepFixedpointMean(op) => op.to_textual(),
             AddN(op) => op.to_textual(),
-            RepAnd(op) => op.to_textual(),
-            RepXor(op) => op.to_textual(),
-            RepTruncPr(op) => op.to_textual(),
-            AdtReveal(op) => op.to_textual(),
+            TruncPr(op) => op.to_textual(),
             AdtFill(op) => op.to_textual(),
             AdtToRep(op) => op.to_textual(),
             Abs(op) => op.to_textual(),
             Fill(op) => op.to_textual(),
-            RepMsb(op) => op.to_textual(),
+            Msb(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
             Index(op) => op.to_textual(),
-            RepBitDec(op) => op.to_textual(),
-            RepBitCompose(op) => op.to_textual(),
-            RepSlice(op) => op.to_textual(),
-            RepShlDim(op) => op.to_textual(),
-            RepEqual(op) => op.to_textual(),
+            BitCompose(op) => op.to_textual(),
             Mux(op) => op.to_textual(),
             Neg(op) => op.to_textual(),
             Pow2(op) => op.to_textual(),
             Exp(op) => op.to_textual(),
             Sigmoid(op) => op.to_textual(),
+            Equal(op) => op.to_textual(),
             Less(op) => op.to_textual(),
             GreaterThan(op) => op.to_textual(),
             Demirror(op) => op.to_textual(),
@@ -1158,7 +1186,7 @@ op_with_axis_to_textual!(MeanOp);
 op_with_axis_to_textual!(SumOp);
 op_with_axis_to_textual!(HostMeanOp);
 op_with_axis_to_textual!(FloatingpointMeanOp);
-op_with_axis_to_textual!(HostSqueezeOp);
+op_with_axis_to_textual!(SqueezeOp);
 
 impl ToTextual for FixedpointMeanOp {
     fn to_textual(&self) -> String {
@@ -1600,7 +1628,7 @@ mod tests {
             constant_literal::<(&str, ErrorKind)>("HostUint8Tensor([1,2,3])")?;
         assert_eq!(
             parsed_u8_tensor,
-            Constant::HostUint8Tensor(vec![1, 2, 3].into())
+            Constant::HostUint8Tensor(plc.from_raw(vec![1, 2, 3]))
         );
         let (_, parsed_seed) =
             constant_literal::<(&str, ErrorKind)>("Seed(529c2fc9bf573d077f45f42b19cfb8d4)")?;
@@ -1684,6 +1712,8 @@ mod tests {
 
     #[test]
     fn test_constant() -> Result<(), anyhow::Error> {
+        let host = HostPlacement::from("TODO");
+
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
             "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor () @Host(alice)",
         )?;
@@ -1692,17 +1722,13 @@ mod tests {
             op.kind,
             Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
-                value: Constant::HostFloat32Tensor(vec![1.0].into())
+                value: Constant::HostFloat32Tensor(host.from_raw(vec![1.0]))
             })
         );
 
         // 2D tensor
         use ndarray::prelude::*;
-        let x = HostFloat32Tensor::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
+        let x = host.from_raw(array![[1.0, 2.0], [3.0, 4.0]]);
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
             "x = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor () @Replicated(alice, bob, charlie)",
         )?;
@@ -1828,12 +1854,12 @@ mod tests {
 
     #[test]
     fn test_slice_option() -> Result<(), anyhow::Error> {
-        let input = "x10 = HostSlice{slice = {start = 1, end = 10, step = -1}}: (HostRing64Tensor) -> HostRing64Tensor (x) @Host(alice)";
+        let input = "x10 = Slice{slice = {start = 1, end = 10, step = -1}}: (HostRing64Tensor) -> HostRing64Tensor (x) @Host(alice)";
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(input)?;
         assert_eq!(op.name, "x10");
         assert_eq!(
             op.kind,
-            Operator::HostSlice(HostSliceOp {
+            Operator::Slice(SliceOp {
                 sig: Signature::unary(Ty::HostRing64Tensor, Ty::HostRing64Tensor),
                 slice: SliceInfo(vec![SliceInfoElem {
                     start: 1,
@@ -1848,12 +1874,12 @@ mod tests {
 
     #[test]
     fn test_slice() -> Result<(), anyhow::Error> {
-        let input = "x10 = HostSlice{slice = {start = 1, end = 10, step = 1}}: (HostRing64Tensor) -> HostRing64Tensor (x) @Host(alice)";
+        let input = "x10 = Slice{slice = {start = 1, end = 10, step = 1}}: (HostRing64Tensor) -> HostRing64Tensor (x) @Host(alice)";
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(input)?;
         assert_eq!(op.name, "x10");
         assert_eq!(
             op.kind,
-            Operator::HostSlice(HostSliceOp {
+            Operator::Slice(SliceOp {
                 sig: Signature::unary(Ty::HostRing64Tensor, Ty::HostRing64Tensor),
                 slice: SliceInfo(vec![SliceInfoElem {
                     start: 1,
@@ -1922,10 +1948,10 @@ mod tests {
             "z = ExpandDims {axis = [0]}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostAtLeast2D {to_column_vector = false}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
+            "z = AtLeast2D {to_column_vector = false}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = HostSlice {slice = {start = 1, end = 2}}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
+            "z = Slice {slice = {start = 1, end = 2}}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = Diag: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
@@ -1958,7 +1984,7 @@ mod tests {
             "z = SampleSeeded {}: (HostShape, Seed) -> HostBitTensor (shape, seed) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = BitXor: (HostBitTensor, HostBitTensor) -> HostBitTensor (x, y) @Host(alice)",
+            "z = Xor: (HostBitTensor, HostBitTensor) -> HostBitTensor (x, y) @Host(alice)",
         )?;
 
         parse_assignment::<(&str, ErrorKind)>(
@@ -1973,6 +1999,8 @@ mod tests {
 
     #[test]
     fn test_sample_computation() -> Result<(), anyhow::Error> {
+        let host = HostPlacement::from("TODO");
+
         let (_, comp) = parse_computation::<(&str, ErrorKind)>(
             "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor() @Host(alice)
             y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
@@ -1985,14 +2013,14 @@ mod tests {
             comp.operations[0].kind,
             Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
-                value: Constant::HostFloat32Tensor(vec![1.0].into())
+                value: Constant::HostFloat32Tensor(host.from_raw(vec![1.0]))
             })
         );
         assert_eq!(
             comp.operations[1].kind,
             Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
-                value: Constant::HostFloat32Tensor(vec![2.0].into())
+                value: Constant::HostFloat32Tensor(host.from_raw(vec![2.0]))
             })
         );
         assert_eq!(comp.operations[2].name, "z");
@@ -2079,8 +2107,12 @@ mod tests {
 
     #[test]
     fn test_constant_try_into() -> Result<(), anyhow::Error> {
+        let host = HostPlacement::from("TODO");
         let v: Constant = "HostFloat32Tensor([1.0, 2.0, 3.0])".try_into()?;
-        assert_eq!(v, Constant::HostFloat32Tensor(vec![1.0, 2.0, 3.0].into()));
+        assert_eq!(
+            v,
+            Constant::HostFloat32Tensor(host.from_raw(vec![1.0, 2.0, 3.0]))
+        );
         Ok(())
     }
 

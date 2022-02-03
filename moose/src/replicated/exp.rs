@@ -14,7 +14,7 @@ impl Pow2Op {
     where
         RepRingT: Ring<BitLength = N>,
         RepRingT: Clone,
-        ReplicatedPlacement: PlacementBitDec<S, RepRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementBitDecompose<S, RepRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
         ReplicatedPlacement: PlacementMux<S, RepRingT, RepRingT, RepRingT, RepRingT>,
@@ -123,8 +123,8 @@ where
     ReplicatedShape: KnownType<S>,
     ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), RepRingT>,
-    ReplicatedPlacement: PlacementShape<S, RepRingT, cs!(ReplicatedShape)>,
+    ReplicatedPlacement: PlacementFill<S, m!(ReplicatedShape), RepRingT>,
+    ReplicatedPlacement: PlacementShape<S, RepRingT, m!(ReplicatedShape)>,
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
 {

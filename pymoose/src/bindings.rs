@@ -51,13 +51,9 @@ fn pyobj_tensor_to_host_tensor<T>(py: Python, obj: &PyObject) -> HostTensor<T>
 where
     T: Element + LinalgScalar,
 {
+    let plc = HostPlacement::from("TODO");
     let pyarray = obj.cast_as::<PyArrayDyn<T>>(py).unwrap();
-    HostTensor::from(
-        pyarray
-            .to_owned_array()
-            .into_dimensionality::<IxDyn>()
-            .unwrap(),
-    )
+    plc.from_raw(pyarray.to_owned_array())
 }
 
 fn pyobj_tensor_to_host_bit_tensor(py: Python, obj: &PyObject) -> HostBitTensor {
@@ -268,6 +264,8 @@ impl MooseComputation {
     }
 }
 
+const DEFAULT_PARSE_CHUNKS: usize = 12;
+
 #[pymethods]
 impl MooseComputation {
     #[classmethod]
@@ -306,7 +304,7 @@ impl MooseComputation {
     #[classmethod]
     pub fn from_textual(_cls: &PyType, py: Python, text: &PyString) -> PyResult<Py<Self>> {
         let text: &str = text.extract()?;
-        let computation: Computation = parallel_parse_computation(text, 3)
+        let computation: Computation = parallel_parse_computation(text, DEFAULT_PARSE_CHUNKS)
             .map_err(|e: anyhow::Error| PyRuntimeError::new_err(e.to_string()))?;
         let moose_comp = MooseComputation { computation };
         Py::new(py, moose_comp)

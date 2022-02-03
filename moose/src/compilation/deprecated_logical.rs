@@ -24,7 +24,7 @@ fn lower_op(op: &Operation) -> Operation {
     match (&op.placement, &op.kind) {
         (Placement::Host(_), Operator::AtLeast2D(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostAtLeast2DOp {
+            kind: AtLeast2DOp {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 to_column_vector: i.to_column_vector,
             }
@@ -150,7 +150,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Slice(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostSliceOp {
+            kind: SliceOp {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 slice: i.slice.clone(),
             }
@@ -178,7 +178,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Transpose(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostTransposeOp {
+            kind: TransposeOp {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
             }
             .into(),

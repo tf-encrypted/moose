@@ -133,7 +133,7 @@ pub trait PlacementTruncPr<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementTruncPr::trunc_pr, FixedpointTruncPrOp{precision: u32},
+    PlacementTruncPr::trunc_pr, TruncPrOp{amount: u32},
     [
         (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_host_kernel),
         (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_host_kernel),
@@ -143,15 +143,9 @@ modelled_kernel! {
         (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::hostfixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::repfixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::repfixed_kernel),
-    ]
-}
-
-// TODO(Morten) should we rename this as a shift?
-modelled_kernel! {
-    PlacementTruncPr::trunc_pr, RepTruncPrOp{amount: u32},
-    [
-        (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::kernel),
-        (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::kernel),
+        // TODO(Morten) should we rename this as a shift?
+        (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_kernel),
     ]
 }
 
@@ -210,16 +204,10 @@ pub trait PlacementShlDim<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementShlDim::shl_dim, RepShlDimOp{amount: usize, bit_length: usize},
+    PlacementShlDim::shl_dim, ShlDimOp{amount: usize, bit_length: usize},
     [
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::kernel),
-    ]
-}
-
-modelled_kernel! {
-    PlacementShlDim::shl_dim, HostShlDimOp{amount: usize, bit_length: usize},
-    [
-        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::bit_kernel),
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::host_bit_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::rep_bit_kernel),
     ]
 }
 

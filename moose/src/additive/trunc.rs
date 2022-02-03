@@ -78,38 +78,38 @@ where
     HostRingT: Ring,
     HostShape: KnownType<S>,
     HostPlacement: TruncMaskGen<S, m!(HostShape), HostRingT>,
-    HostPlacement: PlacementReveal<S, st!(AdtTensor<HostRingT>), HostRingT>,
+    HostPlacement: PlacementReveal<S, m!(c!(AdtTensor<HostRingT>)), HostRingT>,
     HostPlacement: PlacementOnes<S, m!(HostShape), HostRingT>,
     HostPlacement: PlacementShape<S, HostRingT, m!(HostShape)>,
     HostPlacement: PlacementShl<S, HostRingT, HostRingT>,
     HostPlacement: PlacementShr<S, HostRingT, HostRingT>,
-    AdtTensor<HostRingT>: Clone + Into<st!(AdtTensor<HostRingT>)>,
-    st!(AdtTensor<HostRingT>): TryInto<AdtTensor<HostRingT>>,
+    AdtTensor<HostRingT>: Clone + Into<m!(c!(AdtTensor<HostRingT>))>,
+    m!(c!(AdtTensor<HostRingT>)): TryInto<AdtTensor<HostRingT>>,
     AdditivePlacement:
-        PlacementAdd<S, st!(AdtTensor<HostRingT>), HostRingT, st!(AdtTensor<HostRingT>)>,
+        PlacementAdd<S, m!(c!(AdtTensor<HostRingT>)), HostRingT, m!(c!(AdtTensor<HostRingT>))>,
     AdditivePlacement: PlacementAdd<
         S,
-        st!(AdtTensor<HostRingT>),
-        st!(AdtTensor<HostRingT>),
-        st!(AdtTensor<HostRingT>),
+        m!(c!(AdtTensor<HostRingT>)),
+        m!(c!(AdtTensor<HostRingT>)),
+        m!(c!(AdtTensor<HostRingT>)),
     >,
     AdditivePlacement:
         PlacementAdd<S, AdtTensor<HostRingT>, AdtTensor<HostRingT>, AdtTensor<HostRingT>>,
     AdditivePlacement:
-        PlacementSub<S, HostRingT, st!(AdtTensor<HostRingT>), st!(AdtTensor<HostRingT>)>,
+        PlacementSub<S, HostRingT, m!(c!(AdtTensor<HostRingT>)), m!(c!(AdtTensor<HostRingT>))>,
     AdditivePlacement:
-        PlacementMul<S, st!(AdtTensor<HostRingT>), HostRingT, st!(AdtTensor<HostRingT>)>,
-    AdditivePlacement: PlacementShl<S, st!(AdtTensor<HostRingT>), st!(AdtTensor<HostRingT>)>,
+        PlacementMul<S, m!(c!(AdtTensor<HostRingT>)), HostRingT, m!(c!(AdtTensor<HostRingT>))>,
+    AdditivePlacement: PlacementShl<S, m!(c!(AdtTensor<HostRingT>)), m!(c!(AdtTensor<HostRingT>))>,
     AdditivePlacement: PlacementSub<
         S,
-        st!(AdtTensor<HostRingT>),
-        st!(AdtTensor<HostRingT>),
-        st!(AdtTensor<HostRingT>),
+        m!(c!(AdtTensor<HostRingT>)),
+        m!(c!(AdtTensor<HostRingT>)),
+        m!(c!(AdtTensor<HostRingT>)),
     >,
     AdditivePlacement:
         PlacementSub<S, AdtTensor<HostRingT>, AdtTensor<HostRingT>, AdtTensor<HostRingT>>,
     AdditivePlacement:
-        PlacementSub<S, st!(AdtTensor<HostRingT>), HostRingT, st!(AdtTensor<HostRingT>)>,
+        PlacementSub<S, m!(c!(AdtTensor<HostRingT>)), HostRingT, m!(c!(AdtTensor<HostRingT>))>,
 {
     fn trunc_pr(
         &self,

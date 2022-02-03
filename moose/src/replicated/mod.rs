@@ -3,7 +3,7 @@ use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider, TruncPrProvid
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::symbolic::Symbolic;
-use crate::execution::Session;
+use crate::execution::{Session, SetupGeneration};
 use crate::fixedpoint::FixedpointTensor;
 use crate::host::{
     AbstractHostAesKey, HostBitArray, HostFixedTensor, HostPlacement, PrfKey, Seed, SliceInfo,
@@ -372,7 +372,7 @@ impl RepSetupOp {
     }
 }
 
-impl RepShareOp {
+impl ShareOp {
     pub(crate) fn aeskey_kernel<S: Session, HostBitArrayT, RepBitArrayT>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -418,8 +418,7 @@ impl RepShareOp {
         x: RingT,
     ) -> Result<RepTen<RingT>>
     where
-        <S as Session>::ReplicatedSetup: Clone,
-        <S as Session>::ReplicatedSetup: TryInto<RepSetup<KeyT>>,
+        S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<KeyT>>,
         RingT: Clone + Placed<Placement = HostPlacement>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, RingT>,
@@ -431,13 +430,10 @@ impl RepShareOp {
     {
         let x_player = x.placement()?;
 
-        let setup = match (*sess.replicated_setup(plc)).clone().try_into() {
-            Ok(setup) => setup,
-            _ => todo!("not sure what to do with the symbolic setup yet"), // TODO: perhaps a custom kernel could instead output a symbolic op
-        };
+        let setup = sess.setup(plc);
         let RepSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
-        } = &setup;
+        } = setup.as_ref();
 
         let (player0, player1, player2) = plc.host_placements();
 
@@ -530,8 +526,8 @@ impl RepShareOp {
     }
 }
 
-impl RepRevealOp {
-    pub(crate) fn aeskey_kernel<S: Session, RepBitArrayT, HostBitArrayT>(
+impl RevealOp {
+    pub(crate) fn host_aeskey_kernel<S: Session, RepBitArrayT, HostBitArrayT>(
         sess: &S,
         receiver: &HostPlacement,
         key: AbstractReplicatedAesKey<RepBitArrayT>,
@@ -543,7 +539,7 @@ impl RepRevealOp {
         Ok(AbstractHostAesKey(bit_array))
     }
 
-    pub(crate) fn fixed_kernel<S: Session, RepRingT, HostRingT>(
+    pub(crate) fn host_fixed_kernel<S: Session, RepRingT, HostRingT>(
         sess: &S,
         receiver: &HostPlacement,
         xe: RepFixedTensor<RepRingT>,
@@ -559,7 +555,7 @@ impl RepRevealOp {
         })
     }
 
-    pub(crate) fn bit_array_kernel<S: Session, RepBitT, HostBitT, N>(
+    pub(crate) fn host_bit_array_kernel<S: Session, RepBitT, HostBitT, N>(
         sess: &S,
         receiver: &HostPlacement,
         xe: RepBitArray<RepBitT, N>,
@@ -571,7 +567,7 @@ impl RepRevealOp {
         Ok(HostBitArray(x, PhantomData))
     }
 
-    pub(crate) fn ring_kernel<S: Session, R: Clone>(
+    pub(crate) fn host_ring_kernel<S: Session, R: Clone>(
         sess: &S,
         receiver: &HostPlacement,
         xe: RepTen<R>,
@@ -648,8 +644,8 @@ impl IdentityOp {
     }
 }
 
-impl RepAndOp {
-    pub(crate) fn bit_kernel<S: Session, RepT>(
+impl AndOp {
+    pub(crate) fn rep_kernel<S: Session, RepT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepT,
@@ -663,8 +659,8 @@ impl RepAndOp {
     }
 }
 
-impl RepXorOp {
-    pub(crate) fn bit_kernel<S: Session, X1, X2, Y>(
+impl XorOp {
+    pub(crate) fn rep_kernel<S: Session, X1, X2, Y>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: X1,
@@ -1297,8 +1293,8 @@ impl SumOp {
     }
 }
 
-impl RepTruncPrOp {
-    pub(crate) fn kernel<S: Session, HostRingT>(
+impl TruncPrOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         amount: u32,
@@ -1337,8 +1333,8 @@ impl AdtToRepOp {
         HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, HostRingT>,
         HostPlacement: PlacementDeriveSeed<S, KeyT, SeedT>,
         AdditivePlacement: PlacementSub<S, AdtTen<HostRingT>, AdtTen<HostRingT>, AdtTen<HostRingT>>,
-        AdtTen<HostRingT>: Into<st!(AdtTen<HostRingT>, S)>,
-        HostPlacement: PlacementReveal<S, st!(AdtTen<HostRingT>, S), HostRingT>,
+        AdtTen<HostRingT>: Into<m!(c!(AdtTen<HostRingT>))>,
+        HostPlacement: PlacementReveal<S, m!(c!(AdtTen<HostRingT>)), HostRingT>,
         ReplicatedPlacement: PlacementPlace<S, RepTen<HostRingT>>,
     {
         let AdtTen { shares: [x0, x1] } = &x;
@@ -1739,8 +1735,8 @@ impl DiagOp {
     }
 }
 
-impl RepSliceOp {
-    pub(crate) fn shape_kernel<S: Session, ShapeT>(
+impl SliceOp {
+    pub(crate) fn rep_kernel<S: Session, ShapeT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         slice: SliceInfo,
@@ -1765,8 +1761,8 @@ impl RepSliceOp {
     }
 }
 
-impl RepShlDimOp {
-    pub(crate) fn kernel<S: Session, HostBitT>(
+impl ShlDimOp {
+    pub(crate) fn rep_bit_kernel<S: Session, HostBitT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         amount: usize,
@@ -1796,8 +1792,8 @@ impl RepShlDimOp {
     }
 }
 
-impl RepMsbOp {
-    pub(crate) fn bit_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, N: Const>(
+impl MsbOp {
+    pub(crate) fn rep_bit_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
@@ -1805,14 +1801,14 @@ impl RepMsbOp {
     where
         RepRingT: Ring<BitLength = N>,
         RepBitArrayT: BitArray<Len = N>,
-        ReplicatedPlacement: PlacementBitDec<S, RepRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementBitDecompose<S, RepRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
     {
         let bits = rep.bit_decompose(sess, &x);
         Ok(rep.index(sess, N::VALUE - 1, &bits))
     }
 
-    pub(crate) fn ring_kernel<S: Session, RepRingT, RepBitT>(
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
@@ -1998,14 +1994,14 @@ impl RingInjectOp {
     where
         AdtTen<HostRingT>: CanonicalType,
         <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-        AdtTen<HostRingT>: Into<st!(AdtTen<HostRingT>)>,
+        AdtTen<HostRingT>: Into<m!(c!(AdtTen<HostRingT>))>,
 
         AdtTen<HostBitT>: CanonicalType,
         <AdtTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
-        AdtTen<HostBitT>: Into<st!(AdtTen<HostBitT>)>,
+        AdtTen<HostBitT>: Into<m!(c!(AdtTen<HostBitT>))>,
 
         AdtTen<HostRingT>: Into<AdtRingT>,
-        st!(AdtTen<HostRingT>): TryInto<AdtTen<HostRingT>>,
+        m!(c!(AdtTen<HostRingT>)): TryInto<AdtTen<HostRingT>>,
         AdtRingT: TryInto<AdtTen<HostRingT>>,
 
         HostPlacement: PlacementShape<S, HostBitT, HostShapeT>,
@@ -2019,7 +2015,7 @@ impl RingInjectOp {
         AdditivePlacement: PlacementMul<S, AdtRingT, HostRingT, AdtRingT>,
         AdditivePlacement: PlacementSub<S, AdtRingT, AdtRingT, AdtRingT>,
         AdditivePlacement: PlacementShl<S, AdtRingT, AdtRingT>,
-        HostPlacement: PlacementReveal<S, st!(AdtTen<HostBitT>), HostBitT>,
+        HostPlacement: PlacementReveal<S, m!(c!(AdtTen<HostBitT>)), HostBitT>,
         HostPlacement: PlacementRingInject<S, HostBitT, HostRingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -2110,17 +2106,17 @@ where
     HostShape: KnownType<S>,
     HostBitT: Clone,
 
-    HostPlacement: PlacementFill<S, cs!(HostShape), HostBitT>,
-    HostPlacement: PlacementShape<S, HostBitT, cs!(HostShape)>,
+    HostPlacement: PlacementFill<S, m!(HostShape), HostBitT>,
+    HostPlacement: PlacementShape<S, HostBitT, m!(HostShape)>,
     HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
 
     RepTen<HostBitT>: CanonicalType,
     <RepTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
-    st!(RepTen<HostBitT>): TryInto<RepTen<HostBitT>>,
+    m!(c!(RepTen<HostBitT>)): TryInto<RepTen<HostBitT>>,
 
-    ReplicatedPlacement: PlacementShare<S, HostBitT, st!(RepTen<HostBitT>)>,
-    HostPlacement: PlacementBitDec<S, HostRingT, HostBitT>,
-    ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
+    ReplicatedPlacement: PlacementShare<S, HostBitT, m!(c!(RepTen<HostBitT>))>,
+    HostPlacement: PlacementBitDecompose<S, HostRingT, HostBitT>,
+    // ReplicatedPlacement: PlacementSetupGen<S, S::Setup>,
 {
     fn split(&self, sess: &S, x: &RepTen<HostRingT>) -> (RepTen<HostBitT>, RepTen<HostBitT>) {
         let (player0, player1, player2) = self.host_placements();
@@ -2153,8 +2149,8 @@ where
     }
 }
 
-impl RepBitDecOp {
-    pub(crate) fn ring_kernel<S: Session, RepRingT, RepBitT, N: Const>(
+impl BitDecomposeOp {
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
@@ -2170,7 +2166,7 @@ impl RepBitDecOp {
     }
 }
 
-impl RepBitComposeOp {
+impl BitComposeOp {
     pub(crate) fn rep_kernel<S: Session, ShapeT, RepRingT, RepBitArrayT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -2178,7 +2174,6 @@ impl RepBitComposeOp {
     ) -> Result<RepRingT>
     where
         RepRingT: Ring<BitLength = N>,
-
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
         ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
@@ -2260,26 +2255,24 @@ pub(crate) struct AbstractReplicatedSeeds<T> {
     seeds: [[T; 2]; 3],
 }
 
-pub(crate) trait ReplicatedSeedsGen<S: Session, KeyT, SeedT> {
-    fn gen_seeds(&self, ctx: &S, setup: &RepSetup<KeyT>) -> AbstractReplicatedSeeds<SeedT>;
+pub(crate) trait ReplicatedSeedsGen<S: Session, SeedT> {
+    fn gen_seeds(&self, sess: &S) -> AbstractReplicatedSeeds<SeedT>;
 }
 
-impl<S: Session> ReplicatedSeedsGen<S, cs!(PrfKey), cs!(Seed)> for ReplicatedPlacement
+impl<S: Session> ReplicatedSeedsGen<S, m!(Seed)> for ReplicatedPlacement
 where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
-    HostPlacement: PlacementDeriveSeed<S, cs!(PrfKey), cs!(Seed)>,
+    HostPlacement: PlacementDeriveSeed<S, m!(PrfKey), m!(Seed)>,
+    S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<m!(PrfKey)>>,
 {
-    fn gen_seeds(
-        &self,
-        ctx: &S,
-        setup: &RepSetup<cs!(PrfKey)>,
-    ) -> AbstractReplicatedSeeds<cs!(Seed)> {
+    fn gen_seeds(&self, sess: &S) -> AbstractReplicatedSeeds<m!(Seed)> {
         let (player0, player1, player2) = self.host_placements();
 
+        let setup = sess.setup(self);
         let RepSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
-        } = setup;
+        } = setup.as_ref();
 
         // NOTE for now we pick random sync_keys _at compile time_, which is okay from
         // a security perspective since the seeds depend on both the keys and the sid.
@@ -2289,14 +2282,14 @@ where
         let sync_key1 = SyncKey::random();
         let sync_key2 = SyncKey::random();
 
-        let s00 = player0.derive_seed(ctx, sync_key0.clone(), k00);
-        let s10 = player0.derive_seed(ctx, sync_key1.clone(), k10);
+        let s00 = player0.derive_seed(sess, sync_key0.clone(), k00);
+        let s10 = player0.derive_seed(sess, sync_key1.clone(), k10);
 
-        let s11 = player1.derive_seed(ctx, sync_key1, k11);
-        let s21 = player1.derive_seed(ctx, sync_key2.clone(), k21);
+        let s11 = player1.derive_seed(sess, sync_key1, k11);
+        let s21 = player1.derive_seed(sess, sync_key2.clone(), k21);
 
-        let s22 = player2.derive_seed(ctx, sync_key2, k22);
-        let s02 = player2.derive_seed(ctx, sync_key0, k02);
+        let s22 = player2.derive_seed(sess, sync_key2, k22);
+        let s02 = player2.derive_seed(sess, sync_key0, k02);
 
         let seeds = [[s00, s10], [s11, s21], [s22, s02]];
         AbstractReplicatedSeeds { seeds }
@@ -2320,22 +2313,16 @@ impl<S: Session, RingT, HostShapeT> ZeroShareGen<S, HostShapeT, RingT> for Repli
 where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
-    <S as Session>::ReplicatedSetup: Clone,
-    <S as Session>::ReplicatedSetup: TryInto<RepSetup<m!(PrfKey)>>,
+    S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<m!(PrfKey)>>,
     HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(Seed), RingT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
-    ReplicatedPlacement: ReplicatedSeedsGen<S, m!(PrfKey), m!(Seed)>,
+    ReplicatedPlacement: ReplicatedSeedsGen<S, m!(Seed)>,
 {
     fn gen_zero_share(
         &self,
         sess: &S,
         shape: &RepShape<HostShapeT>,
     ) -> AbstractReplicatedZeroShare<RingT> {
-        let setup = match (*sess.replicated_setup(self)).clone().try_into() {
-            Ok(setup) => setup,
-            _ => todo!("not sure what to do with the symbolic setup yet"), // TODO: perhaps a custom kernel could instead output a symbolic op
-        };
-
         let (player0, player1, player2) = self.host_placements();
 
         let RepShape {
@@ -2344,7 +2331,7 @@ where
 
         let AbstractReplicatedSeeds {
             seeds: [[s00, s10], [s11, s21], [s22, s02]],
-        } = &self.gen_seeds(sess, &setup);
+        } = &self.gen_seeds(sess);
 
         let r00 = player0.sample_uniform_seeded(sess, shape0, s00);
         let r10 = player0.sample_uniform_seeded(sess, shape0, s10);

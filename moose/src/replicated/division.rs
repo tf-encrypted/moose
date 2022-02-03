@@ -116,9 +116,9 @@ where
     ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
     ReplicatedPlacement: SignFromMsb<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
-    ReplicatedPlacement: TopMostIndex<S, cs!(ReplicatedBitTensor), RepRingT>,
+    ReplicatedPlacement: TopMostIndex<S, m!(ReplicatedBitTensor), RepRingT>,
     ReplicatedPlacement:
-        PlacementIndex<S, cs!(RepBitArray<ReplicatedBitTensor, N>), cs!(ReplicatedBitTensor)>,
+        PlacementIndex<S, m!(RepBitArray<ReplicatedBitTensor, N>), m!(ReplicatedBitTensor)>,
 {
     fn norm(&self, sess: &S, max_bits: usize, x: &RepRingT) -> (RepRingT, RepRingT) {
         let rep = self;
@@ -147,7 +147,7 @@ where
     RepBitT: Clone + CanonicalType,
     RepRingT: Clone + Ring<BitLength = N>,
     RepBitArray<c!(RepBitT), N>: KnownType<S>,
-    ReplicatedPlacement: PlacementBitDec<S, RepRingT, m!(RepBitArray<c!(RepBitT), N>)>,
+    ReplicatedPlacement: PlacementBitDecompose<S, RepRingT, m!(RepBitArray<c!(RepBitT), N>)>,
     ReplicatedPlacement: PlacementIndex<S, m!(RepBitArray<c!(RepBitT), N>), RepBitT>,
     ReplicatedPlacement: PlacementAnd<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
