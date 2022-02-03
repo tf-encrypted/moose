@@ -32,7 +32,7 @@ pub use self::aes::AbstractReplicatedAesKey;
 pub use self::fixedpoint::RepFixedTensor;
 pub(crate) use self::misc::{BinaryAdder, MirroredCounterpart, ShapeFill, Underlying};
 pub use self::setup::RepSetup;
-use self::zero_share::{AbstractReplicatedZeroShare, ZeroShareGen};
+use self::zero_share::{RepZeroShare, ZeroShareGen};
 
 /// Placement type for three-party replicated secret sharing
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]

@@ -5,39 +5,31 @@ use crate::execution::SetupGeneration;
 use crate::host::{PrfKey, Seed, SyncKey};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub(crate) struct AbstractReplicatedZeroShare<R> {
-    pub(crate) alphas: [R; 3],
+pub(crate) struct RepZeroShare<HostRingT> {
+    pub(crate) alphas: [HostRingT; 3],
 }
 
 pub(crate) trait ZeroShareGen<S: Session, ShapeT, RingT> {
-    fn gen_zero_share(
-        &self,
-        sess: &S,
-        shape: &RepShape<ShapeT>,
-    ) -> AbstractReplicatedZeroShare<RingT>;
+    fn gen_zero_share(&self, sess: &S, shape: &RepShape<ShapeT>) -> RepZeroShare<RingT>;
 }
 
-impl<S: Session, RingT, HostShapeT> ZeroShareGen<S, HostShapeT, RingT> for ReplicatedPlacement
+impl<S: Session, RingT, ShapeT> ZeroShareGen<S, ShapeT, RingT> for ReplicatedPlacement
 where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
     S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<m!(PrfKey)>>,
-    HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(Seed), RingT>,
+    HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, m!(Seed), RingT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
     ReplicatedPlacement: ReplicatedSeedsGen<S, m!(Seed)>,
 {
-    fn gen_zero_share(
-        &self,
-        sess: &S,
-        shape: &RepShape<HostShapeT>,
-    ) -> AbstractReplicatedZeroShare<RingT> {
+    fn gen_zero_share(&self, sess: &S, shape: &RepShape<ShapeT>) -> RepZeroShare<RingT> {
         let (player0, player1, player2) = self.host_placements();
 
         let RepShape {
             shapes: [shape0, shape1, shape2],
         } = shape;
 
-        let AbstractReplicatedSeeds {
+        let RepSeeds {
             seeds: [[s00, s10], [s11, s21], [s22, s02]],
         } = &self.gen_seeds(sess);
 
@@ -53,18 +45,18 @@ where
         let r02 = player2.sample_uniform_seeded(sess, shape2, s02);
         let alpha2 = with_context!(player2, sess, r22 - r02);
 
-        AbstractReplicatedZeroShare {
+        RepZeroShare {
             alphas: [alpha0, alpha1, alpha2],
         }
     }
 }
 
-pub(crate) struct AbstractReplicatedSeeds<T> {
-    seeds: [[T; 2]; 3],
+pub(crate) struct RepSeeds<HostSeedT> {
+    seeds: [[HostSeedT; 2]; 3],
 }
 
-pub(crate) trait ReplicatedSeedsGen<S: Session, SeedT> {
-    fn gen_seeds(&self, sess: &S) -> AbstractReplicatedSeeds<SeedT>;
+pub(crate) trait ReplicatedSeedsGen<S: Session, HostSeedT> {
+    fn gen_seeds(&self, sess: &S) -> RepSeeds<HostSeedT>;
 }
 
 impl<S: Session> ReplicatedSeedsGen<S, m!(Seed)> for ReplicatedPlacement
@@ -74,7 +66,7 @@ where
     HostPlacement: PlacementDeriveSeed<S, m!(PrfKey), m!(Seed)>,
     S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<m!(PrfKey)>>,
 {
-    fn gen_seeds(&self, sess: &S) -> AbstractReplicatedSeeds<m!(Seed)> {
+    fn gen_seeds(&self, sess: &S) -> RepSeeds<m!(Seed)> {
         let (player0, player1, player2) = self.host_placements();
 
         let setup = sess.setup(self);
@@ -100,6 +92,6 @@ where
         let s02 = player2.derive_seed(sess, sync_key0, k02);
 
         let seeds = [[s00, s10], [s11, s21], [s22, s02]];
-        AbstractReplicatedSeeds { seeds }
+        RepSeeds { seeds }
     }
 }

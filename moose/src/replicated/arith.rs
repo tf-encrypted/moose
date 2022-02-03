@@ -350,7 +350,7 @@ impl MulOp {
             shapes: [s0, s1, s2],
         };
 
-        let AbstractReplicatedZeroShare {
+        let RepZeroShare {
             alphas: [a0, a1, a2],
         } = rep.gen_zero_share(sess, &zero_shape);
 
@@ -475,7 +475,7 @@ impl DotOp {
             shapes: [s0, s1, s2],
         };
 
-        let AbstractReplicatedZeroShare {
+        let RepZeroShare {
             alphas: [a0, a1, a2],
         } = rep.gen_zero_share(sess, &zero_shape);
 

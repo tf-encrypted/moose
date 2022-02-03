@@ -45,19 +45,16 @@ impl RepSetupOp {
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let k0 = player0.gen_key(sess);
-        let k1 = player1.gen_key(sess);
-        let k2 = player2.gen_key(sess);
+        let k00 = player0.gen_key(sess);
+        let k11 = player1.gen_key(sess);
+        let k22 = player2.gen_key(sess);
+
+        let k10 = player0.place(sess, k11.clone());
+        let k21 = player1.place(sess, k22.clone());
+        let k02 = player2.place(sess, k00.clone());
 
         Ok(RepSetup {
-            keys: [
-                [
-                    player0.place(sess, k0.clone()),
-                    player0.place(sess, k1.clone()),
-                ],
-                [player1.place(sess, k1), player1.place(sess, k2.clone())],
-                [player2.place(sess, k2), player2.place(sess, k0)],
-            ],
+            keys: [[k00, k10], [k11, k21], [k22, k02]],
         })
     }
 }
