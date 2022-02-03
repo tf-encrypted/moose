@@ -5,6 +5,7 @@ use crate::computation::*;
 use crate::host::{
     FromRaw, HostPlacement, RawPrfKey, RawSeed, RawShape, SliceInfo, SliceInfoElem, SyncKey,
 };
+use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
 use crate::types::*;
@@ -89,7 +90,7 @@ pub fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
             "Failed to parse computation\n{}",
             convert_error(source, e)
         )),
-        Err(e) => Err(anyhow::anyhow!("Failed to parse computation due to {}", e)),
+        Err(e) => Err(friendly_error("Failed to parse computation", source, e)),
         Ok((_, computation)) => Ok(computation),
     }
 }
@@ -129,9 +130,9 @@ pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result
     let portions: Vec<_> = parts
         .par_iter()
         .map(|s| {
-            parse_operations::<(&str, ErrorKind)>(s)
+            parse_operations::<VerboseError<&str>>(s)
                 .map(|t| t.1) // Dropping the remainder
-                .map_err(|e| anyhow::anyhow!("Failed to parse computation due to {}", e))
+                .map_err(|e| friendly_error("Failed to parse computation", source, e))
         })
         .collect();
     let mut operations = Vec::new();
@@ -475,11 +476,52 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Ty, E> {
     let (i, type_name) = alphanumeric1(input)?;
-    let result = Ty::from_name(type_name);
+    let (i, inner) = opt(tuple((tag("<"), parse_tensor_dtype, tag(">"))))(i)?;
+    let inner = inner.map(|t| t.1);
+    let result = Ty::from_name(type_name, inner);
     match result {
         Some(ty) => Ok((i, ty)),
         _ => Err(Error(make_error(input, ErrorKind::Tag))),
     }
+}
+
+fn parse_tensor_dtype<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, TensorDType, E> {
+    alt((
+        value(TensorDType::Unknown, tag(TensorDType::Unknown.short_name())),
+        value(TensorDType::Float32, tag(TensorDType::Float32.short_name())),
+        value(TensorDType::Float64, tag(TensorDType::Float64.short_name())),
+        value(TensorDType::Bool, tag(TensorDType::Bool.short_name())),
+        preceded(
+            tag(TensorDType::Fixed64 {
+                integral_precision: 0,
+                fractional_precision: 0,
+            }
+            .short_name()),
+            map(
+                tuple((tag("("), parse_int, ws(tag(",")), parse_int, tag(")"))),
+                |t| TensorDType::Fixed64 {
+                    integral_precision: t.1,
+                    fractional_precision: t.3,
+                },
+            ),
+        ),
+        preceded(
+            tag(TensorDType::Fixed128 {
+                integral_precision: 0,
+                fractional_precision: 0,
+            }
+            .short_name()),
+            map(
+                tuple((tag("("), parse_int, ws(tag(",")), parse_int, tag(")"))),
+                |t| TensorDType::Fixed128 {
+                    integral_precision: t.1,
+                    fractional_precision: t.3,
+                },
+            ),
+        ),
+    ))(input)
 }
 
 fn constant_literal_helper<'a, O1, F1, F2, E>(
@@ -999,8 +1041,8 @@ pub fn friendly_error(
     e: nom::Err<VerboseError<&str>>,
 ) -> anyhow::Error {
     match e {
-        Failure(e) => anyhow::anyhow!("{} {}", message, convert_error(source, e)),
-        Error(e) => anyhow::anyhow!("{} {}", message, convert_error(source, e)),
+        Failure(e) => anyhow::anyhow!("{}\n{}", message, convert_error(source, e)),
+        Error(e) => anyhow::anyhow!("{}\n{}", message, convert_error(source, e)),
         _ => anyhow::anyhow!("{} {} due to {}", message, source, e),
     }
 }
@@ -1303,7 +1345,36 @@ impl ToTextual for RingSampleSeededOp {
 
 impl ToTextual for Ty {
     fn to_textual(&self) -> String {
-        self.short_name().to_string()
+        match self {
+            Ty::Tensor(inner) => format!("{}<{}>", self.short_name(), inner.to_textual()),
+            _ => self.short_name().to_string(),
+        }
+    }
+}
+
+impl ToTextual for TensorDType {
+    fn to_textual(&self) -> String {
+        match self {
+            TensorDType::Fixed64 {
+                integral_precision,
+                fractional_precision,
+            } => format!(
+                "{}({}, {})",
+                self.short_name(),
+                integral_precision,
+                fractional_precision
+            ),
+            TensorDType::Fixed128 {
+                integral_precision,
+                fractional_precision,
+            } => format!(
+                "{}({}, {})",
+                self.short_name(),
+                integral_precision,
+                fractional_precision
+            ),
+            _ => self.short_name().to_string(),
+        }
     }
 }
 
@@ -1713,6 +1784,8 @@ mod tests {
         } else {
             panic!("Type parsing should have given an error on an invalid type, but did not");
         }
+        let (_, parsed_type) = parse_type::<(&str, ErrorKind)>("Tensor<Float64>")?;
+        assert_eq!(parsed_type, Ty::Tensor(TensorDType::Float64));
         Ok(())
     }
 
@@ -2178,7 +2251,25 @@ mod tests {
         let textual = comp.to_textual();
         // After serializing it into the textual IR we need to make sure it parses back the same
         let comp2: Computation = textual.try_into()?;
-        assert_eq!(comp.operations[0], comp2.operations[0]);
+        assert_eq!(comp.operations, comp2.operations);
+        Ok(())
+    }
+
+    #[test]
+    fn test_high_level_computation_into_text() -> Result<(), anyhow::Error> {
+        use std::convert::TryInto;
+        let comp: Computation = r#"constant_0 = Constant{value = HostFloat64Tensor([[0.12131529]])}: () -> Tensor<Float64> () @Host(player2)
+        cast_0 = Cast: (Tensor<Float64>) -> Tensor<Fixed128(24, 40)> (constant_0) @Host(player2)
+        x = Input{arg_name = "x"}: () -> AesTensor () @Host(player0)
+        key = Input{arg_name = "key"}: () -> AesKey () @Replicated(player0, player1, player2)
+        decrypt_0 = Decrypt: (AesKey, AesTensor) -> Tensor<Fixed128(24, 40)> (key, x) @Replicated(player0, player1, player2)
+        dot_0 = Dot: (Tensor<Fixed128(24, 40)>, Tensor<Fixed128(24, 40)>) -> Tensor<Fixed128(24, 40)> (decrypt_0, cast_0) @Replicated(player0, player1, player2)
+        cast_1 = Cast: (Tensor<Fixed128(24, 40)>) -> Tensor<Float64> (dot_0) @Host(player1)
+        output_0 = Output: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into()?;
+        let textual = comp.to_textual();
+        // After serializing it into the textual IR we need to make sure it parses back the same
+        let comp2: Computation = textual.try_into()?;
+        assert_eq!(comp.operations, comp2.operations);
         Ok(())
     }
 }
