@@ -1,3 +1,5 @@
+//! Support for division
+
 use super::*;
 
 impl DivOp {

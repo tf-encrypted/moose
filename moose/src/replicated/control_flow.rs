@@ -1,3 +1,5 @@
+//! Support for control-flow operators
+
 use super::*;
 use crate::computation::MuxOp;
 use crate::error::Result;

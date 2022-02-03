@@ -1,3 +1,5 @@
+//! Support for exponentiation
+
 use super::*;
 use crate::fixedpoint::{FixedpointTensor, PolynomialEval};
 use lazy_static::lazy_static;

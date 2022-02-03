@@ -1,3 +1,5 @@
+//! Support for softmax operator
+
 use super::*;
 use crate::computation::MaximumOp;
 use crate::error::Result;
