@@ -85,11 +85,11 @@ impl DivOp {
     }
 }
 
-pub(crate) trait SignFromMsb<S: Session, T, O> {
-    fn sign_from_msb(&self, sess: &S, msb_ring: &T) -> O;
+pub(crate) trait SignFromMsb<S: Session, RingT> {
+    fn sign_from_msb(&self, sess: &S, msb_ring: &RingT) -> RingT;
 }
 
-impl<S: Session, RepRingT, MirRingT> SignFromMsb<S, RepRingT, RepRingT> for ReplicatedPlacement
+impl<S: Session, RepRingT, MirRingT> SignFromMsb<S, RepRingT> for ReplicatedPlacement
 where
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
@@ -103,18 +103,18 @@ where
     }
 }
 
-pub(crate) trait DivNorm<S: Session, T, O> {
-    fn norm(&self, sess: &S, max_bits: usize, x: &T) -> (O, O);
+pub(crate) trait DivNorm<S: Session, RingT> {
+    fn norm(&self, sess: &S, max_bits: usize, x: &RingT) -> (RingT, RingT);
 }
 
-impl<S: Session, RepRingT, N> DivNorm<S, RepRingT, RepRingT> for ReplicatedPlacement
+impl<S: Session, RepRingT, N> DivNorm<S, RepRingT> for ReplicatedPlacement
 where
     RepRingT: Ring<BitLength = N>,
     RepBitArray<ReplicatedBitTensor, N>: KnownType<S>,
     ReplicatedBitTensor: KnownType<S>,
 
     ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: SignFromMsb<S, RepRingT, RepRingT>,
+    ReplicatedPlacement: SignFromMsb<S, RepRingT>,
     ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: TopMostIndex<S, m!(ReplicatedBitTensor), RepRingT>,
     ReplicatedPlacement:
@@ -218,7 +218,7 @@ pub(crate) trait ApproximateReciprocal<S: Session, T, O> {
 impl<S: Session, RepRingT, MirRingT> ApproximateReciprocal<S, RepRingT, RepRingT>
     for ReplicatedPlacement
 where
-    ReplicatedPlacement: DivNorm<S, RepRingT, RepRingT>,
+    ReplicatedPlacement: DivNorm<S, RepRingT>,
     ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirRingT>,
     ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
