@@ -299,7 +299,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Exp(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Log2(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Ln(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            Log(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Less(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostSqueeze(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

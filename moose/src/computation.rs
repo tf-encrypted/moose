@@ -1100,7 +1100,7 @@ operators![
     Maximum,
     Softmax,
     Log2,
-    Ln,
+    Log,
     // Mirrored Operators
     Demirror,
     Mirror,
@@ -1855,7 +1855,7 @@ pub struct Log2Op {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct LnOp {
+pub struct LogOp {
     pub sig: Signature,
 }
 

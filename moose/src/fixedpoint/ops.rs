@@ -1843,7 +1843,7 @@ impl Log2Op {
     }
 }
 
-impl LnOp {
+impl LogOp {
     pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -1852,7 +1852,7 @@ impl LnOp {
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
-        ReplicatedPlacement: PlacementLn<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementLog<S, RepFixedT, RepFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
@@ -1860,7 +1860,7 @@ impl LnOp {
             FixedTensor::Replicated(v) => v,
         };
 
-        let z = plc.ln(sess, &x);
+        let z = plc.log(sess, &x);
         Ok(FixedTensor::Replicated(z))
     }
 }

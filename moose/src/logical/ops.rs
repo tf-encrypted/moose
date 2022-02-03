@@ -1678,23 +1678,23 @@ impl SigmoidOp {
     }
 }
 
-impl LnOp {
+impl LogOp {
     pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     where
-        ReplicatedPlacement: PlacementLn<S, Fixed64T, Fixed64T>,
-        ReplicatedPlacement: PlacementLn<S, Fixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementLog<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementLog<S, Fixed128T, Fixed128T>,
     {
         match x {
             AbstractTensor::Fixed64(x) => {
-                let result = plc.ln(sess, &x);
+                let result = plc.log(sess, &x);
                 Ok(AbstractTensor::Fixed64(result))
             }
             AbstractTensor::Fixed128(x) => {
-                let result = plc.ln(sess, &x);
+                let result = plc.log(sess, &x);
                 Ok(AbstractTensor::Fixed128(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!

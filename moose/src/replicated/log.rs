@@ -126,7 +126,7 @@ impl Log2Op {
     }
 }
 
-impl LnOp {
+impl LogOp {
     pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, MirFixedT>(
         sess: &S,
         rep: &ReplicatedPlacement,

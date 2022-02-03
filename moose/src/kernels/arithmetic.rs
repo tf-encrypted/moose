@@ -760,12 +760,12 @@ modelled_kernel! {
     ]
 }
 
-pub trait PlacementLn<S: Session, T, O> {
-    fn ln(&self, sess: &S, x: &T) -> O;
+pub trait PlacementLog<S: Session, T, O> {
+    fn log(&self, sess: &S, x: &T) -> O;
 }
 
 modelled_kernel! {
-    PlacementLn::ln, LnOp,
+    PlacementLog::log, LogOp,
     [
         (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_kernel),

@@ -844,7 +844,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_LogOperation(op) => Ok(Operation {
-                        kind: LnOp {
+                        kind: LogOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
                         .into(),
