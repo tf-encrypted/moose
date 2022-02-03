@@ -1158,7 +1158,7 @@ impl ToTextual for Operator {
             Exp(op) => op.to_textual(),
             Sigmoid(op) => op.to_textual(),
             Equal(op) => op.to_textual(),
-            Less(op) => op.to_textual(),
+            LessThan(op) => op.to_textual(),
             GreaterThan(op) => op.to_textual(),
             Demirror(op) => op.to_textual(),
             Mirror(op) => op.to_textual(),

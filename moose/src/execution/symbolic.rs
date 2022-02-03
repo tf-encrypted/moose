@@ -293,7 +293,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Exp(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Equal(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Less(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            LessThan(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

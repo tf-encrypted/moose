@@ -1485,7 +1485,7 @@ impl SigmoidOp {
     }
 }
 
-impl LessOp {
+impl LessThanOp {
     pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT, HostBitT, RepBitT>(
         sess: &S,
         plc: &HostPlacement,

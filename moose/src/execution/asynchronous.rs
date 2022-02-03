@@ -401,7 +401,7 @@ impl Session for AsyncSession {
             Neg(op) => DispatchKernel::compile(&op, plc)?,
             Equal(op) => DispatchKernel::compile(&op, plc)?,
             Mux(op) => DispatchKernel::compile(&op, plc)?,
-            Less(op) => DispatchKernel::compile(&op, plc)?,
+            LessThan(op) => DispatchKernel::compile(&op, plc)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
             IndexAxis(op) => DispatchKernel::compile(&op, plc)?,
             Index(op) => DispatchKernel::compile(&op, plc)?,

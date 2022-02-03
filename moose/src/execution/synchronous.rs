@@ -235,7 +235,7 @@ impl Session for SyncSession {
             Exp(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Equal(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Less(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            LessThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Maximum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Softmax(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

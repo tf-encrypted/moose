@@ -1710,7 +1710,7 @@ impl RingSampleSeededOp {
     }
 }
 
-impl LessOp {
+impl LessThanOp {
     pub(crate) fn host_fixed_kernel<S: Session, HostRingT, HostBitT>(
         sess: &S,
         plc: &HostPlacement,

@@ -42,7 +42,7 @@ impl EqualOp {
     }
 }
 
-impl LessOp {
+impl LessThanOp {
     pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,

@@ -1064,7 +1064,7 @@ operators![
     Sigmoid,
     Neg,
     Equal,
-    Less,
+    LessThan,
     GreaterThan,
     // Floating-point operators
     FloatingpointOnes,
@@ -1421,7 +1421,7 @@ pub struct EqualOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct LessOp {
+pub struct LessThanOp {
     pub sig: Signature,
 }
 

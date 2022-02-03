@@ -241,7 +241,7 @@ impl DotOp {
     }
 }
 
-impl LessOp {
+impl LessThanOp {
     pub(crate) fn float_kernel<S: Session, HostFloatT, HostBitT, RepBitT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
