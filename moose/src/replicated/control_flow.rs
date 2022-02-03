@@ -46,51 +46,23 @@ impl MuxOp {
 
 #[cfg(test)]
 mod tests {
-    use crate::execution::SyncSession;
-    use crate::host::FromRawPlc;
-    use crate::host::HostPlacement;
-    use crate::kernels::*;
-    use crate::replicated::ReplicatedPlacement;
-    use crate::types::*;
-    use ndarray::{array, IxDyn};
+    use crate::prelude::*;
+    use ndarray::prelude::*;
 
     #[test]
     fn test_mux() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-
-        let bob = HostPlacement {
-            owner: "bob".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let bob = HostPlacement::from("bob");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         let sess = SyncSession::default();
 
         let scaling_base = 2;
         let scaling_exp = 24;
 
-        let a = HostFloat64Tensor::from_raw_plc(
-            array![1.0, 1.0, -1.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            alice.clone(),
-        );
-
-        let x = HostFloat64Tensor::from_raw_plc(
-            array![1.0, 2.0, 3.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            alice.clone(),
-        );
-        let y = HostFloat64Tensor::from_raw_plc(
-            array![4.0, 5.0, 6.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            bob.clone(),
-        );
+        let a: HostFloat64Tensor = alice.from_raw(array![1.0, 1.0, -1.0]);
+        let x: HostFloat64Tensor = alice.from_raw(array![1.0, 2.0, 3.0]);
+        let y: HostFloat64Tensor = bob.from_raw(array![4.0, 5.0, 6.0]);
 
         let a = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &a);
         let a_shared: ReplicatedRing128Tensor = rep.share(&sess, &a);
@@ -114,52 +86,23 @@ mod tests {
         let decoded_result =
             alice.fixedpoint_ring_decode(&sess, scaling_base, scaling_exp, &opened_result);
 
-        assert_eq!(
-            decoded_result,
-            HostFloat64Tensor::from_raw_plc(
-                array![1.0, 2.0, 6.0]
-                    .into_dimensionality::<IxDyn>()
-                    .unwrap(),
-                alice
-            )
-        );
+        assert_eq!(decoded_result, alice.from_raw(array![1.0, 2.0, 6.0]));
     }
 
     #[test]
     fn test_bit_selector_mux() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-
-        let bob = HostPlacement {
-            owner: "bob".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let bob = HostPlacement::from("bob");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         let sess = SyncSession::default();
 
         let scaling_base = 2;
         let scaling_exp = 24;
 
-        let s = HostBitTensor::from_raw_plc(
-            array![1, 0, 1, 0].into_dimensionality::<IxDyn>().unwrap(),
-            alice.clone(),
-        );
-
-        let x = HostFloat64Tensor::from_raw_plc(
-            array![1.0, 2.0, 3.0, 4.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            alice.clone(),
-        );
-        let y = HostFloat64Tensor::from_raw_plc(
-            array![4.0, 5.0, 6.0, -1.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            bob.clone(),
-        );
+        let s: HostBitTensor = alice.from_raw(array![1, 0, 1, 0]);
+        let x: HostFloat64Tensor = alice.from_raw(array![1.0, 2.0, 3.0, 4.0]);
+        let y: HostFloat64Tensor = bob.from_raw(array![4.0, 5.0, 6.0, -1.0]);
 
         let s_shared: ReplicatedBitTensor = rep.share(&sess, &s);
 
@@ -175,14 +118,6 @@ mod tests {
         let decoded_result =
             alice.fixedpoint_ring_decode(&sess, scaling_base, scaling_exp, &opened_result);
 
-        assert_eq!(
-            decoded_result,
-            HostFloat64Tensor::from_raw_plc(
-                array![1.0, 5.0, 3.0, -1.0]
-                    .into_dimensionality::<IxDyn>()
-                    .unwrap(),
-                alice
-            )
-        );
+        assert_eq!(decoded_result, alice.from_raw(array![1.0, 5.0, 3.0, -1.0]));
     }
 }
