@@ -117,17 +117,6 @@ modelled_kernel! {
     ]
 }
 
-pub trait PlacementSetupGen<S: Session, SetupT> {
-    fn gen_setup(&self, sess: &S) -> SetupT;
-}
-
-modelled_kernel! {
-    PlacementSetupGen::gen_setup, RepSetupOp,
-    [
-        (ReplicatedPlacement, () -> ReplicatedSetup => [concrete] Self::kernel),
-    ]
-}
-
 pub trait PlacementTruncPr<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: u32, x: &T) -> O;
 }

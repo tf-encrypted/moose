@@ -34,16 +34,14 @@ where
     }
 }
 
-impl RepSetupOp {
-    pub(crate) fn kernel<S: Session, PrfKeyT: Clone>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-    ) -> Result<RepSetup<PrfKeyT>>
+impl ReplicatedPlacement {
+    pub(crate) fn gen_setup<S: Session, PrfKeyT>(&self, sess: &S) -> Result<RepSetup<PrfKeyT>>
     where
+        PrfKeyT: Clone,
         HostPlacement: PlacementKeyGen<S, PrfKeyT>,
         HostPlacement: PlacementPlace<S, PrfKeyT>,
     {
-        let (player0, player1, player2) = rep.host_placements();
+        let (player0, player1, player2) = self.host_placements();
 
         let k00 = player0.gen_key(sess);
         let k11 = player1.gen_key(sess);

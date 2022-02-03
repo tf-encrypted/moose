@@ -352,7 +352,7 @@ impl MulOp {
 
         let RepZeroShare {
             alphas: [a0, a1, a2],
-        } = rep.gen_zero_share(sess, &zero_shape);
+        } = rep.gen_zero_share(sess, &zero_shape)?;
 
         let z0 = with_context!(player0, sess, { v0 + a0 });
         let z1 = with_context!(player1, sess, { v1 + a1 });
@@ -477,7 +477,7 @@ impl DotOp {
 
         let RepZeroShare {
             alphas: [a0, a1, a2],
-        } = rep.gen_zero_share(sess, &zero_shape);
+        } = rep.gen_zero_share(sess, &zero_shape)?;
 
         let z0 = with_context!(player0, sess, { v0 + a0 });
         let z1 = with_context!(player1, sess, { v1 + a1 });

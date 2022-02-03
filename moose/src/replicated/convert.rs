@@ -63,7 +63,7 @@ impl RepShareOp {
     {
         let x_player = x.placement()?;
 
-        let setup = sess.setup(plc);
+        let setup = sess.setup(plc)?;
         let RepSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
         } = setup.as_ref();

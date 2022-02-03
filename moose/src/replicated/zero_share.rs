@@ -10,7 +10,7 @@ pub(crate) struct RepZeroShare<HostRingT> {
 }
 
 pub(crate) trait ZeroShareGen<S: Session, ShapeT, RingT> {
-    fn gen_zero_share(&self, sess: &S, shape: &RepShape<ShapeT>) -> RepZeroShare<RingT>;
+    fn gen_zero_share(&self, sess: &S, shape: &RepShape<ShapeT>) -> Result<RepZeroShare<RingT>>;
 }
 
 impl<S: Session, RingT, ShapeT> ZeroShareGen<S, ShapeT, RingT> for ReplicatedPlacement
@@ -22,7 +22,7 @@ where
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
     ReplicatedPlacement: SeedsGen<S, m!(Seed)>,
 {
-    fn gen_zero_share(&self, sess: &S, shape: &RepShape<ShapeT>) -> RepZeroShare<RingT> {
+    fn gen_zero_share(&self, sess: &S, shape: &RepShape<ShapeT>) -> Result<RepZeroShare<RingT>> {
         let (player0, player1, player2) = self.host_placements();
 
         let RepShape {
@@ -31,7 +31,7 @@ where
 
         let RepSeeds {
             seeds: [[s00, s10], [s11, s21], [s22, s02]],
-        } = &self.gen_seeds(sess);
+        } = &self.gen_seeds(sess)?;
 
         let r00 = player0.sample_uniform_seeded(sess, shape0, s00);
         let r10 = player0.sample_uniform_seeded(sess, shape0, s10);
@@ -45,9 +45,9 @@ where
         let r02 = player2.sample_uniform_seeded(sess, shape2, s02);
         let alpha2 = with_context!(player2, sess, r22 - r02);
 
-        RepZeroShare {
+        Ok(RepZeroShare {
             alphas: [alpha0, alpha1, alpha2],
-        }
+        })
     }
 }
 
@@ -56,7 +56,7 @@ pub(crate) struct RepSeeds<HostSeedT> {
 }
 
 pub(crate) trait SeedsGen<S: Session, HostSeedT> {
-    fn gen_seeds(&self, sess: &S) -> RepSeeds<HostSeedT>;
+    fn gen_seeds(&self, sess: &S) -> Result<RepSeeds<HostSeedT>>;
 }
 
 impl<S: Session> SeedsGen<S, m!(Seed)> for ReplicatedPlacement
@@ -66,10 +66,10 @@ where
     HostPlacement: PlacementDeriveSeed<S, m!(PrfKey), m!(Seed)>,
     S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<m!(PrfKey)>>,
 {
-    fn gen_seeds(&self, sess: &S) -> RepSeeds<m!(Seed)> {
+    fn gen_seeds(&self, sess: &S) -> Result<RepSeeds<m!(Seed)>> {
         let (player0, player1, player2) = self.host_placements();
 
-        let setup = sess.setup(self);
+        let setup = sess.setup(self)?;
         let RepSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
         } = setup.as_ref();
@@ -92,6 +92,6 @@ where
         let s02 = player2.derive_seed(sess, sync_key0, k02);
 
         let seeds = [[s00, s10], [s11, s21], [s22, s02]];
-        RepSeeds { seeds }
+        Ok(RepSeeds { seeds })
     }
 }

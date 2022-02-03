@@ -61,7 +61,6 @@ where
 
     ReplicatedPlacement: PlacementShare<S, HostBitT, m!(c!(RepTensor<HostBitT>))>,
     HostPlacement: PlacementBitDecompose<S, HostRingT, HostBitT>,
-    // ReplicatedPlacement: PlacementSetupGen<S, S::Setup>,
 {
     fn split(
         &self,

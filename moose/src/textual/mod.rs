@@ -1133,7 +1133,6 @@ impl ToTextual for Operator {
             FloatingpointOnes(op) => op.to_textual(),
             FloatingpointConcat(op) => op.to_textual(),
             FloatingpointMean(op) => op.to_textual(),
-            RepSetup(op) => op.to_textual(),
             RepShare(op) => op.to_textual(),
             RepReveal(op) => op.to_textual(),
             RepFixedpointMean(op) => op.to_textual(),
@@ -1379,7 +1378,6 @@ impl ToTextual for Value {
             | Value::Float32Tensor(_)
             | Value::Float64Tensor(_)
             | Value::ReplicatedShape(_)
-            | Value::ReplicatedSetup(_)
             | Value::ReplicatedBitTensor(_)
             | Value::ReplicatedBitArray64(_)
             | Value::ReplicatedBitArray128(_)

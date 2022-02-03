@@ -184,17 +184,16 @@ impl Session for SymbolicSession {
 impl SetupGeneration<ReplicatedPlacement> for SymbolicSession {
     type Setup = RepSetup<Symbolic<PrfKey>>;
 
-    fn setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
+    fn setup(&self, plc: &ReplicatedPlacement) -> Result<Arc<Self::Setup>> {
         // Produce a new replicated setup or returned a previously produced setup for the placement
         let state = self.state.read();
         match state.replicated_keys.get(plc) {
-            Some(setup) => Arc::clone(setup),
+            Some(setup) => Ok(Arc::clone(setup)),
             None => {
-                use crate::kernels::PlacementSetupGen;
                 drop(state); // Release the read access
 
                 // This may (likely) grab a write lock to the state inside
-                let new_setup = plc.gen_setup(self);
+                let new_setup = plc.gen_setup(self)?;
 
                 // Grab a new write lock.
                 let mut state = self.state.write();
@@ -204,7 +203,7 @@ impl SetupGeneration<ReplicatedPlacement> for SymbolicSession {
                     .replicated_keys
                     .entry(plc.clone())
                     .or_insert_with(|| Arc::new(new_setup));
-                Arc::clone(setup)
+                Ok(Arc::clone(setup))
             }
         }
     }
@@ -258,7 +257,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingInject(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepSetup(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepShare(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepReveal(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepTruncPr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

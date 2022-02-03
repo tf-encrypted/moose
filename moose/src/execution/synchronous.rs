@@ -3,11 +3,10 @@
 use super::*;
 use crate::error::{Error, Result};
 use crate::host::*;
-use crate::kernels::{DispatchKernel, PlacementSetupGen};
+use crate::kernels::DispatchKernel;
 use crate::networking::LocalSyncNetworking;
 use crate::replicated::*;
 use crate::storage::LocalSyncStorage;
-use crate::types::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -18,7 +17,7 @@ pub type SyncStorageImpl = Rc<dyn SyncStorage>;
 /// Session object for synchronous/eager execution.
 pub struct SyncSession {
     session_id: SessionId,
-    replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<ReplicatedSetup>>>,
+    replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<RepSetup<PrfKey>>>>,
     arguments: HashMap<String, Value>,
     role_assignments: HashMap<Role, Identity>,
     storage: SyncStorageImpl,
@@ -174,7 +173,6 @@ impl Session for SyncSession {
             RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingInject(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Fill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepSetup(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepShare(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepReveal(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepAnd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -249,12 +247,12 @@ impl Session for SyncSession {
 impl SetupGeneration<ReplicatedPlacement> for SyncSession {
     type Setup = RepSetup<PrfKey>;
 
-    fn setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
+    fn setup(&self, plc: &ReplicatedPlacement) -> Result<Arc<Self::Setup>> {
         let mut replicated_keys = self.replicated_keys.write().unwrap();
         let setup = replicated_keys
             .entry(plc.clone())
-            .or_insert_with(|| Arc::new(plc.gen_setup(self)));
-        Arc::clone(setup)
+            .or_insert_with(|| Arc::new(plc.gen_setup(self).unwrap())); // TODO don't unwrap
+        Ok(Arc::clone(setup))
     }
 }
 

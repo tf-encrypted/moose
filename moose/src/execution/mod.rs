@@ -32,7 +32,7 @@ pub trait Session {
 
 pub trait SetupGeneration<P> {
     type Setup;
-    fn setup(&self, plc: &P) -> Arc<Self::Setup>;
+    fn setup(&self, plc: &P) -> Result<Arc<Self::Setup>>;
 }
 
 /// Trait for sessions that are intended for run-time use only.

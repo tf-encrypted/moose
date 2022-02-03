@@ -560,7 +560,6 @@ values![
     ReplicatedFixed64Tensor,
     ReplicatedFixed128Tensor,
     ReplicatedAesKey,
-    ReplicatedSetup,
     ReplicatedShape,
     Mirrored3Ring64Tensor,
     Mirrored3Ring128Tensor,
@@ -1075,7 +1074,6 @@ operators![
     AdtFill,
     AdtToRep,
     // Replicated operators
-    RepSetup,
     RepShare,
     RepReveal,
     Fill,
@@ -1508,11 +1506,6 @@ pub struct AbsOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RepMsbOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepSetupOp {
     pub sig: Signature,
 }
 

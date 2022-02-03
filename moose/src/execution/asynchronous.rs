@@ -1,10 +1,9 @@
 use super::*;
 use crate::error::{Error, Result};
 use crate::execution::Identity;
-use crate::host::*;
+use crate::host::{HostPlacement, HostString, PrfKey};
 use crate::kernels::DispatchKernel;
-use crate::replicated::*;
-use crate::types::*;
+use crate::replicated::{RepSetup, ReplicatedPlacement};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -110,7 +109,6 @@ pub struct AsyncSession {
     pub role_assignments: Arc<HashMap<Role, Identity>>,
     pub networking: AsyncNetworkingImpl,
     pub storage: AsyncStorageImpl,
-    // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
     pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
 }
 
@@ -347,7 +345,6 @@ impl Session for AsyncSession {
             RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?,
             RingInject(op) => DispatchKernel::compile(&op, plc)?,
             Fill(op) => DispatchKernel::compile(&op, plc)?,
-            RepSetup(op) => DispatchKernel::compile(&op, plc)?,
             RepShare(op) => DispatchKernel::compile(&op, plc)?,
             RepReveal(op) => DispatchKernel::compile(&op, plc)?,
             RepTruncPr(op) => DispatchKernel::compile(&op, plc)?,
@@ -422,9 +419,9 @@ impl Session for AsyncSession {
 }
 
 impl SetupGeneration<ReplicatedPlacement> for AsyncSession {
-    type Setup = ReplicatedSetup;
+    type Setup = RepSetup<PrfKey>;
 
-    fn setup(&self, _plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
+    fn setup(&self, _plc: &ReplicatedPlacement) -> Result<Arc<Self::Setup>> {
         unimplemented!()
     }
 }

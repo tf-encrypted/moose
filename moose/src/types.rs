@@ -11,7 +11,7 @@ use crate::host::{
 };
 use crate::logical::AbstractTensor;
 use crate::mirrored::{Mir3Tensor, MirFixedTensor};
-use crate::replicated::{RepAesKey, RepBitArray, RepFixedTensor, RepSetup, RepShape, RepTensor};
+use crate::replicated::{RepAesKey, RepBitArray, RepFixedTensor, RepShape, RepTensor};
 pub use crate::{
     host::{HostShape, HostString},
     host::{PrfKey, Seed},
@@ -79,7 +79,6 @@ moose_type!(AdditiveShape = AdtShape<HostShape>);
 // Misc replicated types
 
 moose_type!(ReplicatedShape = RepShape<HostShape>);
-moose_type!(ReplicatedSetup = RepSetup<PrfKey>);
 pub type ReplicatedBitArray64 = RepBitArray<ReplicatedBitTensor, N64>;
 pub type ReplicatedBitArray128 = RepBitArray<ReplicatedBitTensor, N128>;
 pub type ReplicatedBitArray224 = RepBitArray<ReplicatedBitTensor, N224>;
