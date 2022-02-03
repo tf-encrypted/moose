@@ -21,7 +21,7 @@ pub trait PlacementShare<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementShare::share, RepShareOp,
+    PlacementShare::share, ShareOp,
     [
         (ReplicatedPlacement, (HostFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::fixed_kernel),
         (ReplicatedPlacement, (HostFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::fixed_kernel),
@@ -45,31 +45,25 @@ pub trait PlacementReveal<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementReveal::reveal, RepRevealOp,
+    PlacementReveal::reveal, RevealOp,
     [
-        (HostPlacement, (ReplicatedFixed64Tensor) -> HostFixed64Tensor => [concrete] Self::fixed_kernel),
-        (HostPlacement, (ReplicatedFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::fixed_kernel),
-        (HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor => [hybrid] Self::ring_kernel),
-        (HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor => [hybrid] Self::ring_kernel),
-        (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => [hybrid] Self::ring_kernel),
-        (HostPlacement, (ReplicatedBitArray64) -> HostBitArray64 => [concrete] Self::bit_array_kernel),
-        (HostPlacement, (ReplicatedBitArray128) -> HostBitArray128 => [concrete] Self::bit_array_kernel),
-        (HostPlacement, (ReplicatedBitArray224) -> HostBitArray224 => [concrete] Self::bit_array_kernel),
-        (HostPlacement, (ReplicatedAesKey) -> HostAesKey => [concrete] Self::aeskey_kernel),
+        (HostPlacement, (ReplicatedFixed64Tensor) -> HostFixed64Tensor => [concrete] Self::host_fixed_kernel),
+        (HostPlacement, (ReplicatedFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::host_fixed_kernel),
+        (HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor => [hybrid] Self::host_ring_kernel),
+        (HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor => [hybrid] Self::host_ring_kernel),
+        (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => [hybrid] Self::host_ring_kernel),
+        (HostPlacement, (ReplicatedBitArray64) -> HostBitArray64 => [concrete] Self::host_bit_array_kernel),
+        (HostPlacement, (ReplicatedBitArray128) -> HostBitArray128 => [concrete] Self::host_bit_array_kernel),
+        (HostPlacement, (ReplicatedBitArray224) -> HostBitArray224 => [concrete] Self::host_bit_array_kernel),
+        (HostPlacement, (ReplicatedAesKey) -> HostAesKey => [concrete] Self::host_aeskey_kernel),
         (Mirrored3Placement, (ReplicatedBitTensor) -> Mirrored3BitTensor => [concrete] Self::mir_ring_kernel),
         (Mirrored3Placement, (ReplicatedRing64Tensor) -> Mirrored3Ring64Tensor => [concrete] Self::mir_ring_kernel),
         (Mirrored3Placement, (ReplicatedRing128Tensor) -> Mirrored3Ring128Tensor => [concrete] Self::mir_ring_kernel),
         (Mirrored3Placement, (ReplicatedFixed64Tensor) -> Mirrored3Fixed64Tensor => [concrete] Self::mir_fixed_kernel),
         (Mirrored3Placement, (ReplicatedFixed128Tensor) -> Mirrored3Fixed128Tensor => [concrete] Self::mir_fixed_kernel),
-    ]
-}
-
-modelled_kernel! {
-    PlacementReveal::reveal, AdtRevealOp,
-    [
-        (HostPlacement, (AdditiveRing64Tensor) -> HostRing64Tensor => [hybrid] Self::kernel),
-        (HostPlacement, (AdditiveRing128Tensor) -> HostRing128Tensor => [hybrid] Self::kernel),
-        (HostPlacement, (AdditiveBitTensor) -> HostBitTensor => [hybrid] Self::kernel),
+        (HostPlacement, (AdditiveRing64Tensor) -> HostRing64Tensor => [hybrid] Self::host_adt_kernel),
+        (HostPlacement, (AdditiveRing128Tensor) -> HostRing128Tensor => [hybrid] Self::host_adt_kernel),
+        (HostPlacement, (AdditiveBitTensor) -> HostBitTensor => [hybrid] Self::host_adt_kernel),
     ]
 }
 
@@ -136,7 +130,7 @@ pub trait PlacementDecrypt<S: Session, KeyT, C, O> {
 }
 
 modelled_kernel! {
-    PlacementDecrypt::decrypt, AesDecryptOp,
+    PlacementDecrypt::decrypt, DecryptOp,
     [
         (HostPlacement, (AesKey, AesTensor) -> Tensor => [hybrid] Self::host_kernel),
         (HostPlacement, (HostAesKey, AesTensor) -> Tensor => [hybrid] Self::host_key_kernel),

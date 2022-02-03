@@ -1014,7 +1014,7 @@ operators![
     Broadcast,
     PrimDeriveSeed,
     PrimPrfKeyGen,
-    AesDecrypt,
+    Decrypt,
     AtLeast2D,
     IndexAxis,
     Slice,
@@ -1072,13 +1072,12 @@ operators![
     FloatingpointConcat,
     FloatingpointMean,
     // Additive operators
-    AdtReveal,
     AdtFill,
     AdtToRep,
     // Replicated operators
     RepSetup,
-    RepShare,
-    RepReveal,
+    Share,
+    Reveal,
     Fill,
     Msb,
     RepFixedpointMean,
@@ -1335,7 +1334,7 @@ pub struct PrimPrfKeyGenOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct AesDecryptOp {
+pub struct DecryptOp {
     pub sig: Signature,
 }
 
@@ -1495,11 +1494,6 @@ pub struct RingFixedpointDecodeOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct AdtRevealOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct AdtToRepOp {
     pub sig: Signature,
 }
@@ -1520,12 +1514,12 @@ pub struct RepSetupOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepShareOp {
+pub struct ShareOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepRevealOp {
+pub struct RevealOp {
     pub sig: Signature,
 }
 
