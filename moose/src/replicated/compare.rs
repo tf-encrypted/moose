@@ -139,9 +139,7 @@ mod tests {
     fn test_equal() {
         let alice = HostPlacement::from("alice");
         let bob = HostPlacement::from("bob");
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         let sess = SyncSession::default();
 

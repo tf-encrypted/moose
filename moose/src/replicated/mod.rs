@@ -56,6 +56,15 @@ impl ReplicatedPlacement {
     }
 }
 
+impl<R: Into<Role>> From<[R; 3]> for ReplicatedPlacement {
+    fn from(roles: [R; 3]) -> ReplicatedPlacement {
+        let [role0, role1, role2] = roles;
+        ReplicatedPlacement {
+            owners: [role0.into(), role1.into(), role2.into()],
+        }
+    }
+}
+
 /// Secret tensor used by replicated placements
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RepTensor<HostRingT> {
