@@ -254,6 +254,11 @@ class SigmoidOperation(StandardOperation):
 
 
 @dataclass
+class LogOperation(StandardOperation):
+    pass
+
+
+@dataclass
 class SoftmaxOperation(StandardOperation):
     axis: Optional[Tuple[int]]
     upmost_index: int

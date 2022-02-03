@@ -767,10 +767,10 @@ pub trait PlacementLn<S: Session, T, O> {
 modelled_kernel! {
     PlacementLn::ln, LnOp,
     [
-
         (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_rep_kernel),
+        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] Self::logical_kernel),
     ]
 }

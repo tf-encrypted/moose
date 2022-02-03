@@ -62,7 +62,7 @@ impl RepEqualOp {
 }
 
 impl Log2Op {
-    pub(crate) fn rep_rep_kernel<S: Session, RepRingT, HostRingT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepFixedTensor<RepRingT>,
@@ -91,9 +91,6 @@ impl Log2Op {
             m!(c!(RepFixedTensor<RepRingT>)),
         >,
         ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
-
-        HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
-        HostRingT: std::fmt::Debug,
     {
         let total_precision = x.fractional_precision + x.integral_precision;
 
@@ -130,7 +127,7 @@ impl Log2Op {
 }
 
 impl LnOp {
-    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, MirFixedT, HostFixedT>(
+    pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, MirFixedT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepFixedT,
@@ -141,9 +138,6 @@ impl LnOp {
         ReplicatedPlacement: PlacementLog2<S, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementMul<S, MirFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepFixedT, RepFixedT>,
-        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
-        MirFixedT: std::fmt::Debug,
-        HostFixedT: std::fmt::Debug,
     {
         let ln2 = rep.shape_fill(
             sess,
@@ -167,8 +161,8 @@ pub(crate) trait Int2FL<S: Session, RepRingT> {
         &self,
         sess: &S,
         x: &RepRingT,
-        k: usize,
-        f: usize,
+        max_bit_len: usize,
+        fractional_precision: usize,
     ) -> (RepRingT, RepRingT, RepRingT, RepRingT);
 }
 
@@ -219,12 +213,12 @@ where
         &self,
         sess: &S,
         x: &RepRingT,
-        k: usize,
-        f: usize,
+        max_bit_len: usize,
+        fractional_precision: usize,
     ) -> (RepRingT, RepRingT, RepRingT, RepRingT) {
         let rep = self;
 
-        let lambda = k - 1;
+        let lambda = max_bit_len - 1;
 
         // hack because fill op doesn't work without adding too many un-necessary type constrains
         let zero = rep.sub(sess, x, x);
@@ -261,10 +255,14 @@ where
 
         // we truncate x_upshifted but be sure to leave out f bits
         // we have k-1 bits in total because the input x has signed k bits,
-        let x_norm = rep.trunc_pr(sess, (k - 1 - f) as u32, &x_upshifted);
+        let x_norm = rep.trunc_pr(
+            sess,
+            (max_bit_len - 1 - fractional_precision) as u32,
+            &x_upshifted,
+        );
 
         let bit_count = (0..lambda).fold(zero, |acc, i| rep.add(sess, &acc, &b_ring[i]));
-        let ften = rep.shape_fill(sess, f as u8, &bit_count);
+        let ften = rep.shape_fill(sess, fractional_precision as u8, &bit_count);
 
         // we need to exclude f bits since we consider the number to be scaled by 2^f
         let p_res = with_context!(rep, sess, (bit_count - ften) * (ones - is_zero));
@@ -286,7 +284,7 @@ mod tests {
     use ndarray::prelude::*;
 
     macro_rules! rep_approx_log_fixed_test {
-        ($func_name:ident, $test_func: ident<$tt: ty>, $ret_ty:ident, $f_precision: expr, $i_precision: expr, $err: expr) => {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $ret_ty:ident, $i_precision: expr, $f_precision: expr, $err: expr) => {
             fn $func_name(x: ArrayD<f64>, y_target: Vec<f64>) {
                 let alice = HostPlacement {
                     owner: "alice".into(),
@@ -297,7 +295,7 @@ mod tests {
 
                 let sess = SyncSession::default();
 
-                let x: $ret_ty = alice.from_raw_scaled(x, $f_precision, $i_precision);
+                let x: $ret_ty = alice.from_raw_scaled(x, $i_precision, $f_precision);
                 let x = FixedTensor::Host(x);
 
                 let log_result = rep.$test_func(&sess, &x);
@@ -323,9 +321,10 @@ mod tests {
         log2<u64>,
         HostFixed64Tensor,
         8,
-        10,
+        20,
         0.01
     );
+    rep_approx_log_fixed_test!(test_rep_ln_fixed64, ln<u64>, HostFixed64Tensor, 8, 20, 0.01);
     rep_approx_log_fixed_test!(
         test_rep_log2_fixed128,
         log2<u128>,
@@ -334,14 +333,13 @@ mod tests {
         30,
         0.01
     );
-    rep_approx_log_fixed_test!(test_rep_ln_fixed64, ln<u64>, HostFixed64Tensor, 8, 20, 0.01);
     rep_approx_log_fixed_test!(
         test_rep_ln_fixed128,
         ln<u128>,
         HostFixed128Tensor,
         10,
         30,
-        0.01
+        0.001
     );
 
     #[test]
@@ -409,16 +407,106 @@ mod tests {
     }
 
     #[test]
-    fn test_log2() {
+    fn test_log2_64() {
         let x = array![1.0_f64, 2.0, 4.0, 8.0, 4.5, 10.5].into_dyn();
+        let expected = x.mapv(|item| item.log2()).iter().copied().collect();
+        test_rep_log2_fixed64(x, expected);
+
+        let x = array![[
+            [1.0_f64, 2.0],
+            [4.0, 23.3124],
+            [42.954, 4.5],
+            [10.5, 13.42190]
+        ]]
+        .into_dyn();
+        let expected = x.mapv(|item| item.log2()).iter().copied().collect();
+        test_rep_log2_fixed64(x, expected);
+
+        let x = array![
+            [1.0_f64, 2.0],
+            [4.0, 23.3124],
+            [42.954, 4.5],
+            [10.5, 13.42190]
+        ]
+        .into_dyn();
         let expected = x.mapv(|item| item.log2()).iter().copied().collect();
         test_rep_log2_fixed64(x, expected);
     }
 
     #[test]
-    fn test_ln() {
+    fn test_log2_128() {
+        let x = array![1.0_f64, 2.0, 4.0, 8.0, 4.5, 10.5].into_dyn();
+        let expected = x.mapv(|item| item.log2()).iter().copied().collect();
+        test_rep_log2_fixed128(x, expected);
+
+        let x = array![[
+            [1.0_f64, 2.0],
+            [4.0, 23.3124],
+            [42.954, 4.5],
+            [10.5, 13.42190]
+        ]]
+        .into_dyn();
+        let expected = x.mapv(|item| item.log2()).iter().copied().collect();
+        test_rep_log2_fixed128(x, expected);
+
+        let x = array![
+            [1.0_f64, 2.0],
+            [4.0, 23.3124],
+            [42.954, 4.5],
+            [10.5, 13.42190]
+        ]
+        .into_dyn();
+        let expected = x.mapv(|item| item.log2()).iter().copied().collect();
+        test_rep_log2_fixed128(x, expected);
+    }
+
+    #[test]
+    fn test_ln64() {
         let x = array![1.0_f64, 2.5, 3.0, 4.0, 5.0].into_dyn();
         let expected = x.mapv(|item| item.ln()).iter().copied().collect();
         test_rep_ln_fixed64(x, expected);
+
+        let x = array![
+            [1.0_f64, 2.5, 3.0, 4.0, 5.0],
+            [1.33, 4.123, 13.432, 10.33, 55.33]
+        ]
+        .into_dyn();
+        let expected = x.mapv(|item| item.ln()).iter().copied().collect();
+        test_rep_ln_fixed64(x, expected);
+
+        let x = array![[
+            [1.0_f64, 127.0],
+            [10.3121, 123.025],
+            [15.3213, 65.323],
+            [126.9599, 74.98876]
+        ]]
+        .into_dyn();
+        let expected = x.mapv(|item| item.ln()).iter().copied().collect();
+        test_rep_ln_fixed64(x, expected);
+    }
+
+    #[test]
+    fn test_ln128() {
+        let x = array![1.0_f64, 2.5, 3.0, 4.0, 5.0].into_dyn();
+        let expected = x.mapv(|item| item.ln()).iter().copied().collect();
+        test_rep_ln_fixed128(x, expected);
+
+        let x = array![
+            [1.0_f64, 2.5, 3.0, 4.0, 5.0],
+            [1.33, 4.123, 13.432, 10.33, 55.33]
+        ]
+        .into_dyn();
+        let expected = x.mapv(|item| item.ln()).iter().copied().collect();
+        test_rep_ln_fixed128(x, expected);
+
+        let x = array![[
+            [1.0_f64, 2.5],
+            [10.3121, 123.025],
+            [15.3213, 65.323],
+            [128.321, 156.3214]
+        ]]
+        .into_dyn();
+        let expected = x.mapv(|item| item.ln()).iter().copied().collect();
+        test_rep_ln_fixed128(x, expected);
     }
 }

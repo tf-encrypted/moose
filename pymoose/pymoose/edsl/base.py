@@ -238,6 +238,12 @@ class SoftmaxExpression(Expression):
 
 
 @dataclass
+class LogExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class SqrtExpression(Expression):
     def __hash__(self):
         return id(self)
@@ -643,6 +649,12 @@ def softmax(x, axis, upmost_index, placement=None):
         upmost_index=upmost_index,
         vtype=x.vtype,
     )
+
+
+def log(x, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return LogExpression(placement=placement, inputs=[x], vtype=x.vtype,)
 
 
 def shape(x, placement=None):
