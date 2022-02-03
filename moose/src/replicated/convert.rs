@@ -274,7 +274,7 @@ impl RingInjectOp {
         let (player0, player1, player2) = rep.host_placements();
 
         let adt = AdditivePlacement {
-            owners: [player0.clone().owner, player1.owner],
+            owners: [player0.owner.clone(), player1.owner],
         };
         let provider = player2;
 
