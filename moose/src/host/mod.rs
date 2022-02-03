@@ -1,4 +1,4 @@
-//! Placement for plaintext operations on a single role
+//! Placement for plaintext operations by a single role
 
 use crate::computation::*;
 use crate::error::{Error, Result};
@@ -24,6 +24,7 @@ mod prim;
 pub use fixedpoint::Convert;
 pub use prim::*;
 
+/// Placement type for single role plaintext operations
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostPlacement {
     pub owner: Role,
@@ -131,19 +132,18 @@ impl<S: Session> PlacementPlace<S, HostShape> for HostPlacement {
     }
 }
 
-/// One slice for slicing op
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SliceInfoElem {
-    /// start index; negative are counted from the back of the axis
+    /// Start index; negative are counted from the back of the axis.
     pub start: isize,
-    /// end index; negative are counted from the back of the axis; when not present
+    /// End index; negative are counted from the back of the axis; when not present
     /// the default is the full length of the axis.
     pub end: Option<isize>,
-    /// step size in elements; the default is 1, for every element.
+    /// Step size in elements; the default is 1, for every element.
     pub step: Option<isize>,
 }
 
-/// An ndarray slice needs a SliceInfoElem for each shape dimension
+// Slicing needs a SliceInfoElem for each shape dimension
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SliceInfo(pub Vec<SliceInfoElem>);
 
@@ -194,145 +194,6 @@ where
 
     pub fn shape(&self) -> HostShape {
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
-    }
-
-    pub fn index_axis(&self, axis: usize, index: usize) -> Result<HostTensor<T>> {
-        if axis >= self.0.ndim() {
-            return Err(Error::InvalidArgument(format!(
-                "axis too large in index axis, used axis {} with dimension {}",
-                axis,
-                self.0.ndim()
-            )));
-        }
-        if index >= self.0.shape()[axis] {
-            return Err(Error::InvalidArgument(format!(
-                "index too large in index axis, used index {} in shape {:?}",
-                index,
-                self.0.shape()
-            )));
-        }
-        let axis = Axis(axis);
-        let result = self.0.index_axis(axis, index);
-        Ok(HostTensor(result.to_owned(), self.1.clone()))
-    }
-}
-
-// This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<ArrayD<T>> for HostTensor<T>
-where
-    T: LinalgScalar,
-{
-    fn from(v: ArrayD<T>) -> HostTensor<T> {
-        HostTensor::<T>(
-            v,
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernels
-            },
-        )
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Add for HostTensor<T>
-where
-    T: LinalgScalar,
-{
-    type Output = HostTensor<T>;
-    fn add(self, other: HostTensor<T>) -> Self::Output {
-        match self.0.broadcast(other.0.dim()) {
-            Some(self_broadcasted) => {
-                HostTensor::<T>(self_broadcasted.to_owned() + other.0, self.1.clone())
-            }
-            None => HostTensor::<T>(self.0 + other.0, self.1.clone()),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Sub for HostTensor<T>
-where
-    T: LinalgScalar,
-{
-    type Output = HostTensor<T>;
-    fn sub(self, other: HostTensor<T>) -> Self::Output {
-        match self.0.broadcast(other.0.dim()) {
-            Some(self_broadcasted) => {
-                HostTensor::<T>(self_broadcasted.to_owned() - other.0, self.1.clone())
-            }
-            None => HostTensor::<T>(self.0 - other.0, self.1.clone()),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Mul for HostTensor<T>
-where
-    T: LinalgScalar,
-{
-    type Output = HostTensor<T>;
-    fn mul(self, other: HostTensor<T>) -> Self::Output {
-        match self.0.broadcast(other.0.dim()) {
-            Some(self_broadcasted) => {
-                HostTensor::<T>(self_broadcasted.to_owned() * other.0, self.1.clone())
-            }
-            None => HostTensor::<T>(self.0 * other.0, self.1.clone()),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Div for HostTensor<T>
-where
-    T: LinalgScalar,
-{
-    type Output = HostTensor<T>;
-    fn div(self, other: HostTensor<T>) -> Self::Output {
-        match self.0.broadcast(other.0.dim()) {
-            Some(self_broadcasted) => {
-                HostTensor::<T>(self_broadcasted.to_owned() / other.0, self.1.clone())
-            }
-            None => HostTensor::<T>(self.0 / other.0, self.1.clone()),
-        }
-    }
-}
-
-// This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<Vec<T>> for HostTensor<T> {
-    fn from(v: Vec<T>) -> HostTensor<T> {
-        HostTensor(
-            Array::from(v).into_dyn(),
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernel
-            },
-        )
-    }
-}
-
-// This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<Array1<T>> for HostTensor<T> {
-    fn from(v: Array1<T>) -> HostTensor<T> {
-        HostTensor(
-            v.into_dyn(),
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernel
-            },
-        )
-    }
-}
-
-// This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<Array2<T>> for HostTensor<T> {
-    fn from(v: Array2<T>) -> HostTensor<T> {
-        HostTensor(
-            v.into_dyn(),
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the old kernel
-            },
-        )
     }
 }
 
@@ -393,26 +254,6 @@ impl HostBitTensor {
     fn shape(&self) -> HostShape {
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
     }
-
-    fn index_axis(self, axis: usize, index: usize) -> Result<HostBitTensor> {
-        if axis >= self.0.ndim() {
-            return Err(Error::InvalidArgument(format!(
-                "axis too large in index axis, used axis {} with dimension {}",
-                axis,
-                self.0.ndim()
-            )));
-        }
-        if index >= self.0.shape()[axis] {
-            return Err(Error::InvalidArgument(format!(
-                "index too large in index axis, used index {} in shape {:?}",
-                index,
-                self.0.shape()
-            )));
-        }
-        let axis = Axis(axis);
-        let result = self.0.index_axis(axis, index);
-        Ok(HostBitTensor(result.to_owned(), self.1))
-    }
 }
 
 #[allow(dead_code)]
@@ -429,79 +270,6 @@ impl HostBitTensor {
     pub(crate) fn from_slice_plc(slice: &[u8], plc: HostPlacement) -> HostBitTensor {
         let data = slice.to_vec();
         Self::from_vec_plc(data, plc)
-    }
-
-    pub(crate) fn from_array_plc<const N: usize>(
-        array: [u8; N],
-        plc: HostPlacement,
-    ) -> HostBitTensor {
-        let data = array.to_vec();
-        Self::from_vec_plc(data, plc)
-    }
-}
-
-// This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl From<ArrayD<u8>> for HostBitTensor {
-    fn from(a: ArrayD<u8>) -> HostBitTensor {
-        let wrapped = a.mapv(|ai| (ai & 1) as u8);
-        HostBitTensor(
-            wrapped,
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
-            },
-        )
-    }
-}
-
-// This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl From<Vec<u8>> for HostBitTensor {
-    fn from(v: Vec<u8>) -> HostBitTensor {
-        let ix = IxDyn(&[v.len()]);
-        HostBitTensor(
-            Array::from_shape_vec(ix, v).unwrap(),
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
-            },
-        )
-    }
-}
-
-// This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl From<&[u8]> for HostBitTensor {
-    fn from(v: &[u8]) -> HostBitTensor {
-        let ix = IxDyn(&[v.len()]);
-        let v_wrapped: Vec<_> = v.iter().map(|vi| *vi & 1).collect();
-        HostBitTensor(
-            Array::from_shape_vec(ix, v_wrapped).unwrap(),
-            HostPlacement {
-                owner: "TODO".into(), // Fake owner for the older kernels.
-            },
-        )
-    }
-}
-
-impl From<HostBitTensor> for ArrayD<u8> {
-    fn from(b: HostBitTensor) -> ArrayD<u8> {
-        b.0
-    }
-}
-
-impl std::ops::BitXor for HostBitTensor {
-    type Output = HostBitTensor;
-    fn bitxor(self, other: Self) -> Self::Output {
-        assert_eq!(self.1, other.1);
-        HostBitTensor(self.0 ^ other.0, self.1)
-    }
-}
-
-impl std::ops::BitAnd for HostBitTensor {
-    type Output = HostBitTensor;
-    fn bitand(self, other: Self) -> Self::Output {
-        assert_eq!(self.1, other.1);
-        HostBitTensor(self.0 & other.0, self.1)
     }
 }
 
@@ -553,7 +321,7 @@ impl PartiallySymbolicType for HostBitArray256 {
     type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N256>;
 }
 
-impl<HostBitT: Placed, N> From<HostBitArray<HostBitT, N>> for Symbolic<HostBitArray<HostBitT, N>>
+impl<HostBitT, N> From<HostBitArray<HostBitT, N>> for Symbolic<HostBitArray<HostBitT, N>>
 where
     HostBitT: Placed<Placement = HostPlacement>,
 {
@@ -749,38 +517,6 @@ impl<T> HostRingTensor<T> {
     }
 }
 
-// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<ArrayD<T>> for HostRingTensor<T>
-where
-    T: Clone,
-{
-    fn from(a: ArrayD<T>) -> HostRingTensor<T> {
-        let wrapped = a.mapv(Wrapping);
-        HostRingTensor(
-            wrapped,
-            HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
-            },
-        )
-    }
-}
-
-// TODO(Morten) used by textual
-// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl From<ArrayD<i64>> for HostRingTensor<u64> {
-    fn from(a: ArrayD<i64>) -> HostRingTensor<u64> {
-        let ring_rep = a.mapv(|ai| Wrapping(ai as u64));
-        HostRingTensor(
-            ring_rep,
-            HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
-            },
-        )
-    }
-}
-
 impl From<&HostRingTensor<u64>> for ArrayD<i64> {
     fn from(r: &HostRingTensor<u64>) -> ArrayD<i64> {
         r.0.mapv(|element| element.0 as i64)
@@ -790,34 +526,6 @@ impl From<&HostRingTensor<u64>> for ArrayD<i64> {
 impl From<&HostRingTensor<u128>> for ArrayD<i128> {
     fn from(r: &HostRingTensor<u128>) -> ArrayD<i128> {
         r.0.mapv(|element| element.0 as i128)
-    }
-}
-
-// This implementation is only used by the old kernels. Construct HostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> From<Vec<T>> for HostRingTensor<T> {
-    fn from(v: Vec<T>) -> HostRingTensor<T> {
-        let ix = IxDyn(&[v.len()]);
-        use vec_utils::VecExt;
-        let v_wrapped: Vec<_> = v.map(Wrapping);
-        HostRingTensor(
-            Array::from_shape_vec(ix, v_wrapped).unwrap(),
-            HostPlacement {
-                owner: Role::from("TODO"), // Fake owner for the old kernels
-            },
-        )
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl<T> std::ops::Shl<usize> for HostRingTensor<T>
-where
-    Wrapping<T>: Clone,
-    Wrapping<T>: std::ops::Shl<usize, Output = Wrapping<T>>,
-{
-    type Output = HostRingTensor<T>;
-    fn shl(self, other: usize) -> Self::Output {
-        HostRingTensor(self.0 << other, self.1)
     }
 }
 
@@ -837,33 +545,17 @@ where
     }
 }
 
-impl<T> HostRingTensor<T>
-where
-    T: Clone,
-{
-    fn index_axis(self, axis: usize, index: usize) -> Result<HostRingTensor<T>> {
-        if axis >= self.0.ndim() {
-            return Err(Error::InvalidArgument(format!(
-                "axis too large in index axis, used axis {} with dimension {}",
-                axis,
-                self.0.ndim()
-            )));
-        }
-        if index >= self.0.shape()[axis] {
-            return Err(Error::InvalidArgument(format!(
-                "index too large in index axis, used index {} in shape {:?}",
-                index,
-                self.0.shape()
-            )));
-        }
-        let axis = Axis(axis);
-        let result = self.0.index_axis(axis, index);
-        Ok(HostRingTensor(result.to_owned(), self.1))
-    }
+pub trait FromRaw<T, O> {
+    fn from_raw(&self, raw: T) -> O;
 }
 
-pub(crate) trait FromRaw<T, O> {
-    fn from_raw(&self, raw: T) -> O;
+impl<T, O> FromRaw<Vec<T>, O> for HostPlacement
+where
+    HostPlacement: FromRaw<Array1<T>, O>,
+{
+    fn from_raw(&self, raw: Vec<T>) -> O {
+        self.from_raw(Array::from_vec(raw))
+    }
 }
 
 impl<T: Clone, D: ndarray::Dimension> FromRaw<Array<T, D>, HostTensor<T>> for HostPlacement {
@@ -880,7 +572,7 @@ impl<T: Clone, D: ndarray::Dimension> FromRaw<Array<T, D>, HostRingTensor<T>> fo
 
 impl<D: ndarray::Dimension> FromRaw<Array<u8, D>, HostBitTensor> for HostPlacement {
     fn from_raw(&self, raw: Array<u8, D>) -> HostBitTensor {
-        HostBitTensor(raw.into_dyn(), self.clone())
+        HostBitTensor(raw.mapv(|ai| (ai & 1)).into_dyn(), self.clone())
     }
 }
 

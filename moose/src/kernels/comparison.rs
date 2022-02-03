@@ -66,7 +66,7 @@ pub trait PlacementEqual<S: Session, T, U, O> {
 }
 
 modelled_kernel! {
-    PlacementEqual::equal, RepEqualOp,
+    PlacementEqual::equal, EqualOp,
     [
         (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),

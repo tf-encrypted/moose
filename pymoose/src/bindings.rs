@@ -3,12 +3,14 @@ use moose::compilation::{compile_passes, into_pass, Pass};
 use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
-use moose::host::{HostBitTensor, HostPlacement, HostString, HostTensor};
+use moose::host::{FromRaw, HostBitTensor, HostPlacement, HostString, HostTensor};
+use moose::textual::{parallel_parse_computation, ToTextual};
 use ndarray::IxDyn;
 use ndarray::LinalgScalar;
 use numpy::{Element, PyArrayDescr, PyArrayDyn, ToPyArray};
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::types::{PyBytes, PyFloat, PyString, PyType};
+use pyo3::wrap_pymodule;
 use pyo3::{exceptions::PyTypeError, prelude::*, AsPyPointer};
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -49,18 +51,15 @@ fn pyobj_tensor_to_host_tensor<T>(py: Python, obj: &PyObject) -> HostTensor<T>
 where
     T: Element + LinalgScalar,
 {
+    let plc = HostPlacement::from("TODO");
     let pyarray = obj.cast_as::<PyArrayDyn<T>>(py).unwrap();
-    HostTensor::from(
-        pyarray
-            .to_owned_array()
-            .into_dimensionality::<IxDyn>()
-            .unwrap(),
-    )
+    plc.from_raw(pyarray.to_owned_array())
 }
 
 fn pyobj_tensor_to_host_bit_tensor(py: Python, obj: &PyObject) -> HostBitTensor {
+    let plc = HostPlacement::from("TODO");
     let pyarray = obj.cast_as::<PyArrayDyn<bool>>(py).unwrap();
-    HostBitTensor::from(
+    plc.from_raw(
         pyarray
             .to_owned_array()
             .map(|b| *b as u8)
@@ -265,6 +264,8 @@ impl MooseComputation {
     }
 }
 
+const DEFAULT_PARSE_CHUNKS: usize = 12;
+
 #[pymethods]
 impl MooseComputation {
     #[classmethod]
@@ -298,6 +299,20 @@ impl MooseComputation {
         self.computation
             .to_disk(mypath)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))
+    }
+
+    #[classmethod]
+    pub fn from_textual(_cls: &PyType, py: Python, text: &PyString) -> PyResult<Py<Self>> {
+        let text: &str = text.extract()?;
+        let computation: Computation = parallel_parse_computation(text, DEFAULT_PARSE_CHUNKS)
+            .map_err(|e: anyhow::Error| PyRuntimeError::new_err(e.to_string()))?;
+        let moose_comp = MooseComputation { computation };
+        Py::new(py, moose_comp)
+    }
+
+    pub fn to_textual(&mut self, py: Python) -> PyResult<PyObject> {
+        let comp_text = self.computation.to_textual();
+        Ok(comp_text.into_py(py))
     }
 }
 
@@ -333,5 +348,13 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 fn moose_runtime(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LocalRuntime>()?;
     m.add_class::<MooseComputation>()?;
+    Ok(())
+}
+
+#[pymodule]
+#[pyo3(name = "rust")]
+fn pymoose_bindings(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_wrapped(wrap_pymodule!(elk_compiler))?;
+    m.add_wrapped(wrap_pymodule!(moose_runtime))?;
     Ok(())
 }

@@ -144,7 +144,6 @@ impl FixedpointEncodeOp {
     where
         HostPlacement: PlacementRingFixedpointEncode<S, HostFloatT, HostRingT>,
     {
-        // TODO(Morten) inline this function?
         let y = plc.fixedpoint_ring_encode(sess, 2, fractional_precision, &x);
         Ok(HostFixedTensor {
             tensor: y,
@@ -235,13 +234,12 @@ impl FixedpointDecodeOp {
     where
         HostPlacement: PlacementRingFixedpointDecode<S, HostRingT, HostFloatT>,
     {
-        // TODO(Morten) inline this function?
         assert_eq!(x.fractional_precision, precision);
         Ok(plc.fixedpoint_ring_decode(sess, 2, precision, &x.tensor))
     }
 }
 
-impl FixedpointAddOp {
+impl AddOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
@@ -367,7 +365,7 @@ impl FixedpointAddOp {
     }
 }
 
-impl FixedpointSubOp {
+impl SubOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
@@ -457,7 +455,7 @@ impl FixedpointSubOp {
     }
 }
 
-impl FixedpointMulOp {
+impl MulOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
@@ -583,7 +581,7 @@ impl FixedpointMulOp {
     }
 }
 
-impl FixedpointDivOp {
+impl DivOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
@@ -670,7 +668,7 @@ impl FixedpointDivOp {
     }
 }
 
-impl FixedpointDotOp {
+impl DotOp {
     pub(crate) fn fixed_on_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
@@ -1723,6 +1721,63 @@ impl MuxOp {
             integral_precision: u32::max(x.integral_precision, y.integral_precision),
         })
     }
+
+    pub(crate) fn fixed_host_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostBitT,
+        RepBitT,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        s: BoolTensor<HostBitT, RepBitT>,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementMux<S, HostBitT, HostFixedT, HostFixedT, HostFixedT>,
+    {
+        let s = match s {
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+            BoolTensor::Host(v) => v,
+        };
+        let x = match x {
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Host(v) => v,
+        };
+        let y = match y {
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Host(v) => v,
+        };
+        let z = plc.mux(sess, &s, &x, &y);
+        Ok(FixedTensor::Host(z))
+    }
+
+    pub(crate) fn host_bit_fixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        s: m!(HostBitTensor),
+        x: HostFixedTensor<HostRingT>,
+        y: HostFixedTensor<HostRingT>,
+    ) -> Result<HostFixedTensor<HostRingT>>
+    where
+        HostBitTensor: KnownType<S>,
+        HostPlacement: PlacementMux<S, m!(HostBitTensor), HostRingT, HostRingT, HostRingT>,
+    {
+        assert_eq!(x.fractional_precision, y.fractional_precision);
+        Ok(HostFixedTensor {
+            tensor: plc.mux(sess, &s, &x.tensor, &y.tensor),
+            fractional_precision: x.fractional_precision,
+            integral_precision: u32::max(x.integral_precision, y.integral_precision),
+        })
+    }
 }
 
 impl MaximumOp {
@@ -1878,11 +1933,9 @@ mod tests {
 
     #[test]
     fn ring_fixedpoint() {
-        let x = HostFloat64Tensor::from(
-            array![1.0, -2.0, 3.0, -4.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
+        let plc = HostPlacement::from("TODO");
+
+        let x = plc.from_raw(array![1.0, -2.0, 3.0, -4.0]);
 
         let scaling_factor = 2u64.pow(16);
         let x_encoded = HostFixed64Tensor {
@@ -1894,7 +1947,7 @@ mod tests {
         assert_eq!(
             x_encoded,
             HostFixed64Tensor {
-                tensor: HostRing64Tensor::from(vec![
+                tensor: plc.from_raw(array![
                     65536,
                     18446744073709420544,
                     196608,
@@ -1917,7 +1970,7 @@ mod tests {
         assert_eq!(
             x_encoded,
             HostFixed128Tensor {
-                tensor: HostRing128Tensor::from(vec![
+                tensor: plc.from_raw(array![
                     1208925819614629174706176,
                     340282366920936045611735378173418799104,
                     3626777458843887524118528,
@@ -2266,7 +2319,6 @@ mod tests {
             let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
             test_host_dot128(a, b, target);
         }
-
 
         #[test]
         fn test_fuzzy_host_div64((a,b) in pairwise_bounded_same_length64(2 * 15))

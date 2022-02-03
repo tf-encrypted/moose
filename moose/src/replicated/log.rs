@@ -1,5 +1,5 @@
 use super::*;
-use crate::computation::RepEqualOp;
+use crate::computation::EqualOp;
 use crate::error::Result;
 use crate::execution::Session;
 use crate::fixedpoint::PolynomialEval;
@@ -11,7 +11,7 @@ lazy_static! {
     static ref Q_2524: Vec<f64> = vec![0.353553425277, 4.54517087629, 6.42784209029, 1.0];
 }
 
-impl RepEqualOp {
+impl EqualOp {
     pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -179,12 +179,12 @@ where
     ReplicatedPlacement: PlacementEqual<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMux<S, RepRingT, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementNeg<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementBitDec<S, RepRingT, cs!(RepBitArray<ReplicatedBitTensor, N>)>,
+    ReplicatedPlacement: PlacementBitDec<S, RepRingT, m!(RepBitArray<ReplicatedBitTensor, N>)>,
     ReplicatedPlacement:
-        PlacementIndex<S, cs!(RepBitArray<ReplicatedBitTensor, N>), cs!(ReplicatedBitTensor)>,
+        PlacementIndex<S, m!(RepBitArray<ReplicatedBitTensor, N>), m!(ReplicatedBitTensor)>,
 
-    ReplicatedPlacement: PlacementRingInject<S, cs!(ReplicatedBitTensor), RepRingT>,
-    ReplicatedPlacement: PlacementNeg<S, cs!(ReplicatedBitTensor), cs!(ReplicatedBitTensor)>,
+    ReplicatedPlacement: PlacementRingInject<S, m!(ReplicatedBitTensor), RepRingT>,
+    ReplicatedPlacement: PlacementNeg<S, m!(ReplicatedBitTensor), m!(ReplicatedBitTensor)>,
     ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: ShapeFill<S, RepRingT, Result = MirRingT>,
     ReplicatedPlacement: PlacementSub<S, MirRingT, RepRingT, RepRingT>,
@@ -196,18 +196,10 @@ where
     ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
 
     // this has to dissapear after prefixor is a trait
-    ReplicatedPlacement: PlacementAnd<
-        S,
-        cs!(ReplicatedBitTensor),
-        cs!(ReplicatedBitTensor),
-        cs!(ReplicatedBitTensor),
-    >,
-    ReplicatedPlacement: PlacementXor<
-        S,
-        cs!(ReplicatedBitTensor),
-        cs!(ReplicatedBitTensor),
-        cs!(ReplicatedBitTensor),
-    >,
+    ReplicatedPlacement:
+        PlacementAnd<S, m!(ReplicatedBitTensor), m!(ReplicatedBitTensor), m!(ReplicatedBitTensor)>,
+    ReplicatedPlacement:
+        PlacementXor<S, m!(ReplicatedBitTensor), m!(ReplicatedBitTensor), m!(ReplicatedBitTensor)>,
 {
     fn int2fl(
         &self,
@@ -324,7 +316,14 @@ mod tests {
         20,
         0.01
     );
-    rep_approx_log_fixed_test!(test_rep_ln_fixed64, ln<u64>, HostFixed64Tensor, 8, 20, 0.01);
+    rep_approx_log_fixed_test!(
+        test_rep_ln_fixed64,
+        log<u64>,
+        HostFixed64Tensor,
+        8,
+        20,
+        0.01
+    );
     rep_approx_log_fixed_test!(
         test_rep_log2_fixed128,
         log2<u128>,
@@ -335,7 +334,7 @@ mod tests {
     );
     rep_approx_log_fixed_test!(
         test_rep_ln_fixed128,
-        ln<u128>,
+        log<u128>,
         HostFixed128Tensor,
         10,
         30,

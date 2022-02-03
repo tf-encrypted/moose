@@ -24,7 +24,7 @@ fn lower_op(op: &Operation) -> Operation {
     match (&op.placement, &op.kind) {
         (Placement::Host(_), Operator::AtLeast2D(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostAtLeast2DOp {
+            kind: AtLeast2DOp {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 to_column_vector: i.to_column_vector,
             }
@@ -44,7 +44,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Add(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostAddOp {
+            kind: AddOp {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -57,7 +57,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Sub(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostSubOp {
+            kind: SubOp {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -70,7 +70,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Mul(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostMulOp {
+            kind: MulOp {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -83,7 +83,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Dot(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostDotOp {
+            kind: DotOp {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -96,7 +96,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Div(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostDivOp {
+            kind: DivOp {
                 sig: Signature::binary(
                     lower_ty(i.sig.arg(0).unwrap()),
                     lower_ty(i.sig.arg(1).unwrap()),
@@ -150,7 +150,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Slice(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostSliceOp {
+            kind: SliceOp {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
                 slice: i.slice.clone(),
             }
@@ -178,7 +178,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Transpose(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostTransposeOp {
+            kind: TransposeOp {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
             }
             .into(),
@@ -187,7 +187,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Inverse(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostInverseOp {
+            kind: InverseOp {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
             }
             .into(),
@@ -286,7 +286,7 @@ mod tests {
     fn test_all_on_one_host() -> std::result::Result<(), anyhow::Error> {
         let source = r#"
         mul = Mul: (Tensor, Tensor) -> Tensor (x, y) @Host(alice)
-        save = Save: (String, Tensor) -> Unit (constant_0, mean) @Host(alice)
+        save = Save: (HostString, Tensor) -> Unit (constant_0, mean) @Host(alice)
         "#;
 
         let comp = deprecated_logical_lowering(&source.try_into()?)?
@@ -294,10 +294,10 @@ mod tests {
             .to_textual();
         // The computation should now contain the modified type information
         assert!(comp.contains(
-            "mul = HostMul: (Float64Tensor, Float64Tensor) -> Float64Tensor (x, y) @Host(alice)"
+            "mul = Mul: (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor (x, y) @Host(alice)"
         ));
         assert!(comp.contains(
-            "save = Save: (String, Float64Tensor) -> Unit (constant_0, mean) @Host(alice)"
+            "save = Save: (HostString, HostFloat64Tensor) -> Unit (constant_0, mean) @Host(alice)"
         ));
         Ok(())
     }

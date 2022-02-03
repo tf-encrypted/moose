@@ -1,7 +1,9 @@
 //! Placement for mirroring operations across multiple hosts
 use crate::computation::{Placed, Role};
 use crate::error::Result;
+use crate::execution::Session;
 use crate::host::HostPlacement;
+use crate::kernels::PlacementPlace;
 use serde::{Deserialize, Serialize};
 
 mod ops;
@@ -53,6 +55,31 @@ where
         let owners = [owner0, owner1, owner2];
 
         Ok(Mirrored3Placement { owners })
+    }
+}
+
+impl<S: Session, HostT> PlacementPlace<S, Mir3Tensor<HostT>> for Mirrored3Placement
+where
+    Mir3Tensor<HostT>: Placed<Placement = Mirrored3Placement>,
+    HostPlacement: PlacementPlace<S, HostT>,
+{
+    fn place(&self, sess: &S, x: Mir3Tensor<HostT>) -> Mir3Tensor<HostT> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                let Mir3Tensor {
+                    values: [x0, x1, x2],
+                } = x;
+                let (player0, player1, player2) = self.host_placements();
+                Mir3Tensor {
+                    values: [
+                        player0.place(sess, x0),
+                        player1.place(sess, x1),
+                        player2.place(sess, x2),
+                    ],
+                }
+            }
+        }
     }
 }
 
