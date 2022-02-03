@@ -1038,7 +1038,7 @@ operators![
     Abs,
     HostMean,
     Diag,
-    BitDec,
+    BitDecompose,
     HostOnes,
     HostShlDim,
     Sign,
@@ -1301,7 +1301,7 @@ pub struct HostShlDimOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitDecOp {
+pub struct BitDecomposeOp {
     pub sig: Signature,
 }
 

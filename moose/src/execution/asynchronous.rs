@@ -377,7 +377,7 @@ impl Session for AsyncSession {
             Transpose(op) => DispatchKernel::compile(&op, plc)?,
             Squeeze(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?,
-            BitDec(op) => DispatchKernel::compile(&op, plc)?,
+            BitDecompose(op) => DispatchKernel::compile(&op, plc)?,
             Identity(op) => DispatchKernel::compile(&op, plc)?,
             Cast(op) => DispatchKernel::compile(&op, plc)?,
             Reshape(op) => DispatchKernel::compile(&op, plc)?,

@@ -1111,7 +1111,7 @@ impl ToTextual for Operator {
             HostOnes(op) => op.to_textual(),
             Diag(op) => op.to_textual(),
             HostShlDim(op) => op.to_textual(),
-            BitDec(op) => op.to_textual(),
+            BitDecompose(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
             RingFixedpointEncode(op) => op.to_textual(),
             RingFixedpointDecode(op) => op.to_textual(),

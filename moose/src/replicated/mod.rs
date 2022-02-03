@@ -1801,7 +1801,7 @@ impl MsbOp {
     where
         RepRingT: Ring<BitLength = N>,
         RepBitArrayT: BitArray<Len = N>,
-        ReplicatedPlacement: PlacementBitDec<S, RepRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementBitDecompose<S, RepRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
     {
         let bits = rep.bit_decompose(sess, &x);
@@ -2115,7 +2115,7 @@ where
     m!(c!(RepTen<HostBitT>)): TryInto<RepTen<HostBitT>>,
 
     ReplicatedPlacement: PlacementShare<S, HostBitT, m!(c!(RepTen<HostBitT>))>,
-    HostPlacement: PlacementBitDec<S, HostRingT, HostBitT>,
+    HostPlacement: PlacementBitDecompose<S, HostRingT, HostBitT>,
     // ReplicatedPlacement: PlacementSetupGen<S, S::Setup>,
 {
     fn split(&self, sess: &S, x: &RepTen<HostRingT>) -> (RepTen<HostBitT>, RepTen<HostBitT>) {
@@ -2149,7 +2149,7 @@ where
     }
 }
 
-impl BitDecOp {
+impl BitDecomposeOp {
     pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,

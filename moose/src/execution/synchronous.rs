@@ -209,7 +209,7 @@ impl Session for SyncSession {
             FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            BitDec(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            BitDecompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Identity(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Cast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
