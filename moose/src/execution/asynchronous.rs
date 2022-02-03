@@ -446,6 +446,7 @@ impl AsyncExecutor {
         own_identity: &Identity,
         session: &AsyncSession,
     ) -> Result<HashMap<String, AsyncReceiver>> {
+        tracing::info!("ASDF STARTING run_computation");
         if !self.session_ids.insert(session.session_id.clone()) {
             return Err(Error::SessionAlreadyExists(format!(
                 "{}",
@@ -485,6 +486,8 @@ impl AsyncExecutor {
         let mut env: HashMap<String, AsyncValue> = HashMap::default();
         let mut outputs: HashMap<String, AsyncReceiver> = HashMap::default();
 
+        tracing::info!("ASDF running ops");
+        tracing::info!("ASDF num ops: {}", own_operations.len());
         for op in own_operations {
             let operator = op.kind.clone();
             let operands = op
@@ -493,14 +496,14 @@ impl AsyncExecutor {
                 .map(|input_name| env.get(input_name).unwrap().clone())
                 .collect();
             let span = tracing::info_span!(
-                "AsyncExecutor::run_computation executing operator: {}",
+                "ASDF AsyncExecutor::run_computation executing operator: {}",
                 operator = tracing::field::debug(&op)
             )
             .entered();
-            println!("op: {:?}", op);
-            println!("tracing op: {:?}", tracing::field::debug(&op));
-            tracing::info!("THIS IS INFO");
-            tracing::warn!("THIS IS A WARNING");
+            println!("ASDF op: {:?}", op);
+            println!("ASDF tracing op: {:?}", tracing::field::debug(&op));
+            tracing::info!("ASDF THIS IS INFO");
+            tracing::warn!("ASDF THIS IS A WARNING");
             std::process::exit(23);
             let value = session
                 .execute(operator, &op.placement, operands)
