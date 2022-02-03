@@ -499,6 +499,7 @@ impl AsyncExecutor {
             .entered();
             println!("op: {:?}", op);
             println!("tracing op: {:?}", tracing::field::debug(&op));
+            std::process::exit(23);
             let value = session
                 .execute(operator, &op.placement, operands)
                 .map_err(|e| {
