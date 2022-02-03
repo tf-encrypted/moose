@@ -5,8 +5,9 @@ use crate::error::{Error, Result};
 use crate::execution::{symbolic::Symbolic, Session};
 use crate::host::HostPlacement;
 use crate::kernels::*;
+use crate::mirrored::Mir3Tensor;
 use crate::types::*;
-use crate::{BitArray, Const, Ring};
+use crate::{BitArray, Const, MirroredCounterpart, Ring, Underlying};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
@@ -30,7 +31,7 @@ mod softmax;
 mod zero_share;
 pub use self::aes::AbstractReplicatedAesKey;
 pub use self::fixedpoint::RepFixedTensor;
-pub(crate) use self::misc::{BinaryAdder, MirroredCounterpart, ShapeFill, Underlying};
+pub(crate) use self::misc::{BinaryAdder, ShapeFill};
 pub use self::setup::RepSetup;
 use self::zero_share::{RepZeroShare, ZeroShareGen};
 
@@ -114,8 +115,16 @@ where
     }
 }
 
+impl<HostRingT> Underlying for RepTensor<HostRingT> {
+    type TensorType = HostRingT;
+}
+
 impl<HostRingT: Ring> Ring for RepTensor<HostRingT> {
     type BitLength = HostRingT::BitLength;
+}
+
+impl<HostRingT> MirroredCounterpart for RepTensor<HostRingT> {
+    type MirroredType = Mir3Tensor<HostRingT>;
 }
 
 /// Public shape for replicated placements

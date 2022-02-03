@@ -1,5 +1,5 @@
 use super::*;
-use crate::mirrored::{Mir3Tensor, Mirrored3Placement};
+use crate::mirrored::Mirrored3Placement;
 
 impl ReplicatedPlacement {
     pub fn prefix_op<S, RepT>(
@@ -109,37 +109,6 @@ where
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
     }
-}
-
-pub(crate) trait Underlying {
-    type TensorType;
-}
-
-impl<HostRingT> Underlying for RepTensor<HostRingT> {
-    type TensorType = HostRingT;
-}
-
-impl<HostRingT> Underlying for Mir3Tensor<HostRingT> {
-    type TensorType = HostRingT;
-}
-
-impl<T: Placed + Underlying> Underlying for Symbolic<T> {
-    type TensorType = <T as Underlying>::TensorType;
-}
-
-pub(crate) trait MirroredCounterpart {
-    type MirroredType;
-}
-
-impl<HostRingT> MirroredCounterpart for RepTensor<HostRingT> {
-    type MirroredType = Mir3Tensor<HostRingT>;
-}
-
-impl<T: Placed + MirroredCounterpart> MirroredCounterpart for Symbolic<T>
-where
-    <T as MirroredCounterpart>::MirroredType: Placed,
-{
-    type MirroredType = Symbolic<<T as MirroredCounterpart>::MirroredType>;
 }
 
 pub(crate) trait ShapeFill<S, TenT> {

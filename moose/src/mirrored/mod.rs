@@ -4,6 +4,7 @@ use crate::error::Result;
 use crate::execution::Session;
 use crate::host::HostPlacement;
 use crate::kernels::PlacementPlace;
+use crate::Underlying;
 use serde::{Deserialize, Serialize};
 
 mod ops;
@@ -81,6 +82,10 @@ where
             }
         }
     }
+}
+
+impl<HostRingT> Underlying for Mir3Tensor<HostRingT> {
+    type TensorType = HostRingT;
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
