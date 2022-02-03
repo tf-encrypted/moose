@@ -211,9 +211,6 @@ where
     }
 }
 
-// Type aliases to shorten out impl in replicated protocols
-pub(crate) type MirTen<T> = Mir3Tensor<T>;
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -795,7 +792,7 @@ mod tests {
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
-                let y_mir: MirTen<HostRingTensor<$tt>> =
+                let y_mir: Mir3Tensor<HostRingTensor<$tt>> =
                     mir.fill(&sess, ys.into(), &rep.shape(&sess, &x_shared));
 
                 let result_rep_mir = rep.$test_func(&sess, &x_shared, &y_mir);
@@ -892,7 +889,8 @@ mod tests {
                     shapes: [s0, s1, s2],
                 };
 
-                let y_mir: MirTen<HostRingTensor<$tt>> = mir3.fill(&sess, ys.into(), &mir_shape);
+                let y_mir: Mir3Tensor<HostRingTensor<$tt>> =
+                    mir3.fill(&sess, ys.into(), &mir_shape);
 
                 let result_rep_mir = rep.$test_func(&sess, &x_shared, &y_mir);
                 let opened_result = alice.reveal(&sess, &result_rep_mir);

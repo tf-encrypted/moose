@@ -39,7 +39,7 @@ impl AddOp {
     pub(crate) fn mir_rep_kernel<S: Session, HostRingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: MirTen<HostRingT>,
+        x: Mir3Tensor<HostRingT>,
         y: RepTensor<HostRingT>,
     ) -> Result<RepTensor<HostRingT>>
     where
@@ -49,7 +49,7 @@ impl AddOp {
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let MirTen {
+        let Mir3Tensor {
             values: [x0, x1, x2],
         } = x;
 
@@ -80,7 +80,7 @@ impl AddOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepTensor<HostRingT>,
-        y: MirTen<HostRingT>,
+        y: Mir3Tensor<HostRingT>,
     ) -> Result<RepTensor<HostRingT>>
     where
         HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
@@ -90,7 +90,7 @@ impl AddOp {
         // the shapes of shares need to be the same.
         let (player0, player1, player2) = rep.host_placements();
 
-        let MirTen {
+        let Mir3Tensor {
             values: [y0, y1, y2],
         } = y;
 
@@ -229,7 +229,7 @@ impl SubOp {
     pub(crate) fn mir_rep_kernel<S: Session, R, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: MirTen<R>,
+        x: Mir3Tensor<R>,
         y: RepTensor<R>,
     ) -> Result<RepTensor<R>>
     where
@@ -240,7 +240,7 @@ impl SubOp {
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let MirTen {
+        let Mir3Tensor {
             values: [x0, x1, x2],
         } = &x;
 
@@ -275,7 +275,7 @@ impl SubOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepTensor<R>,
-        y: MirTen<R>,
+        y: Mir3Tensor<R>,
     ) -> Result<RepTensor<R>>
     where
         HostPlacement: PlacementSub<S, R, R, R>,
@@ -284,7 +284,7 @@ impl SubOp {
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let MirTen {
+        let Mir3Tensor {
             values: [y0, y1, y2],
         } = y;
 
@@ -367,7 +367,7 @@ impl MulOp {
     pub(crate) fn mir_rep_kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: MirTen<RingT>,
+        x: Mir3Tensor<RingT>,
         y: RepTensor<RingT>,
     ) -> Result<RepTensor<RingT>>
     where
@@ -379,7 +379,7 @@ impl MulOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
-        let MirTen {
+        let Mir3Tensor {
             values: [x0, x1, x2],
         } = &x;
 
@@ -401,7 +401,7 @@ impl MulOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepTensor<RingT>,
-        y: MirTen<RingT>,
+        y: Mir3Tensor<RingT>,
     ) -> Result<RepTensor<RingT>>
     where
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
@@ -412,7 +412,7 @@ impl MulOp {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let MirTen {
+        let Mir3Tensor {
             values: [y0, y1, y2],
         } = &y;
 

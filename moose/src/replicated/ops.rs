@@ -162,7 +162,7 @@ impl FillOp {
         mir: &Mirrored3Placement,
         value: u64,
         rep_shape: RepShape<ShapeT>,
-    ) -> Result<MirTen<RingT>>
+    ) -> Result<Mir3Tensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -178,7 +178,7 @@ impl FillOp {
             player2.fill(sess, Constant::Ring64(value), s2),
         ];
 
-        Ok(MirTen { values })
+        Ok(Mir3Tensor { values })
     }
 
     pub(crate) fn mir_ring128_kernel<S: Session, ShapeT, RingT>(
@@ -186,7 +186,7 @@ impl FillOp {
         mir: &Mirrored3Placement,
         value: u128,
         rep_shape: RepShape<ShapeT>,
-    ) -> Result<MirTen<RingT>>
+    ) -> Result<Mir3Tensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -202,7 +202,7 @@ impl FillOp {
             player2.fill(sess, Constant::Ring128(value), s2),
         ];
 
-        Ok(MirTen { values })
+        Ok(Mir3Tensor { values })
     }
 
     pub(crate) fn rep_bit_kernel<S: Session, ShapeT, RingT>(
@@ -244,7 +244,7 @@ impl FillOp {
         mir: &Mirrored3Placement,
         value: u8,
         shape: RepShape<ShapeT>,
-    ) -> Result<MirTen<RingT>>
+    ) -> Result<Mir3Tensor<RingT>>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -260,7 +260,7 @@ impl FillOp {
             player2.fill(sess, Constant::Bit(value), s2),
         ];
 
-        Ok(MirTen { values })
+        Ok(Mir3Tensor { values })
     }
 }
 
