@@ -212,7 +212,6 @@ where
 }
 
 // Type aliases to shorten out impl in replicated protocols
-pub(crate) type AdtTen<T> = AdtTensor<T>;
 pub(crate) type MirTen<T> = Mir3Tensor<T>;
 
 #[cfg(test)]

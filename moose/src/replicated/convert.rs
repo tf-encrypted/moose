@@ -242,30 +242,31 @@ impl RingInjectOp {
         x: RepTensor<HostBitT>,
     ) -> Result<RepTensor<HostRingT>>
     where
-        AdtTen<HostRingT>: CanonicalType,
-        <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
-        AdtTen<HostRingT>: Into<m!(c!(AdtTen<HostRingT>))>,
+        AdtTensor<HostRingT>: CanonicalType,
+        <AdtTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
+        AdtTensor<HostRingT>: Into<m!(c!(AdtTensor<HostRingT>))>,
 
-        AdtTen<HostBitT>: CanonicalType,
-        <AdtTen<HostBitT> as CanonicalType>::Type: KnownType<S>,
-        AdtTen<HostBitT>: Into<m!(c!(AdtTen<HostBitT>))>,
+        AdtTensor<HostBitT>: CanonicalType,
+        <AdtTensor<HostBitT> as CanonicalType>::Type: KnownType<S>,
+        AdtTensor<HostBitT>: Into<m!(c!(AdtTensor<HostBitT>))>,
 
-        AdtTen<HostRingT>: Into<AdtRingT>,
-        m!(c!(AdtTen<HostRingT>)): TryInto<AdtTen<HostRingT>>,
-        AdtRingT: TryInto<AdtTen<HostRingT>>,
+        AdtTensor<HostRingT>: Into<AdtRingT>,
+        m!(c!(AdtTensor<HostRingT>)): TryInto<AdtTensor<HostRingT>>,
+        AdtRingT: TryInto<AdtTensor<HostRingT>>,
 
         HostPlacement: PlacementShape<S, HostBitT, HostShapeT>,
-        ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<HostRingT>, RepTensor<HostRingT>>,
+        ReplicatedPlacement: PlacementAdtToRep<S, AdtTensor<HostRingT>, RepTensor<HostRingT>>,
         AdditivePlacement: PlacementFill<S, HostShapeT, AdtRingT>,
         HostPlacement: PlacementFill<S, HostShapeT, HostRingT>,
-        AdditivePlacement: DaBitProvider<S, HostShapeT, AdtTen<HostRingT>, AdtTen<HostBitT>>,
-        AdditivePlacement: PlacementRepToAdt<S, RepTensor<HostBitT>, AdtTen<HostBitT>>,
-        AdditivePlacement: PlacementAdd<S, AdtTen<HostBitT>, AdtTen<HostBitT>, AdtTen<HostBitT>>,
+        AdditivePlacement: DaBitProvider<S, HostShapeT, AdtTensor<HostRingT>, AdtTensor<HostBitT>>,
+        AdditivePlacement: PlacementRepToAdt<S, RepTensor<HostBitT>, AdtTensor<HostBitT>>,
+        AdditivePlacement:
+            PlacementAdd<S, AdtTensor<HostBitT>, AdtTensor<HostBitT>, AdtTensor<HostBitT>>,
         AdditivePlacement: PlacementAdd<S, AdtRingT, HostRingT, AdtRingT>,
         AdditivePlacement: PlacementMul<S, AdtRingT, HostRingT, AdtRingT>,
         AdditivePlacement: PlacementSub<S, AdtRingT, AdtRingT, AdtRingT>,
         AdditivePlacement: PlacementShl<S, AdtRingT, AdtRingT>,
-        HostPlacement: PlacementReveal<S, m!(c!(AdtTen<HostBitT>)), HostBitT>,
+        HostPlacement: PlacementReveal<S, m!(c!(AdtTensor<HostBitT>)), HostBitT>,
         HostPlacement: PlacementRingInject<S, HostBitT, HostRingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -313,22 +314,23 @@ impl AdtToRepOp {
     pub(crate) fn kernel<S: Session, ShapeT, SeedT, KeyT, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AdtTen<HostRingT>,
+        x: AdtTensor<HostRingT>,
     ) -> Result<RepTensor<HostRingT>>
     where
         HostRingT: Placed<Placement = HostPlacement> + Clone,
-        AdtTen<HostRingT>: CanonicalType,
-        <AdtTen<HostRingT> as CanonicalType>::Type: KnownType<S>,
+        AdtTensor<HostRingT>: CanonicalType,
+        <AdtTensor<HostRingT> as CanonicalType>::Type: KnownType<S>,
         HostPlacement: PlacementShape<S, HostRingT, ShapeT>,
         HostPlacement: PlacementKeyGen<S, KeyT>,
         HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, HostRingT>,
         HostPlacement: PlacementDeriveSeed<S, KeyT, SeedT>,
-        AdditivePlacement: PlacementSub<S, AdtTen<HostRingT>, AdtTen<HostRingT>, AdtTen<HostRingT>>,
-        AdtTen<HostRingT>: Into<m!(c!(AdtTen<HostRingT>))>,
-        HostPlacement: PlacementReveal<S, m!(c!(AdtTen<HostRingT>)), HostRingT>,
+        AdditivePlacement:
+            PlacementSub<S, AdtTensor<HostRingT>, AdtTensor<HostRingT>, AdtTensor<HostRingT>>,
+        AdtTensor<HostRingT>: Into<m!(c!(AdtTensor<HostRingT>))>,
+        HostPlacement: PlacementReveal<S, m!(c!(AdtTensor<HostRingT>)), HostRingT>,
         ReplicatedPlacement: PlacementPlace<S, RepTensor<HostRingT>>,
     {
-        let AdtTen { shares: [x0, x1] } = &x;
+        let AdtTensor { shares: [x0, x1] } = &x;
 
         let adt = x.placement()?;
         let (adt_player0, adt_player1) = adt.host_placements();
@@ -362,7 +364,7 @@ impl AdtToRepOp {
         let y0_provider = provider.sample_uniform_seeded(sess, &shape0, &seed1);
         let y1_provider = provider.sample_uniform_seeded(sess, &shape0, &seed2);
 
-        let y = AdtTen {
+        let y = AdtTensor {
             shares: [y0.clone(), y1.clone()],
         };
         let c = adt_player0.reveal(sess, &adt.sub(sess, &x, &y).into());

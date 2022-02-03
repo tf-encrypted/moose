@@ -84,9 +84,9 @@ impl RepTruncPrOp {
         xe: RepTensor<HostRingT>,
     ) -> Result<RepTensor<HostRingT>>
     where
-        AdditivePlacement: PlacementRepToAdt<S, RepTensor<HostRingT>, AdtTen<HostRingT>>,
-        AdditivePlacement: TruncPrProvider<S, AdtTen<HostRingT>, AdtTen<HostRingT>>,
-        ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<HostRingT>, RepTensor<HostRingT>>,
+        AdditivePlacement: PlacementRepToAdt<S, RepTensor<HostRingT>, AdtTensor<HostRingT>>,
+        AdditivePlacement: TruncPrProvider<S, AdtTensor<HostRingT>, AdtTensor<HostRingT>>,
+        ReplicatedPlacement: PlacementAdtToRep<S, AdtTensor<HostRingT>, RepTensor<HostRingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
