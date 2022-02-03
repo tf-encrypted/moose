@@ -497,10 +497,10 @@ impl AsyncExecutor {
                 .collect();
             let span = tracing::info_span!(
                 "ASDF AsyncExecutor::run_computation executing operator: {}",
-                operator = tracing::field::debug(&op)
+                operator = tracing::field::debug(&op.kind)
             )
             .entered();
-            println!("ASDF op: {:?}", op);
+            println!("ASDF op: {:?}", op.kind);
             println!("ASDF tracing op: {:?}", tracing::field::debug(&op));
             tracing::info!("ASDF THIS IS INFO");
             tracing::warn!("ASDF THIS IS A WARNING");
