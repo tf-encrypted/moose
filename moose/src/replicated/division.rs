@@ -147,7 +147,7 @@ where
     RepBitT: Clone + CanonicalType,
     RepRingT: Clone + Ring<BitLength = N>,
     RepBitArray<c!(RepBitT), N>: KnownType<S>,
-    ReplicatedPlacement: PlacementBitDec<S, RepRingT, m!(RepBitArray<c!(RepBitT), N>)>,
+    ReplicatedPlacement: PlacementBitDecompose<S, RepRingT, m!(RepBitArray<c!(RepBitT), N>)>,
     ReplicatedPlacement: PlacementIndex<S, m!(RepBitArray<c!(RepBitT), N>), RepBitT>,
     ReplicatedPlacement: PlacementAnd<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,

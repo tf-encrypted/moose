@@ -685,8 +685,8 @@ impl HostShlDimOp {
     }
 }
 
-impl HostBitDecOp {
-    pub(crate) fn ring64_kernel<S: RuntimeSession>(
+impl BitDecomposeOp {
+    pub(crate) fn host_ring64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing64Tensor,
@@ -707,7 +707,7 @@ impl HostBitDecOp {
         Ok(HostRingTensor(result, plc.clone()))
     }
 
-    pub(crate) fn ring128_kernel<S: RuntimeSession>(
+    pub(crate) fn host_ring128_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing128Tensor,
@@ -726,7 +726,7 @@ impl HostBitDecOp {
         Ok(HostRingTensor(result, plc.clone()))
     }
 
-    pub(crate) fn bit64_kernel<S: RuntimeSession>(
+    pub(crate) fn host_bit64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing64Tensor,
@@ -746,7 +746,7 @@ impl HostBitDecOp {
         Ok(HostBitTensor(result.map(|v| v.0 as u8), plc.clone()))
     }
 
-    pub(crate) fn bit128_kernel<S: RuntimeSession>(
+    pub(crate) fn host_bit128_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing128Tensor,
@@ -1242,8 +1242,8 @@ impl BitSampleSeededOp {
     }
 }
 
-impl BitXorOp {
-    pub(crate) fn kernel<S: RuntimeSession>(
+impl XorOp {
+    pub(crate) fn host_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostBitTensor,
@@ -1263,8 +1263,8 @@ impl NegOp {
     }
 }
 
-impl BitAndOp {
-    pub(crate) fn bit_kernel<S: RuntimeSession>(
+impl AndOp {
+    pub(crate) fn host_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostBitTensor,
@@ -1273,7 +1273,7 @@ impl BitAndOp {
         Ok(HostBitTensor(x.0 & y.0, plc.clone()))
     }
 
-    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRingTensor<T>,
@@ -1287,7 +1287,7 @@ impl BitAndOp {
     }
 }
 
-impl BitOrOp {
+impl OrOp {
     pub(crate) fn host_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
