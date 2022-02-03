@@ -1038,7 +1038,7 @@ operators![
     Abs,
     HostMean,
     Diag,
-    HostBitDec,
+    BitDecompose,
     HostOnes,
     Sign,
     RingFixedpointMean,
@@ -1051,9 +1051,9 @@ operators![
     BitExtract,
     BitSample,
     BitSampleSeeded,
-    BitXor,
-    BitAnd,
-    BitOr,
+    Xor,
+    And,
+    Or,
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
@@ -1078,16 +1078,13 @@ operators![
     RepShare,
     RepReveal,
     Fill,
-    RepMsb,
-    RepAnd,
-    RepXor,
+    Msb,
     RepFixedpointMean,
     AddN,
     TruncPr,
     RepToAdt,
     Index,
-    RepBitDec,
-    RepBitCompose,
+    BitCompose,
     ShlDim,
     Mux,
     Maximum,
@@ -1295,7 +1292,7 @@ pub struct DiagOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostBitDecOp {
+pub struct BitDecomposeOp {
     pub sig: Signature,
 }
 
@@ -1388,17 +1385,17 @@ pub struct BitSampleSeededOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitXorOp {
+pub struct XorOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitAndOp {
+pub struct AndOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitOrOp {
+pub struct OrOp {
     pub sig: Signature,
 }
 
@@ -1498,7 +1495,7 @@ pub struct AbsOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepMsbOp {
+pub struct MsbOp {
     pub sig: Signature,
 }
 
@@ -1514,16 +1511,6 @@ pub struct RepShareOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct RepRevealOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepAndOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepXorOp {
     pub sig: Signature,
 }
 
@@ -1571,12 +1558,7 @@ pub struct IndexOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepBitDecOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepBitComposeOp {
+pub struct BitComposeOp {
     pub sig: Signature,
 }
 
