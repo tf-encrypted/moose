@@ -10,12 +10,12 @@ impl RepShareOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         key: AbstractHostAesKey<HostBitArrayT>,
-    ) -> Result<AbstractReplicatedAesKey<RepBitArrayT>>
+    ) -> Result<RepAesKey<RepBitArrayT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostBitArrayT, RepBitArrayT>,
     {
         let bit_array = plc.share(sess, &key.0);
-        Ok(AbstractReplicatedAesKey(bit_array))
+        Ok(RepAesKey(bit_array))
     }
 
     pub(crate) fn fixed_kernel<S: Session, HostRingT, RepRingT>(
@@ -163,7 +163,7 @@ impl RepRevealOp {
     pub(crate) fn aeskey_kernel<S: Session, RepBitArrayT, HostBitArrayT>(
         sess: &S,
         receiver: &HostPlacement,
-        key: AbstractReplicatedAesKey<RepBitArrayT>,
+        key: RepAesKey<RepBitArrayT>,
     ) -> Result<AbstractHostAesKey<HostBitArrayT>>
     where
         HostPlacement: PlacementReveal<S, RepBitArrayT, HostBitArrayT>,

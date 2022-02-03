@@ -11,9 +11,7 @@ use crate::host::{
 };
 use crate::logical::AbstractTensor;
 use crate::mirrored::{Mir3Tensor, MirFixedTensor};
-use crate::replicated::{
-    AbstractReplicatedAesKey, RepBitArray, RepFixedTensor, RepSetup, RepShape, RepTensor,
-};
+use crate::replicated::{RepAesKey, RepBitArray, RepFixedTensor, RepSetup, RepShape, RepTensor};
 pub use crate::{
     host::{HostShape, HostString},
     host::{PrfKey, Seed},
@@ -55,7 +53,7 @@ moose_type!(HostFixed128AesTensor = HostFixedAesTensor<HostBitArray224>);
 
 moose_type!(AesKey = AbstractAesKey<HostAesKey, ReplicatedAesKey>);
 moose_type!(HostAesKey = AbstractHostAesKey<HostBitArray128>);
-moose_type!(ReplicatedAesKey = AbstractReplicatedAesKey<ReplicatedBitArray128>);
+moose_type!(ReplicatedAesKey = RepAesKey<ReplicatedBitArray128>);
 
 // Ring types
 

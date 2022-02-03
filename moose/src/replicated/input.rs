@@ -4,7 +4,7 @@ use crate::error::{Error, Result};
 use crate::execution::Session;
 use crate::host::HostPlacement;
 use crate::kernels::PlacementInput;
-use crate::replicated::aes::AbstractReplicatedAesKey;
+use crate::replicated::aes::RepAesKey;
 use crate::{N128, N224, N64};
 use std::marker::PhantomData;
 
@@ -107,12 +107,12 @@ impl InputOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         arg_name: String,
-    ) -> Result<AbstractReplicatedAesKey<RepBitArrayT>>
+    ) -> Result<RepAesKey<RepBitArrayT>>
     where
         ReplicatedPlacement: PlacementInput<S, RepBitArrayT>,
     {
         let rep_bit_array = plc.input(sess, arg_name);
-        Ok(AbstractReplicatedAesKey(rep_bit_array))
+        Ok(RepAesKey(rep_bit_array))
     }
 }
 

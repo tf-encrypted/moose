@@ -20,7 +20,7 @@ where
     S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<m!(PrfKey)>>,
     HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, m!(Seed), RingT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
-    ReplicatedPlacement: ReplicatedSeedsGen<S, m!(Seed)>,
+    ReplicatedPlacement: SeedsGen<S, m!(Seed)>,
 {
     fn gen_zero_share(&self, sess: &S, shape: &RepShape<ShapeT>) -> RepZeroShare<RingT> {
         let (player0, player1, player2) = self.host_placements();
@@ -55,11 +55,11 @@ pub(crate) struct RepSeeds<HostSeedT> {
     seeds: [[HostSeedT; 2]; 3],
 }
 
-pub(crate) trait ReplicatedSeedsGen<S: Session, HostSeedT> {
+pub(crate) trait SeedsGen<S: Session, HostSeedT> {
     fn gen_seeds(&self, sess: &S) -> RepSeeds<HostSeedT>;
 }
 
-impl<S: Session> ReplicatedSeedsGen<S, m!(Seed)> for ReplicatedPlacement
+impl<S: Session> SeedsGen<S, m!(Seed)> for ReplicatedPlacement
 where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,

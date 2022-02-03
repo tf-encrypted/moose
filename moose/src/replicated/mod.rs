@@ -29,7 +29,7 @@ mod ops;
 mod setup;
 mod softmax;
 mod zero_share;
-pub use self::aes::AbstractReplicatedAesKey;
+pub use self::aes::RepAesKey;
 pub use self::fixedpoint::RepFixedTensor;
 pub(crate) use self::misc::{BinaryAdder, ShapeFill};
 pub use self::setup::RepSetup;

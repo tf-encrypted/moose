@@ -4,9 +4,9 @@ use crate::error::Result;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractReplicatedAesKey<RepBitArrayT>(pub(crate) RepBitArrayT);
+pub struct RepAesKey<RepBitArrayT>(pub(crate) RepBitArrayT);
 
-impl<RepBitArrayT> Placed for AbstractReplicatedAesKey<RepBitArrayT>
+impl<RepBitArrayT> Placed for RepAesKey<RepBitArrayT>
 where
     RepBitArrayT: Placed<Placement = ReplicatedPlacement>,
 {

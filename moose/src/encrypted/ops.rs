@@ -276,7 +276,7 @@ impl AesDecryptOp {
     >(
         sess: &S,
         plc: &ReplicatedPlacement,
-        key: AbstractReplicatedAesKey<RepBitArray128T>,
+        key: RepAesKey<RepBitArray128T>,
         ciphertext: HostFixedAesTensor<HostBitArray224T>,
     ) -> Result<RepFixedTensor<RepRing128TensorT>>
     where
@@ -555,7 +555,7 @@ mod tests {
             let array = Array::from_shape_vec((128, 1), vec).unwrap().into_dyn();
             let bit_array = HostBitArray128::from_raw_plc(array, host.clone());
             let shared_bit_array = rep.share(&sess, &bit_array);
-            AbstractReplicatedAesKey(shared_bit_array)
+            RepAesKey(shared_bit_array)
         };
 
         let shared_plaintext = rep.decrypt(&sess, &key, &ciphertext);
