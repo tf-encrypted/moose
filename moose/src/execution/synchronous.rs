@@ -175,7 +175,7 @@ impl Session for SyncSession {
             RingInject(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Fill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepSetup(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepShare(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Share(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepReveal(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepAnd(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepXor(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

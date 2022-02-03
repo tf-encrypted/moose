@@ -1135,7 +1135,7 @@ impl ToTextual for Operator {
             FloatingpointConcat(op) => op.to_textual(),
             FloatingpointMean(op) => op.to_textual(),
             RepSetup(op) => op.to_textual(),
-            RepShare(op) => op.to_textual(),
+            Share(op) => op.to_textual(),
             RepReveal(op) => op.to_textual(),
             RepFixedpointMean(op) => op.to_textual(),
             AddN(op) => op.to_textual(),

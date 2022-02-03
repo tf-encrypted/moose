@@ -21,7 +21,7 @@ pub trait PlacementShare<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementShare::share, RepShareOp,
+    PlacementShare::share, ShareOp,
     [
         (ReplicatedPlacement, (HostFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::fixed_kernel),
         (ReplicatedPlacement, (HostFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::fixed_kernel),

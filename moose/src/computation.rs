@@ -1077,7 +1077,7 @@ operators![
     AdtToRep,
     // Replicated operators
     RepSetup,
-    RepShare,
+    Share,
     RepReveal,
     Fill,
     RepMsb,
@@ -1523,7 +1523,7 @@ pub struct RepSetupOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepShareOp {
+pub struct ShareOp {
     pub sig: Signature,
 }
 

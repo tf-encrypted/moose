@@ -372,7 +372,7 @@ impl RepSetupOp {
     }
 }
 
-impl RepShareOp {
+impl ShareOp {
     pub(crate) fn aeskey_kernel<S: Session, HostBitArrayT, RepBitArrayT>(
         sess: &S,
         plc: &ReplicatedPlacement,

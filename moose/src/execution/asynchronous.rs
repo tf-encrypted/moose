@@ -348,7 +348,7 @@ impl Session for AsyncSession {
             RingInject(op) => DispatchKernel::compile(&op, plc)?,
             Fill(op) => DispatchKernel::compile(&op, plc)?,
             RepSetup(op) => DispatchKernel::compile(&op, plc)?,
-            RepShare(op) => DispatchKernel::compile(&op, plc)?,
+            Share(op) => DispatchKernel::compile(&op, plc)?,
             RepReveal(op) => DispatchKernel::compile(&op, plc)?,
             RepTruncPr(op) => DispatchKernel::compile(&op, plc)?,
             RepMsb(op) => DispatchKernel::compile(&op, plc)?,

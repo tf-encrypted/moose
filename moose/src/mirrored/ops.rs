@@ -137,7 +137,7 @@ impl RingFixedpointDecodeOp {
     }
 }
 
-impl RepShareOp {
+impl ShareOp {
     pub(crate) fn fixed_mir_kernel<S: Session, MirRingT, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
