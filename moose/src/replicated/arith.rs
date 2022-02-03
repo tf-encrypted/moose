@@ -617,7 +617,7 @@ impl RepMsbOp {
     where
         RepRingT: Ring<BitLength = N>,
         RepBitArrayT: BitArray<Len = N>,
-        ReplicatedPlacement: PlacementBitDec<S, RepRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementBitDecompose<S, RepRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
     {
         let bits = rep.bit_decompose(sess, &x);
