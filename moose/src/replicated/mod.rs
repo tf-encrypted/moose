@@ -230,90 +230,58 @@ mod tests {
     use crate::kernels::{PlacementRingFixedpointDecode, PlacementRingFixedpointEncode};
     use crate::mirrored::{Mir3Tensor, Mirrored3Placement};
     use crate::{N128, N64};
-    use ndarray::array;
+    use crate::prelude::*;
     use ndarray::prelude::*;
     use proptest::prelude::*;
     use rstest::rstest;
 
     #[test]
     fn test_ring_identity() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
-
-        let x = HostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
-        let expected = x.clone();
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         let sess = SyncSession::default();
 
+        let x: HostRing64Tensor = alice.from_raw(array![1u64, 2, 3]);
         let x_shared = rep.share(&sess, &x);
-
         let iden = rep.identity(&sess, &x_shared);
         let opened_result = alice.reveal(&sess, &iden);
-        assert_eq!(opened_result, expected);
+
+        assert_eq!(opened_result, x);
     }
 
     #[test]
     fn test_identity_diff_plc() {
-        let alice0 = HostPlacement {
-            owner: "alice-0".into(),
-        };
-        let rep0 = ReplicatedPlacement {
-            owners: ["alice-0".into(), "bob-0".into(), "carole-0".into()],
-        };
-        let rep1 = ReplicatedPlacement {
-            owners: ["alice-1".into(), "bob-1".into(), "carole-1".into()],
-        };
-
-        let x = HostRingTensor::from_raw_plc(array![1u64, 2, 3], alice0.clone());
-        let expected = x.clone();
+        let alice0 = HostPlacement::from("alice-0");
+        let rep0 = ReplicatedPlacement::from(["alice-0", "bob-0", "carole-0"]);
+        let rep1 = ReplicatedPlacement::from(["alice-1", "bob-1", "carole-1"]);
 
         let sess = SyncSession::default();
 
+        let x: HostRing64Tensor = alice0.from_raw(array![1, 2, 3]);
         let x_shared = rep0.share(&sess, &x);
-
         let iden = rep1.identity(&sess, &x_shared);
         let opened_result = alice0.reveal(&sess, &iden);
-        assert_eq!(opened_result, expected);
+        assert_eq!(opened_result, x);
     }
 
     #[test]
     fn test_adt_to_rep() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let bob = HostPlacement {
-            owner: "bob".into(),
-        };
-        let carole = HostPlacement {
-            owner: "carole".into(),
-        };
+        let alice = HostPlacement::from("alice");
+        let bob = HostPlacement::from("bob");
+        let carole = HostPlacement::from("carole");
+        let dave = HostPlacement::from("dave");
+        let eric = HostPlacement::from("eric");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let sess = SyncSession::default();
 
         let x1 = AdditiveRing64Tensor {
             shares: [
-                HostRingTensor::from_raw_plc(
-                    array![1, 2, 3],
-                    HostPlacement {
-                        owner: "alice".into(),
-                    },
-                ),
-                HostRingTensor::from_raw_plc(
-                    array![4, 5, 6],
-                    HostPlacement {
-                        owner: "bob".into(),
-                    },
-                ),
+                alice.from_raw(array![1, 2, 3]),
+                bob.from_raw(array![4, 5, 6]),
             ],
         };
-
-        let sess = SyncSession::default();
 
         let x1_rep = rep.adt_to_rep(&sess, &x1);
         assert_eq!(alice.reveal(&sess, &x1_rep), alice.reveal(&sess, &x1));
@@ -322,18 +290,8 @@ mod tests {
 
         let x2 = AdditiveRing64Tensor {
             shares: [
-                HostRingTensor::from_raw_plc(
-                    array![1, 2, 3],
-                    HostPlacement {
-                        owner: "bob".into(),
-                    },
-                ),
-                HostRingTensor::from_raw_plc(
-                    array![4, 5, 6],
-                    HostPlacement {
-                        owner: "alice".into(),
-                    },
-                ),
+                bob.from_raw(array![1, 2, 3]),
+                alice.from_raw(array![4, 5, 6]),
             ],
         };
 
@@ -344,18 +302,8 @@ mod tests {
 
         let x3 = AdditiveRing64Tensor {
             shares: [
-                HostRingTensor::from_raw_plc(
-                    array![1, 2, 3],
-                    HostPlacement {
-                        owner: "david".into(),
-                    },
-                ),
-                HostRingTensor::from_raw_plc(
-                    array![4, 5, 6],
-                    HostPlacement {
-                        owner: "eric".into(),
-                    },
-                ),
+                dave.from_raw(array![1, 2, 3]),
+                eric.from_raw(array![4, 5, 6]),
             ],
         };
 
@@ -366,18 +314,8 @@ mod tests {
 
         let x4 = AdditiveRing64Tensor {
             shares: [
-                HostRingTensor::from_raw_plc(
-                    array![1, 2, 3],
-                    HostPlacement {
-                        owner: "alice".into(),
-                    },
-                ),
-                HostRingTensor::from_raw_plc(
-                    array![4, 5, 6],
-                    HostPlacement {
-                        owner: "eric".into(),
-                    },
-                ),
+                alice.from_raw(array![1, 2, 3]),
+                eric.from_raw(array![4, 5, 6]),
             ],
         };
 
@@ -389,25 +327,15 @@ mod tests {
 
     #[test]
     fn test_rep_mean() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         let sess = SyncSession::default();
 
         let scaling_base = 2;
         let scaling_exp = 24;
 
-        let x = HostFloat64Tensor::from_raw_plc(
-            array![1.0, 2.0, 3.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            alice.clone(),
-        );
+        let x: HostFloat64Tensor = alice.from_raw(array![1.0, 2.0, 3.0]);
         let x = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &x);
         let x_shared = rep.share(&sess, &x);
 
@@ -422,78 +350,49 @@ mod tests {
 
     #[test]
     fn test_rep_add_n() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let bob = HostPlacement {
-            owner: "bob".into(),
-        };
-        let carole = HostPlacement {
-            owner: "carole".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
-
-        // 64 bit
-        let a = HostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
-        let b = HostRingTensor::from_raw_plc(array![2u64, 3, 4], bob.clone());
-        let c = HostRingTensor::from_raw_plc(array![5u64, 12, 13], carole.clone());
-
-        let expected = HostRingTensor::from_raw_plc(array![8u64, 17, 20], alice.clone());
-
-        let inputs = vec![a, b, c];
+        let alice = HostPlacement::from("alice");
+        let bob = HostPlacement::from("bob");
+        let carole = HostPlacement::from("carole");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         let sess = SyncSession::default();
 
-        let shares: Vec<RepTensor<HostRingTensor<u64>>> =
-            inputs.into_iter().map(|x| rep.share(&sess, &x)).collect();
-
+        // 64 bit
+        let a: HostRing64Tensor = alice.from_raw(array![1, 2, 3]);
+        let b: HostRing64Tensor = bob.from_raw(array![2, 3, 4]);
+        let c: HostRing64Tensor = carole.from_raw(array![5, 12, 13]);
+        let expected: HostRing64Tensor = alice.from_raw(array![8, 17, 20]);
+        let inputs = vec![a, b, c];
+        let shares: Vec<_> = inputs.into_iter().map(|x| rep.share(&sess, &x)).collect();
         let sum = rep.add_n(&sess, &shares);
         let opened_result = alice.reveal(&sess, &sum);
-
         assert_eq!(expected, opened_result);
 
         // 128 bit
-        let a = HostRingTensor::from_raw_plc(array![[1u128, 2, 3], [2u128, 3, 4]], alice.clone());
-        let b = HostRingTensor::from_raw_plc(array![[2u128, 3, 4], [2u128, 3, 4]], bob);
-        let c = HostRingTensor::from_raw_plc(array![[5u128, 12, 13], [1u128, 2, 3]], carole);
-
-        let expected =
-            HostRingTensor::from_raw_plc(array![[8u128, 17, 20], [5, 8, 11]], alice.clone());
-
+        let a: HostRing128Tensor = alice.from_raw(array![[1, 2, 3], [2, 3, 4]]);
+        let b: HostRing128Tensor = bob.from_raw(array![[2, 3, 4], [2, 3, 4]]);
+        let c: HostRing128Tensor = carole.from_raw(array![[5, 12, 13], [1, 2, 3]]);
+        let expected: HostRing128Tensor = alice.from_raw(array![[8, 17, 20], [5, 8, 11]]);
         let inputs = vec![a, b, c];
-
-        let sess = SyncSession::default();
-
-        let shares: Vec<RepTensor<HostRingTensor<u128>>> =
-            inputs.into_iter().map(|x| rep.share(&sess, &x)).collect();
-
+        let shares: Vec<_> = inputs.into_iter().map(|x| rep.share(&sess, &x)).collect();
         let sum = rep.add_n(&sess, &shares);
         let opened_result = alice.reveal(&sess, &sum);
-
         assert_eq!(expected, opened_result);
     }
 
     #[test]
     fn test_rep_sum() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
-
-        let x = HostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         let sess = SyncSession::default();
 
+        let x: HostRing64Tensor = alice.from_raw(array![1, 2, 3]);
         let x_shared = rep.share(&sess, &x);
-
         let sum = rep.sum(&sess, None, &x_shared);
         let opened_result = alice.reveal(&sess, &sum);
-
-        assert_eq!(6, opened_result.0[[]].0);
+        let expected: HostRing64Tensor = alice.from_raw(Array::from_elem([], 6));
+        assert_eq!(opened_result, expected);
     }
 
     macro_rules! diag_op_test {
