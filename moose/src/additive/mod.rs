@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 
 mod convert;
 mod dabit;
-mod misc;
 mod ops;
 mod trunc;
 pub use dabit::DaBitProvider;

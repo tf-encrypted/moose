@@ -1043,12 +1043,10 @@ operators![
     RingFixedpointMean,
     RingFixedpointEncode,
     RingFixedpointDecode,
-    RingSample,
-    RingSampleSeeded,
+    Sample,
+    SampleSeeded,
     RingInject,
     BitExtract,
-    BitSample,
-    BitSampleSeeded,
     Xor,
     And,
     Or,
@@ -1061,6 +1059,7 @@ operators![
     Sigmoid,
     Neg,
     Equal,
+    EqualZero,
     Less,
     GreaterThan,
     // Floating-point operators
@@ -1084,6 +1083,8 @@ operators![
     Mux,
     Maximum,
     Softmax,
+    Log2,
+    Log,
     // Mirrored Operators
     Demirror,
     Mirror,
@@ -1316,13 +1317,13 @@ pub struct RingFixedpointMeanOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
-pub struct RingSampleOp {
+pub struct SampleOp {
     pub sig: Signature,
     pub max_value: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
-pub struct RingSampleSeededOp {
+pub struct SampleSeededOp {
     pub sig: Signature,
     pub max_value: Option<u64>,
 }
@@ -1352,16 +1353,6 @@ pub struct BitExtractOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitSampleOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitSampleSeededOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct XorOp {
     pub sig: Signature,
 }
@@ -1388,6 +1379,11 @@ pub struct ExpOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct EqualOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct EqualZeroOp {
     pub sig: Signature,
 }
 
@@ -1559,6 +1555,16 @@ pub struct SoftmaxOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct BroadcastOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct Log2Op {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct LogOp {
     pub sig: Signature,
 }
 

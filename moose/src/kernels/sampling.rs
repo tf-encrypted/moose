@@ -15,49 +15,16 @@ pub trait PlacementSample<S: Session, ShapeT, O> {
     fn sample(&self, sess: &S, max_value: Option<u64>, shape: &ShapeT) -> O;
 }
 
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape) -> HostRing64Tensor, RingSampleOp);
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape) -> HostRing128Tensor, RingSampleOp);
-
-kernel! {
-    RingSampleOp,
-    [
-        (HostPlacement, (HostShape) -> HostRing64Tensor => [runtime] custom |op| {
-            match op.max_value {
-                None => Ok(Box::new(|ctx, plc, shape| {
-                    Self::kernel_uniform_u64(ctx, plc, shape)
-                })),
-                Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape| {
-                    Self::kernel_bits_u64(ctx, plc, shape)
-                })),
-                _ => Err(Error::UnimplementedOperator(
-                    "RingSampleOp with max_value != 1".to_string()
-                )),
-            }
-        }),
-        (HostPlacement, (HostShape) -> HostRing128Tensor => [runtime] custom |op| {
-            match op.max_value {
-                None => Ok(Box::new(|ctx, plc, shape| {
-                    Self::kernel_uniform_u128(ctx, plc, shape)
-                })),
-                Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape| {
-                    Self::kernel_bits_u128(ctx, plc, shape)
-                })),
-                _ => Err(Error::UnimplementedOperator(
-                    "RingSampleOp with max_value != 1".to_string()
-                )),
-            }
-        }),
-    ]
-}
-
 pub trait PlacementSampleUniform<S: Session, ShapeT, O> {
     fn sample_uniform(&self, sess: &S, shape: &ShapeT) -> O;
 }
 
 modelled_kernel! {
-    PlacementSampleUniform::sample_uniform, BitSampleOp,
+    PlacementSample::sample, SampleOp{max_value: Option<u64>},
     [
-        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] Self::kernel),
+        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] Self::bit_kernel),
+        (HostPlacement, (HostShape) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
+        (HostPlacement, (HostShape) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
     ]
 }
 
@@ -87,50 +54,17 @@ pub trait PlacementSampleSeeded<S: Session, ShapeT, SeedT, O> {
     fn sample_seeded(&self, sess: &S, max_value: Option<u64>, shape: &ShapeT, seed: &SeedT) -> O;
 }
 
-modelled!(PlacementSampleSeeded::sample_seeded, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing64Tensor, RingSampleSeededOp);
-modelled!(PlacementSampleSeeded::sample_seeded, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing128Tensor, RingSampleSeededOp);
-
-kernel! {
-    RingSampleSeededOp,
+modelled_kernel! {
+    PlacementSampleSeeded::sample_seeded, SampleSeededOp{max_value: Option<u64>},
     [
-        (HostPlacement, (HostShape, Seed) -> HostRing64Tensor => [runtime] custom |op| {
-            match op.max_value {
-                None => Ok(Box::new(|ctx, plc, shape, seed| {
-                    Self::kernel_uniform_u64(ctx, plc, shape, seed)
-                })),
-                Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape, seed| {
-                    Self::kernel_bits_u64(ctx, plc, shape, seed)
-                })),
-                _ => Err(Error::UnimplementedOperator(
-                    "RingSampleSeededOp with max_value != 1".to_string()
-                )),
-            }
-        }),
-        (HostPlacement, (HostShape, Seed) -> HostRing128Tensor => [runtime] custom |op| {
-            match op.max_value {
-                None => Ok(Box::new(|ctx, plc, shape, seed| {
-                    Self::kernel_uniform_u128(ctx, plc, shape, seed)
-                })),
-                Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape, seed| {
-                    Self::kernel_bits_u128(ctx, plc, shape, seed)
-                })),
-                _ => Err(Error::UnimplementedOperator(
-                    "RingSampleSeededOp with max_value != 1".to_string()
-                )),
-            }
-        }),
+        (HostPlacement, (HostShape, Seed) -> HostBitTensor => [runtime] Self::bit_kernel),
+        (HostPlacement, (HostShape, Seed) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
+        (HostPlacement, (HostShape, Seed) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
     ]
 }
 
 pub trait PlacementSampleUniformSeeded<S: Session, ShapeT, SeedT, O> {
     fn sample_uniform_seeded(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O;
-}
-
-modelled_kernel! {
-    PlacementSampleUniformSeeded::sample_uniform_seeded, BitSampleSeededOp,
-    [
-        (HostPlacement, (HostShape, Seed) -> HostBitTensor => [runtime] Self::kernel),
-    ]
 }
 
 impl<S: Session, ShapeT, SeedT, O, P> PlacementSampleUniformSeeded<S, ShapeT, SeedT, O> for P

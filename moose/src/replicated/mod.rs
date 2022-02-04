@@ -24,6 +24,7 @@ mod division;
 mod exp;
 mod input;
 mod log;
+mod misc;
 mod softmax;
 pub use self::aes::AbstractReplicatedAesKey;
 
@@ -1819,6 +1820,20 @@ impl MsbOp {
     {
         let x_bin = rep.msb(sess, &x);
         Ok(rep.ring_inject(sess, 0, &x_bin))
+    }
+
+    pub(crate) fn rep_bit_dec_kernel<S: Session, RepBitArrayT, RepRingT, RepBitT, N: Const>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        bits: RepBitArrayT,
+    ) -> Result<RepRingT>
+    where
+        RepBitArrayT: BitArray<Len = N>,
+        ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
+        ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
+    {
+        let msb = rep.index(sess, N::VALUE - 1, &bits);
+        Ok(rep.ring_inject(sess, 0, &msb))
     }
 }
 

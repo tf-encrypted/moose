@@ -1114,14 +1114,12 @@ impl ToTextual for Operator {
             RingFixedpointEncode(op) => op.to_textual(),
             RingFixedpointDecode(op) => op.to_textual(),
             RingFixedpointMean(op) => op.to_textual(),
-            RingSample(op) => op.to_textual(),
-            RingSampleSeeded(op) => op.to_textual(),
+            Sample(op) => op.to_textual(),
+            SampleSeeded(op) => op.to_textual(),
             Shl(op) => op.to_textual(),
             Shr(op) => op.to_textual(),
             RingInject(op) => op.to_textual(),
             BitExtract(op) => op.to_textual(),
-            BitSample(op) => op.to_textual(),
-            BitSampleSeeded(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
             Decrypt(op) => op.to_textual(),
@@ -1148,7 +1146,10 @@ impl ToTextual for Operator {
             Pow2(op) => op.to_textual(),
             Exp(op) => op.to_textual(),
             Sigmoid(op) => op.to_textual(),
+            Log2(op) => op.to_textual(),
+            Log(op) => op.to_textual(),
             Equal(op) => op.to_textual(),
+            EqualZero(op) => op.to_textual(),
             Less(op) => op.to_textual(),
             GreaterThan(op) => op.to_textual(),
             Demirror(op) => op.to_textual(),
@@ -1263,36 +1264,32 @@ impl ToTextual for RepFixedpointMeanOp {
     }
 }
 
-impl ToTextual for RingSampleOp {
+impl ToTextual for SampleOp {
     fn to_textual(&self) -> String {
         match self {
-            RingSampleOp {
+            SampleOp {
                 sig,
                 max_value: Some(a),
-            } => format!("RingSample{{max_value = {}}}: {}", a, sig.to_textual()),
-            RingSampleOp {
+            } => format!("Sample{{max_value = {}}}: {}", a, sig.to_textual()),
+            SampleOp {
                 sig,
                 max_value: None,
-            } => format!("RingSample{{}}: {}", sig.to_textual()),
+            } => format!("Sample{{}}: {}", sig.to_textual()),
         }
     }
 }
 
-impl ToTextual for RingSampleSeededOp {
+impl ToTextual for SampleSeededOp {
     fn to_textual(&self) -> String {
         match self {
-            RingSampleSeededOp {
+            SampleSeededOp {
                 sig,
                 max_value: Some(a),
-            } => format!(
-                "RingSampleSeeded{{max_value = {}}}: {}",
-                a,
-                sig.to_textual()
-            ),
-            RingSampleSeededOp {
+            } => format!("SampleSeeded{{max_value = {}}}: {}", a, sig.to_textual()),
+            SampleSeededOp {
                 sig,
                 max_value: None,
-            } => format!("RingSampleSeeded{{}}: {}", sig.to_textual()),
+            } => format!("SampleSeeded{{}}: {}", sig.to_textual()),
         }
     }
 }
@@ -1848,7 +1845,7 @@ mod tests {
     #[test]
     fn test_ring_sample() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x10 = RingSampleSeeded{max_value = 1}: (HostShape, Seed) -> HostRing64Tensor (shape, seed) @Host(alice)",
+            "x10 = SampleSeeded{max_value = 1}: (HostShape, Seed) -> HostRing64Tensor (shape, seed) @Host(alice)",
         )?;
         assert_eq!(op.name, "x10");
         Ok(())
@@ -1983,7 +1980,7 @@ mod tests {
             "z = BitExtract {bit_idx = 2} : (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = BitSampleSeeded: (HostShape, Seed) -> HostBitTensor (shape, seed) @Host(alice)",
+            "z = SampleSeeded {}: (HostShape, Seed) -> HostBitTensor (shape, seed) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = Xor: (HostBitTensor, HostBitTensor) -> HostBitTensor (x, y) @Host(alice)",
