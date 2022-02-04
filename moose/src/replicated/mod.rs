@@ -229,8 +229,8 @@ mod tests {
     use crate::host::{FromRaw, FromRawPlc, HostBitArray, HostRingTensor, RawShape};
     use crate::kernels::{PlacementRingFixedpointDecode, PlacementRingFixedpointEncode};
     use crate::mirrored::{Mir3Tensor, Mirrored3Placement};
-    use crate::{N128, N64};
     use crate::prelude::*;
+    use crate::{N128, N64};
     use ndarray::prelude::*;
     use proptest::prelude::*;
     use rstest::rstest;

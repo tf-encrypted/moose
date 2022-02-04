@@ -576,6 +576,18 @@ impl<D: ndarray::Dimension> FromRaw<Array<u8, D>, HostBitTensor> for HostPlaceme
     }
 }
 
+impl<T: Clone, D: ndarray::Dimension, N: Const> FromRaw<Array<T, D>, HostBitArray<HostBitTensor, N>>
+    for HostPlacement
+where
+    HostPlacement: FromRaw<Array<T, D>, HostBitTensor>,
+{
+    fn from_raw(&self, raw: Array<T, D>) -> HostBitArray<HostBitTensor, N> {
+        assert_eq!(raw.shape()[0], N::VALUE);
+        let raw_bits: HostBitTensor = self.from_raw(raw);
+        HostBitArray(raw_bits, PhantomData)
+    }
+}
+
 impl FromRaw<RawShape, HostShape> for HostPlacement {
     fn from_raw(&self, raw: RawShape) -> HostShape {
         HostShape(raw, self.clone())

@@ -17,6 +17,15 @@ pub struct Mirrored3Placement {
     pub owners: [Role; 3],
 }
 
+impl<R: Into<Role>> From<[R; 3]> for Mirrored3Placement {
+    fn from(roles: [R; 3]) -> Mirrored3Placement {
+        let [role0, role1, role2] = roles;
+        Mirrored3Placement {
+            owners: [role0.into(), role1.into(), role2.into()],
+        }
+    }
+}
+
 impl Mirrored3Placement {
     pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
         let player0 = HostPlacement {
