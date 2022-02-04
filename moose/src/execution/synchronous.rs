@@ -157,7 +157,6 @@ impl Session for SyncSession {
             // The regular kernels
             Shape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Broadcast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RingFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitSample(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -186,7 +185,6 @@ impl Session for SyncSession {
             Index(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitCompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             ShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            AdtFill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Decrypt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

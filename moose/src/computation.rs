@@ -1046,7 +1046,6 @@ operators![
     RingSample,
     RingSampleSeeded,
     RingInject,
-    RingFill,
     BitExtract,
     BitSample,
     BitSampleSeeded,
@@ -1068,7 +1067,6 @@ operators![
     FloatingpointConcat,
     FloatingpointMean,
     // Additive operators
-    AdtFill,
     AdtToRep,
     // Replicated operators
     RepSetup,
@@ -1291,19 +1289,6 @@ pub struct BitDecomposeOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct BitToRingOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-
-pub struct RingFillOp {
-    pub sig: Signature,
-    pub value: Constant,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct AdtFillOp {
-    pub sig: Signature,
-    pub value: Constant,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]

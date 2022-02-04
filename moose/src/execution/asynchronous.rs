@@ -332,7 +332,6 @@ impl Session for AsyncSession {
             // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
             Shape(op) => DispatchKernel::compile(&op, plc)?,
             Broadcast(op) => DispatchKernel::compile(&op, plc)?,
-            RingFill(op) => DispatchKernel::compile(&op, plc)?,
             PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?,
             BitSample(op) => DispatchKernel::compile(&op, plc)?,
             BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)?,
@@ -356,7 +355,6 @@ impl Session for AsyncSession {
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
             ShlDim(op) => DispatchKernel::compile(&op, plc)?,
             BitCompose(op) => DispatchKernel::compile(&op, plc)?,
-            AdtFill(op) => DispatchKernel::compile(&op, plc)?,
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?,
             PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)?,
             Constant(op) => DispatchKernel::compile(&op, plc)?,

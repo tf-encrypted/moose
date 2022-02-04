@@ -1425,7 +1425,7 @@ impl AdtToRepOp {
 }
 
 impl FillOp {
-    pub(crate) fn ring64_kernel<S: Session, ShapeT, RingT>(
+    pub(crate) fn rep_ring64_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u64,
@@ -1459,7 +1459,7 @@ impl FillOp {
         Ok(RepTen { shares })
     }
 
-    pub(crate) fn ring128_kernel<S: Session, ShapeT, RingT>(
+    pub(crate) fn rep_ring128_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u128,
