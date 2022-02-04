@@ -68,27 +68,26 @@ impl Log2Op {
         x: RepFixedTensor<RepRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
+        RepFixedTensor<RepRingT>: Clone,
+
         RepFixedTensor<RepRingT>: CanonicalType,
         <RepFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
-
+        m!(c!(RepFixedTensor<RepRingT>)): From<RepFixedTensor<RepRingT>>,
         m!(c!(RepFixedTensor<RepRingT>)): TryInto<RepFixedTensor<RepRingT>>,
-        m!(c!(RepFixedTensor<RepRingT>)): Clone,
-
-        RepFixedTensor<RepRingT>: Into<m!(c!(RepFixedTensor<RepRingT>))>,
 
         ReplicatedPlacement: Int2FL<S, RepRingT>,
         ReplicatedPlacement: PolynomialEval<S, m!(c!(RepFixedTensor<RepRingT>))>,
         ReplicatedPlacement: PlacementDiv<
             S,
-            m!(c!(RepFixedTensor<RepRingT>)),
-            m!(c!(RepFixedTensor<RepRingT>)),
-            m!(c!(RepFixedTensor<RepRingT>)),
+            RepFixedTensor<RepRingT>,
+            RepFixedTensor<RepRingT>,
+            RepFixedTensor<RepRingT>,
         >,
         ReplicatedPlacement: PlacementAdd<
             S,
-            m!(c!(RepFixedTensor<RepRingT>)),
-            m!(c!(RepFixedTensor<RepRingT>)),
-            m!(c!(RepFixedTensor<RepRingT>)),
+            RepFixedTensor<RepRingT>,
+            RepFixedTensor<RepRingT>,
+            RepFixedTensor<RepRingT>,
         >,
         ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     {
@@ -105,24 +104,28 @@ impl Log2Op {
             tensor: v,
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
-        }
-        .into();
+        };
 
-        let p2524 = rep.polynomial_eval(sess, P_2524.to_vec(), v_fixed.clone());
-
-        let q2524 = rep.polynomial_eval(sess, Q_2524.to_vec(), v_fixed);
+        // TODO(Morten) hopefully these will clean up nicely after making PolynomialEval concrete
+        let p2524 = rep
+            .polynomial_eval(sess, P_2524.to_vec(), v_fixed.clone().into())
+            .try_into()
+            .ok()
+            .unwrap();
+        let q2524 = rep
+            .polynomial_eval(sess, Q_2524.to_vec(), v_fixed.into())
+            .try_into()
+            .ok()
+            .unwrap();
 
         let quotient = rep.div(sess, &p2524, &q2524);
         let p_fixed = RepFixedTensor {
             tensor: rep.shl(sess, x.fractional_precision as usize, &p),
             integral_precision: x.integral_precision,
             fractional_precision: x.fractional_precision,
-        }
-        .into();
+        };
 
-        let result = with_context!(rep, sess, p_fixed + quotient);
-
-        Ok(result.try_into().ok().unwrap())
+        Ok(with_context!(rep, sess, p_fixed + quotient))
     }
 }
 
@@ -149,7 +152,6 @@ impl LogOp {
 
         let log2 = rep.log2(sess, &x);
         let result = rep.mul(sess, &ln2, &log2);
-
         Ok(rep.trunc_pr(sess, x.fractional_precision(), &result))
     }
 }
