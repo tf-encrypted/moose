@@ -4,19 +4,31 @@ pub trait PlacementFill<S: Session, ShapeT, O> {
     fn fill(&self, sess: &S, value: Constant, shape: &ShapeT) -> O;
 }
 
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostBitTensor, FillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing64Tensor, FillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing128Tensor, FillOp);
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> AdditiveRing64Tensor, FillOp);
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> AdditiveRing128Tensor, FillOp);
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (AdditiveShape) -> AdditiveRing64Tensor, FillOp);
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (AdditiveShape) -> AdditiveRing128Tensor, FillOp);
 modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing64Tensor, FillOp);
 modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing128Tensor, FillOp);
 modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, FillOp);
 modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Ring64Tensor, FillOp);
 modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Ring128Tensor, FillOp);
 modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3BitTensor, FillOp);
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostBitTensor, FillOp);
 modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed64Tensor, FillOp);
 modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed128Tensor, FillOp);
 
 kernel! {
     FillOp,
     [
+        (HostPlacement, (HostShape) -> HostRing64Tensor => [runtime] attributes[value: Ring64] Self::host_ring64_kernel),
+        (HostPlacement, (HostShape) -> HostRing128Tensor => [runtime] attributes[value: Ring128] Self::host_ring128_kernel),
+        (AdditivePlacement, (HostShape) -> AdditiveRing64Tensor => [hybrid] attributes[value] Self::adt_host_kernel),
+        (AdditivePlacement, (HostShape) -> AdditiveRing128Tensor => [hybrid] attributes[value] Self::adt_host_kernel),
+        (AdditivePlacement, (AdditiveShape) -> AdditiveRing64Tensor => [concrete] attributes[value] Self::adt_adt_kernel),
+        (AdditivePlacement, (AdditiveShape) -> AdditiveRing128Tensor => [concrete] attributes[value] Self::adt_adt_kernel),
         (HostPlacement, (HostShape) -> HostBitTensor => [runtime] custom |op| {
             use std::convert::TryInto;
             let value: u8 = match op.value {
@@ -39,7 +51,7 @@ kernel! {
             }
             assert!(value == 0 || value == 1);
             Ok(Box::new(move |sess, host, host_shape| {
-                Self::bit_kernel(sess, host, value, host_shape)
+                Self::host_bit_kernel(sess, host, value, host_shape)
             }))
         }),
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [concrete] custom |op| {
@@ -56,7 +68,7 @@ kernel! {
                         format!("Cannot fill from {:?} into a ReplicatedRing64Tensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
-                    Self::ring64_kernel(sess, rep, value, rep_shape)
+                    Self::rep_ring64_kernel(sess, rep, value, rep_shape)
                 }))
             }),
         (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Ring64Tensor => [concrete] custom |op| {
@@ -89,7 +101,7 @@ kernel! {
                         format!("Cannot fill from {:?} into a ReplicatedRing128Tensor", op.value.ty()))),
                 };
                 Ok(Box::new(move |sess, rep, rep_shape| {
-                    Self::ring128_kernel(sess, rep, value, rep_shape)
+                    Self::rep_ring128_kernel(sess, rep, value, rep_shape)
                 }))
         }),
         (Mirrored3Placement, (ReplicatedShape) -> Mirrored3Ring128Tensor => [concrete] custom |op| {
@@ -171,27 +183,6 @@ kernel! {
     ]
 }
 
-modelled_kernel! {
-    PlacementFill::fill, AdtFillOp{value: Constant},
-    [
-        (AdditivePlacement, (HostShape) -> AdditiveRing64Tensor => [hybrid] Self::host_kernel),
-        (AdditivePlacement, (HostShape) -> AdditiveRing128Tensor => [hybrid] Self::host_kernel),
-        (AdditivePlacement, (AdditiveShape) -> AdditiveRing64Tensor => [concrete] Self::adt_kernel),
-        (AdditivePlacement, (AdditiveShape) -> AdditiveRing128Tensor => [concrete] Self::adt_kernel),
-    ]
-}
-
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing64Tensor, RingFillOp);
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing128Tensor, RingFillOp);
-
-kernel! {
-    RingFillOp,
-    [
-        (HostPlacement, (HostShape) -> HostRing64Tensor => [runtime] attributes[value: Ring64] Self::ring64_kernel),
-        (HostPlacement, (HostShape) -> HostRing128Tensor => [runtime] attributes[value: Ring128] Self::ring128_kernel),
-    ]
-}
-
 pub trait PlacementZeros<S: Session, ShapeT, O> {
     fn zeros(&self, sess: &S, shape: &ShapeT) -> O;
 }
@@ -227,31 +218,19 @@ where
 }
 
 modelled_kernel! {
-    PlacementOnes::ones, FloatingpointOnesOp,
-    [
-        (HostPlacement, (HostShape) -> Float64Tensor => [hybrid] Self::float_host_kernel),
-    ]
-}
-
-modelled_kernel! {
-    PlacementOnes::ones, HostOnesOp,
-    [
-        (HostPlacement, (HostShape) -> HostFloat32Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostShape) -> HostFloat64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostShape) -> HostInt8Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostShape) -> HostInt16Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostShape) -> HostInt32Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostShape) -> HostInt64Tensor => [runtime] Self::kernel),
-    ]
-}
-
-modelled_kernel! {
     PlacementOnes::ones, OnesOp,
     [
-        (HostPlacement, (HostShape) -> Tensor => [hybrid] Self::host_kernel),
+        (HostPlacement, (HostShape) -> Tensor => [hybrid] Self::logical_host_kernel),
         // We do not support the ReplicatedPlacement: PlacementFill yet, hence we do not support Ones.
         // Also, logical Tensor can only hold Host tensors at the moment.
-        // (ReplicatedPlacement, (HostShape) -> Tensor => [hybrid] Self::rep_kernel),
+        // (ReplicatedPlacement, (HostShape) -> Tensor => [hybrid] Self::logical_rep_kernel),
+        (HostPlacement, (HostShape) -> Float64Tensor => [hybrid] Self::host_float_kernel),
+        (HostPlacement, (HostShape) -> HostFloat32Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostFloat64Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostInt8Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostInt16Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostInt32Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostInt64Tensor => [runtime] Self::host_kernel),
     ]
 }
 

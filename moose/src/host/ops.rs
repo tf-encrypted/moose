@@ -406,8 +406,8 @@ impl DotOp {
     }
 }
 
-impl HostOnesOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar>(
+impl OnesOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
         _sess: &S,
         plc: &HostPlacement,
         shape: HostShape,
@@ -1196,19 +1196,6 @@ impl ReshapeOp {
     }
 }
 
-impl FillOp {
-    pub(crate) fn bit_kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        value: u8,
-        shape: HostShape,
-    ) -> Result<HostBitTensor> {
-        let raw_shape = shape.0 .0;
-        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value);
-        Ok(HostBitTensor(raw_tensor, plc.clone()))
-    }
-}
-
 impl XorOp {
     pub(crate) fn host_kernel<S: RuntimeSession>(
         _sess: &S,
@@ -1309,8 +1296,19 @@ impl RingInjectOp {
     }
 }
 
-impl RingFillOp {
-    pub(crate) fn ring64_kernel<S: RuntimeSession>(
+impl FillOp {
+    pub(crate) fn host_bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        value: u8,
+        shape: HostShape,
+    ) -> Result<HostBitTensor> {
+        let raw_shape = shape.0 .0;
+        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value);
+        Ok(HostBitTensor(raw_tensor, plc.clone()))
+    }
+
+    pub(crate) fn host_ring64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         value: u64,
@@ -1321,7 +1319,7 @@ impl RingFillOp {
         Ok(HostRingTensor(raw_tensor, plc.clone()))
     }
 
-    pub(crate) fn ring128_kernel<S: RuntimeSession>(
+    pub(crate) fn host_ring128_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         value: u128,

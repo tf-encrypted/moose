@@ -1,8 +1,6 @@
 //! Various operations for additive placements
 use super::*;
-use crate::computation::{
-    AddOp, AdtFillOp, Constant, MulOp, Placed, RevealOp, ShapeOp, ShlOp, SubOp,
-};
+use crate::computation::{AddOp, Constant, FillOp, MulOp, Placed, RevealOp, ShapeOp, ShlOp, SubOp};
 use crate::error::Result;
 use crate::execution::Session;
 use crate::host::HostPlacement;
@@ -26,8 +24,8 @@ impl ShapeOp {
     }
 }
 
-impl AdtFillOp {
-    pub(crate) fn host_kernel<S: Session, ShapeT, RingT>(
+impl FillOp {
+    pub(crate) fn adt_host_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         plc: &AdditivePlacement,
         value: Constant,
@@ -47,7 +45,7 @@ impl AdtFillOp {
         Ok(AdtTensor { shares })
     }
 
-    pub(crate) fn adt_kernel<S: Session, ShapeT, RingT>(
+    pub(crate) fn adt_adt_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         plc: &AdditivePlacement,
         value: Constant,

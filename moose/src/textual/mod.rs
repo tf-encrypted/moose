@@ -1105,10 +1105,8 @@ impl ToTextual for Operator {
             Xor(op) => op.to_textual(),
             And(op) => op.to_textual(),
             Or(op) => op.to_textual(),
-            RingFill(op) => op.to_textual(),
             HostMean(op) => op.to_textual(),
             Sqrt(op) => op.to_textual(),
-            HostOnes(op) => op.to_textual(),
             Diag(op) => op.to_textual(),
             ShlDim(op) => op.to_textual(),
             BitDecompose(op) => op.to_textual(),
@@ -1128,7 +1126,6 @@ impl ToTextual for Operator {
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
-            FloatingpointOnes(op) => op.to_textual(),
             FloatingpointConcat(op) => op.to_textual(),
             FloatingpointMean(op) => op.to_textual(),
             RepSetup(op) => op.to_textual(),
@@ -1137,7 +1134,6 @@ impl ToTextual for Operator {
             RepFixedpointMean(op) => op.to_textual(),
             AddN(op) => op.to_textual(),
             TruncPr(op) => op.to_textual(),
-            AdtFill(op) => op.to_textual(),
             AdtToRep(op) => op.to_textual(),
             Abs(op) => op.to_textual(),
             Fill(op) => op.to_textual(),
@@ -1963,7 +1959,7 @@ mod tests {
             "z = Sqrt: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingFill {value = Ring64(42)}: (HostShape) -> HostRing64Tensor (s) @Host(alice)",
+            "z = Fill {value = Ring64(42)}: (HostShape) -> HostRing64Tensor (s) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = Shl {amount = 2}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",

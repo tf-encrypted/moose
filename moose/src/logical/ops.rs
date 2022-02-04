@@ -1075,7 +1075,7 @@ impl SumOp {
 
 impl OnesOp {
     #[allow(clippy::type_complexity)]
-    pub(crate) fn host_kernel<S: Session>(
+    pub(crate) fn logical_host_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
         shape: m!(HostShape),

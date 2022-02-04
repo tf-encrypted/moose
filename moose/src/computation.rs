@@ -1039,7 +1039,6 @@ operators![
     HostMean,
     Diag,
     BitDecompose,
-    HostOnes,
     Sign,
     RingFixedpointMean,
     RingFixedpointEncode,
@@ -1047,7 +1046,6 @@ operators![
     Sample,
     SampleSeeded,
     RingInject,
-    RingFill,
     BitExtract,
     Xor,
     And,
@@ -1065,11 +1063,9 @@ operators![
     Less,
     GreaterThan,
     // Floating-point operators
-    FloatingpointOnes,
     FloatingpointConcat,
     FloatingpointMean,
     // Additive operators
-    AdtFill,
     AdtToRep,
     // Replicated operators
     RepSetup,
@@ -1276,11 +1272,6 @@ pub struct SqrtOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostOnesOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 
 pub struct ShapeOp {
     pub sig: Signature,
@@ -1299,19 +1290,6 @@ pub struct BitDecomposeOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct BitToRingOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-
-pub struct RingFillOp {
-    pub sig: Signature,
-    pub value: Constant,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct AdtFillOp {
-    pub sig: Signature,
-    pub value: Constant,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
@@ -1440,11 +1418,6 @@ pub struct FixedpointMeanOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct NegOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct FloatingpointOnesOp {
     pub sig: Signature,
 }
 
