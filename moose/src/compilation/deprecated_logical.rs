@@ -285,8 +285,8 @@ mod tests {
     #[test]
     fn test_all_on_one_host() -> std::result::Result<(), anyhow::Error> {
         let source = r#"
-        mul = Mul: (Tensor, Tensor) -> Tensor (x, y) @Host(alice)
-        save = Save: (HostString, Tensor) -> Unit (constant_0, mean) @Host(alice)
+        mul = Mul: (Tensor<Float64>, Tensor<Float64>) -> Tensor<Float64> (x, y) @Host(alice)
+        save = Save: (HostString, Tensor<Float64>) -> Unit (constant_0, mean) @Host(alice)
         "#;
 
         let comp = deprecated_logical_lowering(&source.try_into()?)?
