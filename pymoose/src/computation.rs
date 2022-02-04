@@ -40,6 +40,7 @@ enum PyOperation {
     std_MeanOperation(PyMeanOperation),
     std_SigmoidOperation(PySigmoidOperation),
     std_LogOperation(PyLogOperation),
+    std_Log2Operation(PyLog2Operation),
     std_SoftmaxOperation(PySoftmaxOperation),
     std_SqrtOperation(PySqrtOperation),
     std_SumOperation(PySumOperation),
@@ -323,6 +324,14 @@ struct PySigmoidOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyLogOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyLog2Operation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -846,6 +855,16 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_LogOperation(op) => Ok(Operation {
                         kind: LogOp {
+                            sig: Signature::from_unary(&op.signature, "x")?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_Log2Operation(op) => Ok(Operation {
+                        kind: Log2Op {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
                         .into(),

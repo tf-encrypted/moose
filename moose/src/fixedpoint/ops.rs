@@ -1877,7 +1877,7 @@ impl SoftmaxOp {
 }
 
 impl Log2Op {
-    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
@@ -1899,7 +1899,7 @@ impl Log2Op {
 }
 
 impl LogOp {
-    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
