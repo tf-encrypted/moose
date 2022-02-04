@@ -160,7 +160,7 @@ fn lower_op(op: &Operation) -> Operation {
         },
         (Placement::Host(_), Operator::Ones(ref i)) => Operation {
             name: op.name.clone(),
-            kind: HostOnesOp {
+            kind: OnesOp {
                 sig: Signature::unary(lower_ty(i.sig.arg(0).unwrap()), lower_ty(i.sig.ret())),
             }
             .into(),

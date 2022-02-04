@@ -1039,7 +1039,6 @@ operators![
     HostMean,
     Diag,
     BitDecompose,
-    HostOnes,
     Sign,
     RingFixedpointMean,
     RingFixedpointEncode,
@@ -1066,7 +1065,6 @@ operators![
     Less,
     GreaterThan,
     // Floating-point operators
-    FloatingpointOnes,
     FloatingpointConcat,
     FloatingpointMean,
     // Additive operators
@@ -1275,11 +1273,6 @@ pub struct SqrtOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostOnesOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 
 pub struct ShapeOp {
     pub sig: Signature,
@@ -1444,11 +1437,6 @@ pub struct FixedpointMeanOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct NegOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct FloatingpointOnesOp {
     pub sig: Signature,
 }
 

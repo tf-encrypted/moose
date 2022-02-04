@@ -406,8 +406,8 @@ impl DotOp {
     }
 }
 
-impl HostOnesOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar>(
+impl OnesOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
         _sess: &S,
         plc: &HostPlacement,
         shape: HostShape,

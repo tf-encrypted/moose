@@ -227,31 +227,19 @@ where
 }
 
 modelled_kernel! {
-    PlacementOnes::ones, FloatingpointOnesOp,
-    [
-        (HostPlacement, (HostShape) -> Float64Tensor => [hybrid] Self::float_host_kernel),
-    ]
-}
-
-modelled_kernel! {
-    PlacementOnes::ones, HostOnesOp,
-    [
-        (HostPlacement, (HostShape) -> HostFloat32Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostShape) -> HostFloat64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostShape) -> HostInt8Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostShape) -> HostInt16Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostShape) -> HostInt32Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostShape) -> HostInt64Tensor => [runtime] Self::kernel),
-    ]
-}
-
-modelled_kernel! {
     PlacementOnes::ones, OnesOp,
     [
-        (HostPlacement, (HostShape) -> Tensor => [hybrid] Self::host_kernel),
+        (HostPlacement, (HostShape) -> Tensor => [hybrid] Self::logical_host_kernel),
         // We do not support the ReplicatedPlacement: PlacementFill yet, hence we do not support Ones.
         // Also, logical Tensor can only hold Host tensors at the moment.
         // (ReplicatedPlacement, (HostShape) -> Tensor => [hybrid] Self::rep_kernel),
+        (HostPlacement, (HostShape) -> Float64Tensor => [hybrid] Self::host_float_kernel),
+        (HostPlacement, (HostShape) -> HostFloat32Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostFloat64Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostInt8Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostInt16Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostInt32Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostInt64Tensor => [runtime] Self::host_kernel),
     ]
 }
 

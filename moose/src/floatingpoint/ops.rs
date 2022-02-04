@@ -265,8 +265,8 @@ impl LessOp {
     }
 }
 
-impl FloatingpointOnesOp {
-    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
+impl OnesOp {
+    pub(crate) fn host_float_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         shape: m!(HostShape),
