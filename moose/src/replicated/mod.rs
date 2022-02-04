@@ -401,12 +401,8 @@ mod tests {
                 let x = array![[1 as $rt, 2], [3, 4]].into_dyn();
                 let exp = array![1 as $rt, 4].into_dyn();
 
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let xr = $tt::from_raw_plc(x, alice.clone());
 
@@ -446,12 +442,8 @@ mod tests {
                 let x = array![[[1 as $rt, 2], [3, 4]], [[4, 5], [6, 7]]].into_dyn();
                 let exp = array![[4 as $rt, 5], [6, 7]].into_dyn();
 
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let xr = $tt::from_raw_plc(x, alice.clone());
 
@@ -491,12 +483,8 @@ mod tests {
                 let x = array![[1 as $rt, 2], [3, 4]].into_dyn();
                 let exp = array![1 as $rt, 2].into_dyn();
 
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let xr = HostBitTensor::from_raw_plc(x, alice.clone());
 
@@ -529,12 +517,8 @@ mod tests {
     macro_rules! rep_add_test {
         ($func_name:ident, $tt: ident) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let x = HostRingTensor::from_raw_plc(xs, alice.clone());
                 let y = HostRingTensor::from_raw_plc(ys, alice.clone());
@@ -583,12 +567,8 @@ mod tests {
     macro_rules! rep_binary_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let x = HostRingTensor::from_raw_plc(xs, alice.clone());
                 let y = HostRingTensor::from_raw_plc(ys, alice.clone());
@@ -685,16 +665,9 @@ mod tests {
     macro_rules! rep_mir_binary_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {
             fn $func_name(xs: ArrayD<$tt>, ys: $tt, zs_mir: ArrayD<$tt>, zmir_s: ArrayD<$tt>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
-
-                let mir = Mirrored3Placement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
+                let mir = Mirrored3Placement::from(["alice", "bob", "carole"]);
 
                 let x = HostRingTensor::from_raw_plc(xs, alice.clone());
                 let target_rep_mir = HostRingTensor::from_raw_plc(zs_mir, alice.clone());
@@ -768,22 +741,11 @@ mod tests {
     macro_rules! rep_mir_mul_setup_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {
             fn $func_name(xs: ArrayD<$tt>, ys: $tt, zs: ArrayD<$tt>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let bob = HostPlacement {
-                    owner: "bob".into(),
-                };
-                let carole = HostPlacement {
-                    owner: "carole".into(),
-                };
-
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
-                let mir3 = Mirrored3Placement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let bob = HostPlacement::from("bob");
+                let carole = HostPlacement::from("carole");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
+                let mir3 = Mirrored3Placement::from(["alice", "bob", "carole"]);
 
                 let x = HostRingTensor::from_raw_plc(xs, alice.clone());
                 let target = HostRingTensor::from_raw_plc(zs, alice.clone());
@@ -838,19 +800,10 @@ mod tests {
     macro_rules! rep_truncation_test {
         ($func_name:ident, $tt: ident) => {
             fn $func_name(xs: ArrayD<$tt>, amount: u32, ys: ArrayD<$tt>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let bob = HostPlacement {
-                    owner: "bob".into(),
-                };
-                let carole = HostPlacement {
-                    owner: "carole".into(),
-                };
-
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let bob = HostPlacement::from("bob");
+                let carole = HostPlacement::from("carole");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let sess = SyncSession::default();
 
@@ -1000,12 +953,8 @@ mod tests {
     macro_rules! rep_unary_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {
             fn $func_name(xs: ArrayD<$tt>, zs: ArrayD<$tt>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let x = HostRingTensor::from_raw_plc(xs, alice.clone());
 
@@ -1061,12 +1010,8 @@ mod tests {
     #[rstest]
     #[case(array![0_u8, 1, 0].into_dyn())]
     fn test_ring_inject(#[case] xs: ArrayD<u8>) {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         let x: HostBitTensor = alice.from_raw(xs.clone());
 
@@ -1106,12 +1051,8 @@ mod tests {
     }
 
     fn test_rep_bit_dec64(xs: ArrayD<u64>, zs: ArrayD<u8>) {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         let x = HostRingTensor::from_raw_plc(xs, alice.clone());
 
@@ -1144,12 +1085,8 @@ mod tests {
     macro_rules! rep_bit_compose_test {
         ($func_name:ident, $tt:ty) => {
             fn $func_name(xs: ArrayD<$tt>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let expected = xs.clone();
 
@@ -1256,17 +1193,9 @@ mod tests {
         ]
         .into_dyn();
 
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-
-        let bob = HostPlacement {
-            owner: "bob".into(),
-        };
-
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let bob = HostPlacement::from("bob");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         let x = HostRingTensor::from_raw_plc(xs, bob);
 
@@ -1335,12 +1264,8 @@ mod tests {
     macro_rules! rep_binary_func_test_bit {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<u8>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let x = HostRingTensor::from_raw_plc(xs, alice.clone());
                 let y = HostRingTensor::from_raw_plc(ys, alice.clone());
