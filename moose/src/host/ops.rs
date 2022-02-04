@@ -1209,39 +1209,6 @@ impl FillOp {
     }
 }
 
-impl BitSampleOp {
-    pub(crate) fn kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        shape: HostShape,
-    ) -> Result<HostBitTensor> {
-        let mut rng = AesRng::from_random_seed();
-        let size = shape.0 .0.iter().product();
-        let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
-        let ix = IxDyn(shape.0 .0.as_ref());
-        let arr =
-            Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostBitTensor(arr, plc.clone()))
-    }
-}
-
-impl BitSampleSeededOp {
-    pub(crate) fn kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        shape: HostShape,
-        seed: Seed,
-    ) -> Result<HostBitTensor> {
-        let mut rng = AesRng::from_seed(seed.0 .0);
-        let size = shape.0 .0.iter().product();
-        let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
-        let ix = IxDyn(shape.0 .0.as_ref());
-        let res =
-            Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostBitTensor(res, plc.clone()))
-    }
-}
-
 impl XorOp {
     pub(crate) fn host_kernel<S: RuntimeSession>(
         _sess: &S,
@@ -1586,127 +1553,162 @@ impl ShrOp {
     }
 }
 
-impl RingSampleOp {
-    pub(crate) fn kernel_uniform_u64<S: RuntimeSession>(
+impl SampleOp {
+    pub(crate) fn ring64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
+        max_value: Option<u64>,
         shape: HostShape,
     ) -> Result<HostRing64Tensor> {
         let mut rng = AesRng::from_random_seed();
         let size = shape.0 .0.iter().product();
-        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
+        let element_sampler: Box<dyn FnMut(_) -> _> = match max_value {
+            None => Box::new(|_| Wrapping(rng.next_u64())),
+            Some(x) => {
+                if x == 1 {
+                    Box::new(|_| Wrapping(rng.get_bit() as u64))
+                } else {
+                    return Err(Error::UnimplementedOperator(
+                        "SampleOp for HostRingTensor @ HostPlacement does not yet support max_value != 1".to_string()
+                    ));
+                }
+            }
+        };
+        let values: Vec<_> = (0..size).map(element_sampler).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
         let raw_array =
             Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostRingTensor(raw_array, plc.clone()))
     }
 
-    pub(crate) fn kernel_bits_u64<S: RuntimeSession>(
+    pub(crate) fn ring128_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
+        max_value: Option<u64>,
         shape: HostShape,
-    ) -> Result<HostRing64Tensor> {
+    ) -> Result<HostRing128Tensor> {
         let mut rng = AesRng::from_random_seed();
         let size = shape.0 .0.iter().product();
-        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
+        let element_sampler: Box<dyn FnMut(_) -> _> = match max_value {
+            None => {
+                Box::new(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
+            }
+            Some(x) => {
+                if x == 1 {
+                    Box::new(|_| Wrapping(rng.get_bit() as u128))
+                } else {
+                    return Err(Error::UnimplementedOperator(
+                        "SampleOp for HostRingTensor @ HostPlacement does not yet support max_value != 1".to_string()
+                    ));
+                }
+            }
+        };
+        let values: Vec<_> = (0..size).map(element_sampler).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
         let arr =
             Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostRingTensor(arr, plc.clone()))
     }
 
-    pub(crate) fn kernel_uniform_u128<S: RuntimeSession>(
+    pub(crate) fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
+        max_value: Option<u64>,
         shape: HostShape,
-    ) -> Result<HostRing128Tensor> {
+    ) -> Result<HostBitTensor> {
+        if max_value.is_some() {
+            return Err(Error::UnimplementedOperator(
+                "SampleOp for HostBitTensor @ HostPlacement does not support max_value".to_string(),
+            ));
+        };
         let mut rng = AesRng::from_random_seed();
         let size = shape.0 .0.iter().product();
-        let values: Vec<_> = (0..size)
-            .map(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
-            .collect();
+        let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
         let arr =
             Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostRingTensor(arr, plc.clone()))
-    }
-
-    pub(crate) fn kernel_bits_u128<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        shape: HostShape,
-    ) -> Result<HostRing128Tensor> {
-        let mut rng = AesRng::from_random_seed();
-        let size = shape.0 .0.iter().product();
-        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
-        let ix = IxDyn(shape.0 .0.as_ref());
-        let arr =
-            Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostRingTensor(arr, plc.clone()))
+        Ok(HostBitTensor(arr, plc.clone()))
     }
 }
 
-impl RingSampleSeededOp {
-    pub(crate) fn kernel_uniform_u64<S: RuntimeSession>(
+impl SampleSeededOp {
+    pub(crate) fn ring64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
+        max_value: Option<u64>,
         shape: HostShape,
         seed: Seed,
     ) -> Result<HostRing64Tensor> {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
-        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
+        let element_sampler: Box<dyn FnMut(_) -> _> = match max_value {
+            None => Box::new(|_| Wrapping(rng.next_u64())),
+            Some(x) => {
+                if x == 1 {
+                    Box::new(|_| Wrapping(rng.get_bit() as u64))
+                } else {
+                    return Err(Error::UnimplementedOperator(
+                        "SampleOp for HostRingTensor @ HostPlacement does not yet support max_value != 1".to_string()
+                    ));
+                }
+            }
+        };
+        let values: Vec<_> = (0..size).map(element_sampler).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
         let raw_array =
             Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostRingTensor(raw_array, plc.clone()))
     }
 
-    pub(crate) fn kernel_bits_u64<S: RuntimeSession>(
+    pub(crate) fn ring128_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
+        max_value: Option<u64>,
         shape: HostShape,
         seed: Seed,
-    ) -> Result<HostRing64Tensor> {
+    ) -> Result<HostRing128Tensor> {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
-        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
+        let element_sampler: Box<dyn FnMut(_) -> _> = match max_value {
+            None => {
+                Box::new(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
+            }
+            Some(x) => {
+                if x == 1 {
+                    Box::new(|_| Wrapping(rng.get_bit() as u128))
+                } else {
+                    return Err(Error::UnimplementedOperator(
+                        "SampleOp for HostRingTensor @ HostPlacement does not yet support max_value != 1".to_string()
+                    ));
+                }
+            }
+        };
+        let values: Vec<_> = (0..size).map(element_sampler).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
         let arr =
             Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostRingTensor(arr, plc.clone()))
     }
 
-    pub(crate) fn kernel_uniform_u128<S: RuntimeSession>(
+    pub(crate) fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
+        max_value: Option<u64>,
         shape: HostShape,
         seed: Seed,
-    ) -> Result<HostRing128Tensor> {
+    ) -> Result<HostBitTensor> {
+        if max_value.is_some() {
+            return Err(Error::UnimplementedOperator(
+                "SampleOp for HostBitTensor @ HostPlacement does not support max_value".to_string(),
+            ));
+        };
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
-        let values: Vec<_> = (0..size)
-            .map(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
-            .collect();
+        let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        let arr =
+        let res =
             Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostRingTensor(arr, plc.clone()))
-    }
-
-    pub(crate) fn kernel_bits_u128<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        shape: HostShape,
-        seed: Seed,
-    ) -> Result<HostRing128Tensor> {
-        let mut rng = AesRng::from_seed(seed.0 .0);
-        let size = shape.0 .0.iter().product();
-        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
-        let ix = IxDyn(shape.0 .0.as_ref());
-        let arr =
-            Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostRingTensor(arr, plc.clone()))
+        Ok(HostBitTensor(res, plc.clone()))
     }
 }
 
