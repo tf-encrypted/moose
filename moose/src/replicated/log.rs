@@ -210,14 +210,13 @@ where
     ReplicatedBitTensor: KnownType<S>,
     ReplicatedShape: KnownType<S>,
 
-    ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMsb<S, m!(RepBitArray<ReplicatedBitTensor, N>), RepRingT>,
     ReplicatedPlacement: PlacementEqualZero<S, m!(RepBitArray<ReplicatedBitTensor, N>), RepRingT>,
+    ReplicatedPlacement:
+        PlacementBitDecompose<S, RepRingT, m!(RepBitArray<ReplicatedBitTensor, N>)>,
 
     ReplicatedPlacement: PlacementMux<S, RepRingT, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementNeg<S, RepRingT, RepRingT>,
-    ReplicatedPlacement:
-        PlacementBitDecompose<S, RepRingT, m!(RepBitArray<ReplicatedBitTensor, N>)>,
     ReplicatedPlacement:
         PlacementIndex<S, m!(RepBitArray<ReplicatedBitTensor, N>), m!(ReplicatedBitTensor)>,
 
@@ -253,7 +252,7 @@ where
 
         let lambda = max_bit_len - 1;
 
-        let x_bits = rep.bit_decompose(sess, &x.clone().into());
+        let x_bits = rep.bit_decompose(sess, &x.clone());
         let sign = rep.msb(sess, &x_bits);
         let is_zero = rep.equal_zero(sess, &x_bits);
 
@@ -272,7 +271,7 @@ where
             .collect();
 
         let ones = rep.shape_fill(sess, 1_u8, x);
-        let zero = rep.fill(sess, 0_u8.into(), &rep.shape(sess, &x));
+        let zero = rep.fill(sess, 0_u8.into(), &rep.shape(sess, x));
 
         // the following computes bit_compose(1 - bi), basically the amount that x needs to be
         // scaled up so that msb_index(x_upshifted) = lam-1
@@ -459,7 +458,7 @@ mod tests {
             [1.0_f32, 2.0],
             [4.0, 23.3124],
             [42.954, 4.5],
-            [10.5, 13.42190]
+            [10.5, 13.4219]
         ]]
         .into_dyn();
         let expected = x.mapv(|item| item.log2()).iter().copied().collect();
@@ -469,7 +468,7 @@ mod tests {
             [1.0_f32, 2.0],
             [4.0, 23.3124],
             [42.954, 4.5],
-            [10.5, 13.42190]
+            [10.5, 13.4219]
         ]
         .into_dyn();
         let expected = x.mapv(|item| item.log2()).iter().copied().collect();
