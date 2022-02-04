@@ -504,7 +504,6 @@ impl AsyncExecutor {
             println!("ASDF tracing op: {:?}", tracing::field::debug(&op));
             tracing::info!("ASDF THIS IS INFO");
             tracing::warn!("ASDF THIS IS A WARNING");
-            std::process::exit(23);
             let value = session
                 .execute(operator, &op.placement, operands)
                 .map_err(|e| {
