@@ -396,30 +396,28 @@ mod tests {
     }
 
     macro_rules! diag_op_test {
-        ($func_name:ident, $rt:ty, $tt:ident) => {
+        ($func_name:ident, $tt:ty) => {
             fn $func_name() {
-                let x = array![[1 as $rt, 2], [3, 4]].into_dyn();
-                let exp = array![1 as $rt, 4].into_dyn();
+                let x = array![[1, 2], [3, 4]];
+                let exp = array![1, 4];
 
                 let alice = HostPlacement::from("alice");
                 let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
-                let xr = $tt::from_raw_plc(x, alice.clone());
-
                 let sess = SyncSession::default();
 
+                let xr: $tt = alice.from_raw(x);
                 let x_shared = rep.share(&sess, &xr);
-
                 let diag = rep.diag(&sess, &x_shared);
                 let opened_diag = alice.reveal(&sess, &diag);
-                assert_eq!(opened_diag, $tt::from_raw_plc(exp, alice.clone()))
+                assert_eq!(opened_diag, alice.from_raw(exp))
             }
         };
     }
 
-    diag_op_test!(rep_diag_bit, u8, HostBitTensor);
-    diag_op_test!(rep_diag_ring64, u64, HostRingTensor);
-    diag_op_test!(rep_diag_ring128, u128, HostRingTensor);
+    diag_op_test!(rep_diag_bit, HostBitTensor);
+    diag_op_test!(rep_diag_ring64, HostRing64Tensor);
+    diag_op_test!(rep_diag_ring128, HostRing128Tensor);
 
     #[test]
     fn test_rep_diag_bit() {
@@ -437,30 +435,28 @@ mod tests {
     }
 
     macro_rules! index_axis_op_test {
-        ($func_name:ident, $rt:ty, $tt:ident) => {
+        ($func_name:ident, $tt:ident) => {
             fn $func_name() {
-                let x = array![[[1 as $rt, 2], [3, 4]], [[4, 5], [6, 7]]].into_dyn();
-                let exp = array![[4 as $rt, 5], [6, 7]].into_dyn();
+                let x = array![[[1, 2], [3, 4]], [[4, 5], [6, 7]]];
+                let exp = array![[4, 5], [6, 7]];
 
                 let alice = HostPlacement::from("alice");
                 let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
-                let xr = $tt::from_raw_plc(x, alice.clone());
-
                 let sess = SyncSession::default();
 
+                let xr: $tt = alice.from_raw(x);
                 let x_shared = rep.share(&sess, &xr);
-
                 let index_axis = rep.index_axis(&sess, 0, 1, &x_shared);
                 let opened_index_axis = alice.reveal(&sess, &index_axis);
-                assert_eq!(opened_index_axis, $tt::from_raw_plc(exp, alice.clone()))
+                assert_eq!(opened_index_axis, alice.from_raw(exp))
             }
         };
     }
 
-    index_axis_op_test!(rep_index_axis_bit, u8, HostBitTensor);
-    index_axis_op_test!(rep_index_axis_ring64, u64, HostRingTensor);
-    index_axis_op_test!(rep_index_axis_ring128, u128, HostRingTensor);
+    index_axis_op_test!(rep_index_axis_bit, HostBitTensor);
+    index_axis_op_test!(rep_index_axis_ring64, HostRing64Tensor);
+    index_axis_op_test!(rep_index_axis_ring128, HostRing128Tensor);
 
     #[test]
     fn test_rep_index_axis_bit() {
@@ -478,31 +474,29 @@ mod tests {
     }
 
     macro_rules! index_op_test {
-        ($func_name:ident, $rt:ty, $tt:ident, $n:ty) => {
+        ($func_name:ident, $tt:ident, $n:ty) => {
             fn $func_name() {
-                let x = array![[1 as $rt, 2], [3, 4]].into_dyn();
-                let exp = array![1 as $rt, 2].into_dyn();
+                let x = array![[1, 2], [3, 4]];
+                let exp = array![1, 2];
 
                 let alice = HostPlacement::from("alice");
                 let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
-                let xr = HostBitTensor::from_raw_plc(x, alice.clone());
-
                 let sess = SyncSession::default();
 
+                let xr: HostBitTensor = alice.from_raw(x);
                 let x_shared = rep.share(&sess, &xr);
                 let x_shared_bit_array =
                     RepBitArray::<ReplicatedBitTensor, $n>(x_shared, PhantomData);
-
                 let index = rep.index(&sess, 0, &x_shared_bit_array);
                 let opened_index = alice.reveal(&sess, &index);
-                assert_eq!(opened_index, $tt::from_raw_plc(exp, alice.clone()))
+                assert_eq!(opened_index, alice.from_raw(exp))
             }
         };
     }
 
-    index_op_test!(rep_index_bit64, u8, HostBitTensor, N64);
-    index_op_test!(rep_index_bit128, u8, HostBitTensor, N128);
+    index_op_test!(rep_index_bit64, HostBitTensor, N64);
+    index_op_test!(rep_index_bit128, HostBitTensor, N128);
 
     #[test]
     fn test_rep_index_bit64() {
@@ -1211,19 +1205,15 @@ mod tests {
     macro_rules! rep_prefix_op_bit_test {
         ($func_name:ident, $test_func: ident) => {
             fn $func_name(x: ArrayD<u64>, y_target: Vec<u8>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
-                let x = HostRingTensor::from_raw_plc(x, alice.clone());
                 let sess = SyncSession::default();
 
+                let x: HostRing64Tensor = alice.from_raw(x);
                 let x_shared = rep.share(&sess, &x);
                 let x_bits: ReplicatedBitArray64 = rep.bit_decompose(&sess, &x_shared);
-                let x_bits_vec: Vec<ReplicatedBitTensor> =
+                let x_bits_vec: Vec<_> =
                     (0..64).map(|i| rep.index(&sess, i, &x_bits)).collect();
 
                 let out = rep.$test_func(&sess, x_bits_vec);
@@ -1267,15 +1257,15 @@ mod tests {
                 let alice = HostPlacement::from("alice");
                 let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
-                let x = HostRingTensor::from_raw_plc(xs, alice.clone());
-                let y = HostRingTensor::from_raw_plc(ys, alice.clone());
+                let x: HostRingTensor<_> = alice.from_raw(xs);
+                let y: HostRingTensor<_> = alice.from_raw(ys);
 
                 let sess = SyncSession::default();
 
                 let x_shared = rep.share(&sess, &x);
                 let y_shared = rep.share(&sess, &y);
 
-                let sum: RepTensor<HostBitTensor> = rep.$test_func(&sess, &x_shared, &y_shared);
+                let sum = rep.$test_func(&sess, &x_shared, &y_shared);
                 let opened_product = alice.reveal(&sess, &sum);
                 assert_eq!(
                     opened_product,
