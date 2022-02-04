@@ -1063,6 +1063,7 @@ operators![
     Sigmoid,
     Neg,
     Equal,
+    EqualZero,
     Less,
     GreaterThan,
     // Floating-point operators
@@ -1088,6 +1089,8 @@ operators![
     Mux,
     Maximum,
     Softmax,
+    Log2,
+    Log,
     // Mirrored Operators
     Demirror,
     Mirror,
@@ -1414,6 +1417,11 @@ pub struct EqualOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct EqualZeroOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct LessOp {
     pub sig: Signature,
 }
@@ -1586,6 +1594,16 @@ pub struct SoftmaxOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct BroadcastOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct Log2Op {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct LogOp {
     pub sig: Signature,
 }
 

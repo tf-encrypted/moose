@@ -26,6 +26,7 @@ from pymoose.computation.standard import InputOperation
 from pymoose.computation.standard import InverseOperation
 from pymoose.computation.standard import LessOperation
 from pymoose.computation.standard import LoadOperation
+from pymoose.computation.standard import LogOperation
 from pymoose.computation.standard import MaximumOperation
 from pymoose.computation.standard import MeanOperation
 from pymoose.computation.standard import MulOperation
@@ -61,6 +62,7 @@ from pymoose.edsl.base import IdentityExpression
 from pymoose.edsl.base import IndexAxisExpression
 from pymoose.edsl.base import InverseExpression
 from pymoose.edsl.base import LoadExpression
+from pymoose.edsl.base import LogExpression
 from pymoose.edsl.base import MaximumExpression
 from pymoose.edsl.base import MeanExpression
 from pymoose.edsl.base import MirroredPlacementExpression
@@ -456,6 +458,23 @@ class AstTracer:
                 signature=OpSignature(
                     input_types={"x": x_operation.return_type},
                     return_type=exp_expression.vtype,
+                ),
+            )
+        )
+
+    def visit_LogExpression(self, log_expression):
+        assert isinstance(log_expression, LogExpression)
+        (x_expression,) = log_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(log_expression.placement)
+        return self.computation.add_operation(
+            LogOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("log"),
+                inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=log_expression.vtype,
                 ),
             )
         )

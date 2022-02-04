@@ -60,6 +60,9 @@ modelled_kernel! {
         (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedBitTensor => [transparent] Self::rep_bit_kernel),
         (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_ring_kernel),
         (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_ring_kernel),
+        (ReplicatedPlacement,  (ReplicatedBitArray64) -> ReplicatedRing64Tensor => [transparent] Self::rep_bit_dec_kernel),
+        (ReplicatedPlacement,  (ReplicatedBitArray128) -> ReplicatedRing128Tensor => [transparent] Self::rep_bit_dec_kernel),
+
     ]
 }
 

@@ -47,6 +47,7 @@ SUPPORTED_TYPES = [
     std_dialect.InverseOperation,
     std_dialect.LessOperation,
     std_dialect.LoadOperation,
+    std_dialect.LogOperation,
     std_dialect.MaximumOperation,
     std_dialect.MeanOperation,
     std_dialect.MulOperation,
