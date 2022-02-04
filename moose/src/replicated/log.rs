@@ -267,17 +267,17 @@ where
 mod tests {
     use crate::execution::SyncSession;
     use crate::fixedpoint::FixedTensor;
-    use crate::host::{Convert, FromRaw, FromRawScaled, HostPlacement};
+    use crate::host::{Convert, FromRaw, HostPlacement};
     use crate::kernels::*;
     use crate::replicated::log::Int2FL;
     use crate::replicated::{ReplicatedBitTensor, ReplicatedPlacement};
-    use crate::types::{HostBitTensor, HostFixed128Tensor, HostFixed64Tensor, HostRing64Tensor};
+    use crate::types::{HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostRing64Tensor};
     use ndarray::array;
     use ndarray::prelude::*;
 
     macro_rules! rep_approx_log_fixed_test {
-        ($func_name:ident, $test_func: ident<$tt: ty>, $ret_ty:ident, $i_precision: expr, $f_precision: expr, $err: expr) => {
-            fn $func_name(x: ArrayD<f64>, y_target: Vec<f64>) {
+        ($func_name:ident, $test_func: ident<$tt: ty>, $scalar_float_ty: ident, $tensor_float_ty:ident, $i_precision: expr, $f_precision: expr, $err: expr) => {
+            fn $func_name(x: ArrayD<$scalar_float_ty>, y_target: Vec<$scalar_float_ty>) {
                 let alice = HostPlacement {
                     owner: "alice".into(),
                 };
@@ -287,7 +287,8 @@ mod tests {
 
                 let sess = SyncSession::default();
 
-                let x: $ret_ty = alice.from_raw_scaled(x, $i_precision, $f_precision);
+                let y: $tensor_float_ty = alice.from_raw(x);
+                let x = alice.fixedpoint_encode(&sess, $f_precision, $i_precision, &y);
                 let x = FixedTensor::Host(x);
 
                 let log_result = rep.$test_func(&sess, &x);
@@ -298,7 +299,7 @@ mod tests {
                 };
 
                 let result = Convert::decode(&opened_log.tensor, (2 as $tt).pow($f_precision));
-                let result: Vec<_> = result.0.iter().copied().collect();
+                let result: Vec<_> = result.0.mapv(|item| item as $scalar_float_ty).iter().copied().collect();
                 // operation precision is not as accurate as the fixed point precision
                 for i in 0..y_target.len() {
                     let error = (result[i] - y_target[i]).abs();
@@ -311,7 +312,8 @@ mod tests {
     rep_approx_log_fixed_test!(
         test_rep_log2_fixed64,
         log2<u64>,
-        HostFixed64Tensor,
+        f32,
+        HostFloat32Tensor,
         8,
         20,
         0.01
@@ -319,7 +321,8 @@ mod tests {
     rep_approx_log_fixed_test!(
         test_rep_ln_fixed64,
         log<u64>,
-        HostFixed64Tensor,
+        f32,
+        HostFloat32Tensor,
         8,
         20,
         0.01
@@ -327,7 +330,8 @@ mod tests {
     rep_approx_log_fixed_test!(
         test_rep_log2_fixed128,
         log2<u128>,
-        HostFixed128Tensor,
+        f64,
+        HostFloat64Tensor,
         10,
         30,
         0.01
@@ -335,7 +339,8 @@ mod tests {
     rep_approx_log_fixed_test!(
         test_rep_ln_fixed128,
         log<u128>,
-        HostFixed128Tensor,
+        f64,
+        HostFloat64Tensor,
         10,
         30,
         0.001
@@ -407,12 +412,12 @@ mod tests {
 
     #[test]
     fn test_log2_64() {
-        let x = array![1.0_f64, 2.0, 4.0, 8.0, 4.5, 10.5].into_dyn();
+        let x = array![1.0_f32, 2.0, 4.0, 8.0, 4.5, 10.5].into_dyn();
         let expected = x.mapv(|item| item.log2()).iter().copied().collect();
         test_rep_log2_fixed64(x, expected);
 
         let x = array![[
-            [1.0_f64, 2.0],
+            [1.0_f32, 2.0],
             [4.0, 23.3124],
             [42.954, 4.5],
             [10.5, 13.42190]
@@ -422,7 +427,7 @@ mod tests {
         test_rep_log2_fixed64(x, expected);
 
         let x = array![
-            [1.0_f64, 2.0],
+            [1.0_f32, 2.0],
             [4.0, 23.3124],
             [42.954, 4.5],
             [10.5, 13.42190]
@@ -461,12 +466,12 @@ mod tests {
 
     #[test]
     fn test_ln64() {
-        let x = array![1.0_f64, 2.5, 3.0, 4.0, 5.0].into_dyn();
+        let x = array![1.0_f32, 2.5, 3.0, 4.0, 5.0].into_dyn();
         let expected = x.mapv(|item| item.ln()).iter().copied().collect();
         test_rep_ln_fixed64(x, expected);
 
         let x = array![
-            [1.0_f64, 2.5, 3.0, 4.0, 5.0],
+            [1.0_f32, 2.5, 3.0, 4.0, 5.0],
             [1.33, 4.123, 13.432, 10.33, 55.33]
         ]
         .into_dyn();
@@ -474,7 +479,7 @@ mod tests {
         test_rep_ln_fixed64(x, expected);
 
         let x = array![[
-            [1.0_f64, 127.0],
+            [1.0_f32, 127.0],
             [10.3121, 123.025],
             [15.3213, 65.323],
             [126.9599, 74.98876]

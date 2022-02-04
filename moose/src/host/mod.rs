@@ -588,52 +588,6 @@ impl FromRaw<RawSeed, Seed> for HostPlacement {
     }
 }
 
-pub(crate) trait FromRawScaled<T, O> {
-    fn from_raw_scaled(&self, raw: T, integral_precision: u32, fractional_precision: u32) -> O;
-}
-
-impl<D: ndarray::Dimension> FromRawScaled<Array<f64, D>, HostFixedTensor<HostRing64Tensor>>
-    for HostPlacement
-{
-    fn from_raw_scaled(
-        &self,
-        raw: Array<f64, D>,
-        integral_precision: u32,
-        fractional_precision: u32,
-    ) -> HostFixedTensor<HostRing64Tensor> {
-        let aux = raw
-            .mapv(|x| (x * 2_f64.powf(fractional_precision as f64)) as i64 as u64)
-            .into_dyn();
-
-        HostFixedTensor {
-            tensor: self.from_raw(aux),
-            integral_precision,
-            fractional_precision,
-        }
-    }
-}
-
-impl<D: ndarray::Dimension> FromRawScaled<Array<f64, D>, HostFixedTensor<HostRing128Tensor>>
-    for HostPlacement
-{
-    fn from_raw_scaled(
-        &self,
-        raw: Array<f64, D>,
-        integral_precision: u32,
-        fractional_precision: u32,
-    ) -> HostFixedTensor<HostRing128Tensor> {
-        let aux = raw
-            .mapv(|x| (x * 2_f64.powf(fractional_precision as f64)) as i128 as u128)
-            .into_dyn();
-
-        HostFixedTensor {
-            tensor: self.from_raw(aux),
-            fractional_precision,
-            integral_precision,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
