@@ -1014,7 +1014,7 @@ operators![
     Broadcast,
     PrimDeriveSeed,
     PrimPrfKeyGen,
-    AesDecrypt,
+    Decrypt,
     AtLeast2D,
     IndexAxis,
     Slice,
@@ -1038,9 +1038,8 @@ operators![
     Abs,
     HostMean,
     Diag,
-    HostBitDec,
+    BitDecompose,
     HostOnes,
-    HostShlDim,
     Sign,
     RingFixedpointMean,
     RingFixedpointEncode,
@@ -1052,13 +1051,12 @@ operators![
     BitExtract,
     BitSample,
     BitSampleSeeded,
-    BitXor,
-    BitAnd,
-    BitOr,
+    Xor,
+    And,
+    Or,
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
-    FixedpointTruncPr,
     FixedpointMean,
     Pow2,
     Exp,
@@ -1073,25 +1071,21 @@ operators![
     FloatingpointConcat,
     FloatingpointMean,
     // Additive operators
-    AdtReveal,
     AdtFill,
     AdtToRep,
     // Replicated operators
     RepSetup,
-    RepShare,
-    RepReveal,
+    Share,
+    Reveal,
     Fill,
-    RepMsb,
-    RepAnd,
-    RepXor,
+    Msb,
     RepFixedpointMean,
     AddN,
-    RepTruncPr,
+    TruncPr,
     RepToAdt,
     Index,
-    RepBitDec,
-    RepBitCompose,
-    RepShlDim,
+    BitCompose,
+    ShlDim,
     Mux,
     Maximum,
     Softmax,
@@ -1300,14 +1294,7 @@ pub struct DiagOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostShlDimOp {
-    pub sig: Signature,
-    pub amount: usize,
-    pub bit_length: usize,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct HostBitDecOp {
+pub struct BitDecomposeOp {
     pub sig: Signature,
 }
 
@@ -1341,7 +1328,7 @@ pub struct PrimPrfKeyGenOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct AesDecryptOp {
+pub struct DecryptOp {
     pub sig: Signature,
 }
 
@@ -1400,17 +1387,17 @@ pub struct BitSampleSeededOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitXorOp {
+pub struct XorOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitAndOp {
+pub struct AndOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitOrOp {
+pub struct OrOp {
     pub sig: Signature,
 }
 
@@ -1457,12 +1444,6 @@ pub struct FixedpointDecodeOp {
     pub fractional_precision: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct FixedpointTruncPrOp {
-    pub sig: Signature,
-    pub precision: u32, // TODO(Morten) rename to amount?
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
 pub struct FixedpointMeanOp {
     pub sig: Signature,
@@ -1506,11 +1487,6 @@ pub struct RingFixedpointDecodeOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct AdtRevealOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct AdtToRepOp {
     pub sig: Signature,
 }
@@ -1521,7 +1497,7 @@ pub struct AbsOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepMsbOp {
+pub struct MsbOp {
     pub sig: Signature,
 }
 
@@ -1531,22 +1507,12 @@ pub struct RepSetupOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepShareOp {
+pub struct ShareOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepRevealOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepAndOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepXorOp {
+pub struct RevealOp {
     pub sig: Signature,
 }
 
@@ -1564,7 +1530,7 @@ pub struct AddNOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepTruncPrOp {
+pub struct TruncPrOp {
     pub sig: Signature,
     pub amount: u32,
 }
@@ -1581,7 +1547,7 @@ pub struct FillOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepShlDimOp {
+pub struct ShlDimOp {
     pub sig: Signature,
     pub amount: usize,
     pub bit_length: usize,
@@ -1594,12 +1560,7 @@ pub struct IndexOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepBitDecOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepBitComposeOp {
+pub struct BitComposeOp {
     pub sig: Signature,
 }
 

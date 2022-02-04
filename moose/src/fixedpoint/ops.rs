@@ -758,11 +758,11 @@ impl DotOp {
     }
 }
 
-impl FixedpointTruncPrOp {
+impl TruncPrOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,
-        precision: u32,
+        amount: u32,
         x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
@@ -776,14 +776,14 @@ impl FixedpointTruncPrOp {
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
-        let z = plc.trunc_pr(sess, precision, &v);
+        let z = plc.trunc_pr(sess, amount, &v);
         Ok(FixedTensor::Host(z))
     }
 
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        precision: u32,
+        amount: u32,
         x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
     where
@@ -797,24 +797,24 @@ impl FixedpointTruncPrOp {
             FixedTensor::Replicated(x) => x,
         };
 
-        let z = plc.trunc_pr(sess, precision, &v);
+        let z = plc.trunc_pr(sess, amount, &v);
         Ok(FixedTensor::Replicated(z))
     }
 
     pub(crate) fn hostfixed_kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &HostPlacement,
-        precision: u32,
+        amount: u32,
         x: HostFixedTensor<HostRingT>,
     ) -> Result<HostFixedTensor<HostRingT>>
     where
         HostPlacement: PlacementShr<S, HostRingT, HostRingT>,
     {
         // NOTE(Morten) we assume fixedpoint base is 2 so that truncation becomes (integer) division by 2**precision
-        let z = plc.shr(sess, precision as usize, &x.tensor);
+        let z = plc.shr(sess, amount as usize, &x.tensor);
         Ok(HostFixedTensor {
             tensor: z,
-            fractional_precision: x.fractional_precision - precision,
+            fractional_precision: x.fractional_precision - amount,
             integral_precision: x.integral_precision,
         })
     }
@@ -822,16 +822,16 @@ impl FixedpointTruncPrOp {
     pub(crate) fn repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        precision: u32,
+        amount: u32,
         x: RepFixedTensor<RepRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
         ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
     {
-        let z = plc.trunc_pr(sess, precision, &x.tensor);
+        let z = plc.trunc_pr(sess, amount, &x.tensor);
         Ok(RepFixedTensor {
             tensor: z,
-            fractional_precision: x.fractional_precision - precision,
+            fractional_precision: x.fractional_precision - amount,
             integral_precision: x.integral_precision,
         })
     }

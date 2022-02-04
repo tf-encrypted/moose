@@ -733,7 +733,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_BitwiseOrOperation(op) => Ok(Operation {
-                        kind: BitOrOp {
+                        kind: OrOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
                         }
@@ -900,7 +900,7 @@ impl TryFrom<PyComputation> for Computation {
                         })
                     }
                     std_DecryptOperation(op) => Ok(Operation {
-                        kind: AesDecryptOp {
+                        kind: DecryptOp {
                             sig: Signature::from_binary(&op.signature, "key", "ciphertext")?,
                         }
                         .into(),

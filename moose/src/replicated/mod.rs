@@ -373,7 +373,7 @@ impl RepSetupOp {
     }
 }
 
-impl RepShareOp {
+impl ShareOp {
     pub(crate) fn aeskey_kernel<S: Session, HostBitArrayT, RepBitArrayT>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -527,8 +527,8 @@ impl RepShareOp {
     }
 }
 
-impl RepRevealOp {
-    pub(crate) fn aeskey_kernel<S: Session, RepBitArrayT, HostBitArrayT>(
+impl RevealOp {
+    pub(crate) fn host_aeskey_kernel<S: Session, RepBitArrayT, HostBitArrayT>(
         sess: &S,
         receiver: &HostPlacement,
         key: AbstractReplicatedAesKey<RepBitArrayT>,
@@ -540,7 +540,7 @@ impl RepRevealOp {
         Ok(AbstractHostAesKey(bit_array))
     }
 
-    pub(crate) fn fixed_kernel<S: Session, RepRingT, HostRingT>(
+    pub(crate) fn host_fixed_kernel<S: Session, RepRingT, HostRingT>(
         sess: &S,
         receiver: &HostPlacement,
         xe: RepFixedTensor<RepRingT>,
@@ -556,7 +556,7 @@ impl RepRevealOp {
         })
     }
 
-    pub(crate) fn bit_array_kernel<S: Session, RepBitT, HostBitT, N>(
+    pub(crate) fn host_bit_array_kernel<S: Session, RepBitT, HostBitT, N>(
         sess: &S,
         receiver: &HostPlacement,
         xe: RepBitArray<RepBitT, N>,
@@ -568,7 +568,7 @@ impl RepRevealOp {
         Ok(HostBitArray(x, PhantomData))
     }
 
-    pub(crate) fn ring_kernel<S: Session, R: Clone>(
+    pub(crate) fn host_ring_kernel<S: Session, R: Clone>(
         sess: &S,
         receiver: &HostPlacement,
         xe: RepTen<R>,
@@ -645,8 +645,8 @@ impl IdentityOp {
     }
 }
 
-impl RepAndOp {
-    pub(crate) fn bit_kernel<S: Session, RepT>(
+impl AndOp {
+    pub(crate) fn rep_kernel<S: Session, RepT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepT,
@@ -660,8 +660,8 @@ impl RepAndOp {
     }
 }
 
-impl RepXorOp {
-    pub(crate) fn bit_kernel<S: Session, X1, X2, Y>(
+impl XorOp {
+    pub(crate) fn rep_kernel<S: Session, X1, X2, Y>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: X1,
@@ -1294,8 +1294,8 @@ impl SumOp {
     }
 }
 
-impl RepTruncPrOp {
-    pub(crate) fn kernel<S: Session, HostRingT>(
+impl TruncPrOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         amount: u32,
@@ -1762,8 +1762,8 @@ impl SliceOp {
     }
 }
 
-impl RepShlDimOp {
-    pub(crate) fn kernel<S: Session, HostBitT>(
+impl ShlDimOp {
+    pub(crate) fn rep_bit_kernel<S: Session, HostBitT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         amount: usize,
@@ -1793,8 +1793,8 @@ impl RepShlDimOp {
     }
 }
 
-impl RepMsbOp {
-    pub(crate) fn bit_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, N: Const>(
+impl MsbOp {
+    pub(crate) fn rep_bit_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
@@ -1802,14 +1802,14 @@ impl RepMsbOp {
     where
         RepRingT: Ring<BitLength = N>,
         RepBitArrayT: BitArray<Len = N>,
-        ReplicatedPlacement: PlacementBitDec<S, RepRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementBitDecompose<S, RepRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
     {
         let bits = rep.bit_decompose(sess, &x);
         Ok(rep.index(sess, N::VALUE - 1, &bits))
     }
 
-    pub(crate) fn ring_kernel<S: Session, RepRingT, RepBitT>(
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
@@ -1822,7 +1822,7 @@ impl RepMsbOp {
         Ok(rep.ring_inject(sess, 0, &x_bin))
     }
 
-    pub(crate) fn from_bit_dec_kernel<S: Session, RepBitArrayT, RepRingT, RepBitT, N: Const>(
+    pub(crate) fn rep_bit_dec_kernel<S: Session, RepBitArrayT, RepRingT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         bits: RepBitArrayT,
@@ -2130,7 +2130,7 @@ where
     m!(c!(RepTen<HostBitT>)): TryInto<RepTen<HostBitT>>,
 
     ReplicatedPlacement: PlacementShare<S, HostBitT, m!(c!(RepTen<HostBitT>))>,
-    HostPlacement: PlacementBitDec<S, HostRingT, HostBitT>,
+    HostPlacement: PlacementBitDecompose<S, HostRingT, HostBitT>,
     // ReplicatedPlacement: PlacementSetupGen<S, S::Setup>,
 {
     fn split(&self, sess: &S, x: &RepTen<HostRingT>) -> (RepTen<HostBitT>, RepTen<HostBitT>) {
@@ -2164,8 +2164,8 @@ where
     }
 }
 
-impl RepBitDecOp {
-    pub(crate) fn ring_kernel<S: Session, RepRingT, RepBitT, N: Const>(
+impl BitDecomposeOp {
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
@@ -2181,7 +2181,7 @@ impl RepBitDecOp {
     }
 }
 
-impl RepBitComposeOp {
+impl BitComposeOp {
     pub(crate) fn rep_kernel<S: Session, ShapeT, RepRingT, RepBitArrayT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,

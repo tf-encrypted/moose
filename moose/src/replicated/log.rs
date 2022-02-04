@@ -34,7 +34,7 @@ impl EqualOp {
         y: RepRingT,
     ) -> Result<RepBitT>
     where
-        ReplicatedPlacement: PlacementBitDec<S, RepRingT, RepBitArrayT>,
+        ReplicatedPlacement: PlacementBitDecompose<S, RepRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementEqualZero<S, RepBitArrayT, RepBitT>,
     {
@@ -216,7 +216,8 @@ where
 
     ReplicatedPlacement: PlacementMux<S, RepRingT, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementNeg<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementBitDec<S, RepRingT, m!(RepBitArray<ReplicatedBitTensor, N>)>,
+    ReplicatedPlacement:
+        PlacementBitDecompose<S, RepRingT, m!(RepBitArray<ReplicatedBitTensor, N>)>,
     ReplicatedPlacement:
         PlacementIndex<S, m!(RepBitArray<ReplicatedBitTensor, N>), m!(ReplicatedBitTensor)>,
 

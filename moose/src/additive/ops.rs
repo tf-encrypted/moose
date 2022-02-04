@@ -1,7 +1,7 @@
 //! Various operations for additive placements
 use super::*;
 use crate::computation::{
-    AddOp, AdtFillOp, AdtRevealOp, Constant, MulOp, Placed, ShapeOp, ShlOp, SubOp,
+    AddOp, AdtFillOp, Constant, MulOp, Placed, RevealOp, ShapeOp, ShlOp, SubOp,
 };
 use crate::error::Result;
 use crate::execution::Session;
@@ -72,8 +72,8 @@ impl AdtFillOp {
     }
 }
 
-impl AdtRevealOp {
-    pub(crate) fn kernel<S: Session, RingT>(
+impl RevealOp {
+    pub(crate) fn host_adt_kernel<S: Session, RingT>(
         sess: &S,
         plc: &HostPlacement,
         xe: AdtTensor<RingT>,
