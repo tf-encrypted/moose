@@ -1065,6 +1065,7 @@ operators![
     Sigmoid,
     Neg,
     Equal,
+    EqualZero,
     Less,
     GreaterThan,
     // Floating-point operators
@@ -1425,6 +1426,11 @@ pub struct ExpOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct EqualOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct EqualZeroOp {
     pub sig: Signature,
 }
 

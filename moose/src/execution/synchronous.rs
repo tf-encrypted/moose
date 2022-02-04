@@ -238,6 +238,7 @@ impl Session for SyncSession {
             Log2(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Log(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Equal(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            EqualZero(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Less(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Maximum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

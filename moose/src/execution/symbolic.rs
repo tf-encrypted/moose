@@ -283,6 +283,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Log2(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Log(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Equal(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            EqualZero(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Less(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostBitDec(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

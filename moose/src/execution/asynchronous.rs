@@ -403,6 +403,7 @@ impl Session for AsyncSession {
             Log(op) => DispatchKernel::compile(&op, plc)?,
             Log2(op) => DispatchKernel::compile(&op, plc)?,
             Equal(op) => DispatchKernel::compile(&op, plc)?,
+            EqualZero(op) => DispatchKernel::compile(&op, plc)?,
             Mux(op) => DispatchKernel::compile(&op, plc)?,
             Less(op) => DispatchKernel::compile(&op, plc)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?,

@@ -1,5 +1,5 @@
 use super::*;
-use crate::computation::EqualOp;
+use crate::computation::{EqualOp, EqualZeroOp};
 use crate::error::Result;
 use crate::execution::Session;
 use crate::fixedpoint::PolynomialEval;
@@ -9,6 +9,21 @@ use lazy_static::lazy_static;
 lazy_static! {
     static ref P_2524: Vec<f64> = vec![-2.05466671951, -8.8626599391, 6.10585199015, 4.81147460989];
     static ref Q_2524: Vec<f64> = vec![0.353553425277, 4.54517087629, 6.42784209029, 1.0];
+}
+
+pub(crate) trait TreeReduceMul<S: Session, T, O> {
+    fn reduce_mul(&self, sess: &S, x: &[T]) -> O;
+}
+
+impl<S: Session, T: Clone> TreeReduceMul<S, T, T> for ReplicatedPlacement
+where
+    ReplicatedPlacement: PlacementMul<S, T, T, T>,
+{
+    fn reduce_mul(&self, sess: &S, x: &[T]) -> T {
+        let elementwise_mul =
+            |rep: &ReplicatedPlacement, sess: &S, x: &T, y: &T| -> T { rep.mul(sess, x, y) };
+        self.tree_reduce(sess, x, elementwise_mul)
+    }
 }
 
 impl EqualOp {
@@ -58,6 +73,30 @@ impl EqualOp {
     {
         let b = rep.equal(sess, &x, &y);
         Ok(rep.ring_inject(sess, 0, &b))
+    }
+}
+
+impl EqualZeroOp {
+    pub(crate) fn bit_kernel<S: Session, RepBitArrayT, RepRingT, RepBitT, MirBitT, N: Const>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepBitArrayT,
+    ) -> Result<RepRingT>
+    where
+        RepBitArrayT: BitArray<Len = N>,
+        ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
+        ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
+        ReplicatedPlacement: ShapeFill<S, RepBitT, Result = MirBitT>,
+        ReplicatedPlacement: PlacementXor<S, MirBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: TreeReduceMul<S, RepBitT, RepBitT>,
+    {
+        let vx: Vec<_> = (0..N::VALUE).map(|i| rep.index(sess, i, &x)).collect();
+
+        let ones = rep.shape_fill(sess, 1u8, &vx[0]);
+        let v_not: Vec<_> = vx.iter().map(|vi| rep.xor(sess, &ones, vi)).collect();
+
+        let r_bit = rep.reduce_mul(sess, &v_not);
+        Ok(rep.ring_inject(sess, 0, &r_bit))
     }
 }
 
@@ -156,8 +195,9 @@ impl LogOp {
     }
 }
 
-/// Internal trait for converting int to float number generation
+/// Internal trait for converting int to a floating point number
 /// Computes v, p, s, z such that (1 − 2s) · (1 − z) · v · 2 p = x.
+/// See for more details https://eprint.iacr.org/2012/405 and https://eprint.iacr.org/2019/354
 pub(crate) trait Int2FL<S: Session, RepRingT> {
     fn int2fl(
         &self,
@@ -175,10 +215,12 @@ where
     HostRing64Tensor: KnownType<S>,
 
     ReplicatedBitTensor: KnownType<S>,
+    ReplicatedShape: KnownType<S>,
 
     ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
-    ReplicatedPlacement: PlacementEqual<S, RepRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementMsb<S, m!(RepBitArray<ReplicatedBitTensor, N>), RepRingT>,
+    ReplicatedPlacement: PlacementEqualZero<S, m!(RepBitArray<ReplicatedBitTensor, N>), RepRingT>,
+
     ReplicatedPlacement: PlacementMux<S, RepRingT, RepRingT, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementNeg<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementBitDec<S, RepRingT, m!(RepBitArray<ReplicatedBitTensor, N>)>,
@@ -197,6 +239,9 @@ where
     ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
 
+    ReplicatedPlacement: PlacementFill<S, m!(ReplicatedShape), RepRingT>,
+    ReplicatedPlacement: PlacementShape<S, RepRingT, m!(ReplicatedShape)>,
+
     // this has to dissapear after prefixor is a trait
     ReplicatedPlacement:
         PlacementAnd<S, m!(ReplicatedBitTensor), m!(ReplicatedBitTensor), m!(ReplicatedBitTensor)>,
@@ -214,13 +259,9 @@ where
 
         let lambda = max_bit_len - 1;
 
-        // hack because fill op doesn't work without adding too many un-necessary type constrains
-        let zero = rep.sub(sess, x, x);
-
-        // TODO(Dragos) this can be optimized by performing a single bit-decomposition and use it
-        // to compute the msb and equality to zero
-        let sign = rep.msb(sess, x);
-        let is_zero = rep.equal(sess, x, &zero);
+        let x_bits = rep.bit_decompose(sess, &x.clone().into());
+        let sign = rep.msb(sess, &x_bits);
+        let is_zero = rep.equal_zero(sess, &x_bits);
 
         // x positive
         let x_pos = rep.mux(sess, &sign, &rep.neg(sess, x), x);
@@ -237,6 +278,8 @@ where
             .collect();
 
         let ones = rep.shape_fill(sess, 1_u8, x);
+        let zero = rep.fill(sess, 0_u8.into(), &rep.shape(sess, &x));
+
         // the following computes bit_compose(1 - bi), basically the amount that x needs to be
         // scaled up so that msb_index(x_upshifted) = lam-1
         let neg_b_sum = (0..lambda).fold(zero.clone(), |acc, i| {
