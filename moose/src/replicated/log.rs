@@ -27,38 +27,20 @@ where
 }
 
 impl EqualOp {
-    pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
+    pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
         y: RepRingT,
     ) -> Result<RepBitT>
     where
-        RepRingT: Ring<BitLength = N>,
-
         ReplicatedPlacement: PlacementBitDec<S, RepRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
-        ReplicatedPlacement: PlacementFill<S, ShapeT, RepBitT>,
-        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
-        ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
-        ReplicatedPlacement: PlacementMul<S, RepBitT, RepBitT, RepBitT>,
-        ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementEqualZero<S, RepBitArrayT, RepBitT>,
     {
         let z = rep.sub(sess, &x, &y);
         let bits = rep.bit_decompose(sess, &z);
-
-        let v: Vec<_> = (0..RepRingT::BitLength::VALUE)
-            .map(|i| rep.index(sess, i, &bits))
-            .collect();
-
-        let ones = rep.fill(sess, 1u8.into(), &rep.shape(sess, &z));
-
-        let v_not: Vec<_> = v.iter().map(|vi| rep.xor(sess, &ones, vi)).collect();
-
-        // TODO we can optimize this by having a binary multipler like
-        // we are doing with the binary adder in bit decompitision
-        Ok(v_not.iter().fold(ones, |acc, y| rep.mul(sess, &acc, y)))
+        Ok(rep.equal_zero(sess, &bits))
     }
 
     pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT>(
@@ -77,15 +59,14 @@ impl EqualOp {
 }
 
 impl EqualZeroOp {
-    pub(crate) fn bit_kernel<S: Session, RepBitArrayT, RepRingT, RepBitT, MirBitT, N: Const>(
+    pub(crate) fn bitdec_bit_kernel<S: Session, RepBitArrayT, RepBitT, MirBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepBitArrayT,
-    ) -> Result<RepRingT>
+    ) -> Result<RepBitT>
     where
         RepBitArrayT: BitArray<Len = N>,
         ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
-        ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
         ReplicatedPlacement: ShapeFill<S, RepBitT, Result = MirBitT>,
         ReplicatedPlacement: PlacementXor<S, MirBitT, RepBitT, RepBitT>,
         ReplicatedPlacement: TreeReduceMul<S, RepBitT, RepBitT>,
@@ -95,7 +76,19 @@ impl EqualZeroOp {
         let ones = rep.shape_fill(sess, 1u8, &vx[0]);
         let v_not: Vec<_> = vx.iter().map(|vi| rep.xor(sess, &ones, vi)).collect();
 
-        let r_bit = rep.reduce_mul(sess, &v_not);
+        Ok(rep.reduce_mul(sess, &v_not))
+    }
+
+    pub(crate) fn bitdec_ring_kernel<S: Session, RepBitArrayT, RepRingT, RepBitT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepBitArrayT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementEqualZero<S, RepBitArrayT, RepBitT>,
+        ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
+    {
+        let r_bit = rep.equal_zero(sess, &x);
         Ok(rep.ring_inject(sess, 0, &r_bit))
     }
 }
@@ -242,7 +235,7 @@ where
     ReplicatedPlacement: PlacementFill<S, m!(ReplicatedShape), RepRingT>,
     ReplicatedPlacement: PlacementShape<S, RepRingT, m!(ReplicatedShape)>,
 
-    // this has to dissapear after prefixor is a trait
+    // these are due to prefixor implementation
     ReplicatedPlacement:
         PlacementAnd<S, m!(ReplicatedBitTensor), m!(ReplicatedBitTensor), m!(ReplicatedBitTensor)>,
     ReplicatedPlacement:

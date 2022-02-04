@@ -82,7 +82,10 @@ pub trait PlacementEqualZero<S: Session, T, O> {
 modelled_kernel! {
     PlacementEqualZero::equal_zero, EqualZeroOp,
     [
-        (ReplicatedPlacement, (ReplicatedBitArray64) -> ReplicatedRing64Tensor => [transparent] Self::bit_kernel),
-        (ReplicatedPlacement, (ReplicatedBitArray128) -> ReplicatedRing128Tensor => [transparent] Self::bit_kernel),
+        (ReplicatedPlacement, (ReplicatedBitArray64) -> ReplicatedRing64Tensor => [transparent] Self::bitdec_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedBitArray128) -> ReplicatedRing128Tensor => [transparent] Self::bitdec_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedBitArray64) -> ReplicatedBitTensor => [transparent] Self::bitdec_bit_kernel),
+        (ReplicatedPlacement, (ReplicatedBitArray128) -> ReplicatedBitTensor => [transparent] Self::bitdec_bit_kernel),
+
     ]
 }

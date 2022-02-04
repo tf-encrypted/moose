@@ -24,6 +24,7 @@ mod division;
 mod exp;
 mod input;
 mod log;
+mod misc;
 mod softmax;
 pub use self::aes::AbstractReplicatedAesKey;
 
