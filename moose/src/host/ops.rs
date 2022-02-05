@@ -1055,6 +1055,34 @@ impl InverseOp {
     }
 }
 
+impl LogOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: num_traits::Float>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        let x = plc.place(sess, x);
+        Ok(HostTensor::<T>(x.0.map(|e| e.ln()), x.1))
+    }
+}
+
+impl Log2Op {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: num_traits::Float>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        let x = plc.place(sess, x);
+        Ok(HostTensor::<T>(x.0.map(|e| e.log2()), x.1))
+    }
+}
+
 impl RingFixedpointEncodeOp {
     pub(crate) fn float32_kernel<S: RuntimeSession>(
         _sess: &S,
