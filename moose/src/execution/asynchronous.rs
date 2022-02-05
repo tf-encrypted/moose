@@ -366,7 +366,6 @@ impl Session for AsyncSession {
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?,
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
             Sign(op) => DispatchKernel::compile(&op, plc)?,
-            FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?,
             Transpose(op) => DispatchKernel::compile(&op, plc)?,
             Squeeze(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?,

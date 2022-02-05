@@ -964,7 +964,7 @@ impl SqueezeOp {
 }
 
 impl ConcatOp {
-    pub(crate) fn kernel<S: Session, T: LinalgScalar + FromPrimitive>(
+    pub(crate) fn host_kernel<S: Session, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         axis: u32,

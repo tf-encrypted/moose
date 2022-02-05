@@ -1126,7 +1126,6 @@ impl ToTextual for Operator {
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
-            FloatingpointConcat(op) => op.to_textual(),
             FloatingpointMean(op) => op.to_textual(),
             RepSetup(op) => op.to_textual(),
             Share(op) => op.to_textual(),

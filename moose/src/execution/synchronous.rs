@@ -198,7 +198,6 @@ impl Session for SyncSession {
             ExpandDims(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Squeeze(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Sign(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitDecompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Identity(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
