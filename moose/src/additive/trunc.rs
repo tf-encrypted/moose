@@ -196,15 +196,12 @@ mod tests {
 
         let x = AdditiveRing64Tensor {
             shares: [
-                HostRing64Tensor::from_raw_plc(array![0_u64, 0, 0], alice),
-                HostRing64Tensor::from_raw_plc(
-                    array![
-                        4611686018427387903,
-                        -1152921504606846976_i64 as u64,
-                        1152921504606846975
-                    ],
-                    bob,
-                ),
+                alice.from_raw(array![0_u64, 0, 0]),
+                bob.from_raw(array![
+                    4611686018427387903,
+                    -1152921504606846976_i64 as u64,
+                    1152921504606846975
+                ]),
             ],
         };
 
