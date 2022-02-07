@@ -321,12 +321,6 @@ macro_rules! anything_to_underscore {
         _
     };
 }
-// TODO: This should not be needed as soon as we find a format for the Tensor and its DType.
-macro_rules! anything_to_float64 {
-    ($($_:tt)*) => {
-        TensorDType::Float64
-    };
-}
 
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
@@ -347,10 +341,10 @@ macro_rules! values {
         }
 
         impl Ty {
-            pub fn from_name(name: &str) -> Option<Self> {
+            pub fn from_name(name: &str, inner: Option<TensorDType>) -> Option<Self> {
                 match name {
                     "Unknown" => Some(Ty::Unknown),
-                    $(stringify!($val) => Some(Ty::$val$((anything_to_float64!{$inner}))?),)+
+                    $(stringify!($val) => Some(Ty::$val$((inner.unwrap_or($inner::$default)))?),)+
                     "Bit" => Some(Ty::Bit),
                     "Float32" => Some(Ty::Float32),
                     "Float64" => Some(Ty::Float64),
