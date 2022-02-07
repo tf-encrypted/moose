@@ -27,9 +27,7 @@ fn pyobj_to_value(py: Python, obj: PyObject) -> PyResult<Value> {
         let string_value: String = obj.extract(py)?;
         Ok(Value::HostString(Box::new(HostString(
             string_value,
-            HostPlacement {
-                owner: "fake".into(),
-            },
+            HostPlacement::from("fake"),
         ))))
     } else if obj_ref.is_instance::<PyFloat>()? {
         let float_value: f64 = obj.extract(py)?;

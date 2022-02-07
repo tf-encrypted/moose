@@ -2106,12 +2106,8 @@ mod tests {
     macro_rules! rep_binary_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>, $factor: expr) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let x = FixedTensor::Host(new_host_fixed_tensor(HostRingTensor::from_raw_plc(xs, alice.clone())));
                 let y = FixedTensor::Host(new_host_fixed_tensor(HostRingTensor::from_raw_plc(ys, alice.clone())));
@@ -2444,12 +2440,8 @@ mod tests {
     macro_rules! rep_div_func_concrete_test {
         ($func_name:ident, $test_func: ident<$tt: ty>, $i_precision: expr, $f_precision: expr) => {
             fn $func_name(xs: ArrayD<f64>, ys: ArrayD<f64>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let encode = |item: &f64| (2_i64.pow($f_precision) as f64 * item) as $tt;
 
@@ -2565,9 +2557,7 @@ mod tests {
     macro_rules! rep_div_symbolic_test {
         ($func_name:ident, $new_symbolic_rep: ident) => {
             fn $func_name(i_precision: u32, f_precision: u32) {
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let x = Symbolic::Concrete(RepFixedTensor {
                     fractional_precision: f_precision,
@@ -2727,14 +2717,11 @@ mod tests {
     macro_rules! rep_approx_unary_fixed_test {
         ($func_name:ident, $test_func: ident<$ti: ty, $tu: ty>, $i_precision: expr, $f_precision: expr, $err: expr) => {
             fn $func_name(x: ArrayD<f64>, y_target: Vec<f64>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let sess = SyncSession::default();
+
                 let encode = |item: &f64| -> $tu {
                     let tmp: $ti = (2f64.powf($f_precision as f64) * item) as $ti;
                     tmp as $tu
@@ -2819,9 +2806,7 @@ mod tests {
     macro_rules! rep_unary_symbolic_test {
         ($func_name:ident, $test_func:ident, $new_symbolic_rep: ident) => {
             fn $func_name(i_precision: u32, f_precision: u32) {
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let x = Symbolic::Concrete(RepFixedTensor {
                     fractional_precision: f_precision,
@@ -2863,12 +2848,8 @@ mod tests {
     macro_rules! rep_signed_binary_func_test {
         ($func_name:ident, $test_func: ident<$ti: ty, $tu: ty>, $i_precision: expr, $f_precision: expr) => {
             fn $func_name(x: ArrayD<f64>, y: ArrayD<f64>, target: Vec<$tu>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let sess = SyncSession::default();
                 let encode = |item: &f64| -> $tu {
@@ -2948,12 +2929,8 @@ mod tests {
     macro_rules! rep_index_axis_fixed_test {
         ($func_name:ident, $ti: ty, $tu: ty,$axis: expr, $index: expr, $i_precision: expr, $f_precision: expr) => {
             fn $func_name(x: ArrayD<f64>, y_target: ArrayD<f64>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let sess = SyncSession::default();
                 let encode = |item: &f64| -> $tu {
@@ -3001,12 +2978,8 @@ mod tests {
     macro_rules! rep_expand_dims_fixed_test {
         ($func_name:ident, $ti: ty, $tu: ty,$axis: expr, $i_precision: expr, $f_precision: expr) => {
             fn $func_name(x: ArrayD<f64>, y_target: ArrayD<f64>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let sess = SyncSession::default();
                 let encode = |item: &f64| -> $tu {

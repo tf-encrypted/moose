@@ -128,12 +128,8 @@ mod tests {
 
     #[test]
     fn test_input_rep_ring() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         // Create replicated input tensor in a previous session
         let sess0 = SyncSession::default();
@@ -171,12 +167,8 @@ mod tests {
 
     #[test]
     fn test_input_rep_fixed() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         // Create replicated input tensor in a previous session
         let sess0 = SyncSession::default();

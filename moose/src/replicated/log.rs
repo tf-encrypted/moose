@@ -223,20 +223,16 @@ mod tests {
     use crate::fixedpoint::FixedTensor;
     use crate::host::{Convert, FromRaw};
     use crate::kernels::*;
-    use crate::replicated::log::Int2FL;
     use crate::prelude::*;
+    use crate::replicated::log::Int2FL;
     use ndarray::array;
     use ndarray::prelude::*;
 
     macro_rules! rep_approx_log_fixed_test {
         ($func_name:ident, $test_func: ident<$tt: ty>, $scalar_float_ty: ident, $tensor_float_ty:ident, $i_precision: expr, $f_precision: expr, $err: expr) => {
             fn $func_name(x: ArrayD<$scalar_float_ty>, y_target: Vec<$scalar_float_ty>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let sess = SyncSession::default();
 
@@ -301,13 +297,8 @@ mod tests {
 
     #[test]
     fn test_int2fl() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         let sess = SyncSession::default();
 

@@ -277,9 +277,8 @@ mod tests {
         output = Output: (Unit) -> Unit (save) @Host(alice)
         "#;
         let source = source_template.replace("TensorType", &data_type_str);
-        let plc = HostPlacement {
-            owner: "alice".into(),
-        };
+        let plc = HostPlacement::from("alice");
+
         let arguments: HashMap<String, Value> = hashmap!("x_uri".to_string()=> HostString("input_data".to_string(), plc.clone()).into(),
             "x_query".to_string() => HostString("".to_string(), plc.clone()).into(),
             "saved_uri".to_string() => HostString("saved_data".to_string(), plc).into());
@@ -475,9 +474,7 @@ mod tests {
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
-            HostPlacement {
-                owner: "alice".into(),
-            },
+            HostPlacement::from("alice"),
         )
         .into();
         assert_eq!(outputs["output"], expected_output);
@@ -510,9 +507,7 @@ mod tests {
             array![[0.6, -0.40000004], [-0.40000004, 0.6]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
-            HostPlacement {
-                owner: "alice".into(),
-            },
+            HostPlacement::from("alice"),
         );
         let x_inv: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_output, x_inv);
@@ -558,9 +553,7 @@ mod tests {
                         array![[1.0, 1.0], [1.0, 1.0]]
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
-                        HostPlacement {
-                            owner: "alice".into()
-                        },
+                        HostPlacement::from("alice"),
                     )
                 );
                 Ok(())
@@ -573,9 +566,7 @@ mod tests {
                         array![[1.0, 1.0], [1.0, 1.0]]
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
-                        HostPlacement {
-                            owner: "alice".into()
-                        },
+                        HostPlacement::from("alice"),
                     )
                 );
                 Ok(())
@@ -588,9 +579,7 @@ mod tests {
                         array![[1, 1], [1, 1]]
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
-                        HostPlacement {
-                            owner: "alice".into()
-                        },
+                        HostPlacement::from("alice"),
                     )
                 );
                 Ok(())
@@ -783,12 +772,9 @@ mod tests {
 
         if unwrap_flag {
             if let Value::HostFloat32Tensor(x) = comp_result {
-                let shaped_result = x.clone().reshape(HostShape(
-                    RawShape(vec![1]),
-                    HostPlacement {
-                        owner: "alice".into(),
-                    },
-                ));
+                let shaped_result = x
+                    .clone()
+                    .reshape(HostShape(RawShape(vec![1]), HostPlacement::from("alice")));
                 assert_eq!(
                     expected_result,
                     Value::Float32(Box::new(shaped_result.0[0]))

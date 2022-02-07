@@ -162,9 +162,7 @@ mod tests {
         let alice = "alice".into();
         let bob = "bob".into();
 
-        let unit = Value::Unit(Box::new(Unit(HostPlacement {
-            owner: "alice".into(),
-        })));
+        let unit = Value::Unit(Box::new(Unit(HostPlacement::from("alice"))));
 
         net.send(
             &unit,
@@ -225,9 +223,7 @@ mod tests {
         let net3 = Arc::clone(&net);
         let task3 = tokio::spawn(async move {
             let bob = "bob".into();
-            let unit = Value::Unit(Box::new(Unit(HostPlacement {
-                owner: "alice".into(),
-            })));
+            let unit = Value::Unit(Box::new(Unit(HostPlacement::from("alice"))));
             net3.send(
                 &unit,
                 &bob,
@@ -240,9 +236,7 @@ mod tests {
         let net4 = Arc::clone(&net);
         let task4 = tokio::spawn(async move {
             let bob = "bob".into();
-            let unit = Value::Unit(Box::new(Unit(HostPlacement {
-                owner: "alice".into(),
-            })));
+            let unit = Value::Unit(Box::new(Unit(HostPlacement::from("alice"))));
             net4.send(
                 &unit,
                 &bob,

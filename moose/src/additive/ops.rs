@@ -294,15 +294,9 @@ mod tests {
 
     #[test]
     fn test_add() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let bob = HostPlacement {
-            owner: "bob".into(),
-        };
-        let adt = AdditivePlacement {
-            owners: ["alice".into(), "bob".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let bob = HostPlacement::from("bob");
+        let adt = AdditivePlacement::from(["alice", "bob"]);
 
         let x = AdditiveRing64Tensor {
             shares: [
@@ -341,9 +335,7 @@ mod tests {
 
     #[test]
     fn test_symbolic_add() {
-        let adt = AdditivePlacement {
-            owners: ["alice".into(), "bob".into()],
-        };
+        let adt = AdditivePlacement::from(["alice", "bob"]);
 
         let x: <AdditiveRing64Tensor as KnownType<SymbolicSession>>::Type =
             Symbolic::Symbolic(SymbolicHandle {
@@ -382,16 +374,9 @@ mod tests {
 
     #[test]
     fn test_concrete_symbolic_add() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let bob = HostPlacement {
-            owner: "bob".into(),
-        };
-
-        let adt = AdditivePlacement {
-            owners: ["alice".into(), "bob".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let bob = HostPlacement::from("bob");
+        let adt = AdditivePlacement::from(["alice", "bob"]);
 
         let x: <AdditiveRing64Tensor as KnownType<SymbolicSession>>::Type =
             Symbolic::Concrete(AdtTensor {
