@@ -174,6 +174,7 @@ mod tests {
     use super::*;
     use crate::execution::SyncSession;
     use crate::host::HostRingTensor;
+    use crate::prelude::*;
     use crate::types::*;
     use ndarray::array;
     use ndarray::prelude::*;
