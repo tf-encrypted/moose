@@ -1058,7 +1058,7 @@ operators![
     Neg,
     Equal,
     EqualZero,
-    LessThen,
+    LessThan,
     GreaterThan,
     // Floating-point operators
     FloatingpointConcat,

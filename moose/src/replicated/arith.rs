@@ -492,8 +492,8 @@ impl DotOp {
     }
 }
 
-impl RepAndOp {
-    pub(crate) fn bit_kernel<S: Session, RepT>(
+impl AndOp {
+    pub(crate) fn rep_kernel<S: Session, RepT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepT,
@@ -507,8 +507,8 @@ impl RepAndOp {
     }
 }
 
-impl RepXorOp {
-    pub(crate) fn bit_kernel<S: Session, X1, X2, Y>(
+impl XorOp {
+    pub(crate) fn rep_kernel<S: Session, X1, X2, Y>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: X1,
@@ -608,8 +608,8 @@ impl ShlOp {
     }
 }
 
-impl RepMsbOp {
-    pub(crate) fn bit_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, N: Const>(
+impl MsbOp {
+    pub(crate) fn rep_bit_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
@@ -624,7 +624,7 @@ impl RepMsbOp {
         Ok(rep.index(sess, N::VALUE - 1, &bits))
     }
 
-    pub(crate) fn ring_kernel<S: Session, RepRingT, RepBitT>(
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
@@ -635,6 +635,20 @@ impl RepMsbOp {
     {
         let x_bin = rep.msb(sess, &x);
         Ok(rep.ring_inject(sess, 0, &x_bin))
+    }
+
+    pub(crate) fn rep_bit_dec_kernel<S: Session, RepBitArrayT, RepRingT, RepBitT, N: Const>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        bits: RepBitArrayT,
+    ) -> Result<RepRingT>
+    where
+        RepBitArrayT: BitArray<Len = N>,
+        ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
+        ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
+    {
+        let msb = rep.index(sess, N::VALUE - 1, &bits);
+        Ok(rep.ring_inject(sess, 0, &msb))
     }
 }
 

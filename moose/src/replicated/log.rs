@@ -1,29 +1,13 @@
 use super::*;
-use crate::computation::{EqualOp, EqualZeroOp};
 use crate::error::Result;
 use crate::execution::Session;
-use crate::fixedpoint::PolynomialEval;
+use crate::fixedpoint::{PolynomialEval, FixedpointTensor};
 use crate::{Const, Ring};
 use lazy_static::lazy_static;
 
 lazy_static! {
     static ref P_2524: Vec<f64> = vec![-2.05466671951, -8.8626599391, 6.10585199015, 4.81147460989];
     static ref Q_2524: Vec<f64> = vec![0.353553425277, 4.54517087629, 6.42784209029, 1.0];
-}
-
-pub(crate) trait TreeReduceMul<S: Session, T, O> {
-    fn reduce_mul(&self, sess: &S, x: &[T]) -> O;
-}
-
-impl<S: Session, T: Clone> TreeReduceMul<S, T, T> for ReplicatedPlacement
-where
-    ReplicatedPlacement: PlacementMul<S, T, T, T>,
-{
-    fn reduce_mul(&self, sess: &S, x: &[T]) -> T {
-        let elementwise_mul =
-            |rep: &ReplicatedPlacement, sess: &S, x: &T, y: &T| -> T { rep.mul(sess, x, y) };
-        self.tree_reduce(sess, x, elementwise_mul)
-    }
 }
 
 impl Log2Op {
@@ -236,13 +220,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::execution::SyncSession;
     use crate::fixedpoint::FixedTensor;
-    use crate::host::{Convert, FromRaw, HostPlacement};
+    use crate::host::{Convert, FromRaw};
     use crate::kernels::*;
     use crate::replicated::log::Int2FL;
-    use crate::replicated::{ReplicatedBitTensor, ReplicatedPlacement};
-    use crate::types::{HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostRing64Tensor};
+    use crate::prelude::*;
     use ndarray::array;
     use ndarray::prelude::*;
 

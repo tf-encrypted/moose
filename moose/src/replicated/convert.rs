@@ -5,7 +5,7 @@ use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
 use crate::execution::SetupGeneration;
 use crate::host::{AbstractHostAesKey, HostBitArray, HostFixedTensor, SyncKey};
 
-impl RepShareOp {
+impl ShareOp {
     pub(crate) fn aeskey_kernel<S: Session, HostBitArrayT, RepBitArrayT>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -159,8 +159,8 @@ impl RepShareOp {
     }
 }
 
-impl RepRevealOp {
-    pub(crate) fn aeskey_kernel<S: Session, RepBitArrayT, HostBitArrayT>(
+impl RevealOp {
+    pub(crate) fn host_aeskey_kernel<S: Session, RepBitArrayT, HostBitArrayT>(
         sess: &S,
         receiver: &HostPlacement,
         key: RepAesKey<RepBitArrayT>,
@@ -172,7 +172,7 @@ impl RepRevealOp {
         Ok(AbstractHostAesKey(bit_array))
     }
 
-    pub(crate) fn fixed_kernel<S: Session, RepRingT, HostRingT>(
+    pub(crate) fn host_fixed_kernel<S: Session, RepRingT, HostRingT>(
         sess: &S,
         receiver: &HostPlacement,
         xe: RepFixedTensor<RepRingT>,
@@ -188,7 +188,7 @@ impl RepRevealOp {
         })
     }
 
-    pub(crate) fn bit_array_kernel<S: Session, RepBitT, HostBitT, N>(
+    pub(crate) fn host_bit_array_kernel<S: Session, RepBitT, HostBitT, N>(
         sess: &S,
         receiver: &HostPlacement,
         xe: RepBitArray<RepBitT, N>,
@@ -200,7 +200,7 @@ impl RepRevealOp {
         Ok(HostBitArray(x, PhantomData))
     }
 
-    pub(crate) fn ring_kernel<S: Session, R: Clone>(
+    pub(crate) fn host_ring_kernel<S: Session, R: Clone>(
         sess: &S,
         receiver: &HostPlacement,
         xe: RepTensor<R>,

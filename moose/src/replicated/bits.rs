@@ -98,7 +98,7 @@ where
 }
 
 impl BitDecomposeOp {
-    pub(crate) fn ring_kernel<S: Session, RepRingT, RepBitT, N: Const>(
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT, N: Const>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,

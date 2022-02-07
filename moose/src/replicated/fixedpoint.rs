@@ -77,8 +77,8 @@ impl RepFixedpointMeanOp {
     }
 }
 
-impl RepTruncPrOp {
-    pub(crate) fn kernel<S: Session, HostRingT>(
+impl TruncPrOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         amount: u32,

@@ -89,7 +89,7 @@ impl ConcatOp {
 }
 
 impl FillOp {
-    pub(crate) fn ring64_kernel<S: Session, ShapeT, RingT>(
+    pub(crate) fn rep_ring64_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u64,
@@ -123,7 +123,7 @@ impl FillOp {
         Ok(RepTensor { shares })
     }
 
-    pub(crate) fn ring128_kernel<S: Session, ShapeT, RingT>(
+    pub(crate) fn rep_ring128_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         value: u128,
@@ -396,8 +396,8 @@ impl SliceOp {
     }
 }
 
-impl RepShlDimOp {
-    pub(crate) fn kernel<S: Session, HostBitT>(
+impl ShlDimOp {
+    pub(crate) fn rep_bit_kernel<S: Session, HostBitT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         amount: usize,

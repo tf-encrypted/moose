@@ -4,41 +4,87 @@ use super::*;
 use crate::computation::EqualOp;
 use crate::error::Result;
 use crate::execution::Session;
-use crate::{Const, Ring};
+use crate::Const;
+
+pub(crate) trait TreeReduceMul<S: Session, T, O> {
+    fn reduce_mul(&self, sess: &S, x: &[T]) -> O;
+}
+
+impl<S: Session, T: Clone> TreeReduceMul<S, T, T> for ReplicatedPlacement
+where
+    ReplicatedPlacement: PlacementMul<S, T, T, T>,
+{
+    fn reduce_mul(&self, sess: &S, x: &[T]) -> T {
+        let elementwise_mul =
+            |rep: &ReplicatedPlacement, sess: &S, x: &T, y: &T| -> T { rep.mul(sess, x, y) };
+        self.tree_reduce(sess, x, elementwise_mul)
+    }
+}
 
 impl EqualOp {
-    pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT, ShapeT, N: Const>(
+    pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT, RepBitArrayT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepRingT,
         y: RepRingT,
     ) -> Result<RepBitT>
     where
-        RepRingT: Ring<BitLength = N>,
         ReplicatedPlacement: PlacementBitDecompose<S, RepRingT, RepBitArrayT>,
         ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
-        ReplicatedPlacement: PlacementFill<S, ShapeT, RepBitT>,
-        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
-        ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
-        ReplicatedPlacement: PlacementMul<S, RepBitT, RepBitT, RepBitT>,
-        ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementEqualZero<S, RepBitArrayT, RepBitT>,
     {
         let z = rep.sub(sess, &x, &y);
         let bits = rep.bit_decompose(sess, &z);
+        Ok(rep.equal_zero(sess, &bits))
+    }
 
-        let v: Vec<_> = (0..RepRingT::BitLength::VALUE)
-            .map(|i| rep.index(sess, i, &bits))
-            .collect();
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepRingT,
+        y: RepRingT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementEqual<S, RepRingT, RepRingT, RepBitT>,
+        ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
+    {
+        let b = rep.equal(sess, &x, &y);
+        Ok(rep.ring_inject(sess, 0, &b))
+    }
+}
 
-        let ones = rep.fill(sess, 1u8.into(), &rep.shape(sess, &z));
+impl EqualZeroOp {
+    pub(crate) fn bitdec_bit_kernel<S: Session, RepBitArrayT, RepBitT, MirBitT, N: Const>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepBitArrayT,
+    ) -> Result<RepBitT>
+    where
+        RepBitArrayT: BitArray<Len = N>,
+        ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
+        ReplicatedPlacement: ShapeFill<S, RepBitT, Result = MirBitT>,
+        ReplicatedPlacement: PlacementXor<S, MirBitT, RepBitT, RepBitT>,
+        ReplicatedPlacement: TreeReduceMul<S, RepBitT, RepBitT>,
+    {
+        let vx: Vec<_> = (0..N::VALUE).map(|i| rep.index(sess, i, &x)).collect();
 
-        // TODO(Morten) can we use `neg` here instead? would it be more efficient?
-        let v_not: Vec<_> = v.iter().map(|vi| rep.xor(sess, &ones, vi)).collect();
+        let ones = rep.shape_fill(sess, 1u8, &vx[0]);
+        let v_not: Vec<_> = vx.iter().map(|vi| rep.xor(sess, &ones, vi)).collect();
 
-        // TODO we can optimize this by having a binary multiplier like
-        // we are doing with the binary adder in bit decomposition
-        Ok(v_not.iter().fold(ones, |acc, y| rep.mul(sess, &acc, y)))
+        Ok(rep.reduce_mul(sess, &v_not))
+    }
+
+    pub(crate) fn bitdec_ring_kernel<S: Session, RepBitArrayT, RepRingT, RepBitT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepBitArrayT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementEqualZero<S, RepBitArrayT, RepBitT>,
+        ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
+    {
+        let r_bit = rep.equal_zero(sess, &x);
+        Ok(rep.ring_inject(sess, 0, &r_bit))
     }
 }
 
