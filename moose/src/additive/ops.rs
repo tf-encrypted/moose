@@ -290,9 +290,9 @@ mod tests {
     use super::*;
     use crate::computation::{AddOp, KnownType, Operation, Operator, Placement};
     use crate::execution::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
-    use crate::execution::SyncSession;
+    use crate::prelude::*;
     use crate::types::*;
-    use ndarray::array;
+    use ndarray::prelude::*;
 
     #[test]
     fn test_add() {
@@ -308,52 +308,37 @@ mod tests {
 
         let x = AdditiveRing64Tensor {
             shares: [
-                HostRing64Tensor::from_raw_plc(array![1, 2, 3], alice.clone()),
-                HostRing64Tensor::from_raw_plc(array![4, 5, 6], bob.clone()),
+                alice.from_raw(array![1, 2, 3]),
+                bob.from_raw(array![4, 5, 6]),
             ],
         };
 
         let y = AdditiveRing64Tensor {
             shares: [
-                HostRing64Tensor::from_raw_plc(array![7, 8, 9], alice.clone()),
-                HostRing64Tensor::from_raw_plc(array![1, 2, 3], bob.clone()),
+                alice.from_raw(array![7, 8, 9]),
+                bob.from_raw(array![1, 2, 3]),
             ],
         };
 
         let sess = SyncSession::default();
         let AdtTensor { shares: [z0, z1] } = adt.add(&sess, &x, &y);
 
-        assert_eq!(
-            z0,
-            HostRing64Tensor::from_raw_plc(array![1 + 7, 2 + 8, 3 + 9], alice.clone())
-        );
-        assert_eq!(
-            z1,
-            HostRing64Tensor::from_raw_plc(array![4 + 1, 5 + 2, 6 + 3], bob.clone())
-        );
+        assert_eq!(z0, alice.from_raw(array![1 + 7, 2 + 8, 3 + 9]));
+        assert_eq!(z1, bob.from_raw(array![4 + 1, 5 + 2, 6 + 3]));
 
-        let r_alice = HostRing64Tensor::from_raw_plc(array![7, 8, 9], alice.clone());
+        let r_alice: HostRing64Tensor = alice.from_raw(array![7, 8, 9]);
         let AdtTensor { shares: [zr0, zr1] } = adt.add(&sess, &x, &r_alice);
 
-        assert_eq!(
-            zr0,
-            HostRing64Tensor::from_raw_plc(array![1 + 7, 2 + 8, 3 + 9], alice.clone())
-        );
-        assert_eq!(
-            zr1,
-            HostRing64Tensor::from_raw_plc(array![4, 5, 6], bob.clone())
-        );
+        assert_eq!(zr0, alice.from_raw(array![1 + 7, 2 + 8, 3 + 9]));
+        assert_eq!(zr1, bob.from_raw(array![4, 5, 6]));
 
-        let r_bob = HostRing64Tensor::from_raw_plc(array![7, 8, 9], bob.clone());
+        let r_bob: HostRing64Tensor = bob.from_raw(array![7, 8, 9]);
         let AdtTensor {
             shares: [zrb0, zrb1],
         } = adt.add(&sess, &x, &r_bob);
 
-        assert_eq!(zrb0, HostRing64Tensor::from_raw_plc(array![1, 2, 3], alice));
-        assert_eq!(
-            zrb1,
-            HostRing64Tensor::from_raw_plc(array![4 + 7, 5 + 8, 6 + 9], bob)
-        );
+        assert_eq!(zrb0, alice.from_raw(array![1, 2, 3]));
+        assert_eq!(zrb1, bob.from_raw(array![4 + 7, 5 + 8, 6 + 9]));
     }
 
     #[test]

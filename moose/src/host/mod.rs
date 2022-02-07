@@ -603,7 +603,7 @@ impl FromRaw<RawSeed, Seed> for HostPlacement {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::execution::SyncSession;
+    use crate::prelude::*;
     use rstest::rstest;
 
     #[test]

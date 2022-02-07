@@ -120,14 +120,10 @@ impl InputOp {
 mod tests {
     use super::*;
     use crate::computation::SessionId;
-    use crate::execution::SyncSession;
-    use crate::host::FromRawPlc;
     use crate::kernels::{PlacementFixedpointEncode, PlacementReveal, PlacementShare};
+    use crate::prelude::*;
     use crate::storage::LocalSyncStorage;
-    use crate::types::{
-        HostFloat32Tensor, HostRing64Tensor, ReplicatedFixed64Tensor, ReplicatedRing64Tensor,
-    };
-    use ndarray::{array, IxDyn};
+    use ndarray::prelude::*;
     use std::rc::Rc;
 
     #[test]
@@ -141,10 +137,7 @@ mod tests {
 
         // Create replicated input tensor in a previous session
         let sess0 = SyncSession::default();
-        let x = HostRing64Tensor::from_raw_plc(
-            array![1u64, 2, 3].into_dimensionality::<IxDyn>().unwrap(),
-            alice.clone(),
-        );
+        let x: HostRing64Tensor = alice.from_raw(array![1u64, 2, 3]);
         let x_shared = rep.share(&sess0, &x);
 
         // Populate test session args with shares of x
@@ -187,12 +180,7 @@ mod tests {
 
         // Create replicated input tensor in a previous session
         let sess0 = SyncSession::default();
-        let x = HostFloat32Tensor::from_raw_plc(
-            array![1.0, 2.0, 3.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            alice.clone(),
-        );
+        let x: HostFloat32Tensor = alice.from_raw(array![1.0, 2.0, 3.0]);
         // TODO change fixedpoint values when fixedpoint config is no longer hardcoded, see above TODO
         let x_encoded = alice.fixedpoint_encode(&sess0, 23, 14, &x);
         let x_shared = rep.share(&sess0, &x_encoded);

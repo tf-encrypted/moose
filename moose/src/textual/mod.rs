@@ -752,12 +752,13 @@ fn host_fixed128_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
     Ok((
         input,
         Value::HostFixed128Tensor(Box::new(HostFixed128Tensor {
-            tensor: HostRing128Tensor::from_raw_plc(ndarray::Array::from(tensor), placement),
+            tensor: placement.from_raw(tensor),
             integral_precision,
             fractional_precision,
         })),
     ))
 }
+
 /// Parses a vector of items, using the supplied inner parser.
 fn vector<'a, F: 'a, O, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     inner: F,

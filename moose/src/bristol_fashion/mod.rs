@@ -216,11 +216,7 @@ pub fn byte_vec_to_bit_vec_be(bytes: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::computation::Role;
-    use crate::execution::SyncSession;
-    use crate::host::{HostBitTensor, HostPlacement};
-    use crate::replicated::ReplicatedPlacement;
-    use crate::types::ReplicatedBitTensor;
+    use crate::prelude::*;
 
     #[test]
     fn test_parse_aes() {
@@ -260,9 +256,7 @@ mod tests {
     #[test]
     fn test_aes_host() {
         let actual_c = {
-            let host = HostPlacement {
-                owner: Role::from("host"),
-            };
+            let host = HostPlacement::from("host");
 
             let k: Vec<HostBitTensor> = K
                 .iter()
@@ -293,12 +287,8 @@ mod tests {
         use crate::kernels::{PlacementReveal, PlacementShare};
 
         let actual_c = {
-            let host = HostPlacement {
-                owner: Role::from("host"),
-            };
-            let rep = ReplicatedPlacement {
-                owners: [Role::from("alice"), Role::from("bob"), Role::from("carole")],
-            };
+            let host = HostPlacement::from("host");
+            let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
             let sess = SyncSession::default();
 

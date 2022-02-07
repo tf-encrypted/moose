@@ -124,12 +124,11 @@ impl SoftmaxOp {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
-    use crate::execution::SyncSession;
     use crate::fixedpoint::FixedTensor;
     use crate::host::Convert;
     use crate::host::{HostFixedTensor, HostRingTensor};
+    use crate::prelude::*;
     use ndarray::prelude::*;
     use ndarray::Zip;
 
@@ -159,8 +158,9 @@ mod tests {
                 };
                 let x_encoded = x.map(encode);
 
+                let x_foo: HostRingTensor<_> = alice.from_raw(x_encoded.clone());
                 let x = FixedTensor::Host(new_host_fixed_tensor_with_precision(
-                    HostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()), $i_precision, $f_precision)
+                    x_foo, $i_precision, $f_precision)
                 );
 
                 let exp_result = rep.$test_func(&sess, $axis, $upmost_index, &x);

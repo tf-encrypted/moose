@@ -172,28 +172,19 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::execution::SyncSession;
     use crate::host::HostRingTensor;
     use crate::prelude::*;
-    use crate::types::*;
-    use ndarray::array;
     use ndarray::prelude::*;
     use proptest::prelude::*;
 
     #[test]
     fn test_trunc() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let bob = HostPlacement {
-            owner: "bob".into(),
-        };
-        let carole = HostPlacement {
-            owner: "carole".into(),
-        };
-        let adt = AdditivePlacement {
-            owners: ["alice".into(), "bob".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let bob = HostPlacement::from("bob");
+        let carole = HostPlacement::from("carole");
+        let adt = AdditivePlacement::from(["alice", "bob"]);
+
+        let sess = SyncSession::default();
 
         let x = AdditiveRing64Tensor {
             shares: [
@@ -206,11 +197,10 @@ mod tests {
             ],
         };
 
-        let sess = SyncSession::default();
         let x_trunc = adt.trunc_pr(&sess, 60, &carole, &x);
         let _y = carole.reveal(&sess, &x_trunc);
 
-        let target = HostRing64Tensor::from_raw_plc(array![3, -1_i64 as u64, 0], carole);
+        let target: HostRing64Tensor = carole.from_raw(array![3, -1_i64 as u64, 0]);
 
         // probabilistic truncation can be off by 1
         for (i, value) in _y.0.iter().enumerate() {
@@ -238,20 +228,12 @@ mod tests {
     macro_rules! adt_truncation_test {
         ($func_name:ident, $tt: ident) => {
             fn $func_name(xs: ArrayD<$tt>, amount: usize, ys: ArrayD<$tt>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let bob = HostPlacement {
-                    owner: "bob".into(),
-                };
+                let alice = HostPlacement::from("alice");
+                let bob = HostPlacement::from("bob");
+                let carole = HostPlacement::from("carole");
+                let adt = AdditivePlacement::from(["alice", "bob"]);
 
-                let carole = HostPlacement {
-                    owner: "carole".into(),
-                };
-
-                let adt = AdditivePlacement {
-                    owners: ["alice".into(), "bob".into()],
-                };
+                let sess = SyncSession::default();
 
                 // creates an additive sharing of xs
                 let zero =
@@ -263,12 +245,11 @@ mod tests {
                     ],
                 };
 
-                let sess = SyncSession::default();
                 let x_trunc = adt.trunc_pr(&sess, amount, &carole, &x);
-                let _y = carole.reveal(&sess, &x_trunc);
+                let y = carole.reveal(&sess, &x_trunc);
 
-                let target_y = HostRingTensor::from_raw_plc(ys.clone(), carole.clone());
-                for (i, value) in _y.0.iter().enumerate() {
+                let target_y: HostRingTensor<_> = carole.from_raw(ys.clone());
+                for (i, value) in y.0.iter().enumerate() {
                     let diff = value - target_y.0[i];
                     assert!(
                         diff == std::num::Wrapping(1)
