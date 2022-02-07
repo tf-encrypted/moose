@@ -257,20 +257,20 @@ mod tests {
     fn test_aes_host() {
         let actual_c = {
             let host = HostPlacement::from("host");
+            let sess = SyncSession::default();
 
             let k: Vec<HostBitTensor> = K
                 .iter()
                 .flat_map(byte_to_bits_be)
-                .map(|b| HostBitTensor::from_slice_plc(&[b], host.clone()))
+                .map(|b| host.from_raw(vec![b]))
                 .collect();
 
             let m: Vec<HostBitTensor> = M
                 .iter()
                 .flat_map(byte_to_bits_be)
-                .map(|b| HostBitTensor::from_slice_plc(&[b], host.clone()))
+                .map(|b| host.from_raw(vec![b]))
                 .collect();
 
-            let sess = SyncSession::default();
             let c_bits: Vec<u8> = aes128(&sess, &host, k, m)
                 .iter()
                 .map(|t| t.0[0] & 1)
@@ -289,19 +289,18 @@ mod tests {
         let actual_c = {
             let host = HostPlacement::from("host");
             let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
-
             let sess = SyncSession::default();
 
             let k: Vec<ReplicatedBitTensor> = K
                 .iter()
                 .flat_map(byte_to_bits_be)
-                .map(|b| rep.share(&sess, &HostBitTensor::from_slice_plc(&[b], host.clone())))
+                .map(|b| rep.share(&sess, &host.from_raw(vec![b])))
                 .collect();
 
             let m: Vec<ReplicatedBitTensor> = M
                 .iter()
                 .flat_map(byte_to_bits_be)
-                .map(|b| rep.share(&sess, &HostBitTensor::from_slice_plc(&[b], host.clone())))
+                .map(|b| rep.share(&sess, &host.from_raw(vec![b])))
                 .collect();
 
             let c_bits: Vec<u8> =
