@@ -11,13 +11,13 @@ impl Convert<HostFloat64Tensor> for HostRing64Tensor {
     type Scale = u64;
     fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing64Tensor {
         let x_upshifted = &x.0 * (scaling_factor as f64);
-        let x_converted: ArrayD<u64> = x_upshifted.mapv(|el| (el as i64) as u64);
-        HostRing64Tensor::from_raw_plc(x_converted, x.1.clone())
+        let x_converted: ArrayD<_> = x_upshifted.mapv(|el| Wrapping((el as i64) as u64));
+        HostRingTensor(x_converted, x.1.clone())
     }
     fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
         let x_upshifted: ArrayD<i64> = ArrayD::from(x);
         let x_converted = x_upshifted.mapv(|el| el as f64);
-        HostFloat64Tensor::from_raw_plc(x_converted / scaling_factor as f64, x.1.clone())
+        HostTensor(x_converted / scaling_factor as f64, x.1.clone())
     }
 }
 
@@ -25,13 +25,13 @@ impl Convert<HostFloat64Tensor> for HostRing128Tensor {
     type Scale = u128;
     fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing128Tensor {
         let x_upshifted = &x.0 * (scaling_factor as f64);
-        let x_converted: ArrayD<u128> = x_upshifted.mapv(|el| (el as i128) as u128);
-        HostRing128Tensor::from_raw_plc(x_converted, x.1.clone())
+        let x_converted: ArrayD<_> = x_upshifted.mapv(|el| Wrapping((el as i128) as u128));
+        HostRingTensor(x_converted, x.1.clone())
     }
     fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
         let x_upshifted: ArrayD<i128> = ArrayD::from(x);
         let x_converted = x_upshifted.mapv(|el| el as f64);
-        HostFloat64Tensor::from_raw_plc(x_converted / scaling_factor as f64, x.1.clone())
+        HostTensor(x_converted / scaling_factor as f64, x.1.clone())
     }
 }
 
@@ -48,7 +48,7 @@ where
         let shape: &[usize] = self.0.shape();
         if let Some(ax) = axis {
             let dim_len = shape[*ax] as f64;
-            Ok(HostFloat64Tensor::from_raw_plc(
+            Ok(HostTensor(
                 Array::from_elem([], 1.0 / dim_len)
                     .into_dimensionality::<IxDyn>()
                     .map_err(|e| Error::KernelError(e.to_string()))?,
@@ -57,7 +57,7 @@ where
         } else {
             let dim_prod: usize = std::iter::Product::product(shape.iter());
             let prod_inv = 1.0 / dim_prod as f64;
-            Ok(HostFloat64Tensor::from_raw_plc(
+            Ok(HostTensor(
                 Array::from_elem([], prod_inv)
                     .into_dimensionality::<IxDyn>()
                     .map_err(|e| Error::KernelError(e.to_string()))?,

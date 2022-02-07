@@ -11,6 +11,7 @@ use crate::error::{Error, Result};
 use crate::host::PrfKey;
 use crate::kernels::{DispatchKernel, PlacementPlace};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
+use crate::{MirroredCounterpart, Underlying};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -50,6 +51,17 @@ impl<T: Placed> Symbolic<T> {
             Symbolic::Concrete(_) => None,
         }
     }
+}
+
+impl<T: Placed + Underlying> Underlying for Symbolic<T> {
+    type TensorType = <T as Underlying>::TensorType;
+}
+
+impl<T: Placed + MirroredCounterpart> MirroredCounterpart for Symbolic<T>
+where
+    <T as MirroredCounterpart>::MirroredType: Placed,
+{
+    type MirroredType = Symbolic<<T as MirroredCounterpart>::MirroredType>;
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -172,17 +184,16 @@ impl Session for SymbolicSession {
 impl SetupGeneration<ReplicatedPlacement> for SymbolicSession {
     type Setup = RepSetup<Symbolic<PrfKey>>;
 
-    fn setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
+    fn setup(&self, plc: &ReplicatedPlacement) -> Result<Arc<Self::Setup>> {
         // Produce a new replicated setup or returned a previously produced setup for the placement
         let state = self.state.read();
         match state.replicated_keys.get(plc) {
-            Some(setup) => Arc::clone(setup),
+            Some(setup) => Ok(Arc::clone(setup)),
             None => {
-                use crate::kernels::PlacementSetupGen;
                 drop(state); // Release the read access
 
                 // This may (likely) grab a write lock to the state inside
-                let new_setup = plc.gen_setup(self);
+                let new_setup = plc.gen_setup(self)?;
 
                 // Grab a new write lock.
                 let mut state = self.state.write();
@@ -192,7 +203,7 @@ impl SetupGeneration<ReplicatedPlacement> for SymbolicSession {
                     .replicated_keys
                     .entry(plc.clone())
                     .or_insert_with(|| Arc::new(new_setup));
-                Arc::clone(setup)
+                Ok(Arc::clone(setup))
             }
         }
     }
@@ -243,7 +254,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingInject(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepSetup(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Share(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Reveal(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             TruncPr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -261,6 +271,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Index(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Diag(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            BitDecompose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             BitCompose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             ShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -274,9 +285,8 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Log(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Equal(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             EqualZero(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Less(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            LessThan(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            BitDecompose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

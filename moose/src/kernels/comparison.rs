@@ -5,7 +5,7 @@ pub trait PlacementLessThan<S: Session, T, U, O> {
 }
 
 modelled_kernel! {
-    PlacementLessThan::less, LessOp,
+    PlacementLessThan::less, LessThanOp,
     [
         (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::logical_host_kernel),
         (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> BooleanTensor => [concrete] Self::fixed_kernel),

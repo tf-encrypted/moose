@@ -4,7 +4,7 @@ use crate::error::{Error, Result};
 use crate::execution::Session;
 use crate::host::HostPlacement;
 use crate::kernels::PlacementInput;
-use crate::replicated::aes::AbstractReplicatedAesKey;
+use crate::replicated::aes::RepAesKey;
 use crate::{N128, N224, N64};
 use std::marker::PhantomData;
 
@@ -107,12 +107,12 @@ impl InputOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         arg_name: String,
-    ) -> Result<AbstractReplicatedAesKey<RepBitArrayT>>
+    ) -> Result<RepAesKey<RepBitArrayT>>
     where
         ReplicatedPlacement: PlacementInput<S, RepBitArrayT>,
     {
         let rep_bit_array = plc.input(sess, arg_name);
-        Ok(AbstractReplicatedAesKey(rep_bit_array))
+        Ok(RepAesKey(rep_bit_array))
     }
 }
 
@@ -120,31 +120,20 @@ impl InputOp {
 mod tests {
     use super::*;
     use crate::computation::SessionId;
-    use crate::execution::SyncSession;
-    use crate::host::FromRawPlc;
     use crate::kernels::{PlacementFixedpointEncode, PlacementReveal, PlacementShare};
+    use crate::prelude::*;
     use crate::storage::LocalSyncStorage;
-    use crate::types::{
-        HostFloat32Tensor, HostRing64Tensor, ReplicatedFixed64Tensor, ReplicatedRing64Tensor,
-    };
-    use ndarray::{array, IxDyn};
+    use ndarray::prelude::*;
     use std::rc::Rc;
 
     #[test]
     fn test_input_rep_ring() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         // Create replicated input tensor in a previous session
         let sess0 = SyncSession::default();
-        let x = HostRing64Tensor::from_raw_plc(
-            array![1u64, 2, 3].into_dimensionality::<IxDyn>().unwrap(),
-            alice.clone(),
-        );
+        let x: HostRing64Tensor = alice.from_raw(array![1u64, 2, 3]);
         let x_shared = rep.share(&sess0, &x);
 
         // Populate test session args with shares of x
@@ -178,21 +167,12 @@ mod tests {
 
     #[test]
     fn test_input_rep_fixed() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
         // Create replicated input tensor in a previous session
         let sess0 = SyncSession::default();
-        let x = HostFloat32Tensor::from_raw_plc(
-            array![1.0, 2.0, 3.0]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-            alice.clone(),
-        );
+        let x: HostFloat32Tensor = alice.from_raw(array![1.0, 2.0, 3.0]);
         // TODO change fixedpoint values when fixedpoint config is no longer hardcoded, see above TODO
         let x_encoded = alice.fixedpoint_encode(&sess0, 23, 14, &x);
         let x_shared = rep.share(&sess0, &x_encoded);

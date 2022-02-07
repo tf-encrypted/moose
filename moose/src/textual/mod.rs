@@ -752,12 +752,13 @@ fn host_fixed128_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
     Ok((
         input,
         Value::HostFixed128Tensor(Box::new(HostFixed128Tensor {
-            tensor: HostRing128Tensor::from_raw_plc(ndarray::Array::from(tensor), placement),
+            tensor: placement.from_raw(tensor),
             integral_precision,
             fractional_precision,
         })),
     ))
 }
+
 /// Parses a vector of items, using the supplied inner parser.
 fn vector<'a, F: 'a, O, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     inner: F,
@@ -1109,7 +1110,6 @@ impl ToTextual for Operator {
             Sqrt(op) => op.to_textual(),
             Diag(op) => op.to_textual(),
             ShlDim(op) => op.to_textual(),
-            BitDecompose(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
             RingFixedpointEncode(op) => op.to_textual(),
             RingFixedpointDecode(op) => op.to_textual(),
@@ -1128,7 +1128,6 @@ impl ToTextual for Operator {
             FixedpointMean(op) => op.to_textual(),
             FloatingpointConcat(op) => op.to_textual(),
             FloatingpointMean(op) => op.to_textual(),
-            RepSetup(op) => op.to_textual(),
             Share(op) => op.to_textual(),
             Reveal(op) => op.to_textual(),
             RepFixedpointMean(op) => op.to_textual(),
@@ -1140,6 +1139,7 @@ impl ToTextual for Operator {
             Msb(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
             Index(op) => op.to_textual(),
+            BitDecompose(op) => op.to_textual(),
             BitCompose(op) => op.to_textual(),
             Mux(op) => op.to_textual(),
             Neg(op) => op.to_textual(),
@@ -1150,7 +1150,7 @@ impl ToTextual for Operator {
             Log(op) => op.to_textual(),
             Equal(op) => op.to_textual(),
             EqualZero(op) => op.to_textual(),
-            Less(op) => op.to_textual(),
+            LessThan(op) => op.to_textual(),
             GreaterThan(op) => op.to_textual(),
             Demirror(op) => op.to_textual(),
             Mirror(op) => op.to_textual(),
@@ -1367,7 +1367,6 @@ impl ToTextual for Value {
             | Value::Float32Tensor(_)
             | Value::Float64Tensor(_)
             | Value::ReplicatedShape(_)
-            | Value::ReplicatedSetup(_)
             | Value::ReplicatedBitTensor(_)
             | Value::ReplicatedBitArray64(_)
             | Value::ReplicatedBitArray128(_)

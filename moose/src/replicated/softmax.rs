@@ -1,7 +1,10 @@
+//! Support for softmax operator
+
 use super::*;
 use crate::computation::MaximumOp;
 use crate::error::Result;
 use crate::execution::Session;
+use crate::fixedpoint::FixedpointTensor;
 use macros::with_context;
 
 impl MaximumOp {
@@ -121,12 +124,11 @@ impl SoftmaxOp {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
-    use crate::execution::SyncSession;
     use crate::fixedpoint::FixedTensor;
     use crate::host::Convert;
-    use crate::host::HostRingTensor;
+    use crate::host::{HostFixedTensor, HostRingTensor};
+    use crate::prelude::*;
     use ndarray::prelude::*;
     use ndarray::Zip;
 
@@ -145,22 +147,20 @@ mod tests {
     macro_rules! rep_approx_softmax_fixed_test {
         ($func_name:ident, $test_func: ident<$ti: ty, $tu: ty>, $axis: expr, $upmost_index: expr, $i_precision: expr, $f_precision: expr, $err: expr) => {
             fn $func_name(x: ArrayD<f64>, y_target: Vec<f64>) {
-                let alice = HostPlacement {
-                    owner: "alice".into(),
-                };
-                let rep = ReplicatedPlacement {
-                    owners: ["alice".into(), "bob".into(), "carole".into()],
-                };
+                let alice = HostPlacement::from("alice");
+                let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
                 let sess = SyncSession::default();
+
                 let encode = |item: &f64| -> $tu {
                     let tmp: $ti = (2f64.powf($f_precision as f64) * item) as $ti;
                     tmp as $tu
                 };
                 let x_encoded = x.map(encode);
 
+                let x_foo: HostRingTensor<_> = alice.from_raw(x_encoded.clone());
                 let x = FixedTensor::Host(new_host_fixed_tensor_with_precision(
-                    HostRingTensor::from_raw_plc(x_encoded.clone(), alice.clone()), $i_precision, $f_precision)
+                    x_foo, $i_precision, $f_precision)
                 );
 
                 let exp_result = rep.$test_func(&sess, $axis, $upmost_index, &x);

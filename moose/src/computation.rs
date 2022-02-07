@@ -560,7 +560,6 @@ values![
     ReplicatedFixed64Tensor,
     ReplicatedFixed128Tensor,
     ReplicatedAesKey,
-    ReplicatedSetup,
     ReplicatedShape,
     Mirrored3Ring64Tensor,
     Mirrored3Ring128Tensor,
@@ -1038,7 +1037,6 @@ operators![
     Abs,
     HostMean,
     Diag,
-    BitDecompose,
     Sign,
     RingFixedpointMean,
     RingFixedpointEncode,
@@ -1060,7 +1058,7 @@ operators![
     Neg,
     Equal,
     EqualZero,
-    Less,
+    LessThan,
     GreaterThan,
     // Floating-point operators
     FloatingpointConcat,
@@ -1068,7 +1066,6 @@ operators![
     // Additive operators
     AdtToRep,
     // Replicated operators
-    RepSetup,
     Share,
     Reveal,
     Fill,
@@ -1078,6 +1075,7 @@ operators![
     TruncPr,
     RepToAdt,
     Index,
+    BitDecompose,
     BitCompose,
     ShlDim,
     Mux,
@@ -1282,11 +1280,6 @@ pub struct DiagOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct BitDecomposeOp {
-    pub sig: Signature,
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual)]
 pub struct BitToRingOp {
     pub sig: Signature,
@@ -1388,7 +1381,7 @@ pub struct EqualZeroOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct LessOp {
+pub struct LessThanOp {
     pub sig: Signature,
 }
 
@@ -1463,11 +1456,6 @@ pub struct MsbOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct RepSetupOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct ShareOp {
     pub sig: Signature,
 }
@@ -1518,6 +1506,11 @@ pub struct ShlDimOp {
 pub struct IndexOp {
     pub sig: Signature,
     pub index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct BitDecomposeOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]

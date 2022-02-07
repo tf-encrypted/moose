@@ -288,14 +288,6 @@ impl<HostBitT: Placed, N: Const> BitArray for Symbolic<HostBitArray<HostBitT, N>
     type Len = N;
 }
 
-#[cfg(test)]
-impl<N> HostBitArray<HostBitTensor, N> {
-    pub(crate) fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> Self {
-        // TODO check that first dimension equals N
-        HostBitArray::<_, N>(HostBitTensor::from_raw_plc(raw_tensor, plc), PhantomData)
-    }
-}
-
 // TODO implement using moose_type macro
 impl<HostBitTensorT: Placed, N> Placed for HostBitArray<HostBitTensorT, N> {
     type Placement = HostBitTensorT::Placement;
@@ -576,6 +568,18 @@ impl<D: ndarray::Dimension> FromRaw<Array<u8, D>, HostBitTensor> for HostPlaceme
     }
 }
 
+impl<T: Clone, D: ndarray::Dimension, N: Const> FromRaw<Array<T, D>, HostBitArray<HostBitTensor, N>>
+    for HostPlacement
+where
+    HostPlacement: FromRaw<Array<T, D>, HostBitTensor>,
+{
+    fn from_raw(&self, raw: Array<T, D>) -> HostBitArray<HostBitTensor, N> {
+        assert_eq!(raw.shape()[0], N::VALUE);
+        let raw_bits: HostBitTensor = self.from_raw(raw);
+        HostBitArray(raw_bits, PhantomData)
+    }
+}
+
 impl FromRaw<RawShape, HostShape> for HostPlacement {
     fn from_raw(&self, raw: RawShape) -> HostShape {
         HostShape(raw, self.clone())
@@ -591,7 +595,7 @@ impl FromRaw<RawSeed, Seed> for HostPlacement {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::execution::SyncSession;
+    use crate::prelude::*;
     use rstest::rstest;
 
     #[test]

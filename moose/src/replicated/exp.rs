@@ -1,3 +1,5 @@
+//! Support for exponentiation
+
 use super::*;
 use crate::fixedpoint::{FixedpointTensor, PolynomialEval};
 use lazy_static::lazy_static;
@@ -172,18 +174,16 @@ pub(crate) trait ExpFromParts<S: Session, T, O> {
 
 impl<S: Session, RepRingT> ExpFromParts<S, RepRingT, RepRingT> for ReplicatedPlacement
 where
-    ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     RepRingT: Clone,
 
     RepFixedTensor<RepRingT>: CanonicalType,
     <RepFixedTensor<RepRingT> as CanonicalType>::Type: KnownType<S>,
-
     m!(c!(RepFixedTensor<RepRingT>)): TryInto<RepFixedTensor<RepRingT>>,
-    RepFixedTensor<RepRingT>: Into<m!(c!(RepFixedTensor<RepRingT>))>,
-
+    m!(c!(RepFixedTensor<RepRingT>)): From<RepFixedTensor<RepRingT>>,
     // TODO(Morten) Good chance we can remove macros here after complete switch to modelled_kernel
     ReplicatedPlacement: PolynomialEval<S, m!(c!(RepFixedTensor<RepRingT>))>,
 
+    ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementTruncPr<S, RepRingT, RepRingT>,
     ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
 {
@@ -201,14 +201,14 @@ where
             integral_precision: 2,
             fractional_precision: k - 2,
         };
-        let e_approx = self.polynomial_eval(sess, P_1045.to_vec(), x.into());
-
-        // convert replicated fixed tensor to concrete value in order to grab the replicated ring tensor
-        let e_approx_f: RepFixedTensor<RepRingT> = e_approx.try_into().ok().unwrap();
-        let e_approx_ring = e_approx_f.tensor;
+        let e_approx = self
+            .polynomial_eval(sess, P_1045.to_vec(), x.into())
+            .try_into()
+            .ok()
+            .unwrap();
 
         // do replicated multiplication at the ring level
-        let e_prod = self.mul(sess, e_int, &e_approx_ring);
+        let e_prod = self.mul(sess, e_int, &e_approx.tensor);
 
         // truncate the result but keep the most significant f bits to preserve fixed point encoding
         self.trunc_pr(sess, amount, &e_prod)
@@ -245,22 +245,16 @@ impl ExpOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::execution::SyncSession;
-    use crate::host::HostRingTensor;
-    use ndarray::array;
+    use crate::prelude::*;
+    use ndarray::prelude::*;
 
     #[test]
     fn test_pow2_from_bits() {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+        let alice = HostPlacement::from("alice");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
-        let x =
-            HostRingTensor::from_raw_plc(array![[0u64], [1], [1], [1]].into_dyn(), alice.clone());
-        let target = HostRingTensor::from_raw_plc(array![16384u64], alice.clone());
+        let x: HostRing64Tensor = alice.from_raw(array![[0u64], [1], [1], [1]]);
+        let target: HostRing64Tensor = alice.from_raw(array![16384u64]);
 
         let sess = SyncSession::default();
 

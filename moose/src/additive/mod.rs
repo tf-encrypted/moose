@@ -19,6 +19,15 @@ pub struct AdditivePlacement {
     pub owners: [Role; 2],
 }
 
+impl<R: Into<Role>> From<[R; 2]> for AdditivePlacement {
+    fn from(roles: [R; 2]) -> AdditivePlacement {
+        let [role0, role1] = roles;
+        AdditivePlacement {
+            owners: [role0.into(), role1.into()],
+        }
+    }
+}
+
 impl AdditivePlacement {
     pub(crate) fn host_placements(&self) -> (HostPlacement, HostPlacement) {
         let player0 = HostPlacement {

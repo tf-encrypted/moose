@@ -276,7 +276,7 @@ impl DecryptOp {
     >(
         sess: &S,
         plc: &ReplicatedPlacement,
-        key: AbstractReplicatedAesKey<RepBitArray128T>,
+        key: RepAesKey<RepBitArray128T>,
         ciphertext: HostFixedAesTensor<HostBitArray224T>,
     ) -> Result<RepFixedTensor<RepRing128TensorT>>
     where
@@ -394,12 +394,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::execution::SyncSession;
-    use crate::kernels::PlacementReveal;
-    use crate::types::{HostBitArray128, HostBitArray224};
+    use crate::prelude::*;
     use aes::cipher::generic_array::sequence::Concat;
     use aes_gcm::{aead::NewAead, AeadInPlace};
-    use ndarray::Array;
+    use ndarray::prelude::*;
 
     #[test]
     fn test_aes_aesgcm() {
@@ -459,9 +457,8 @@ mod tests {
         let raw_nonce = [177; 12];
         let raw_plaintext = [132; 16];
 
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
+        let alice = HostPlacement::from("alice");
+        let sess = SyncSession::default();
 
         let ciphertext: HostFixed128AesTensor = {
             let key = aes_gcm::Key::from_slice(&raw_key);
@@ -482,7 +479,7 @@ mod tests {
 
             let vec = crate::bristol_fashion::byte_vec_to_bit_vec_be(raw_ciphertext.as_ref());
             let array = Array::from_shape_vec((224, 1), vec).unwrap().into_dyn();
-            let bit_array = HostBitArray224::from_raw_plc(array, alice.clone());
+            let bit_array: HostBitArray224 = alice.from_raw(array);
 
             HostFixed128AesTensor {
                 integral_precision: 10,
@@ -494,11 +491,10 @@ mod tests {
         let key: HostAesKey = {
             let vec = crate::bristol_fashion::byte_vec_to_bit_vec_be(raw_key.as_ref());
             let array = Array::from_shape_vec((128, 1), vec).unwrap().into_dyn();
-            let bit_array = HostBitArray128::from_raw_plc(array, alice.clone());
+            let bit_array: HostBitArray128 = alice.from_raw(array);
             AbstractHostAesKey(bit_array)
         };
 
-        let sess = SyncSession::default();
         let plaintext = alice.decrypt(&sess, &key, &ciphertext);
 
         let actual_plaintext = plaintext.tensor.0[0].0;
@@ -512,14 +508,8 @@ mod tests {
         let raw_nonce = [177; 12];
         let raw_plaintext = [132; 16];
 
-        let host = HostPlacement {
-            owner: "host".into(),
-        };
-
-        let rep = ReplicatedPlacement {
-            owners: [Role::from("alice"), Role::from("bob"), Role::from("carole")],
-        };
-
+        let host = HostPlacement::from("host");
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
         let sess = SyncSession::default();
 
         let ciphertext: HostFixed128AesTensor = {
@@ -541,7 +531,7 @@ mod tests {
 
             let vec = crate::bristol_fashion::byte_vec_to_bit_vec_be(raw_ciphertext.as_ref());
             let array = Array::from_shape_vec((224, 1), vec).unwrap().into_dyn();
-            let bit_array = HostBitArray224::from_raw_plc(array, host.clone());
+            let bit_array: HostBitArray224 = host.from_raw(array);
 
             HostFixed128AesTensor {
                 integral_precision: 10,
@@ -553,9 +543,9 @@ mod tests {
         let key: ReplicatedAesKey = {
             let vec = crate::bristol_fashion::byte_vec_to_bit_vec_be(raw_key.as_ref());
             let array = Array::from_shape_vec((128, 1), vec).unwrap().into_dyn();
-            let bit_array = HostBitArray128::from_raw_plc(array, host.clone());
+            let bit_array: HostBitArray128 = host.from_raw(array);
             let shared_bit_array = rep.share(&sess, &bit_array);
-            AbstractReplicatedAesKey(shared_bit_array)
+            RepAesKey(shared_bit_array)
         };
 
         let shared_plaintext = rep.decrypt(&sess, &key, &ciphertext);

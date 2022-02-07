@@ -3,11 +3,10 @@
 use super::*;
 use crate::error::{Error, Result};
 use crate::host::*;
-use crate::kernels::{DispatchKernel, PlacementSetupGen};
+use crate::kernels::DispatchKernel;
 use crate::networking::LocalSyncNetworking;
 use crate::replicated::*;
 use crate::storage::LocalSyncStorage;
-use crate::types::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -18,7 +17,7 @@ pub type SyncStorageImpl = Rc<dyn SyncStorage>;
 /// Session object for synchronous/eager execution.
 pub struct SyncSession {
     session_id: SessionId,
-    replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<ReplicatedSetup>>>,
+    replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<RepSetup<PrfKey>>>>,
     arguments: HashMap<String, Value>,
     role_assignments: HashMap<Role, Identity>,
     storage: SyncStorageImpl,
@@ -171,7 +170,6 @@ impl Session for SyncSession {
             RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingInject(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Fill(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepSetup(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Share(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Reveal(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             TruncPr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -181,6 +179,7 @@ impl Session for SyncSession {
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Index(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            BitDecompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitCompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             ShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -200,7 +199,6 @@ impl Session for SyncSession {
             Sign(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            BitDecompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Identity(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Cast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -227,7 +225,7 @@ impl Session for SyncSession {
             Log(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Equal(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             EqualZero(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            Less(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            LessThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Maximum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Softmax(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -241,12 +239,12 @@ impl Session for SyncSession {
 impl SetupGeneration<ReplicatedPlacement> for SyncSession {
     type Setup = RepSetup<PrfKey>;
 
-    fn setup(&self, plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
+    fn setup(&self, plc: &ReplicatedPlacement) -> Result<Arc<Self::Setup>> {
         let mut replicated_keys = self.replicated_keys.write().unwrap();
         let setup = replicated_keys
             .entry(plc.clone())
-            .or_insert_with(|| Arc::new(plc.gen_setup(self)));
-        Arc::clone(setup)
+            .or_insert_with(|| Arc::new(plc.gen_setup(self).unwrap())); // TODO don't unwrap
+        Ok(Arc::clone(setup))
     }
 }
 

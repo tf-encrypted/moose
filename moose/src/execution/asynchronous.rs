@@ -1,10 +1,9 @@
 use super::*;
 use crate::error::{Error, Result};
 use crate::execution::Identity;
-use crate::host::*;
+use crate::host::{HostPlacement, HostString, PrfKey};
 use crate::kernels::DispatchKernel;
-use crate::replicated::*;
-use crate::types::*;
+use crate::replicated::{RepSetup, ReplicatedPlacement};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -110,7 +109,6 @@ pub struct AsyncSession {
     pub role_assignments: Arc<HashMap<Role, Identity>>,
     pub networking: AsyncNetworkingImpl,
     pub storage: AsyncStorageImpl,
-    // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
     pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
 }
 
@@ -347,13 +345,13 @@ impl Session for AsyncSession {
             RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?,
             RingInject(op) => DispatchKernel::compile(&op, plc)?,
             Fill(op) => DispatchKernel::compile(&op, plc)?,
-            RepSetup(op) => DispatchKernel::compile(&op, plc)?,
             Share(op) => DispatchKernel::compile(&op, plc)?,
             Reveal(op) => DispatchKernel::compile(&op, plc)?,
             TruncPr(op) => DispatchKernel::compile(&op, plc)?,
             Msb(op) => DispatchKernel::compile(&op, plc)?,
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?,
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?,
+            BitDecompose(op) => DispatchKernel::compile(&op, plc)?,
             BitCompose(op) => DispatchKernel::compile(&op, plc)?,
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?,
             PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)?,
@@ -370,7 +368,6 @@ impl Session for AsyncSession {
             Transpose(op) => DispatchKernel::compile(&op, plc)?,
             Squeeze(op) => DispatchKernel::compile(&op, plc)?,
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?,
-            BitDecompose(op) => DispatchKernel::compile(&op, plc)?,
             Identity(op) => DispatchKernel::compile(&op, plc)?,
             Cast(op) => DispatchKernel::compile(&op, plc)?,
             Reshape(op) => DispatchKernel::compile(&op, plc)?,
@@ -395,7 +392,7 @@ impl Session for AsyncSession {
             Equal(op) => DispatchKernel::compile(&op, plc)?,
             EqualZero(op) => DispatchKernel::compile(&op, plc)?,
             Mux(op) => DispatchKernel::compile(&op, plc)?,
-            Less(op) => DispatchKernel::compile(&op, plc)?,
+            LessThan(op) => DispatchKernel::compile(&op, plc)?,
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?,
             IndexAxis(op) => DispatchKernel::compile(&op, plc)?,
             Index(op) => DispatchKernel::compile(&op, plc)?,
@@ -414,9 +411,9 @@ impl Session for AsyncSession {
 }
 
 impl SetupGeneration<ReplicatedPlacement> for AsyncSession {
-    type Setup = ReplicatedSetup;
+    type Setup = RepSetup<PrfKey>;
 
-    fn setup(&self, _plc: &ReplicatedPlacement) -> Arc<Self::Setup> {
+    fn setup(&self, _plc: &ReplicatedPlacement) -> Result<Arc<Self::Setup>> {
         unimplemented!()
     }
 }

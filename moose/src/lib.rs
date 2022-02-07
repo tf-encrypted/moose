@@ -5099,8 +5099,16 @@ pub trait Ring {
     type BitLength: Const;
 }
 
-pub trait BitArray {
+pub(crate) trait BitArray {
     type Len: Const;
+}
+
+pub(crate) trait Underlying {
+    type TensorType;
+}
+
+pub(crate) trait MirroredCounterpart {
+    type MirroredType;
 }
 
 pub mod additive;
