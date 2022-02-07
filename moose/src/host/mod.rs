@@ -288,14 +288,6 @@ impl<HostBitT: Placed, N: Const> BitArray for Symbolic<HostBitArray<HostBitT, N>
     type Len = N;
 }
 
-#[cfg(test)]
-impl<N> HostBitArray<HostBitTensor, N> {
-    pub(crate) fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> Self {
-        // TODO check that first dimension equals N
-        HostBitArray::<_, N>(HostBitTensor::from_raw_plc(raw_tensor, plc), PhantomData)
-    }
-}
-
 // TODO implement using moose_type macro
 impl<HostBitTensorT: Placed, N> Placed for HostBitArray<HostBitTensorT, N> {
     type Placement = HostBitTensorT::Placement;
