@@ -1061,7 +1061,6 @@ operators![
     LessThan,
     GreaterThan,
     // Floating-point operators
-    FloatingpointConcat,
     FloatingpointMean,
     // Additive operators
     AdtToRep,
@@ -1412,12 +1411,6 @@ pub struct FixedpointMeanOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct NegOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct FloatingpointConcatOp {
-    pub sig: Signature,
-    pub axis: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, FromTextual)]
