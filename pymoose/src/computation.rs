@@ -39,6 +39,7 @@ enum PyOperation {
     std_InverseOperation(PyInverseOperation),
     std_MeanOperation(PyMeanOperation),
     std_SigmoidOperation(PySigmoidOperation),
+    std_LogOperation(PyLogOperation),
     std_SoftmaxOperation(PySoftmaxOperation),
     std_SqrtOperation(PySqrtOperation),
     std_SumOperation(PySumOperation),
@@ -314,6 +315,14 @@ struct PyExpOperation {
 
 #[derive(Deserialize, Debug)]
 struct PySigmoidOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyLogOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -724,7 +733,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_BitwiseOrOperation(op) => Ok(Operation {
-                        kind: BitOrOp {
+                        kind: OrOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
                         }
@@ -835,6 +844,16 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    std_LogOperation(op) => Ok(Operation {
+                        kind: LogOp {
+                            sig: Signature::from_unary(&op.signature, "x")?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     std_SoftmaxOperation(op) => Ok(Operation {
                         kind: SoftmaxOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
@@ -881,7 +900,7 @@ impl TryFrom<PyComputation> for Computation {
                         })
                     }
                     std_DecryptOperation(op) => Ok(Operation {
-                        kind: AesDecryptOp {
+                        kind: DecryptOp {
                             sig: Signature::from_binary(&op.signature, "key", "ciphertext")?,
                         }
                         .into(),

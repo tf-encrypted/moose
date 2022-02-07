@@ -1103,61 +1103,53 @@ impl ToTextual for Operator {
             Mean(op) => op.to_textual(),
             Sum(op) => op.to_textual(),
             Div(op) => op.to_textual(),
-            BitXor(op) => op.to_textual(),
-            BitAnd(op) => op.to_textual(),
-            BitOr(op) => op.to_textual(),
-            RingFill(op) => op.to_textual(),
+            Xor(op) => op.to_textual(),
+            And(op) => op.to_textual(),
+            Or(op) => op.to_textual(),
             HostMean(op) => op.to_textual(),
             Sqrt(op) => op.to_textual(),
-            HostOnes(op) => op.to_textual(),
             Diag(op) => op.to_textual(),
-            HostShlDim(op) => op.to_textual(),
+            ShlDim(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
             RingFixedpointEncode(op) => op.to_textual(),
             RingFixedpointDecode(op) => op.to_textual(),
             RingFixedpointMean(op) => op.to_textual(),
-            RingSample(op) => op.to_textual(),
-            RingSampleSeeded(op) => op.to_textual(),
+            Sample(op) => op.to_textual(),
+            SampleSeeded(op) => op.to_textual(),
             Shl(op) => op.to_textual(),
             Shr(op) => op.to_textual(),
             RingInject(op) => op.to_textual(),
             BitExtract(op) => op.to_textual(),
-            BitSample(op) => op.to_textual(),
-            BitSampleSeeded(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
-            AesDecrypt(op) => op.to_textual(),
+            Decrypt(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
-            FixedpointTruncPr(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
-            FloatingpointOnes(op) => op.to_textual(),
             FloatingpointConcat(op) => op.to_textual(),
             FloatingpointMean(op) => op.to_textual(),
-            RepShare(op) => op.to_textual(),
-            RepReveal(op) => op.to_textual(),
+            Share(op) => op.to_textual(),
+            Reveal(op) => op.to_textual(),
             RepFixedpointMean(op) => op.to_textual(),
             AddN(op) => op.to_textual(),
-            RepAnd(op) => op.to_textual(),
-            RepXor(op) => op.to_textual(),
-            RepTruncPr(op) => op.to_textual(),
-            AdtReveal(op) => op.to_textual(),
-            AdtFill(op) => op.to_textual(),
+            TruncPr(op) => op.to_textual(),
             AdtToRep(op) => op.to_textual(),
             Abs(op) => op.to_textual(),
             Fill(op) => op.to_textual(),
-            RepMsb(op) => op.to_textual(),
+            Msb(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
             Index(op) => op.to_textual(),
             BitDecompose(op) => op.to_textual(),
             BitCompose(op) => op.to_textual(),
-            RepShlDim(op) => op.to_textual(),
             Mux(op) => op.to_textual(),
             Neg(op) => op.to_textual(),
             Pow2(op) => op.to_textual(),
             Exp(op) => op.to_textual(),
             Sigmoid(op) => op.to_textual(),
+            Log2(op) => op.to_textual(),
+            Log(op) => op.to_textual(),
             Equal(op) => op.to_textual(),
+            EqualZero(op) => op.to_textual(),
             LessThan(op) => op.to_textual(),
             GreaterThan(op) => op.to_textual(),
             Demirror(op) => op.to_textual(),
@@ -1272,36 +1264,32 @@ impl ToTextual for RepFixedpointMeanOp {
     }
 }
 
-impl ToTextual for RingSampleOp {
+impl ToTextual for SampleOp {
     fn to_textual(&self) -> String {
         match self {
-            RingSampleOp {
+            SampleOp {
                 sig,
                 max_value: Some(a),
-            } => format!("RingSample{{max_value = {}}}: {}", a, sig.to_textual()),
-            RingSampleOp {
+            } => format!("Sample{{max_value = {}}}: {}", a, sig.to_textual()),
+            SampleOp {
                 sig,
                 max_value: None,
-            } => format!("RingSample{{}}: {}", sig.to_textual()),
+            } => format!("Sample{{}}: {}", sig.to_textual()),
         }
     }
 }
 
-impl ToTextual for RingSampleSeededOp {
+impl ToTextual for SampleSeededOp {
     fn to_textual(&self) -> String {
         match self {
-            RingSampleSeededOp {
+            SampleSeededOp {
                 sig,
                 max_value: Some(a),
-            } => format!(
-                "RingSampleSeeded{{max_value = {}}}: {}",
-                a,
-                sig.to_textual()
-            ),
-            RingSampleSeededOp {
+            } => format!("SampleSeeded{{max_value = {}}}: {}", a, sig.to_textual()),
+            SampleSeededOp {
                 sig,
                 max_value: None,
-            } => format!("RingSampleSeeded{{}}: {}", sig.to_textual()),
+            } => format!("SampleSeeded{{}}: {}", sig.to_textual()),
         }
     }
 }
@@ -1856,7 +1844,7 @@ mod tests {
     #[test]
     fn test_ring_sample() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x10 = RingSampleSeeded{max_value = 1}: (HostShape, Seed) -> HostRing64Tensor (shape, seed) @Host(alice)",
+            "x10 = SampleSeeded{max_value = 1}: (HostShape, Seed) -> HostRing64Tensor (shape, seed) @Host(alice)",
         )?;
         assert_eq!(op.name, "x10");
         Ok(())
@@ -1970,7 +1958,7 @@ mod tests {
             "z = Sqrt: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingFill {value = Ring64(42)}: (HostShape) -> HostRing64Tensor (s) @Host(alice)",
+            "z = Fill {value = Ring64(42)}: (HostShape) -> HostRing64Tensor (s) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = Shl {amount = 2}: (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
@@ -1991,10 +1979,10 @@ mod tests {
             "z = BitExtract {bit_idx = 2} : (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = BitSampleSeeded: (HostShape, Seed) -> HostBitTensor (shape, seed) @Host(alice)",
+            "z = SampleSeeded {}: (HostShape, Seed) -> HostBitTensor (shape, seed) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = BitXor: (HostBitTensor, HostBitTensor) -> HostBitTensor (x, y) @Host(alice)",
+            "z = Xor: (HostBitTensor, HostBitTensor) -> HostBitTensor (x, y) @Host(alice)",
         )?;
 
         parse_assignment::<(&str, ErrorKind)>(

@@ -137,7 +137,7 @@ mod tests {
         let body = (0..100)
             .map(|i| {
                 format!(
-                    "x{} = RingSampleSeeded{{}}: (HostShape, Seed) -> HostRing64Tensor (shape, seed) @Host(alice)",
+                    "x{} = SampleSeeded{{}}: (HostShape, Seed) -> HostRing64Tensor (shape, seed) @Host(alice)",
                     i
                 )
             })
@@ -201,7 +201,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"seed = Constant{value=Seed(00000000000000000000000000000000)}: () -> Seed @Host(alice)
         xshape = Constant{value=HostShape([2, 2])}: () -> HostShape @Host(alice)
-        sampled = RingSampleSeeded{}: (HostShape, Seed) -> HostRing64Tensor (xshape, seed) @Host(alice)
+        sampled = SampleSeeded{}: (HostShape, Seed) -> HostRing64Tensor (xshape, seed) @Host(alice)
         shape = Shape: (HostRing64Tensor) -> HostShape (sampled) @Host(alice)
         output = Output: (HostShape) -> HostShape (shape) @Host(alice)
         "#;
@@ -532,7 +532,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let template = r#"
         s = Constant{value=HostShape([2, 2])}: () -> HostShape @Host(alice)
-        r = HostOnes : (HostShape) -> dtype (s) @Host(alice)
+        r = Ones : (HostShape) -> dtype (s) @Host(alice)
         output = Output : (dtype) -> dtype (r) @Host(alice)
         "#;
         let source = template.replace("dtype", &dtype);
@@ -1036,7 +1036,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
             r#"shape = Constant{{value=HostShape([{shape}])}}: () -> HostShape @Host(alice)
-        res = RingFill {{value = {t}(1)}} : (HostShape) -> Host{t}Tensor (shape) @Host(alice)
+        res = Fill {{value = {t}(1)}} : (HostShape) -> Host{t}Tensor (shape) @Host(alice)
         output = Output : (Host{t}Tensor) -> Host{t}Tensor (res) @Host(alice)
         "#,
             t = type_str,

@@ -30,6 +30,7 @@ from pymoose.edsl.base import index_axis
 from pymoose.edsl.base import inverse
 from pymoose.edsl.base import less
 from pymoose.edsl.base import load
+from pymoose.edsl.base import log
 from pymoose.edsl.base import logical_or
 from pymoose.edsl.base import maximum
 from pymoose.edsl.base import mean
@@ -83,6 +84,7 @@ __all__ = [
     inverse,
     less,
     load,
+    log,
     logical_or,
     maximum,
     mirrored_placement,

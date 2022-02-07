@@ -90,7 +90,7 @@ impl OutputOp {
     }
 }
 
-impl BitOrOp {
+impl OrOp {
     pub(crate) fn bool_kernel<S: Session, HostT, RepT>(
         sess: &S,
         plc: &HostPlacement,

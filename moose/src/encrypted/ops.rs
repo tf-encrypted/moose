@@ -90,7 +90,7 @@ impl InputOp {
     }
 }
 
-impl AesDecryptOp {
+impl DecryptOp {
     pub(crate) fn host_kernel<S: Session, HostAesKeyT, ReplicatedAesKeyT, AesTensorT>(
         sess: &S,
         plc: &HostPlacement,
