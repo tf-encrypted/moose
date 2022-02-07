@@ -2,7 +2,7 @@ use super::*;
 use crate::mirrored::Mirrored3Placement;
 
 impl ReplicatedPlacement {
-    pub fn prefix_op<S, RepT>(
+    pub(crate) fn prefix_op<S, RepT>(
         &self,
         sess: &S,
         x: Vec<RepT>,
@@ -27,7 +27,7 @@ impl ReplicatedPlacement {
         res
     }
 
-    pub fn prefix_or<S: Session, RepT>(&self, sess: &S, x: Vec<RepT>) -> Vec<RepT>
+    pub(crate) fn prefix_or<S: Session, RepT>(&self, sess: &S, x: Vec<RepT>) -> Vec<RepT>
     where
         ReplicatedPlacement: PlacementAnd<S, RepT, RepT, RepT>,
         ReplicatedPlacement: PlacementXor<S, RepT, RepT, RepT>,
@@ -39,7 +39,8 @@ impl ReplicatedPlacement {
         self.prefix_op(sess, x, elementwise_or)
     }
 
-    pub fn prefix_and<S: Session, RepT>(&self, sess: &S, x: Vec<RepT>) -> Vec<RepT>
+    #[allow(dead_code)]
+    pub(crate) fn prefix_and<S: Session, RepT>(&self, sess: &S, x: Vec<RepT>) -> Vec<RepT>
     where
         ReplicatedPlacement: PlacementAnd<S, RepT, RepT, RepT>,
     {
@@ -48,6 +49,28 @@ impl ReplicatedPlacement {
         };
 
         self.prefix_op(sess, x, elementwise_and)
+    }
+
+    pub(crate) fn tree_reduce<S, RepT>(
+        &self,
+        sess: &S,
+        x: &[RepT],
+        op: fn(&Self, &S, &RepT, &RepT) -> RepT,
+    ) -> RepT
+    where
+        RepT: Clone,
+    {
+        let v_len = x.len();
+        if v_len == 1 {
+            x[0].clone()
+        } else {
+            let chunk1 = &x[0..v_len / 2];
+            let chunk2 = &x[v_len / 2..v_len];
+
+            let op_res_chunk1 = self.tree_reduce(sess, chunk1, op);
+            let op_res_chunk2 = self.tree_reduce(sess, chunk2, op);
+            op(self, sess, &op_res_chunk1, &op_res_chunk2)
+        }
     }
 }
 
@@ -215,29 +238,5 @@ where
 
         // final result is `z = c xor p_store`
         rep.xor(sess, &c, &p_store)
-    }
-}
-
-impl ReplicatedPlacement {
-    pub fn tree_reduce<S, RepT>(
-        &self,
-        sess: &S,
-        x: &[RepT],
-        op: fn(&Self, &S, &RepT, &RepT) -> RepT,
-    ) -> RepT
-    where
-        RepT: Clone,
-    {
-        let v_len = x.len();
-        if v_len == 1 {
-            x[0].clone()
-        } else {
-            let chunk1 = &x[0..v_len / 2];
-            let chunk2 = &x[v_len / 2..v_len];
-
-            let op_res_chunk1 = self.tree_reduce(sess, chunk1, op);
-            let op_res_chunk2 = self.tree_reduce(sess, chunk2, op);
-            op(self, sess, &op_res_chunk1, &op_res_chunk2)
-        }
     }
 }

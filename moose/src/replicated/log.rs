@@ -1,7 +1,7 @@
 use super::*;
 use crate::error::Result;
 use crate::execution::Session;
-use crate::fixedpoint::{PolynomialEval, FixedpointTensor};
+use crate::fixedpoint::{FixedpointTensor, PolynomialEval};
 use crate::{Const, Ring};
 use lazy_static::lazy_static;
 
