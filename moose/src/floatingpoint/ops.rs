@@ -322,7 +322,7 @@ impl ExpandDimsOp {
     }
 }
 
-impl FloatingpointConcatOp {
+impl ConcatOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,

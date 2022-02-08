@@ -1,7 +1,7 @@
 use super::*;
 use crate::execution::Session;
 use crate::host::HostPlacement;
-use crate::mirrored::{Mirrored3Placement};
+use crate::mirrored::Mirrored3Placement;
 
 impl ConstantOp {
     pub(crate) fn u64_kernel<S: Session, HostT, RepT>(

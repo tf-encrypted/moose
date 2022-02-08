@@ -291,7 +291,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Identity(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             IndexAxis(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

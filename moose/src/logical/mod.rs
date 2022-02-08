@@ -1,6 +1,6 @@
 //! Abstraction layer for high-level logical tensors
 
-use crate::computation::{PartiallySymbolicType, Placed, Placement, SymbolicType};
+use crate::computation::{HasShortName, PartiallySymbolicType, Placed, Placement, SymbolicType};
 use crate::error::Result;
 use crate::execution::symbolic::Symbolic;
 use crate::host::HostShape;
@@ -33,6 +33,20 @@ pub enum TensorDType {
     Bool,
     U64,
     Unknown,
+}
+
+impl HasShortName for TensorDType {
+    fn short_name(&self) -> &str {
+        match self {
+            TensorDType::Fixed64 { .. } => "Fixed64",
+            TensorDType::Fixed128 { .. } => "Fixed128",
+            TensorDType::Float32 => "Float32",
+            TensorDType::Float64 => "Float64",
+            TensorDType::Bool => "Bool",
+            TensorDType::U64 => "U64",
+            TensorDType::Unknown => "Unknown",
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
