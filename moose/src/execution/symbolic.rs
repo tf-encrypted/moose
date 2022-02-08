@@ -31,21 +31,23 @@ pub enum Symbolic<T: Placed> {
 }
 
 impl<T: Placed> Symbolic<T> {
-    pub fn is_symbolic(&self) -> bool {
+    #[allow(dead_code)]
+    pub(crate) fn is_symbolic(&self) -> bool {
         match self {
             Symbolic::Symbolic(_) => true,
             Symbolic::Concrete(_) => false,
         }
     }
 
-    pub fn is_concrete(&self) -> bool {
+    #[allow(dead_code)]
+    pub(crate) fn is_concrete(&self) -> bool {
         match self {
             Symbolic::Symbolic(_) => false,
             Symbolic::Concrete(_) => true,
         }
     }
 
-    pub fn symbolic_handle(&self) -> Option<&SymbolicHandle<T::Placement>> {
+    pub(crate) fn symbolic_handle(&self) -> Option<&SymbolicHandle<T::Placement>> {
         match self {
             Symbolic::Symbolic(h) => Some(h),
             Symbolic::Concrete(_) => None,
@@ -138,7 +140,7 @@ impl Default for SymbolicSession {
 
 impl SymbolicSession {
     /// Add operation to the session's underlying computation
-    pub fn add_operation<'s, O: Into<Operator> + Clone, P: Into<Placement> + Clone>(
+    pub(crate) fn add_operation<'s, O: Into<Operator> + Clone, P: Into<Placement> + Clone>(
         &'s self,
         operator: &O,
         operands: &[&str],
@@ -163,7 +165,11 @@ impl SymbolicSession {
     /// Apply a given closure to the iterator over the ops.
     ///
     /// The "ops" vector is locked for READ for the duration of the call.
-    pub fn ops_iter<F: FnMut(std::slice::Iter<Operation>) -> T, T>(&self, mut operation: F) -> T {
+    #[cfg(test)]
+    pub(crate) fn ops_iter<F: FnMut(std::slice::Iter<Operation>) -> T, T>(
+        &self,
+        mut operation: F,
+    ) -> T {
         let state = self.state.read();
         operation(state.ops.iter())
     }

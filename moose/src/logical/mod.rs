@@ -59,7 +59,7 @@ pub enum AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT> {
 impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>
     AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>
 {
-    pub fn ty_desc(&self) -> String {
+    pub(crate) fn ty_desc(&self) -> String {
         match self {
             AbstractTensor::Fixed64(_) => "Tensor(Fixed64)",
             AbstractTensor::Fixed128(_) => "Tensor(Fixed128)",

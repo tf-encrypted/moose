@@ -18,6 +18,7 @@ use std::convert::TryInto;
 fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> Computation {
     let comp: PyComputation = rmp_serde::from_read_ref(&computation).unwrap();
     let rust_comp: Computation = comp.try_into().unwrap();
+    // TODO(Morten) we should not call toposort here
     rust_comp.toposort().unwrap()
 }
 

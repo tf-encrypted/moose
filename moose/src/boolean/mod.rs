@@ -192,7 +192,7 @@ impl IndexAxisOp {
 }
 
 impl SaveOp {
-    pub fn bool_kernel<S: Session, HostT, RepT>(
+    pub(crate) fn bool_kernel<S: Session, HostT, RepT>(
         sess: &S,
         plc: &HostPlacement,
         key: m!(HostString),

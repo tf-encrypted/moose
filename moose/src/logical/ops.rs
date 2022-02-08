@@ -1832,7 +1832,7 @@ impl MaximumOp {
 }
 
 impl SoftmaxOp {
-    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
+    pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: usize,
