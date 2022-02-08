@@ -705,16 +705,19 @@ impl From<VariadicSignature> for Signature {
 }
 
 impl Signature {
-    pub(crate) fn nullary(ret: Ty) -> Signature {
+    pub fn nullary(ret: Ty) -> Signature {
         NullarySignature { ret }.into()
     }
-    pub(crate) fn unary(arg0: Ty, ret: Ty) -> Signature {
+    
+    pub fn unary(arg0: Ty, ret: Ty) -> Signature {
         UnarySignature { arg0, ret }.into()
     }
-    pub(crate) fn binary(arg0: Ty, arg1: Ty, ret: Ty) -> Signature {
+    
+    pub fn binary(arg0: Ty, arg1: Ty, ret: Ty) -> Signature {
         BinarySignature { arg0, arg1, ret }.into()
     }
-    pub(crate) fn ternary(arg0: Ty, arg1: Ty, arg2: Ty, ret: Ty) -> Signature {
+    
+    pub fn ternary(arg0: Ty, arg1: Ty, arg2: Ty, ret: Ty) -> Signature {
         TernarySignature {
             arg0,
             arg1,
@@ -723,11 +726,12 @@ impl Signature {
         }
         .into()
     }
-    pub(crate) fn variadic(args: Ty, ret: Ty) -> Signature {
+
+    pub fn variadic(args: Ty, ret: Ty) -> Signature {
         VariadicSignature { args, ret }.into()
     }
 
-    pub(crate) fn ret(&self) -> Ty {
+    pub fn ret(&self) -> Ty {
         match self {
             Signature::Nullary(s) => s.ret,
             Signature::Unary(s) => s.ret,
@@ -737,7 +741,7 @@ impl Signature {
         }
     }
 
-    pub(crate) fn arg(&self, arg: usize) -> Result<Ty> {
+    pub fn arg(&self, arg: usize) -> Result<Ty> {
         match (self, arg) {
             (Signature::Unary(s), 0) => Ok(s.arg0),
             (Signature::Binary(s), 0) => Ok(s.arg0),
@@ -750,8 +754,7 @@ impl Signature {
         }
     }
 
-    #[allow(dead_code)]
-    fn arity(&self) -> Option<usize> {
+    pub fn arity(&self) -> Option<usize> {
         match self {
             Signature::Nullary(_) => Some(0),
             Signature::Unary(_) => Some(1),
