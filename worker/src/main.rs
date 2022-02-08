@@ -29,7 +29,7 @@ struct Opt {
     placement: String,
 
     #[structopt(long)]
-    role_assignments: String,
+    role_assignment: String,
 
     #[structopt(long)]
     hosts: String,
@@ -39,7 +39,11 @@ fn read_comp_file(filename: &str) -> anyhow::Result<Vec<u8>> {
     let mut file = File::open(filename)?;
     let mut vec = Vec::new();
     file.read_to_end(&mut vec)?;
-    Ok(vec)
+    if vec.is_empty() {
+        Err(anyhow::anyhow!("computation is empty"))
+    } else {
+        Ok(vec)
+    }
 }
 
 #[tokio::main]
@@ -50,15 +54,11 @@ async fn main() {
 
     let computation_bytes = read_comp_file(&opt.comp).unwrap();
 
-    let _computation = Computation::from_bytes(computation_bytes).unwrap();
+    let computation = Computation::from_bytes(computation_bytes).unwrap();
 
-    let input = read_csv(&opt.data, None, &[], &opt.placement)
+    let input = read_csv(&opt.data, None, &[], &opt.placement.clone())
         .await
         .unwrap();
-
-    let _host = Arc::new(moose::computation::Placement::Host(HostPlacement {
-        owner: opt.placement.into(),
-    }));
 
     let storage = Arc::new(StubAsyncStorage::default());
 
@@ -68,9 +68,9 @@ async fn main() {
 
     let session_id = moose::computation::SessionId::try_from(opt.session_id.as_ref()).unwrap();
 
-    let role_assignments_map: HashMap<String, String> =
-        serde_json::from_str(&opt.role_assignments).unwrap();
-    let role_assignments: HashMap<Role, Identity> = role_assignments_map
+    let role_assignment_map: HashMap<String, String> =
+        serde_json::from_str(&opt.role_assignment).unwrap();
+    let role_assignment: HashMap<Role, Identity> = role_assignment_map
         .iter()
         .map(|(key, value)| {
             let role = Role::from(key);
@@ -79,11 +79,36 @@ async fn main() {
         })
         .collect();
 
-    let _moose_session = moose::execution::AsyncSession::new(
+    let moose_session = moose::execution::AsyncSession::new(
         session_id,
-        arguments.clone(),
-        role_assignments.clone(),
+        arguments,
+        role_assignment.clone(),
         networking,
         storage,
     );
+
+    let moose_session_handle = AsyncSessionHandle::for_session(&moose_session);
+
+    let own_identity: Identity = Identity::from(&opt.placement);
+    let mut executor = AsyncExecutor::default();
+
+    let outputs_handle = executor
+        .run_computation(
+            &computation,
+            &role_assignment,
+            &own_identity,
+            &moose_session,
+        )
+        .unwrap();
+
+    moose_session_handle.join_on_first_error().await.unwrap();
+
+    let mut outputs = HashMap::new();
+
+    for (output_name, output_future) in outputs_handle {
+        let value = output_future.await.unwrap();
+        outputs.insert(output_name, value);
+    }
+
+    println!("outputs: {:?}", outputs);
 }
