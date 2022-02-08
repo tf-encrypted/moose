@@ -31,6 +31,7 @@ pub enum Symbolic<T: Placed> {
 }
 
 impl<T: Placed> Symbolic<T> {
+    #[allow(dead_code)]
     pub(crate) fn is_symbolic(&self) -> bool {
         match self {
             Symbolic::Symbolic(_) => true,
@@ -38,6 +39,7 @@ impl<T: Placed> Symbolic<T> {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn is_concrete(&self) -> bool {
         match self {
             Symbolic::Symbolic(_) => false,
@@ -163,6 +165,7 @@ impl SymbolicSession {
     /// Apply a given closure to the iterator over the ops.
     ///
     /// The "ops" vector is locked for READ for the duration of the call.
+    #[cfg(test)]
     pub(crate) fn ops_iter<F: FnMut(std::slice::Iter<Operation>) -> T, T>(
         &self,
         mut operation: F,
