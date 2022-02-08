@@ -100,6 +100,7 @@ enum PyConstant {
 enum PyNdarray {
     float32 { items: Vec<f32>, shape: Vec<u8> },
     float64 { items: Vec<f64>, shape: Vec<u8> },
+    uint64 { items: Vec<u64>, shape: Vec<u8> },
 }
 
 type Inputs = HashMap<String, String>;
@@ -578,6 +579,15 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
                 let plc = HostPlacement::from("TODO");
                 Ok(Constant::HostFloat64Tensor(plc.from_raw(tensor)))
             }
+            PyNdarray::uint64 {
+                ref items,
+                ref shape,
+            } => {
+                let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
+                let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
+                let plc = HostPlacement::from("TODO");
+                Ok(Constant::HostUint64Tensor(plc.from_raw(tensor)))
+            }
         },
     }
 }
@@ -591,6 +601,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
             PyDType::float32 => Ok(Ty::Tensor(TensorDType::Float32)),
             PyDType::float64 => Ok(Ty::Tensor(TensorDType::Float64)),
             PyDType::bool_ => Ok(Ty::Tensor(TensorDType::Bool)),
+            PyDType::uint64 => Ok(Ty::Tensor(TensorDType::U64)),
             // PyDType::int32 => Ok(Ty::HostInt32Tensor),
             // PyDType::int64 => Ok(Ty::HostInt64Tensor),
             // PyDType::uint32 => Ok(Ty::HostUint32Tensor),

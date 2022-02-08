@@ -551,6 +551,7 @@ values![
     Fixed128Tensor,
     Float32Tensor,
     Float64Tensor,
+    Uint64Tensor,
     ReplicatedRing64Tensor,
     ReplicatedRing128Tensor,
     ReplicatedBitTensor,

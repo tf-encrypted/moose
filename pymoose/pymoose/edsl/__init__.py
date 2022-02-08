@@ -4,6 +4,7 @@ from pymoose.computation.dtypes import float32
 from pymoose.computation.dtypes import float64
 from pymoose.computation.dtypes import int32
 from pymoose.computation.dtypes import int64
+from pymoose.computation.dtypes import uint64
 from pymoose.computation.standard import AesKeyType
 from pymoose.computation.standard import AesTensorType
 from pymoose.computation.standard import FloatType
@@ -103,6 +104,7 @@ __all__ = [
     sigmoid,
     sub,
     sum,
+    uint64,
     TensorType,
     transpose,
     trace,
