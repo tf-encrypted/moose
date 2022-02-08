@@ -100,27 +100,9 @@ pub trait PlacementConcatenate<S: Session, TS, O> {
     fn concatenate(&self, sess: &S, axis: u32, xs: &[TS]) -> O;
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Float32Tensor] -> Float32Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[Float64Tensor] -> Float64Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat32Tensor] -> HostFloat32Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat64Tensor] -> HostFloat64Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt8Tensor] -> HostInt8Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt16Tensor] -> HostInt16Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt32Tensor] -> HostInt32Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostInt64Tensor] -> HostInt64Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostRing64Tensor] -> HostRing64Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostRing128Tensor] -> HostRing128Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[Tensor] -> Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[Fixed64Tensor] -> Fixed64Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[Fixed128Tensor] -> Fixed128Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, ConcatOp);
-modelled!(PlacementConcatenate::concatenate, ReplicatedPlacement, attributes[axis: u32] vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, ConcatOp);
-
-kernel! {
-    ConcatOp, [
+modelled_kernel! {
+    PlacementConcatenate::concatenate, ConcatOp{axis: u32},
+    [
         (HostPlacement, vec[Tensor] -> Tensor => [concrete] attributes[axis] Self::logical_host_kernel),
         (HostPlacement, vec[Float32Tensor] -> Float32Tensor => [concrete] attributes[axis] Self::float_host_kernel),
         (HostPlacement, vec[Float64Tensor] -> Float64Tensor => [concrete] attributes[axis] Self::float_host_kernel),

@@ -275,27 +275,8 @@ pub trait PlacementAddN<S: Session, T, O> {
     fn add_n(&self, sess: &S, x: &[T]) -> O;
 }
 
-modelled!(PlacementAddN::add_n, HostPlacement, vec[Tensor] -> Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[Float32Tensor] -> Float32Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[Float64Tensor] -> Float64Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostFloat32Tensor] -> HostFloat32Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostFloat64Tensor] -> HostFloat64Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[Fixed64Tensor] -> Fixed64Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[Fixed128Tensor] -> Fixed128Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostFixed64Tensor] -> HostFixed64Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostFixed128Tensor] -> HostFixed128Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[Fixed64Tensor] -> Fixed64Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[Fixed128Tensor] -> Fixed128Tensor, AddNOp);
-modelled!(PlacementAddN::add_n, ReplicatedPlacement, vec[Tensor] -> Tensor, AddNOp);
-
-kernel! {
-    AddNOp,
+modelled_kernel! {
+    PlacementAddN::add_n, AddNOp,
     [
         (HostPlacement, vec[Tensor] -> Tensor => [concrete] Self::host_logical_kernel),
         (HostPlacement, vec[Float32Tensor] -> Float32Tensor => [concrete] Self::float_kernel),
