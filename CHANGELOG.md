@@ -9,7 +9,7 @@ Future releases are expected to contain instructions for migration from the prev
 
 ### Changed
 
-- Symbolic compliation support
+- Symbolic compilation support
 - Sufficient primitives to execute AES decryption
 - Sufficient primitives to execute custom models, including linear regression and XGBoost decision trees.
 
