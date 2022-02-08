@@ -988,11 +988,7 @@ pub fn parse_bool<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 /// A helper convertor from a nom error to a generic error
 ///
 /// Note that it binds the E in the parser to be a `VerboseError`.
-fn friendly_error(
-    message: &str,
-    source: &str,
-    e: nom::Err<VerboseError<&str>>,
-) -> anyhow::Error {
+fn friendly_error(message: &str, source: &str, e: nom::Err<VerboseError<&str>>) -> anyhow::Error {
     match e {
         Failure(e) => anyhow::anyhow!("{} {}", message, convert_error(source, e)),
         Error(e) => anyhow::anyhow!("{} {}", message, convert_error(source, e)),

@@ -708,15 +708,15 @@ impl Signature {
     pub fn nullary(ret: Ty) -> Signature {
         NullarySignature { ret }.into()
     }
-    
+
     pub fn unary(arg0: Ty, ret: Ty) -> Signature {
         UnarySignature { arg0, ret }.into()
     }
-    
+
     pub fn binary(arg0: Ty, arg1: Ty, ret: Ty) -> Signature {
         BinarySignature { arg0, arg1, ret }.into()
     }
-    
+
     pub fn ternary(arg0: Ty, arg1: Ty, arg2: Ty, ret: Ty) -> Signature {
         TernarySignature {
             arg0,
