@@ -10,10 +10,10 @@ impl BitDecomposeOp {
     ) -> Result<RepBitArray<RepBitT, N>>
     where
         RepRingT: Ring<BitLength = N>,
-        ReplicatedPlacement: PlacementSplit<S, RepRingT, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementSplit<S, RepRingT, RepBitT>,
         ReplicatedPlacement: BinaryAdder<S, RepBitT>,
     {
-        let (x0, x1) = rep.split(sess, &x.try_into().ok().unwrap());
+        let (x0, x1) = rep.split(sess, &x);
         let res = rep.binary_adder(sess, &x0, &x1, RepRingT::BitLength::VALUE);
         Ok(RepBitArray(res, PhantomData))
     }
@@ -49,24 +49,17 @@ impl BitComposeOp {
 /// This is done such that when interpreted as ring tensors, they reconstruct to `x`
 /// i.e. `(x1 + x2) = x` over the ring. This is useful for some protocols that don't
 /// necessarily need the full bit-decomposition such as exponentiation.
-pub(crate) trait PlacementSplit<S: Session, T, O1, O2> {
-    fn split(&self, sess: &S, x: &T) -> (O1, O2);
+pub(crate) trait PlacementSplit<S: Session, T, O> {
+    fn split(&self, sess: &S, x: &T) -> (O, O);
 }
 
-impl<
-        S: Session,
-        HostRingT: Placed<Placement = HostPlacement>,
-        HostBitT: Placed<Placement = HostPlacement>,
-    >
-    PlacementSplit<
-        S,
-        Symbolic<RepTensor<HostRingT>>,
-        Symbolic<RepTensor<HostBitT>>,
-        Symbolic<RepTensor<HostBitT>>,
-    > for ReplicatedPlacement
+impl<S: Session, HostRingT, HostBitT>
+    PlacementSplit<S, Symbolic<RepTensor<HostRingT>>, Symbolic<RepTensor<HostBitT>>>
+    for ReplicatedPlacement
 where
-    ReplicatedPlacement:
-        PlacementSplit<S, RepTensor<HostRingT>, RepTensor<HostBitT>, RepTensor<HostBitT>>,
+    HostRingT: Placed<Placement = HostPlacement>,
+    HostBitT: Placed<Placement = HostPlacement>,
+    ReplicatedPlacement: PlacementSplit<S, RepTensor<HostRingT>, RepTensor<HostBitT>>,
     RepTensor<HostRingT>: Into<Symbolic<RepTensor<HostRingT>>>,
     RepTensor<HostBitT>: Into<Symbolic<RepTensor<HostBitT>>>,
 {
@@ -86,8 +79,7 @@ where
     }
 }
 
-impl<S: Session, HostRingT, HostBitT>
-    PlacementSplit<S, RepTensor<HostRingT>, RepTensor<HostBitT>, RepTensor<HostBitT>>
+impl<S: Session, HostRingT, HostBitT> PlacementSplit<S, RepTensor<HostRingT>, RepTensor<HostBitT>>
     for ReplicatedPlacement
 where
     HostShape: KnownType<S>,
