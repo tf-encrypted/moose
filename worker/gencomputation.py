@@ -56,6 +56,7 @@ def comp_to_disk(filename):
             "prune",
             "networking",
             "typing",
+            "toposort",
         ],
     )
     with open(filename, "wb") as f:
