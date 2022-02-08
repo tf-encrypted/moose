@@ -1,5 +1,6 @@
 from pymoose.computation.dtypes import bool_
 from pymoose.computation.dtypes import fixed
+from pymoose.computation.dtypes import ring64
 from pymoose.computation.dtypes import float32
 from pymoose.computation.dtypes import float64
 from pymoose.computation.dtypes import int32
@@ -95,6 +96,7 @@ __all__ = [
     ones,
     replicated_placement,
     reshape,
+    ring64,
     save,
     slice,
     shape,
