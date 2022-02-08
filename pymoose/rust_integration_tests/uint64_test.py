@@ -21,14 +21,12 @@ class ReplicatedExample(parameterized.TestCase):
         def my_int_comp():
             with bob:
                 x = edsl.constant(x_array)
-                x = edsl.cast(x, dtype=edsl.ring64)
 
             with rep:
                 y = edsl.add(x, x)
 
             with alice:
-                y_int = edsl.cast(y, dtype=edsl.uint64)
-                res = edsl.save("y_uri", y_int)
+                res = edsl.save("y_uri", edsl.add(y, y))
 
             return res
 
