@@ -179,7 +179,6 @@ impl<S: Session, T> PlacementPlace<S, HostTensor<T>> for HostPlacement {
     }
 }
 
-// TODO(Morten) visibility
 impl<T> HostTensor<T>
 where
     T: LinalgScalar,

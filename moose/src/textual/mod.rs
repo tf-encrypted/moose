@@ -272,7 +272,7 @@ pub trait FromTextual<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> {
 /// A specific helper function to be called from the computation when failing to parse an operator.
 ///
 /// Defined here instead of a lambda to avoid leaking too much textual internals into the computation.
-pub fn parse_operator_error<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+pub(crate) fn parse_operator_error<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     Err(Error(make_error(input, ErrorKind::Tag)))
@@ -372,7 +372,7 @@ fn argument_list<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 /// Parses list of attributes when there is only one attribute.
 ///
 /// This is an optimization to avoid permutation cast for the simple case.
-pub fn attributes_single<'a, O, F: 'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+pub(crate) fn attributes_single<'a, O, F: 'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     name: &'a str,
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
@@ -844,7 +844,7 @@ where
     Ok((rest, buf))
 }
 
-/// Wraps the innner parser in optional spaces.
+/// Wraps the inner parser in optional spaces.
 ///
 /// From nom::recepies
 pub fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
@@ -859,7 +859,7 @@ where
 /// Parses an identifier
 ///
 /// From nom::recepies
-pub fn identifier<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
+fn identifier<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
     recognize(pair(
         alt((alpha1, tag("_"))),
         many0(alt((alphanumeric1, tag("_")))),
@@ -987,14 +987,8 @@ pub fn parse_bool<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 
 /// A helper convertor from a nom error to a generic error
 ///
-/// Sample usage:
-/// ```rust
-/// use moose::textual::{parse_bool, friendly_error};
-/// let source = "blah";
-/// parse_bool(source).map_err(|e| friendly_error("Failed to parse a boolean", source, e));
-/// ```
 /// Note that it binds the E in the parser to be a `VerboseError`.
-pub fn friendly_error(
+fn friendly_error(
     message: &str,
     source: &str,
     e: nom::Err<VerboseError<&str>>,
