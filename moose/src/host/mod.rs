@@ -184,15 +184,15 @@ impl<T> HostTensor<T>
 where
     T: LinalgScalar,
 {
-    pub fn place(plc: &HostPlacement, x: ArrayD<T>) -> HostTensor<T> {
+    pub(crate) fn place(plc: &HostPlacement, x: ArrayD<T>) -> HostTensor<T> {
         HostTensor::<T>(x, plc.clone())
     }
 
-    pub fn reshape(self, newshape: HostShape) -> Self {
+    pub(crate) fn reshape(self, newshape: HostShape) -> Self {
         HostTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
     }
 
-    pub fn shape(&self) -> HostShape {
+    pub(crate) fn shape(&self) -> HostShape {
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
     }
 }
@@ -236,7 +236,7 @@ impl<S: Session> PlacementPlace<S, HostBitTensor> for HostPlacement {
 }
 
 impl HostBitTensor {
-    pub fn place(plc: &HostPlacement, x: ArrayD<u8>) -> HostBitTensor {
+    pub(crate) fn place(plc: &HostPlacement, x: ArrayD<u8>) -> HostBitTensor {
         HostBitTensor(x, plc.clone())
     }
 
@@ -433,7 +433,7 @@ where
 }
 
 impl<T> HostRingTensor<T> {
-    pub fn place(plc: &HostPlacement, x: ArrayD<Wrapping<T>>) -> HostRingTensor<T> {
+    pub(crate) fn place(plc: &HostPlacement, x: ArrayD<Wrapping<T>>) -> HostRingTensor<T> {
         HostRingTensor::<T>(x, plc.clone())
     }
 

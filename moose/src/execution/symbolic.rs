@@ -138,7 +138,7 @@ impl Default for SymbolicSession {
 
 impl SymbolicSession {
     /// Add operation to the session's underlying computation
-    pub fn add_operation<'s, O: Into<Operator> + Clone, P: Into<Placement> + Clone>(
+    pub(crate) fn add_operation<'s, O: Into<Operator> + Clone, P: Into<Placement> + Clone>(
         &'s self,
         operator: &O,
         operands: &[&str],
@@ -163,7 +163,10 @@ impl SymbolicSession {
     /// Apply a given closure to the iterator over the ops.
     ///
     /// The "ops" vector is locked for READ for the duration of the call.
-    pub fn ops_iter<F: FnMut(std::slice::Iter<Operation>) -> T, T>(&self, mut operation: F) -> T {
+    pub(crate) fn ops_iter<F: FnMut(std::slice::Iter<Operation>) -> T, T>(
+        &self,
+        mut operation: F,
+    ) -> T {
         let state = self.state.read();
         operation(state.ops.iter())
     }
