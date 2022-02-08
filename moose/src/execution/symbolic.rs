@@ -31,21 +31,21 @@ pub enum Symbolic<T: Placed> {
 }
 
 impl<T: Placed> Symbolic<T> {
-    pub fn is_symbolic(&self) -> bool {
+    pub(crate) fn is_symbolic(&self) -> bool {
         match self {
             Symbolic::Symbolic(_) => true,
             Symbolic::Concrete(_) => false,
         }
     }
 
-    pub fn is_concrete(&self) -> bool {
+    pub(crate) fn is_concrete(&self) -> bool {
         match self {
             Symbolic::Symbolic(_) => false,
             Symbolic::Concrete(_) => true,
         }
     }
 
-    pub fn symbolic_handle(&self) -> Option<&SymbolicHandle<T::Placement>> {
+    pub(crate) fn symbolic_handle(&self) -> Option<&SymbolicHandle<T::Placement>> {
         match self {
             Symbolic::Symbolic(h) => Some(h),
             Symbolic::Concrete(_) => None,

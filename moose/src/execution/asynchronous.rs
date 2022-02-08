@@ -22,7 +22,9 @@ pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
 
 pub type AsyncStorageImpl = Arc<dyn AsyncStorage + Send + Sync>;
 
-pub fn map_send_result(res: std::result::Result<(), Value>) -> std::result::Result<(), Error> {
+pub(crate) fn map_send_result(
+    res: std::result::Result<(), Value>,
+) -> std::result::Result<(), Error> {
     match res {
         Ok(_) => Ok(()),
         Err(val) => {
@@ -36,7 +38,7 @@ pub fn map_send_result(res: std::result::Result<(), Value>) -> std::result::Resu
     }
 }
 
-pub fn map_receive_error<T>(_: T) -> Error {
+pub(crate) fn map_receive_error<T>(_: T) -> Error {
     tracing::debug!("Failed to receive on channel, sender was dropped");
     Error::OperandUnavailable
 }

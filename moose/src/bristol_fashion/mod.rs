@@ -13,7 +13,12 @@ use std::convert::TryFrom;
 const AES_128: &[u8] = include_bytes!("aes_128.txt");
 
 /// Perform single-block AES-128 encryption on placement
-pub fn aes128<S: Session, P, BitT>(sess: &S, plc: &P, key: Vec<BitT>, block: Vec<BitT>) -> Vec<BitT>
+pub(crate) fn aes128<S: Session, P, BitT>(
+    sess: &S,
+    plc: &P,
+    key: Vec<BitT>,
+    block: Vec<BitT>,
+) -> Vec<BitT>
 where
     BitT: Clone,
     P: PlacementXor<S, BitT, BitT, BitT>,
