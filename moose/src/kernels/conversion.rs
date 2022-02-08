@@ -4,11 +4,8 @@ pub trait PlacementCast<S: Session, T, O> {
     fn cast(&self, sess: &S, x: &T) -> O;
 }
 
-modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);
-modelled!(PlacementCast::cast, Mirrored3Placement, (Tensor) -> Tensor, CastOp);
-
-kernel! {
-    CastOp,
+modelled_kernel! {
+    PlacementCast::cast, CastOp,
     [
         (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::kernel),
         (Mirrored3Placement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::mir_kernel),
