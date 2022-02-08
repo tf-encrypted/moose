@@ -101,6 +101,7 @@ fn tensorval_to_pyobj(py: Python, tensor: Value) -> PyResult<PyObject> {
         Value::HostUint16Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::HostUint32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::HostUint64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostRing64Tensor(t) => Ok(t.0.map(|v| v.0).to_pyarray(py).to_object(py)),
         Value::HostBitTensor(t) => Ok(t.0.map(|v| *v != 0).to_pyarray(py).to_object(py)),
         otherwise => Err(PyTypeError::new_err(format!(
             r#"Values of type {:?} cannot be handled by runtime storage: must be a tensor of supported dtype."#,

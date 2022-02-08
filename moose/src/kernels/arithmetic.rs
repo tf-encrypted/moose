@@ -51,6 +51,8 @@ modelled_kernel! {
         (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::host_adt_kernel),
         (AdditivePlacement, (HostRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::host_adt_kernel),
         (AdditivePlacement, (HostBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [hybrid] Self::host_adt_kernel),
+        (ReplicatedPlacement, (Uint64Tensor, Uint64Tensor) -> Uint64Tensor => [concrete] Self::u64_rep_kernel),
+        (HostPlacement, (Uint64Tensor, Uint64Tensor) -> Uint64Tensor => [concrete] Self::u64_host_kernel),
     ]
 }
 
