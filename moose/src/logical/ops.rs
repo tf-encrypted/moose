@@ -27,6 +27,7 @@ impl IdentityOp {
         HostPlacement: PlacementIdentity<S, Float32T, Float32T>,
         HostPlacement: PlacementIdentity<S, Float64T, Float64T>,
         HostPlacement: PlacementIdentity<S, BoolT, BoolT>,
+        HostPlacement: PlacementIdentity<S, Uint64T, Uint64T>,
     {
         match x {
             AbstractTensor::Fixed64(x) => {
@@ -49,8 +50,9 @@ impl IdentityOp {
                 let result = plc.identity(sess, &x);
                 Ok(AbstractTensor::Bool(result))
             }
-            AbstractTensor::Uint64(_x) => {
-                unimplemented!()
+            AbstractTensor::Uint64(x) => {
+                let result = plc.identity(sess, &x);
+                Ok(AbstractTensor::Uint64(result))
             }
         }
     }
@@ -905,6 +907,7 @@ impl CastOp {
         HostPlacement: PlacementFixedpointDecode<S, Fixed128T, Float64T>,
         HostPlacement: PlacementFixedpointEncode<S, Float32T, Fixed64T>,
         HostPlacement: PlacementFixedpointEncode<S, Float64T, Fixed128T>,
+        HostPlacement: PlacementCast<S, Uint64T, Uint64T>,
     {
         let arg0_precision = match sig.arg(0) {
             Ok(Ty::Tensor(TensorDType::Fixed64 {
@@ -950,6 +953,10 @@ impl CastOp {
                 let inner =
                     plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
                 Ok(AbstractTensor::Fixed128(inner))
+            }
+            (AbstractTensor::Uint64(x), Ty::Tensor(TensorDType::Uint64)) => {
+                let inner = plc.cast(sess, &x);
+                Ok(AbstractTensor::Uint64(inner))
             }
             (x, ret) => Err(Error::UnimplementedOperator(format!(
                 "Cast operator does not support casting of {:?} to {:?}",
@@ -2187,5 +2194,35 @@ impl SoftmaxOp {
                 &x.ty_desc(),
             ))),
         }
+    }
+}
+
+impl ArgmaxOp {
+    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+where
+        // ReplicatedPlacement: PlacementSoftmax<S, Fixed64T, Uint64T>,
+        // ReplicatedPlacement: PlacementSoftmax<S, Fixed128T, Uint64T>,
+    {
+        unimplemented!()
+        // match x {
+        //     AbstractTensor::Fixed64(x) => {
+        //         let result = plc.softmax(sess, axis, upmost_index, &x);
+        //         Ok(AbstractTensor::Fixed64(result))
+        //     }
+        //     AbstractTensor::Fixed128(x) => {
+        //         let result = plc.softmax(sess, axis, upmost_index, &x);
+        //         Ok(AbstractTensor::Fixed128(result))
+        //     }
+        //     // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+        //     _ => Err(Error::UnimplementedOperator(format!(
+        //         "Missing replicated softmax for {:?}",
+        //         &x.ty_desc(),
+        //     ))),
     }
 }

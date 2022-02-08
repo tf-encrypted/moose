@@ -546,3 +546,18 @@ modelled_kernel! {
         (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] Self::logical_kernel),
     ]
 }
+
+pub trait PlacementArgmax<S: Session, T, O> {
+    fn argmax(&self, sess: &S, axis: usize, upmost_index: usize, x: &T) -> O;
+}
+
+modelled_kernel! {
+    PlacementArgmax::argmax, ArgmaxOp{axis: usize, upmost_index: usize},
+    [
+        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] Self::logical_kernel),
+        // (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_kernel),
+        // (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_kernel),
+        // (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_fixed_kernel),
+        // (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [transparent] Self::rep_fixed_kernel),
+    ]
+}

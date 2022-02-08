@@ -26,7 +26,8 @@ class ReplicatedExample(parameterized.TestCase):
                 y = edsl.add(x, x)
 
             with alice:
-                res = edsl.save("y_uri", edsl.add(y, y))
+                y_uint = edsl.identity(y)
+                res = edsl.save("y_uri", y_uint)
 
             return res
 
@@ -49,7 +50,7 @@ class ReplicatedExample(parameterized.TestCase):
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
-        np.testing.assert_equal(actual_result, x_arg * 4)
+        np.testing.assert_equal(actual_result, x_arg * 2)
 
 
 if __name__ == "__main__":

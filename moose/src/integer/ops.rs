@@ -98,3 +98,40 @@ impl SaveOp {
         Ok(plc.save(sess, &key, &x))
     }
 }
+
+impl IdentityOp {
+    pub(crate) fn u64_host_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: U64Tensor<HostT, RepT>,
+    ) -> Result<U64Tensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementPlace<S, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+    {
+        let x = match x {
+            U64Tensor::Host(v) => plc.place(sess, v),
+            U64Tensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        Ok(U64Tensor::Host(x))
+    }
+}
+
+impl CastOp {
+    pub(crate) fn u64_host_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: U64Tensor<HostT, RepT>,
+    ) -> Result<U64Tensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+        HostPlacement: PlacementCast<S, HostT, HostT>,
+    {
+        let x = match x {
+            U64Tensor::Host(v) => v,
+            U64Tensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let z = plc.cast(sess, &x);
+        Ok(U64Tensor::Host(z))
+    }
+}

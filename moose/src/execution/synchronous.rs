@@ -228,6 +228,7 @@ impl Session for SyncSession {
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Maximum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Softmax(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Argmax(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Demirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Mirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };

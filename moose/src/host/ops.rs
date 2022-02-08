@@ -1845,3 +1845,17 @@ impl MuxOp {
         Ok(HostRingTensor::<T>(res, plc.clone()))
     }
 }
+
+impl CastOp {
+    pub(crate) fn ring_host_kernel<S: RuntimeSession, T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostRingTensor<T>,
+    ) -> Result<HostRingTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
+    {
+        let x = plc.place(sess, x);
+        Ok(x)
+    }
+}

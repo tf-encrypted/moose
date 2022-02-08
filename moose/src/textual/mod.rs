@@ -1128,6 +1128,7 @@ impl ToTextual for Operator {
             Shape(op) => op.to_textual(),
             Broadcast(op) => op.to_textual(),
             Softmax(op) => op.to_textual(),
+            Argmax(op) => op.to_textual(),
             AtLeast2D(op) => op.to_textual(),
             IndexAxis(op) => op.to_textual(),
             Slice(op) => op.to_textual(),

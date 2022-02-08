@@ -1075,6 +1075,7 @@ operators![
     Mux,
     Maximum,
     Softmax,
+    Argmax,
     Log2,
     Log,
     // Mirrored Operators
@@ -1530,6 +1531,14 @@ pub struct MaximumOp {
 pub struct SoftmaxOp {
     pub sig: Signature,
     // axis can be optional (in which case we need to do a softmax over every entry)
+    pub axis: usize,
+    pub upmost_index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct ArgmaxOp {
+    pub sig: Signature,
+    // axis can be optional (in which case we need to do a softmax over axis 0)
     pub axis: usize,
     pub upmost_index: usize,
 }

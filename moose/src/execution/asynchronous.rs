@@ -398,6 +398,7 @@ impl Session for AsyncSession {
             Sigmoid(op) => DispatchKernel::compile(&op, plc)?,
             Maximum(op) => DispatchKernel::compile(&op, plc)?,
             Softmax(op) => DispatchKernel::compile(&op, plc)?,
+            Argmax(op) => DispatchKernel::compile(&op, plc)?,
             Demirror(op) => DispatchKernel::compile(&op, plc)?,
             Mirror(op) => DispatchKernel::compile(&op, plc)?,
             Decrypt(op) => DispatchKernel::compile(&op, plc)?,
