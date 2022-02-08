@@ -6,6 +6,7 @@ use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::Session;
 use crate::floatingpoint::FloatTensor;
+use crate::integer::U64Tensor;
 use crate::host::*;
 use crate::kernels::*;
 use crate::mirrored::*;
@@ -1875,6 +1876,32 @@ impl SoftmaxOp {
         Ok(FixedTensor::Replicated(z))
     }
 }
+
+impl ArgmaxOp {
+    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT, HostRingT, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<U64Tensor<HostRingT, RepRingT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementArgmax<S, RepFixedT, RepRingT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+
+        let z = plc.argmax(sess, axis, upmost_index, &x);
+        Ok(U64Tensor::Replicated(z))
+    }
+}
+
+
 
 impl Log2Op {
     pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(

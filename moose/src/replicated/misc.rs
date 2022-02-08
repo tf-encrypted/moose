@@ -72,6 +72,7 @@ impl ReplicatedPlacement {
             op(self, sess, &op_res_chunk1, &op_res_chunk2)
         }
     }
+
 }
 
 /// Shift all shares of replicated secret to the right
