@@ -449,11 +449,8 @@ impl<T> HostRingTensor<T> {
     }
 }
 
-impl<T> HostRingTensor<T>
-where
-    T: Clone,
-{
-    pub fn from_raw_plc<D: ndarray::Dimension, P: Into<HostPlacement>>(
+impl<T: Clone> HostRingTensor<T> {
+    pub(crate) fn from_raw_plc<D: ndarray::Dimension, P: Into<HostPlacement>>(
         raw_tensor: Array<T, D>,
         plc: P,
     ) -> HostRingTensor<T> {
