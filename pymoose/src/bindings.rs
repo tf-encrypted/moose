@@ -359,7 +359,7 @@ fn pymoose_bindings(_py: Python, m: &PyModule) -> PyResult<()> {
 
 #[cfg(test)]
 mod compatibility_tests {
-    use moose::compilation::{compile_passes, Pass};
+    use moose::compilation::{compile_passes, DEFAULT_PASSES};
     use moose::textual::parallel_parse_computation;
     use rstest::rstest;
 
@@ -369,16 +369,7 @@ mod compatibility_tests {
         let source = std::fs::read_to_string(path)?;
         let computation =
             parallel_parse_computation(&source, crate::bindings::DEFAULT_PARSE_CHUNKS)?;
-        let _ = compile_passes(
-            &computation,
-            &[
-                Pass::Typing,
-                Pass::Symbolic,
-                Pass::Prune,
-                Pass::Networking,
-                Pass::Toposort,
-            ],
-        )?;
+        let _ = compile_passes(&computation, &DEFAULT_PASSES)?;
         Ok(())
     }
 
