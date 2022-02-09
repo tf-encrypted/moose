@@ -140,12 +140,22 @@ impl TcpStreamNetworking {
 impl AsyncNetworking for TcpStreamNetworking {
     async fn send(
         &self,
-        _value: &Value,
-        _receiver: &Identity,
-        _rendezvous_key: &RendezvousKey,
-        _session_id: &SessionId,
+        value: &Value,
+        receiver: &Identity,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
     ) -> moose::error::Result<()> {
-        unimplemented!("network stub")
+        let key = compute_path(&session_id, &rendezvous_key);
+
+        let cell = self
+            .store
+            .entry(key)
+            .or_insert_with(async_cell::sync::AsyncCell::shared)
+            .value()
+            .clone();
+
+        cell.set(value.clone());
+        Ok(())
     }
 
     async fn receive(
