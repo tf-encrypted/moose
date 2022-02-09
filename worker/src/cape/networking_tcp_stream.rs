@@ -77,7 +77,7 @@ impl TcpStreamNetworking {
         }
     }
 
-    pub async fn init(&mut self) -> anyhow::Result<()> {
+    pub async fn start(&mut self) -> anyhow::Result<()> {
         let own_address = self
             .hosts
             .get(&self.own_name)
