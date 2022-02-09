@@ -13,6 +13,7 @@ pub struct TcpStreamNetworking {
     own_name: String,
     hosts: HashMap<String, String>,
     store: Arc<dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>>,
+    streams: HashMap<String, TcpStream>,
 }
 
 fn u64_to_little_endian(n: u64, buf: &mut [u8; 8]) -> anyhow::Result<()> {
@@ -49,6 +50,7 @@ fn handle_connection(mut stream: TcpStream) -> anyhow::Result<()> {
         let value: Value = bincode::deserialize(&vec)
             .map_err(|e| anyhow::anyhow!("failed to deserialize moose value: {}", e))?;
         println!("got moose value: {:?}", value);
+        // TODO: put value into store
     }
 }
 
@@ -88,6 +90,7 @@ impl TcpStreamNetworking {
             .collect();
         others.sort();
         println!("others = {:?}", others);
+        let mut streams = HashMap::new();
         for (placement, address) in others.iter() {
             println!("trying: {} -> {}", placement, address);
             loop {
@@ -99,6 +102,7 @@ impl TcpStreamNetworking {
                     }
                 };
                 println!("connected to: {} -> {}", placement, address);
+                streams.insert(placement.clone(), stream);
                 break;
             }
         }
@@ -106,6 +110,7 @@ impl TcpStreamNetworking {
             own_name,
             hosts,
             store,
+            streams,
         })
     }
 }
