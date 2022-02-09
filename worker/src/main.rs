@@ -50,7 +50,7 @@ fn read_comp_file(filename: &str) -> anyhow::Result<Vec<u8>> {
 async fn main() {
     let opt = Opt::from_args();
 
-    let _hosts: HashMap<String, String> = serde_json::from_str(&opt.hosts).unwrap();
+    let hosts: HashMap<String, String> = serde_json::from_str(&opt.hosts).unwrap();
 
     let computation_bytes = read_comp_file(&opt.comp).unwrap();
 
@@ -62,7 +62,11 @@ async fn main() {
 
     let storage = Arc::new(StubAsyncStorage::default());
 
-    let networking = Arc::new(TcpStreamNetworking::default());
+    let networking = Arc::new(
+        TcpStreamNetworking::new(&opt.placement, hosts)
+            .await
+            .unwrap(),
+    );
 
     let arguments = hashmap!["x".to_string() => input];
 
