@@ -8,15 +8,16 @@ use std::collections::HashMap;
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
+use tokio::sync::mpsc;
 use tokio::time::{sleep, Duration};
 
 type StoreType = Arc<dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>>;
 
 pub struct TcpStreamNetworking {
-    own_name: String,                    // name of own placement
-    hosts: HashMap<String, String>,      // host to address mapping
-    store: StoreType,                    // stores incoming data
-    streams: HashMap<String, TcpStream>, // send data over each stream
+    own_name: String,                                       // name of own placement
+    hosts: HashMap<String, String>,                         // host to address mapping
+    store: StoreType,                                       // store incoming data
+    send_channels: HashMap<String, mpsc::Sender<SendData>>, // send data over each stream
 }
 
 fn u64_to_little_endian(n: u64, buf: &mut [u8; 8]) -> anyhow::Result<()> {
@@ -38,6 +39,39 @@ fn little_endian_to_u64(buf: &[u8; 8]) -> u64 {
 
 fn compute_path(session_id: &SessionId, rendezvous_key: &RendezvousKey) -> String {
     format!("{}/{}", session_id, rendezvous_key)
+}
+
+fn send_value(mut stream: &TcpStream, value: &Value) -> anyhow::Result<()> {
+    let raw_data: Vec<u8> = bincode::serialize(&value)?;
+    let size = raw_data.len();
+    let mut buf = [0; 8];
+    u64_to_little_endian(size.try_into()?, &mut buf)?;
+    stream.write_all(&buf)?;
+    stream.write_all(&raw_data)?;
+    Ok(())
+}
+
+struct SendData {
+    value: Value,
+    receiver: Identity,
+    rendezvous_key: RendezvousKey,
+    session_id: SessionId,
+}
+
+// TODO: take a tokio::sync::mpsc channel as input
+// for every item in this channel, write it to the stream
+async fn send_loop(stream: TcpStream, mut rx: mpsc::Receiver<SendData>) -> anyhow::Result<()> {
+    loop {
+        let send_data = rx.recv().await;
+        match send_data {
+            Some(data) => {
+                send_value(&stream, &data.value)?;
+            }
+            None => {
+                unimplemented!("I think we should shutdown the computation now?")
+            }
+        }
+    }
 }
 
 fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::Result<()> {
@@ -89,7 +123,6 @@ impl TcpStreamNetworking {
     ) -> anyhow::Result<TcpStreamNetworking> {
         let store = StoreType::default();
         let own_name: String = own_name.to_string();
-        let mut streams = HashMap::new();
         let own_address = hosts
             .get(&own_name)
             .ok_or_else(|| anyhow::anyhow!("own host name not in hosts map"))?;
@@ -110,6 +143,7 @@ impl TcpStreamNetworking {
             .collect();
         others.sort();
         println!("others = {:?}", others);
+        let mut send_channels = HashMap::new();
         for (placement, address) in others.iter() {
             println!("trying: {} -> {}", placement, address);
             loop {
@@ -121,17 +155,25 @@ impl TcpStreamNetworking {
                     }
                 };
                 println!("connected to: {} -> {}", placement, address);
-                streams.insert(placement.clone(), stream);
+                let (tx, rx) = mpsc::channel(100);
+                send_channels.insert(placement.clone(), tx);
+
+                tokio::spawn(async move {
+                    send_loop(stream, rx).await.unwrap();
+                });
                 break;
             }
         }
+
+        // TODO: start a send_loop on each stream, have this stream read
+        // values from a channel
 
         let store = Arc::clone(&store);
         Ok(TcpStreamNetworking {
             own_name,
             hosts,
             store,
-            streams,
+            send_channels,
         })
     }
 }
@@ -145,16 +187,15 @@ impl AsyncNetworking for TcpStreamNetworking {
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> moose::error::Result<()> {
-        let key = compute_path(&session_id, &rendezvous_key);
-
-        let cell = self
-            .store
-            .entry(key)
-            .or_insert_with(async_cell::sync::AsyncCell::shared)
-            .value()
-            .clone();
-
-        cell.set(value.clone());
+        let receiver_name = receiver.to_string();
+        let send_channel = self.send_channels.get(&receiver_name).unwrap();
+        let send_data = SendData {
+            value: value.clone(),
+            receiver: receiver.clone(),
+            rendezvous_key: rendezvous_key.clone(),
+            session_id: session_id.clone(),
+        };
+        send_channel.send(send_data).await;
         Ok(())
     }
 
