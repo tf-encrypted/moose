@@ -84,6 +84,7 @@ pub(crate) trait PlacementShrRaw<S: Session, T, O> {
     fn shr_raw(&self, sess: &S, amount: usize, x: &T) -> O;
 }
 
+#[cfg(feature = "compilation")]
 impl<S: Session, HostRingT: Placed<Placement = HostPlacement>>
     PlacementShrRaw<S, Symbolic<RepTensor<HostRingT>>, Symbolic<RepTensor<HostRingT>>>
     for ReplicatedPlacement

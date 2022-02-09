@@ -1,5 +1,6 @@
 use crate::additive::*;
 use crate::error::{Error, Result};
+#[cfg(feature = "compilation")]
 use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::host::*;
@@ -147,10 +148,12 @@ impl SessionId {
 ///
 /// Note that this trait is typically not implemented directly, but
 /// rather through an implementation of the PartiallySymbolicType map.
+#[cfg(feature = "compilation")]
 pub trait SymbolicType {
     type Type;
 }
 
+#[cfg(feature = "compilation")]
 impl<T> SymbolicType for T
 where
     T: PartiallySymbolicType,
@@ -164,6 +167,7 @@ where
 /// Concretely, this map computes the symbolic version, except for the top-most
 /// type. As an example, RepTensor<Symbolic<HostTensor>> is partially symbolic
 /// as opposed to the (fully) symbolic type Symbolic<RepTensor<Symbolic<HostTensor>.
+#[cfg(feature = "compilation")]
 pub trait PartiallySymbolicType {
     type Type;
 }
@@ -445,18 +449,21 @@ macro_rules! values {
         )+
 
         $(
-        impl KnownType<crate::execution::SyncSession> for $val {
-            type Type = $val;
-            const TY: Ty = Ty::$val$(($inner::$default))?;
-        }
+            #[cfg(feature = "execution")]
+            impl KnownType<crate::execution::SyncSession> for $val {
+                type Type = $val;
+                const TY: Ty = Ty::$val$(($inner::$default))?;
+            }
         )+
 
+        #[cfg(feature = "compilation")]
         #[derive(PartialEq, Clone, Debug)]
         #[allow(clippy::large_enum_variant)]
         pub enum SymbolicValue {
             $($val(Box<<$val as SymbolicType>::Type>),)+
         }
 
+        #[cfg(feature = "compilation")]
         impl SymbolicValue {
             pub fn ty(&self) -> Ty {
                 match self {
@@ -473,36 +480,40 @@ macro_rules! values {
         }
 
         $(
-        impl From<<$val as SymbolicType>::Type> for SymbolicValue {
-            fn from(x: <$val as SymbolicType>::Type) -> Self {
-                SymbolicValue::$val(Box::new(x))
-            }
-        }
-        )+
-
-        $(
-        impl TryFrom<SymbolicValue> for <$val as SymbolicType>::Type {
-            type Error = Error;
-            fn try_from(v: SymbolicValue) -> Result<Self> {
-                match v {
-                    SymbolicValue::$val(x) => Ok(*x),
-                    _ => Err(Error::TypeMismatch {
-                        expected: stringify!($val).to_string(),
-                        found: v.ty(),
-                    }),
+            #[cfg(feature = "compilation")]
+            impl From<<$val as SymbolicType>::Type> for SymbolicValue {
+                fn from(x: <$val as SymbolicType>::Type) -> Self {
+                    SymbolicValue::$val(Box::new(x))
                 }
             }
-        }
         )+
 
         $(
-        impl KnownType<crate::execution::SymbolicSession> for $val {
-            type Type = <$val as SymbolicType>::Type;
-            const TY: Ty = Ty::$val$(($inner::$default))?;
-        }
+            #[cfg(feature = "compilation")]
+            impl TryFrom<SymbolicValue> for <$val as SymbolicType>::Type {
+                type Error = Error;
+                fn try_from(v: SymbolicValue) -> Result<Self> {
+                    match v {
+                        SymbolicValue::$val(x) => Ok(*x),
+                        _ => Err(Error::TypeMismatch {
+                            expected: stringify!($val).to_string(),
+                            found: v.ty(),
+                        }),
+                    }
+                }
+            }
         )+
 
         $(
+            #[cfg(feature = "compilation")]
+            impl KnownType<crate::execution::SymbolicSession> for $val {
+                type Type = <$val as SymbolicType>::Type;
+                const TY: Ty = Ty::$val$(($inner::$default))?;
+            }
+        )+
+
+        $(
+            #[cfg(feature = "execution")]
             impl KnownType<crate::execution::AsyncSession> for $val {
                 type Type = $val;
                 const TY: Ty = Ty::$val$(($inner::$default))?;
@@ -603,6 +614,7 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Unit(pub HostPlacement);
 
+#[cfg(feature = "compilation")]
 impl PartiallySymbolicType for Unit {
     type Type = Unit;
 }

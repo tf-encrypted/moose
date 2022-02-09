@@ -53,6 +53,7 @@ pub(crate) trait PlacementSplit<S: Session, T, O> {
     fn split(&self, sess: &S, x: &T) -> (O, O);
 }
 
+#[cfg(feature = "compilation")]
 impl<S: Session, HostRingT, HostBitT>
     PlacementSplit<S, Symbolic<RepTensor<HostRingT>>, Symbolic<RepTensor<HostBitT>>>
     for ReplicatedPlacement

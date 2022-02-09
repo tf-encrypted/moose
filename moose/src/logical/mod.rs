@@ -1,7 +1,10 @@
 //! Abstraction layer for high-level logical tensors
 
-use crate::computation::{HasShortName, PartiallySymbolicType, Placed, Placement, SymbolicType};
+use crate::computation::{HasShortName, Placed, Placement};
+#[cfg(feature = "compilation")]
+use crate::computation::{PartiallySymbolicType, SymbolicType};
 use crate::error::Result;
+#[cfg(feature = "compilation")]
 use crate::execution::symbolic::Symbolic;
 use crate::host::HostShape;
 use crate::types::*;
@@ -98,6 +101,7 @@ where
     }
 }
 
+#[cfg(feature = "compilation")]
 impl PartiallySymbolicType for Tensor {
     #[allow(clippy::type_complexity)]
     type Type = AbstractTensor<
@@ -109,6 +113,7 @@ impl PartiallySymbolicType for Tensor {
     >;
 }
 
+#[cfg(feature = "compilation")]
 impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>
     From<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
     for Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
@@ -124,6 +129,7 @@ where
     }
 }
 
+#[cfg(feature = "compilation")]
 impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>
     TryFrom<Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>>
     for AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>

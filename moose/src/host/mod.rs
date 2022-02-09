@@ -2,6 +2,7 @@
 
 use crate::computation::*;
 use crate::error::{Error, Result};
+#[cfg(feature = "compilation")]
 use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::kernels::*;
@@ -262,6 +263,7 @@ impl<HostBitT, N: Const> BitArray for HostBitArray<HostBitT, N> {
     type Len = N;
 }
 
+#[cfg(feature = "compilation")]
 impl<HostBitT: Placed, N: Const> BitArray for Symbolic<HostBitArray<HostBitT, N>> {
     type Len = N;
 }
@@ -275,22 +277,27 @@ impl<HostBitTensorT: Placed, N> Placed for HostBitArray<HostBitTensorT, N> {
     }
 }
 
+#[cfg(feature = "compilation")]
 impl PartiallySymbolicType for HostBitArray64 {
     type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N64>;
 }
 
+#[cfg(feature = "compilation")]
 impl PartiallySymbolicType for HostBitArray128 {
     type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N128>;
 }
 
+#[cfg(feature = "compilation")]
 impl PartiallySymbolicType for HostBitArray224 {
     type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N224>;
 }
 
+#[cfg(feature = "compilation")]
 impl PartiallySymbolicType for HostBitArray256 {
     type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N256>;
 }
 
+#[cfg(feature = "compilation")]
 impl<HostBitT, N> From<HostBitArray<HostBitT, N>> for Symbolic<HostBitArray<HostBitT, N>>
 where
     HostBitT: Placed<Placement = HostPlacement>,
@@ -300,6 +307,7 @@ where
     }
 }
 
+#[cfg(feature = "compilation")]
 impl<HostBitT, N> TryFrom<Symbolic<HostBitArray<HostBitT, N>>> for HostBitArray<HostBitT, N>
 where
     HostBitT: Placed<Placement = HostPlacement>,

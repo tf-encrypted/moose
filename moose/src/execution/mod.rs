@@ -12,11 +12,17 @@ use std::sync::Arc;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
+#[cfg(feature = "execution")]
 pub mod asynchronous;
+#[cfg(feature = "compilation")]
 pub mod symbolic;
+#[cfg(feature = "execution")]
 pub mod synchronous;
+#[cfg(feature = "execution")]
 pub use asynchronous::*;
+#[cfg(feature = "compilation")]
 pub use symbolic::*;
+#[cfg(feature = "execution")]
 pub use synchronous::*;
 
 /// General session trait determining basic properties for session objects.
