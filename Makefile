@@ -48,6 +48,6 @@ ci-ready:
 	$(MAKE) test-ci
 
 release: ci-ready
-	cargo release --workspace --skip-publish
+	cargo release --workspace --no-publish --execute
 
 .PHONY: build pydep pylib install fmt lint test test-long test-ci clean ci-ready release
