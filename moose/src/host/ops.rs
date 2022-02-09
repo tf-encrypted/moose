@@ -1847,7 +1847,7 @@ impl MuxOp {
 }
 
 impl CastOp {
-    pub(crate) fn ring_host_kernel<S: RuntimeSession, T>(
+    pub(crate) fn no_op_kernel<S: RuntimeSession, T>(
         sess: &S,
         plc: &HostPlacement,
         x: HostRingTensor<T>,
@@ -1857,5 +1857,18 @@ impl CastOp {
     {
         let x = plc.place(sess, x);
         Ok(x)
+    }
+
+    pub(crate) fn ring_host_kernel<S: RuntimeSession>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostRing128Tensor,
+    ) -> Result<HostRing64Tensor> {
+        let x_downshifted: ArrayD<Wrapping<u64>> = x.0.mapv(|el| {
+            let reduced = el.0 & ((1_u128) << 64 - 1);
+            Wrapping(reduced as u64)
+        });
+
+        Ok(HostRingTensor(x_downshifted, plc.clone()))
     }
 }

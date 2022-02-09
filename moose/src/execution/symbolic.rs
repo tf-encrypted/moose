@@ -255,6 +255,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingInject(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Share(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            ShareReduction(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Reveal(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             TruncPr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

@@ -2205,7 +2205,7 @@ impl ArgmaxOp {
         upmost_index: usize,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
-where
+    where
         ReplicatedPlacement: PlacementArgmax<S, Fixed64T, Uint64T>,
         ReplicatedPlacement: PlacementArgmax<S, Fixed128T, Uint64T>,
     {

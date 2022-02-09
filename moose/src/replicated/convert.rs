@@ -418,3 +418,28 @@ impl AdtToRepOp {
         Ok(rep.place(sess, RepTensor { shares }))
     }
 }
+
+impl ShareReductionOp {
+    pub(crate) fn rep_kernel<S: Session, HostT1, HostT2>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepTensor<HostT1>,
+    ) -> Result<RepTensor<HostT2>>
+    where
+        HostPlacement: PlacementCast<S, HostT1, HostT2>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let RepTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        Ok(RepTensor {
+            shares: [
+                [player0.cast(sess, x00), player0.cast(sess, x10)],
+                [player1.cast(sess, x11), player1.cast(sess, x21)],
+                [player2.cast(sess, x22), player2.cast(sess, x02)],
+            ],
+        })
+    }
+}

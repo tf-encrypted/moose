@@ -6,8 +6,8 @@ use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::Session;
 use crate::floatingpoint::FloatTensor;
-use crate::integer::U64Tensor;
 use crate::host::*;
+use crate::integer::U64Tensor;
 use crate::kernels::*;
 use crate::mirrored::*;
 use crate::replicated::*;
@@ -1900,8 +1900,6 @@ impl ArgmaxOp {
         Ok(U64Tensor::Replicated(z))
     }
 }
-
-
 
 impl Log2Op {
     pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(

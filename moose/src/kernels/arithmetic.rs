@@ -557,7 +557,10 @@ modelled_kernel! {
         (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] Self::logical_kernel),
         (ReplicatedPlacement, (Fixed64Tensor) -> Uint64Tensor => [concrete] Self::fixed_kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> Uint64Tensor => [concrete] Self::fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_ring_kernel),
+
     ]
 }

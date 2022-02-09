@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 use std::marker::PhantomData;
 
-mod argmax;
 mod aes;
+mod argmax;
 mod arith;
 mod bits;
 mod compare;

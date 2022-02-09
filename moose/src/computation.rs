@@ -1043,6 +1043,7 @@ operators![
     Xor,
     And,
     Or,
+    ShareReduction,
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
@@ -1545,6 +1546,11 @@ pub struct ArgmaxOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct BroadcastOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct ShareReductionOp {
     pub sig: Signature,
 }
 
