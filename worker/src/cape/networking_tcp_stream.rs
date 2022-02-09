@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
-use std::thread;
+use tokio::time::{sleep, Duration};
 
 type StoreType = Arc<dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>>;
 
@@ -92,7 +92,7 @@ impl TcpStreamNetworking {
         println!("spawned server on: {}", own_address);
         let listener = TcpListener::bind(&own_address)?;
         let shared_store = Arc::clone(&store);
-        thread::spawn(move || {
+        tokio::spawn(async move {
             server(listener, Arc::clone(&shared_store)).unwrap();
         });
 
@@ -110,7 +110,7 @@ impl TcpStreamNetworking {
                 let stream = match TcpStream::connect(address) {
                     Ok(s) => s,
                     Err(_) => {
-                        thread::sleep(std::time::Duration::from_secs(1));
+                        sleep(Duration::from_secs(1)).await;
                         continue;
                     }
                 };
