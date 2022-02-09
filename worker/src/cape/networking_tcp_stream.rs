@@ -9,10 +9,12 @@ use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
 
+type StoreType = Arc<dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>>;
+
 pub struct TcpStreamNetworking {
     own_name: String,
     hosts: HashMap<String, String>,
-    store: Arc<dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>>,
+    store: StoreType,
     streams: HashMap<String, TcpStream>,
 }
 
@@ -33,7 +35,7 @@ fn little_endian_to_u64(buf: &[u8; 8]) -> u64 {
     n
 }
 
-fn handle_connection(mut stream: TcpStream) -> anyhow::Result<()> {
+fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::Result<()> {
     loop {
         let mut buf: [u8; 8] = [0; 8];
         let size = match stream.read_exact(&mut buf) {
@@ -50,15 +52,24 @@ fn handle_connection(mut stream: TcpStream) -> anyhow::Result<()> {
         let value: Value = bincode::deserialize(&vec)
             .map_err(|e| anyhow::anyhow!("failed to deserialize moose value: {}", e))?;
         println!("got moose value: {:?}", value);
+
         // TODO: put value into store
+        let rendezvous_key = "1234".to_string(); // TODO: get rendezvous_key via protocol
+        let cell = store
+            .entry(rendezvous_key)
+            .or_insert_with(async_cell::sync::AsyncCell::shared)
+            .value()
+            .clone();
+
+        cell.set(value);
     }
 }
 
-fn server(listener: TcpListener) -> anyhow::Result<()> {
+fn server(listener: TcpListener, store: StoreType) -> anyhow::Result<()> {
     loop {
         let (stream, _addr) = listener.accept().unwrap();
         tokio::spawn(async move {
-            handle_connection(stream).unwrap();
+            handle_connection(stream, store).unwrap();
         });
     }
 }
@@ -87,7 +98,7 @@ impl TcpStreamNetworking {
         println!("spawned server on: {}", own_address);
         let listener = TcpListener::bind(&own_address)?;
         tokio::spawn(async move {
-            server(listener).unwrap();
+            server(listener, self.store.clone()).unwrap();
         });
 
         // connect to every other server
