@@ -36,6 +36,10 @@ fn little_endian_to_u64(buf: &[u8; 8]) -> u64 {
     n
 }
 
+fn compute_path(session_id: &SessionId, rendezvous_key: &RendezvousKey) -> String {
+    format!("{}/{}", session_id, rendezvous_key)
+}
+
 fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::Result<()> {
     loop {
         let mut buf: [u8; 8] = [0; 8];
@@ -55,9 +59,11 @@ fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::Result<
         println!("got moose value: {:?}", value);
 
         // put value into store
-        let rendezvous_key = "1234".to_string(); // TODO: get rendezvous_key via protocol
+        let rendezvous_key = RendezvousKey::try_from("1234")?; // TODO: get rendezvous_key via protocol
+        let session_id = SessionId::try_from("session_id")?; // TODO: get session_id via protocol
+        let key = compute_path(&session_id, &rendezvous_key);
         let cell = store
-            .entry(rendezvous_key)
+            .entry(key)
             .or_insert_with(async_cell::sync::AsyncCell::shared)
             .value()
             .clone();
@@ -148,7 +154,8 @@ impl AsyncNetworking for TcpStreamNetworking {
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> moose::error::Result<Value> {
-        let key = format!("{}/{}", session_id, rendezvous_key);
+        let key = compute_path(&session_id, &rendezvous_key);
+
         let cell = self
             .store
             .entry(key)
