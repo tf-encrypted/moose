@@ -8,7 +8,6 @@ use std::collections::HashMap;
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
-use std::time::Duration;
 
 pub struct TcpStreamNetworking {
     own_name: String,
@@ -33,28 +32,33 @@ fn little_endian_to_u64(buf: &[u8; 8]) -> u64 {
     n
 }
 
-fn server(listener: TcpListener) -> anyhow::Result<()> {
-    match listener.accept() {
-        Ok((mut stream, _addr)) => loop {
-            let mut buf: [u8; 8] = [0; 8];
-            let size = match stream.read_exact(&mut buf) {
-                Ok(_) => little_endian_to_u64(&buf),
-                Err(_) => break, // when client hangs up
-            };
-            let mut vec: Vec<u8> = Vec::with_capacity(size as usize);
-            unsafe {
-                // https://stackoverflow.com/a/28209155
-                vec.set_len(size as usize);
-            }
-            stream.read_exact(&mut vec)?;
-            let value: Value = bincode::deserialize(&vec)
-                .map_err(|e| anyhow::anyhow!("failed to deserialize moose value: {}", e))?;
-            println!("got moose value: {:?}", value);
-        },
-        Err(e) => println!("couldn't get client: {:?}", e),
+fn handle_connection(mut stream: TcpStream) -> anyhow::Result<()> {
+    loop {
+        let mut buf: [u8; 8] = [0; 8];
+        let size = match stream.read_exact(&mut buf) {
+            Ok(_) => little_endian_to_u64(&buf),
+            Err(_) => return Ok(()), // when client hangs up
+        };
+        let mut vec: Vec<u8> = Vec::with_capacity(size as usize);
+        unsafe {
+            // https://stackoverflow.com/a/28209155
+            vec.set_len(size as usize);
+        }
+
+        stream.read_exact(&mut vec)?;
+        let value: Value = bincode::deserialize(&vec)
+            .map_err(|e| anyhow::anyhow!("failed to deserialize moose value: {}", e))?;
+        println!("got moose value: {:?}", value);
     }
-    println!("DONE");
-    Ok(())
+}
+
+fn server(listener: TcpListener) -> anyhow::Result<()> {
+    loop {
+        let (mut stream, _addr) = listener.accept().unwrap();
+        tokio::spawn(async move {
+            handle_connection(stream).unwrap();
+        });
+    }
 }
 
 impl TcpStreamNetworking {
@@ -69,18 +73,22 @@ impl TcpStreamNetworking {
             .get(&own_name)
             .ok_or_else(|| anyhow::anyhow!("own host name not in hosts map"))?;
 
-        // TODO:
         // spawn the server
+        println!("spawned server on: {}", own_address);
         let listener = TcpListener::bind(&own_address)?;
         tokio::spawn(async move {
             server(listener).unwrap();
         });
 
         // connect to every other server
-        for (placement, address) in hosts.iter() {
-            if *placement == own_name {
-                continue;
-            }
+        let mut others: Vec<(String, String)> = hosts
+            .clone()
+            .into_iter()
+            .filter(|(placement, _)| *placement != own_name)
+            .collect();
+        others.sort();
+        println!("others = {:?}", others);
+        for (placement, address) in others.iter() {
             println!("trying: {} -> {}", placement, address);
             loop {
                 let stream = match TcpStream::connect(address) {
@@ -91,6 +99,7 @@ impl TcpStreamNetworking {
                     }
                 };
                 println!("connected to: {} -> {}", placement, address);
+                break;
             }
         }
         Ok(TcpStreamNetworking {
