@@ -58,8 +58,6 @@ struct SendData {
     session_id: SessionId,
 }
 
-// TODO: take a tokio::sync::mpsc channel as input
-// for every item in this channel, write it to the stream
 async fn send_loop(stream: TcpStream, mut rx: mpsc::Receiver<SendData>) -> anyhow::Result<()> {
     loop {
         let send_data = rx.recv().await;
@@ -164,9 +162,6 @@ impl TcpStreamNetworking {
                 break;
             }
         }
-
-        // TODO: start a send_loop on each stream, have this stream read
-        // values from a channel
 
         let store = Arc::clone(&store);
         Ok(TcpStreamNetworking {
