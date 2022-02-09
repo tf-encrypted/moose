@@ -62,11 +62,9 @@ async fn main() {
 
     let storage = Arc::new(StubAsyncStorage::default());
 
-    let networking = Arc::new(
-        TcpStreamNetworking::new(&opt.placement, hosts)
-            .await
-            .unwrap(),
-    );
+    let mut networking = TcpStreamNetworking::new(&opt.placement, hosts);
+    networking.init().await.unwrap();
+    let networking = Arc::new(networking);
 
     let arguments = hashmap!["x".to_string() => input];
 

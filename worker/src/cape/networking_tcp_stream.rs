@@ -56,7 +56,7 @@ fn handle_connection(mut stream: TcpStream) -> anyhow::Result<()> {
 
 fn server(listener: TcpListener) -> anyhow::Result<()> {
     loop {
-        let (mut stream, _addr) = listener.accept().unwrap();
+        let (stream, _addr) = listener.accept().unwrap();
         tokio::spawn(async move {
             handle_connection(stream).unwrap();
         });
@@ -64,15 +64,23 @@ fn server(listener: TcpListener) -> anyhow::Result<()> {
 }
 
 impl TcpStreamNetworking {
-    pub async fn new(
-        own_name: &str,
-        hosts: HashMap<String, String>,
-    ) -> anyhow::Result<TcpStreamNetworking> {
+    pub fn new(own_name: &str, hosts: HashMap<String, String>) -> TcpStreamNetworking {
         let store =
             Arc::<dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>>::default();
         let own_name: String = own_name.to_string();
-        let own_address = hosts
-            .get(&own_name)
+        let streams = HashMap::new();
+        TcpStreamNetworking {
+            own_name,
+            hosts,
+            store,
+            streams,
+        }
+    }
+
+    pub async fn init(&mut self) -> anyhow::Result<()> {
+        let own_address = self
+            .hosts
+            .get(&self.own_name)
             .ok_or_else(|| anyhow::anyhow!("own host name not in hosts map"))?;
 
         // spawn the server
@@ -83,14 +91,14 @@ impl TcpStreamNetworking {
         });
 
         // connect to every other server
-        let mut others: Vec<(String, String)> = hosts
+        let mut others: Vec<(String, String)> = self
+            .hosts
             .clone()
             .into_iter()
-            .filter(|(placement, _)| *placement != own_name)
+            .filter(|(placement, _)| *placement != self.own_name)
             .collect();
         others.sort();
         println!("others = {:?}", others);
-        let mut streams = HashMap::new();
         for (placement, address) in others.iter() {
             println!("trying: {} -> {}", placement, address);
             loop {
@@ -102,16 +110,12 @@ impl TcpStreamNetworking {
                     }
                 };
                 println!("connected to: {} -> {}", placement, address);
-                streams.insert(placement.clone(), stream);
+                self.streams.insert(placement.clone(), stream);
                 break;
             }
         }
-        Ok(TcpStreamNetworking {
-            own_name,
-            hosts,
-            store,
-            streams,
-        })
+
+        Ok(())
     }
 }
 
