@@ -15,7 +15,6 @@ default = ["blas", "compilation", "execution"]
 blas = ["ndarray-linalg"]
 compilation = []
 execution = []
-textual = []
 
 [dependencies]
 aes = "~0.7"
