@@ -5099,6 +5099,10 @@ pub trait Ring {
     type BitLength: Const;
 }
 
+pub trait TensorLike {
+    type Scalar;
+}
+
 pub(crate) trait BitArray {
     type Len: Const;
 }

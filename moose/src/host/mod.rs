@@ -6,7 +6,7 @@ use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::kernels::*;
 use crate::types::*;
-use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
+use crate::{BitArray, Const, Ring, TensorLike, N128, N224, N256, N64};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray::Slice;
@@ -205,11 +205,7 @@ impl std::fmt::Debug for HostBitTensor {
     }
 }
 
-impl<S: Session> TensorLike<S> for HostBitTensor {
-    type Scalar = u8;
-}
-
-impl<S: Session> TensorLike<S> for Symbolic<HostBitTensor> {
+impl TensorLike for HostBitTensor {
     type Scalar = u8;
 }
 
@@ -403,16 +399,8 @@ impl<T> Placed for HostRingTensor<T> {
     }
 }
 
-impl<S: Session, T> TensorLike<S> for HostRingTensor<T> {
+impl<T> TensorLike for HostRingTensor<T> {
     type Scalar = T;
-}
-
-impl<S: Session, T> TensorLike<S> for Symbolic<HostRingTensor<T>> {
-    type Scalar = T;
-}
-
-impl<R: Ring + Placed> Ring for Symbolic<R> {
-    type BitLength = R::BitLength;
 }
 
 impl<S: Session, T> PlacementPlace<S, HostRingTensor<T>> for HostPlacement

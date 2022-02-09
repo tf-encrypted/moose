@@ -146,7 +146,7 @@ impl SessionId {
 /// Type map used to compute the symbolic version of a Moose type.
 ///
 /// Note that this trait is typically not implemented directly, but
-/// rather through an implemention of the PartiallySymbolicType map.
+/// rather through an implementation of the PartiallySymbolicType map.
 pub trait SymbolicType {
     type Type;
 }
