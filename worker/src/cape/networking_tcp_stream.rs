@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
+use std::thread;
 
 type StoreType = Arc<dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>>;
 
@@ -53,7 +54,7 @@ fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::Result<
             .map_err(|e| anyhow::anyhow!("failed to deserialize moose value: {}", e))?;
         println!("got moose value: {:?}", value);
 
-        // TODO: put value into store
+        // put value into store
         let rendezvous_key = "1234".to_string(); // TODO: get rendezvous_key via protocol
         let cell = store
             .entry(rendezvous_key)
@@ -68,45 +69,38 @@ fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::Result<
 fn server(listener: TcpListener, store: StoreType) -> anyhow::Result<()> {
     loop {
         let (stream, _addr) = listener.accept().unwrap();
+        let shared_store = Arc::clone(&store);
         tokio::spawn(async move {
-            handle_connection(stream, store).unwrap();
+            handle_connection(stream, shared_store).unwrap();
         });
     }
 }
 
 impl TcpStreamNetworking {
-    pub fn new(own_name: &str, hosts: HashMap<String, String>) -> TcpStreamNetworking {
-        let store =
-            Arc::<dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>>::default();
+    pub async fn new(
+        own_name: &str,
+        hosts: HashMap<String, String>,
+    ) -> anyhow::Result<TcpStreamNetworking> {
+        let store = StoreType::default();
         let own_name: String = own_name.to_string();
-        let streams = HashMap::new();
-        TcpStreamNetworking {
-            own_name,
-            hosts,
-            store,
-            streams,
-        }
-    }
-
-    pub async fn start(&mut self) -> anyhow::Result<()> {
-        let own_address = self
-            .hosts
-            .get(&self.own_name)
+        let mut streams = HashMap::new();
+        let own_address = hosts
+            .get(&own_name)
             .ok_or_else(|| anyhow::anyhow!("own host name not in hosts map"))?;
 
         // spawn the server
         println!("spawned server on: {}", own_address);
         let listener = TcpListener::bind(&own_address)?;
-        tokio::spawn(async move {
-            server(listener, self.store.clone()).unwrap();
+        let shared_store = Arc::clone(&store);
+        thread::spawn(move || {
+            server(listener, Arc::clone(&shared_store)).unwrap();
         });
 
         // connect to every other server
-        let mut others: Vec<(String, String)> = self
-            .hosts
+        let mut others: Vec<(String, String)> = hosts
             .clone()
             .into_iter()
-            .filter(|(placement, _)| *placement != self.own_name)
+            .filter(|(placement, _)| *placement != own_name)
             .collect();
         others.sort();
         println!("others = {:?}", others);
@@ -116,17 +110,23 @@ impl TcpStreamNetworking {
                 let stream = match TcpStream::connect(address) {
                     Ok(s) => s,
                     Err(_) => {
-                        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                        thread::sleep(std::time::Duration::from_secs(1));
                         continue;
                     }
                 };
                 println!("connected to: {} -> {}", placement, address);
-                self.streams.insert(placement.clone(), stream);
+                streams.insert(placement.clone(), stream);
                 break;
             }
         }
 
-        Ok(())
+        let store = Arc::clone(&store);
+        Ok(TcpStreamNetworking {
+            own_name,
+            hosts,
+            store,
+            streams,
+        })
     }
 }
 
