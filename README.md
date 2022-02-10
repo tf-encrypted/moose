@@ -116,6 +116,8 @@ Once your PR has been merged to `main`:
 
 4. create a release on GitHub based on your [tag](https://github.com/tf-encrypted/runtime/tags)
 
+5. additionally tag the new versioned release with the `stable` tag, if the release is deemed stable.
+
 If needed then tags on GitHub can be deleted using `git push --delete origin {tag-name}`
 
 ### Rust Development

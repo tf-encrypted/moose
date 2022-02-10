@@ -47,15 +47,7 @@ class ReplicatedExample(parameterized.TestCase):
         sigmoid_comp = self._setup_sigmoid_comp()
         traced_sigmoid_comp = edsl.trace(sigmoid_comp)
         comp_bin = utils.serialize_computation(traced_sigmoid_comp)
-        _ = elk_compiler.compile_computation(
-            comp_bin,
-            [
-                "typing",
-                "full",
-                "toposort",
-                # "print",
-            ],
-        )
+        _ = elk_compiler.compile_computation(comp_bin)
 
     def test_sigmoid_example_execute(self):
         sigmoid_comp = self._setup_sigmoid_comp()
@@ -70,7 +62,6 @@ class ReplicatedExample(parameterized.TestCase):
             computation=traced_sigmoid_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
-            compiler_passes=["typing", "full", "prune", "networking", "toposort"],
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
 
