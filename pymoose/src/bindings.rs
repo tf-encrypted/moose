@@ -144,16 +144,7 @@ impl LocalRuntime {
         compiler_passes: Option<Vec<String>>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let computation = create_computation_graph_from_py_bytes(computation);
-        let compiler_passes: Vec<String> = compiler_passes.unwrap_or_else(|| {
-            vec![
-                "typing".into(),
-                "full".into(),
-                "prune".into(),
-                "networking".into(),
-                "toposort".into(),
-            ]
-        });
-        let computation = compile(&computation, Some(&compiler_passes))
+        let computation = compile(&computation, compiler_passes)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         self.evaluate_compiled_computation(py, &computation, role_assignments, arguments)
     }
@@ -332,17 +323,8 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         passes: Option<Vec<String>>,
     ) -> PyResult<MooseComputation> {
         let computation = create_computation_graph_from_py_bytes(computation);
-        let passes: Vec<String> = passes.unwrap_or_else(|| {
-            vec![
-                "typing".into(),
-                "full".into(),
-                "prune".into(),
-                "networking".into(),
-                "toposort".into(),
-            ]
-        });
-        let computation = compile(&computation, Some(&passes))
-            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        let computation =
+            compile(&computation, passes).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         Ok(MooseComputation { computation })
     }
 
@@ -366,7 +348,7 @@ fn pymoose_bindings(_py: Python, m: &PyModule) -> PyResult<()> {
 
 #[cfg(test)]
 mod compatibility_tests {
-    use moose::compilation::{compile, DEFAULT_PASSES};
+    use moose::compilation::{compile, Pass};
     use moose::textual::parallel_parse_computation;
     use rstest::rstest;
 
@@ -376,7 +358,7 @@ mod compatibility_tests {
         let source = std::fs::read_to_string(path)?;
         let computation =
             parallel_parse_computation(&source, crate::bindings::DEFAULT_PARSE_CHUNKS)?;
-        let _ = compile(&computation, Some(&DEFAULT_PASSES))?;
+        let _ = compile::<Pass>(&computation, None)?;
         Ok(())
     }
 

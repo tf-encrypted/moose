@@ -58,6 +58,7 @@ impl TryFrom<&Pass> for Pass {
     }
 }
 
+#[deprecated]
 pub const DEFAULT_PASSES: [Pass; 5] = [
     Pass::Typing,
     Pass::Symbolic,
@@ -85,9 +86,8 @@ where
     Ok(computation)
 }
 
-pub fn compile<P, PS>(comp: &Computation, passes: Option<PS>) -> anyhow::Result<Computation>
+pub fn compile<P>(comp: &Computation, passes: Option<Vec<P>>) -> anyhow::Result<Computation>
 where
-    PS: AsRef<[P]>,
     for<'p> Pass: TryFrom<&'p P, Error = anyhow::Error>,
 {
     #[allow(deprecated)]
