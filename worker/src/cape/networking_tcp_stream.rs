@@ -47,7 +47,10 @@ async fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::R
         println!("reading size buf");
         let size = match stream.read_exact(&mut buf).await {
             Ok(_) => little_endian_to_u64(&buf),
-            Err(_) => return Ok(()), // when client hangs up
+            Err(_) => {
+                println!("client hung up");
+                return Ok(()) // when client hangs up
+            }
         };
         let mut vec: Vec<u8> = Vec::with_capacity(size as usize);
         vec.resize(size as usize, 0);
@@ -79,8 +82,10 @@ async fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::R
 async fn server(listener: TcpListener, store: StoreType) -> anyhow::Result<()> {
     loop {
         // TODO: retry logic?
-        let (stream, _addr) = listener.accept().await?;
-        stream.set_nodelay(true)?;
+        println!("listening");
+        let (stream, addr) = listener.accept().await?;
+        println!("accepted connection: {}", addr);
+        //stream.set_nodelay(true)?;
         let shared_store = Arc::clone(&store);
         tokio::spawn(async move {
             handle_connection(stream, shared_store).await.unwrap();
@@ -121,6 +126,7 @@ async fn send_loop(mut stream: TcpStream, mut rx: mpsc::Receiver<SendData>) -> a
             }
             None => {
                 stream.shutdown().await?;
+                println!("terminated connection");
             }
         }
     }
@@ -131,6 +137,7 @@ impl TcpStreamNetworking {
         own_name: &str,
         hosts: HashMap<String, String>,
     ) -> anyhow::Result<TcpStreamNetworking> {
+        println!("own name: {}", own_name);
         let store = StoreType::default();
         let own_name: String = own_name.to_string();
         let own_address = hosts
@@ -166,7 +173,7 @@ impl TcpStreamNetworking {
                 };
                 //stream.set_nodelay(true)?;
                 println!("connected to: {} -> {}", placement, address);
-                let (tx, rx) = mpsc::channel(10000);
+                let (tx, rx) = mpsc::channel(100);
                 send_channels.insert(placement.clone(), tx);
 
                 tokio::spawn(async move {
@@ -194,7 +201,7 @@ impl AsyncNetworking for TcpStreamNetworking {
         session_id: &SessionId,
     ) -> moose::error::Result<()> {
         let key = compute_path(session_id, rendezvous_key);
-        println!("sending key: {}", key);
+        println!("sending key: {} to: {}", key, receiver);
         let receiver_name = receiver.to_string();
         let send_channel = self.send_channels.get(&receiver_name).unwrap();
         let send_data = SendData {
@@ -211,12 +218,12 @@ impl AsyncNetworking for TcpStreamNetworking {
 
     async fn receive(
         &self,
-        _sender: &Identity,
+        sender: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> moose::error::Result<Value> {
         let key = compute_path(&session_id, &rendezvous_key);
-        println!("receiving key: {}", key);
+        println!("receiving key: {} from: {}", key, sender);
 
         let cell = self
             .store

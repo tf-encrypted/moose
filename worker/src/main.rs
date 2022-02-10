@@ -104,12 +104,16 @@ async fn main() {
         )
         .unwrap();
 
+    println!("joining on tasks");
     moose_session_handle.join_on_first_error().await.unwrap();
 
     let mut outputs = HashMap::new();
 
+    println!("collecting outputs");
     for (output_name, output_future) in outputs_handle {
+        println!("awaiting output: {}", output_name);
         let value = output_future.await.unwrap();
+        println!("got output: {}", output_name);
         outputs.insert(output_name, value);
     }
 
