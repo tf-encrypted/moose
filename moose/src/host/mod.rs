@@ -2,11 +2,12 @@
 
 use crate::computation::*;
 use crate::error::{Error, Result};
+#[cfg(feature = "compile")]
 use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::kernels::*;
 use crate::types::*;
-use crate::{BitArray, Const, Ring, N128, N224, N256, N64};
+use crate::{BitArray, Const, Ring, TensorLike, N128, N64};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray::Slice;
@@ -205,11 +206,7 @@ impl std::fmt::Debug for HostBitTensor {
     }
 }
 
-impl<S: Session> TensorLike<S> for HostBitTensor {
-    type Scalar = u8;
-}
-
-impl<S: Session> TensorLike<S> for Symbolic<HostBitTensor> {
+impl TensorLike for HostBitTensor {
     type Scalar = u8;
 }
 
@@ -266,6 +263,7 @@ impl<HostBitT, N: Const> BitArray for HostBitArray<HostBitT, N> {
     type Len = N;
 }
 
+#[cfg(feature = "compile")]
 impl<HostBitT: Placed, N: Const> BitArray for Symbolic<HostBitArray<HostBitT, N>> {
     type Len = N;
 }
@@ -279,22 +277,15 @@ impl<HostBitTensorT: Placed, N> Placed for HostBitArray<HostBitTensorT, N> {
     }
 }
 
-impl PartiallySymbolicType for HostBitArray64 {
-    type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N64>;
+#[cfg(feature = "compile")]
+impl<HostBitTensorT, N: Const> PartiallySymbolicType for HostBitArray<HostBitTensorT, N>
+where
+    HostBitTensorT: SymbolicType,
+{
+    type Type = HostBitArray<<HostBitTensorT as SymbolicType>::Type, N>;
 }
 
-impl PartiallySymbolicType for HostBitArray128 {
-    type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N128>;
-}
-
-impl PartiallySymbolicType for HostBitArray224 {
-    type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N224>;
-}
-
-impl PartiallySymbolicType for HostBitArray256 {
-    type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N256>;
-}
-
+#[cfg(feature = "compile")]
 impl<HostBitT, N> From<HostBitArray<HostBitT, N>> for Symbolic<HostBitArray<HostBitT, N>>
 where
     HostBitT: Placed<Placement = HostPlacement>,
@@ -304,6 +295,7 @@ where
     }
 }
 
+#[cfg(feature = "compile")]
 impl<HostBitT, N> TryFrom<Symbolic<HostBitArray<HostBitT, N>>> for HostBitArray<HostBitT, N>
 where
     HostBitT: Placed<Placement = HostPlacement>,
@@ -403,16 +395,8 @@ impl<T> Placed for HostRingTensor<T> {
     }
 }
 
-impl<S: Session, T> TensorLike<S> for HostRingTensor<T> {
+impl<T> TensorLike for HostRingTensor<T> {
     type Scalar = T;
-}
-
-impl<S: Session, T> TensorLike<S> for Symbolic<HostRingTensor<T>> {
-    type Scalar = T;
-}
-
-impl<R: Ring + Placed> Ring for Symbolic<R> {
-    type BitLength = R::BitLength;
 }
 
 impl<S: Session, T> PlacementPlace<S, HostRingTensor<T>> for HostPlacement

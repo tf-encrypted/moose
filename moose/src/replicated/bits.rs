@@ -1,6 +1,7 @@
 //! Support for bit (de-)composition
 
 use super::*;
+use std::convert::TryInto;
 
 impl BitDecomposeOp {
     pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT, N: Const>(
@@ -53,6 +54,7 @@ pub(crate) trait PlacementSplit<S: Session, T, O> {
     fn split(&self, sess: &S, x: &T) -> (O, O);
 }
 
+#[cfg(feature = "compile")]
 impl<S: Session, HostRingT, HostBitT>
     PlacementSplit<S, Symbolic<RepTensor<HostRingT>>, Symbolic<RepTensor<HostBitT>>>
     for ReplicatedPlacement

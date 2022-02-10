@@ -11,14 +11,6 @@ _x_owner = edsl.host_placement(name="x_owner")
 _y_owner = edsl.host_placement(name="y_owner")
 _output_owner = edsl.host_placement("output_owner")
 
-_DEFAULT_PASSES = [
-    "typing",
-    "full",
-    "prune",
-    "networking",
-    "toposort",
-]
-
 
 @edsl.computation
 def add_full_storage(
@@ -113,7 +105,7 @@ class RunComputation(parameterized.TestCase):
             add_full_storage, self.storage_dict
         )
         outputs = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.storage_args, _DEFAULT_PASSES
+            comp_bin, self.role_assignment, self.storage_args
         )
         assert len(outputs) == 0
         result = runtime.read_value_from_storage("output_owner", "output")
@@ -124,7 +116,7 @@ class RunComputation(parameterized.TestCase):
             add_input_storage, self.storage_dict
         )
         result = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.storage_args, _DEFAULT_PASSES
+            comp_bin, self.role_assignment, self.storage_args
         )
         np.testing.assert_array_equal(list(result.values())[0], np.array([3.0]))
 
@@ -133,7 +125,7 @@ class RunComputation(parameterized.TestCase):
             add_output_storage, self.empty_storage
         )
         outputs = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.actual_args, _DEFAULT_PASSES
+            comp_bin, self.role_assignment, self.actual_args
         )
         assert len(outputs) == 0
         result = runtime.read_value_from_storage("output_owner", "output")
@@ -144,7 +136,7 @@ class RunComputation(parameterized.TestCase):
             add_no_storage, self.storage_dict
         )
         result = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.actual_args, _DEFAULT_PASSES
+            comp_bin, self.role_assignment, self.actual_args
         )
         np.testing.assert_array_equal(list(result.values())[0], np.array([3.0]))
 
@@ -153,7 +145,7 @@ class RunComputation(parameterized.TestCase):
             add_multioutput, self.storage_dict
         )
         result = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.actual_args, _DEFAULT_PASSES
+            comp_bin, self.role_assignment, self.actual_args
         )
         result = sorted(result.values())
         expected = [np.array([1.0]), np.array([2.0]), np.array([3.0])]

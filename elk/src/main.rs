@@ -1,4 +1,4 @@
-use moose::compilation::{compile_passes, into_pass};
+use moose::compilation::compile;
 use moose::textual::verbose_parse_computation;
 use moose::textual::ToTextual;
 use std::fs::{read_to_string, write};
@@ -28,17 +28,10 @@ fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
     let source = read_to_string(opt.input)?;
     let comp = verbose_parse_computation(&source)?;
-    let passes = into_pass(&opt.passes.unwrap_or_else(all_passes))?;
-    let comp = compile_passes(&comp, &passes)?;
+    let comp = compile(&comp, opt.passes)?;
     match opt.output {
         Some(path) => write(path, comp.to_textual())?,
         None => println!("{}", comp.to_textual()),
     }
     Ok(())
-}
-
-/// Finds all the passes and the proper order for them
-fn all_passes() -> Vec<String> {
-    // Currently is not doing any magical discover and sorting, just returns a hard-coded list.
-    vec!["networking".into(), "prune".into()]
 }

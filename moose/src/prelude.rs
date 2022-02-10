@@ -1,9 +1,11 @@
+#[cfg(feature = "sync_execute")]
+pub use crate::execution::SyncSession;
+#[cfg(feature = "async_execute")]
+pub use crate::execution::{AsyncExecutor, AsyncReceiver, AsyncSession, AsyncSessionHandle};
 pub use crate::{
     additive::AdditivePlacement,
     computation::{Computation, Placement, RendezvousKey, Role, SessionId, Ty, Value},
-    execution::{
-        AsyncExecutor, AsyncReceiver, AsyncSession, AsyncSessionHandle, Identity, SyncSession,
-    },
+    execution::Identity,
     host::{FromRaw, HostPlacement},
     kernels::*,
     mirrored::Mirrored3Placement,

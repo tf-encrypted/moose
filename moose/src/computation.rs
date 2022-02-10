@@ -1,5 +1,6 @@
 use crate::additive::*;
 use crate::error::{Error, Result};
+#[cfg(feature = "compile")]
 use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::host::*;
@@ -146,11 +147,13 @@ impl SessionId {
 /// Type map used to compute the symbolic version of a Moose type.
 ///
 /// Note that this trait is typically not implemented directly, but
-/// rather through an implemention of the PartiallySymbolicType map.
+/// rather through an implementation of the PartiallySymbolicType map.
+#[cfg(feature = "compile")]
 pub trait SymbolicType {
     type Type;
 }
 
+#[cfg(feature = "compile")]
 impl<T> SymbolicType for T
 where
     T: PartiallySymbolicType,
@@ -164,6 +167,7 @@ where
 /// Concretely, this map computes the symbolic version, except for the top-most
 /// type. As an example, RepTensor<Symbolic<HostTensor>> is partially symbolic
 /// as opposed to the (fully) symbolic type Symbolic<RepTensor<Symbolic<HostTensor>.
+#[cfg(feature = "compile")]
 pub trait PartiallySymbolicType {
     type Type;
 }
@@ -445,18 +449,21 @@ macro_rules! values {
         )+
 
         $(
-        impl KnownType<crate::execution::SyncSession> for $val {
-            type Type = $val;
-            const TY: Ty = Ty::$val$(($inner::$default))?;
-        }
+            #[cfg(feature = "sync_execute")]
+            impl KnownType<crate::execution::SyncSession> for $val {
+                type Type = $val;
+                const TY: Ty = Ty::$val$(($inner::$default))?;
+            }
         )+
 
+        #[cfg(feature = "compile")]
         #[derive(PartialEq, Clone, Debug)]
         #[allow(clippy::large_enum_variant)]
         pub enum SymbolicValue {
             $($val(Box<<$val as SymbolicType>::Type>),)+
         }
 
+        #[cfg(feature = "compile")]
         impl SymbolicValue {
             pub fn ty(&self) -> Ty {
                 match self {
@@ -473,36 +480,40 @@ macro_rules! values {
         }
 
         $(
-        impl From<<$val as SymbolicType>::Type> for SymbolicValue {
-            fn from(x: <$val as SymbolicType>::Type) -> Self {
-                SymbolicValue::$val(Box::new(x))
-            }
-        }
-        )+
-
-        $(
-        impl TryFrom<SymbolicValue> for <$val as SymbolicType>::Type {
-            type Error = Error;
-            fn try_from(v: SymbolicValue) -> Result<Self> {
-                match v {
-                    SymbolicValue::$val(x) => Ok(*x),
-                    _ => Err(Error::TypeMismatch {
-                        expected: stringify!($val).to_string(),
-                        found: v.ty(),
-                    }),
+            #[cfg(feature = "compile")]
+            impl From<<$val as SymbolicType>::Type> for SymbolicValue {
+                fn from(x: <$val as SymbolicType>::Type) -> Self {
+                    SymbolicValue::$val(Box::new(x))
                 }
             }
-        }
         )+
 
         $(
-        impl KnownType<crate::execution::SymbolicSession> for $val {
-            type Type = <$val as SymbolicType>::Type;
-            const TY: Ty = Ty::$val$(($inner::$default))?;
-        }
+            #[cfg(feature = "compile")]
+            impl TryFrom<SymbolicValue> for <$val as SymbolicType>::Type {
+                type Error = Error;
+                fn try_from(v: SymbolicValue) -> Result<Self> {
+                    match v {
+                        SymbolicValue::$val(x) => Ok(*x),
+                        _ => Err(Error::TypeMismatch {
+                            expected: stringify!($val).to_string(),
+                            found: v.ty(),
+                        }),
+                    }
+                }
+            }
         )+
 
         $(
+            #[cfg(feature = "compile")]
+            impl KnownType<crate::execution::SymbolicSession> for $val {
+                type Type = <$val as SymbolicType>::Type;
+                const TY: Ty = Ty::$val$(($inner::$default))?;
+            }
+        )+
+
+        $(
+            #[cfg(feature = "async_execute")]
             impl KnownType<crate::execution::AsyncSession> for $val {
                 type Type = $val;
                 const TY: Ty = Ty::$val$(($inner::$default))?;
@@ -603,6 +614,7 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Unit(pub HostPlacement);
 
+#[cfg(feature = "compile")]
 impl PartiallySymbolicType for Unit {
     type Type = Unit;
 }
@@ -774,177 +786,6 @@ impl Signature {
             Signature::Variadic(s) => Signature::variadic(s.args.flatten(), s.ret.flatten()),
         }
     }
-
-    pub(crate) fn merge(&mut self, another: Signature) -> anyhow::Result<()> {
-        match (self, &another) {
-            (Signature::Nullary(s), Signature::Nullary(o)) => s.merge(o),
-            (Signature::Unary(s), Signature::Unary(o)) => s.merge(o),
-            (Signature::Binary(s), Signature::Binary(o)) => s.merge(o),
-            (Signature::Ternary(s), Signature::Ternary(o)) => s.merge(o),
-            (Signature::Variadic(s), o) => s.merge(o),
-
-            (Signature::Nullary(s), o) => Err(anyhow::anyhow!(
-                "Cannot merge {:?} with an incompatible signature {:?}",
-                s,
-                o
-            )),
-            (Signature::Unary(s), o) => Err(anyhow::anyhow!(
-                "Cannot merge {:?} with an incompatible signature {:?}",
-                s,
-                o
-            )),
-            (Signature::Binary(s), o) => Err(anyhow::anyhow!(
-                "Cannot merge {:?} with an incompatible signature {:?}",
-                s,
-                o
-            )),
-            (Signature::Ternary(s), o) => Err(anyhow::anyhow!(
-                "Cannot merge {:?} with an incompatible signature {:?}",
-                s,
-                o
-            )),
-        }
-    }
-}
-
-impl NullarySignature {
-    pub(crate) fn merge(&mut self, another: &NullarySignature) -> anyhow::Result<()> {
-        if let Some(new_type) = self.ret.merge(&another.ret) {
-            self.ret = new_type;
-        }
-        Ok(())
-    }
-}
-
-impl UnarySignature {
-    pub(crate) fn merge(&mut self, another: &UnarySignature) -> anyhow::Result<()> {
-        if let Some(new_type) = self.arg0.merge(&another.arg0) {
-            self.arg0 = new_type;
-        }
-        if let Some(new_type) = self.ret.merge(&another.ret) {
-            self.ret = new_type;
-        }
-        Ok(())
-    }
-}
-
-impl BinarySignature {
-    pub(crate) fn merge(&mut self, another: &BinarySignature) -> anyhow::Result<()> {
-        if let Some(new_type) = self.arg0.merge(&another.arg0) {
-            self.arg0 = new_type;
-        }
-        if let Some(new_type) = self.arg1.merge(&another.arg1) {
-            self.arg1 = new_type;
-        }
-        if let Some(new_type) = self.ret.merge(&another.ret) {
-            self.ret = new_type;
-        }
-        Ok(())
-    }
-}
-
-impl TernarySignature {
-    pub(crate) fn merge(&mut self, another: &TernarySignature) -> anyhow::Result<()> {
-        if let Some(new_type) = self.arg0.merge(&another.arg0) {
-            self.arg0 = new_type;
-        }
-        if let Some(new_type) = self.arg1.merge(&another.arg1) {
-            self.arg1 = new_type;
-        }
-        if let Some(new_type) = self.arg2.merge(&another.arg2) {
-            self.arg2 = new_type;
-        }
-        if let Some(new_type) = self.ret.merge(&another.ret) {
-            self.ret = new_type;
-        }
-        Ok(())
-    }
-}
-
-impl VariadicSignature {
-    pub(crate) fn merge(&mut self, another: &Signature) -> anyhow::Result<()> {
-        match another {
-            Signature::Variadic(sig) => {
-                if let Some(new_type) = self.args.merge(&sig.args) {
-                    self.args = new_type;
-                }
-                if let Some(new_type) = self.ret.merge(&sig.ret) {
-                    self.ret = new_type;
-                }
-                Ok(())
-            }
-            Signature::Unary(sig) => {
-                if self.args == sig.arg0 {
-                    if let Some(new_type) = self.args.merge(&sig.arg0) {
-                        self.args = new_type;
-                    }
-                }
-
-                if let Some(new_type) = self.ret.merge(&sig.ret) {
-                    self.ret = new_type;
-                }
-                Ok(())
-            }
-            Signature::Binary(sig) => {
-                if self.args == sig.arg0 && self.args == sig.arg1 {
-                    if let Some(new_type) = self.args.merge(&sig.arg0) {
-                        self.args = new_type;
-                    }
-
-                    if let Some(new_type) = self.args.merge(&sig.arg1) {
-                        self.args = new_type;
-                    }
-                }
-
-                if let Some(new_type) = self.ret.merge(&sig.ret) {
-                    self.ret = new_type;
-                }
-
-                Ok(())
-            }
-            Signature::Ternary(sig) => {
-                if self.args == sig.arg0 && self.args == sig.arg1 && self.args == sig.arg2 {
-                    if let Some(new_type) = self.args.merge(&sig.arg0) {
-                        self.args = new_type;
-                    }
-
-                    if let Some(new_type) = self.args.merge(&sig.arg1) {
-                        self.args = new_type;
-                    }
-
-                    if let Some(new_type) = self.args.merge(&sig.arg2) {
-                        self.args = new_type;
-                    }
-                }
-
-                if let Some(new_type) = self.ret.merge(&sig.ret) {
-                    self.ret = new_type;
-                }
-
-                Ok(())
-            }
-            o => Err(anyhow::anyhow!(
-                "Cannot merge {:?} with an incompatible signature {:?}",
-                self,
-                o
-            )),
-        }
-    }
-}
-
-impl Ty {
-    /// Merge type information.
-    ///
-    /// Returns `Some(new_type)` if a merge produced a new type.
-    /// Otherwise returns None
-    pub(crate) fn merge(&self, another: &Ty) -> Option<Ty> {
-        match self {
-            Ty::Unknown => Some(*another),
-            // TODO: make sure another dtype is also a tensor
-            Ty::Tensor(TensorDType::Unknown) => Some(*another),
-            _ => None,
-        }
-    }
 }
 
 macro_rules! operators {
@@ -968,18 +809,21 @@ macro_rules! operators {
         )+
 
         impl Operator {
+            #[cfg(feature = "compile")]
             pub(crate) fn sig(&self) -> &Signature {
                 match self {
                     $(Operator::$t(op) => &op.sig,)+
                 }
             }
 
+            #[cfg(feature = "compile")]
             pub(crate) fn sig_mut(&mut self) -> &mut Signature {
                 match self {
                     $(Operator::$t(op) => &mut op.sig,)+
                 }
             }
 
+            #[cfg(feature = "compile")]
             pub(crate) fn short_name(&self) -> &str {
                 match self {
                     $(Operator::$t(op) => op.short_name(),)+
@@ -1806,5 +1650,21 @@ mod tests {
         assert_eq!(session_id.to_string(), session_id_str);
         assert_eq!(session_id.secure, expected);
         assert_eq!(*session_id.as_bytes(), expected);
+    }
+
+    #[test]
+    fn test_binary_roundtrip() {
+        use std::convert::TryInto;
+        let original: Computation = r#"constant_0 = Constant{value = HostFloat64Tensor([[0.12131529]])}: () -> Tensor<Float64> () @Host(player2)
+        cast_0 = Cast: (Tensor<Float64>) -> Tensor<Fixed128(24, 40)> (constant_0) @Host(player2)
+        x = Input{arg_name = "x"}: () -> AesTensor () @Host(player0)
+        key = Input{arg_name = "key"}: () -> AesKey () @Replicated(player0, player1, player2)
+        decrypt_0 = Decrypt: (AesKey, AesTensor) -> Tensor<Fixed128(24, 40)> (key, x) @Replicated(player0, player1, player2)
+        dot_0 = Dot: (Tensor<Fixed128(24, 40)>, Tensor<Fixed128(24, 40)>) -> Tensor<Fixed128(24, 40)> (decrypt_0, cast_0) @Replicated(player0, player1, player2)
+        cast_1 = Cast: (Tensor<Fixed128(24, 40)>) -> Tensor<Float64> (dot_0) @Host(player1)
+        output_0 = Output: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
+        let bytes = original.to_bytes().unwrap();
+        let read_back = Computation::from_bytes(bytes).unwrap();
+        assert_eq!(original.operations, read_back.operations);
     }
 }
