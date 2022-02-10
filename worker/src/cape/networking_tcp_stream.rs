@@ -44,30 +44,26 @@ async fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::R
     loop {
         // read moose data
         let mut buf: [u8; 8] = [0; 8];
-        println!("reading size buf");
+        tracing::debug!("reading size buf");
         let size = match stream.read_exact(&mut buf).await {
             Ok(_) => little_endian_to_u64(&buf),
             Err(_) => {
-                println!("client hung up");
+                tracing::debug!("client hung up");
                 return Ok(()) // when client hangs up
             }
         };
         let mut vec: Vec<u8> = Vec::with_capacity(size as usize);
         vec.resize(size as usize, 0);
-        //unsafe {
-        //    // https://stackoverflow.com/a/28209155
-        //    vec.set_len(size as usize);
-        //}
 
-        println!("reading exact: {}", size);
+        tracing::debug!("reading exact: {}", size);
         stream.read_exact(&mut vec).await?;
         let data: SendData = bincode::deserialize(&vec)
             .map_err(|e| anyhow::anyhow!("failed to deserialize moose value: {}", e))?;
-        //println!("got moose value: {:?}", data);
+        //tracing::debug!("got moose value: {:?}", data);
 
         // put value into store
         let key = compute_path(&data.session_id, &data.rendezvous_key);
-        println!("storing key: {}", key);
+        tracing::debug!("storing key: {}", key);
         let cell = store
             .entry(key.clone())
             .or_insert_with(async_cell::sync::AsyncCell::shared)
@@ -75,17 +71,16 @@ async fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::R
             .clone();
 
         cell.set(data.value);
-        println!("stored key: {}", key);
+        tracing::debug!("stored key: {}", key);
     }
 }
 
 async fn server(listener: TcpListener, store: StoreType) -> anyhow::Result<()> {
     loop {
         // TODO: retry logic?
-        println!("listening");
+        tracing::debug!("listening");
         let (stream, addr) = listener.accept().await?;
-        println!("accepted connection: {}", addr);
-        //stream.set_nodelay(true)?;
+        tracing::debug!("accepted connection: {}", addr);
         let shared_store = Arc::clone(&store);
         tokio::spawn(async move {
             handle_connection(stream, shared_store).await.unwrap();
@@ -113,7 +108,7 @@ async fn send_value(stream: &mut TcpStream, send_data: &SendData) -> anyhow::Res
     stream.flush().await?;
 
     let key = compute_path(&send_data.session_id, &send_data.rendezvous_key);
-    println!("sent key: {} size: {}", key, data_size);
+    tracing::debug!("sent key: {} size: {}", key, data_size);
     Ok(())
 }
 
@@ -137,7 +132,7 @@ impl TcpStreamNetworking {
         own_name: &str,
         hosts: HashMap<String, String>,
     ) -> anyhow::Result<TcpStreamNetworking> {
-        println!("own name: {}", own_name);
+        tracing::debug!("own name: {}", own_name);
         let store = StoreType::default();
         let own_name: String = own_name.to_string();
         let own_address = hosts
@@ -145,7 +140,7 @@ impl TcpStreamNetworking {
             .ok_or_else(|| anyhow::anyhow!("own host name not in hosts map"))?;
 
         // spawn the server
-        println!("spawned server on: {}", own_address);
+        tracing::debug!("spawned server on: {}", own_address);
         let listener = TcpListener::bind(&own_address).await?;
         let shared_store = Arc::clone(&store);
         tokio::spawn(async move {
@@ -159,10 +154,10 @@ impl TcpStreamNetworking {
             .filter(|(placement, _)| *placement != own_name)
             .collect();
         others.sort();
-        println!("others = {:?}", others);
+        tracing::debug!("others = {:?}", others);
         let mut send_channels = HashMap::new();
         for (placement, address) in others.iter() {
-            println!("trying: {} -> {}", placement, address);
+            tracing::debug!("trying: {} -> {}", placement, address);
             loop {
                 let stream = match TcpStream::connect(address).await {
                     Ok(s) => s,
@@ -171,8 +166,7 @@ impl TcpStreamNetworking {
                         continue;
                     }
                 };
-                //stream.set_nodelay(true)?;
-                println!("connected to: {} -> {}", placement, address);
+                tracing::debug!("connected to: {} -> {}", placement, address);
                 let (tx, rx) = mpsc::channel(100);
                 send_channels.insert(placement.clone(), tx);
 
@@ -201,7 +195,7 @@ impl AsyncNetworking for TcpStreamNetworking {
         session_id: &SessionId,
     ) -> moose::error::Result<()> {
         let key = compute_path(session_id, rendezvous_key);
-        println!("sending key: {} to: {}", key, receiver);
+        tracing::debug!("sending key: {} to: {}", key, receiver);
         let receiver_name = receiver.to_string();
         let send_channel = self.send_channels.get(&receiver_name).unwrap();
         let send_data = SendData {
@@ -210,7 +204,7 @@ impl AsyncNetworking for TcpStreamNetworking {
             rendezvous_key: rendezvous_key.clone(),
             session_id: session_id.clone(),
         };
-        println!("awaiting send: {}", key);
+        tracing::debug!("awaiting send: {}", key);
         send_channel.send(send_data).await.unwrap();
 
         Ok(())
@@ -223,7 +217,7 @@ impl AsyncNetworking for TcpStreamNetworking {
         session_id: &SessionId,
     ) -> moose::error::Result<Value> {
         let key = compute_path(&session_id, &rendezvous_key);
-        println!("receiving key: {} from: {}", key, sender);
+        tracing::debug!("receiving key: {} from: {}", key, sender);
 
         let cell = self
             .store
@@ -232,9 +226,9 @@ impl AsyncNetworking for TcpStreamNetworking {
             .value()
             .clone();
 
-        println!("awaiting receive key: {}", key);
+        tracing::debug!("awaiting receive key: {}", key);
         let value = cell.get().await;
-        println!("got key: {}", key);
+        tracing::debug!("got key: {}", key);
         // TODO: delete entry from dashmap?
         Ok(value)
     }
