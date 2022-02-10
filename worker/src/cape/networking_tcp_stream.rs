@@ -61,7 +61,6 @@ async fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::R
         stream.read_exact(&mut vec).await?;
         let data: SendData = bincode::deserialize(&vec)
             .map_err(|e| anyhow::anyhow!("failed to deserialize moose value: {}", e))?;
-        //tracing::debug!("got moose value: {:?}", data);
 
         // put value into store
         let key = compute_path(&data.session_id, &data.rendezvous_key);
