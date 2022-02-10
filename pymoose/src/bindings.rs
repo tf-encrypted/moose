@@ -1,5 +1,5 @@
 use crate::computation::PyComputation;
-use moose::compilation::compile_passes;
+use moose::compilation::compile;
 use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
@@ -153,7 +153,7 @@ impl LocalRuntime {
                 "toposort".into(),
             ]
         });
-        let computation = compile_passes(&computation, &compiler_passes)
+        let computation = compile(&computation, Some(&compiler_passes))
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         self.evaluate_compiled_computation(py, &computation, role_assignments, arguments)
     }
@@ -341,7 +341,7 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 "toposort".into(),
             ]
         });
-        let computation = compile_passes(&computation, &passes)
+        let computation = compile(&computation, Some(&passes))
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         Ok(MooseComputation { computation })
     }
@@ -366,7 +366,7 @@ fn pymoose_bindings(_py: Python, m: &PyModule) -> PyResult<()> {
 
 #[cfg(test)]
 mod compatibility_tests {
-    use moose::compilation::{compile_passes, DEFAULT_PASSES};
+    use moose::compilation::{compile, DEFAULT_PASSES};
     use moose::textual::parallel_parse_computation;
     use rstest::rstest;
 
@@ -376,7 +376,7 @@ mod compatibility_tests {
         let source = std::fs::read_to_string(path)?;
         let computation =
             parallel_parse_computation(&source, crate::bindings::DEFAULT_PARSE_CHUNKS)?;
-        let _ = compile_passes(&computation, &DEFAULT_PASSES)?;
+        let _ = compile(&computation, Some(&DEFAULT_PASSES))?;
         Ok(())
     }
 

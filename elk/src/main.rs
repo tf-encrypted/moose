@@ -1,4 +1,4 @@
-use moose::compilation::compile_passes;
+use moose::compilation::compile;
 use moose::textual::verbose_parse_computation;
 use moose::textual::ToTextual;
 use std::fs::{read_to_string, write};
@@ -29,7 +29,7 @@ fn main() -> anyhow::Result<()> {
     let source = read_to_string(opt.input)?;
     let comp = verbose_parse_computation(&source)?;
     let passes = opt.passes.unwrap_or_else(all_passes);
-    let comp = compile_passes(&comp, &passes)?;
+    let comp = compile(&comp, Some(&passes))?;
     match opt.output {
         Some(path) => write(path, comp.to_textual())?,
         None => println!("{}", comp.to_textual()),

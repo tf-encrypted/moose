@@ -66,6 +66,7 @@ pub const DEFAULT_PASSES: [Pass; 5] = [
     Pass::Toposort,
 ];
 
+#[deprecated]
 pub fn compile_passes<'p, P>(comp: &Computation, passes: &'p [P]) -> anyhow::Result<Computation>
 where
     Pass: TryFrom<&'p P, Error = anyhow::Error>,
@@ -82,6 +83,17 @@ where
         }
     }
     Ok(computation)
+}
+
+pub fn compile<'p, P>(comp: &Computation, passes: Option<&'p [P]>) -> anyhow::Result<Computation>
+where
+    Pass: TryFrom<&'p P, Error = anyhow::Error>,
+{
+    #[allow(deprecated)]
+    match passes {
+        None => compile_passes::<Pass>(comp, DEFAULT_PASSES.as_slice()),
+        Some(passes) => compile_passes(comp, passes),
+    }
 }
 
 fn do_pass(pass: &Pass, comp: &Computation) -> anyhow::Result<Option<Computation>> {
