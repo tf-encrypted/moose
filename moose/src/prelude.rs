@@ -1,6 +1,10 @@
-#[cfg(feature = "execution")]
+#[cfg(feature = "async_execution")]
 pub use crate::execution::{
-    AsyncExecutor, AsyncReceiver, AsyncSession, AsyncSessionHandle, SyncSession,
+    AsyncExecutor, AsyncReceiver, AsyncSession, AsyncSessionHandle,
+};
+#[cfg(feature = "sync_execution")]
+pub use crate::execution::{
+    SyncSession,
 };
 pub use crate::{
     additive::AdditivePlacement,

@@ -12,17 +12,17 @@ use std::sync::Arc;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
-#[cfg(feature = "execution")]
+#[cfg(feature = "async_execution")]
 pub mod asynchronous;
 #[cfg(feature = "compilation")]
 pub mod symbolic;
-#[cfg(feature = "execution")]
+#[cfg(feature = "sync_execution")]
 pub mod synchronous;
-#[cfg(feature = "execution")]
+#[cfg(feature = "async_execution")]
 pub use asynchronous::*;
 #[cfg(feature = "compilation")]
 pub use symbolic::*;
-#[cfg(feature = "execution")]
+#[cfg(feature = "sync_execution")]
 pub use synchronous::*;
 
 /// General session trait determining basic properties for session objects.
@@ -82,6 +82,7 @@ pub type RoleAssignment = HashMap<Role, Identity>;
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "compilation")]
     use crate::compilation::{compile_passes, Pass};
     use crate::error::Error;
     use crate::execution::{SyncSession, TestSyncExecutor};
@@ -94,7 +95,9 @@ mod tests {
     use ndarray::prelude::*;
     use std::convert::TryInto;
     use std::rc::Rc;
+    use rstest::rstest;
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     fn _run_computation_test(
         computation: Computation,
         storage_mapping: HashMap<String, HashMap<String, Value>>,
@@ -130,6 +133,7 @@ mod tests {
         }
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case(true)]
     #[case(false)]
@@ -169,6 +173,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case(true)]
     #[case(false)]
@@ -199,6 +204,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case(true)]
     #[case(false)]
@@ -229,6 +235,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case(true)]
     #[case(false)]
@@ -259,6 +266,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case("HostInt64Tensor([8]) @Host(alice)", true)]
     #[case("HostInt32Tensor([8]) @Host(alice)", true)]
@@ -335,7 +343,7 @@ mod tests {
         Ok(())
     }
 
-    use rstest::rstest;
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case(
         "0",
@@ -386,6 +394,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case("Add", "HostInt64Tensor([8]) @Host(alice)", true)]
     #[case("Sub", "HostInt64Tensor([2]) @Host(alice)", true)]
@@ -439,6 +448,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case(true)]
     #[case(false)]
@@ -487,7 +497,7 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(feature = "blas")]
+    #[cfg(all(feature = "async_execution", feature = "sync_execution", feature = "blas"))]
     #[rstest]
     #[case(true)]
     #[case(false)]
@@ -520,6 +530,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case("HostFloat32Tensor", true)]
     #[case("HostFloat64Tensor", true)]
@@ -594,6 +605,7 @@ mod tests {
         }
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case(true)]
     #[case(false)]
@@ -623,6 +635,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case(true)]
     #[case(false)]
@@ -650,6 +663,7 @@ mod tests {
     }
 
     // TODO test for axis as vector when textual representation can support it
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case(true)]
     #[case(false)]
@@ -680,6 +694,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case("Sum", None, "Float32(10.0) @Host(alice)", true, true)]
     #[case(
@@ -789,11 +804,12 @@ mod tests {
                 panic!("Value of incorrect type {:?}", comp_result);
             }
         } else {
-            assert_eq!(&expected_result, comp_result);
+            assert_eq!(expected_result, comp_result);
         }
         Ok(())
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case("HostInt64Tensor([[1, 3], [2, 4]]) @Host(alice)", true)]
     #[case("HostInt64Tensor([[1, 3], [2, 4]]) @Host(alice)", false)]
@@ -824,6 +840,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case(true, "HostFloat64Tensor([[1.0], [1.0], [1.0]]) @Host(alice)", true)]
     #[case(false, "HostFloat64Tensor([[1.0, 1.0, 1.0]]) @Host(alice)", true)]
@@ -860,6 +877,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case("Add", "HostRing64Tensor([5]) @Host(alice)", true)]
     #[case("Mul", "HostRing64Tensor([6]) @Host(alice)", true)]
@@ -899,6 +917,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case(
         "HostRing64Tensor",
@@ -987,6 +1006,7 @@ mod tests {
         }
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case("Ring64", "2", "HostRing64Tensor([1, 1]) @Host(alice)", true)]
     #[case("Ring128", "2", "HostRing128Tensor([1, 1]) @Host(alice)", true)]
@@ -1064,6 +1084,7 @@ mod tests {
         }
     }
 
+    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     #[rstest]
     #[case("HostRing64Tensor", "HostRing64Tensor([2, 2]) @Host(alice)", true)]
     #[case("HostRing128Tensor", "HostRing128Tensor([2, 2]) @Host(alice)", true)]
@@ -1109,6 +1130,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "async_execution")]
     fn _create_async_session(
         networking: &Arc<dyn Send + Sync + AsyncNetworking>,
         exec_storage: &Arc<dyn Send + Sync + AsyncStorage>,
@@ -1123,6 +1145,7 @@ mod tests {
         )
     }
 
+    #[cfg(feature = "async_execution")]
     #[test]
     fn test_duplicate_session_ids() {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)
@@ -1180,6 +1203,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "async_execution")]
     fn _run_new_async_computation_test(
         computation: Computation,
         storage_mapping: HashMap<String, HashMap<String, Value>>,
@@ -1196,6 +1220,7 @@ mod tests {
         Ok(outputs)
     }
 
+    #[cfg(feature = "async_execution")]
     #[test]
     fn test_new_async_session() -> std::result::Result<(), anyhow::Error> {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)

@@ -11,10 +11,11 @@ categories = ["", ""]
 edition = "2018"
 
 [features]
-default = ["blas", "compilation", "execution"]
+default = ["blas", "sync_execution", "async_execution", "compilation"]
 blas = ["ndarray-linalg"]
 compilation = []
-execution = []
+sync_execution = []
+async_execution = []
 
 [dependencies]
 aes = "~0.7"
