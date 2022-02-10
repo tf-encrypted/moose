@@ -4,6 +4,7 @@ use crate::execution::{RuntimeSession, Session};
 use crate::prng::AesRng;
 use crate::{Const, Ring, N128, N224, N64};
 use ndarray::LinalgScalar;
+use ndarray::Zip;
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack};
 use num_traits::{Float, FromPrimitive, Zero};
@@ -1860,7 +1861,7 @@ impl CastOp {
     }
 
     pub(crate) fn ring_host_kernel<S: RuntimeSession>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         x: HostRing128Tensor,
     ) -> Result<HostRing64Tensor> {
@@ -1870,5 +1871,69 @@ impl CastOp {
         });
 
         Ok(HostRingTensor(x_downshifted, plc.clone()))
+    }
+}
+
+impl ArgmaxOp {
+    pub(crate) fn host_ring64_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        _upmost_index: usize,
+        x: HostRing64Tensor,
+    ) -> Result<HostRing64Tensor> {
+        let axis = Axis(axis);
+        let signed_tensor = x.0.mapv(|entry| entry.0 as i64);
+
+        let mut current_max = signed_tensor.index_axis(axis, 0).to_owned();
+        let mut current_pattern_max = current_max.mapv(|_x| 0_u64);
+
+        for (index, subview) in signed_tensor.axis_iter(axis).enumerate() {
+            let index = index as u64;
+            Zip::from(&mut current_max)
+                .and(&mut current_pattern_max)
+                .and(&subview)
+                .for_each(|max_entry, pattern_entry, &subview_entry| {
+                    if *max_entry < subview_entry {
+                        *max_entry = subview_entry;
+                        *pattern_entry = index;
+                    }
+                });
+        }
+        Ok(HostRingTensor(
+            current_pattern_max.mapv(|x| Wrapping(x)),
+            plc.clone(),
+        ))
+    }
+
+    pub(crate) fn host_ring128_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        _upmost_index: usize,
+        x: HostRing128Tensor,
+    ) -> Result<HostRing64Tensor> {
+        let axis = Axis(axis);
+        let signed_tensor = x.0.mapv(|entry| entry.0 as i128);
+
+        let mut current_max = signed_tensor.index_axis(axis, 0).to_owned();
+        let mut current_pattern_max = current_max.mapv(|_x| 0_u64);
+
+        for (index, subview) in signed_tensor.axis_iter(axis).enumerate() {
+            let index = index as u64;
+            Zip::from(&mut current_max)
+                .and(&mut current_pattern_max)
+                .and(&subview)
+                .for_each(|max_entry, pattern_entry, &subview_entry| {
+                    if *max_entry < subview_entry {
+                        *max_entry = subview_entry;
+                        *pattern_entry = index;
+                    }
+                });
+        }
+        Ok(HostRingTensor(
+            current_pattern_max.mapv(|x| Wrapping(x)),
+            plc.clone(),
+        ))
     }
 }

@@ -2,8 +2,6 @@ use super::*;
 use crate::computation::ArgmaxOp;
 use crate::error::Result;
 use crate::execution::Session;
-use crate::fixedpoint::FixedpointTensor;
-use macros::with_context;
 
 pub(crate) trait TreeReduceArgmax<S: Session, T, O> {
     fn reduce_argmax(&self, sess: &S, x: &[(T, T)]) -> (O, O);
@@ -116,13 +114,13 @@ impl ReplicatedPlacement {
 
 #[cfg(test)]
 mod tests {
-    use crate::fixedpoint::FixedTensor;
+    use crate::host::FromRaw;
     use crate::host::HostRingTensor;
-    use crate::host::{Convert, FromRaw};
     use crate::kernels::*;
     use crate::prelude::*;
     use ndarray::array;
     use ndarray::prelude::*;
+    use ndarray::Zip;
 
     macro_rules! rep_argmax_test {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {
@@ -147,8 +145,27 @@ mod tests {
 
     #[test]
     fn test_argmax_64() {
-        let x = array![1_u64, 2, -3_i64 as u64, 4, 2, 2, 2, 3, 105].into_dyn();
-        let expected = array![8_u64].into_dyn();
-        test_rep_argmax64(x, expected, 0, 9);
+        let x = array![1, 2, -3_i64, 4, 2, 2, 2, 3, 105].into_dyn();
+        let axis_index = 0_usize;
+
+        let mut current_max = x.index_axis(Axis(axis_index), 0).to_owned();
+        let mut current_pattern_max = current_max.mapv(|_x| 0_u64);
+
+        for (index, subview) in x.axis_iter(Axis(axis_index)).enumerate() {
+            let index = index as u64;
+            Zip::from(&mut current_max)
+                .and(&mut current_pattern_max)
+                .and(&subview)
+                .for_each(|max_entry, pattern_entry, &subview_entry| {
+                    if *max_entry < subview_entry {
+                        *max_entry = subview_entry;
+                        *pattern_entry = index;
+                    }
+                });
+        }
+        // println!("x_max: {:?}", x_max);
+        // println!("argmax: {:?}", expected_argmax.insert_axis(Axis(axis_index)));
+        let expected_argmax = current_pattern_max.insert_axis(Axis(axis_index));
+        test_rep_argmax64(x.mapv(|item| item as u64), expected_argmax, 0, 9);
     }
 }
