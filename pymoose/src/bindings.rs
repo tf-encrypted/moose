@@ -1,5 +1,5 @@
 use crate::computation::PyComputation;
-use moose::compilation::{compile_passes, into_pass, Pass};
+use moose::compilation::compile_passes;
 use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
@@ -144,7 +144,7 @@ impl LocalRuntime {
         compiler_passes: Option<Vec<String>>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let computation = create_computation_graph_from_py_bytes(computation);
-        let compiler_passes: Vec<String> = compiler_passes.unwrap_or_else(|| 
+        let compiler_passes: Vec<String> = compiler_passes.unwrap_or_else(|| {
             vec![
                 "typing".into(),
                 "full".into(),
@@ -152,10 +152,8 @@ impl LocalRuntime {
                 "networking".into(),
                 "toposort".into(),
             ]
-        );
-        let passes: Vec<Pass> =
-            into_pass(&compiler_passes[..]).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-        let computation = compile_passes(&computation, &passes[..])
+        });
+        let computation = compile_passes(&computation, &compiler_passes)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         self.evaluate_compiled_computation(py, &computation, role_assignments, arguments)
     }
@@ -343,7 +341,6 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 "toposort".into(),
             ]
         });
-        let passes = into_pass(&passes).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         let computation = compile_passes(&computation, &passes)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         Ok(MooseComputation { computation })

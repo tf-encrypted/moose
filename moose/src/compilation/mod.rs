@@ -1,3 +1,4 @@
+use self::deprecated_logical::deprecated_logical_lowering;
 use crate::compilation::networking::NetworkingPass;
 use crate::compilation::print::print_graph;
 use crate::compilation::pruning::prune_graph;
@@ -6,7 +7,6 @@ use crate::compilation::typing::update_types_one_hop;
 use crate::computation::Computation;
 use crate::textual::ToTextual;
 use std::convert::TryFrom;
-use self::deprecated_logical::deprecated_logical_lowering;
 
 pub mod deprecated_logical;
 pub mod networking;
@@ -15,6 +15,7 @@ pub mod pruning;
 pub mod replicated_lowering;
 pub mod typing;
 
+#[derive(Clone)]
 pub enum Pass {
     Networking,
     Print,
@@ -43,6 +44,20 @@ impl TryFrom<&str> for Pass {
     }
 }
 
+impl TryFrom<&String> for Pass {
+    type Error = anyhow::Error;
+    fn try_from(name: &String) -> anyhow::Result<Pass> {
+        Pass::try_from(name.as_str())
+    }
+}
+
+impl TryFrom<&Pass> for Pass {
+    type Error = anyhow::Error;
+    fn try_from(pass: &Pass) -> anyhow::Result<Pass> {
+        Ok(pass.clone())
+    }
+}
+
 pub const DEFAULT_PASSES: [Pass; 5] = [
     Pass::Typing,
     Pass::Symbolic,
@@ -51,15 +66,18 @@ pub const DEFAULT_PASSES: [Pass; 5] = [
     Pass::Toposort,
 ];
 
-pub fn into_pass(passes: &[String]) -> anyhow::Result<Vec<Pass>> {
-    passes.iter().map(|s| Pass::try_from(s.as_str())).collect()
-}
-
-pub fn compile_passes(comp: &Computation, passes: &[Pass]) -> anyhow::Result<Computation> {
+pub fn compile_passes<'p, P>(comp: &Computation, passes: &'p [P]) -> anyhow::Result<Computation>
+where
+    Pass: TryFrom<&'p P, Error = anyhow::Error>,
+{
     let mut computation = comp.toposort()?;
+    let passes = passes
+        .iter()
+        .map(|pass| Pass::try_from(pass))
+        .collect::<anyhow::Result<Vec<Pass>>>()?;
 
     for pass in passes {
-        if let Some(new_comp) = do_pass(pass, &computation)? {
+        if let Some(new_comp) = do_pass(&pass, &computation)? {
             computation = new_comp;
         }
     }
