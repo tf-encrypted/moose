@@ -6,6 +6,7 @@ use crate::networking::{AsyncNetworking, LocalAsyncNetworking, SyncNetworking};
 use crate::storage::{AsyncStorage, LocalAsyncStorage, SyncStorage};
 use derive_more::Display;
 use futures::future::{Map, Shared};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::sync::Arc;
@@ -48,7 +49,7 @@ pub trait RuntimeSession: Session {
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity>;
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Display)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Display, Serialize, Deserialize)]
 pub struct Identity(pub String);
 
 impl From<&str> for Identity {

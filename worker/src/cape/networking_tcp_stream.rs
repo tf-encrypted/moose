@@ -4,6 +4,7 @@ use moose::{
     execution::Identity,
     networking::AsyncNetworking,
 };
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
@@ -42,27 +43,14 @@ fn compute_path(session_id: &SessionId, rendezvous_key: &RendezvousKey) -> Strin
 }
 
 fn send_value(mut stream: &TcpStream, send_data: &SendData) -> anyhow::Result<()> {
-    let raw_data: Vec<u8> = bincode::serialize(&send_data.value)?;
-    let raw_rendezvous_key: Vec<u8> = bincode::serialize(&send_data.rendezvous_key)?;
-    let raw_session_id: Vec<u8> = bincode::serialize(&send_data.session_id)?;
+    let raw_data: Vec<u8> = bincode::serialize(send_data)?;
     let data_size = raw_data.len();
-    let rendezvous_key_size = raw_rendezvous_key.len();
-    let session_id_size = raw_session_id.len();
     let mut size_data_buf = [0; 8];
-    let mut size_rendezvous_key_buf = [0; 8];
-    let mut size_session_id_buf = [0; 8];
     u64_to_little_endian(data_size.try_into()?, &mut size_data_buf)?;
-    u64_to_little_endian(
-        rendezvous_key_size.try_into()?,
-        &mut size_rendezvous_key_buf,
-    )?;
-    u64_to_little_endian(session_id_size.try_into()?, &mut size_session_id_buf)?;
+
+    // TODO: write error, re-establish connection?
     stream.write_all(&size_data_buf)?;
     stream.write_all(&raw_data)?;
-    stream.write_all(&size_rendezvous_key_buf)?;
-    stream.write_all(&raw_rendezvous_key)?;
-    stream.write_all(&size_session_id_buf)?;
-    stream.write_all(&raw_session_id)?;
     Ok(())
 }
 
@@ -80,40 +68,26 @@ fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::Result<
             vec.set_len(size as usize);
         }
 
-        // read rendezvous_key
         stream.read_exact(&mut vec)?;
-        let value: Value = bincode::deserialize(&vec)
+        let data: SendData = bincode::deserialize(&vec)
             .map_err(|e| anyhow::anyhow!("failed to deserialize moose value: {}", e))?;
-        println!("got moose value: {:?}", value);
-
-        let size = match stream.read_exact(&mut buf) {
-            Ok(_) => little_endian_to_u64(&buf),
-            Err(_) => return Ok(()), // when client hangs up
-        };
-        let mut vec: Vec<u8> = Vec::with_capacity(size as usize);
-        unsafe {
-            // https://stackoverflow.com/a/28209155
-            vec.set_len(size as usize);
-        }
-
-        // read session_id
+        //println!("got moose value: {:?}", data);
 
         // put value into store
-        let rendezvous_key = RendezvousKey::try_from("1234")?; // TODO: get rendezvous_key via protocol
-        let session_id = SessionId::try_from("session_id")?; // TODO: get session_id via protocol
-        let key = compute_path(&session_id, &rendezvous_key);
+        let key = compute_path(&data.session_id, &data.rendezvous_key);
         let cell = store
             .entry(key)
             .or_insert_with(async_cell::sync::AsyncCell::shared)
             .value()
             .clone();
 
-        cell.set(value);
+        cell.set(data.value);
     }
 }
 
 fn server(listener: TcpListener, store: StoreType) -> anyhow::Result<()> {
     loop {
+        // TODO: retry logic?
         let (stream, _addr) = listener.accept().unwrap();
         let shared_store = Arc::clone(&store);
         tokio::spawn(async move {
@@ -122,6 +96,7 @@ fn server(listener: TcpListener, store: StoreType) -> anyhow::Result<()> {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 struct SendData {
     value: Value,
     receiver: Identity,
@@ -211,6 +186,8 @@ impl AsyncNetworking for TcpStreamNetworking {
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> moose::error::Result<()> {
+        let key = compute_path(session_id, rendezvous_key);
+        println!("sent key: {}", key);
         let receiver_name = receiver.to_string();
         let send_channel = self.send_channels.get(&receiver_name).unwrap();
         let send_data = SendData {
@@ -219,7 +196,9 @@ impl AsyncNetworking for TcpStreamNetworking {
             rendezvous_key: rendezvous_key.clone(),
             session_id: session_id.clone(),
         };
+        println!("awaiting send: {}", key);
         send_channel.send(send_data).await;
+
         Ok(())
     }
 
@@ -230,15 +209,18 @@ impl AsyncNetworking for TcpStreamNetworking {
         session_id: &SessionId,
     ) -> moose::error::Result<Value> {
         let key = compute_path(&session_id, &rendezvous_key);
+        println!("got key: {}", key);
 
         let cell = self
             .store
-            .entry(key)
+            .entry(key.clone())
             .or_insert_with(async_cell::sync::AsyncCell::shared)
             .value()
             .clone();
 
+        println!("awaiting receive key: {}", key);
         let value = cell.get().await;
+        // TODO: delete entry from dashmap?
         Ok(value)
     }
 }
