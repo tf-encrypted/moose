@@ -6,28 +6,26 @@ use moose::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::io::prelude::*;
-use std::net::{TcpListener, TcpStream};
 use std::sync::Arc;
+use tokio::io::AsyncReadExt;
+use tokio::io::AsyncWriteExt;
+use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
 use tokio::time::{sleep, Duration};
 
 type StoreType = Arc<dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>>;
 
 pub struct TcpStreamNetworking {
-    own_name: String,                                       // name of own placement
-    hosts: HashMap<String, String>,                         // host to address mapping
     store: StoreType,                                       // store incoming data
     send_channels: HashMap<String, mpsc::Sender<SendData>>, // send data over each stream
 }
 
-fn u64_to_little_endian(n: u64, buf: &mut [u8; 8]) -> anyhow::Result<()> {
+fn u64_to_little_endian(n: u64, buf: &mut [u8; 8]) {
     let mut n_mut = n;
     for i in 0..=7 {
         buf[i] = (n_mut & 0xff) as u8;
         n_mut >>= 8;
     }
-    Ok(())
 }
 
 fn little_endian_to_u64(buf: &[u8; 8]) -> u64 {
@@ -42,56 +40,50 @@ fn compute_path(session_id: &SessionId, rendezvous_key: &RendezvousKey) -> Strin
     format!("{}/{}", session_id, rendezvous_key)
 }
 
-fn send_value(mut stream: &TcpStream, send_data: &SendData) -> anyhow::Result<()> {
-    let raw_data: Vec<u8> = bincode::serialize(send_data)?;
-    let data_size = raw_data.len();
-    let mut size_data_buf = [0; 8];
-    u64_to_little_endian(data_size.try_into()?, &mut size_data_buf)?;
-
-    // TODO: write error, re-establish connection?
-    stream.write_all(&size_data_buf)?;
-    stream.write_all(&raw_data)?;
-    Ok(())
-}
-
-fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::Result<()> {
+async fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::Result<()> {
     loop {
         // read moose data
         let mut buf: [u8; 8] = [0; 8];
-        let size = match stream.read_exact(&mut buf) {
+        println!("reading size buf");
+        let size = match stream.read_exact(&mut buf).await {
             Ok(_) => little_endian_to_u64(&buf),
             Err(_) => return Ok(()), // when client hangs up
         };
         let mut vec: Vec<u8> = Vec::with_capacity(size as usize);
-        unsafe {
-            // https://stackoverflow.com/a/28209155
-            vec.set_len(size as usize);
-        }
+        vec.resize(size as usize, 0);
+        //unsafe {
+        //    // https://stackoverflow.com/a/28209155
+        //    vec.set_len(size as usize);
+        //}
 
-        stream.read_exact(&mut vec)?;
+        println!("reading exact: {}", size);
+        stream.read_exact(&mut vec).await?;
         let data: SendData = bincode::deserialize(&vec)
             .map_err(|e| anyhow::anyhow!("failed to deserialize moose value: {}", e))?;
         //println!("got moose value: {:?}", data);
 
         // put value into store
         let key = compute_path(&data.session_id, &data.rendezvous_key);
+        println!("storing key: {}", key);
         let cell = store
-            .entry(key)
+            .entry(key.clone())
             .or_insert_with(async_cell::sync::AsyncCell::shared)
             .value()
             .clone();
 
         cell.set(data.value);
+        println!("stored key: {}", key);
     }
 }
 
-fn server(listener: TcpListener, store: StoreType) -> anyhow::Result<()> {
+async fn server(listener: TcpListener, store: StoreType) -> anyhow::Result<()> {
     loop {
         // TODO: retry logic?
-        let (stream, _addr) = listener.accept().unwrap();
+        let (stream, _addr) = listener.accept().await?;
+        stream.set_nodelay(true)?;
         let shared_store = Arc::clone(&store);
         tokio::spawn(async move {
-            handle_connection(stream, shared_store).unwrap();
+            handle_connection(stream, shared_store).await.unwrap();
         });
     }
 }
@@ -104,15 +96,31 @@ struct SendData {
     session_id: SessionId,
 }
 
-async fn send_loop(stream: TcpStream, mut rx: mpsc::Receiver<SendData>) -> anyhow::Result<()> {
+async fn send_value(stream: &mut TcpStream, send_data: &SendData) -> anyhow::Result<()> {
+    let raw_data: Vec<u8> = bincode::serialize(send_data)?;
+    let data_size = raw_data.len();
+    let mut size_data_buf = [0; 8];
+    u64_to_little_endian(data_size.try_into()?, &mut size_data_buf);
+
+    // TODO: write error, re-establish connection?
+    stream.write_all(&size_data_buf).await?;
+    stream.write_all(&raw_data).await?;
+    stream.flush().await?;
+
+    let key = compute_path(&send_data.session_id, &send_data.rendezvous_key);
+    println!("sent key: {} size: {}", key, data_size);
+    Ok(())
+}
+
+async fn send_loop(mut stream: TcpStream, mut rx: mpsc::Receiver<SendData>) -> anyhow::Result<()> {
     loop {
         let send_data = rx.recv().await;
         match send_data {
             Some(data) => {
-                send_value(&stream, &data)?;
+                send_value(&mut stream, &data).await?;
             }
             None => {
-                unimplemented!("I think we should shutdown the computation now?")
+                stream.shutdown().await?;
             }
         }
     }
@@ -131,10 +139,10 @@ impl TcpStreamNetworking {
 
         // spawn the server
         println!("spawned server on: {}", own_address);
-        let listener = TcpListener::bind(&own_address)?;
+        let listener = TcpListener::bind(&own_address).await?;
         let shared_store = Arc::clone(&store);
         tokio::spawn(async move {
-            server(listener, Arc::clone(&shared_store)).unwrap();
+            server(listener, Arc::clone(&shared_store)).await.unwrap();
         });
 
         // connect to every other server
@@ -149,15 +157,16 @@ impl TcpStreamNetworking {
         for (placement, address) in others.iter() {
             println!("trying: {} -> {}", placement, address);
             loop {
-                let stream = match TcpStream::connect(address) {
+                let stream = match TcpStream::connect(address).await {
                     Ok(s) => s,
                     Err(_) => {
                         sleep(Duration::from_secs(1)).await;
                         continue;
                     }
                 };
+                //stream.set_nodelay(true)?;
                 println!("connected to: {} -> {}", placement, address);
-                let (tx, rx) = mpsc::channel(100);
+                let (tx, rx) = mpsc::channel(10000);
                 send_channels.insert(placement.clone(), tx);
 
                 tokio::spawn(async move {
@@ -169,8 +178,6 @@ impl TcpStreamNetworking {
 
         let store = Arc::clone(&store);
         Ok(TcpStreamNetworking {
-            own_name,
-            hosts,
             store,
             send_channels,
         })
@@ -187,7 +194,7 @@ impl AsyncNetworking for TcpStreamNetworking {
         session_id: &SessionId,
     ) -> moose::error::Result<()> {
         let key = compute_path(session_id, rendezvous_key);
-        println!("sent key: {}", key);
+        println!("sending key: {}", key);
         let receiver_name = receiver.to_string();
         let send_channel = self.send_channels.get(&receiver_name).unwrap();
         let send_data = SendData {
@@ -197,7 +204,7 @@ impl AsyncNetworking for TcpStreamNetworking {
             session_id: session_id.clone(),
         };
         println!("awaiting send: {}", key);
-        send_channel.send(send_data).await;
+        send_channel.send(send_data).await.unwrap();
 
         Ok(())
     }
@@ -209,7 +216,7 @@ impl AsyncNetworking for TcpStreamNetworking {
         session_id: &SessionId,
     ) -> moose::error::Result<Value> {
         let key = compute_path(&session_id, &rendezvous_key);
-        println!("got key: {}", key);
+        println!("receiving key: {}", key);
 
         let cell = self
             .store
@@ -220,6 +227,7 @@ impl AsyncNetworking for TcpStreamNetworking {
 
         println!("awaiting receive key: {}", key);
         let value = cell.get().await;
+        println!("got key: {}", key);
         // TODO: delete entry from dashmap?
         Ok(value)
     }
