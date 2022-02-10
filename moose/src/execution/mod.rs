@@ -83,12 +83,13 @@ mod tests {
     use crate::host::{HostPlacement, HostTensor, RawSeed, RawShape, Seed};
     use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
     use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
-    use crate::types::*;
+    use crate::prelude::*;
     use itertools::Itertools;
     use maplit::hashmap;
+    use tokio::runtime::Runtime;
     use ndarray::prelude::*;
     use rstest::rstest;
-    use std::convert::TryInto;
+    use std::convert::{TryInto, TryFrom};
     use std::rc::Rc;
 
     #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
@@ -802,7 +803,7 @@ mod tests {
                 panic!("Value of incorrect type {:?}", comp_result);
             }
         } else {
-            assert_eq!(expected_result, comp_result);
+            assert_eq!(&expected_result, comp_result);
         }
         Ok(())
     }

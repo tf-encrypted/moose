@@ -278,24 +278,27 @@ impl<HostBitTensorT: Placed, N> Placed for HostBitArray<HostBitTensorT, N> {
 }
 
 #[cfg(feature = "compilation")]
-impl PartiallySymbolicType for HostBitArray64 {
-    type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N64>;
+impl<HostBitTensorT, N: Const> PartiallySymbolicType for HostBitArray<HostBitTensorT, N>
+where
+    HostBitTensorT: SymbolicType,
+{
+    type Type = HostBitArray<<HostBitTensorT as SymbolicType>::Type, N>;
 }
 
-#[cfg(feature = "compilation")]
-impl PartiallySymbolicType for HostBitArray128 {
-    type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N128>;
-}
+// #[cfg(feature = "compilation")]
+// impl PartiallySymbolicType for HostBitArray128 {
+//     type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N128>;
+// }
 
-#[cfg(feature = "compilation")]
-impl PartiallySymbolicType for HostBitArray224 {
-    type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N224>;
-}
+// #[cfg(feature = "compilation")]
+// impl PartiallySymbolicType for HostBitArray224 {
+//     type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N224>;
+// }
 
-#[cfg(feature = "compilation")]
-impl PartiallySymbolicType for HostBitArray256 {
-    type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N256>;
-}
+// #[cfg(feature = "compilation")]
+// impl PartiallySymbolicType for HostBitArray256 {
+//     type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N256>;
+// }
 
 #[cfg(feature = "compilation")]
 impl<HostBitT, N> From<HostBitArray<HostBitT, N>> for Symbolic<HostBitArray<HostBitT, N>>
