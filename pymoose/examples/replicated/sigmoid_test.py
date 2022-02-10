@@ -70,7 +70,6 @@ class ReplicatedExample(parameterized.TestCase):
             computation=traced_sigmoid_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
-            compiler_passes=["typing", "full", "prune", "networking", "toposort"],
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
 
