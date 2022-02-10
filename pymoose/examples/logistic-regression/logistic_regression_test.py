@@ -51,15 +51,7 @@ class ReplicatedExample(parameterized.TestCase):
         model_comp = self._setup_model_comp()
         traced_model_comp = edsl.trace(model_comp)
         comp_bin = utils.serialize_computation(traced_model_comp)
-        _ = elk_compiler.compile_computation(
-            comp_bin,
-            [
-                "typing",
-                "full",
-                "toposort",
-                # "print",
-            ],
-        )
+        _ = elk_compiler.compile_computation(comp_bin)
 
     def test_logistic_regression_example_execute(self):
         input_x = np.array([2.0, 1.0], dtype=np.float64)

@@ -76,7 +76,7 @@ pub type RoleAssignment = HashMap<Role, Identity>;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compilation::{compile_passes, Pass};
+    use crate::compilation::{compile, Pass};
     use crate::error::Error;
     use crate::execution::{SyncSession, TestSyncExecutor};
     use crate::host::{HostPlacement, HostTensor, RawSeed, RawShape, Seed};
@@ -410,7 +410,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let computation =
-                    compile_passes(&computation, &[Pass::Networking, Pass::Toposort])?;
+                    compile(&computation, Some(vec![Pass::Networking, Pass::Toposort]))?;
                 _run_computation_test(
                     computation,
                     storage_mapping,
@@ -452,7 +452,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let computation =
-                    compile_passes(&computation, &[Pass::Networking, Pass::Toposort])?;
+                    compile(&computation, Some(vec![Pass::Networking, Pass::Toposort]))?;
                 _run_computation_test(
                     computation,
                     storage_mapping,
