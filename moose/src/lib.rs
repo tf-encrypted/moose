@@ -150,7 +150,6 @@ macro_rules! derive_runtime_kernel {
             }))
         }
     };
-
     (variadic, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
         {
             $(
@@ -4686,7 +4685,7 @@ macro_rules! modelled_kernel {
         }
     };
 
-    (__variadic runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
+    (__variadic runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
         #[cfg(feature = "compile")]
         impl crate::kernels::VariadicKernel<
             crate::execution::SymbolicSession,
@@ -4742,11 +4741,11 @@ macro_rules! modelled_kernel {
                 $($($attr_id:$attr_ty),*,)?
                 xs: &[<$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
-                use crate::computation::{KnownType, UnarySignature};
+                use crate::computation::{KnownType, VariadicSignature};
                 use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
 
-                let sig = UnarySignature {
+                let sig = VariadicSignature {
                     args: <$ts as KnownType<SymbolicSession>>::TY,
                     ret: <$u as KnownType<SymbolicSession>>::TY,
                 };
