@@ -6,13 +6,13 @@ use derive_more::Display;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[cfg(feature = "async_execution")]
+#[cfg(feature = "async_execute")]
 pub mod asynchronous;
 #[cfg(feature = "compile")]
 pub mod symbolic;
 #[cfg(feature = "sync_execution")]
 pub mod synchronous;
-#[cfg(feature = "async_execution")]
+#[cfg(feature = "async_execute")]
 pub use asynchronous::*;
 #[cfg(feature = "compile")]
 pub use symbolic::*;
@@ -73,7 +73,7 @@ pub type Environment<V> = HashMap<String, V>;
 
 pub type RoleAssignment = HashMap<Role, Identity>;
 
-#[cfg(all(feature = "async_execution", feature = "sync_execution"))]
+#[cfg(all(feature = "async_execute", feature = "sync_execution"))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -436,7 +436,7 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
+    #[cfg(all(feature = "async_execute", feature = "sync_execution"))]
     #[rstest]
     #[case(true)]
     #[case(false)]
@@ -1107,7 +1107,7 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "async_execution")]
+    #[cfg(feature = "async_execute")]
     fn _create_async_session(
         networking: &Arc<dyn Send + Sync + AsyncNetworking>,
         exec_storage: &Arc<dyn Send + Sync + AsyncStorage>,
@@ -1122,7 +1122,7 @@ mod tests {
         )
     }
 
-    #[cfg(feature = "async_execution")]
+    #[cfg(feature = "async_execute")]
     #[test]
     fn test_duplicate_session_ids() {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)
@@ -1180,7 +1180,7 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "async_execution")]
+    #[cfg(feature = "async_execute")]
     fn _run_new_async_computation_test(
         computation: Computation,
         storage_mapping: HashMap<String, HashMap<String, Value>>,
@@ -1197,7 +1197,7 @@ mod tests {
         Ok(outputs)
     }
 
-    #[cfg(feature = "async_execution")]
+    #[cfg(feature = "async_execute")]
     #[test]
     fn test_new_async_session() -> std::result::Result<(), anyhow::Error> {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)

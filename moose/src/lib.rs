@@ -246,7 +246,7 @@ macro_rules! concrete_dispatch_kernel {
             }
         }
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
@@ -350,7 +350,7 @@ macro_rules! concrete_dispatch_kernel {
             }
         }
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
@@ -472,7 +472,7 @@ macro_rules! concrete_dispatch_kernel {
             }
         }
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
@@ -595,7 +595,7 @@ macro_rules! concrete_dispatch_kernel {
             }
         }
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
@@ -720,7 +720,7 @@ macro_rules! concrete_dispatch_kernel {
             }
         }
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
@@ -1095,7 +1095,7 @@ macro_rules! kernel {
         )+
 
         $(
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl crate::kernels::NullaryKernel<
                 crate::execution::AsyncSession,
                 $plc,
@@ -1252,7 +1252,7 @@ macro_rules! kernel {
         )+
 
         $(
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl crate::kernels::UnaryKernel<
                 crate::execution::AsyncSession,
                 $plc,
@@ -1459,7 +1459,7 @@ macro_rules! kernel {
         )+
 
         $(
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl crate::kernels::BinaryKernel<
                 crate::execution::AsyncSession,
                 $plc,
@@ -1680,7 +1680,7 @@ macro_rules! kernel {
         )+
 
         $(
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl crate::kernels::TernaryKernel<
                 crate::execution::AsyncSession,
                 $plc,
@@ -1907,7 +1907,7 @@ macro_rules! kernel {
         )+
 
         $(
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl crate::kernels::VariadicKernel<
                 crate::execution::AsyncSession,
                 $plc,
@@ -2134,10 +2134,10 @@ macro_rules! modelled {
             }
         }
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl crate::kernels::NullaryKernelCheck<crate::execution::AsyncSession, $plc, $u> for $op {}
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl $t<
             crate::execution::AsyncSession,
             $u
@@ -2226,10 +2226,10 @@ macro_rules! modelled {
             }
         }
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl crate::kernels::UnaryKernelCheck<crate::execution::AsyncSession, $plc, $t0, $u> for $op {}
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl $t<
             crate::execution::AsyncSession,
             $t0,
@@ -2320,10 +2320,10 @@ macro_rules! modelled {
             }
         }
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl crate::kernels::BinaryKernelCheck<crate::execution::AsyncSession, $plc, $t0, $t1, $u> for $op {}
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl $t<
             crate::execution::AsyncSession,
             $t0,
@@ -2456,10 +2456,10 @@ macro_rules! modelled {
             }
         }
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl crate::kernels::TernaryKernelCheck<crate::execution::AsyncSession, $plc, $t0, $t1, $t2, $u> for $op {}
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl $t<
             crate::execution::AsyncSession,
             $t0,
@@ -2566,10 +2566,10 @@ macro_rules! modelled {
             }
         }
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl crate::kernels::VariadicKernelCheck<crate::execution::AsyncSession, $plc, $ts, $u> for $op {}
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl $t<
             crate::execution::AsyncSession,
             $ts,
@@ -2684,7 +2684,7 @@ macro_rules! modelled_kernel {
 
         // support for AsyncSession
         $(
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl crate::kernels::NullaryKernel<
                 crate::execution::AsyncSession,
                 $plc,
@@ -2701,7 +2701,7 @@ macro_rules! modelled_kernel {
                 }
             }
 
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl $trait<
                 crate::execution::AsyncSession,
                 $u
@@ -3036,7 +3036,7 @@ macro_rules! modelled_kernel {
 
         // support for AsyncSession
         $(
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl crate::kernels::UnaryKernel<
                 crate::execution::AsyncSession,
                 $plc,
@@ -3054,7 +3054,7 @@ macro_rules! modelled_kernel {
                 }
             }
 
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl $trait<
                 crate::execution::AsyncSession,
                 $t0,
@@ -3450,7 +3450,7 @@ macro_rules! modelled_kernel {
 
         // support for AsyncSession
         $(
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl crate::kernels::BinaryKernel<
                 crate::execution::AsyncSession,
                 $plc,
@@ -3469,7 +3469,7 @@ macro_rules! modelled_kernel {
                 }
             }
 
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl $trait<
                 crate::execution::AsyncSession,
                 $t0,
@@ -3901,7 +3901,7 @@ macro_rules! modelled_kernel {
 
         // support for AsyncSession
         $(
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl crate::kernels::TernaryKernel<
                 crate::execution::AsyncSession,
                 $plc,
@@ -3921,7 +3921,7 @@ macro_rules! modelled_kernel {
                 }
             }
 
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl $trait<
                 crate::execution::AsyncSession,
                 $t0,
@@ -4384,7 +4384,7 @@ macro_rules! modelled_kernel {
         // support for AsyncSession
 
         $(
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl crate::kernels::VariadicKernel<
                 crate::execution::AsyncSession,
                 $plc,
@@ -4402,7 +4402,7 @@ macro_rules! modelled_kernel {
                 }
             }
 
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl $trait<
                 crate::execution::AsyncSession,
                 $ts,
@@ -4817,7 +4817,7 @@ macro_rules! modelled_alias {
             }
         }
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl $src_t<crate::execution::AsyncSession, $t0, $t1, $u> for $plc {
             fn $src_f(&self, sess: &crate::execution::AsyncSession, x0: &$t0, x1: &$t1) -> $u {
                 $dst_t::$dst_f(self, sess, x0, x1)
@@ -4861,7 +4861,7 @@ macro_rules! modelled_alias {
             }
         }
 
-        #[cfg(feature = "async_execution")]
+        #[cfg(feature = "async_execute")]
         impl $src_t<crate::execution::AsyncSession, $t0, $t1, $t2, $u> for $plc {
             fn $src_f(
                 &self,

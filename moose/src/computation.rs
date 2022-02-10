@@ -513,7 +513,7 @@ macro_rules! values {
         )+
 
         $(
-            #[cfg(feature = "async_execution")]
+            #[cfg(feature = "async_execute")]
             impl KnownType<crate::execution::AsyncSession> for $val {
                 type Type = $val;
                 const TY: Ty = Ty::$val$(($inner::$default))?;
