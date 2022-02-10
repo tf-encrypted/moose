@@ -7,7 +7,7 @@ use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::kernels::*;
 use crate::types::*;
-use crate::{BitArray, Const, Ring, TensorLike, N128, N224, N256, N64};
+use crate::{BitArray, Const, Ring, TensorLike, N128, N64};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray::Slice;
@@ -284,21 +284,6 @@ where
 {
     type Type = HostBitArray<<HostBitTensorT as SymbolicType>::Type, N>;
 }
-
-// #[cfg(feature = "compilation")]
-// impl PartiallySymbolicType for HostBitArray128 {
-//     type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N128>;
-// }
-
-// #[cfg(feature = "compilation")]
-// impl PartiallySymbolicType for HostBitArray224 {
-//     type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N224>;
-// }
-
-// #[cfg(feature = "compilation")]
-// impl PartiallySymbolicType for HostBitArray256 {
-//     type Type = HostBitArray<<HostBitTensor as SymbolicType>::Type, N256>;
-// }
 
 #[cfg(feature = "compilation")]
 impl<HostBitT, N> From<HostBitArray<HostBitT, N>> for Symbolic<HostBitArray<HostBitT, N>>

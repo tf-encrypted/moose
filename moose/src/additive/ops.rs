@@ -286,7 +286,8 @@ impl ShlOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::computation::{AddOp, KnownType, Operation, Operator, Placement};
+    #[cfg(feature = "compilation")]
+    use crate::computation::{KnownType, Operation, Operator, Placement};
     #[cfg(feature = "compilation")]
     use crate::execution::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
     use crate::prelude::*;

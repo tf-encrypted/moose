@@ -10,6 +10,7 @@ use crate::host::HostShape;
 use crate::types::*;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "compilation")]
 use std::convert::TryFrom;
 
 mod ops;
