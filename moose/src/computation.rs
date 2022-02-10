@@ -1,6 +1,6 @@
 use crate::additive::*;
 use crate::error::{Error, Result};
-#[cfg(feature = "compilation")]
+#[cfg(feature = "compile")]
 use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::host::*;
@@ -148,12 +148,12 @@ impl SessionId {
 ///
 /// Note that this trait is typically not implemented directly, but
 /// rather through an implementation of the PartiallySymbolicType map.
-#[cfg(feature = "compilation")]
+#[cfg(feature = "compile")]
 pub trait SymbolicType {
     type Type;
 }
 
-#[cfg(feature = "compilation")]
+#[cfg(feature = "compile")]
 impl<T> SymbolicType for T
 where
     T: PartiallySymbolicType,
@@ -167,7 +167,7 @@ where
 /// Concretely, this map computes the symbolic version, except for the top-most
 /// type. As an example, RepTensor<Symbolic<HostTensor>> is partially symbolic
 /// as opposed to the (fully) symbolic type Symbolic<RepTensor<Symbolic<HostTensor>.
-#[cfg(feature = "compilation")]
+#[cfg(feature = "compile")]
 pub trait PartiallySymbolicType {
     type Type;
 }
@@ -456,14 +456,14 @@ macro_rules! values {
             }
         )+
 
-        #[cfg(feature = "compilation")]
+        #[cfg(feature = "compile")]
         #[derive(PartialEq, Clone, Debug)]
         #[allow(clippy::large_enum_variant)]
         pub enum SymbolicValue {
             $($val(Box<<$val as SymbolicType>::Type>),)+
         }
 
-        #[cfg(feature = "compilation")]
+        #[cfg(feature = "compile")]
         impl SymbolicValue {
             pub fn ty(&self) -> Ty {
                 match self {
@@ -480,7 +480,7 @@ macro_rules! values {
         }
 
         $(
-            #[cfg(feature = "compilation")]
+            #[cfg(feature = "compile")]
             impl From<<$val as SymbolicType>::Type> for SymbolicValue {
                 fn from(x: <$val as SymbolicType>::Type) -> Self {
                     SymbolicValue::$val(Box::new(x))
@@ -489,7 +489,7 @@ macro_rules! values {
         )+
 
         $(
-            #[cfg(feature = "compilation")]
+            #[cfg(feature = "compile")]
             impl TryFrom<SymbolicValue> for <$val as SymbolicType>::Type {
                 type Error = Error;
                 fn try_from(v: SymbolicValue) -> Result<Self> {
@@ -505,7 +505,7 @@ macro_rules! values {
         )+
 
         $(
-            #[cfg(feature = "compilation")]
+            #[cfg(feature = "compile")]
             impl KnownType<crate::execution::SymbolicSession> for $val {
                 type Type = <$val as SymbolicType>::Type;
                 const TY: Ty = Ty::$val$(($inner::$default))?;
@@ -614,7 +614,7 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Unit(pub HostPlacement);
 
-#[cfg(feature = "compilation")]
+#[cfg(feature = "compile")]
 impl PartiallySymbolicType for Unit {
     type Type = Unit;
 }
@@ -809,21 +809,21 @@ macro_rules! operators {
         )+
 
         impl Operator {
-            #[cfg(feature = "compilation")]
+            #[cfg(feature = "compile")]
             pub(crate) fn sig(&self) -> &Signature {
                 match self {
                     $(Operator::$t(op) => &op.sig,)+
                 }
             }
 
-            #[cfg(feature = "compilation")]
+            #[cfg(feature = "compile")]
             pub(crate) fn sig_mut(&mut self) -> &mut Signature {
                 match self {
                     $(Operator::$t(op) => &mut op.sig,)+
                 }
             }
 
-            #[cfg(feature = "compilation")]
+            #[cfg(feature = "compile")]
             pub(crate) fn short_name(&self) -> &str {
                 match self {
                     $(Operator::$t(op) => op.short_name(),)+

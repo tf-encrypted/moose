@@ -11,9 +11,9 @@ categories = ["", ""]
 edition = "2018"
 
 [features]
-default = ["blas", "sync_execution", "async_execution", "compilation"]
+default = ["blas", "sync_execution", "async_execution", "compile"]
 blas = ["ndarray-linalg"]
-compilation = []
+compile = []
 sync_execution = []
 async_execution = []
 

@@ -2,7 +2,7 @@
 
 use crate::computation::*;
 use crate::error::Result;
-#[cfg(feature = "compilation")]
+#[cfg(feature = "compile")]
 use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::kernels::*;
@@ -53,7 +53,7 @@ impl<RepRingT> FixedpointTensor for RepFixedTensor<RepRingT> {
     }
 }
 
-#[cfg(feature = "compilation")]
+#[cfg(feature = "compile")]
 impl<RepRingT: Placed> FixedpointTensor for Symbolic<RepFixedTensor<RepRingT>> {
     fn fractional_precision(&self) -> u32 {
         match self {

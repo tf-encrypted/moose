@@ -8,13 +8,13 @@ use std::sync::Arc;
 
 #[cfg(feature = "async_execution")]
 pub mod asynchronous;
-#[cfg(feature = "compilation")]
+#[cfg(feature = "compile")]
 pub mod symbolic;
 #[cfg(feature = "sync_execution")]
 pub mod synchronous;
 #[cfg(feature = "async_execution")]
 pub use asynchronous::*;
-#[cfg(feature = "compilation")]
+#[cfg(feature = "compile")]
 pub use symbolic::*;
 #[cfg(feature = "sync_execution")]
 pub use synchronous::*;
@@ -77,7 +77,7 @@ pub type RoleAssignment = HashMap<Role, Identity>;
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "compilation")]
+    #[cfg(feature = "compile")]
     use crate::compilation::{compile_passes, Pass};
     use crate::error::Error;
     use crate::execution::{SyncSession, TestSyncExecutor};
