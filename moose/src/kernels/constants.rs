@@ -1,4 +1,5 @@
 use super::*;
+use crate::TensorLike;
 
 pub trait PlacementFill<S: Session, ShapeT, O> {
     fn fill(&self, sess: &S, value: Constant, shape: &ShapeT) -> O;
@@ -190,7 +191,7 @@ pub trait PlacementZeros<S: Session, ShapeT, O> {
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
 where
     P: PlacementFill<S, ShapeT, O>,
-    O: TensorLike<S>,
+    O: TensorLike,
     O::Scalar: Into<Constant>,
     O::Scalar: From<u8>,
 {
@@ -207,7 +208,7 @@ pub trait PlacementOnes<S: Session, ShapeT, O> {
 impl<S: Session, ShapeT, O, P> PlacementOnes<S, ShapeT, O> for P
 where
     P: PlacementFill<S, ShapeT, O>,
-    O: TensorLike<S>,
+    O: TensorLike,
     O::Scalar: Into<Constant>,
     O::Scalar: From<u8>,
 {

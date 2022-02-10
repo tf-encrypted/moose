@@ -102,10 +102,6 @@ where
 {
 }
 
-pub trait TensorLike<S: Session> {
-    type Scalar;
-}
-
 pub trait PlacementKeyGen<S: Session, KeyT> {
     fn gen_key(&self, sess: &S) -> KeyT;
 }

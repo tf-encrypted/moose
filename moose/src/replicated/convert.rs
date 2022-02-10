@@ -4,6 +4,7 @@ use super::*;
 use crate::additive::{AdditivePlacement, AdtTensor, DaBitProvider};
 use crate::execution::SetupGeneration;
 use crate::host::{AbstractHostAesKey, HostBitArray, HostFixedTensor, SyncKey};
+use std::convert::TryInto;
 
 impl ShareOp {
     pub(crate) fn aeskey_kernel<S: Session, HostBitArrayT, RepBitArrayT>(
