@@ -54,8 +54,7 @@ async fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::R
                 return Ok(()); // when client hangs up
             }
         };
-        let mut vec: Vec<u8> = Vec::with_capacity(size as usize);
-        vec.resize(size as usize, 0);
+        let mut vec: Vec<u8> = vec![0; size as usize];
 
         tracing::debug!("reading exact: {}", size);
         stream.read_exact(&mut vec).await?;
@@ -228,7 +227,7 @@ impl AsyncNetworking for TcpStreamNetworking {
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> moose::error::Result<Value> {
-        let key = compute_path(&session_id, &rendezvous_key);
+        let key = compute_path(session_id, rendezvous_key);
         tracing::debug!("receiving key: {} from: {}", key, sender);
 
         let cell = self
