@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use moose::{
     computation::{RendezvousKey, SessionId, Value},
+    error::Error,
     execution::Identity,
     networking::AsyncNetworking,
 };
@@ -16,6 +17,7 @@ use tokio::time::{sleep, Duration};
 type StoreType = Arc<dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>>;
 
 pub struct TcpStreamNetworking {
+    own_name: String,
     store: StoreType,                                       // store incoming data
     send_channels: HashMap<String, mpsc::Sender<SendData>>, // send data over each stream
 }
@@ -49,7 +51,7 @@ async fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::R
             Ok(_) => little_endian_to_u64(&buf),
             Err(_) => {
                 tracing::debug!("client hung up");
-                return Ok(()) // when client hangs up
+                return Ok(()); // when client hangs up
             }
         };
         let mut vec: Vec<u8> = Vec::with_capacity(size as usize);
@@ -179,6 +181,7 @@ impl TcpStreamNetworking {
 
         let store = Arc::clone(&store);
         Ok(TcpStreamNetworking {
+            own_name,
             store,
             send_channels,
         })
@@ -197,7 +200,12 @@ impl AsyncNetworking for TcpStreamNetworking {
         let key = compute_path(session_id, rendezvous_key);
         tracing::debug!("sending key: {} to: {}", key, receiver);
         let receiver_name = receiver.to_string();
-        let send_channel = self.send_channels.get(&receiver_name).unwrap();
+        let send_channel = self.send_channels.get(&receiver_name).ok_or_else(|| {
+            Error::Networking(format!(
+                "in session {}, channel not found to send rendezvous key {} from {} to {}",
+                session_id, rendezvous_key, self.own_name, receiver
+            ))
+        })?;
         let send_data = SendData {
             value: value.clone(),
             receiver: receiver.clone(),
@@ -205,7 +213,12 @@ impl AsyncNetworking for TcpStreamNetworking {
             session_id: session_id.clone(),
         };
         tracing::debug!("awaiting send: {}", key);
-        send_channel.send(send_data).await.unwrap();
+        send_channel.send(send_data).await.map_err(|e| {
+            Error::Networking(format!(
+                "in session {}, channel send failed for rendezvous key {} from {} to {}: {}",
+                session_id, rendezvous_key, self.own_name, receiver, e
+            ))
+        })?;
 
         Ok(())
     }
