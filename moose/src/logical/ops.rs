@@ -1752,8 +1752,6 @@ impl LogOp {
     where
         HostPlacement: PlacementLog<S, Float32T, Float32T>,
         HostPlacement: PlacementLog<S, Float64T, Float64T>,
-        // HostPlacement: PlacementLog<S, Fixed64T, Fixed64T>,
-        // HostPlacement: PlacementLog<S, Fixed128T, Fixed128T>,
     {
         match x {
             AbstractTensor::Float64(x) => {
@@ -1764,14 +1762,6 @@ impl LogOp {
                 let result = plc.log(sess, &x);
                 Ok(AbstractTensor::Float32(result))
             }
-            // AbstractTensor::Fixed64(x) => {
-            //     let result = plc.log(sess, &x);
-            //     Ok(AbstractTensor::Fixed64(result))
-            // }
-            // AbstractTensor::Fixed128(x) => {
-            //     let result = plc.log(sess, &x);
-            //     Ok(AbstractTensor::Fixed128(result))
-            // }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             _ => Err(Error::UnimplementedOperator(format!(
                 "Missing replicated natural logarithm for {:?}",
@@ -1816,8 +1806,6 @@ impl Log2Op {
     where
         HostPlacement: PlacementLog2<S, Float32T, Float32T>,
         HostPlacement: PlacementLog2<S, Float64T, Float64T>,
-        // HostPlacement: PlacementLog2<S, Fixed64T, Fixed64T>,
-        // HostPlacement: PlacementLog2<S, Fixed128T, Fixed128T>,
     {
         match x {
             AbstractTensor::Float64(x) => {
@@ -1828,14 +1816,6 @@ impl Log2Op {
                 let result = plc.log2(sess, &x);
                 Ok(AbstractTensor::Float32(result))
             }
-            // AbstractTensor::Fixed64(x) => {
-            //     let result = plc.log2(sess, &x);
-            //     Ok(AbstractTensor::Fixed64(result))
-            // }
-            // AbstractTensor::Fixed128(x) => {
-            //     let result = plc.log2(sess, &x);
-            //     Ok(AbstractTensor::Fixed128(result))
-            // }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             _ => Err(Error::UnimplementedOperator(format!(
                 "Missing replicated logarithm base 2 for {:?}",

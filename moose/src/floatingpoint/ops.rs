@@ -395,7 +395,11 @@ impl LogOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(_v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "LogOp @ Mirrored3Placement".to_string(),
+                ))
+            }
         };
         let z = plc.log(sess, &x);
         Ok(FloatTensor::Host(z))
@@ -413,7 +417,11 @@ impl Log2Op {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(_v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "Log2Op @ Mirrored3Placement".to_string(),
+                ))
+            }
         };
         let z = plc.log2(sess, &x);
         Ok(FloatTensor::Host(z))
