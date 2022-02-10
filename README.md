@@ -98,6 +98,8 @@ a more extensive test suite we recommend using `make test-long` command.
 
 Follow these steps to release a new version:
 
+0. Make sure `cargo release` is installed (`cargo install cargo-release`)
+
 1. create a new branch from `main`, eg `git checkout -b new-release`
 
 2. run `make release`

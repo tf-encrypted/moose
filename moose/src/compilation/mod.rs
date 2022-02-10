@@ -39,6 +39,14 @@ fn parse_pass(name: &str) -> anyhow::Result<Pass> {
     }
 }
 
+pub const DEFAULT_PASSES: [Pass; 5] = [
+    Pass::Typing,
+    Pass::Symbolic,
+    Pass::Prune,
+    Pass::Networking,
+    Pass::Toposort,
+];
+
 pub fn into_pass(passes: &[String]) -> anyhow::Result<Vec<Pass>> {
     passes.iter().map(|s| parse_pass(s.as_str())).collect()
 }

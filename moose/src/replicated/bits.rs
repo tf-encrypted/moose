@@ -2,29 +2,64 @@
 
 use super::*;
 
+impl BitDecomposeOp {
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT, N: Const>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepRingT,
+    ) -> Result<RepBitArray<RepBitT, N>>
+    where
+        RepRingT: Ring<BitLength = N>,
+        ReplicatedPlacement: PlacementSplit<S, RepRingT, RepBitT>,
+        ReplicatedPlacement: BinaryAdder<S, RepBitT>,
+    {
+        let (x0, x1) = rep.split(sess, &x);
+        let res = rep.binary_adder(sess, &x0, &x1, RepRingT::BitLength::VALUE);
+        Ok(RepBitArray(res, PhantomData))
+    }
+}
+
+impl BitComposeOp {
+    pub(crate) fn rep_kernel<S: Session, ShapeT, RepRingT, RepBitArrayT, RepBitT, N: Const>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepBitArrayT,
+    ) -> Result<RepRingT>
+    where
+        RepRingT: Ring<BitLength = N>,
+        ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
+        ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementShape<S, RepBitT, ShapeT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
+    {
+        let v: Vec<_> = (0..RepRingT::BitLength::VALUE)
+            .map(|i| rep.index(sess, i, &x))
+            .collect();
+
+        let zeros = rep.fill(sess, 0u64.into(), &rep.shape(sess, &v[0]));
+        Ok(v.iter().enumerate().fold(zeros, |x, (i, y)| {
+            rep.add(sess, &x, &rep.ring_inject(sess, i, y))
+        }))
+    }
+}
+
 /// Split a replicated secret `x` into two replicated bits `(x1, x2)`
 ///
 /// This is done such that when interpreted as ring tensors, they reconstruct to `x`
 /// i.e. `(x1 + x2) = x` over the ring. This is useful for some protocols that don't
 /// necessarily need the full bit-decomposition such as exponentiation.
-pub(crate) trait PlacementSplit<S: Session, T, O1, O2> {
-    fn split(&self, sess: &S, x: &T) -> (O1, O2);
+pub(crate) trait PlacementSplit<S: Session, T, O> {
+    fn split(&self, sess: &S, x: &T) -> (O, O);
 }
 
-impl<
-        S: Session,
-        HostRingT: Placed<Placement = HostPlacement>,
-        HostBitT: Placed<Placement = HostPlacement>,
-    >
-    PlacementSplit<
-        S,
-        Symbolic<RepTensor<HostRingT>>,
-        Symbolic<RepTensor<HostBitT>>,
-        Symbolic<RepTensor<HostBitT>>,
-    > for ReplicatedPlacement
+impl<S: Session, HostRingT, HostBitT>
+    PlacementSplit<S, Symbolic<RepTensor<HostRingT>>, Symbolic<RepTensor<HostBitT>>>
+    for ReplicatedPlacement
 where
-    ReplicatedPlacement:
-        PlacementSplit<S, RepTensor<HostRingT>, RepTensor<HostBitT>, RepTensor<HostBitT>>,
+    HostRingT: Placed<Placement = HostPlacement>,
+    HostBitT: Placed<Placement = HostPlacement>,
+    ReplicatedPlacement: PlacementSplit<S, RepTensor<HostRingT>, RepTensor<HostBitT>>,
     RepTensor<HostRingT>: Into<Symbolic<RepTensor<HostRingT>>>,
     RepTensor<HostBitT>: Into<Symbolic<RepTensor<HostBitT>>>,
 {
@@ -44,8 +79,7 @@ where
     }
 }
 
-impl<S: Session, HostRingT, HostBitT>
-    PlacementSplit<S, RepTensor<HostRingT>, RepTensor<HostBitT>, RepTensor<HostBitT>>
+impl<S: Session, HostRingT, HostBitT> PlacementSplit<S, RepTensor<HostRingT>, RepTensor<HostBitT>>
     for ReplicatedPlacement
 where
     HostShape: KnownType<S>,
@@ -94,47 +128,5 @@ where
         };
 
         (rep_bsl.try_into().ok().unwrap(), rep_bsr)
-    }
-}
-
-impl BitDecomposeOp {
-    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT, N: Const>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        x: RepRingT,
-    ) -> Result<RepBitArray<RepBitT, N>>
-    where
-        RepRingT: Ring<BitLength = N>,
-        ReplicatedPlacement: PlacementSplit<S, RepRingT, RepBitT, RepBitT>,
-        ReplicatedPlacement: BinaryAdder<S, RepBitT>,
-    {
-        let (x0, x1) = rep.split(sess, &x);
-        let res = rep.binary_adder(sess, &x0, &x1, RepRingT::BitLength::VALUE);
-        Ok(RepBitArray(res, PhantomData))
-    }
-}
-
-impl BitComposeOp {
-    pub(crate) fn rep_kernel<S: Session, ShapeT, RepRingT, RepBitArrayT, RepBitT, N: Const>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        x: RepBitArrayT,
-    ) -> Result<RepRingT>
-    where
-        RepRingT: Ring<BitLength = N>,
-        ReplicatedPlacement: PlacementIndex<S, RepBitArrayT, RepBitT>,
-        ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
-        ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementShape<S, RepBitT, ShapeT>,
-        ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
-    {
-        let v: Vec<_> = (0..RepRingT::BitLength::VALUE)
-            .map(|i| rep.index(sess, i, &x))
-            .collect();
-
-        let zeros = rep.fill(sess, 0u64.into(), &rep.shape(sess, &v[0]));
-        Ok(v.iter().enumerate().fold(zeros, |x, (i, y)| {
-            rep.add(sess, &x, &rep.ring_inject(sess, i, y))
-        }))
     }
 }

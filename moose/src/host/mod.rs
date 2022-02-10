@@ -179,20 +179,19 @@ impl<S: Session, T> PlacementPlace<S, HostTensor<T>> for HostPlacement {
     }
 }
 
-// TODO(Morten) visibility
 impl<T> HostTensor<T>
 where
     T: LinalgScalar,
 {
-    pub fn place(plc: &HostPlacement, x: ArrayD<T>) -> HostTensor<T> {
+    pub(crate) fn place(plc: &HostPlacement, x: ArrayD<T>) -> HostTensor<T> {
         HostTensor::<T>(x, plc.clone())
     }
 
-    pub fn reshape(self, newshape: HostShape) -> Self {
+    pub(crate) fn reshape(self, newshape: HostShape) -> Self {
         HostTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
     }
 
-    pub fn shape(&self) -> HostShape {
+    pub(crate) fn shape(&self) -> HostShape {
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
     }
 }
@@ -236,7 +235,7 @@ impl<S: Session> PlacementPlace<S, HostBitTensor> for HostPlacement {
 }
 
 impl HostBitTensor {
-    pub fn place(plc: &HostPlacement, x: ArrayD<u8>) -> HostBitTensor {
+    pub(crate) fn place(plc: &HostPlacement, x: ArrayD<u8>) -> HostBitTensor {
         HostBitTensor(x, plc.clone())
     }
 
@@ -253,23 +252,6 @@ impl HostBitTensor {
 
     fn shape(&self) -> HostShape {
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
-    }
-}
-
-#[allow(dead_code)]
-impl HostBitTensor {
-    pub(crate) fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> HostBitTensor {
-        HostBitTensor(raw_tensor, plc)
-    }
-
-    pub(crate) fn from_vec_plc(vec: Vec<u8>, plc: HostPlacement) -> HostBitTensor {
-        let raw_tensor = ArrayBase::from_vec(vec).into_dyn();
-        Self::from_raw_plc(raw_tensor, plc)
-    }
-
-    pub(crate) fn from_slice_plc(slice: &[u8], plc: HostPlacement) -> HostBitTensor {
-        let data = slice.to_vec();
-        Self::from_vec_plc(data, plc)
     }
 }
 
@@ -429,30 +411,6 @@ impl<S: Session, T> TensorLike<S> for Symbolic<HostRingTensor<T>> {
     type Scalar = T;
 }
 
-pub trait FromRawPlc<P, T> {
-    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> Self;
-}
-
-impl<P, T> FromRawPlc<P, T> for HostRingTensor<T>
-where
-    P: Into<HostPlacement>,
-    T: Clone,
-{
-    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> HostRingTensor<T> {
-        let tensor = raw_tensor.mapv(Wrapping).into_dyn();
-        HostRingTensor(tensor, plc.into())
-    }
-}
-
-impl<P, T> FromRawPlc<P, T> for HostTensor<T>
-where
-    P: Into<HostPlacement>,
-{
-    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> HostTensor<T> {
-        HostTensor(raw_tensor, plc.into())
-    }
-}
-
 impl<R: Ring + Placed> Ring for Symbolic<R> {
     type BitLength = R::BitLength;
 }
@@ -474,7 +432,7 @@ where
 }
 
 impl<T> HostRingTensor<T> {
-    pub fn place(plc: &HostPlacement, x: ArrayD<Wrapping<T>>) -> HostRingTensor<T> {
+    pub(crate) fn place(plc: &HostPlacement, x: ArrayD<Wrapping<T>>) -> HostRingTensor<T> {
         HostRingTensor::<T>(x, plc.clone())
     }
 
@@ -490,11 +448,9 @@ impl<T> HostRingTensor<T> {
     }
 }
 
-impl<T> HostRingTensor<T>
-where
-    T: Clone,
-{
-    pub fn from_raw_plc<D: ndarray::Dimension, P: Into<HostPlacement>>(
+#[cfg(test)]
+impl<T: Clone> HostRingTensor<T> {
+    pub(crate) fn from_raw_plc<D: ndarray::Dimension, P: Into<HostPlacement>>(
         raw_tensor: Array<T, D>,
         plc: P,
     ) -> HostRingTensor<T> {
@@ -539,6 +495,15 @@ where
 
 pub trait FromRaw<T, O> {
     fn from_raw(&self, raw: T) -> O;
+}
+
+impl<T: Clone, O> FromRaw<&[T], O> for HostPlacement
+where
+    HostPlacement: FromRaw<Array1<T>, O>,
+{
+    fn from_raw(&self, raw: &[T]) -> O {
+        self.from_raw(Array::from_vec(raw.to_vec()))
+    }
 }
 
 impl<T, O> FromRaw<Vec<T>, O> for HostPlacement

@@ -10,6 +10,7 @@ const COLORS: [&str; 9] = [
     "#3caea3",
 ];
 
+// TODO remove `get` prefix
 /// Prints the computation's graph DOT representation to stdout
 pub fn get_dot_graph(comp: &Computation) -> String {
     let graph = comp.as_graph();

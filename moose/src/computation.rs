@@ -620,7 +620,7 @@ pub type CompiledKernel<S> =
     Box<dyn Fn(&S, Vec<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send>;
 
 impl Ty {
-    pub fn flatten(&self) -> Ty {
+    pub(crate) fn flatten(&self) -> Ty {
         match self {
             Ty::Tensor(_) => Ty::Tensor(TensorDType::Unknown),
             _ => *self,
@@ -703,12 +703,15 @@ impl Signature {
     pub fn nullary(ret: Ty) -> Signature {
         NullarySignature { ret }.into()
     }
+
     pub fn unary(arg0: Ty, ret: Ty) -> Signature {
         UnarySignature { arg0, ret }.into()
     }
+
     pub fn binary(arg0: Ty, arg1: Ty, ret: Ty) -> Signature {
         BinarySignature { arg0, arg1, ret }.into()
     }
+
     pub fn ternary(arg0: Ty, arg1: Ty, arg2: Ty, ret: Ty) -> Signature {
         TernarySignature {
             arg0,
@@ -718,6 +721,7 @@ impl Signature {
         }
         .into()
     }
+
     pub fn variadic(args: Ty, ret: Ty) -> Signature {
         VariadicSignature { args, ret }.into()
     }
@@ -755,7 +759,7 @@ impl Signature {
         }
     }
 
-    pub fn flatten(&self) -> Self {
+    pub(crate) fn flatten(&self) -> Self {
         match self {
             Signature::Nullary(s) => Signature::nullary(s.ret.flatten()),
             Signature::Unary(s) => Signature::unary(s.arg0.flatten(), s.ret.flatten()),
@@ -772,7 +776,7 @@ impl Signature {
         }
     }
 
-    pub fn merge(&mut self, another: Signature) -> anyhow::Result<()> {
+    pub(crate) fn merge(&mut self, another: Signature) -> anyhow::Result<()> {
         match (self, &another) {
             (Signature::Nullary(s), Signature::Nullary(o)) => s.merge(o),
             (Signature::Unary(s), Signature::Unary(o)) => s.merge(o),
@@ -805,7 +809,7 @@ impl Signature {
 }
 
 impl NullarySignature {
-    pub fn merge(&mut self, another: &NullarySignature) -> anyhow::Result<()> {
+    pub(crate) fn merge(&mut self, another: &NullarySignature) -> anyhow::Result<()> {
         if let Some(new_type) = self.ret.merge(&another.ret) {
             self.ret = new_type;
         }
@@ -814,7 +818,7 @@ impl NullarySignature {
 }
 
 impl UnarySignature {
-    pub fn merge(&mut self, another: &UnarySignature) -> anyhow::Result<()> {
+    pub(crate) fn merge(&mut self, another: &UnarySignature) -> anyhow::Result<()> {
         if let Some(new_type) = self.arg0.merge(&another.arg0) {
             self.arg0 = new_type;
         }
@@ -826,7 +830,7 @@ impl UnarySignature {
 }
 
 impl BinarySignature {
-    pub fn merge(&mut self, another: &BinarySignature) -> anyhow::Result<()> {
+    pub(crate) fn merge(&mut self, another: &BinarySignature) -> anyhow::Result<()> {
         if let Some(new_type) = self.arg0.merge(&another.arg0) {
             self.arg0 = new_type;
         }
@@ -841,7 +845,7 @@ impl BinarySignature {
 }
 
 impl TernarySignature {
-    pub fn merge(&mut self, another: &TernarySignature) -> anyhow::Result<()> {
+    pub(crate) fn merge(&mut self, another: &TernarySignature) -> anyhow::Result<()> {
         if let Some(new_type) = self.arg0.merge(&another.arg0) {
             self.arg0 = new_type;
         }
@@ -859,7 +863,7 @@ impl TernarySignature {
 }
 
 impl VariadicSignature {
-    pub fn merge(&mut self, another: &Signature) -> anyhow::Result<()> {
+    pub(crate) fn merge(&mut self, another: &Signature) -> anyhow::Result<()> {
         match another {
             Signature::Variadic(sig) => {
                 if let Some(new_type) = self.args.merge(&sig.args) {
@@ -934,7 +938,7 @@ impl Ty {
     ///
     /// Returns `Some(new_type)` if a merge produced a new type.
     /// Otherwise returns None
-    pub fn merge(&self, another: &Ty) -> Option<Ty> {
+    pub(crate) fn merge(&self, another: &Ty) -> Option<Ty> {
         match self {
             Ty::Unknown => Some(*another),
             // TODO: make sure another dtype is also a tensor
@@ -965,25 +969,25 @@ macro_rules! operators {
         )+
 
         impl Operator {
-            pub fn sig(&self) -> &Signature {
+            pub(crate) fn sig(&self) -> &Signature {
                 match self {
                     $(Operator::$t(op) => &op.sig,)+
                 }
             }
 
-            pub fn sig_mut(&mut self) -> &mut Signature {
+            pub(crate) fn sig_mut(&mut self) -> &mut Signature {
                 match self {
                     $(Operator::$t(op) => &mut op.sig,)+
                 }
             }
 
-            pub fn short_name(&self) -> &str {
+            pub(crate) fn short_name(&self) -> &str {
                 match self {
                     $(Operator::$t(op) => op.short_name(),)+
                 }
             }
 
-            pub fn get_from_textual<'a, E: 'a + nom::error::ParseError<&'a str> + nom::error::ContextError<&'a str>>(name: &'a str) -> impl FnMut(&'a str) -> std::result::Result<(&str, Operator), nom::Err<E>> {
+            pub(crate) fn get_from_textual<'a, E: 'a + nom::error::ParseError<&'a str> + nom::error::ContextError<&'a str>>(name: &'a str) -> impl FnMut(&'a str) -> std::result::Result<(&str, Operator), nom::Err<E>> {
                 use crate::textual::{FromTextual, parse_operator_error};
                 match name {
                     $(paste! {[<$t Op>]::SHORT_NAME} => paste! {[<$t Op>]::from_textual},)+
@@ -1589,7 +1593,7 @@ macro_rules! placements {
         }
 
         impl Placement {
-            pub fn ty(&self) -> PlacementTy {
+            pub(crate) fn ty(&self) -> PlacementTy {
                 match self {
                     $(Placement::$p(plc) => plc.ty(),)+
                 }
@@ -1818,5 +1822,21 @@ mod tests {
         assert_eq!(session_id.to_string(), session_id_str);
         assert_eq!(session_id.secure, expected);
         assert_eq!(*session_id.as_bytes(), expected);
+    }
+
+    #[test]
+    fn test_binary_roundtrip() {
+        use std::convert::TryInto;
+        let original: Computation = r#"constant_0 = Constant{value = HostFloat64Tensor([[0.12131529]])}: () -> Tensor<Float64> () @Host(player2)
+        cast_0 = Cast: (Tensor<Float64>) -> Tensor<Fixed128(24, 40)> (constant_0) @Host(player2)
+        x = Input{arg_name = "x"}: () -> AesTensor () @Host(player0)
+        key = Input{arg_name = "key"}: () -> AesKey () @Replicated(player0, player1, player2)
+        decrypt_0 = Decrypt: (AesKey, AesTensor) -> Tensor<Fixed128(24, 40)> (key, x) @Replicated(player0, player1, player2)
+        dot_0 = Dot: (Tensor<Fixed128(24, 40)>, Tensor<Fixed128(24, 40)>) -> Tensor<Fixed128(24, 40)> (decrypt_0, cast_0) @Replicated(player0, player1, player2)
+        cast_1 = Cast: (Tensor<Fixed128(24, 40)>) -> Tensor<Float64> (dot_0) @Host(player1)
+        output_0 = Output: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
+        let bytes = original.to_bytes().unwrap();
+        let read_back = Computation::from_bytes(bytes).unwrap();
+        assert_eq!(original.operations, read_back.operations);
     }
 }
