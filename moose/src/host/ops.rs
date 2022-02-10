@@ -1901,7 +1901,7 @@ impl ArgmaxOp {
                 });
         }
         Ok(HostRingTensor(
-            current_pattern_max.mapv(|x| Wrapping(x)),
+            current_pattern_max.mapv(Wrapping),
             plc.clone(),
         ))
     }
@@ -1932,7 +1932,7 @@ impl ArgmaxOp {
                 });
         }
         Ok(HostRingTensor(
-            current_pattern_max.mapv(|x| Wrapping(x)),
+            current_pattern_max.mapv(Wrapping),
             plc.clone(),
         ))
     }

@@ -68,11 +68,10 @@ impl ArgmaxOp {
             .iter()
             .enumerate()
             .map(|(i, item)| {
-                let result = (
+                (
                     rep.fill(sess, (i as u8).into(), &rep.shape(sess, item)),
                     item.clone(),
-                );
-                result
+                )
             })
             .collect();
 
@@ -85,6 +84,9 @@ impl ArgmaxOp {
         Ok(rep.share_reduction(sess, &secret_index))
     }
 }
+
+
+type RepTuple<R> = (R, R);
 
 impl ReplicatedPlacement {
     pub(crate) fn tree_reduce_argmax<S, RepT>(
