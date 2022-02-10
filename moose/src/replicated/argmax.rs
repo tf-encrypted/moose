@@ -92,9 +92,9 @@ impl ReplicatedPlacement {
     pub(crate) fn tree_reduce_argmax<S, RepT>(
         &self,
         sess: &S,
-        x: &[(RepT, RepT)],
-        op: fn(&Self, &S, &(RepT, RepT), &(RepT, RepT)) -> (RepT, RepT),
-    ) -> (RepT, RepT)
+        x: &[RepTuple<RepT>],
+        op: fn(&Self, &S, &RepTuple<RepT>, &RepTuple<RepT>) -> RepTuple<RepT>,
+    ) -> RepTuple<RepT>
     where
         RepT: Clone,
     {
