@@ -47,15 +47,7 @@ class ReplicatedExample(parameterized.TestCase):
         sigmoid_comp = self._setup_sigmoid_comp()
         traced_sigmoid_comp = edsl.trace(sigmoid_comp)
         comp_bin = utils.serialize_computation(traced_sigmoid_comp)
-        _ = elk_compiler.compile_computation(
-            comp_bin,
-            [
-                "typing",
-                "full",
-                "toposort",
-                # "print",
-            ],
-        )
+        _ = elk_compiler.compile_computation(comp_bin)
 
     def test_sigmoid_example_execute(self):
         sigmoid_comp = self._setup_sigmoid_comp()
