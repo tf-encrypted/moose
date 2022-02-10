@@ -1866,7 +1866,7 @@ impl CastOp {
         x: HostRing128Tensor,
     ) -> Result<HostRing64Tensor> {
         let x_downshifted: ArrayD<Wrapping<u64>> = x.0.mapv(|el| {
-            let reduced = el.0 & ((1_u128) << 64 - 1);
+            let reduced = el.0 % ((1_u128) << 64);
             Wrapping(reduced as u64)
         });
 

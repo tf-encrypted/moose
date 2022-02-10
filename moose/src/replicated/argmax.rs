@@ -10,7 +10,7 @@ pub(crate) trait TreeReduceArgmax<S: Session, T, O> {
 impl<S: Session, T: Clone> TreeReduceArgmax<S, T, T> for ReplicatedPlacement
 where
     ReplicatedPlacement: PlacementMul<S, T, T, T>,
-    ReplicatedPlacement: PlacementGreaterThan<S, T, T, m!(ReplicatedBitTensor)>,
+    ReplicatedPlacement: PlacementLessThan<S, T, T, m!(ReplicatedBitTensor)>,
     ReplicatedBitTensor: KnownType<S>,
     ReplicatedPlacement: PlacementRingInject<S, m!(ReplicatedBitTensor), T>,
     ReplicatedPlacement: PlacementMux<S, T, T, T, T>,
@@ -18,11 +18,11 @@ where
     fn reduce_argmax(&self, sess: &S, x: &[(T, T)]) -> (T, T) {
         let elementwise_argmax =
             |rep: &ReplicatedPlacement, sess: &S, x: &(T, T), y: &(T, T)| -> (T, T) {
-                let comp_bin = rep.greater_than(sess, &x.1, &y.1);
+                let comp_bin = rep.less(sess, &x.1, &y.1);
                 let comp_ring = rep.ring_inject(sess, 0, &comp_bin);
                 (
-                    rep.mux(sess, &comp_ring, &x.0, &y.0),
-                    rep.mux(sess, &comp_ring, &x.1, &y.1),
+                    rep.mux(sess, &comp_ring, &y.0, &x.0),
+                    rep.mux(sess, &comp_ring, &y.1, &x.1),
                 )
             };
         self.tree_reduce_argmax(sess, x, elementwise_argmax)
@@ -58,7 +58,6 @@ impl ArgmaxOp {
         ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
         ReplicatedPlacement: TreeReduceArgmax<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementExpandDims<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementShareReduction<S, RepRingT, m!(ReplicatedRing64Tensor)>,
     {
         let xs: Vec<_> = (0..upmost_index)
@@ -79,12 +78,11 @@ impl ArgmaxOp {
 
         // TODO(Dragos) here we can optimize at the first round of argmax, by doing it manually until we get replicated types all around
         let (secret_index, _max_value) = rep.reduce_argmax(sess, &x_pairs);
-        let expanded_index = rep.expand_dims(sess, [axis].to_vec(), &secret_index);
 
         // (x0 + x1 + x2) mod 2^128 = x , iff x in [0, 2^64)
         // (x0  mod 2^64 + x1 mod 2^64 + x2 mod 2^64) mod 2^64 = x
         // share trunc operation
-        Ok(rep.share_reduction(sess, &expanded_index))
+        Ok(rep.share_reduction(sess, &secret_index))
     }
 }
 
@@ -120,7 +118,6 @@ mod tests {
     use crate::prelude::*;
     use ndarray::array;
     use ndarray::prelude::*;
-    use ndarray::Zip;
 
     macro_rules! rep_argmax_test {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {
@@ -142,30 +139,67 @@ mod tests {
     }
 
     rep_argmax_test!(test_rep_argmax64, argmax<u64>);
+    rep_argmax_test!(test_rep_argmax128, argmax<u128>);
 
     #[test]
-    fn test_argmax_64() {
-        let x = array![1, 2, -3_i64, 4, 2, 2, 2, 3, 105].into_dyn();
-        let axis_index = 0_usize;
-
-        let mut current_max = x.index_axis(Axis(axis_index), 0).to_owned();
-        let mut current_pattern_max = current_max.mapv(|_x| 0_u64);
-
-        for (index, subview) in x.axis_iter(Axis(axis_index)).enumerate() {
-            let index = index as u64;
-            Zip::from(&mut current_max)
-                .and(&mut current_pattern_max)
-                .and(&subview)
-                .for_each(|max_entry, pattern_entry, &subview_entry| {
-                    if *max_entry < subview_entry {
-                        *max_entry = subview_entry;
-                        *pattern_entry = index;
-                    }
-                });
-        }
-        // println!("x_max: {:?}", x_max);
-        // println!("argmax: {:?}", expected_argmax.insert_axis(Axis(axis_index)));
-        let expected_argmax = current_pattern_max.insert_axis(Axis(axis_index));
+    fn test_argmax_64_1() {
+        let x = array![1_i64, 2, -3, 4, 2, 2, 2, 3, 105].into_dyn();
+        let expected_argmax = Array::from_elem([], 8_u64).into_dyn();
         test_rep_argmax64(x.mapv(|item| item as u64), expected_argmax, 0, 9);
+    }
+
+    #[test]
+    fn test_argmax_64_2() {
+        let x = array![
+            [1231_i64, -323, -3, 12321],
+            [93213, 12312321, -321, -3249],
+            [3921, 4012, 3221, -321]
+        ]
+        .into_dyn();
+        let expected_argmax = array![3_u64, 1, 1].into_dyn();
+        test_rep_argmax64(x.mapv(|item| item as u64), expected_argmax, 1, 4);
+    }
+
+    #[test]
+    fn test_argmax_64_3() {
+        let x = array![
+            [-3233_i64, 329423, 54843],
+            [3994, 123, -31326],
+            [-324, 55321, 23441]
+        ]
+        .into_dyn();
+        let expected_argmax = array![1_u64, 0, 1].into_dyn();
+        test_rep_argmax64(x.mapv(|item| item as u64), expected_argmax, 1, 3);
+    }
+
+    #[test]
+    fn test_argmax_128_1() {
+        let x = array![1_i128, 2, -3, 10000, 10000, 10000, 10000, 10000, 10000].into_dyn();
+        let expected_argmax = Array::from_elem([], 3_u64).into_dyn();
+        test_rep_argmax128(x.mapv(|item| item as u128), expected_argmax, 0, 9);
+    }
+
+    #[test]
+    fn test_argmax_128_2() {
+        let x = array![
+            [1231_i128, -323, -3, 12321],
+            [93213, 12312321, -321, -3249],
+            [3921, 4012, 3221, -321]
+        ]
+        .into_dyn();
+        let expected_argmax = array![3_u64, 1, 1].into_dyn();
+        test_rep_argmax128(x.mapv(|item| item as u128), expected_argmax, 1, 4);
+    }
+
+    #[test]
+    fn test_argmax_128_3() {
+        let x = array![
+            [-3233_i128, 329423, 54843],
+            [3994, 123, -31326],
+            [-324, 55321, 23441]
+        ]
+        .into_dyn();
+        let expected_argmax = array![1_u64, 0, 1].into_dyn();
+        test_rep_argmax128(x.mapv(|item| item as u128), expected_argmax, 1, 3);
     }
 }
