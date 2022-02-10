@@ -85,14 +85,18 @@ where
     Ok(computation)
 }
 
-pub fn compile<'p, P>(comp: &Computation, passes: Option<&'p [P]>) -> anyhow::Result<Computation>
+pub fn compile<P, PS>(comp: &Computation, passes: Option<PS>) -> anyhow::Result<Computation>
 where
-    Pass: TryFrom<&'p P, Error = anyhow::Error>,
+    PS: AsRef<[P]>,
+    for<'p> Pass: TryFrom<&'p P, Error = anyhow::Error>,
 {
     #[allow(deprecated)]
     match passes {
         None => compile_passes::<Pass>(comp, DEFAULT_PASSES.as_slice()),
-        Some(passes) => compile_passes(comp, passes),
+        Some(passes) => {
+            let passes = passes.as_ref();
+            compile_passes(comp, passes)
+        }
     }
 }
 
