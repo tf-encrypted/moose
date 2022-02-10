@@ -75,7 +75,7 @@ where
     let mut computation = comp.toposort()?;
     let passes = passes
         .iter()
-        .map(|pass| Pass::try_from(pass))
+        .map(Pass::try_from)
         .collect::<anyhow::Result<Vec<Pass>>>()?;
 
     for pass in passes {
