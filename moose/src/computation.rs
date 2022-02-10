@@ -449,7 +449,7 @@ macro_rules! values {
         )+
 
         $(
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl KnownType<crate::execution::SyncSession> for $val {
                 type Type = $val;
                 const TY: Ty = Ty::$val$(($inner::$default))?;

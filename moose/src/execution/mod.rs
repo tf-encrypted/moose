@@ -10,13 +10,13 @@ use std::sync::Arc;
 pub mod asynchronous;
 #[cfg(feature = "compile")]
 pub mod symbolic;
-#[cfg(feature = "sync_execution")]
+#[cfg(feature = "sync_execute")]
 pub mod synchronous;
 #[cfg(feature = "async_execute")]
 pub use asynchronous::*;
 #[cfg(feature = "compile")]
 pub use symbolic::*;
-#[cfg(feature = "sync_execution")]
+#[cfg(feature = "sync_execute")]
 pub use synchronous::*;
 
 /// General session trait determining basic properties for session objects.
@@ -73,7 +73,7 @@ pub type Environment<V> = HashMap<String, V>;
 
 pub type RoleAssignment = HashMap<Role, Identity>;
 
-#[cfg(all(feature = "async_execute", feature = "sync_execution"))]
+#[cfg(all(feature = "async_execute", feature = "sync_execute"))]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -436,7 +436,7 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(all(feature = "async_execute", feature = "sync_execution"))]
+    #[cfg(all(feature = "async_execute", feature = "sync_execute"))]
     #[rstest]
     #[case(true)]
     #[case(false)]

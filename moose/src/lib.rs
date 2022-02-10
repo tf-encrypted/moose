@@ -204,7 +204,7 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty), )+]) => {
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
                 &self,
@@ -305,7 +305,7 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
                 &self,
@@ -418,7 +418,7 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty), )+]) => {
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
                 &self,
@@ -546,7 +546,7 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty), )+]) => {
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
                 &self,
@@ -676,7 +676,7 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, vec[$ts:ty] -> $u:ty), )+]) => {
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
                 &self,
@@ -1072,7 +1072,7 @@ macro_rules! kernel {
         symbolic_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
 
         $(
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl crate::kernels::NullaryKernel<
                 crate::execution::SyncSession,
                 $plc,
@@ -1232,7 +1232,7 @@ macro_rules! kernel {
         symbolic_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
 
         $(
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl crate::kernels::UnaryKernel<
                 crate::execution::SyncSession,
                 $plc,
@@ -1438,7 +1438,7 @@ macro_rules! kernel {
         symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
 
         $(
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl crate::kernels::BinaryKernel<
                 crate::execution::SyncSession,
                 $plc,
@@ -1658,7 +1658,7 @@ macro_rules! kernel {
         symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
 
         $(
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl crate::kernels::TernaryKernel<
                 crate::execution::SyncSession,
                 $plc,
@@ -1887,7 +1887,7 @@ macro_rules! kernel {
         symbolic_dispatch_kernel!($op, [$( ($plc, vec[$ts] -> $u), )+]);
 
         $(
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl crate::kernels::VariadicKernel<
                 crate::execution::SyncSession,
                 $plc,
@@ -2110,10 +2110,10 @@ macro_rules! modelled {
     Nullary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? () -> $u:ty, $op:ident) => {
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl crate::kernels::NullaryKernelCheck<crate::execution::SyncSession, $plc, $u> for $op {}
 
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl $t<crate::execution::SyncSession, $u> for $plc {
             fn $f(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*)?) -> $u {
                 use crate::computation::{KnownType, NullarySignature};
@@ -2192,10 +2192,10 @@ macro_rules! modelled {
     Unary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty) -> $u:ty, $op:ident) => {
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl crate::kernels::UnaryKernelCheck<crate::execution::SyncSession, $plc, $t0, $u> for $op {}
 
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl $t<
             crate::execution::SyncSession,
             $t0,
@@ -2290,10 +2290,10 @@ macro_rules! modelled {
     Binary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl crate::kernels::BinaryKernelCheck<crate::execution::SyncSession, $plc, $t0, $t1, $u> for $op {}
 
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl $t<crate::execution::SyncSession, $t0, $t1, $u> for $plc {
             fn $f(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
                 use crate::computation::{KnownType, BinarySignature};
@@ -2425,10 +2425,10 @@ macro_rules! modelled {
     Ternary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl crate::kernels::TernaryKernelCheck<crate::execution::SyncSession, $plc, $t0, $t1, $t2, $u> for $op {}
 
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl $t<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
             fn $f(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
                 use crate::computation::{KnownType, TernarySignature};
@@ -2531,10 +2531,10 @@ macro_rules! modelled {
     Variadic
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? vec[$ts:ty] -> $u:ty, $op:ident) => {
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl crate::kernels::VariadicKernelCheck<crate::execution::SyncSession, $plc, $ts, $u> for $op {}
 
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl $t<
             crate::execution::SyncSession,
             $ts,
@@ -2640,7 +2640,7 @@ macro_rules! modelled_kernel {
 
         // support for SyncSession
         $(
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl crate::kernels::NullaryKernel<
                 crate::execution::SyncSession,
                 $plc,
@@ -2657,7 +2657,7 @@ macro_rules! modelled_kernel {
                 }
             }
 
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl $trait<crate::execution::SyncSession, $u> for $plc {
                 fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty,)*)?) -> $u {
                     use crate::computation::{KnownType, NullarySignature};
@@ -2989,7 +2989,7 @@ macro_rules! modelled_kernel {
 
         // support for SyncSession
         $(
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl crate::kernels::UnaryKernel<
                 crate::execution::SyncSession,
                 $plc,
@@ -3007,7 +3007,7 @@ macro_rules! modelled_kernel {
                 }
             }
 
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl $trait<crate::execution::SyncSession, $t0, $u> for $plc {
                 fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty,)*)? x0: &$t0) -> $u {
                     use crate::computation::{KnownType, UnarySignature};
@@ -3401,7 +3401,7 @@ macro_rules! modelled_kernel {
 
         // support for SyncSession
         $(
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl crate::kernels::BinaryKernel<
                 crate::execution::SyncSession,
                 $plc,
@@ -3420,7 +3420,7 @@ macro_rules! modelled_kernel {
                 }
             }
 
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl $trait<crate::execution::SyncSession, $t0, $t1, $u> for $plc {
                 fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
                     use crate::computation::{KnownType, BinarySignature};
@@ -3850,7 +3850,7 @@ macro_rules! modelled_kernel {
 
         // support for SyncSession
         $(
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl crate::kernels::TernaryKernel<
                 crate::execution::SyncSession,
                 $plc,
@@ -3870,7 +3870,7 @@ macro_rules! modelled_kernel {
                 }
             }
 
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl $trait<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
                 fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
                     use crate::computation::{KnownType, TernarySignature};
@@ -4331,7 +4331,7 @@ macro_rules! modelled_kernel {
 
         // support for SyncSession
         $(
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl crate::kernels::VariadicKernel<
                 crate::execution::SyncSession,
                 $plc,
@@ -4349,7 +4349,7 @@ macro_rules! modelled_kernel {
                 }
             }
 
-            #[cfg(feature = "sync_execution")]
+            #[cfg(feature = "sync_execute")]
             impl $trait<
                 crate::execution::SyncSession,
                 $ts,
@@ -4810,7 +4810,7 @@ macro_rules! modelled_alias {
     Binary
     */
     ($src_t:ident::$src_f:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $dst_t:ident::$dst_f:ident) => {
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl $src_t<crate::execution::SyncSession, $t0, $t1, $u> for $plc {
             fn $src_f(&self, sess: &crate::execution::SyncSession, x0: &$t0, x1: &$t1) -> $u {
                 $dst_t::$dst_f(self, sess, x0, x1)
@@ -4848,7 +4848,7 @@ macro_rules! modelled_alias {
     Ternary
     */
     ($src_t:ident::$src_f:ident, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $dst_t:ident::$dst_f:ident) => {
-        #[cfg(feature = "sync_execution")]
+        #[cfg(feature = "sync_execute")]
         impl $src_t<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
             fn $src_f(
                 &self,
