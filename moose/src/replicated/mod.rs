@@ -12,7 +12,8 @@ use crate::types::*;
 use crate::{BitArray, Const, MirroredCounterpart, Ring, Underlying};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
-use std::convert::{TryFrom, TryInto};
+#[cfg(feature = "compilation")]
+use std::convert::TryFrom;
 use std::marker::PhantomData;
 
 mod aes;

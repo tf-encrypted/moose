@@ -1,16 +1,10 @@
 //! Support for executing computations
 
-use crate::computation::*;
+use crate::computation::{Operator, Placement, Role, SessionId, Value};
 use crate::error::Result;
-use crate::networking::{AsyncNetworking, LocalAsyncNetworking, SyncNetworking};
-use crate::storage::{AsyncStorage, LocalAsyncStorage, SyncStorage};
 use derive_more::Display;
-use futures::future::{Map, Shared};
-use std::collections::{HashMap, HashSet};
-use std::convert::TryFrom;
+use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::runtime::Runtime;
-use tokio::sync::oneshot;
 
 #[cfg(feature = "async_execution")]
 pub mod asynchronous;
@@ -93,9 +87,9 @@ mod tests {
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;
+    use rstest::rstest;
     use std::convert::TryInto;
     use std::rc::Rc;
-    use rstest::rstest;
 
     #[cfg(all(feature = "async_execution", feature = "sync_execution"))]
     fn _run_computation_test(
@@ -497,7 +491,11 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(all(feature = "async_execution", feature = "sync_execution", feature = "blas"))]
+    #[cfg(all(
+        feature = "async_execution",
+        feature = "sync_execution",
+        feature = "blas"
+    ))]
     #[rstest]
     #[case(true)]
     #[case(false)]

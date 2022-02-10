@@ -1,6 +1,7 @@
 //! Support for bit (de-)composition
 
 use super::*;
+use std::convert::TryInto;
 
 impl BitDecomposeOp {
     pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepBitT, N: Const>(

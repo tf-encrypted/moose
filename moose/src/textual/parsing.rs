@@ -239,7 +239,6 @@ macro_rules! attributes {
     };
 }
 
-
 /// A specific helper function to be called from the computation when failing to parse an operator.
 ///
 /// Defined here instead of a lambda to avoid leaking too much textual internals into the computation.
@@ -1007,7 +1006,6 @@ fn friendly_error(message: &str, source: &str, e: nom::Err<VerboseError<&str>>) 
         _ => anyhow::anyhow!("{} {} due to {}", message, source, e),
     }
 }
-
 
 impl ToTextual for Computation {
     fn to_textual(&self) -> String {
