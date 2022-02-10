@@ -5,7 +5,7 @@ use crate::compilation::replicated_lowering::replicated_lowering;
 use crate::compilation::typing::update_types_one_hop;
 use crate::computation::Computation;
 use crate::textual::ToTextual;
-
+use std::convert::TryFrom;
 use self::deprecated_logical::deprecated_logical_lowering;
 
 pub mod deprecated_logical;
@@ -26,16 +26,20 @@ pub enum Pass {
     DeprecatedLogical, // A simple pass to support older Python compiler
 }
 
-fn parse_pass(name: &str) -> anyhow::Result<Pass> {
-    match name {
-        "networking" => Ok(Pass::Networking),
-        "print" => Ok(Pass::Print),
-        "prune" => Ok(Pass::Prune),
-        "full" => Ok(Pass::Symbolic),
-        "toposort" => Ok(Pass::Toposort),
-        "typing" => Ok(Pass::Typing),
-        "dump" => Ok(Pass::Dump),
-        missing_pass => Err(anyhow::anyhow!("Unknown pass requested: {}", missing_pass)),
+impl TryFrom<&str> for Pass {
+    type Error = anyhow::Error;
+
+    fn try_from(name: &str) -> anyhow::Result<Pass> {
+        match name {
+            "networking" => Ok(Pass::Networking),
+            "print" => Ok(Pass::Print),
+            "prune" => Ok(Pass::Prune),
+            "full" => Ok(Pass::Symbolic),
+            "toposort" => Ok(Pass::Toposort),
+            "typing" => Ok(Pass::Typing),
+            "dump" => Ok(Pass::Dump),
+            missing_pass => Err(anyhow::anyhow!("Unknown pass requested: {}", missing_pass)),
+        }
     }
 }
 
@@ -48,7 +52,7 @@ pub const DEFAULT_PASSES: [Pass; 5] = [
 ];
 
 pub fn into_pass(passes: &[String]) -> anyhow::Result<Vec<Pass>> {
-    passes.iter().map(|s| parse_pass(s.as_str())).collect()
+    passes.iter().map(|s| Pass::try_from(s.as_str())).collect()
 }
 
 pub fn compile_passes(comp: &Computation, passes: &[Pass]) -> anyhow::Result<Computation> {
