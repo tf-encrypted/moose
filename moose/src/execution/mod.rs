@@ -383,6 +383,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "compile")]
     #[rstest]
     #[case("Add", "HostInt64Tensor([8]) @Host(alice)", true)]
     #[case("Sub", "HostInt64Tensor([2]) @Host(alice)", true)]
@@ -436,7 +437,7 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(all(feature = "async_execute", feature = "sync_execute"))]
+    #[cfg(feature = "compile")]
     #[rstest]
     #[case(true)]
     #[case(false)]
