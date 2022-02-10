@@ -126,7 +126,7 @@ async fn send_loop(mut stream: TcpStream, mut rx: mpsc::Receiver<SendData>) -> a
             }
             None => {
                 stream.shutdown().await?;
-                println!("terminated connection");
+                return Ok(());
             }
         }
     }
