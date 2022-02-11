@@ -85,7 +85,6 @@ impl ArgmaxOp {
     }
 }
 
-
 type RepTuple<R> = (R, R);
 
 impl ReplicatedPlacement {
