@@ -87,7 +87,7 @@ impl RendezvousKey {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SessionId {
     logical: String,
     secure: [u8; TAG_BYTES],
