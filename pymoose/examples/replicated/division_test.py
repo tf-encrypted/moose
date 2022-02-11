@@ -58,14 +58,6 @@ class ReplicatedExample(unittest.TestCase):
                 "dave": "dave",
             },
             arguments={},
-            compiler_passes=[
-                "typing",
-                "full",
-                "prune",
-                "networking",
-                "typing",
-                "toposort",
-            ],
         )
 
         print("Done", runtime.read_value_from_storage("dave", "res"))

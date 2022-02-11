@@ -57,9 +57,7 @@ class AddNExample(parameterized.TestCase):
         concrete_comp = edsl.trace(my_comp)
 
         comp_bin = utils.serialize_computation(concrete_comp)
-        rust_compiled = elk_compiler.compile_computation(
-            comp_bin, ["typing", "full", "prune", "networking", "typing", "toposort"]
-        )
+        rust_compiled = elk_compiler.compile_computation(comp_bin)
 
         result = runtime.evaluate_compiled(
             comp_bin=rust_compiled,

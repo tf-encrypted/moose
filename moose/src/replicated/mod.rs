@@ -2,7 +2,9 @@
 
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::execution::{symbolic::Symbolic, Session};
+#[cfg(feature = "compile")]
+use crate::execution::symbolic::Symbolic;
+use crate::execution::Session;
 use crate::host::HostPlacement;
 use crate::kernels::*;
 use crate::mirrored::Mir3Tensor;
@@ -10,7 +12,8 @@ use crate::types::*;
 use crate::{BitArray, Const, MirroredCounterpart, Ring, Underlying};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
-use std::convert::{TryFrom, TryInto};
+#[cfg(feature = "compile")]
+use std::convert::TryFrom;
 use std::marker::PhantomData;
 
 mod aes;
@@ -171,6 +174,7 @@ impl<RepBitTensorT, N: Const> BitArray for RepBitArray<RepBitTensorT, N> {
     type Len = N;
 }
 
+#[cfg(feature = "compile")]
 impl<RepBitTensorT: Placed, N: Const> BitArray for Symbolic<RepBitArray<RepBitTensorT, N>> {
     type Len = N;
 }
@@ -185,6 +189,7 @@ impl<RepBitTensorT: Placed, N> Placed for RepBitArray<RepBitTensorT, N> {
 
 // TODO implement using moose_type macro
 
+#[cfg(feature = "compile")]
 impl<N> PartiallySymbolicType for RepBitArray<ReplicatedBitTensor, N> {
     type Type = RepBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>;
 }
@@ -193,14 +198,17 @@ impl<N> CanonicalType for RepBitArray<ReplicatedBitTensor, N> {
     type Type = Self;
 }
 
+#[cfg(feature = "compile")]
 impl<N> CanonicalType for RepBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N> {
     type Type = RepBitArray<ReplicatedBitTensor, N>;
 }
 
+#[cfg(feature = "compile")]
 impl<N> CanonicalType for Symbolic<RepBitArray<<ReplicatedBitTensor as SymbolicType>::Type, N>> {
     type Type = RepBitArray<ReplicatedBitTensor, N>;
 }
 
+#[cfg(feature = "compile")]
 impl<RepBitT: Placed, N> From<RepBitArray<RepBitT, N>> for Symbolic<RepBitArray<RepBitT, N>>
 where
     RepBitT: Placed<Placement = ReplicatedPlacement>,
@@ -210,6 +218,7 @@ where
     }
 }
 
+#[cfg(feature = "compile")]
 impl<RepBitT, N> TryFrom<Symbolic<RepBitArray<RepBitT, N>>> for RepBitArray<RepBitT, N>
 where
     RepBitT: Placed<Placement = ReplicatedPlacement>,

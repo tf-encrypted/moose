@@ -1,12 +1,16 @@
 //! Abstraction layer for high-level logical tensors
 
-use crate::computation::{HasShortName, PartiallySymbolicType, Placed, Placement, SymbolicType};
+use crate::computation::{HasShortName, Placed, Placement};
+#[cfg(feature = "compile")]
+use crate::computation::{PartiallySymbolicType, SymbolicType};
 use crate::error::Result;
+#[cfg(feature = "compile")]
 use crate::execution::symbolic::Symbolic;
 use crate::host::HostShape;
 use crate::types::*;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "compile")]
 use std::convert::TryFrom;
 
 mod ops;
@@ -105,6 +109,7 @@ where
     }
 }
 
+#[cfg(feature = "compile")]
 impl PartiallySymbolicType for Tensor {
     #[allow(clippy::type_complexity)]
     type Type = AbstractTensor<
@@ -117,6 +122,7 @@ impl PartiallySymbolicType for Tensor {
     >;
 }
 
+#[cfg(feature = "compile")]
 impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>
     From<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
     for Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
@@ -133,6 +139,7 @@ where
     }
 }
 
+#[cfg(feature = "compile")]
 impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>
     TryFrom<Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>>
     for AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>

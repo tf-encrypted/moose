@@ -1,22 +1,22 @@
 //! Support for executing computations
 
-use crate::computation::*;
+use crate::computation::{Operator, Placement, Role, SessionId, Value};
 use crate::error::Result;
-use crate::networking::{AsyncNetworking, LocalAsyncNetworking, SyncNetworking};
-use crate::storage::{AsyncStorage, LocalAsyncStorage, SyncStorage};
 use derive_more::Display;
-use futures::future::{Map, Shared};
-use std::collections::{HashMap, HashSet};
-use std::convert::TryFrom;
+use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::runtime::Runtime;
-use tokio::sync::oneshot;
 
+#[cfg(feature = "async_execute")]
 pub mod asynchronous;
+#[cfg(feature = "compile")]
 pub mod symbolic;
+#[cfg(feature = "sync_execute")]
 pub mod synchronous;
+#[cfg(feature = "async_execute")]
 pub use asynchronous::*;
+#[cfg(feature = "compile")]
 pub use symbolic::*;
+#[cfg(feature = "sync_execute")]
 pub use synchronous::*;
 
 /// General session trait determining basic properties for session objects.
@@ -73,21 +73,25 @@ pub type Environment<V> = HashMap<String, V>;
 
 pub type RoleAssignment = HashMap<Role, Identity>;
 
+#[cfg(all(feature = "async_execute", feature = "sync_execute"))]
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compilation::{compile_passes, Pass};
+    #[cfg(feature = "compile")]
+    use crate::compilation::{compile, Pass};
     use crate::error::Error;
     use crate::execution::{SyncSession, TestSyncExecutor};
     use crate::host::{HostPlacement, HostTensor, RawSeed, RawShape, Seed};
     use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
+    use crate::prelude::*;
     use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
-    use crate::types::*;
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;
-    use std::convert::TryInto;
+    use rstest::rstest;
+    use std::convert::{TryFrom, TryInto};
     use std::rc::Rc;
+    use tokio::runtime::Runtime;
 
     fn _run_computation_test(
         computation: Computation,
@@ -329,7 +333,6 @@ mod tests {
         Ok(())
     }
 
-    use rstest::rstest;
     #[rstest]
     #[case(
         "0",
@@ -380,6 +383,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "compile")]
     #[rstest]
     #[case("Add", "HostInt64Tensor([8]) @Host(alice)", true)]
     #[case("Sub", "HostInt64Tensor([2]) @Host(alice)", true)]
@@ -410,7 +414,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let computation =
-                    compile_passes(&computation, &[Pass::Networking, Pass::Toposort])?;
+                    compile(&computation, Some(vec![Pass::Networking, Pass::Toposort]))?;
                 _run_computation_test(
                     computation,
                     storage_mapping,
@@ -433,6 +437,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "compile")]
     #[rstest]
     #[case(true)]
     #[case(false)]
@@ -452,7 +457,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let computation =
-                    compile_passes(&computation, &[Pass::Networking, Pass::Toposort])?;
+                    compile(&computation, Some(vec![Pass::Networking, Pass::Toposort]))?;
                 _run_computation_test(
                     computation,
                     storage_mapping,
@@ -1103,6 +1108,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "async_execute")]
     fn _create_async_session(
         networking: &Arc<dyn Send + Sync + AsyncNetworking>,
         exec_storage: &Arc<dyn Send + Sync + AsyncStorage>,
@@ -1117,6 +1123,7 @@ mod tests {
         )
     }
 
+    #[cfg(feature = "async_execute")]
     #[test]
     fn test_duplicate_session_ids() {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)
@@ -1174,6 +1181,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "async_execute")]
     fn _run_new_async_computation_test(
         computation: Computation,
         storage_mapping: HashMap<String, HashMap<String, Value>>,
@@ -1190,6 +1198,7 @@ mod tests {
         Ok(outputs)
     }
 
+    #[cfg(feature = "async_execute")]
     #[test]
     fn test_new_async_session() -> std::result::Result<(), anyhow::Error> {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)

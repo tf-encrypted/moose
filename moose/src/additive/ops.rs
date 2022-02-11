@@ -286,7 +286,9 @@ impl ShlOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::computation::{AddOp, KnownType, Operation, Operator, Placement};
+    #[cfg(feature = "compile")]
+    use crate::computation::{KnownType, Operation, Operator, Placement};
+    #[cfg(feature = "compile")]
     use crate::execution::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
     use crate::prelude::*;
     use crate::types::*;
@@ -333,6 +335,7 @@ mod tests {
         assert_eq!(zrb1, bob.from_raw(array![4 + 7, 5 + 8, 6 + 9]));
     }
 
+    #[cfg(feature = "compile")]
     #[test]
     fn test_symbolic_add() {
         let adt = AdditivePlacement::from(["alice", "bob"]);
@@ -372,6 +375,7 @@ mod tests {
         });
     }
 
+    #[cfg(feature = "compile")]
     #[test]
     fn test_concrete_symbolic_add() {
         let alice = HostPlacement::from("alice");

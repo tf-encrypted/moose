@@ -1,12 +1,14 @@
 //! Synchronous/eager execution of computations
 
-use super::*;
+use super::{Identity, RuntimeSession, Session, SetupGeneration};
+use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::*;
 use crate::kernels::DispatchKernel;
-use crate::networking::LocalSyncNetworking;
+use crate::networking::{LocalSyncNetworking, SyncNetworking};
 use crate::replicated::*;
 use crate::storage::LocalSyncStorage;
+use crate::storage::SyncStorage;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;

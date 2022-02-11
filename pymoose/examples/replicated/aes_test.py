@@ -53,15 +53,7 @@ class ReplicatedExample(parameterized.TestCase):
         aes_comp = self._setup_aes_comp(host_decrypt)
         traced_aes_comp = edsl.trace(aes_comp)
         comp_bin = utils.serialize_computation(traced_aes_comp)
-        _ = elk_compiler.compile_computation(
-            comp_bin,
-            [
-                "typing",
-                "full",
-                "toposort",
-                # "print",
-            ],
-        )
+        _ = elk_compiler.compile_computation(comp_bin)
 
     @parameterized.parameters(True, False)
     @pytest.mark.slow
