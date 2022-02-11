@@ -36,6 +36,7 @@ pub enum TensorDType {
     Float64,
     Bool,
     Uint64,
+    Ring64,
     Unknown,
 }
 
@@ -48,23 +49,25 @@ impl HasShortName for TensorDType {
             TensorDType::Float64 => "Float64",
             TensorDType::Bool => "Bool",
             TensorDType::Uint64 => "Uint64",
+            TensorDType::Ring64 => "Uint64",
             TensorDType::Unknown => "Unknown",
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T> {
+pub enum AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T> {
     Fixed64(Fixed64T),
     Fixed128(Fixed128T),
     Float32(Float32T),
     Float64(Float64T),
     Bool(BoolT),
     Uint64(Uint64T),
+    Ring64(Ring64T),
 }
 
-impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>
-    AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>
+impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>
+    AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>
 {
     pub(crate) fn ty_desc(&self) -> String {
         match self {
@@ -74,13 +77,14 @@ impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>
             AbstractTensor::Float64(_) => "Tensor(Float64)",
             AbstractTensor::Bool(_) => "Tensor(Bool)",
             AbstractTensor::Uint64(_) => "Tensor(Uint64T)",
+            AbstractTensor::Ring64(_) => "Tensor(Ring64T)",
         }
         .to_string()
     }
 }
 
-impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T> Placed
-    for AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>
+impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T> Placed
+    for AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>
 where
     Fixed64T: Placed,
     Fixed64T::Placement: Into<Placement>,
@@ -94,6 +98,8 @@ where
     BoolT::Placement: Into<Placement>,
     Uint64T: Placed,
     Uint64T::Placement: Into<Placement>,
+    Ring64T: Placed,
+    Ring64T::Placement: Into<Placement>,
 {
     type Placement = Placement;
 
@@ -105,6 +111,7 @@ where
             AbstractTensor::Float64(x) => Ok(x.placement()?.into()),
             AbstractTensor::Bool(x) => Ok(x.placement()?.into()),
             AbstractTensor::Uint64(x) => Ok(x.placement()?.into()),
+            AbstractTensor::Ring64(x) => Ok(x.placement()?.into()),
         }
     }
 }
@@ -119,13 +126,14 @@ impl PartiallySymbolicType for Tensor {
         <Float64Tensor as SymbolicType>::Type,
         <BooleanTensor as SymbolicType>::Type,
         <Uint64Tensor as SymbolicType>::Type,
+        <Ring64Tensor as SymbolicType>::Type,
     >;
 }
 
 #[cfg(feature = "compile")]
-impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>
-    From<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
-    for Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>
+    From<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>>
+    for Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>>
 where
     Fixed64T: Placed<Placement = Placement>,
     Fixed128T: Placed<Placement = Placement>,
@@ -133,16 +141,20 @@ where
     Float64T: Placed<Placement = Placement>,
     BoolT: Placed<Placement = Placement>,
     Uint64T: Placed<Placement = Placement>,
+    Ring64T: Placed<Placement = Placement>,
 {
-    fn from(x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>) -> Self {
+    fn from(
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>,
+    ) -> Self {
         Symbolic::Concrete(x)
     }
 }
 
 #[cfg(feature = "compile")]
-impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>
-    TryFrom<Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>>
-    for AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>
+impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>
+    TryFrom<
+        Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>>,
+    > for AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>
 where
     Fixed64T: Placed<Placement = Placement>,
     Fixed128T: Placed<Placement = Placement>,
@@ -150,10 +162,13 @@ where
     Float64T: Placed<Placement = Placement>,
     BoolT: Placed<Placement = Placement>,
     Uint64T: Placed<Placement = Placement>,
+    Ring64T: Placed<Placement = Placement>,
 {
     type Error = ();
     fn try_from(
-        v: Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>,
+        v: Symbolic<
+            AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>,
+        >,
     ) -> std::result::Result<Self, ()> {
         match v {
             Symbolic::Concrete(x) => Ok(x),

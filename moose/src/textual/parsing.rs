@@ -1393,6 +1393,7 @@ impl ToTextual for Value {
             | Value::Float32Tensor(_)
             | Value::Float64Tensor(_)
             | Value::Uint64Tensor(_)
+            | Value::Ring64Tensor(_)
             | Value::ReplicatedShape(_)
             | Value::ReplicatedBitTensor(_)
             | Value::ReplicatedBitArray64(_)
