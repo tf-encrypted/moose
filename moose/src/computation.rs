@@ -1387,7 +1387,7 @@ pub struct SoftmaxOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct ArgmaxOp {
     pub sig: Signature,
-    // axis can be optional (in which case we need to do a softmax over axis 0)
+    // axis can be optional (in which case we need to do an argmax over axis 0)
     pub axis: usize,
     pub upmost_index: usize,
 }

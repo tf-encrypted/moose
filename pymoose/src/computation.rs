@@ -41,6 +41,7 @@ enum PyOperation {
     std_SigmoidOperation(PySigmoidOperation),
     std_LogOperation(PyLogOperation),
     std_SoftmaxOperation(PySoftmaxOperation),
+    std_ArgmaxOperation(PyArgmaxOperation),
     std_SqrtOperation(PySqrtOperation),
     std_SumOperation(PySumOperation),
     std_DivOperation(PyDivOperation),
@@ -332,6 +333,16 @@ struct PyLogOperation {
 
 #[derive(Deserialize, Debug)]
 struct PySoftmaxOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+    axis: usize,
+    upmost_index: u32,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyArgmaxOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -866,6 +877,18 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SoftmaxOperation(op) => Ok(Operation {
                         kind: SoftmaxOp {
+                            sig: Signature::from_unary(&op.signature, "x")?,
+                            axis: op.axis,
+                            upmost_index: op.upmost_index as usize,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_ArgmaxOperation(op) => Ok(Operation {
+                        kind: ArgmaxOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                             axis: op.axis,
                             upmost_index: op.upmost_index as usize,

@@ -16,6 +16,7 @@ from pymoose.edsl.base import Argument
 from pymoose.edsl.base import abs
 from pymoose.edsl.base import add
 from pymoose.edsl.base import add_n
+from pymoose.edsl.base import argmax
 from pymoose.edsl.base import atleast_2d
 from pymoose.edsl.base import cast
 from pymoose.edsl.base import computation
@@ -61,6 +62,7 @@ __all__ = [
     add_n,
     AesKeyType,
     AesTensorType,
+    argmax,
     Argument,
     atleast_2d,
     bool_,
