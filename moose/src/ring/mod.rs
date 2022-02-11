@@ -1,6 +1,7 @@
 //! Abstraction layer for Ring values
 use crate::computation::*;
 use crate::error::Result;
+use crate::kernels::*;
 use serde::{Deserialize, Serialize};
 
 mod ops;

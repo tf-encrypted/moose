@@ -29,6 +29,7 @@ impl IdentityOp {
         HostPlacement: PlacementIdentity<S, Float64T, Float64T>,
         HostPlacement: PlacementIdentity<S, BoolT, BoolT>,
         HostPlacement: PlacementIdentity<S, Uint64T, Uint64T>,
+        HostPlacement: PlacementIdentity<S, Ring64T, Ring64T>,
     {
         match x {
             AbstractTensor::Fixed64(x) => {
@@ -55,7 +56,10 @@ impl IdentityOp {
                 let result = plc.identity(sess, &x);
                 Ok(AbstractTensor::Uint64(result))
             }
-            _ => unimplemented!(),
+            AbstractTensor::Ring64(x) => {
+                let result = plc.identity(sess, &x);
+                Ok(AbstractTensor::Ring64(result))
+            }
         }
     }
 
