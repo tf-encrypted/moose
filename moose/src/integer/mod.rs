@@ -8,12 +8,12 @@ mod ops;
 
 /// Uint64 Tensor abstracting over host and replicated values
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum U64Tensor<HostT, RepT> {
+pub enum AbstractUint64Tensor<HostT, RepT> {
     Host(HostT),
     Replicated(RepT),
 }
 
-impl<HostT, RepT> Placed for U64Tensor<HostT, RepT>
+impl<HostT, RepT> Placed for AbstractUint64Tensor<HostT, RepT>
 where
     HostT: Placed,
     HostT::Placement: Into<Placement>,
@@ -24,8 +24,8 @@ where
 
     fn placement(&self) -> Result<Self::Placement> {
         match self {
-            U64Tensor::Host(x) => Ok(x.placement()?.into()),
-            U64Tensor::Replicated(x) => Ok(x.placement()?.into()),
+            AbstractUint64Tensor::Host(x) => Ok(x.placement()?.into()),
+            AbstractUint64Tensor::Replicated(x) => Ok(x.placement()?.into()),
         }
     }
 }

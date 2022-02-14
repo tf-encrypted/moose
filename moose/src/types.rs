@@ -9,7 +9,7 @@ use crate::host::{
     AbstractHostAesKey, HostBitArray, HostFixedAesTensor, HostFixedTensor, HostRingTensor,
     HostTensor,
 };
-use crate::integer::U64Tensor;
+use crate::integer::AbstractUint64Tensor;
 use crate::logical::AbstractTensor;
 use crate::mirrored::{Mir3Tensor, MirFixedTensor};
 use crate::replicated::{
@@ -59,7 +59,7 @@ moose_type!(ReplicatedBitTensor = RepTensor<HostBitTensor>);
 moose_type!(ReplicatedUint64Tensor = RepUintTensor<ReplicatedRing64Tensor>);
 moose_type!(HostUint64Tensor = [atomic] HostTensor<u64>);
 
-moose_type!(Uint64Tensor = U64Tensor<HostUint64Tensor, ReplicatedUint64Tensor>);
+moose_type!(Uint64Tensor = AbstractUint64Tensor<HostUint64Tensor, ReplicatedUint64Tensor>);
 moose_type!(Ring64Tensor = Z64Tensor<HostRing64Tensor, ReplicatedRing64Tensor>);
 
 // Encrypted types
