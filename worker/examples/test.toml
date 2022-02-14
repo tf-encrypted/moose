@@ -7,4 +7,8 @@ endpoint = "localhost:50000"
 
 [[roles]]
 name = "bob"
-endpoint = "localhost:60000"
+endpoint = "localhost:50001"
+
+[[roles]]
+name = "carole"
+endpoint = "localhost:50002"
