@@ -1405,12 +1405,12 @@ pub struct ShareReductionOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct Log2Op {
+pub struct LogOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct LogOp {
+pub struct Log2Op {
     pub sig: Signature,
 }
 

@@ -253,6 +253,12 @@ class LogExpression(Expression):
 
 
 @dataclass
+class Log2Expression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class SqrtExpression(Expression):
     def __hash__(self):
         return id(self)
@@ -676,6 +682,12 @@ def log(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return LogExpression(placement=placement, inputs=[x], vtype=x.vtype,)
+
+
+def log2(x, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return Log2Expression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def shape(x, placement=None):

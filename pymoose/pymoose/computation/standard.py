@@ -259,6 +259,11 @@ class LogOperation(StandardOperation):
 
 
 @dataclass
+class Log2Operation(StandardOperation):
+    pass
+
+
+@dataclass
 class SoftmaxOperation(StandardOperation):
     axis: Optional[Tuple[int]]
     upmost_index: int

@@ -2132,7 +2132,7 @@ impl SigmoidOp {
 }
 
 impl LogOp {
-    pub(crate) fn logical_kernel<
+    pub(crate) fn logical_rep_kernel<
         S: Session,
         Fixed64T,
         Fixed128T,
@@ -2162,6 +2162,86 @@ impl LogOp {
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             _ => Err(Error::UnimplementedOperator(format!(
                 "Missing replicated natural logarithm for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>>
+    where
+        HostPlacement: PlacementLog<S, Float32T, Float32T>,
+        HostPlacement: PlacementLog<S, Float64T, Float64T>,
+    {
+        match x {
+            AbstractTensor::Float64(x) => {
+                let result = plc.log(sess, &x);
+                Ok(AbstractTensor::Float64(result))
+            }
+            AbstractTensor::Float32(x) => {
+                let result = plc.log(sess, &x);
+                Ok(AbstractTensor::Float32(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated natural logarithm for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+}
+
+impl Log2Op {
+    pub(crate) fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>>
+    where
+        ReplicatedPlacement: PlacementLog2<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementLog2<S, Fixed128T, Fixed128T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = plc.log2(sess, &x);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = plc.log2(sess, &x);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated logarithm base 2 for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+
+    pub(crate) fn logical_host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>>
+    where
+        HostPlacement: PlacementLog2<S, Float32T, Float32T>,
+        HostPlacement: PlacementLog2<S, Float64T, Float64T>,
+    {
+        match x {
+            AbstractTensor::Float64(x) => {
+                let result = plc.log2(sess, &x);
+                Ok(AbstractTensor::Float64(result))
+            }
+            AbstractTensor::Float32(x) => {
+                let result = plc.log2(sess, &x);
+                Ok(AbstractTensor::Float32(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated logarithm base 2 for {:?}",
                 &x.ty_desc(),
             ))),
         }

@@ -384,6 +384,50 @@ impl InverseOp {
     }
 }
 
+impl LogOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementLog<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "LogOp @ Mirrored3Placement".to_string(),
+                ))
+            }
+        };
+        let z = plc.log(sess, &x);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
+impl Log2Op {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementLog2<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "Log2Op @ Mirrored3Placement".to_string(),
+                ))
+            }
+        };
+        let z = plc.log2(sess, &x);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
 impl LoadOp {
     pub(crate) fn float_kernel<S: Session, MirroredT>(
         sess: &S,
