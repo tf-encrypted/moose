@@ -1,7 +1,6 @@
 mod gen {
     tonic::include_proto!("moose");
 }
-
 mod networking;
 
 use crate::gen::networking_server::NetworkingServer;
