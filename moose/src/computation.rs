@@ -566,6 +566,7 @@ values![
     ReplicatedBitArray224,
     ReplicatedFixed64Tensor,
     ReplicatedFixed128Tensor,
+    ReplicatedUint64Tensor,
     ReplicatedAesKey,
     ReplicatedShape,
     Mirrored3Ring64Tensor,

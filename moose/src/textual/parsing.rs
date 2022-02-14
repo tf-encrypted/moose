@@ -1403,6 +1403,7 @@ impl ToTextual for Value {
             | Value::ReplicatedRing128Tensor(_)
             | Value::ReplicatedFixed64Tensor(_)
             | Value::ReplicatedFixed128Tensor(_)
+            | Value::ReplicatedUint64Tensor(_)
             | Value::Mirrored3Ring64Tensor(_)
             | Value::Mirrored3Ring128Tensor(_)
             | Value::Mirrored3BitTensor(_)

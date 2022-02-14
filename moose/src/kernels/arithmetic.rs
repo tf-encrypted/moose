@@ -51,8 +51,6 @@ modelled_kernel! {
         (AdditivePlacement, (HostRing64Tensor, AdditiveRing64Tensor) -> AdditiveRing64Tensor => [hybrid] Self::host_adt_kernel),
         (AdditivePlacement, (HostRing128Tensor, AdditiveRing128Tensor) -> AdditiveRing128Tensor => [hybrid] Self::host_adt_kernel),
         (AdditivePlacement, (HostBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => [hybrid] Self::host_adt_kernel),
-        (ReplicatedPlacement, (Uint64Tensor, Uint64Tensor) -> Uint64Tensor => [concrete] Self::u64_rep_kernel),
-        (HostPlacement, (Uint64Tensor, Uint64Tensor) -> Uint64Tensor => [concrete] Self::u64_host_kernel),
     ]
 }
 
@@ -536,8 +534,8 @@ modelled_kernel! {
     PlacementArgmax::argmax, ArgmaxOp{axis: usize, upmost_index: usize},
     [
         (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] Self::logical_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor) -> Uint64Tensor => [concrete] Self::fixed_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Uint64Tensor => [concrete] Self::fixed_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Ring64Tensor => [concrete] Self::fixed_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Ring64Tensor => [concrete] Self::fixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_ring_kernel),

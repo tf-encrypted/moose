@@ -140,6 +140,38 @@ impl<HostRingT> MirroredCounterpart for RepTensor<HostRingT> {
     type MirroredType = Mir3Tensor<HostRingT>;
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct RepUintTensor<RepRingT> {
+    pub tensor: RepRingT,
+}
+
+impl<RepRingT: Placed> Placed for RepUintTensor<RepRingT> {
+    type Placement = RepRingT::Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        self.tensor.placement()
+    }
+}
+
+impl<S: Session, RepRingT> PlacementPlace<S, RepUintTensor<RepRingT>> for ReplicatedPlacement
+where
+    RepUintTensor<RepRingT>: Placed<Placement = ReplicatedPlacement>,
+    ReplicatedPlacement: PlacementPlace<S, RepRingT>,
+{
+    fn place(&self, sess: &S, x: RepUintTensor<RepRingT>) -> RepUintTensor<RepRingT> {
+        match x.placement() {
+            Ok(place) if self == &place => x,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                RepUintTensor {
+                    tensor: self.place(sess, x.tensor),
+                }
+            }
+        }
+    }
+}
+
 /// Public shape for replicated placements
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RepShape<HostShapeT> {

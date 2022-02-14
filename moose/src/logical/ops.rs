@@ -120,7 +120,6 @@ impl AddOp {
         HostPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
         HostPlacement: PlacementAdd<S, Float32T, Float32T, Float32T>,
         HostPlacement: PlacementAdd<S, Float64T, Float64T, Float64T>,
-        HostPlacement: PlacementAdd<S, Uint64T, Uint64T, Uint64T>,
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
@@ -138,10 +137,6 @@ impl AddOp {
             (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
                 let result = plc.add(sess, &x, &y);
                 Ok(AbstractTensor::Float64(result))
-            }
-            (AbstractTensor::Uint64(x), AbstractTensor::Uint64(y)) => {
-                let result = plc.add(sess, &x, &y);
-                Ok(AbstractTensor::Uint64(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
@@ -170,7 +165,6 @@ impl AddOp {
     where
         ReplicatedPlacement: PlacementAdd<S, Fixed64T, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
-        ReplicatedPlacement: PlacementAdd<S, Uint64T, Uint64T, Uint64T>,
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
@@ -180,10 +174,6 @@ impl AddOp {
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let result = plc.add(sess, &x, &y);
                 Ok(AbstractTensor::Fixed128(result))
-            }
-            (AbstractTensor::Uint64(x), AbstractTensor::Uint64(y)) => {
-                let result = plc.add(sess, &x, &y);
-                Ok(AbstractTensor::Uint64(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
@@ -2329,17 +2319,17 @@ impl ArgmaxOp {
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T, Ring64T>>
     where
-        ReplicatedPlacement: PlacementArgmax<S, Fixed64T, Uint64T>,
-        ReplicatedPlacement: PlacementArgmax<S, Fixed128T, Uint64T>,
+        ReplicatedPlacement: PlacementArgmax<S, Fixed64T, Ring64T>,
+        ReplicatedPlacement: PlacementArgmax<S, Fixed128T, Ring64T>,
     {
         match x {
             AbstractTensor::Fixed64(x) => {
                 let result = plc.argmax(sess, axis, upmost_index, &x);
-                Ok(AbstractTensor::Uint64(result))
+                Ok(AbstractTensor::Ring64(result))
             }
             AbstractTensor::Fixed128(x) => {
                 let result = plc.argmax(sess, axis, upmost_index, &x);
-                Ok(AbstractTensor::Uint64(result))
+                Ok(AbstractTensor::Ring64(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             _ => Err(Error::UnimplementedOperator(format!(

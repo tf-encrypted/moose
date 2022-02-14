@@ -78,6 +78,7 @@ enum PyDType {
     int64,
     uint32,
     uint64,
+    ring64,
     bool_,
     fixed8_27,
     fixed14_23,
@@ -597,7 +598,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
                 let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
                 let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
                 let plc = HostPlacement::from("TODO");
-                Ok(Constant::HostRing64Tensor(plc.from_raw(tensor)))
+                Ok(Constant::HostUint64Tensor(plc.from_raw(tensor)))
             }
         },
     }
@@ -613,6 +614,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
             PyDType::float64 => Ok(Ty::Tensor(TensorDType::Float64)),
             PyDType::bool_ => Ok(Ty::Tensor(TensorDType::Bool)),
             PyDType::uint64 => Ok(Ty::Tensor(TensorDType::Uint64)),
+            PyDType::ring64 => Ok(Ty::Tensor(TensorDType::Ring64)),
             // PyDType::int32 => Ok(Ty::HostInt32Tensor),
             // PyDType::int64 => Ok(Ty::HostInt64Tensor),
             // PyDType::uint32 => Ok(Ty::HostUint32Tensor),
