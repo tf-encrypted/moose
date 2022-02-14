@@ -20,14 +20,6 @@ class LocalMooseRuntime(LocalRuntime):
     ):
         if arguments is None:
             arguments = {}
-        if compiler_passes is None:
-            compiler_passes = [
-                "typing",
-                "full",
-                "prune",
-                "networking",
-                "toposort",
-            ]
         comp_bin = utils.serialize_computation(computation)
         return super().evaluate_computation(
             comp_bin, role_assignment, arguments, compiler_passes

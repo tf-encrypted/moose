@@ -11,7 +11,7 @@ use crate::error::{Error, Result};
 use crate::host::PrfKey;
 use crate::kernels::{DispatchKernel, PlacementPlace};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
-use crate::{MirroredCounterpart, Underlying};
+use crate::{MirroredCounterpart, Ring, TensorLike, Underlying};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -55,15 +55,33 @@ impl<T: Placed> Symbolic<T> {
     }
 }
 
-impl<T: Placed + Underlying> Underlying for Symbolic<T> {
+impl<T: Placed> Underlying for Symbolic<T>
+where
+    T: Underlying,
+{
     type TensorType = <T as Underlying>::TensorType;
 }
 
-impl<T: Placed + MirroredCounterpart> MirroredCounterpart for Symbolic<T>
+impl<T: Placed> MirroredCounterpart for Symbolic<T>
 where
+    T: MirroredCounterpart,
     <T as MirroredCounterpart>::MirroredType: Placed,
 {
     type MirroredType = Symbolic<<T as MirroredCounterpart>::MirroredType>;
+}
+
+impl<T: Placed> TensorLike for Symbolic<T>
+where
+    T: TensorLike,
+{
+    type Scalar = <T as TensorLike>::Scalar;
+}
+
+impl<T: Placed> Ring for Symbolic<T>
+where
+    T: Ring,
+{
+    type BitLength = T::BitLength;
 }
 
 #[derive(Clone, Debug, PartialEq)]

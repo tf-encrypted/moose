@@ -1876,30 +1876,8 @@ impl SoftmaxOp {
     }
 }
 
-impl Log2Op {
-    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
-    where
-        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
-        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
-        ReplicatedPlacement: PlacementLog2<S, RepFixedT, RepFixedT>,
-    {
-        let x = match x {
-            FixedTensor::Host(v) => plc.share(sess, &v),
-            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
-            FixedTensor::Replicated(v) => v,
-        };
-
-        let z = plc.log2(sess, &x);
-        Ok(FixedTensor::Replicated(z))
-    }
-}
-
 impl LogOp {
-    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
@@ -1920,9 +1898,32 @@ impl LogOp {
     }
 }
 
+impl Log2Op {
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementLog2<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+
+        let z = plc.log2(sess, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "compile")]
     use crate::execution::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
     use crate::fixedpoint::PrefixMul;
     use crate::prelude::*;
@@ -2507,6 +2508,7 @@ mod tests {
 
     macro_rules! new_symbolic_replicated_tensor {
         ($func_name:ident, $tt: ty) => {
+            #[cfg(feature = "compile")]
             fn $func_name(
                 name: &str,
                 rep: &ReplicatedPlacement,
@@ -2556,6 +2558,7 @@ mod tests {
 
     macro_rules! rep_div_symbolic_test {
         ($func_name:ident, $new_symbolic_rep: ident) => {
+            #[cfg(feature = "compile")]
             fn $func_name(i_precision: u32, f_precision: u32) {
                 let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
@@ -2594,11 +2597,13 @@ mod tests {
     rep_div_symbolic_test!(rep_div_symbolic_test64, new_symbolic_replicated_tensor64);
     rep_div_symbolic_test!(rep_div_symbolic_test128, new_symbolic_replicated_tensor128);
 
+    #[cfg(feature = "compile")]
     #[test]
     fn test_fixed_rep_symbolic_div64() {
         rep_div_symbolic_test64(10, 20);
     }
 
+    #[cfg(feature = "compile")]
     #[test]
     fn test_fixed_rep_symbolic_div128() {
         rep_div_symbolic_test128(10, 50);
@@ -2805,6 +2810,7 @@ mod tests {
 
     macro_rules! rep_unary_symbolic_test {
         ($func_name:ident, $test_func:ident, $new_symbolic_rep: ident) => {
+            #[cfg(feature = "compile")]
             fn $func_name(i_precision: u32, f_precision: u32) {
                 let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
 
@@ -2840,6 +2846,7 @@ mod tests {
         new_symbolic_replicated_tensor64
     );
 
+    #[cfg(feature = "compile")]
     #[test]
     fn test_fixed_rep_symbolic_exp64() {
         rep_exp_symbolic_test64(10, 10);

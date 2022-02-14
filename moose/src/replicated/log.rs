@@ -4,6 +4,7 @@ use crate::execution::Session;
 use crate::fixedpoint::{FixedpointTensor, PolynomialEval};
 use crate::{Const, Ring};
 use lazy_static::lazy_static;
+use std::convert::TryInto;
 
 lazy_static! {
     static ref P_2524: Vec<f64> = vec![-2.05466671951, -8.8626599391, 6.10585199015, 4.81147460989];

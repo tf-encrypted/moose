@@ -26,6 +26,7 @@ from pymoose.computation.standard import InputOperation
 from pymoose.computation.standard import InverseOperation
 from pymoose.computation.standard import LessOperation
 from pymoose.computation.standard import LoadOperation
+from pymoose.computation.standard import Log2Operation
 from pymoose.computation.standard import LogOperation
 from pymoose.computation.standard import MaximumOperation
 from pymoose.computation.standard import MeanOperation
@@ -62,6 +63,7 @@ from pymoose.edsl.base import IdentityExpression
 from pymoose.edsl.base import IndexAxisExpression
 from pymoose.edsl.base import InverseExpression
 from pymoose.edsl.base import LoadExpression
+from pymoose.edsl.base import Log2Expression
 from pymoose.edsl.base import LogExpression
 from pymoose.edsl.base import MaximumExpression
 from pymoose.edsl.base import MeanExpression
@@ -101,14 +103,6 @@ def trace(abstract_computation):
 def trace_and_compile(abstract_computation, compiler_passes=None):
     logical_computation = trace(abstract_computation)
     comp_bin = utils.serialize_computation(logical_computation)
-    if compiler_passes is None:
-        compiler_passes = [
-            "typing",
-            "full",
-            "prune",
-            "networking",
-            "toposort",
-        ]
     physical_comp_ref = elk_compiler.compile_computation(comp_bin, compiler_passes)
     return physical_comp_ref
 
@@ -475,6 +469,23 @@ class AstTracer:
                 signature=OpSignature(
                     input_types={"x": x_operation.return_type},
                     return_type=log_expression.vtype,
+                ),
+            )
+        )
+
+    def visit_Log2Expression(self, log2_expression):
+        assert isinstance(log2_expression, Log2Expression)
+        (x_expression,) = log2_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(log2_expression.placement)
+        return self.computation.add_operation(
+            Log2Operation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("log2"),
+                inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=log2_expression.vtype,
                 ),
             )
         )
