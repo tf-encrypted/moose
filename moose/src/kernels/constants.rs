@@ -255,7 +255,6 @@ macro_rules! constant_kernels {
         modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Tensor, ConstantOp);
-        modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Uint64Tensor, ConstantOp);
 
 
         kernel! {
@@ -274,7 +273,6 @@ macro_rules! constant_kernels {
                 (Mirrored3Placement, () -> Tensor => [concrete] attributes[sig, value] Self::mir3_logical_kernel),
                 (Mirrored3Placement, () -> Float32Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
                 (Mirrored3Placement, () -> Float64Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
-                (Mirrored3Placement, () -> Uint64Tensor => [concrete] attributes[value] Self::mir3_u64_kernel),
 
             ]
         }

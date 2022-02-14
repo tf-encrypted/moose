@@ -1965,7 +1965,6 @@ impl ConstantOp {
     where
         Mirrored3Placement: PlacementConstant<S, Float32T>,
         Mirrored3Placement: PlacementConstant<S, Float64T>,
-        Mirrored3Placement: PlacementConstant<S, Uint64T>,
     {
         match sig.ret() {
             Ty::Tensor(TensorDType::Float32) => {
@@ -1975,10 +1974,6 @@ impl ConstantOp {
             Ty::Tensor(TensorDType::Float64) => {
                 let z = plc.constant(sess, value);
                 Ok(AbstractTensor::Float64(z))
-            }
-            Ty::Tensor(TensorDType::Uint64) => {
-                let z = plc.constant(sess, value);
-                Ok(AbstractTensor::Uint64(z))
             }
             ret => Err(Error::UnimplementedOperator(format!(
                 "ConstantOp can not produce tensors of type {:?} yet",
