@@ -201,6 +201,21 @@ impl RevealOp {
         Ok(HostBitArray(x, PhantomData))
     }
 
+    pub(crate) fn host_uint64_kernel<S: Session, RepRingT>(
+        sess: &S,
+        receiver: &HostPlacement,
+        xe: RepUintTensor<RepRingT>,
+    ) -> Result<m!(HostUint64Tensor)>
+    where
+        HostRing64Tensor: KnownType<S>,
+        HostUint64Tensor: KnownType<S>,
+        HostPlacement: PlacementReveal<S, RepRingT, m!(HostRing64Tensor)>,
+        HostPlacement: PlacementCast<S, m!(HostRing64Tensor), m!(HostUint64Tensor)>,
+    {
+        let x = receiver.reveal(sess, &xe.tensor);
+        Ok(receiver.cast(sess, &x))
+    }
+
     pub(crate) fn host_ring_kernel<S: Session, R: Clone>(
         sess: &S,
         receiver: &HostPlacement,

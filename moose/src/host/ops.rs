@@ -1860,6 +1860,24 @@ impl CastOp {
         Ok(x)
     }
 
+    pub(crate) fn hu64_hr64_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<u64>,
+    ) -> Result<HostRing64Tensor> {
+        let wrapped = x.0.mapv(Wrapping);
+        Ok(HostRingTensor(wrapped, plc.clone()))
+    }
+
+    pub(crate) fn hr64_hu64_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing64Tensor,
+    ) -> Result<HostTensor<u64>> {
+        let unwrapped = x.0.mapv(|item| item.0);
+        Ok(HostTensor(unwrapped, plc.clone()))
+    }
+
     pub(crate) fn ring_host_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,

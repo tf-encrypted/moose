@@ -5303,6 +5303,7 @@ pub mod networking;
 pub mod prelude;
 pub mod prng;
 pub mod replicated;
+pub mod ring;
 pub mod storage;
 pub mod textual;
 pub mod types;

@@ -7,10 +7,10 @@ use crate::error::{Error, Result};
 use crate::execution::Session;
 use crate::floatingpoint::FloatTensor;
 use crate::host::*;
-use crate::integer::U64Tensor;
 use crate::kernels::*;
 use crate::mirrored::*;
 use crate::replicated::*;
+use crate::ring::Z64Tensor;
 use crate::types::*;
 use macros::with_context;
 
@@ -1884,7 +1884,7 @@ impl ArgmaxOp {
         axis: usize,
         upmost_index: usize,
         x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
-    ) -> Result<U64Tensor<HostRingT, RepRingT>>
+    ) -> Result<Z64Tensor<HostRingT, RepRingT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
@@ -1897,7 +1897,7 @@ impl ArgmaxOp {
         };
 
         let z = plc.argmax(sess, axis, upmost_index, &x);
-        Ok(U64Tensor::Replicated(z))
+        Ok(Z64Tensor::Replicated(z))
     }
 }
 

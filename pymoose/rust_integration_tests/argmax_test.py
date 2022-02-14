@@ -28,7 +28,7 @@ class ArgmaxExample(parameterized.TestCase):
                 x_arg = edsl.argmax(x_fixed, axis=axis, upmost_index=axis_idx_max)
 
             with bob:
-                x_arg_host = edsl.identity(x_arg)
+                x_arg_host = edsl.cast(x_arg, dtype=edsl.uint64)
                 res = edsl.save("argmax", x_arg_host)
 
             return res
