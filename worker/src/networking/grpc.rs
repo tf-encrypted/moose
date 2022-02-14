@@ -11,8 +11,8 @@ use std::sync::Arc;
 use tonic::transport::Channel;
 
 pub struct GrpcNetworking {
-    stores: Arc<SessionStores>,
-    channels: Arc<DashMap<Identity, Channel>>,
+    pub stores: Arc<SessionStores>,
+    pub channels: Arc<Channels>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -42,15 +42,14 @@ impl AsyncNetworking for GrpcNetworking {
                 .map_err(|e| moose::Error::Networking(e.to_string()))?,
         };
 
-        let channel = self.channels.get(receiver).ok_or_else(|| {
-            moose::Error::Networking(format!(
-                "trying to send value to unknown receiver '{}'",
-                receiver
-            ))
-        })?;
-
-        // note that cloning channels is cheap per tonic documentation
-        let mut client = NetworkingClient::new(channel.clone());
+        let channel = self
+            .channels
+            .get(receiver)
+            .ok_or_else(|| {
+                moose::Error::Networking(format!("Channel for '{}' not found", receiver))
+            })?
+            .clone(); // cloning channels is cheap per tonic documentation
+        let mut client = NetworkingClient::new(channel);
 
         let _response = client
             .send_value(request)
@@ -71,13 +70,15 @@ impl AsyncNetworking for GrpcNetworking {
     }
 }
 
-type SessionStore = DashMap<RendezvousKey, Arc<AsyncCell<Value>>>;
+pub type SessionStore = DashMap<RendezvousKey, Arc<AsyncCell<Value>>>;
 
-type SessionStores = DashMap<SessionId, Arc<SessionStore>>;
+pub type SessionStores = DashMap<SessionId, Arc<SessionStore>>;
+
+pub type Channels = DashMap<Identity, Channel>;
 
 #[derive(Default)]
 pub struct NetworkingImpl {
-    stores: Arc<SessionStores>,
+    pub stores: Arc<SessionStores>,
 }
 
 fn cell(
