@@ -1,0 +1,10 @@
+[computation]
+path = "./examples/test.moose"
+
+[[roles]]
+name = "alice"
+endpoint = "localhost:50000"
+
+[[roles]]
+name = "bob"
+endpoint = "localhost:60000"
