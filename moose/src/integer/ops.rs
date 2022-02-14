@@ -71,21 +71,6 @@ impl IdentityOp {
 }
 
 impl CastOp {
-    pub(crate) fn u64_host_kernel<S: Session, HostT, RepT>(
-        sess: &S,
-        plc: &HostPlacement,
-        x: U64Tensor<HostT, RepT>,
-    ) -> Result<U64Tensor<HostT, RepT>>
-    where
-        HostPlacement: PlacementReveal<S, RepT, HostT>,
-    {
-        let x = match x {
-            U64Tensor::Host(v) => v,
-            U64Tensor::Replicated(v) => plc.reveal(sess, &v),
-        };
-        Ok(U64Tensor::Host(x))
-    }
-
     pub(crate) fn uint64_ring64_host_kernel<
         S: Session,
         HostUint64T,
