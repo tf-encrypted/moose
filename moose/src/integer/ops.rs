@@ -2,7 +2,6 @@ use super::*;
 use crate::execution::Session;
 use crate::host::HostPlacement;
 use crate::mirrored::Mirrored3Placement;
-use crate::replicated::*;
 use crate::ring::Z64Tensor;
 use crate::types::HostString;
 

@@ -7,7 +7,6 @@ use crate::error::{Error, Result};
 use crate::execution::Session;
 use crate::floatingpoint::FloatTensor;
 use crate::host::*;
-use crate::integer::U64Tensor;
 use crate::kernels::*;
 use crate::mirrored::*;
 use crate::replicated::*;

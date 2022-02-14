@@ -1861,7 +1861,7 @@ impl CastOp {
     }
 
     pub(crate) fn hu64_hr64_kernel<S: RuntimeSession>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<u64>,
     ) -> Result<HostRing64Tensor> {
@@ -1870,7 +1870,7 @@ impl CastOp {
     }
 
     pub(crate) fn hr64_hu64_kernel<S: RuntimeSession>(
-        sess: &S,
+        _sess: &S,
         plc: &HostPlacement,
         x: HostRing64Tensor,
     ) -> Result<HostTensor<u64>> {
