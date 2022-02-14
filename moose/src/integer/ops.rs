@@ -108,4 +108,27 @@ impl CastOp {
         let z = plc.cast(sess, &x);
         Ok(Z64Tensor::Host(z))
     }
+
+    pub(crate) fn ring64_uint64_host_kernel<
+        S: Session,
+        HostUint64T,
+        RepUintT,
+        HostRing64T,
+        RepRingT,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        x: Z64Tensor<HostRing64T, RepRingT>,
+    ) -> Result<U64Tensor<HostUint64T, RepUintT>>
+    where
+        HostPlacement: PlacementReveal<S, RepRingT, HostRing64T>,
+        HostPlacement: PlacementCast<S, HostRing64T, HostUint64T>,
+    {
+        let x = match x {
+            Z64Tensor::Host(v) => v,
+            Z64Tensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let z = plc.cast(sess, &x);
+        Ok(U64Tensor::Host(z))
+    }
 }

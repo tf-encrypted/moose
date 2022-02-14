@@ -120,6 +120,7 @@ impl AddOp {
         HostPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
         HostPlacement: PlacementAdd<S, Float32T, Float32T, Float32T>,
         HostPlacement: PlacementAdd<S, Float64T, Float64T, Float64T>,
+        HostPlacement: PlacementAdd<S, Ring64T, Ring64T, Ring64T>,
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
@@ -137,6 +138,10 @@ impl AddOp {
             (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
                 let result = plc.add(sess, &x, &y);
                 Ok(AbstractTensor::Float64(result))
+            }
+            (AbstractTensor::Ring64(x), AbstractTensor::Ring64(y)) => {
+                let result = plc.add(sess, &x, &y);
+                Ok(AbstractTensor::Ring64(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
@@ -165,6 +170,7 @@ impl AddOp {
     where
         ReplicatedPlacement: PlacementAdd<S, Fixed64T, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementAdd<S, Ring64T, Ring64T, Ring64T>,
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
@@ -174,6 +180,10 @@ impl AddOp {
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let result = plc.add(sess, &x, &y);
                 Ok(AbstractTensor::Fixed128(result))
+            }
+            (AbstractTensor::Ring64(x), AbstractTensor::Ring64(y)) => {
+                let result = plc.add(sess, &x, &y);
+                Ok(AbstractTensor::Ring64(result))
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             (x, y) => Err(Error::UnimplementedOperator(format!(
@@ -937,7 +947,8 @@ impl CastOp {
         HostPlacement: PlacementFixedpointDecode<S, Fixed128T, Float64T>,
         HostPlacement: PlacementFixedpointEncode<S, Float32T, Fixed64T>,
         HostPlacement: PlacementFixedpointEncode<S, Float64T, Fixed128T>,
-        HostPlacement: PlacementCast<S, Uint64T, Uint64T>,
+        HostPlacement: PlacementCast<S, Uint64T, Ring64T>,
+        HostPlacement: PlacementCast<S, Ring64T, Uint64T>,
     {
         let arg0_precision = match sig.arg(0) {
             Ok(Ty::Tensor(TensorDType::Fixed64 {
@@ -984,7 +995,11 @@ impl CastOp {
                     plc.fixedpoint_encode(sess, fractional_precision, integral_precision, &x);
                 Ok(AbstractTensor::Fixed128(inner))
             }
-            (AbstractTensor::Uint64(x), Ty::Tensor(TensorDType::Uint64)) => {
+            (AbstractTensor::Uint64(x), Ty::Tensor(TensorDType::Ring64)) => {
+                let inner = plc.cast(sess, &x);
+                Ok(AbstractTensor::Ring64(inner))
+            }
+            (AbstractTensor::Ring64(x), Ty::Tensor(TensorDType::Uint64)) => {
                 let inner = plc.cast(sess, &x);
                 Ok(AbstractTensor::Uint64(inner))
             }

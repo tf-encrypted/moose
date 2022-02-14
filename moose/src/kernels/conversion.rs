@@ -10,6 +10,7 @@ modelled_kernel! {
         (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::kernel),
         (HostPlacement, (Uint64Tensor) -> Uint64Tensor => [concrete] Self::u64_host_kernel),
         (HostPlacement, (Uint64Tensor) -> Ring64Tensor => [concrete] Self::uint64_ring64_host_kernel),
+        (HostPlacement, (Ring64Tensor) -> Uint64Tensor => [concrete] Self::ring64_uint64_host_kernel),
         (HostPlacement, (HostUint64Tensor) -> HostRing64Tensor => [runtime] Self::hu64_hr64_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostUint64Tensor => [runtime] Self::hr64_hu64_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::no_op_kernel),
