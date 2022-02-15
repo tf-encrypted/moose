@@ -30,36 +30,38 @@ where
 }
 
 impl ArgmaxOp {
-    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT1, RepRingT2>(
         sess: &S,
         rep: &ReplicatedPlacement,
         axis: usize,
         upmost_index: usize,
-        x: RepFixedTensor<RepRingT>,
-    ) -> Result<m!(ReplicatedUint64Tensor)>
+        x: RepFixedTensor<RepRingT1>,
+    ) -> Result<RepUintTensor<RepRingT2>>
     where
-        ReplicatedUint64Tensor: KnownType<S>,
-        ReplicatedPlacement: PlacementArgmax<S, RepRingT, m!(ReplicatedUint64Tensor)>,
+        ReplicatedPlacement: PlacementArgmax<S, RepRingT1, RepRingT2>,
     {
-        Ok(rep.argmax(sess, axis, upmost_index, &x.tensor))
+        Ok(RepUintTensor {
+            tensor: rep.argmax(sess, axis, upmost_index, &x.tensor),
+        })
     }
+}
 
-    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, ShapeT>(
+impl RingFixedpointArgmaxOp {
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, RepRingT2, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         axis: usize,
         upmost_index: usize,
         x: RepRingT,
-    ) -> Result<m!(ReplicatedUint64Tensor)>
+    ) -> Result<RepRingT2>
     where
         RepRingT: Clone,
-        ReplicatedUint64Tensor: KnownType<S>,
         ReplicatedRing64Tensor: KnownType<S>,
         ReplicatedPlacement: PlacementIndexAxis<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
         ReplicatedPlacement: TreeReduceArgmax<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementCast<S, RepRingT, m!(ReplicatedUint64Tensor)>,
+        ReplicatedPlacement: PlacementCast<S, RepRingT, RepRingT2>,
     {
         let xs: Vec<_> = (0..upmost_index)
             .map(|index| rep.index_axis(sess, axis, index, &x))
@@ -134,7 +136,7 @@ mod tests {
                 let argmax = rep.$test_func(&sess, axis, upmost_index, &x_shared); // output is ReplicatedRing64Tensor
 
                 let opened_argmax = alice.reveal(&sess, &argmax);
-                let y_target: HostUint64Tensor = alice.from_raw(y_target);
+                let y_target: HostRing64Tensor = alice.from_raw(y_target);
                 assert_eq!(y_target, opened_argmax);
             }
         };

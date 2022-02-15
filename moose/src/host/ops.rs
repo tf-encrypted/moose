@@ -1920,25 +1920,6 @@ impl CastOp {
     }
 }
 
-impl ArgmaxOp {
-    pub(crate) fn host_fixed_kernel<S: Session, HostRingT>(
-        sess: &S,
-        plc: &HostPlacement,
-        axis: usize,
-        upmost_index: usize,
-        x: HostFixedTensor<HostRingT>,
-    ) -> Result<m!(HostUint64Tensor)>
-    where
-        HostRing64Tensor: KnownType<S>,
-        HostUint64Tensor: KnownType<S>,
-        HostPlacement: PlacementArgmax<S, HostRingT, m!(HostRing64Tensor)>,
-        HostPlacement: PlacementCast<S, m!(HostRing64Tensor), m!(HostUint64Tensor)>,
-    {
-        let arg_out = plc.argmax(sess, axis, upmost_index, &x.tensor);
-        Ok(plc.cast(sess, &arg_out))
-    }
-}
-
 impl RingFixedpointArgmaxOp {
     pub(crate) fn host_ring64_kernel<S: RuntimeSession>(
         _sess: &S,
