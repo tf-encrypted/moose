@@ -25,6 +25,10 @@ jobs:
         run: |
           sudo apt install libopenblas-dev
 
+      - name: Install build dependencies.
+        run: |
+          sudo apt install make clang libpython3.8-dev
+
       - uses: Swatinem/rust-cache@v1
 
       - name: Formatting.
