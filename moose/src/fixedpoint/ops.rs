@@ -1928,6 +1928,7 @@ mod tests {
     use crate::fixedpoint::PrefixMul;
     use crate::prelude::*;
     use crate::replicated::RepTensor;
+    use itertools::Itertools;
     use ndarray::prelude::*;
     use proptest::prelude::*;
     use std::num::Wrapping;
@@ -3029,5 +3030,45 @@ mod tests {
         let x = array![1f64, 2.0].into_dyn();
         let y_targets = array![[1f64, 2.0]].into_dyn();
         test_rep_expand_dim_fixed128(x, y_targets);
+    }
+
+    #[test]
+    fn test_count_ops() {
+        let i_precision: u32 = 8;
+        let f_precision: u32 = 27;
+        let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
+
+        let x = Symbolic::Concrete(RepFixedTensor {
+            fractional_precision: f_precision,
+            integral_precision: i_precision,
+            tensor: new_symbolic_replicated_tensor128(&"x", &rep),
+        });
+
+        let y = Symbolic::Concrete(RepFixedTensor {
+            fractional_precision: f_precision,
+            integral_precision: i_precision,
+            tensor: new_symbolic_replicated_tensor128(&"y", &rep),
+        });
+
+        let sess = SymbolicSession::default();
+
+        let result = rep.less(&sess, &x, &y);
+        let collected_ops = sess.ops_iter(|mut x| x.len());
+        println!("ops in test {:?}", collected_ops);
+
+        let _ = sess.ops_iter(|mut iter| {
+            // println!("all ops {:?}", iter);
+            let filtered_ops = iter.filter(|o| match o {
+                Operation {
+                    name,
+                    kind: Operator::Xor(XorOp { sig: _ }),
+                    inputs,
+                    placement: Placement::Host(HostPlacement { owner }),
+                    ..
+                } => true,
+                _ => false,
+            });
+            println!("I have filtered {:?} muls", filtered_ops.count());
+        });
     }
 }
