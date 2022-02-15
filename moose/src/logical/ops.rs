@@ -2282,7 +2282,7 @@ impl SoftmaxOp {
 }
 
 impl ArgmaxOp {
-    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>(
+    pub fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: usize,
@@ -2304,7 +2304,43 @@ impl ArgmaxOp {
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             _ => Err(Error::UnimplementedOperator(format!(
-                "Missing replicated softmax for {:?}",
+                "Missing replicated argmax for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+
+    pub fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementArgmax<S, Fixed64T, Uint64T>,
+        HostPlacement: PlacementArgmax<S, Fixed128T, Uint64T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = plc.argmax(sess, axis, upmost_index, &x);
+                Ok(AbstractTensor::Uint64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = plc.argmax(sess, axis, upmost_index, &x);
+                Ok(AbstractTensor::Uint64(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated argmax for {:?}",
                 &x.ty_desc(),
             ))),
         }

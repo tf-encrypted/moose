@@ -8,6 +8,7 @@ use ndarray::Zip;
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack};
 use num_traits::{Float, FromPrimitive, Zero};
+use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::Wrapping;
 
@@ -129,7 +130,6 @@ impl InputOp {
         O: TryFrom<Value, Error = Error>,
         HostPlacement: PlacementPlace<S, O>,
     {
-        use std::convert::TryInto;
         let value = sess
             .find_argument(&arg_name)
             .ok_or_else(|| Error::MissingArgument(arg_name.clone()))?;
@@ -1917,6 +1917,25 @@ impl CastOp {
         });
 
         Ok(HostRingTensor(x_downshifted, plc.clone()))
+    }
+}
+
+impl ArgmaxOp {
+    pub(crate) fn host_fixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: HostFixedTensor<HostRingT>,
+    ) -> Result<m!(HostUint64Tensor)>
+    where
+        HostRing64Tensor: KnownType<S>,
+        HostUint64Tensor: KnownType<S>,
+        HostPlacement: PlacementArgmax<S, HostRingT, m!(HostRing64Tensor)>,
+        HostPlacement: PlacementCast<S, m!(HostRing64Tensor), m!(HostUint64Tensor)>,
+    {
+        let arg_out = plc.argmax(sess, axis, upmost_index, &x.tensor);
+        Ok(plc.cast(sess, &arg_out))
     }
 }
 

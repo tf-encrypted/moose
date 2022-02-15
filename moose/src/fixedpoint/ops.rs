@@ -1878,7 +1878,14 @@ impl SoftmaxOp {
 }
 
 impl ArgmaxOp {
-    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT, HostUintT, RepUintT>(
+    pub(crate) fn fixed_rep_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostUintT,
+        RepUintT,
+    >(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: usize,
@@ -1898,6 +1905,35 @@ impl ArgmaxOp {
 
         let z = plc.argmax(sess, axis, upmost_index, &x);
         Ok(AbstractUint64Tensor::Replicated(z))
+    }
+
+    pub(crate) fn fixed_host_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostUintT,
+        RepUintT,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<AbstractUint64Tensor<HostUintT, RepUintT>>
+    where
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementArgmax<S, HostFixedT, HostUintT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+
+        let z = plc.argmax(sess, axis, upmost_index, &x);
+        Ok(AbstractUint64Tensor::Host(z))
     }
 }
 

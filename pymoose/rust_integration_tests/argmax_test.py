@@ -29,7 +29,11 @@ class ArgmaxExample(parameterized.TestCase):
 
             with bob:
                 x_arg_host = edsl.identity(x_arg)
-                res = edsl.save("argmax", x_arg_host)
+                argmax_host = edsl.argmax(x_fixed, axis=axis, upmost_index=axis_idx_max)
+                res = (
+                    edsl.save("argmax_rep", x_arg_host),
+                    edsl.save("argmax_host", argmax_host),
+                )
 
             return res
 
@@ -78,9 +82,13 @@ class ArgmaxExample(parameterized.TestCase):
             arguments={"x_uri": "x_arg"},
         )
 
-        softmax_runtime = runtime.read_value_from_storage("bob", "argmax")
+        softmax_from_rep_runtime = runtime.read_value_from_storage("bob", "argmax_rep")
+        softmax_from_host_runtime = runtime.read_value_from_storage(
+            "bob", "argmax_host"
+        )
 
-        np.testing.assert_equal(softmax_runtime, np.argmax(x_arg, axis=axis))
+        np.testing.assert_equal(softmax_from_rep_runtime, np.argmax(x_arg, axis=axis))
+        # np.testing.assert_equal(softmax_from_host_runtime, np.argmax(x_arg, axis=axis))
 
 
 if __name__ == "__main__":

@@ -544,9 +544,14 @@ pub trait PlacementArgmax<S: Session, T, O> {
 modelled_kernel! {
     PlacementArgmax::argmax, ArgmaxOp{axis: usize, upmost_index: usize},
     [
-        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] Self::logical_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor) -> Uint64Tensor => [concrete] Self::fixed_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Uint64Tensor => [concrete] Self::fixed_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Uint64Tensor => [concrete] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Uint64Tensor => [concrete] Self::fixed_host_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostUint64Tensor => [hybrid] Self::host_fixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostUint64Tensor => [hybrid] Self::host_fixed_kernel),
+        (HostPlacement, (Tensor) -> Tensor => [concrete] Self::logical_host_kernel),
+        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] Self::logical_rep_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Uint64Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Uint64Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedUint64Tensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedUint64Tensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedUint64Tensor => [transparent] Self::rep_ring_kernel),
