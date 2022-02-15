@@ -1151,7 +1151,6 @@ impl ToTextual for Operator {
             Mirror(op) => op.to_textual(),
             Maximum(op) => op.to_textual(),
             Argmax(op) => op.to_textual(),
-            ShareReduction(op) => op.to_textual(),
         }
     }
 }

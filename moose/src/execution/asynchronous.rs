@@ -414,7 +414,6 @@ impl Session for AsyncSession {
             Sqrt(op) => DispatchKernel::compile(&op, plc)?,
             Abs(op) => DispatchKernel::compile(&op, plc)?,
             Diag(op) => DispatchKernel::compile(&op, plc)?,
-            ShareReduction(op) => DispatchKernel::compile(&op, plc)?,
         };
         kernel(self, operands)
     }

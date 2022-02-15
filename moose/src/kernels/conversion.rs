@@ -13,8 +13,10 @@ modelled_kernel! {
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::no_op_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing64Tensor => [runtime] Self::ring_host_kernel),
         (Mirrored3Placement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::mir_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedUint64Tensor => [hybrid] Self::repr64_repu64_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedUint64Tensor => [hybrid] Self::repr_repu64_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedUint64Tensor => [hybrid] Self::repr_repu64_kernel),
     ]
 }
 
@@ -214,18 +216,5 @@ modelled_kernel! {
         (Mirrored3Placement, (Fixed128Tensor) -> Float64Tensor => [concrete] Self::mir_fixed_kernel),
         (Mirrored3Placement, (Mirrored3Fixed64Tensor) -> Mirrored3Float32 => [hybrid] Self::mir_fixed_lower_kernel),
         (Mirrored3Placement, (Mirrored3Fixed128Tensor) -> Mirrored3Float64 => [hybrid] Self::mir_fixed_lower_kernel),
-    ]
-}
-
-/// Secret share value
-pub trait PlacementShareReduction<S: Session, T, O> {
-    fn share_reduction(&self, sess: &S, x: &T) -> O;
-}
-
-modelled_kernel! {
-    PlacementShareReduction::share_reduction, ShareReductionOp,
-    [
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
     ]
 }

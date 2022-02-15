@@ -59,9 +59,7 @@ impl ArgmaxOp {
         ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
         ReplicatedPlacement: TreeReduceArgmax<S, RepRingT, RepRingT>,
-        ReplicatedPlacement: PlacementShareReduction<S, RepRingT, m!(ReplicatedRing64Tensor)>,
-        ReplicatedPlacement:
-            PlacementCast<S, m!(ReplicatedRing64Tensor), m!(ReplicatedUint64Tensor)>,
+        ReplicatedPlacement: PlacementCast<S, RepRingT, m!(ReplicatedUint64Tensor)>,
     {
         let xs: Vec<_> = (0..upmost_index)
             .map(|index| rep.index_axis(sess, axis, index, &x))
@@ -84,8 +82,7 @@ impl ArgmaxOp {
         // (x0 + x1 + x2) mod 2^128 = x , iff x in [0, 2^64)
         // (x0  mod 2^64 + x1 mod 2^64 + x2 mod 2^64) mod 2^64 = x
         // share trunc operation
-        let reduction = rep.share_reduction(sess, &secret_index);
-        Ok(rep.cast(sess, &reduction))
+        Ok(rep.cast(sess, &secret_index))
     }
 }
 
