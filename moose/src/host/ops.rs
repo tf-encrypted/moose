@@ -1920,7 +1920,7 @@ impl CastOp {
     }
 }
 
-impl ArgmaxOp {
+impl RingFixedpointArgmaxOp {
     pub(crate) fn host_ring64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,

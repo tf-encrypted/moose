@@ -885,6 +885,7 @@ operators![
     RingFixedpointMean,
     RingFixedpointEncode,
     RingFixedpointDecode,
+    RingFixedpointArgmax,
     Sample,
     SampleSeeded,
     RingInject,
@@ -1276,6 +1277,14 @@ pub struct RingFixedpointDecodeOp {
     pub sig: Signature,
     pub scaling_base: u64,
     pub scaling_exp: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct RingFixedpointArgmaxOp {
+    pub sig: Signature,
+    // axis can be optional (in which case we need to do an argmax over axis 0)
+    pub axis: usize,
+    pub upmost_index: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]

@@ -1,4 +1,5 @@
 use super::*;
+use crate::error::{Error, Result};
 use crate::execution::Session;
 use crate::host::HostPlacement;
 use crate::types::HostString;
@@ -30,7 +31,12 @@ impl SaveOp {
         HostPlacement: PlacementSave<S, m!(HostString), HostT, m!(Unit)>,
     {
         let x = match x {
-            AbstractUint64Tensor::Replicated(_v) => unimplemented!(),
+            AbstractUint64Tensor::Replicated(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "SaveOp not implemented for ReplicatedUint64Tensor on a host placement"
+                        .to_string(),
+                ));
+            }
             AbstractUint64Tensor::Host(v) => v,
         };
         Ok(plc.save(sess, &key, &x))

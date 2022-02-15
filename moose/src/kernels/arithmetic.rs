@@ -551,6 +551,12 @@ modelled_kernel! {
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedUint64Tensor => [hybrid] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedUint64Tensor => [transparent] Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedUint64Tensor => [transparent] Self::rep_ring_kernel),
+    ]
+}
+
+modelled_kernel! {
+    PlacementArgmax::argmax, RingFixedpointArgmaxOp{axis: usize, upmost_index: usize},
+    [
         (HostPlacement, (HostRing128Tensor) -> HostRing64Tensor => [runtime] Self::host_ring128_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_ring64_kernel),
     ]

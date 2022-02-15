@@ -274,6 +274,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             BitExtract(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Sample(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             SampleSeeded(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            RingFixedpointArgmax(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingFixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
