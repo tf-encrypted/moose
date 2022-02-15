@@ -7,10 +7,10 @@ use crate::error::{Error, Result};
 use crate::execution::Session;
 use crate::floatingpoint::FloatTensor;
 use crate::host::*;
+use crate::integer::AbstractUint64Tensor;
 use crate::kernels::*;
 use crate::mirrored::*;
 use crate::replicated::*;
-use crate::ring::Z64Tensor;
 use crate::types::*;
 use macros::with_context;
 
@@ -1878,17 +1878,17 @@ impl SoftmaxOp {
 }
 
 impl ArgmaxOp {
-    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT, HostRingT, RepRingT>(
+    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT, HostUintT, RepUintT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: usize,
         upmost_index: usize,
         x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
-    ) -> Result<Z64Tensor<HostRingT, RepRingT>>
+    ) -> Result<AbstractUint64Tensor<HostUintT, RepUintT>>
     where
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
-        ReplicatedPlacement: PlacementArgmax<S, RepFixedT, RepRingT>,
+        ReplicatedPlacement: PlacementArgmax<S, RepFixedT, RepUintT>,
     {
         let x = match x {
             FixedTensor::Host(v) => plc.share(sess, &v),
@@ -1897,7 +1897,7 @@ impl ArgmaxOp {
         };
 
         let z = plc.argmax(sess, axis, upmost_index, &x);
-        Ok(Z64Tensor::Replicated(z))
+        Ok(AbstractUint64Tensor::Replicated(z))
     }
 }
 

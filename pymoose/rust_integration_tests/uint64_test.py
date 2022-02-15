@@ -21,14 +21,10 @@ class ReplicatedExample(parameterized.TestCase):
         def my_int_comp():
             with bob:
                 x = edsl.constant(x_array)
-                x_ring = edsl.cast(x, dtype=edsl.ring64)
-
-            with rep:
-                y = edsl.add(x_ring, x_ring)
 
             with alice:
-                y_uint = edsl.cast(y, dtype=edsl.uint64)
-                res = edsl.save("y_uri", y_uint)
+                x_alice = edsl.identity(x)
+                res = edsl.save("x_uri", x_alice)
 
             return res
 
@@ -50,8 +46,8 @@ class ReplicatedExample(parameterized.TestCase):
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
-        actual_result = runtime.read_value_from_storage("alice", "y_uri")
-        np.testing.assert_equal(actual_result, x_arg * 2)
+        actual_result = runtime.read_value_from_storage("alice", "x_uri")
+        np.testing.assert_equal(actual_result, x_arg)
 
 
 if __name__ == "__main__":

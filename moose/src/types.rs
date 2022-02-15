@@ -15,13 +15,11 @@ use crate::mirrored::{Mir3Tensor, MirFixedTensor};
 use crate::replicated::{
     RepAesKey, RepBitArray, RepFixedTensor, RepShape, RepTensor, RepUintTensor,
 };
-use crate::ring::Z64Tensor;
 pub use crate::{
     host::{HostShape, HostString},
     host::{PrfKey, Seed},
 };
 use crate::{N128, N224, N256, N64};
-
 // Logical types
 
 pub type Tensor = AbstractTensor<
@@ -31,7 +29,6 @@ pub type Tensor = AbstractTensor<
     Float64Tensor,
     BooleanTensor,
     Uint64Tensor,
-    Ring64Tensor,
 >;
 
 moose_type!(Fixed64Tensor = FixedTensor<HostFixed64Tensor, Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor>);
@@ -58,10 +55,7 @@ moose_type!(ReplicatedBitTensor = RepTensor<HostBitTensor>);
 
 moose_type!(ReplicatedUint64Tensor = RepUintTensor<ReplicatedRing64Tensor>);
 moose_type!(HostUint64Tensor = [atomic] HostTensor<u64>);
-
 moose_type!(Uint64Tensor = AbstractUint64Tensor<HostUint64Tensor, ReplicatedUint64Tensor>);
-moose_type!(Ring64Tensor = Z64Tensor<HostRing64Tensor, ReplicatedRing64Tensor>);
-
 // Encrypted types
 
 moose_type!(AesTensor = AbstractAesTensor<Fixed128AesTensor>);

@@ -36,10 +36,10 @@ impl ArgmaxOp {
         axis: usize,
         upmost_index: usize,
         x: RepFixedTensor<RepRingT>,
-    ) -> Result<m!(ReplicatedRing64Tensor)>
+    ) -> Result<m!(ReplicatedUint64Tensor)>
     where
-        ReplicatedRing64Tensor: KnownType<S>,
-        ReplicatedPlacement: PlacementArgmax<S, RepRingT, m!(ReplicatedRing64Tensor)>,
+        ReplicatedUint64Tensor: KnownType<S>,
+        ReplicatedPlacement: PlacementArgmax<S, RepRingT, m!(ReplicatedUint64Tensor)>,
     {
         Ok(rep.argmax(sess, axis, upmost_index, &x.tensor))
     }
@@ -50,15 +50,18 @@ impl ArgmaxOp {
         axis: usize,
         upmost_index: usize,
         x: RepRingT,
-    ) -> Result<m!(ReplicatedRing64Tensor)>
+    ) -> Result<m!(ReplicatedUint64Tensor)>
     where
         RepRingT: Clone,
+        ReplicatedUint64Tensor: KnownType<S>,
         ReplicatedRing64Tensor: KnownType<S>,
         ReplicatedPlacement: PlacementIndexAxis<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
         ReplicatedPlacement: TreeReduceArgmax<S, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementShareReduction<S, RepRingT, m!(ReplicatedRing64Tensor)>,
+        ReplicatedPlacement:
+            PlacementCast<S, m!(ReplicatedRing64Tensor), m!(ReplicatedUint64Tensor)>,
     {
         let xs: Vec<_> = (0..upmost_index)
             .map(|index| rep.index_axis(sess, axis, index, &x))
@@ -81,7 +84,8 @@ impl ArgmaxOp {
         // (x0 + x1 + x2) mod 2^128 = x , iff x in [0, 2^64)
         // (x0  mod 2^64 + x1 mod 2^64 + x2 mod 2^64) mod 2^64 = x
         // share trunc operation
-        Ok(rep.share_reduction(sess, &secret_index))
+        let reduction = rep.share_reduction(sess, &secret_index);
+        Ok(rep.cast(sess, &reduction))
     }
 }
 
@@ -133,7 +137,7 @@ mod tests {
                 let argmax = rep.$test_func(&sess, axis, upmost_index, &x_shared); // output is ReplicatedRing64Tensor
 
                 let opened_argmax = alice.reveal(&sess, &argmax);
-                let y_target: HostRing64Tensor = alice.from_raw(y_target);
+                let y_target: HostUint64Tensor = alice.from_raw(y_target);
                 assert_eq!(y_target, opened_argmax);
             }
         };

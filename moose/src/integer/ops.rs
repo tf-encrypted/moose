@@ -1,7 +1,6 @@
 use super::*;
 use crate::execution::Session;
 use crate::host::HostPlacement;
-use crate::ring::Z64Tensor;
 use crate::types::HostString;
 
 impl ConstantOp {
@@ -53,53 +52,5 @@ impl IdentityOp {
             AbstractUint64Tensor::Replicated(v) => plc.reveal(sess, &v),
         };
         Ok(AbstractUint64Tensor::Host(x))
-    }
-}
-
-impl CastOp {
-    pub(crate) fn uint64_ring64_host_kernel<
-        S: Session,
-        HostUint64T,
-        RepUintT,
-        HostRing64T,
-        RepRingT,
-    >(
-        sess: &S,
-        plc: &HostPlacement,
-        x: AbstractUint64Tensor<HostUint64T, RepUintT>,
-    ) -> Result<Z64Tensor<HostRing64T, RepRingT>>
-    where
-        HostPlacement: PlacementReveal<S, RepUintT, HostUint64T>,
-        HostPlacement: PlacementCast<S, HostUint64T, HostRing64T>,
-    {
-        let x = match x {
-            AbstractUint64Tensor::Host(v) => v,
-            AbstractUint64Tensor::Replicated(v) => plc.reveal(sess, &v),
-        };
-        let z = plc.cast(sess, &x);
-        Ok(Z64Tensor::Host(z))
-    }
-
-    pub(crate) fn ring64_uint64_host_kernel<
-        S: Session,
-        HostUint64T,
-        RepUintT,
-        HostRing64T,
-        RepRingT,
-    >(
-        sess: &S,
-        plc: &HostPlacement,
-        x: Z64Tensor<HostRing64T, RepRingT>,
-    ) -> Result<AbstractUint64Tensor<HostUint64T, RepUintT>>
-    where
-        HostPlacement: PlacementReveal<S, RepRingT, HostRing64T>,
-        HostPlacement: PlacementCast<S, HostRing64T, HostUint64T>,
-    {
-        let x = match x {
-            Z64Tensor::Host(v) => v,
-            Z64Tensor::Replicated(v) => plc.reveal(sess, &v),
-        };
-        let z = plc.cast(sess, &x);
-        Ok(AbstractUint64Tensor::Host(z))
     }
 }

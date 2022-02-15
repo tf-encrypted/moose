@@ -8,13 +8,13 @@ modelled_kernel! {
     PlacementCast::cast, CastOp,
     [
         (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::kernel),
-        (HostPlacement, (Uint64Tensor) -> Ring64Tensor => [concrete] Self::uint64_ring64_host_kernel),
-        (HostPlacement, (Ring64Tensor) -> Uint64Tensor => [concrete] Self::ring64_uint64_host_kernel),
         (HostPlacement, (HostUint64Tensor) -> HostRing64Tensor => [runtime] Self::hu64_hr64_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostUint64Tensor => [runtime] Self::hr64_hu64_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::no_op_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing64Tensor => [runtime] Self::ring_host_kernel),
         (Mirrored3Placement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::mir_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedUint64Tensor => [hybrid] Self::repr64_repu64_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
     ]
 }
 
