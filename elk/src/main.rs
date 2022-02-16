@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use moose::compilation::compile;
 use moose::textual::verbose_parse_computation;
 use moose::textual::ToTextual;
+use std::collections::HashMap;
 use std::fs::{read_to_string, write};
 use std::path::PathBuf;
 
@@ -72,7 +73,6 @@ fn main() -> anyhow::Result<()> {
             let comp = verbose_parse_computation(&source)?;
             match flavour.as_str() {
                 "op_hist" => {
-                    use std::collections::HashMap;
                     let hist: HashMap<String, usize> = comp
                         .operations
                         .iter()
@@ -87,10 +87,21 @@ fn main() -> anyhow::Result<()> {
                             *map.entry(name).or_insert(0) += 1;
                             map
                         });
-                    let mut sorted_hist: Vec<(&String, &usize)> = hist.iter().collect();
-                    sorted_hist.sort_by(|a, b| b.1.cmp(a.1));
-                    for op in sorted_hist {
-                        println!("{:8} {}", op.1, op.0);
+                    print_sorted(&hist);
+                }
+                "op_count" => {
+                    if *by_placement {
+                        let hist: HashMap<String, usize> = comp
+                            .operations
+                            .iter()
+                            .map(|op| op.placement.to_textual())
+                            .fold(HashMap::new(), |mut map, name| {
+                                *map.entry(name).or_insert(0) += 1;
+                                map
+                            });
+                        print_sorted(&hist);
+                    } else {
+                        println!("{}", comp.operations.len())
                     }
                 }
                 _ => return Err(anyhow::anyhow!("Unexpected stats flavour {}", flavour)),
@@ -98,4 +109,12 @@ fn main() -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+fn print_sorted(map: &HashMap<String, usize>) {
+    let mut sorted_hist: Vec<(&String, &usize)> = map.iter().collect();
+    sorted_hist.sort_by(|a, b| b.1.cmp(a.1));
+    for op in sorted_hist {
+        println!("{:8} {}", op.1, op.0);
+    }
 }
