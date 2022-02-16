@@ -32,9 +32,8 @@ def _convert_onnx_to_moose(compilation_step, onnx_proto, computation_path):
     concrete_comp = edsl.trace(aes_comp)
     comp_bin = utils.serialize_computation(concrete_comp)
     rust_compiled = elk_compiler.compile_computation(comp_bin, compilation_passes,)
-    comp_b64 = base64.b64encode(rust_compiled.to_bytes())
     with open(computation_path, "wb") as f:
-        f.write(comp_b64)
+        f.write(rust_compiled.to_bytes())
 
 
 if __name__ == "__main__":
