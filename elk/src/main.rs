@@ -26,9 +26,9 @@ enum Commands {
         /// Output file, stdout if not present
         output: Option<PathBuf>,
 
-        /// List of passes to apply. In order. Default to run all the passes
+        /// Comma-separated list of passes to apply. In order. Default to run all the passes
         #[clap(short, long, required = true)]
-        passes: Option<Vec<String>>,
+        passes: Option<String>,
     },
     /// Prints stats about a computation without transforming it
     Stats {
@@ -42,6 +42,7 @@ enum Commands {
 
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
+    println!("{:?}", args);
     match &args.command {
         Commands::Compile {
             input,
@@ -50,7 +51,10 @@ fn main() -> anyhow::Result<()> {
         } => {
             let source = read_to_string(input)?;
             let comp = verbose_parse_computation(&source)?;
-            let comp = compile(&comp, passes.clone())?;
+            let passes: Option<Vec<String>> = passes
+                .clone()
+                .map(|p| p.split(',').map(|s| s.to_string()).collect());
+            let comp = compile(&comp, passes)?;
             match output {
                 Some(path) => write(path, comp.to_textual())?,
                 None => println!("{}", comp.to_textual()),
