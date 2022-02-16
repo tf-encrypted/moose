@@ -5,7 +5,7 @@ use notify::{DebouncedEvent, Watcher};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::path::PathBuf;
+use std::path::Path;
 
 pub struct FilesystemChoreography {
     own_identity: Identity,
@@ -73,7 +73,7 @@ impl FilesystemChoreography {
 
     async fn launch_session_from_path(
         &self,
-        path: &PathBuf,
+        path: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if path.is_file() {
             match path.extension() {
@@ -117,7 +117,7 @@ impl FilesystemChoreography {
                         tokio::spawn(async move {
                             let value = output_value.await.unwrap();
                             tracing::info!(
-                                "Output '{}' from '{:?}': {:?}",
+                                "Output '{}' from '{:?}' ready: {:?}",
                                 output_name,
                                 filename,
                                 value
@@ -138,7 +138,7 @@ impl FilesystemChoreography {
 
     async fn abort_session_from_path(
         &self,
-        _path: &PathBuf,
+        _path: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // TODO
         Ok(())
