@@ -241,7 +241,7 @@ impl HostBitTensor {
     }
 
     fn expand_dims(self, mut axis: Vec<usize>) -> Self {
-        let plc = (&self.1).clone();
+        let plc = self.1.clone();
         axis.sort_by_key(|ax| Reverse(*ax));
         let newshape = self.shape().0.extend_singletons(axis);
         self.reshape(HostShape(newshape, plc))
@@ -425,7 +425,7 @@ impl<T> HostRingTensor<T> {
     }
 
     fn expand_dims(self, mut axis: Vec<usize>) -> Self {
-        let plc = (&self.1).clone();
+        let plc = self.1.clone();
         axis.sort_by_key(|ax| Reverse(*ax));
         let newshape = self.shape().0.extend_singletons(axis);
         self.reshape(HostShape(newshape, plc))
@@ -478,6 +478,7 @@ where
 }
 
 pub trait FromRaw<T, O> {
+    #![allow(clippy::wrong_self_convention)]
     fn from_raw(&self, raw: T) -> O;
 }
 
