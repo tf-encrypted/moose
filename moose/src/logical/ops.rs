@@ -1609,29 +1609,19 @@ impl TransposeOp {
         HostPlacement: PlacementTranspose<S, Float32T, Float32T>,
         HostPlacement: PlacementTranspose<S, Float64T, Float64T>,
     {
+        use AbstractTensor::*;
         match x {
-            AbstractTensor::Fixed64(_x) => {
-                unimplemented!()
-                // let z = plc.transpose(sess, &x);
-                // AbstractTensor::Fixed64(z)
-            }
-            AbstractTensor::Fixed128(_x) => {
-                unimplemented!()
-                // let z = plc.transpose(sess, &x);
-                // AbstractTensor::Fixed128(z)
-            }
-            AbstractTensor::Float32(x) => {
+            Float32(x) => {
                 let z = plc.transpose(sess, &x);
-                Ok(AbstractTensor::Float32(z))
+                Ok(Float32(z))
             }
-            AbstractTensor::Float64(x) => {
+            Float64(x) => {
                 let z = plc.transpose(sess, &x);
-                Ok(AbstractTensor::Float64(z))
+                Ok(Float64(z))
             }
-            x => Err(Error::UnimplementedOperator(format!(
-                "Transpose op (host) is unsupported for {:?}.",
-                x.ty_desc()
-            ))),
+            Fixed64(_) | Fixed128(_) | Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
+                format!("Transpose op (host) is unsupported for {:?}.", x.ty_desc()),
+            )),
         }
     }
 }
@@ -2282,7 +2272,15 @@ impl SoftmaxOp {
 }
 
 impl ArgmaxOp {
-    pub fn logical_rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>(
+    pub(crate) fn logical_rep_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: usize,
@@ -2310,7 +2308,7 @@ impl ArgmaxOp {
         }
     }
 
-    pub fn logical_host_kernel<
+    pub(crate) fn logical_host_kernel<
         S: Session,
         Fixed64T,
         Fixed128T,
