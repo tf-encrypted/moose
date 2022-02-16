@@ -32,11 +32,13 @@ impl FilesystemChoreography {
         }
     }
 
-    pub async fn listen(&self) -> Result<(), Box<dyn std::error::Error>> {
-        for entry in std::fs::read_dir(&self.sessions_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            self.launch_session_from_path(&path).await?;
+    pub async fn listen(&self, ignore_existing: bool) -> Result<(), Box<dyn std::error::Error>> {
+        if !ignore_existing {
+            for entry in std::fs::read_dir(&self.sessions_dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                self.launch_session_from_path(&path).await?;
+            }
         }
 
         let (tx, rx) = std::sync::mpsc::channel();
@@ -44,7 +46,6 @@ impl FilesystemChoreography {
         watcher.watch(&self.sessions_dir, notify::RecursiveMode::Recursive)?;
 
         for event in rx {
-            tracing::debug!("Filesystem event: {:?}", event);
             match event {
                 DebouncedEvent::Create(path) => {
                     self.abort_session_from_path(&path).await?;
@@ -77,14 +78,13 @@ impl FilesystemChoreography {
         if path.is_file() {
             match path.extension() {
                 Some(ext) if ext == "toml" => {
+                    let filename = path.file_stem().unwrap().to_string_lossy().to_string();
+                    let session_id = SessionId::try_from(filename.as_str()).unwrap();
+
+                    tracing::info!("Launching session from {:?}", filename);
+
                     let config = std::fs::read_to_string(path)?;
                     let session_config: SessionConfig = toml::from_str(&config)?;
-
-                    let session_id = {
-                        let raw_session_id =
-                            path.file_stem().unwrap().to_string_lossy().to_string();
-                        SessionId::try_from(raw_session_id.as_str()).unwrap()
-                    };
 
                     let computation = {
                         let comp_path = &session_config.computation.path;
@@ -113,9 +113,15 @@ impl FilesystemChoreography {
                         .await?;
 
                     for (output_name, output_value) in outputs {
+                        let filename = filename.clone();
                         tokio::spawn(async move {
                             let value = output_value.await.unwrap();
-                            tracing::info!("Output '{}': {:?}", output_name, value);
+                            tracing::info!(
+                                "Output '{}' from '{:?}': {:?}",
+                                output_name,
+                                filename,
+                                value
+                            );
                         });
                     }
                 }

@@ -20,6 +20,9 @@ struct Opt {
 
     #[structopt(env, long, default_value = "./examples")]
     sessions: String,
+
+    #[structopt(env, long)]
+    ignore_existing: bool,
 }
 
 #[tokio::main]
@@ -29,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let manager = GrpcNetworkingManager::default();
 
-    let server_task = {
+    let _server_task = {
         // TODO(Morten) construct `addr` in a nicer way
         let addr = format!("0.0.0.0:{}", opt.port).parse()?;
         let manager = manager.clone();
@@ -40,10 +43,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await;
         })
     };
-    tracing::debug!("gRPC server launched");
 
     // TODO(Morten) we should not have to do this; add retry logic on client side instead
-    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
 
     let _res = FilesystemChoreography::new(
         Identity::from(opt.identity),
@@ -51,11 +53,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(move || manager.new_session()),
         Box::new(|| Arc::new(LocalAsyncStorage::default())),
     )
-    .listen()
-    .await;
-    tracing::debug!("Choreography launched");
-
-    server_task.await?;
+    .listen(opt.ignore_existing)
+    .await?;
 
     Ok(())
 }
