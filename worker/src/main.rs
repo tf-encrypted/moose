@@ -6,8 +6,7 @@ mod execution;
 mod networking;
 
 use crate::choreography::filesystem::FilesystemChoreography;
-use crate::gen::networking_server::{Networking, NetworkingServer};
-use crate::networking::grpc::{Channels, GrpcNetworking, NetworkingImpl, SessionStores};
+use crate::networking::grpc::GrpcNetworkingManager;
 use moose::prelude::*;
 use moose::storage::LocalAsyncStorage;
 use std::sync::Arc;
@@ -24,27 +23,6 @@ struct Opt {
 
     #[structopt(env, long, default_value = "./examples")]
     sessions: String,
-}
-
-#[derive(Default, Clone)]
-struct GrpcNetworkingManager {
-    stores: Arc<SessionStores>,
-    channels: Arc<Channels>,
-}
-
-impl GrpcNetworkingManager {
-    pub fn new_server(&self) -> NetworkingServer<impl Networking> {
-        NetworkingServer::new(NetworkingImpl {
-            stores: Arc::clone(&self.stores),
-        })
-    }
-
-    pub fn new_session(&self) -> Arc<GrpcNetworking> {
-        Arc::new(GrpcNetworking {
-            stores: Arc::clone(&self.stores),
-            channels: Arc::clone(&self.channels),
-        })
-    }
 }
 
 #[tokio::main]

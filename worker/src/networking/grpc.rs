@@ -1,5 +1,6 @@
 use crate::gen::networking_client::NetworkingClient;
 use crate::gen::networking_server::Networking;
+use crate::gen::networking_server::NetworkingServer;
 use crate::gen::{SendValueRequest, SendValueResponse};
 use async_cell::sync::AsyncCell;
 use async_trait::async_trait;
@@ -10,9 +11,30 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tonic::transport::{Channel, Uri};
 
-pub struct GrpcNetworking {
-    pub stores: Arc<SessionStores>,
-    pub channels: Arc<Channels>,
+#[derive(Default, Clone)]
+pub struct GrpcNetworkingManager {
+    stores: Arc<SessionStores>,
+    channels: Arc<Channels>,
+}
+
+impl GrpcNetworkingManager {
+    pub fn new_server(&self) -> NetworkingServer<impl Networking> {
+        NetworkingServer::new(NetworkingImpl {
+            stores: Arc::clone(&self.stores),
+        })
+    }
+
+    pub fn new_session(&self) -> Arc<impl AsyncNetworking> {
+        Arc::new(GrpcNetworking {
+            stores: Arc::clone(&self.stores),
+            channels: Arc::clone(&self.channels),
+        })
+    }
+}
+
+struct GrpcNetworking {
+    stores: Arc<SessionStores>,
+    channels: Arc<Channels>,
 }
 
 impl GrpcNetworking {
@@ -21,6 +43,7 @@ impl GrpcNetworking {
             .channels
             .entry(receiver.clone())
             .or_try_insert_with(|| {
+                tracing::debug!("Creating channel to '{}'", receiver);
                 let endpoint: Uri = format!("http://{}", receiver).parse().map_err(|_e| {
                     moose::Error::Networking(format!(
                         "failed to parse identity as endpoint: {:?}",
@@ -32,13 +55,6 @@ impl GrpcNetworking {
             .clone(); // cloning channels is cheap per tonic documentation
         Ok(channel)
     }
-}
-
-#[derive(Serialize, Deserialize)]
-struct TaggedValue {
-    session_id: SessionId,
-    rendezvous_key: RendezvousKey,
-    value: Value,
 }
 
 #[async_trait]
@@ -83,11 +99,11 @@ impl AsyncNetworking for GrpcNetworking {
     }
 }
 
-pub type SessionStore = DashMap<RendezvousKey, Arc<AsyncCell<Value>>>;
+type SessionStore = DashMap<RendezvousKey, Arc<AsyncCell<Value>>>;
 
-pub type SessionStores = DashMap<SessionId, Arc<SessionStore>>;
+type SessionStores = DashMap<SessionId, Arc<SessionStore>>;
 
-pub type Channels = DashMap<Identity, Channel>;
+type Channels = DashMap<Identity, Channel>;
 
 #[derive(Default)]
 pub struct NetworkingImpl {
@@ -132,4 +148,11 @@ impl Networking for NetworkingImpl {
 
         Ok(tonic::Response::new(SendValueResponse::default()))
     }
+}
+
+#[derive(Serialize, Deserialize)]
+struct TaggedValue {
+    session_id: SessionId,
+    rendezvous_key: RendezvousKey,
+    value: Value,
 }
