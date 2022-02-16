@@ -1,7 +1,11 @@
-use crate::gen::networking_client::NetworkingClient;
-use crate::gen::networking_server::Networking;
-use crate::gen::networking_server::NetworkingServer;
-use crate::gen::{SendValueRequest, SendValueResponse};
+mod gen {
+    tonic::include_proto!("moose");
+}
+
+use self::gen::networking_client::NetworkingClient;
+use self::gen::networking_server::Networking;
+use self::gen::networking_server::NetworkingServer;
+use self::gen::{SendValueRequest, SendValueResponse};
 use async_cell::sync::AsyncCell;
 use async_trait::async_trait;
 use dashmap::DashMap;

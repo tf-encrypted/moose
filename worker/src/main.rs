@@ -1,6 +1,3 @@
-mod gen {
-    tonic::include_proto!("moose");
-}
 mod choreography;
 mod execution;
 mod networking;
