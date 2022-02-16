@@ -393,6 +393,7 @@ where
         .fold(zero_ring, |acc, x| plc.add(sess, &acc, &x))
 }
 
+#[cfg(feature = "sync_execute")]
 #[cfg(test)]
 mod tests {
     use super::*;

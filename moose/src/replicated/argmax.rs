@@ -88,6 +88,7 @@ impl RingFixedpointArgmaxOp {
     }
 }
 
+#[cfg(feature = "sync_execute")]
 #[cfg(test)]
 mod tests {
     use crate::host::FromRaw;
