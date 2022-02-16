@@ -8,11 +8,30 @@ use moose::networking::AsyncNetworking;
 use moose::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tonic::transport::Channel;
+use tonic::transport::{Channel, Uri};
 
 pub struct GrpcNetworking {
     pub stores: Arc<SessionStores>,
     pub channels: Arc<Channels>,
+}
+
+impl GrpcNetworking {
+    fn channel(&self, receiver: &Identity) -> moose::Result<Channel> {
+        let channel = self
+            .channels
+            .entry(receiver.clone())
+            .or_try_insert_with(|| {
+                let endpoint: Uri = format!("http://{}", receiver).parse().map_err(|_e| {
+                    moose::Error::Networking(format!(
+                        "failed to parse identity as endpoint: {:?}",
+                        receiver
+                    ))
+                })?;
+                Ok(Channel::builder(endpoint).connect_lazy())
+            })?
+            .clone(); // cloning channels is cheap per tonic documentation
+        Ok(channel)
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -42,13 +61,7 @@ impl AsyncNetworking for GrpcNetworking {
                 .map_err(|e| moose::Error::Networking(e.to_string()))?,
         };
 
-        let channel = self
-            .channels
-            .get(receiver)
-            .ok_or_else(|| {
-                moose::Error::Networking(format!("Channel for '{}' not found", receiver))
-            })?
-            .clone(); // cloning channels is cheap per tonic documentation
+        let channel = self.channel(receiver)?;
         let mut client = NetworkingClient::new(channel);
 
         let _response = client
