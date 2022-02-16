@@ -1283,6 +1283,8 @@ pub struct RingFixedpointDecodeOp {
 pub struct RingFixedpointArgmaxOp {
     pub sig: Signature,
     // axis can be optional (in which case we need to do an argmax over axis 0)
+    // TODO(Dragos) once we have shape inference we can make axis optional
+    // since we can automatically get the upmost index arg
     pub axis: usize,
     pub upmost_index: usize,
 }
@@ -1397,6 +1399,8 @@ pub struct SoftmaxOp {
 pub struct ArgmaxOp {
     pub sig: Signature,
     // axis can be optional (in which case we need to do an argmax over axis 0)
+    // TODO(Dragos) once we have shape inference we can make axis optional
+    // since we can automatically get the upmost index arg
     pub axis: usize,
     pub upmost_index: usize,
 }
