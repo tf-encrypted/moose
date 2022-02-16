@@ -79,7 +79,7 @@ fn main() -> anyhow::Result<()> {
                         println!("{}\t{}", op.1, op.0);
                     }
                 }
-                _ => Err(anyhow::anyhow!("Unexpected stats flavour {}", flavour))?,
+                _ => return Err(anyhow::anyhow!("Unexpected stats flavour {}", flavour)),
             }
         }
     }
