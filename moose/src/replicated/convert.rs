@@ -436,22 +436,6 @@ impl AdtToRepOp {
 }
 
 impl CastOp {
-    pub(crate) fn repr_repu64_kernel<S: Session, HostT, RepRingT>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        x: RepTensor<HostT>,
-    ) -> Result<RepUintTensor<RepRingT>>
-    where
-        RepTensor<HostT>: CanonicalType,
-        <RepTensor<HostT> as CanonicalType>::Type: KnownType<S>,
-        m!(c!(RepTensor<HostT>)): From<RepTensor<HostT>>,
-        ReplicatedPlacement: PlacementCast<S, m!(c!(RepTensor<HostT>)), RepRingT>,
-    {
-        Ok(RepUintTensor {
-            tensor: rep.cast(sess, &x.into()),
-        })
-    }
-
     pub(crate) fn rep_kernel<S: Session, HostT1, HostT2>(
         sess: &S,
         rep: &ReplicatedPlacement,

@@ -1888,15 +1888,6 @@ impl CastOp {
         Ok(x)
     }
 
-    pub(crate) fn hu64_hr64_kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        x: HostTensor<u64>,
-    ) -> Result<HostRing64Tensor> {
-        let wrapped = x.0.mapv(Wrapping);
-        Ok(HostRingTensor(wrapped, plc.clone()))
-    }
-
     pub(crate) fn hr64_hu64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1981,5 +1972,23 @@ impl RingFixedpointArgmaxOp {
             current_pattern_max.mapv(Wrapping),
             plc.clone(),
         ))
+    }
+}
+
+impl ArgmaxOp {
+    pub(crate) fn host_fixed_uint_kernel<S: Session, HostRingT, HostRingT2>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: HostFixedTensor<HostRingT>,
+    ) -> Result<m!(HostUint64Tensor)>
+    where
+        HostUint64Tensor: KnownType<S>,
+        HostPlacement: PlacementArgmax<S, HostRingT, HostRingT2>,
+        HostPlacement: PlacementCast<S, HostRingT2, m!(HostUint64Tensor)>,
+    {
+        let arg_out = plc.argmax(sess, axis, upmost_index, &x.tensor);
+        Ok(plc.cast(sess, &arg_out))
     }
 }

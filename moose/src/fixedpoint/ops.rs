@@ -1925,8 +1925,7 @@ impl ArgmaxOp {
         HostRing64Tensor: KnownType<S>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
-        HostPlacement: PlacementArgmax<S, HostFixedT, m!(HostRing64Tensor)>,
-        HostPlacement: PlacementCast<S, m!(HostRing64Tensor), HostUintT>,
+        HostPlacement: PlacementArgmax<S, HostFixedT, HostUintT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
@@ -1935,7 +1934,7 @@ impl ArgmaxOp {
         };
 
         let z = plc.argmax(sess, axis, upmost_index, &x);
-        Ok(AbstractUint64Tensor::Host(plc.cast(sess, &z)))
+        Ok(AbstractUint64Tensor::Host(z))
     }
 }
 
@@ -1980,22 +1979,6 @@ impl Log2Op {
 
         let z = plc.log2(sess, &x);
         Ok(FixedTensor::Replicated(z))
-    }
-}
-
-impl RingFixedpointArgmaxOp {
-    pub(crate) fn host_fixed_kernel<S: Session, HostRingT>(
-        sess: &S,
-        plc: &HostPlacement,
-        axis: usize,
-        upmost_index: usize,
-        x: HostFixedTensor<HostRingT>,
-    ) -> Result<m!(HostRing64Tensor)>
-    where
-        HostRing64Tensor: KnownType<S>,
-        HostPlacement: PlacementArgmax<S, HostRingT, m!(HostRing64Tensor)>,
-    {
-        Ok(plc.argmax(sess, axis, upmost_index, &x.tensor))
     }
 }
 
