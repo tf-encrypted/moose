@@ -37,6 +37,10 @@ enum Commands {
 
         /// Input file
         input: PathBuf,
+
+        /// Include placement in the category
+        #[clap(short, long)]
+        by_placement: bool,
     },
 }
 
@@ -59,7 +63,11 @@ fn main() -> anyhow::Result<()> {
                 None => println!("{}", comp.to_textual()),
             }
         }
-        Commands::Stats { flavour, input } => {
+        Commands::Stats {
+            flavour,
+            input,
+            by_placement,
+        } => {
             let source = read_to_string(input)?;
             let comp = verbose_parse_computation(&source)?;
             match flavour.as_str() {
@@ -68,15 +76,21 @@ fn main() -> anyhow::Result<()> {
                     let hist: HashMap<String, usize> = comp
                         .operations
                         .iter()
-                        .map(|op| op.kind.short_name())
+                        .map(|op| {
+                            if *by_placement {
+                                format!("{} {}", op.kind.short_name(), op.placement.to_textual())
+                            } else {
+                                op.kind.short_name().to_string()
+                            }
+                        })
                         .fold(HashMap::new(), |mut map, name| {
-                            *map.entry(name.to_string()).or_insert(0) += 1;
+                            *map.entry(name).or_insert(0) += 1;
                             map
                         });
                     let mut sorted_hist: Vec<(&String, &usize)> = hist.iter().collect();
                     sorted_hist.sort_by(|a, b| b.1.cmp(a.1));
                     for op in sorted_hist {
-                        println!("{}\t{}", op.1, op.0);
+                        println!("{:8} {}", op.1, op.0);
                     }
                 }
                 _ => return Err(anyhow::anyhow!("Unexpected stats flavour {}", flavour)),
