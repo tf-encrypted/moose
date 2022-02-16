@@ -88,8 +88,16 @@ impl FilesystemChoreography {
 
                     let computation = {
                         let comp_path = &session_config.computation.path;
-                        let comp_raw = std::fs::read_to_string(comp_path)?;
-                        moose::textual::verbose_parse_computation(&comp_raw)?
+                        match session_config.computation.format {
+                            Format::Binary => {
+                                let comp_raw = std::fs::read(comp_path)?;
+                                moose::computation::Computation::from_bytes(comp_raw)?
+                            }
+                            Format::Textual => {
+                                let comp_raw = std::fs::read_to_string(comp_path)?;
+                                moose::textual::verbose_parse_computation(&comp_raw)?
+                            }
+                        }
                     };
 
                     let role_assignments: HashMap<Role, Identity> = session_config
@@ -154,6 +162,14 @@ struct SessionConfig {
 #[derive(Debug, Deserialize)]
 struct ComputationConfig {
     path: String,
+    format: Format,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum Format {
+    Binary,
+    Textual,
 }
 
 #[derive(Debug, Deserialize)]

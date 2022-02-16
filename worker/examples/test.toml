@@ -1,5 +1,6 @@
 [computation]
 path = "./examples/test.moose"
+format = "textual"
 
 [[roles]]
 name = "alice"
