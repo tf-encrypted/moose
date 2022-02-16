@@ -82,13 +82,11 @@ class ArgmaxExample(parameterized.TestCase):
             arguments={"x_uri": "x_arg"},
         )
 
-        softmax_from_rep_runtime = runtime.read_value_from_storage("bob", "argmax_rep")
-        softmax_from_host_runtime = runtime.read_value_from_storage(
-            "bob", "argmax_host"
-        )
+        argmax_from_rep_runtime = runtime.read_value_from_storage("bob", "argmax_rep")
+        argmax_from_host_runtime = runtime.read_value_from_storage("bob", "argmax_host")
 
-        np.testing.assert_equal(softmax_from_rep_runtime, np.argmax(x_arg, axis=axis))
-        # np.testing.assert_equal(softmax_from_host_runtime, np.argmax(x_arg, axis=axis))
+        np.testing.assert_equal(argmax_from_rep_runtime, np.argmax(x_arg, axis=axis))
+        np.testing.assert_equal(argmax_from_host_runtime, np.argmax(x_arg, axis=axis))
 
 
 if __name__ == "__main__":
