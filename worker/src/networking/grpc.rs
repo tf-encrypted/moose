@@ -110,7 +110,7 @@ type SessionStores = DashMap<SessionId, Arc<SessionStore>>;
 type Channels = DashMap<Identity, Channel>;
 
 #[derive(Default)]
-pub struct NetworkingImpl {
+struct NetworkingImpl {
     pub stores: Arc<SessionStores>,
 }
 

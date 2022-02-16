@@ -2,11 +2,9 @@ use crate::choreography::{NetworkingStrategy, StorageStrategy};
 use crate::execution::ExecutionContext;
 use moose::prelude::*;
 use notify::{DebouncedEvent, Watcher};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-
-mod config;
-use self::config::*;
 
 pub struct FilesystemChoreography {
     own_identity: Identity,
@@ -108,4 +106,21 @@ impl FilesystemChoreography {
 
         Ok(())
     }
+}
+
+#[derive(Debug, Deserialize)]
+struct SessionConfig {
+    computation: ComputationConfig,
+    roles: Vec<RoleConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ComputationConfig {
+    path: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct RoleConfig {
+    name: String,
+    endpoint: String,
 }
