@@ -10,7 +10,7 @@ use std::path::PathBuf;
 pub struct FilesystemChoreography {
     own_identity: Identity,
     sessions_dir: String,
-    sessions: HashMap<SessionId, ExecutionContext>,
+    // sessions: HashMap<SessionId, ExecutionContext>,
     networking_strategy: NetworkingStrategy,
     storage_strategy: StorageStrategy,
 }
@@ -22,11 +22,11 @@ impl FilesystemChoreography {
         networking_strategy: NetworkingStrategy,
         storage_strategy: StorageStrategy,
     ) -> FilesystemChoreography {
-        let sessions = HashMap::new();
+        // let sessions = HashMap::new();
         FilesystemChoreography {
             own_identity,
             sessions_dir,
-            sessions,
+            // sessions,
             networking_strategy,
             storage_strategy,
         }
@@ -92,24 +92,32 @@ impl FilesystemChoreography {
                         moose::textual::verbose_parse_computation(&comp_raw)?
                     };
 
-                    let role_assignments = {
-                        let mut role_assignments = HashMap::new();
-                        for role_config in session_config.roles {
+                    let role_assignments: HashMap<Role, Identity> = session_config
+                        .roles
+                        .into_iter()
+                        .map(|role_config| {
                             let role = Role::from(&role_config.name);
                             let identity = Identity::from(&role_config.endpoint);
-
-                            role_assignments.insert(role, identity.clone());
-                        }
-                        role_assignments
-                    };
+                            (role, identity)
+                        })
+                        .collect();
 
                     let networking = (self.networking_strategy)();
                     let storage = (self.storage_strategy)();
+
                     let session =
                         ExecutionContext::new(self.own_identity.clone(), networking, storage);
-                    session
+
+                    let outputs = session
                         .execute_computation(session_id, &computation, role_assignments)
                         .await?;
+
+                    for (output_name, output_value) in outputs {
+                        tokio::spawn(async move {
+                            let value = output_value.await.unwrap();
+                            tracing::info!("Output '{}': {:?}", output_name, value);
+                        });
+                    }
                 }
                 Some(ext) if ext == "moose" => {
                     // ok to skip

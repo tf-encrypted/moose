@@ -10,6 +10,8 @@ pub struct ExecutionContext {
     storage: AsyncStorageImpl,
 }
 
+type Environment = HashMap<String, <AsyncSession as Session>::Value>;
+
 impl ExecutionContext {
     pub fn new(
         own_identity: Identity,
@@ -28,7 +30,7 @@ impl ExecutionContext {
         session_id: SessionId,
         computation: &Computation,
         role_assignments: HashMap<Role, Identity>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<Environment, Box<dyn std::error::Error>> {
         let session = AsyncSession::new(
             session_id,
             HashMap::new(),
@@ -37,8 +39,8 @@ impl ExecutionContext {
             Arc::clone(&self.storage),
         );
 
-        let mut env: HashMap<String, <AsyncSession as Session>::Value> = HashMap::default();
-        let mut outputs: HashMap<String, <AsyncSession as Session>::Value> = HashMap::default();
+        let mut env: Environment = HashMap::default();
+        let mut outputs: Environment = HashMap::default();
 
         for op in computation.operations.iter() {
             // TODO(Morten) move filtering logic to the session
@@ -75,16 +77,9 @@ impl ExecutionContext {
             }
         }
 
-        for (output_name, output_value) in outputs {
-            tokio::spawn(async move {
-                let value = output_value.await.unwrap();
-                tracing::info!("Output '{}': {:?}", output_name, value);
-            });
-        }
+        // let session_handle = AsyncSessionHandle::for_session(&session);
+        // session_handle.join_on_first_error().await?;
 
-        let session_handle = AsyncSessionHandle::for_session(&session);
-        session_handle.join_on_first_error().await?;
-
-        Ok(())
+        Ok(outputs)
     }
 }
