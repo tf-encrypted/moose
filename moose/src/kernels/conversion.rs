@@ -9,11 +9,11 @@ modelled_kernel! {
     [
         (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::kernel),
         (HostPlacement, (HostRing64Tensor) -> HostUint64Tensor => [runtime] Self::hr64_hu64_kernel),
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::no_op_kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing64Tensor => [runtime] Self::ring_host_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::no_op_reduction_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing64Tensor => [runtime] Self::ring_reduction_kernel),
         (Mirrored3Placement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::mir_kernel),
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_reduction_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_reduction_kernel),
     ]
 }
 

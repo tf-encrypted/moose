@@ -436,7 +436,7 @@ impl AdtToRepOp {
 }
 
 impl CastOp {
-    pub(crate) fn rep_kernel<S: Session, HostT1, HostT2>(
+    pub(crate) fn rep_reduction_kernel<S: Session, HostT1, HostT2>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: RepTensor<HostT1>,

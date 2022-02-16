@@ -1876,7 +1876,7 @@ impl MuxOp {
 }
 
 impl CastOp {
-    pub(crate) fn no_op_kernel<S: RuntimeSession, T>(
+    pub(crate) fn no_op_reduction_kernel<S: RuntimeSession, T>(
         sess: &S,
         plc: &HostPlacement,
         x: HostRingTensor<T>,
@@ -1897,7 +1897,7 @@ impl CastOp {
         Ok(HostTensor(unwrapped, plc.clone()))
     }
 
-    pub(crate) fn ring_host_kernel<S: RuntimeSession>(
+    pub(crate) fn ring_reduction_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing128Tensor,
