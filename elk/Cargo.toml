@@ -7,5 +7,5 @@ authors = []
 
 [dependencies]
 anyhow = "~1.0"
+clap = { version = "~3.0", features = ["derive"] }
 moose = { path = "../moose" }
-structopt = "~0.3"
