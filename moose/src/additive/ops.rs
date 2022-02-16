@@ -294,6 +294,7 @@ mod tests {
     use crate::types::*;
     use ndarray::prelude::*;
 
+    #[cfg(feature = "sync_execute")]
     #[test]
     fn test_add() {
         let alice = HostPlacement::from("alice");

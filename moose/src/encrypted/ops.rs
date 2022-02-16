@@ -118,12 +118,13 @@ impl DecryptOp {
         Float32T,
         Float64T,
         BoolT,
+        Uint64T,
     >(
         sess: &S,
         plc: &HostPlacement,
         key: HostAesKeyT,
         ciphertext: AbstractAesTensor<Fixed128AesT>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
     where
         HostPlacement: PlacementDecrypt<S, HostAesKeyT, Fixed128AesT, Fixed128T>,
     {
@@ -187,12 +188,13 @@ impl DecryptOp {
         Float32T,
         Float64T,
         BoolT,
+        Uint64T,
     >(
         sess: &S,
         plc: &ReplicatedPlacement,
         key: ReplicatedAesKeyT,
         ciphertext: AbstractAesTensor<Fixed128AesT>,
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT>>
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
     where
         ReplicatedPlacement: PlacementDecrypt<S, ReplicatedAesKeyT, Fixed128AesT, Fixed128T>,
     {
@@ -391,6 +393,7 @@ where
         .fold(zero_ring, |acc, x| plc.add(sess, &acc, &x))
 }
 
+#[cfg(feature = "sync_execute")]
 #[cfg(test)]
 mod tests {
     use super::*;

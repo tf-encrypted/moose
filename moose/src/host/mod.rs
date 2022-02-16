@@ -541,6 +541,7 @@ impl FromRaw<RawSeed, Seed> for HostPlacement {
     }
 }
 
+#[cfg(feature = "sync_execute")]
 #[cfg(test)]
 mod tests {
     use super::*;

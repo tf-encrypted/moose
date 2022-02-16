@@ -219,6 +219,7 @@ where
     }
 }
 
+#[cfg(feature = "sync_execute")]
 #[cfg(test)]
 mod tests {
     use crate::fixedpoint::FixedTensor;

@@ -195,6 +195,17 @@ bool_ = _ConcreteDType(
     is_signed=False,
     is_boolean=True,
 )
+ring64 = _ConcreteDType(
+    "ring64",
+    "ring64",
+    numpy_dtype=None,
+    is_native=False,
+    is_fixedpoint=False,
+    is_integer=True,
+    is_float=False,
+    is_signed=False,
+    is_boolean=False,
+)
 
 
 def fixed(integ, frac):

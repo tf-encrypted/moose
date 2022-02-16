@@ -7,6 +7,7 @@ use crate::error::{Error, Result};
 use crate::execution::Session;
 use crate::floatingpoint::FloatTensor;
 use crate::host::*;
+use crate::integer::AbstractUint64Tensor;
 use crate::kernels::*;
 use crate::mirrored::*;
 use crate::replicated::*;
@@ -1876,6 +1877,67 @@ impl SoftmaxOp {
     }
 }
 
+impl ArgmaxOp {
+    pub(crate) fn fixed_rep_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostUintT,
+        RepUintT,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<AbstractUint64Tensor<HostUintT, RepUintT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementArgmax<S, RepFixedT, RepUintT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+
+        let z = plc.argmax(sess, axis, upmost_index, &x);
+        Ok(AbstractUint64Tensor::Replicated(z))
+    }
+
+    pub(crate) fn fixed_host_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostUintT,
+        RepUintT,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<AbstractUint64Tensor<HostUintT, RepUintT>>
+    where
+        HostRing64Tensor: KnownType<S>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementArgmax<S, HostFixedT, HostUintT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+
+        let z = plc.argmax(sess, axis, upmost_index, &x);
+        Ok(AbstractUint64Tensor::Host(z))
+    }
+}
+
 impl LogOp {
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
@@ -1920,6 +1982,7 @@ impl Log2Op {
     }
 }
 
+#[cfg(feature = "sync_execute")]
 #[cfg(test)]
 mod tests {
     use super::*;

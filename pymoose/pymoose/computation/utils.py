@@ -26,6 +26,7 @@ SUPPORTED_TYPES = [
     std_dialect.AddOperation,
     std_dialect.AesKeyType,
     std_dialect.AesTensorType,
+    std_dialect.ArgmaxOperation,
     std_dialect.AtLeast2DOperation,
     std_dialect.BitwiseOrOperation,
     std_dialect.BytesType,

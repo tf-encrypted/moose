@@ -218,6 +218,7 @@ pub fn byte_vec_to_bit_vec_be(bytes: &[u8]) -> Vec<u8> {
     bytes.iter().flat_map(byte_to_bits_be).collect::<Vec<_>>()
 }
 
+#[cfg(feature = "sync_execute")]
 #[cfg(test)]
 mod tests {
     use super::*;

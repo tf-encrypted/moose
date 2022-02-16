@@ -238,6 +238,15 @@ class SoftmaxExpression(Expression):
 
 
 @dataclass
+class ArgmaxExpression(Expression):
+    axis: Optional[Union[int, Tuple[int]]]
+    upmost_index: int
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class LogExpression(Expression):
     def __hash__(self):
         return id(self)
@@ -649,6 +658,18 @@ def softmax(x, axis, upmost_index, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return SoftmaxExpression(
+        placement=placement,
+        inputs=[x],
+        axis=axis,
+        upmost_index=upmost_index,
+        vtype=x.vtype,
+    )
+
+
+def argmax(x, axis, upmost_index, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return ArgmaxExpression(
         placement=placement,
         inputs=[x],
         axis=axis,
