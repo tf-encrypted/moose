@@ -32,17 +32,16 @@ enum Commands {
     },
     /// Prints stats about a computation without transforming it
     Stats {
-        /// Input file
-        input: PathBuf,
-
         /// The kind of the stats to produce
         flavour: String,
+
+        /// Input file
+        input: PathBuf,
     },
 }
 
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
-    println!("{:?}", args);
     match &args.command {
         Commands::Compile {
             input,
@@ -60,10 +59,28 @@ fn main() -> anyhow::Result<()> {
                 None => println!("{}", comp.to_textual()),
             }
         }
-        Commands::Stats { input, flavour } => {
-            println!("Computing {}", flavour);
+        Commands::Stats { flavour, input } => {
             let source = read_to_string(input)?;
-            let _comp = verbose_parse_computation(&source)?;
+            let comp = verbose_parse_computation(&source)?;
+            match flavour.as_str() {
+                "op_hist" => {
+                    use std::collections::HashMap;
+                    let hist: HashMap<String, usize> = comp
+                        .operations
+                        .iter()
+                        .map(|op| op.kind.short_name())
+                        .fold(HashMap::new(), |mut map, name| {
+                            *map.entry(name.to_string()).or_insert(0) += 1;
+                            map
+                        });
+                    let mut sorted_hist: Vec<(&String, &usize)> = hist.iter().collect();
+                    sorted_hist.sort_by(|a, b| b.1.cmp(a.1));
+                    for op in sorted_hist {
+                        println!("{}\t{}", op.1, op.0);
+                    }
+                }
+                _ => Err(anyhow::anyhow!("Unexpected stats flavour {}", flavour))?,
+            }
         }
     }
     Ok(())
