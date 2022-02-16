@@ -10,7 +10,6 @@ use std::path::Path;
 pub struct FilesystemChoreography {
     own_identity: Identity,
     sessions_dir: String,
-    // sessions: HashMap<SessionId, ExecutionContext>,
     networking_strategy: NetworkingStrategy,
     storage_strategy: StorageStrategy,
 }
@@ -22,11 +21,9 @@ impl FilesystemChoreography {
         networking_strategy: NetworkingStrategy,
         storage_strategy: StorageStrategy,
     ) -> FilesystemChoreography {
-        // let sessions = HashMap::new();
         FilesystemChoreography {
             own_identity,
             sessions_dir,
-            // sessions,
             networking_strategy,
             storage_strategy,
         }
