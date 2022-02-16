@@ -1107,6 +1107,7 @@ impl ToTextual for Operator {
             Diag(op) => op.to_textual(),
             ShlDim(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
+            RingFixedpointArgmax(op) => op.to_textual(),
             RingFixedpointEncode(op) => op.to_textual(),
             RingFixedpointDecode(op) => op.to_textual(),
             RingFixedpointMean(op) => op.to_textual(),
@@ -1150,6 +1151,7 @@ impl ToTextual for Operator {
             Demirror(op) => op.to_textual(),
             Mirror(op) => op.to_textual(),
             Maximum(op) => op.to_textual(),
+            Argmax(op) => op.to_textual(),
         }
     }
 }
@@ -1390,6 +1392,7 @@ impl ToTextual for Value {
             | Value::BooleanTensor(_)
             | Value::Float32Tensor(_)
             | Value::Float64Tensor(_)
+            | Value::Uint64Tensor(_)
             | Value::ReplicatedShape(_)
             | Value::ReplicatedBitTensor(_)
             | Value::ReplicatedBitArray64(_)
@@ -1399,6 +1402,7 @@ impl ToTextual for Value {
             | Value::ReplicatedRing128Tensor(_)
             | Value::ReplicatedFixed64Tensor(_)
             | Value::ReplicatedFixed128Tensor(_)
+            | Value::ReplicatedUint64Tensor(_)
             | Value::Mirrored3Ring64Tensor(_)
             | Value::Mirrored3Ring128Tensor(_)
             | Value::Mirrored3BitTensor(_)

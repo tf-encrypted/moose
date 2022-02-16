@@ -270,6 +270,12 @@ class SoftmaxOperation(StandardOperation):
 
 
 @dataclass
+class ArgmaxOperation(StandardOperation):
+    axis: Optional[Tuple[int]]
+    upmost_index: int
+
+
+@dataclass
 class SqrtOperation(StandardOperation):
     pass
 

@@ -10,6 +10,7 @@ from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import AbsOperation
 from pymoose.computation.standard import AddNOperation
 from pymoose.computation.standard import AddOperation
+from pymoose.computation.standard import ArgmaxOperation
 from pymoose.computation.standard import AtLeast2DOperation
 from pymoose.computation.standard import BitwiseOrOperation
 from pymoose.computation.standard import CastOperation
@@ -48,6 +49,7 @@ from pymoose.computation.standard import UnitType
 from pymoose.computation.standard import UnknownType
 from pymoose.edsl.base import AbsExpression
 from pymoose.edsl.base import AddNExpression
+from pymoose.edsl.base import ArgmaxExpression
 from pymoose.edsl.base import ArgumentExpression
 from pymoose.edsl.base import AtLeast2DExpression
 from pymoose.edsl.base import BinaryOpExpression
@@ -498,13 +500,32 @@ class AstTracer:
         return self.computation.add_operation(
             SoftmaxOperation(
                 placement_name=placement.name,
-                name=self.get_fresh_name("sigmoid"),
+                name=self.get_fresh_name("softmax"),
                 axis=softmax_expression.axis,
                 upmost_index=softmax_expression.upmost_index,
                 inputs={"x": x_operation.name},
                 signature=OpSignature(
                     input_types={"x": x_operation.return_type},
                     return_type=softmax_expression.vtype,
+                ),
+            )
+        )
+
+    def visit_ArgmaxExpression(self, argmax_expression):
+        assert isinstance(argmax_expression, ArgmaxExpression)
+        (x_expression,) = argmax_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(argmax_expression.placement)
+        return self.computation.add_operation(
+            ArgmaxOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("argmax"),
+                axis=argmax_expression.axis,
+                upmost_index=argmax_expression.upmost_index,
+                inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=argmax_expression.vtype,
                 ),
             )
         )
