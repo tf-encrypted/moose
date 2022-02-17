@@ -5,5 +5,5 @@ members = [
   "modules",
   "pymoose",
   "elk",
-  "worker",
+  "reindeer",
 ]
