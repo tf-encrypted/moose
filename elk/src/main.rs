@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use moose::compilation::compile;
-use moose::textual::verbose_parse_computation;
+use moose::textual::parallel_parse_computation;
 use moose::textual::ToTextual;
 use std::collections::HashMap;
 use std::fs::{read_to_string, write};
@@ -54,7 +54,7 @@ fn main() -> anyhow::Result<()> {
             passes,
         } => {
             let source = read_to_string(input)?;
-            let comp = verbose_parse_computation(&source)?;
+            let comp = parallel_parse_computation(&source, 12)?;
             let passes: Option<Vec<String>> = passes
                 .clone()
                 .map(|p| p.split(',').map(|s| s.to_string()).collect());
@@ -70,7 +70,7 @@ fn main() -> anyhow::Result<()> {
             by_placement,
         } => {
             let source = read_to_string(input)?;
-            let comp = verbose_parse_computation(&source)?;
+            let comp = parallel_parse_computation(&source, 12)?;
             match flavour.as_str() {
                 "op_hist" => {
                     let hist: HashMap<String, usize> = comp
