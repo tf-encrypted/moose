@@ -28,7 +28,7 @@ enum Commands {
         output: Option<PathBuf>,
 
         /// Comma-separated list of passes to apply. In order. Default to run all the passes
-        #[clap(short, long, required = true)]
+        #[clap(short, long)]
         passes: Option<String>,
     },
     /// Prints stats about a computation without transforming it
