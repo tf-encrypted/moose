@@ -229,6 +229,31 @@ fn parse_placement<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
                 ),
             )),
         ),
+        preceded(
+            tag("@Mirrored3"),
+            cut(context(
+                "Expecting host names triplet as in @Mirrored3(alice, bob, charlie)",
+                map(
+                    delimited(
+                        ws(tag("(")),
+                        verify(
+                            separated_list0(tag(","), ws(alphanumeric1)),
+                            |v: &Vec<&str>| v.len() == 3,
+                        ),
+                        ws(tag(")")),
+                    ),
+                    |names| {
+                        Placement::Mirrored3(Mirrored3Placement {
+                            owners: [
+                                Role::from(names[0]),
+                                Role::from(names[1]),
+                                Role::from(names[2]),
+                            ],
+                        })
+                    },
+                ),
+            )),
+        ),
     ))(input)
 }
 
