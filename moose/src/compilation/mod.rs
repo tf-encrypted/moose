@@ -1,18 +1,18 @@
 use self::deprecated_logical::deprecated_logical_lowering;
+use crate::compilation::lowering::lowering;
 use crate::compilation::networking::NetworkingPass;
 use crate::compilation::print::print_graph;
 use crate::compilation::pruning::prune_graph;
-use crate::compilation::replicated_lowering::replicated_lowering;
 use crate::compilation::typing::update_types_one_hop;
 use crate::computation::Computation;
 use crate::textual::ToTextual;
 use std::convert::TryFrom;
 
 pub mod deprecated_logical;
+pub mod lowering;
 pub mod networking;
 pub mod print;
 pub mod pruning;
-pub mod replicated_lowering;
 pub mod typing;
 
 #[derive(Clone)]
@@ -20,7 +20,7 @@ pub enum Pass {
     Networking,
     Print,
     Prune,
-    Symbolic,
+    Lowering,
     Toposort,
     Typing,
     Dump,
@@ -35,7 +35,7 @@ impl TryFrom<&str> for Pass {
             "networking" => Ok(Pass::Networking),
             "print" => Ok(Pass::Print),
             "prune" => Ok(Pass::Prune),
-            "full" => Ok(Pass::Symbolic),
+            "lowering" => Ok(Pass::Lowering),
             "toposort" => Ok(Pass::Toposort),
             "typing" => Ok(Pass::Typing),
             "dump" => Ok(Pass::Dump),
@@ -61,7 +61,7 @@ impl TryFrom<&Pass> for Pass {
 #[deprecated]
 pub const DEFAULT_PASSES: [Pass; 5] = [
     Pass::Typing,
-    Pass::Symbolic,
+    Pass::Lowering,
     Pass::Prune,
     Pass::Networking,
     Pass::Toposort,
@@ -105,7 +105,7 @@ fn do_pass(pass: &Pass, comp: &Computation) -> anyhow::Result<Option<Computation
         Pass::Networking => NetworkingPass::pass(comp),
         Pass::Print => print_graph(comp),
         Pass::Prune => prune_graph(comp),
-        Pass::Symbolic => replicated_lowering(comp),
+        Pass::Lowering => lowering(comp),
         Pass::Typing => update_types_one_hop(comp),
         Pass::DeprecatedLogical => deprecated_logical_lowering(comp),
         Pass::Dump => {
