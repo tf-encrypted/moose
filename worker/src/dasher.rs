@@ -43,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Placement::Host(plc) => vec![plc.owner.clone()],
                 Placement::Replicated(plc) => plc.owners.to_vec(),
                 Placement::Mirrored3(plc) => plc.owners.to_vec(),
-                _ => unimplemented!(),
+                Placement::Additive(plc) => plc.owners.to_vec(),
             })
             .collect();
 
