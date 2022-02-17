@@ -1,11 +1,7 @@
-mod choreography;
-mod execution;
-mod networking;
-
-use crate::choreography::filesystem::FilesystemChoreography;
-use crate::networking::grpc::GrpcNetworkingManager;
 use moose::prelude::*;
 use moose::storage::LocalAsyncStorage;
+use moose_modules::choreography::filesystem::FilesystemChoreography;
+use moose_modules::networking::grpc::GrpcNetworkingManager;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tonic::transport::Server;
