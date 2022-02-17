@@ -825,7 +825,6 @@ macro_rules! operators {
                 }
             }
 
-            #[cfg(feature = "compile")]
             pub fn short_name(&self) -> &str {
                 match self {
                     $(Operator::$t(op) => op.short_name(),)+
