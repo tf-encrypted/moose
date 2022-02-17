@@ -14,8 +14,6 @@ class ReplicatedExample(parameterized.TestCase):
     def _setup_int64_comp(self, x_array):
         alice = edsl.host_placement(name="alice")
         bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
         @edsl.computation
         def my_int_comp():

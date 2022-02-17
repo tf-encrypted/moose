@@ -27,3 +27,11 @@ cargo run --bin elk -- stats op_hist input.moose --by-placement
 cargo run --bin elk -- stats op_count input.moose
 cargo run --bin elk -- stats -b op_count input.moose
 ```
+=======
+## Installation
+
+Run the following to install as the `elk` CLI binary:
+
+```
+cargo install --path elk
+```

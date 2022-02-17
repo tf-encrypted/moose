@@ -1,3 +1,4 @@
+pub use crate::execution::Session;
 #[cfg(feature = "sync_execute")]
 pub use crate::execution::SyncSession;
 #[cfg(feature = "async_execute")]
