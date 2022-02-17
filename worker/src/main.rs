@@ -1,7 +1,7 @@
-use moose_choreography::choreography::filesystem::FilesystemChoreography;
-use moose_networking::networking::grpc::GrpcNetworkingManager;
 use moose::prelude::*;
 use moose::storage::LocalAsyncStorage;
+use moose_choreography::choreography::filesystem::FilesystemChoreography;
+use moose_networking::networking::grpc::GrpcNetworkingManager;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tonic::transport::Server;
