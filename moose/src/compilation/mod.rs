@@ -2,7 +2,7 @@ use self::deprecated_logical::deprecated_logical_lowering;
 use crate::compilation::networking::NetworkingPass;
 use crate::compilation::print::print_graph;
 use crate::compilation::pruning::prune_graph;
-use crate::compilation::replicated_lowering::replicated_lowering;
+use crate::compilation::replicated_lowering::lowering;
 use crate::compilation::typing::update_types_one_hop;
 use crate::computation::Computation;
 use crate::textual::ToTextual;
@@ -105,7 +105,7 @@ fn do_pass(pass: &Pass, comp: &Computation) -> anyhow::Result<Option<Computation
         Pass::Networking => NetworkingPass::pass(comp),
         Pass::Print => print_graph(comp),
         Pass::Prune => prune_graph(comp),
-        Pass::Lowering => replicated_lowering(comp),
+        Pass::Lowering => lowering(comp),
         Pass::Typing => update_types_one_hop(comp),
         Pass::DeprecatedLogical => deprecated_logical_lowering(comp),
         Pass::Dump => {
