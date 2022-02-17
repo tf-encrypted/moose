@@ -24,16 +24,16 @@ pub struct TcpStreamNetworking {
 
 fn u64_to_little_endian(n: u64, buf: &mut [u8; 8]) {
     let mut n_mut = n;
-    for i in 0..=7 {
-        buf[i] = (n_mut & 0xff) as u8;
+    for item in buf.iter_mut().take(8) {
+        *item = (n_mut & 0xff) as u8;
         n_mut >>= 8;
     }
 }
 
 fn little_endian_to_u64(buf: &[u8; 8]) -> u64 {
     let mut n: u64 = 0;
-    for i in 0..=7 {
-        n |= (buf[i] as u64) << (i * 8);
+    for (i, item) in buf.iter().enumerate().take(8) {
+        n |= (*item as u64) << (i * 8);
     }
     n
 }
