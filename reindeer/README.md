@@ -1,6 +1,6 @@
 # Reindeer
 
-Collection of workers intended for testing and benchmarking purposes. They also illustrates our LEGO approach of putting together custom workers from various implementations of networking, storage, and choreography.
+Collection of workers intended for testing and benchmarking purposes. They also illustrate our LEGO approach of putting together custom workers from various implementations of networking, storage, and choreography.
 
 **Warning: This code is not intended for production settings.**
 
