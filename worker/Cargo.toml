@@ -7,8 +7,7 @@ authors = []
 
 [dependencies]
 moose = { path = "../moose", default-features = false, features = ["async_execute"] }
-moose-choreography = { path = "../choreography" }
-moose-networking = { path = "../networking" }
+moose-modules = { path = "../modules" }
 structopt = "~0.3"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 tonic = "0.6"
