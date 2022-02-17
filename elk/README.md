@@ -10,7 +10,7 @@ Run the following to install as the `elk` CLI binary:
 cargo install --path elk
 ```
 
-### Compiling computations
+## Compiling computations
 
 To use Elk as a compiler run it like this:
 
@@ -20,7 +20,7 @@ cargo run --bin elk -- compile --passes=typing,networking,toposort input.moose o
 
 The list of passes to execute is optional.
 
-### Computation stats
+## Computation stats
 
 To use Elk to examine a computation use the stats command like this:
 
