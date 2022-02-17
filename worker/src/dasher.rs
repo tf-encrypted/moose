@@ -94,6 +94,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    drop(env);
+
     for (output_name, output_value) in outputs {
         tokio::spawn(async move {
             let value = output_value.await;
