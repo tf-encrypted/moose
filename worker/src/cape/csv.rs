@@ -16,7 +16,7 @@ pub async fn read_csv(
         .extension()
         .and_then(std::ffi::OsStr::to_str)
         .unwrap_or("");
-    let df = ctx.read_csv(filename, options)?;
+    let df = ctx.read_csv(filename, options).await?;
     let results = if !columns.is_empty() {
         let select_columns: Vec<&str> = columns.iter().map(String::as_str).collect();
         let df_filtered = df.select_columns(&select_columns).map_err(|_| {
