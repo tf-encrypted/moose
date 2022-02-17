@@ -1,18 +1,18 @@
 use self::deprecated_logical::deprecated_logical_lowering;
+use crate::compilation::lowering::lowering;
 use crate::compilation::networking::NetworkingPass;
 use crate::compilation::print::print_graph;
 use crate::compilation::pruning::prune_graph;
-use crate::compilation::replicated_lowering::lowering;
 use crate::compilation::typing::update_types_one_hop;
 use crate::computation::Computation;
 use crate::textual::ToTextual;
 use std::convert::TryFrom;
 
 pub mod deprecated_logical;
+pub mod lowering;
 pub mod networking;
 pub mod print;
 pub mod pruning;
-pub mod replicated_lowering;
 pub mod typing;
 
 #[derive(Clone)]
