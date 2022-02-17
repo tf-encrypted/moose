@@ -34,7 +34,7 @@ enum Commands {
     /// Prints stats about a computation without transforming it
     Stats {
         /// The kind of the stats to produce
-        flavour: String,
+        flavor: String,
 
         /// Input file
         input: PathBuf,
@@ -65,13 +65,13 @@ fn main() -> anyhow::Result<()> {
             }
         }
         Commands::Stats {
-            flavour,
+            flavor,
             input,
             by_placement,
         } => {
             let source = read_to_string(input)?;
             let comp = parallel_parse_computation(&source, 12)?;
-            match flavour.as_str() {
+            match flavor.as_str() {
                 "op_hist" => {
                     let hist: HashMap<String, usize> = comp
                         .operations
