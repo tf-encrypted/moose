@@ -4,9 +4,11 @@ use crate::execution::{RuntimeSession, Session};
 use crate::prng::AesRng;
 use crate::{Const, Ring, N128, N224, N64};
 use ndarray::LinalgScalar;
+use ndarray::Zip;
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack};
 use num_traits::{Float, FromPrimitive, Zero};
+use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::Wrapping;
 
@@ -128,7 +130,6 @@ impl InputOp {
         O: TryFrom<Value, Error = Error>,
         HostPlacement: PlacementPlace<S, O>,
     {
-        use std::convert::TryInto;
         let value = sess
             .find_argument(&arg_name)
             .ok_or_else(|| Error::MissingArgument(arg_name.clone()))?;
@@ -907,7 +908,7 @@ impl AddNOp {
 // TODO(Morten) inline
 impl<T: LinalgScalar> HostTensor<T> {
     fn expand_dims(self, mut axis: Vec<usize>) -> Self {
-        let plc = (&self.1).clone();
+        let plc = self.1.clone();
         axis.sort_by_key(|ax| Reverse(*ax));
         let newshape = self.shape().0.extend_singletons(axis);
         self.reshape(HostShape(newshape, plc))
@@ -1052,6 +1053,34 @@ impl InverseOp {
         Err(Error::UnimplementedOperator(format!(
             "Please enable 'blas' feature"
         )))
+    }
+}
+
+impl LogOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: num_traits::Float>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        let x = plc.place(sess, x);
+        Ok(HostTensor::<T>(x.0.map(|e| e.ln()), x.1))
+    }
+}
+
+impl Log2Op {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: num_traits::Float>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        let x = plc.place(sess, x);
+        Ok(HostTensor::<T>(x.0.map(|e| e.log2()), x.1))
     }
 }
 
@@ -1843,5 +1872,123 @@ impl MuxOp {
         let s_t: ArrayD<Wrapping<T>> = s.0.mapv(|item| Wrapping(item.into())); // How to convert to a new type!!!!
         let res = s_t * (x.0 - y.0.clone()) + y.0;
         Ok(HostRingTensor::<T>(res, plc.clone()))
+    }
+}
+
+impl CastOp {
+    pub(crate) fn no_op_reduction_kernel<S: RuntimeSession, T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostRingTensor<T>,
+    ) -> Result<HostRingTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
+    {
+        let x = plc.place(sess, x);
+        Ok(x)
+    }
+
+    pub(crate) fn hr64_hu64_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing64Tensor,
+    ) -> Result<HostTensor<u64>> {
+        let unwrapped = x.0.mapv(|item| item.0);
+        Ok(HostTensor(unwrapped, plc.clone()))
+    }
+
+    pub(crate) fn ring_reduction_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing128Tensor,
+    ) -> Result<HostRing64Tensor> {
+        let x_downshifted: ArrayD<Wrapping<u64>> = x.0.mapv(|el| {
+            let reduced = el.0 % ((1_u128) << 64);
+            Wrapping(reduced as u64)
+        });
+
+        Ok(HostRingTensor(x_downshifted, plc.clone()))
+    }
+}
+
+impl RingFixedpointArgmaxOp {
+    pub(crate) fn host_ring64_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        _upmost_index: usize,
+        x: HostRing64Tensor,
+    ) -> Result<HostRing64Tensor> {
+        let axis = Axis(axis);
+        let signed_tensor = x.0.mapv(|entry| entry.0 as i64);
+
+        let mut current_max = signed_tensor.index_axis(axis, 0).to_owned();
+        let mut current_pattern_max = current_max.mapv(|_x| 0_u64);
+
+        for (index, subview) in signed_tensor.axis_iter(axis).enumerate() {
+            let index = index as u64;
+            Zip::from(&mut current_max)
+                .and(&mut current_pattern_max)
+                .and(&subview)
+                .for_each(|max_entry, pattern_entry, &subview_entry| {
+                    if *max_entry < subview_entry {
+                        *max_entry = subview_entry;
+                        *pattern_entry = index;
+                    }
+                });
+        }
+        Ok(HostRingTensor(
+            current_pattern_max.mapv(Wrapping),
+            plc.clone(),
+        ))
+    }
+
+    pub(crate) fn host_ring128_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        _upmost_index: usize,
+        x: HostRing128Tensor,
+    ) -> Result<HostRing64Tensor> {
+        let axis = Axis(axis);
+        let signed_tensor = x.0.mapv(|entry| entry.0 as i128);
+
+        let mut current_max = signed_tensor.index_axis(axis, 0).to_owned();
+        let mut current_pattern_max = current_max.mapv(|_x| 0_u64);
+
+        for (index, subview) in signed_tensor.axis_iter(axis).enumerate() {
+            let index = index as u64;
+            Zip::from(&mut current_max)
+                .and(&mut current_pattern_max)
+                .and(&subview)
+                .for_each(|max_entry, pattern_entry, &subview_entry| {
+                    if *max_entry < subview_entry {
+                        *max_entry = subview_entry;
+                        *pattern_entry = index;
+                    }
+                });
+        }
+        Ok(HostRingTensor(
+            current_pattern_max.mapv(Wrapping),
+            plc.clone(),
+        ))
+    }
+}
+
+impl ArgmaxOp {
+    pub(crate) fn host_fixed_uint_kernel<S: Session, HostRingT, HostRingT2>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: HostFixedTensor<HostRingT>,
+    ) -> Result<m!(HostUint64Tensor)>
+    where
+        HostUint64Tensor: KnownType<S>,
+        HostPlacement: PlacementArgmax<S, HostRingT, HostRingT2>,
+        HostPlacement: PlacementCast<S, HostRingT2, m!(HostUint64Tensor)>,
+    {
+        let arg_out = plc.argmax(sess, axis, upmost_index, &x.tensor);
+        Ok(plc.cast(sess, &arg_out))
     }
 }

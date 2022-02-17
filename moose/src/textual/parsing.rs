@@ -229,6 +229,31 @@ fn parse_placement<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
                 ),
             )),
         ),
+        preceded(
+            tag("@Mirrored3"),
+            cut(context(
+                "Expecting host names triplet as in @Mirrored3(alice, bob, charlie)",
+                map(
+                    delimited(
+                        ws(tag("(")),
+                        verify(
+                            separated_list0(tag(","), ws(alphanumeric1)),
+                            |v: &Vec<&str>| v.len() == 3,
+                        ),
+                        ws(tag(")")),
+                    ),
+                    |names| {
+                        Placement::Mirrored3(Mirrored3Placement {
+                            owners: [
+                                Role::from(names[0]),
+                                Role::from(names[1]),
+                                Role::from(names[2]),
+                            ],
+                        })
+                    },
+                ),
+            )),
+        ),
     ))(input)
 }
 
@@ -1107,6 +1132,7 @@ impl ToTextual for Operator {
             Diag(op) => op.to_textual(),
             ShlDim(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
+            RingFixedpointArgmax(op) => op.to_textual(),
             RingFixedpointEncode(op) => op.to_textual(),
             RingFixedpointDecode(op) => op.to_textual(),
             RingFixedpointMean(op) => op.to_textual(),
@@ -1150,6 +1176,7 @@ impl ToTextual for Operator {
             Demirror(op) => op.to_textual(),
             Mirror(op) => op.to_textual(),
             Maximum(op) => op.to_textual(),
+            Argmax(op) => op.to_textual(),
         }
     }
 }
@@ -1390,6 +1417,7 @@ impl ToTextual for Value {
             | Value::BooleanTensor(_)
             | Value::Float32Tensor(_)
             | Value::Float64Tensor(_)
+            | Value::Uint64Tensor(_)
             | Value::ReplicatedShape(_)
             | Value::ReplicatedBitTensor(_)
             | Value::ReplicatedBitArray64(_)
@@ -1399,6 +1427,7 @@ impl ToTextual for Value {
             | Value::ReplicatedRing128Tensor(_)
             | Value::ReplicatedFixed64Tensor(_)
             | Value::ReplicatedFixed128Tensor(_)
+            | Value::ReplicatedUint64Tensor(_)
             | Value::Mirrored3Ring64Tensor(_)
             | Value::Mirrored3Ring128Tensor(_)
             | Value::Mirrored3BitTensor(_)

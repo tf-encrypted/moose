@@ -40,7 +40,9 @@ enum PyOperation {
     std_MeanOperation(PyMeanOperation),
     std_SigmoidOperation(PySigmoidOperation),
     std_LogOperation(PyLogOperation),
+    std_Log2Operation(PyLog2Operation),
     std_SoftmaxOperation(PySoftmaxOperation),
+    std_ArgmaxOperation(PyArgmaxOperation),
     std_SqrtOperation(PySqrtOperation),
     std_SumOperation(PySumOperation),
     std_DivOperation(PyDivOperation),
@@ -100,6 +102,7 @@ enum PyConstant {
 enum PyNdarray {
     float32 { items: Vec<f32>, shape: Vec<u8> },
     float64 { items: Vec<f64>, shape: Vec<u8> },
+    uint64 { items: Vec<u64>, shape: Vec<u8> },
 }
 
 type Inputs = HashMap<String, String>;
@@ -330,7 +333,25 @@ struct PyLogOperation {
 }
 
 #[derive(Deserialize, Debug)]
+struct PyLog2Operation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
 struct PySoftmaxOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+    axis: usize,
+    upmost_index: u32,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyArgmaxOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -578,6 +599,15 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
                 let plc = HostPlacement::from("TODO");
                 Ok(Constant::HostFloat64Tensor(plc.from_raw(tensor)))
             }
+            PyNdarray::uint64 {
+                ref items,
+                ref shape,
+            } => {
+                let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
+                let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
+                let plc = HostPlacement::from("TODO");
+                Ok(Constant::HostUint64Tensor(plc.from_raw(tensor)))
+            }
         },
     }
 }
@@ -591,10 +621,10 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
             PyDType::float32 => Ok(Ty::Tensor(TensorDType::Float32)),
             PyDType::float64 => Ok(Ty::Tensor(TensorDType::Float64)),
             PyDType::bool_ => Ok(Ty::Tensor(TensorDType::Bool)),
+            PyDType::uint64 => Ok(Ty::Tensor(TensorDType::Uint64)),
             // PyDType::int32 => Ok(Ty::HostInt32Tensor),
             // PyDType::int64 => Ok(Ty::HostInt64Tensor),
             // PyDType::uint32 => Ok(Ty::HostUint32Tensor),
-            // PyDType::uint64 => Ok(Ty::HostUint64Tensor),
             PyDType::fixed14_23 => Ok(Ty::Tensor(TensorDType::Fixed128 {
                 integral_precision: 14,
                 fractional_precision: 23,
@@ -854,8 +884,30 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    std_Log2Operation(op) => Ok(Operation {
+                        kind: Log2Op {
+                            sig: Signature::from_unary(&op.signature, "x")?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     std_SoftmaxOperation(op) => Ok(Operation {
                         kind: SoftmaxOp {
+                            sig: Signature::from_unary(&op.signature, "x")?,
+                            axis: op.axis,
+                            upmost_index: op.upmost_index as usize,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_ArgmaxOperation(op) => Ok(Operation {
+                        kind: ArgmaxOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                             axis: op.axis,
                             upmost_index: op.upmost_index as usize,

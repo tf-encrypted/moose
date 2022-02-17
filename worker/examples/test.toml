@@ -1,0 +1,15 @@
+[computation]
+path = "./examples/test.moose"
+format = "textual"
+
+[[roles]]
+name = "alice"
+endpoint = "localhost:50000"
+
+[[roles]]
+name = "bob"
+endpoint = "localhost:50001"
+
+[[roles]]
+name = "carole"
+endpoint = "localhost:50002"

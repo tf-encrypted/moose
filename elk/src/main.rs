@@ -1,37 +1,120 @@
+use clap::{Parser, Subcommand};
 use moose::compilation::compile;
 use moose::textual::verbose_parse_computation;
 use moose::textual::ToTextual;
+use std::collections::HashMap;
 use std::fs::{read_to_string, write};
 use std::path::PathBuf;
 
-use structopt::StructOpt;
+#[derive(Parser, Debug)]
+#[clap(name = "elk")]
+#[clap(
+    about = "A Moose compiler wrapper CLI",
+    long_about = "Takes an input file with the Computation's Textual representation and applies the specified passes to it."
+)]
+struct Cli {
+    #[clap(subcommand)]
+    command: Commands,
+}
 
-#[derive(Debug, StructOpt)]
-/// A Moose compiler wrapper CLI
-///
-/// Takes an input file with the Computation's Textual representation and applies the specified passes to it.
-struct Opt {
-    /// Input file
-    #[structopt(parse(from_os_str))]
-    input: PathBuf,
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Compiles the moose computation
+    Compile {
+        /// Input file
+        input: PathBuf,
 
-    /// Output file, stdout if not present
-    #[structopt(parse(from_os_str))]
-    output: Option<PathBuf>,
+        /// Output file, stdout if not present
+        output: Option<PathBuf>,
 
-    /// List of passes to apply. In order. Default to run all the passes
-    #[structopt(short, long)]
-    passes: Option<Vec<String>>,
+        /// Comma-separated list of passes to apply. In order. Default to run all the passes
+        #[clap(short, long)]
+        passes: Option<String>,
+    },
+    /// Prints stats about a computation without transforming it
+    Stats {
+        /// The kind of the stats to produce
+        flavour: String,
+
+        /// Input file
+        input: PathBuf,
+
+        /// Include placement in the category
+        #[clap(short, long)]
+        by_placement: bool,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
-    let opt = Opt::from_args();
-    let source = read_to_string(opt.input)?;
-    let comp = verbose_parse_computation(&source)?;
-    let comp = compile(&comp, opt.passes)?;
-    match opt.output {
-        Some(path) => write(path, comp.to_textual())?,
-        None => println!("{}", comp.to_textual()),
+    let args = Cli::parse();
+    match &args.command {
+        Commands::Compile {
+            input,
+            output,
+            passes,
+        } => {
+            let source = read_to_string(input)?;
+            let comp = verbose_parse_computation(&source)?;
+            let passes: Option<Vec<String>> = passes
+                .clone()
+                .map(|p| p.split(',').map(|s| s.to_string()).collect());
+            let comp = compile(&comp, passes)?;
+            match output {
+                Some(path) => write(path, comp.to_textual())?,
+                None => println!("{}", comp.to_textual()),
+            }
+        }
+        Commands::Stats {
+            flavour,
+            input,
+            by_placement,
+        } => {
+            let source = read_to_string(input)?;
+            let comp = verbose_parse_computation(&source)?;
+            match flavour.as_str() {
+                "op_hist" => {
+                    let hist: HashMap<String, usize> = comp
+                        .operations
+                        .iter()
+                        .map(|op| {
+                            if *by_placement {
+                                format!("{} {}", op.kind.short_name(), op.placement.to_textual())
+                            } else {
+                                op.kind.short_name().to_string()
+                            }
+                        })
+                        .fold(HashMap::new(), |mut map, name| {
+                            *map.entry(name).or_insert(0) += 1;
+                            map
+                        });
+                    print_sorted(&hist);
+                }
+                "op_count" => {
+                    if *by_placement {
+                        let hist: HashMap<String, usize> = comp
+                            .operations
+                            .iter()
+                            .map(|op| op.placement.to_textual())
+                            .fold(HashMap::new(), |mut map, name| {
+                                *map.entry(name).or_insert(0) += 1;
+                                map
+                            });
+                        print_sorted(&hist);
+                    } else {
+                        println!("{}", comp.operations.len())
+                    }
+                }
+                _ => return Err(anyhow::anyhow!("Unexpected stats flavour {}", flavour)),
+            }
+        }
     }
     Ok(())
+}
+
+fn print_sorted(map: &HashMap<String, usize>) {
+    let mut sorted_hist: Vec<(&String, &usize)> = map.iter().collect();
+    sorted_hist.sort_by(|a, b| b.1.cmp(a.1));
+    for op in sorted_hist {
+        println!("{:8} {}", op.1, op.0);
+    }
 }

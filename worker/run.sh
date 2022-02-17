@@ -7,7 +7,7 @@ if [[ -z $1 ]]; then
     exit 1
 fi
 
-cargo run --release -- \
+cargo run --bin vixen --release -- \
     --hosts "$(cat hosts.json)" \
     --data data.csv \
     --placement $1 \

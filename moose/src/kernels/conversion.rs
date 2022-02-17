@@ -4,14 +4,16 @@ pub trait PlacementCast<S: Session, T, O> {
     fn cast(&self, sess: &S, x: &T) -> O;
 }
 
-modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);
-modelled!(PlacementCast::cast, Mirrored3Placement, (Tensor) -> Tensor, CastOp);
-
-kernel! {
-    CastOp,
+modelled_kernel! {
+    PlacementCast::cast, CastOp,
     [
         (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostUint64Tensor => [runtime] Self::hr64_hu64_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::no_op_reduction_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing64Tensor => [runtime] Self::ring_reduction_kernel),
         (Mirrored3Placement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::mir_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_reduction_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_reduction_kernel),
     ]
 }
 
@@ -51,6 +53,7 @@ modelled_kernel! {
         (HostPlacement, (ReplicatedFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::host_fixed_kernel),
         (HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor => [hybrid] Self::host_ring_kernel),
         (HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor => [hybrid] Self::host_ring_kernel),
+        (HostPlacement, (ReplicatedUint64Tensor) -> HostUint64Tensor => [hybrid] Self::host_uint64_kernel),
         (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => [hybrid] Self::host_ring_kernel),
         (HostPlacement, (ReplicatedBitArray64) -> HostBitArray64 => [concrete] Self::host_bit_array_kernel),
         (HostPlacement, (ReplicatedBitArray128) -> HostBitArray128 => [concrete] Self::host_bit_array_kernel),

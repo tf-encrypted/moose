@@ -9,19 +9,27 @@ use crate::host::{
     AbstractHostAesKey, HostBitArray, HostFixedAesTensor, HostFixedTensor, HostRingTensor,
     HostTensor,
 };
+use crate::integer::AbstractUint64Tensor;
 use crate::logical::AbstractTensor;
 use crate::mirrored::{Mir3Tensor, MirFixedTensor};
-use crate::replicated::{RepAesKey, RepBitArray, RepFixedTensor, RepShape, RepTensor};
+use crate::replicated::{
+    RepAesKey, RepBitArray, RepFixedTensor, RepShape, RepTensor, RepUintTensor,
+};
 pub use crate::{
     host::{HostShape, HostString},
     host::{PrfKey, Seed},
 };
 use crate::{N128, N224, N256, N64};
-
 // Logical types
 
-pub type Tensor =
-    AbstractTensor<Fixed64Tensor, Fixed128Tensor, Float32Tensor, Float64Tensor, BooleanTensor>;
+pub type Tensor = AbstractTensor<
+    Fixed64Tensor,
+    Fixed128Tensor,
+    Float32Tensor,
+    Float64Tensor,
+    BooleanTensor,
+    Uint64Tensor,
+>;
 
 moose_type!(Fixed64Tensor = FixedTensor<HostFixed64Tensor, Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor>);
 moose_type!(HostFixed64Tensor = HostFixedTensor<HostRing64Tensor>);
@@ -45,6 +53,9 @@ moose_type!(BooleanTensor = BoolTensor<HostBitTensor, ReplicatedBitTensor>);
 pub use crate::host::HostBitTensor;
 moose_type!(ReplicatedBitTensor = RepTensor<HostBitTensor>);
 
+moose_type!(ReplicatedUint64Tensor = RepUintTensor<ReplicatedRing64Tensor>);
+moose_type!(HostUint64Tensor = [atomic] HostTensor<u64>);
+moose_type!(Uint64Tensor = AbstractUint64Tensor<HostUint64Tensor, ReplicatedUint64Tensor>);
 // Encrypted types
 
 moose_type!(AesTensor = AbstractAesTensor<Fixed128AesTensor>);
@@ -92,7 +103,6 @@ moose_type!(HostInt64Tensor = [atomic] HostTensor<i64>);
 moose_type!(HostUint8Tensor = [atomic] HostTensor<u8>);
 moose_type!(HostUint16Tensor = [atomic] HostTensor<u16>);
 moose_type!(HostUint32Tensor = [atomic] HostTensor<u32>);
-moose_type!(HostUint64Tensor = [atomic] HostTensor<u64>);
 pub type HostBitArray64 = HostBitArray<HostBitTensor, N64>;
 pub type HostBitArray128 = HostBitArray<HostBitTensor, N128>;
 pub type HostBitArray224 = HostBitArray<HostBitTensor, N224>;

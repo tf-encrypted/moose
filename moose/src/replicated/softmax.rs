@@ -122,6 +122,7 @@ impl SoftmaxOp {
     }
 }
 
+#[cfg(feature = "sync_execute")]
 #[cfg(test)]
 mod tests {
     use super::*;

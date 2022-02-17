@@ -88,7 +88,7 @@ impl RendezvousKey {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SessionId {
     logical: String,
     secure: [u8; TAG_BYTES],
@@ -556,6 +556,7 @@ values![
     Fixed128Tensor,
     Float32Tensor,
     Float64Tensor,
+    Uint64Tensor,
     ReplicatedRing64Tensor,
     ReplicatedRing128Tensor,
     ReplicatedBitTensor,
@@ -564,6 +565,7 @@ values![
     ReplicatedBitArray224,
     ReplicatedFixed64Tensor,
     ReplicatedFixed128Tensor,
+    ReplicatedUint64Tensor,
     ReplicatedAesKey,
     ReplicatedShape,
     Mirrored3Ring64Tensor,
@@ -823,8 +825,7 @@ macro_rules! operators {
                 }
             }
 
-            #[cfg(feature = "compile")]
-            pub(crate) fn short_name(&self) -> &str {
+            pub fn short_name(&self) -> &str {
                 match self {
                     $(Operator::$t(op) => op.short_name(),)+
                 }
@@ -883,6 +884,7 @@ operators![
     RingFixedpointMean,
     RingFixedpointEncode,
     RingFixedpointDecode,
+    RingFixedpointArgmax,
     Sample,
     SampleSeeded,
     RingInject,
@@ -922,6 +924,7 @@ operators![
     Mux,
     Maximum,
     Softmax,
+    Argmax,
     Log2,
     Log,
     // Mirrored Operators
@@ -1276,6 +1279,16 @@ pub struct RingFixedpointDecodeOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct RingFixedpointArgmaxOp {
+    pub sig: Signature,
+    // axis can be optional (in which case we need to do an argmax over axis 0)
+    // TODO(Dragos) once we have shape inference we can make axis optional
+    // since we can automatically get the upmost index arg
+    pub axis: usize,
+    pub upmost_index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct AdtToRepOp {
     pub sig: Signature,
 }
@@ -1382,17 +1395,27 @@ pub struct SoftmaxOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+pub struct ArgmaxOp {
+    pub sig: Signature,
+    // axis can be optional (in which case we need to do an argmax over axis 0)
+    // TODO(Dragos) once we have shape inference we can make axis optional
+    // since we can automatically get the upmost index arg
+    pub axis: usize,
+    pub upmost_index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct BroadcastOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct Log2Op {
+pub struct LogOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-pub struct LogOp {
+pub struct Log2Op {
     pub sig: Signature,
 }
 

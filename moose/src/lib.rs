@@ -5295,6 +5295,7 @@ pub mod execution;
 pub mod fixedpoint;
 pub mod floatingpoint;
 pub mod host;
+pub mod integer;
 pub mod kernels;
 pub mod logical;
 pub mod mirrored;

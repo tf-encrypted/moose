@@ -242,6 +242,7 @@ modelled!(PlacementSave::save, HostPlacement, (HostString, Tensor) -> Unit, Save
 modelled!(PlacementSave::save, HostPlacement, (HostString, Float32Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (HostString, Float64Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (HostString, BooleanTensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (HostString, Uint64Tensor) -> Unit, SaveOp);
 
 kernel! {
     SaveOp, [
@@ -269,5 +270,6 @@ kernel! {
         (HostPlacement, (HostString, Float32Tensor) -> Unit => [hybrid] Self::float_kernel),
         (HostPlacement, (HostString, Float64Tensor) -> Unit => [hybrid] Self::float_kernel),
         (HostPlacement, (HostString, BooleanTensor) -> Unit => [hybrid] Self::bool_kernel),
+        (HostPlacement, (HostString, Uint64Tensor) -> Unit => [hybrid] Self::u64_kernel),
     ]
 }

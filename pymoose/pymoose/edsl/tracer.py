@@ -10,6 +10,7 @@ from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import AbsOperation
 from pymoose.computation.standard import AddNOperation
 from pymoose.computation.standard import AddOperation
+from pymoose.computation.standard import ArgmaxOperation
 from pymoose.computation.standard import AtLeast2DOperation
 from pymoose.computation.standard import BitwiseOrOperation
 from pymoose.computation.standard import CastOperation
@@ -26,6 +27,7 @@ from pymoose.computation.standard import InputOperation
 from pymoose.computation.standard import InverseOperation
 from pymoose.computation.standard import LessOperation
 from pymoose.computation.standard import LoadOperation
+from pymoose.computation.standard import Log2Operation
 from pymoose.computation.standard import LogOperation
 from pymoose.computation.standard import MaximumOperation
 from pymoose.computation.standard import MeanOperation
@@ -47,6 +49,7 @@ from pymoose.computation.standard import UnitType
 from pymoose.computation.standard import UnknownType
 from pymoose.edsl.base import AbsExpression
 from pymoose.edsl.base import AddNExpression
+from pymoose.edsl.base import ArgmaxExpression
 from pymoose.edsl.base import ArgumentExpression
 from pymoose.edsl.base import AtLeast2DExpression
 from pymoose.edsl.base import BinaryOpExpression
@@ -62,6 +65,7 @@ from pymoose.edsl.base import IdentityExpression
 from pymoose.edsl.base import IndexAxisExpression
 from pymoose.edsl.base import InverseExpression
 from pymoose.edsl.base import LoadExpression
+from pymoose.edsl.base import Log2Expression
 from pymoose.edsl.base import LogExpression
 from pymoose.edsl.base import MaximumExpression
 from pymoose.edsl.base import MeanExpression
@@ -471,6 +475,23 @@ class AstTracer:
             )
         )
 
+    def visit_Log2Expression(self, log2_expression):
+        assert isinstance(log2_expression, Log2Expression)
+        (x_expression,) = log2_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(log2_expression.placement)
+        return self.computation.add_operation(
+            Log2Operation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("log2"),
+                inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=log2_expression.vtype,
+                ),
+            )
+        )
+
     def visit_SoftmaxExpression(self, softmax_expression):
         assert isinstance(softmax_expression, SoftmaxExpression)
         (x_expression,) = softmax_expression.inputs
@@ -479,13 +500,32 @@ class AstTracer:
         return self.computation.add_operation(
             SoftmaxOperation(
                 placement_name=placement.name,
-                name=self.get_fresh_name("sigmoid"),
+                name=self.get_fresh_name("softmax"),
                 axis=softmax_expression.axis,
                 upmost_index=softmax_expression.upmost_index,
                 inputs={"x": x_operation.name},
                 signature=OpSignature(
                     input_types={"x": x_operation.return_type},
                     return_type=softmax_expression.vtype,
+                ),
+            )
+        )
+
+    def visit_ArgmaxExpression(self, argmax_expression):
+        assert isinstance(argmax_expression, ArgmaxExpression)
+        (x_expression,) = argmax_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(argmax_expression.placement)
+        return self.computation.add_operation(
+            ArgmaxOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("argmax"),
+                axis=argmax_expression.axis,
+                upmost_index=argmax_expression.upmost_index,
+                inputs={"x": x_operation.name},
+                signature=OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=argmax_expression.vtype,
                 ),
             )
         )

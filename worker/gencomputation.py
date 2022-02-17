@@ -22,9 +22,6 @@ def bias_trick(X):
 
 @edsl.computation
 def linear_predict(
-    # TODO [Kyle]: Will need to set the type of the x input data to a new
-    # AES tensor type that Morten is working on. Will possibly have even
-    # more input parameters
     x: edsl.Argument(placement=player0, dtype=dtypes.float64)
 ):
     with player0:
@@ -50,14 +47,6 @@ def comp_to_disk(filename):
     comp_bin = utils.serialize_computation(concrete_comp)
     rust_compiled = elk_compiler.compile_computation(
         comp_bin,
-        [
-            "typing",
-            "full",
-            "prune",
-            "networking",
-            "typing",
-            "toposort",
-        ],
     )
     with open(filename, "wb") as f:
         f.write(rust_compiled.to_bytes())

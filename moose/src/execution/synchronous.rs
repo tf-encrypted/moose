@@ -167,6 +167,7 @@ impl Session for SyncSession {
             SampleSeeded(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Shl(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Shr(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            RingFixedpointArgmax(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingFixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -230,6 +231,7 @@ impl Session for SyncSession {
             GreaterThan(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Maximum(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Softmax(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Argmax(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Demirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Mirror(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
         };

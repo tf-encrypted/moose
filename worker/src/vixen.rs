@@ -7,6 +7,7 @@ use maplit::hashmap;
 use moose::computation::Role;
 use moose::execution::Identity;
 use moose::prelude::*;
+use std::convert::TryFrom;
 use std::fs::File;
 use std::sync::Arc;
 use std::{collections::HashMap, io::Read};
@@ -23,8 +24,6 @@ struct Opt {
     #[structopt(long)]
     session_id: String,
 
-    //#[structopt(long)]
-    //output: String,
     #[structopt(long)]
     placement: String,
 
