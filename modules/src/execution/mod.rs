@@ -39,41 +39,44 @@ impl ExecutionContext {
             Arc::clone(&self.storage),
         );
 
-        let mut env: Environment = HashMap::with_capacity(computation.operations.len());
         let mut outputs: Environment = HashMap::default();
 
-        for op in computation.operations.iter() {
-            // TODO(Morten) move filtering logic to the session
-            match &op.placement {
-                Placement::Host(host) => {
-                    let owning_identity = role_assignments.get(&host.owner).unwrap();
-                    if owning_identity == &self.own_identity {
-                        // ok
-                    } else {
+        {
+            let mut env: Environment = HashMap::with_capacity(computation.operations.len());
+
+            for op in computation.operations.iter() {
+                // TODO(Morten) move filtering logic to the session
+                match &op.placement {
+                    Placement::Host(host) => {
+                        let owning_identity = role_assignments.get(&host.owner).unwrap();
+                        if owning_identity == &self.own_identity {
+                            // ok
+                        } else {
+                            // skip operation
+                            continue;
+                        }
+                    }
+                    _ => {
                         // skip operation
                         continue;
                     }
+                };
+
+                let operands = op
+                    .inputs
+                    .iter()
+                    .map(|input_name| env.get(input_name).unwrap().clone())
+                    .collect();
+
+                let result = session.execute(op.kind.clone(), &op.placement, operands)?;
+
+                if matches!(op.kind, Operator::Output(_)) {
+                    // If it is an output, we need to make sure we capture it for returning.
+                    outputs.insert(op.name.clone(), result.clone());
+                } else {
+                    // Everything else should be available in the env for other ops to use.
+                    env.insert(op.name.clone(), result);
                 }
-                _ => {
-                    // skip operation
-                    continue;
-                }
-            };
-
-            let operands = op
-                .inputs
-                .iter()
-                .map(|input_name| env.get(input_name).unwrap().clone())
-                .collect();
-
-            let result = session.execute(op.kind.clone(), &op.placement, operands)?;
-
-            if matches!(op.kind, Operator::Output(_)) {
-                // If it is an output, we need to make sure we capture it for returning.
-                outputs.insert(op.name.clone(), result.clone());
-            } else {
-                // Everything else should be available in the env for other ops to use.
-                env.insert(op.name.clone(), result);
             }
         }
 
