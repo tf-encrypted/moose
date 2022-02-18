@@ -245,3 +245,20 @@ impl AsyncNetworking for TcpStreamNetworking {
         Ok(value)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_u64_to_little_endian() {
+        let x: u64 = 0xdeadbeefcafe1234;
+        let mut buf: [u8; 8] = [0; 8];
+        u64_to_little_endian(x, &mut buf);
+        println!("{:x?}", buf);
+
+        let test_int = little_endian_to_u64(&buf);
+        println!("{:x?}", test_int);
+        assert_eq!(test_int, x);
+    }
+}
