@@ -1,12 +1,12 @@
 pub mod cape;
 
-use crate::cape::csv::read_csv;
-use crate::cape::storage_stub::StubAsyncStorage;
 use maplit::hashmap;
 use moose::computation::Role;
 use moose::execution::Identity;
 use moose::prelude::*;
+use moose::storage::LocalAsyncStorage;
 use moose_modules::networking::tcpstream::TcpStreamNetworking;
+use moose_modules::storage::csv::read_csv;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::sync::Arc;
@@ -59,7 +59,7 @@ async fn main() {
         .await
         .unwrap();
 
-    let storage = Arc::new(StubAsyncStorage::default());
+    let storage = Arc::new(LocalAsyncStorage::default());
 
     let networking = TcpStreamNetworking::new(&opt.placement, hosts)
         .await
