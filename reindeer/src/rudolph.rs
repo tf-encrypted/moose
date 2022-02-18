@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _res = FilesystemChoreography::new(
         Identity::from(opt.identity),
         opt.sessions,
-        Box::new(move || manager.new_session()),
+        Box::new(move |session_id| manager.new_session(session_id)),
         Box::new(|| Arc::new(LocalAsyncStorage::default())),
     )
     .listen(opt.ignore_existing)

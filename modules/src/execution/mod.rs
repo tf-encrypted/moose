@@ -39,7 +39,7 @@ impl ExecutionContext {
             Arc::clone(&self.storage),
         );
 
-        let mut env: Environment = HashMap::default();
+        let mut env: Environment = HashMap::with_capacity(computation.operations.len());
         let mut outputs: Environment = HashMap::default();
 
         for op in computation.operations.iter() {
