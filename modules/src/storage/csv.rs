@@ -47,14 +47,3 @@ pub async fn read_csv(
     let tensor: HostFloat64Tensor = plc.from_raw(ndarr);
     Ok(Value::from(tensor))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_read_csv() {
-        let tensor = read_csv("data.csv", None, &[], "host").await.unwrap();
-        println!("tensor = {:?}", tensor);
-    }
-}

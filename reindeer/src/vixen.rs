@@ -1,5 +1,3 @@
-pub mod cape;
-
 use maplit::hashmap;
 use moose::computation::Role;
 use moose::execution::Identity;
