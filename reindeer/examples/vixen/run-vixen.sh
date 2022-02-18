@@ -8,9 +8,9 @@ if [[ -z $1 ]]; then
 fi
 
 cargo run --bin vixen --release -- \
-    --hosts "$(cat examples/hosts.json)" \
-    --data "examples/data.csv" \
+    --hosts "$(cat examples/vixen/hosts.json)" \
+    --data "examples/vixen/data.csv" \
     --placement $1 \
-    --comp "examples/comp.bytes" \
-    --role-assignment "$(cat examples/role_assignment.json)" \
+    --comp "examples/vixen/comp.bytes" \
+    --role-assignment "$(cat examples/vixen/role_assignment.json)" \
     --session-id 1234
