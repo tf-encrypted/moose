@@ -13,6 +13,9 @@ struct Opt {
     #[structopt(short, long)]
     binary: bool,
 
+    #[structopt(short, long)]
+    sync: bool,
+
     #[structopt(short, long, default_value = "dasher-session")]
     session_id: String,
 }
@@ -61,48 +64,90 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect()
     };
 
-    let networking = Arc::new(moose::networking::LocalAsyncNetworking::default());
+    if opt.sync {
+        let networking = Arc::new(moose::networking::LocalSyncNetworking::default());
 
-    let storage = Arc::new(moose::storage::LocalAsyncStorage::default());
+        let storage = Arc::new(moose::storage::LocalSyncStorage::default());
 
-    let session = AsyncSession::new(
-        session_id,
-        HashMap::new(),
-        role_assignments,
-        networking,
-        storage,
-    );
+        let session = SyncSession::new(
+            session_id,
+            HashMap::new(),
+            role_assignments,
+            networking,
+            storage,
+        );
 
-    let mut env: HashMap<String, <AsyncSession as Session>::Value> = HashMap::new();
-    let mut outputs: HashMap<String, <AsyncSession as Session>::Value> = HashMap::new();
+        let mut env: HashMap<String, <SyncSession as Session>::Value> = HashMap::new();
+        let mut outputs: HashMap<String, <SyncSession as Session>::Value> = HashMap::new();
 
-    for op in computation.operations.iter() {
-        let operands = op
-            .inputs
-            .iter()
-            .map(|input_name| env.get(input_name).unwrap().clone())
-            .collect();
+        for op in computation.operations.iter() {
+            let operands = op
+                .inputs
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
 
-        let result = session.execute(op.kind.clone(), &op.placement, operands)?;
+            let result = session.execute(op.kind.clone(), &op.placement, operands)?;
 
-        if matches!(op.kind, Operator::Output(_)) {
-            // If it is an output, we need to make sure we capture it for returning.
-            outputs.insert(op.name.clone(), result.clone());
-        } else {
-            // Everything else should be available in the env for other ops to use.
-            env.insert(op.name.clone(), result);
+            if matches!(op.kind, Operator::Output(_)) {
+                // If it is an output, we need to make sure we capture it for returning.
+                outputs.insert(op.name.clone(), result.clone());
+            } else {
+                // Everything else should be available in the env for other ops to use.
+                env.insert(op.name.clone(), result);
+            }
         }
-    }
 
-    for (output_name, output_value) in outputs {
-        tokio::spawn(async move {
-            let value = output_value.await;
+        for (output_name, value) in outputs {
             println!("Output '{}' ready:\n{:?}\n", output_name, value);
-        });
+        }
+
+        Ok(())
+    
+    } else {
+        let networking = Arc::new(moose::networking::LocalAsyncNetworking::default());
+
+        let storage = Arc::new(moose::storage::LocalAsyncStorage::default());
+
+        let session = AsyncSession::new(
+            session_id,
+            HashMap::new(),
+            role_assignments,
+            networking,
+            storage,
+        );
+
+        let mut env: HashMap<String, <AsyncSession as Session>::Value> = HashMap::new();
+        let mut outputs: HashMap<String, <AsyncSession as Session>::Value> = HashMap::new();
+
+        for op in computation.operations.iter() {
+            let operands = op
+                .inputs
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
+
+            let result = session.execute(op.kind.clone(), &op.placement, operands)?;
+
+            if matches!(op.kind, Operator::Output(_)) {
+                // If it is an output, we need to make sure we capture it for returning.
+                outputs.insert(op.name.clone(), result.clone());
+            } else {
+                // Everything else should be available in the env for other ops to use.
+                env.insert(op.name.clone(), result);
+            }
+        }
+
+        for (output_name, output_value) in outputs {
+            tokio::spawn(async move {
+                let value = output_value.await;
+                println!("Output '{}' ready:\n{:?}\n", output_name, value);
+            });
+        }
+
+        let session_handle = AsyncSessionHandle::for_session(&session);
+        session_handle.join_on_first_error().await?;
+
+        Ok(())
     }
-
-    let session_handle = AsyncSessionHandle::for_session(&session);
-    session_handle.join_on_first_error().await?;
-
-    Ok(())
 }

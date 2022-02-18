@@ -43,6 +43,23 @@ impl Default for SyncSession {
 }
 
 impl SyncSession {
+    pub fn new(
+        session_id: SessionId,
+        arguments: HashMap<String, Value>,
+        role_assignments: HashMap<Role, Identity>,
+        networking: SyncNetworkingImpl,
+        storage: SyncStorageImpl,
+    ) -> SyncSession {
+        SyncSession {
+            session_id,
+            replicated_keys: Default::default(),
+            arguments,
+            role_assignments,
+            networking,
+            storage,
+        }
+    }
+
     pub fn from_session_id(sid: SessionId) -> Self {
         SyncSession {
             session_id: sid,
