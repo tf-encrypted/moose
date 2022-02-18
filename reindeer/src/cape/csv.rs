@@ -1,14 +1,12 @@
-//use moose::error::Error;
 use moose::prelude::*;
-//use ndarray::{Array2, ShapeBuilder};
+use ndarray::{Array2, ShapeBuilder};
 use std::collections::HashMap;
-use std::fs::File;
 
 pub async fn read_csv(
     filename: &str,
     _maybe_type_hint: Option<Ty>,
     _columns: &[String],
-    _placement: &str,
+    placement: &str,
 ) -> anyhow::Result<Value> {
     let mut reader = csv::Reader::from_path(filename)?;
     let mut data: HashMap<String, Vec<f64>> = HashMap::new();
@@ -29,7 +27,19 @@ pub async fn read_csv(
                 .push(value.parse::<f64>()?);
         }
     }
-    unimplemented!("read_csv");
+
+    let ncols = data.len();
+    let nrows = data[&headers[0]].len();
+    let shape = (nrows, ncols).f();
+    let mut matrix: Vec<f64> = Vec::new();
+    for header in headers {
+        let column = &data[&header];
+        matrix.extend_from_slice(column);
+    }
+    let ndarr: Array2<f64> = Array2::from_shape_vec(shape, matrix)?;
+    let plc = HostPlacement::from(placement);
+    let tensor: HostFloat64Tensor = plc.from_raw(ndarr);
+    Ok(Value::from(tensor))
 }
 
 //pub async fn read_csv(
@@ -178,6 +188,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_csv() {
-        read_csv("data.csv", None, &[], "host").await.unwrap();
+        let tensor = read_csv("data.csv", None, &[], "host").await.unwrap();
+        println!("tensor = {:?}", tensor);
     }
 }
