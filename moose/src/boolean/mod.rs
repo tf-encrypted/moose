@@ -210,3 +210,28 @@ impl SaveOp {
         Ok(plc.save(sess, &key, &x))
     }
 }
+
+impl ConcatOp {
+    pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        x: &[BoolTensor<HostT, RepT>],
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        ReplicatedPlacement: PlacementConcatenate<S, RepT, RepT>,
+        RepT: Clone,
+        // HostPlacement: PlacementShare<S, HostT, RepT>,
+    {
+        let xv: Vec<RepT> = x
+            .iter()
+            .map(|item| match item {
+                // TODO(Dragos) Here we need a share operation for boolean type
+                BoolTensor::Host(_v) => unimplemented!(),
+                BoolTensor::Replicated(v) => v.clone(),
+            })
+            .collect();
+        let z = plc.concatenate(sess, axis, &xv);
+        Ok(BoolTensor::Replicated(z))
+    }
+}
