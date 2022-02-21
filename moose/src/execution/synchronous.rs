@@ -278,7 +278,7 @@ impl TestSyncExecutor {
         computation: &Computation,
         session: &SyncSession,
     ) -> anyhow::Result<HashMap<String, Value>> {
-        let mut env: HashMap<String, Value> = HashMap::default();
+        let mut env: HashMap<String, Value> = HashMap::with_capacity(computation.operations.len());
 
         let output_names: Vec<String> = computation
             .operations

@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             moose::computation::Computation::from_bytes(comp_raw)?
         } else {
             let comp_raw = std::fs::read_to_string(comp_path)?;
-            moose::textual::verbose_parse_computation(&comp_raw)?
+            moose::textual::parallel_parse_computation(&comp_raw, 12)?
         }
     };
 
@@ -73,24 +73,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         storage,
     );
 
-    let mut env: HashMap<String, <AsyncSession as Session>::Value> = HashMap::new();
     let mut outputs: HashMap<String, <AsyncSession as Session>::Value> = HashMap::new();
 
-    for op in computation.operations.iter() {
-        let operands = op
-            .inputs
-            .iter()
-            .map(|input_name| env.get(input_name).unwrap().clone())
-            .collect();
+    {
+        let mut env: HashMap<String, <AsyncSession as Session>::Value> =
+            HashMap::with_capacity(computation.operations.len());
 
-        let result = session.execute(op.kind.clone(), &op.placement, operands)?;
+        for op in computation.operations.iter() {
+            let operands = op
+                .inputs
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
 
-        if matches!(op.kind, Operator::Output(_)) {
-            // If it is an output, we need to make sure we capture it for returning.
-            outputs.insert(op.name.clone(), result.clone());
-        } else {
-            // Everything else should be available in the env for other ops to use.
-            env.insert(op.name.clone(), result);
+            let result = session.execute(op.kind.clone(), &op.placement, operands)?;
+
+            if matches!(op.kind, Operator::Output(_)) {
+                // If it is an output, we need to make sure we capture it for returning.
+                outputs.insert(op.name.clone(), result.clone());
+            } else {
+                // Everything else should be available in the env for other ops to use.
+                env.insert(op.name.clone(), result);
+            }
         }
     }
 

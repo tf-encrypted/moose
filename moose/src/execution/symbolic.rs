@@ -354,8 +354,9 @@ impl SymbolicExecutor {
         computation: &Computation,
         session: &SymbolicSession,
     ) -> anyhow::Result<Computation> {
-        let mut env: HashMap<String, SymbolicValue> = HashMap::default();
         let computation = computation.toposort()?;
+        let mut env: HashMap<String, SymbolicValue> =
+            HashMap::with_capacity(computation.operations.len());
 
         for op in computation.operations.iter() {
             let operator = op.kind.clone();

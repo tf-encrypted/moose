@@ -92,7 +92,7 @@ impl FilesystemChoreography {
                             }
                             Format::Textual => {
                                 let comp_raw = std::fs::read_to_string(comp_path)?;
-                                moose::textual::verbose_parse_computation(&comp_raw)?
+                                moose::textual::parallel_parse_computation(&comp_raw, 4)?
                             }
                         }
                     };
@@ -107,7 +107,7 @@ impl FilesystemChoreography {
                         })
                         .collect();
 
-                    let networking = (self.networking_strategy)();
+                    let networking = (self.networking_strategy)(session_id.clone());
                     let storage = (self.storage_strategy)();
 
                     let session =

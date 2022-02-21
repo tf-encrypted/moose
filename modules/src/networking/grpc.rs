@@ -28,8 +28,9 @@ impl GrpcNetworkingManager {
         })
     }
 
-    pub fn new_session(&self) -> Arc<impl AsyncNetworking> {
+    pub fn new_session(&self, session_id: SessionId) -> Arc<impl AsyncNetworking> {
         Arc::new(GrpcNetworking {
+            session_id,
             stores: Arc::clone(&self.stores),
             channels: Arc::clone(&self.channels),
         })
@@ -37,6 +38,7 @@ impl GrpcNetworkingManager {
 }
 
 struct GrpcNetworking {
+    session_id: SessionId,
     stores: Arc<SessionStores>,
     channels: Arc<Channels>,
 }
@@ -68,17 +70,18 @@ impl AsyncNetworking for GrpcNetworking {
         val: &Value,
         receiver: &Identity,
         rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
+        _session_id: &SessionId,
     ) -> moose::Result<()> {
         let tagged_value = TaggedValue {
-            session_id: session_id.clone(),
+            session_id: self.session_id.clone(),
             rendezvous_key: rendezvous_key.clone(),
             value: val.clone(),
         };
 
+        let bytes = bincode::serialize(&tagged_value)
+            .map_err(|e| moose::Error::Networking(e.to_string()))?;
         let request = SendValueRequest {
-            tagged_value: bincode::serialize(&tagged_value)
-                .map_err(|e| moose::Error::Networking(e.to_string()))?,
+            tagged_value: bytes,
         };
 
         let channel = self.channel(receiver)?;
@@ -96,10 +99,20 @@ impl AsyncNetworking for GrpcNetworking {
         &self,
         _sender: &Identity,
         rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
+        _session_id: &SessionId,
     ) -> moose::Result<Value> {
-        let cell = cell(&self.stores, session_id.clone(), rendezvous_key.clone());
+        let cell = cell(
+            &self.stores,
+            self.session_id.clone(),
+            rendezvous_key.clone(),
+        );
         Ok(cell.take().await)
+    }
+}
+
+impl Drop for GrpcNetworking {
+    fn drop(&mut self) {
+        let _ = self.stores.remove(&self.session_id);
     }
 }
 
