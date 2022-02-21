@@ -48,6 +48,6 @@ Sessions are controlled by two sets of files:
 
 - `.moose` files that contain Moose computations in either textual or binary format. These must be physical computations since no compilation is currently done by the worker.
 
-- `.toml` files that specify sessions and we encourage taking a look at the example files to see their format. The name of the `.toml` file is used to derive the session id.
+- `.session` files that specify sessions and we encourage taking a look at the example files to see their format. The name of the file is used to derive the session id.
 
-The worker listens for changes to the specified directory and will automatically launch new sessions when new `.toml` files are created, i.e. there is no need to relaunch workers to run new sessions.
+The worker listens for changes to the specified directory and will automatically launch new sessions when new `.session` files are created, i.e. there is no need to relaunch workers to run new sessions.
