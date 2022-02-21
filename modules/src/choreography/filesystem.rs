@@ -74,7 +74,7 @@ impl FilesystemChoreography {
     ) -> Result<(), Box<dyn std::error::Error>> {
         if path.is_file() {
             match path.extension() {
-                Some(ext) if ext == "toml" => {
+                Some(ext) if ext == "session" => {
                     let filename = path.file_stem().unwrap().to_string_lossy().to_string();
                     let session_id = SessionId::try_from(filename.as_str()).unwrap();
 
