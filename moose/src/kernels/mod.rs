@@ -49,27 +49,27 @@ pub trait DispatchKernel<S: Session> {
 
 pub(crate) trait NullaryKernel<S: Session, P, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<Box<dyn Fn(&S, &P) -> Result<Y> + Send>>;
 }
 
 pub(crate) trait UnaryKernel<S: Session, P, X0, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send>>;
 }
 
 pub(crate) trait BinaryKernel<S: Session, P, X0, X1, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send>>;
 }
 
 pub(crate) trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send>>;
 }
 
 pub(crate) trait VariadicKernel<S: Session, P, XS, Y> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send>>;
 }
 
 pub(crate) trait NullaryKernelCheck<S: Session, P, Y>
