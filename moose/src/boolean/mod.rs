@@ -219,15 +219,14 @@ impl ConcatOp {
         x: &[BoolTensor<HostT, RepT>],
     ) -> Result<BoolTensor<HostT, RepT>>
     where
-        ReplicatedPlacement: PlacementConcatenate<S, RepT, RepT>,
         RepT: Clone,
-        // HostPlacement: PlacementShare<S, HostT, RepT>,
+        ReplicatedPlacement: PlacementConcatenate<S, RepT, RepT>,
+        ReplicatedPlacement: PlacementShare<S, HostT, RepT>,
     {
         let xv: Vec<RepT> = x
             .iter()
             .map(|item| match item {
-                // TODO(Dragos) Here we need a share operation for boolean type
-                BoolTensor::Host(_v) => unimplemented!(),
+                BoolTensor::Host(v) => plc.share(sess, &v),
                 BoolTensor::Replicated(v) => v.clone(),
             })
             .collect();
