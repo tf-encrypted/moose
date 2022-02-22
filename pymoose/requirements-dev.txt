@@ -8,6 +8,6 @@ msgpack==1.0.2
 numpy==1.21.2
 onnx~=1.10.0
 pip~=21.2
-pytest==6.0.1
+pytest==7.0.1
 setuptools-rust~=0.12.1
 wheel~=0.35.1
