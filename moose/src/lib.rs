@@ -330,10 +330,10 @@ macro_rules! concrete_dispatch_kernel {
                             let k = <$op as UnaryKernel<SyncSession, $plc, $t0, $u>>::compile(self)?;
                             let op = self.clone();
 
-                            Ok(Box::new(move |sess, operands: Vec<Value>| {
+                            Ok(Box::new(move |sess, mut operands: Vec<Value>| {
                                 assert_eq!(operands.len(), 1);
 
-                                let x0: $t0 = operands.get(0).unwrap().clone().try_into()?;
+                                let x0: $t0 = operands.pop().unwrap().try_into()?;
 
                                 let y: $u = k(sess, &plc, x0)?;
                                 if y.placement()? == plc.clone().into() {
@@ -384,11 +384,10 @@ macro_rules! concrete_dispatch_kernel {
                                 let op = op.clone(); // Needed for the error message for KernelError
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
-                                    let operands = futures::future::join_all(operands).await;
+                                    let mut operands = futures::future::join_all(operands).await;
                                     let x0: $t0 = operands
-                                            .get(0)
-                                            .ok_or_else(|| crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0)))?
-                                            .clone()
+                                            .pop()
+                                            .unwrap()
                                             .map_err(crate::execution::map_receive_error)?
                                             .try_into()?;
                                     let y: $u = k(&sess, &plc, x0)?;
@@ -451,11 +450,11 @@ macro_rules! concrete_dispatch_kernel {
                             >>::compile(self)?;
 
                             Ok(Box::new(
-                                move |sess, operands: Vec<crate::computation::Value>| {
+                                move |sess, mut operands: Vec<crate::computation::Value>| {
                                 assert_eq!(operands.len(), 2);
 
-                                let x0: $t0 = operands.get(0).unwrap().clone().try_into()?;
-                                let x1: $t1 = operands.get(1).unwrap().clone().try_into()?;
+                                let x1: $t1 = operands.pop().unwrap().try_into()?;
+                                let x0: $t0 = operands.pop().unwrap().try_into()?;
 
                                 let y: $u = k(sess, &plc, x0, x1)?;
                                 if y.placement()? == plc.clone().into() {
@@ -509,21 +508,20 @@ macro_rules! concrete_dispatch_kernel {
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
                                     let mut operands = futures::future::join_all(operands).await;
 
-                                    // consume in reverse order for performance reasons
-
                                     let x1: $t1 = operands
                                             .pop()
-                                            .ok_or_else(|| crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 1)))?
+                                            .unwrap()
                                             .map_err(crate::execution::map_receive_error)?
                                             .try_into()?;
 
                                     let x0: $t0 = operands
                                             .pop()
-                                            .ok_or_else(|| crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0)))?
+                                            .unwrap()
                                             .map_err(crate::execution::map_receive_error)?
                                             .try_into()?;
 
                                     let y: $u = k(&sess, &plc, x0, x1)?;
+
                                     if y.placement()? == plc.clone().into() {
                                         crate::execution::map_send_result(sender.send(y.into()))?;
                                         Ok(())
@@ -577,13 +575,12 @@ macro_rules! concrete_dispatch_kernel {
 
                             let k = <$op as TernaryKernel<SyncSession, $plc, $t0, $t1, $t2, $u>>::compile(self)?;
 
-                            Ok(Box::new(move |sess, operands| {
+                            Ok(Box::new(move |sess, mut operands| {
                                 assert_eq!(operands.len(), 3);
-
-                                let x0: $t0 = operands.get(0).unwrap().clone().try_into()?;
-                                let x1: $t1 = operands.get(1).unwrap().clone().try_into()?;
-                                let x2: $t2 = operands.get(2).unwrap().clone().try_into()?;
-
+                                let x2: $t2 = operands.pop().unwrap().try_into()?;
+                                let x1: $t1 = operands.pop().unwrap().try_into()?;
+                                let x0: $t0 = operands.pop().unwrap().try_into()?;
+                                
                                 let y: $u = k(sess, &plc, x0, x1, x2)?;
                                 if y.placement()? == plc.clone().into() {
                                     Ok(y.into())
@@ -634,25 +631,26 @@ macro_rules! concrete_dispatch_kernel {
                                 let op = op.clone(); // Needed for the error message for KernelError
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
-                                    let operands = futures::future::join_all(operands).await;
-                                    let x0: $t0 = operands
-                                            .get(0)
-                                            .ok_or_else(|| crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 0)))?
-                                            .clone()
-                                            .map_err(crate::execution::map_receive_error)?
-                                            .try_into()?;
-                                    let x1: $t1 = operands
-                                            .get(1)
-                                            .ok_or_else(|| crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 1)))?
-                                            .clone()
-                                            .map_err(crate::execution::map_receive_error)?
-                                            .try_into()?;
+                                    let mut operands = futures::future::join_all(operands).await;
+
                                     let x2: $t2 = operands
-                                            .get(2)
-                                            .ok_or_else(|| crate::error::Error::MalformedEnvironment(format!("Argument {} is missing", 2)))?
-                                            .clone()
-                                            .map_err(crate::execution::map_receive_error)?
-                                            .try_into()?;
+                                        .pop()
+                                        .unwrap()
+                                        .map_err(crate::execution::map_receive_error)?
+                                        .try_into()?;
+
+                                    let x1: $t1 = operands
+                                        .pop()
+                                        .unwrap()
+                                        .map_err(crate::execution::map_receive_error)?
+                                        .try_into()?;
+
+                                    let x0: $t0 = operands
+                                        .pop()
+                                        .unwrap()
+                                        .map_err(crate::execution::map_receive_error)?
+                                        .try_into()?;
+                                    
                                     let y: $u = k(&sess, &plc, x0, x1, x2)?;
                                     if y.placement()? == plc.clone().into() {
                                         crate::execution::map_send_result(sender.send(y.into()))?;
@@ -865,10 +863,14 @@ macro_rules! symbolic_dispatch_kernel {
                                 <$u as KnownType<SymbolicSession>>::Type,
                             >>::compile(self)?;
 
-                            Ok(Box::new(move |sess, operands| {
+                            Ok(Box::new(move |sess, mut operands| {
                                 assert_eq!(operands.len(), 1);
 
-                                let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.get(0).unwrap().clone().try_into()?;
+                                let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands
+                                    .pop()
+                                    .unwrap()
+                                    .clone()
+                                    .try_into()?;
 
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0)?;
                                 Ok(y.into())
@@ -918,11 +920,11 @@ macro_rules! symbolic_dispatch_kernel {
                                 <$u as KnownType<SymbolicSession>>::Type,
                             >>::compile(self)?;
 
-                            Ok(Box::new(move |sess, operands| {
+                            Ok(Box::new(move |sess, mut operands| {
                                 assert_eq!(operands.len(), 2);
 
-                                let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.get(0).unwrap().clone().try_into()?;
-                                let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.get(1).unwrap().clone().try_into()?;
+                                let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.pop().unwrap().try_into()?;
+                                let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.pop().unwrap().try_into()?;
 
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0, x1)?;
                                 Ok(y.into())
@@ -974,13 +976,13 @@ macro_rules! symbolic_dispatch_kernel {
                                 <$u as KnownType<SymbolicSession>>::Type,
                             >>::compile(self)?;
 
-                            Ok(Box::new(move |sess, operands| {
+                            Ok(Box::new(move |sess, mut operands| {
                                 assert_eq!(operands.len(), 3);
 
-                                let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.get(0).unwrap().clone().try_into()?;
-                                let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.get(1).unwrap().clone().try_into()?;
-                                let x2: <$t2 as KnownType<SymbolicSession>>::Type = operands.get(2).unwrap().clone().try_into()?;
-
+                                let x2: <$t2 as KnownType<SymbolicSession>>::Type = operands.pop().unwrap().try_into()?;
+                                let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.pop().unwrap().try_into()?;
+                                let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.pop().unwrap().try_into()?;
+                                
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0, x1, x2)?;
                                 Ok(y.into())
                             }))
