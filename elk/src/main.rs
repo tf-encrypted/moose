@@ -39,9 +39,13 @@ enum Commands {
         /// Input file
         input: PathBuf,
 
-        /// Include placement in the category
+        /// Include placement in the category, where supported
         #[clap(short, long)]
         by_placement: bool,
+
+        /// Include operation kind in the category, where supported
+        #[clap(long)]
+        by_op_kind: bool,
     },
 }
 
@@ -68,6 +72,7 @@ fn main() -> anyhow::Result<()> {
             flavour,
             input,
             by_placement,
+            by_op_kind,
         } => {
             let source = read_to_string(input)?;
             let comp = verbose_parse_computation(&source)?;
@@ -112,12 +117,26 @@ fn main() -> anyhow::Result<()> {
                             }
                             map
                         });
-                    let out_degree_distribution: HashMap<usize, usize> = op_name_to_out_degree
-                        .into_iter()
-                        .fold(HashMap::new(), |mut map, (_op_name, out_degree)| {
-                            *map.entry(out_degree).or_insert(0) += 1;
-                            map
-                        });
+                    let op_kind_map: HashMap<&String, &str> = if *by_op_kind {
+                        comp.operations
+                            .iter()
+                            .map(|op| (&op.name, op.kind.short_name()))
+                            .collect()
+                    } else {
+                        HashMap::new()
+                    };
+                    let out_degree_distribution: HashMap<NumericalHistKey, usize> =
+                        op_name_to_out_degree.into_iter().fold(
+                            HashMap::new(),
+                            |mut map, (op_name, out_degree)| {
+                                *map.entry(NumericalHistKey {
+                                    value: out_degree,
+                                    category: op_kind_map.get(op_name),
+                                })
+                                .or_insert(0) += 1;
+                                map
+                            },
+                        );
                     print_sorted("Out degree", &out_degree_distribution);
                 }
                 _ => return Err(anyhow::anyhow!("Unexpected stats flavour {}", flavour)),
@@ -125,6 +144,18 @@ fn main() -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+#[derive(Eq, PartialEq, Hash, Debug)]
+struct NumericalHistKey<'a> {
+    value: usize,
+    category: Option<&'a &'a str>,
+}
+
+impl std::fmt::Display for NumericalHistKey<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(f, "{:10} {}", self.value, self.category.unwrap_or(&""))
+    }
 }
 
 fn print_sorted<S>(key_label: &str, map: &HashMap<S, usize>)
