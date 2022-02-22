@@ -9,6 +9,8 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
 use structopt::StructOpt;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
@@ -31,8 +33,25 @@ struct Opt {
     hosts: String,
 }
 
+fn init_tracer() -> anyhow::Result<()> {
+    let fmt_layer = Some(tracing_subscriber::fmt::Layer::default());
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env()) // The tracing formatter defaults to the max log level set by RUST_LOG
+        .with(fmt_layer)
+        .try_init()
+        .unwrap_or_else(|e| {
+            println!(
+                "Failed to initialize telemetry subscriber: {}",
+                e.to_string()
+            )
+        });
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    init_tracer()?;
+    tracing::info!("starting up");
     let opt = Opt::from_args();
 
     let hosts: HashMap<String, String> = serde_json::from_str(&opt.hosts)?;
