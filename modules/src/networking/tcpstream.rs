@@ -15,7 +15,8 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
 use tokio::time::{sleep, Duration};
 
-type StoreType = Arc<dashmap::DashMap<String, Arc<async_cell::sync::AsyncCell<Value>>>>;
+type StoreType =
+    Arc<dashmap::DashMap<(SessionId, RendezvousKey), Arc<async_cell::sync::AsyncCell<Value>>>>;
 
 pub struct TcpStreamNetworking {
     own_name: String,
@@ -39,10 +40,6 @@ fn little_endian_to_u64(buf: &[u8; 8]) -> u64 {
     n
 }
 
-fn compute_path(session_id: &SessionId, rendezvous_key: &RendezvousKey) -> String {
-    format!("{}/{}", session_id, rendezvous_key)
-}
-
 async fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::Result<()> {
     loop {
         // read moose data
@@ -63,8 +60,8 @@ async fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::R
             .map_err(|e| anyhow::anyhow!("failed to deserialize moose value: {}", e))?;
 
         // put value into store
-        let key = compute_path(&data.session_id, &data.rendezvous_key);
-        tracing::debug!("storing key: {}", key);
+        let key = (data.session_id, data.rendezvous_key);
+        tracing::debug!("storing key: {:?}", key);
         let cell = store
             .entry(key.clone())
             .or_insert_with(async_cell::sync::AsyncCell::shared)
@@ -72,7 +69,7 @@ async fn handle_connection(mut stream: TcpStream, store: StoreType) -> anyhow::R
             .clone();
 
         cell.set(data.value);
-        tracing::debug!("stored key: {}", key);
+        tracing::debug!("stored key: {:?}", key);
     }
 }
 
@@ -107,9 +104,6 @@ async fn send_value(stream: &mut TcpStream, send_data: &SendData) -> anyhow::Res
     stream.write_all(&size_data_buf).await?;
     stream.write_all(&raw_data).await?;
     stream.flush().await?;
-
-    let key = compute_path(&send_data.session_id, &send_data.rendezvous_key);
-    tracing::debug!("sent key: {} size: {}", key, data_size);
     Ok(())
 }
 
@@ -196,8 +190,8 @@ impl AsyncNetworking for TcpStreamNetworking {
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> moose::error::Result<()> {
-        let key = compute_path(session_id, rendezvous_key);
-        tracing::debug!("sending key: {} to: {}", key, receiver);
+        let key = (session_id, rendezvous_key);
+        tracing::debug!("sending key: {:?} to: {}", key, receiver);
         let receiver_name = receiver.to_string();
         let send_channel = self.send_channels.get(&receiver_name).ok_or_else(|| {
             Error::Networking(format!(
@@ -211,7 +205,7 @@ impl AsyncNetworking for TcpStreamNetworking {
             rendezvous_key: rendezvous_key.clone(),
             session_id: session_id.clone(),
         };
-        tracing::debug!("awaiting send: {}", key);
+        tracing::debug!("awaiting send: {:?}", key);
         send_channel.send(send_data).await.map_err(|e| {
             Error::Networking(format!(
                 "in session {}, channel send failed for rendezvous key {} from {} to {}: {}",
@@ -228,8 +222,8 @@ impl AsyncNetworking for TcpStreamNetworking {
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> moose::error::Result<Value> {
-        let key = compute_path(session_id, rendezvous_key);
-        tracing::debug!("receiving key: {} from: {}", key, sender);
+        let key = (session_id.clone(), rendezvous_key.clone());
+        tracing::debug!("receiving key: {:?} from: {}", key, sender);
 
         let cell = self
             .store
@@ -238,9 +232,9 @@ impl AsyncNetworking for TcpStreamNetworking {
             .value()
             .clone();
 
-        tracing::debug!("awaiting receive key: {}", key);
+        tracing::debug!("awaiting receive key: {:?}", key);
         let value = cell.get().await;
-        tracing::debug!("got key: {}", key);
+        tracing::debug!("got key: {:?}", key);
         // TODO: delete entry from dashmap?
         Ok(value)
     }
