@@ -261,7 +261,9 @@ impl AsyncNetworking for TcpStreamNetworking {
         tracing::debug!("awaiting receive key: {:?}", key);
         let value = cell.take().await;
         tracing::debug!("got key: {:?}", key);
-        // TODO: delete entry from dashmap?
+        self.store.remove(&key).ok_or_else(|| {
+            Error::Networking(format!("failed to remove key: {:?} from store", key))
+        })?;
         Ok(value)
     }
 }
