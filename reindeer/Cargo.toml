@@ -6,6 +6,10 @@ edition = "2018"
 authors = []
 default-run = "rudolph"
 
+[features]
+default = ["reindeer"]
+reindeer = []
+
 [dependencies]
 anyhow = "~1.0"
 maplit = "~1.0"
