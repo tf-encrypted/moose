@@ -202,9 +202,10 @@ impl SaveOp {
         HostString: KnownType<S>,
         Unit: KnownType<S>,
         HostPlacement: PlacementSave<S, m!(HostString), HostT, m!(Unit)>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
     {
         let x = match x {
-            BoolTensor::Replicated(_v) => unimplemented!(),
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
             BoolTensor::Host(v) => v,
         };
         Ok(plc.save(sess, &key, &x))

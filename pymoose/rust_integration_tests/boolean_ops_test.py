@@ -34,7 +34,6 @@ class BooleanLogicExample(parameterized.TestCase):
             with alice:
                 zl_alice = edsl.logical_or(z_less, z_less)
                 zm_alice = edsl.cast(z_mux, dtype=edsl.float64)
-                z_twice_alice = edsl.identity(z_twice)
 
                 y_alice = edsl.constant(np.array([-1.0, 4.0, 3, 2], dtype=np.float64))
                 r_alice = (
@@ -44,7 +43,7 @@ class BooleanLogicExample(parameterized.TestCase):
                     edsl.save("less_result", zl_alice),
                     edsl.save("y0", edsl.index_axis(y_alice, axis=0, index=2)),
                     edsl.save("mux", zm_alice),
-                    edsl.save("z_twice", z_twice_alice),
+                    edsl.save("z_twice", z_twice),
                 )
 
             return r_alice
