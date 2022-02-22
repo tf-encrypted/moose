@@ -1,6 +1,5 @@
 use moose::prelude::*;
 use ndarray::{Array2, ShapeBuilder};
-use npy::NpyData;
 use std::io::Read;
 
 pub async fn read_numpy(
@@ -14,11 +13,6 @@ pub async fn read_numpy(
         .unwrap()
         .read_to_end(&mut buf)
         .unwrap();
-
-    let data: NpyData<f64> = NpyData::from_bytes(&buf).unwrap();
-    for number in data {
-        eprintln!("{}", number);
-    }
     unimplemented!("numpy");
 }
 
