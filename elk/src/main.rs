@@ -104,7 +104,7 @@ fn main() -> anyhow::Result<()> {
                         println!("{}", comp.operations.len())
                     }
                 }
-                _ => return Err(anyhow::anyhow!("Unexpected stats flavour {}", flavour)),
+                _ => return Err(anyhow::anyhow!("Unexpected stats flavor {}", flavor)),
             }
         }
     }
