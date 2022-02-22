@@ -233,7 +233,7 @@ impl AsyncNetworking for TcpStreamNetworking {
             .clone();
 
         tracing::debug!("awaiting receive key: {:?}", key);
-        let value = cell.get().await;
+        let value = cell.take().await;
         tracing::debug!("got key: {:?}", key);
         // TODO: delete entry from dashmap?
         Ok(value)
