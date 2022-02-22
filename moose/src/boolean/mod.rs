@@ -226,7 +226,7 @@ impl ConcatOp {
         let xv: Vec<RepT> = x
             .iter()
             .map(|item| match item {
-                BoolTensor::Host(v) => plc.share(sess, &v),
+                BoolTensor::Host(v) => plc.share(sess, v),
                 BoolTensor::Replicated(v) => v.clone(),
             })
             .collect();
