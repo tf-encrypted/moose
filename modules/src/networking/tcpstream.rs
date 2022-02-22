@@ -20,8 +20,8 @@ type StoreType =
 
 pub struct TcpStreamNetworking {
     own_name: String,
-    store: StoreType,                                       // store incoming data
-    send_channels: HashMap<String, mpsc::Sender<SendData>>, // send data over each stream
+    store: StoreType,                                         // store incoming data
+    send_channels: HashMap<Identity, mpsc::Sender<SendData>>, // send data over each stream
 }
 
 fn u64_to_little_endian(n: u64, buf: &mut [u8; 8]) {
@@ -163,7 +163,8 @@ impl TcpStreamNetworking {
                 };
                 tracing::debug!("connected to: {} -> {}", placement, address);
                 let (tx, rx) = mpsc::channel(100);
-                send_channels.insert(placement.clone(), tx);
+                let identity = Identity::from(placement);
+                send_channels.insert(identity, tx);
 
                 tokio::spawn(async move {
                     send_loop(stream, rx).await.unwrap();
@@ -192,8 +193,7 @@ impl AsyncNetworking for TcpStreamNetworking {
     ) -> moose::error::Result<()> {
         let key = (session_id, rendezvous_key);
         tracing::debug!("sending key: {:?} to: {}", key, receiver);
-        let receiver_name = receiver.to_string();
-        let send_channel = self.send_channels.get(&receiver_name).ok_or_else(|| {
+        let send_channel = self.send_channels.get(receiver).ok_or_else(|| {
             Error::Networking(format!(
                 "in session {}, channel not found to send rendezvous key {} from {} to {}",
                 session_id, rendezvous_key, self.own_name, receiver
