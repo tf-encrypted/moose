@@ -496,15 +496,19 @@ macro_rules! concrete_dispatch_kernel {
                             // TODO: Do we want to be deriving the kernel inside? Probably not...
                             let op = self.clone();
 
-                            Ok(Box::new(move |sess, operands: Vec<AsyncValue>| {
+                            Ok(Box::new(move |sess: &AsyncSession, operands: Vec<AsyncValue>| {
                                 assert_eq!(operands.len(), 2);
+
+                                let k = <$op as BinaryKernel<AsyncSession, $plc, $t0, $t1, $u>>::compile(&op)?;
+
+                                let tasks = std::sync::Arc::clone(&sess.tasks);
 
                                 let sess = sess.clone();
                                 let plc = plc.clone();
-                                let k = <$op as BinaryKernel<AsyncSession, $plc, $t0, $t1, $u>>::compile(&op)?;
-                                let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
-                                let tasks = std::sync::Arc::clone(&sess.tasks);
+
+                                let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
+
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
                                     let mut operands = futures::future::join_all(operands).await;
 
@@ -869,7 +873,6 @@ macro_rules! symbolic_dispatch_kernel {
                                 let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands
                                     .pop()
                                     .unwrap()
-                                    .clone()
                                     .try_into()?;
 
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0)?;
