@@ -33,7 +33,7 @@ struct Opt {
     hosts: String,
 }
 
-fn init_tracer() -> anyhow::Result<()> {
+fn init_tracer() {
     let fmt_layer = Some(tracing_subscriber::fmt::Layer::default());
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::from_default_env()) // The tracing formatter defaults to the max log level set by RUST_LOG
@@ -45,12 +45,11 @@ fn init_tracer() -> anyhow::Result<()> {
                 e.to_string()
             )
         });
-    Ok(())
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    init_tracer()?;
+    init_tracer();
     tracing::info!("starting up");
     let opt = Opt::from_args();
 
