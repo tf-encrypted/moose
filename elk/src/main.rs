@@ -87,7 +87,7 @@ fn main() -> anyhow::Result<()> {
                             *map.entry(name).or_insert(0) += 1;
                             map
                         });
-                    print_sorted(&hist);
+                    print_sorted("Operator", &hist);
                 }
                 "op_count" => {
                     if *by_placement {
@@ -99,10 +99,26 @@ fn main() -> anyhow::Result<()> {
                                 *map.entry(name).or_insert(0) += 1;
                                 map
                             });
-                        print_sorted(&hist);
+                        print_sorted("Placement", &hist);
                     } else {
                         println!("{}", comp.operations.len())
                     }
+                }
+                "out_degree" => {
+                    let op_name_to_out_degree: HashMap<&String, usize> =
+                        comp.operations.iter().fold(HashMap::new(), |mut map, op| {
+                            for input_op_name in op.inputs.iter() {
+                                *map.entry(input_op_name).or_insert(0) += 1;
+                            }
+                            map
+                        });
+                    let out_degree_distribution: HashMap<usize, usize> = op_name_to_out_degree
+                        .into_iter()
+                        .fold(HashMap::new(), |mut map, (_op_name, out_degree)| {
+                            *map.entry(out_degree).or_insert(0) += 1;
+                            map
+                        });
+                    print_sorted("Out degree", &out_degree_distribution);
                 }
                 _ => return Err(anyhow::anyhow!("Unexpected stats flavour {}", flavour)),
             }
@@ -111,10 +127,14 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn print_sorted(map: &HashMap<String, usize>) {
-    let mut sorted_hist: Vec<(&String, &usize)> = map.iter().collect();
+fn print_sorted<S>(key_label: &str, map: &HashMap<S, usize>)
+where
+    S: std::fmt::Display,
+{
+    let mut sorted_hist: Vec<(&S, &usize)> = map.iter().collect();
     sorted_hist.sort_by(|a, b| b.1.cmp(a.1));
+    println!("{:>10} {}", "Count", key_label);
     for op in sorted_hist {
-        println!("{:8} {}", op.1, op.0);
+        println!("{:>10} {}", op.1, op.0);
     }
 }
