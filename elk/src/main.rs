@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use moose::compilation::compile;
-use moose::textual::verbose_parse_computation;
+use moose::textual::parallel_parse_computation;
 use moose::textual::ToTextual;
 use std::collections::HashMap;
 use std::fs::{read_to_string, write};
@@ -34,7 +34,7 @@ enum Commands {
     /// Prints stats about a computation without transforming it
     Stats {
         /// The kind of the stats to produce
-        flavour: String,
+        flavor: String,
 
         /// Input file
         input: PathBuf,
@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
             passes,
         } => {
             let source = read_to_string(input)?;
-            let comp = verbose_parse_computation(&source)?;
+            let comp = parallel_parse_computation(&source, 12)?;
             let passes: Option<Vec<String>> = passes
                 .clone()
                 .map(|p| p.split(',').map(|s| s.to_string()).collect());
@@ -69,14 +69,14 @@ fn main() -> anyhow::Result<()> {
             }
         }
         Commands::Stats {
-            flavour,
+            flavor,
             input,
             by_placement,
             by_op_kind,
         } => {
             let source = read_to_string(input)?;
-            let comp = verbose_parse_computation(&source)?;
-            match flavour.as_str() {
+            let comp = parallel_parse_computation(&source, 12)?;
+            match flavor.as_str() {
                 "op_hist" => {
                     let hist: HashMap<String, usize> = comp
                         .operations
@@ -139,7 +139,7 @@ fn main() -> anyhow::Result<()> {
                         );
                     print_sorted("Out degree", &out_degree_distribution);
                 }
-                _ => return Err(anyhow::anyhow!("Unexpected stats flavour {}", flavour)),
+                _ => return Err(anyhow::anyhow!("Unexpected stats flavor {}", flavor)),
             }
         }
     }

@@ -269,8 +269,8 @@ impl MooseComputation {
     #[classmethod]
     pub fn from_bytes(_cls: &PyType, py: Python, bytes: &PyBytes) -> PyResult<Py<Self>> {
         let mybytes: Vec<u8> = bytes.extract()?;
-        let computation =
-            Computation::from_bytes(mybytes).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        let computation = Computation::from_msgpack(mybytes)
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         let moose_comp = MooseComputation { computation };
         Py::new(py, moose_comp)
     }
@@ -278,7 +278,7 @@ impl MooseComputation {
     pub fn to_bytes<'py>(&mut self, py: Python<'py>) -> PyResult<&'py PyBytes> {
         let comp_bytes = self
             .computation
-            .to_bytes()
+            .to_msgpack()
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         Ok(PyBytes::new(py, &comp_bytes))
     }
