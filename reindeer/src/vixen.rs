@@ -39,12 +39,7 @@ fn init_tracer() {
         .with(tracing_subscriber::EnvFilter::from_default_env()) // The tracing formatter defaults to the max log level set by RUST_LOG
         .with(fmt_layer)
         .try_init()
-        .unwrap_or_else(|e| {
-            println!(
-                "Failed to initialize telemetry subscriber: {}",
-                e.to_string()
-            )
-        });
+        .unwrap_or_else(|e| println!("Failed to initialize telemetry subscriber: {}", e));
 }
 
 #[tokio::main]
