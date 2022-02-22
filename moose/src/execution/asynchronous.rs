@@ -494,7 +494,7 @@ impl AsyncExecutor {
             })
             .collect::<Vec<_>>();
 
-        let mut env: HashMap<String, AsyncValue> = HashMap::default();
+        let mut env: HashMap<String, AsyncValue> = HashMap::with_capacity(own_operations.len());
         let mut outputs: HashMap<String, AsyncReceiver> = HashMap::default();
 
         for op in own_operations {

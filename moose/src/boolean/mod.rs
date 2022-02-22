@@ -202,11 +202,36 @@ impl SaveOp {
         HostString: KnownType<S>,
         Unit: KnownType<S>,
         HostPlacement: PlacementSave<S, m!(HostString), HostT, m!(Unit)>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
     {
         let x = match x {
-            BoolTensor::Replicated(_v) => unimplemented!(),
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
             BoolTensor::Host(v) => v,
         };
         Ok(plc.save(sess, &key, &x))
+    }
+}
+
+impl ConcatOp {
+    pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: u32,
+        x: &[BoolTensor<HostT, RepT>],
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        RepT: Clone,
+        ReplicatedPlacement: PlacementConcatenate<S, RepT, RepT>,
+        ReplicatedPlacement: PlacementShare<S, HostT, RepT>,
+    {
+        let xv: Vec<RepT> = x
+            .iter()
+            .map(|item| match item {
+                BoolTensor::Host(v) => plc.share(sess, v),
+                BoolTensor::Replicated(v) => v.clone(),
+            })
+            .collect();
+        let z = plc.concatenate(sess, axis, &xv);
+        Ok(BoolTensor::Replicated(z))
     }
 }

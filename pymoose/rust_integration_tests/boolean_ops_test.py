@@ -28,6 +28,7 @@ class BooleanLogicExample(parameterized.TestCase):
 
             with rep:
                 z_less = edsl.less(x, y)
+                z_twice = edsl.concatenate([z_less, z_less])
                 z_mux = edsl.mux(z_less, x, y)
 
             with alice:
@@ -42,6 +43,7 @@ class BooleanLogicExample(parameterized.TestCase):
                     edsl.save("less_result", zl_alice),
                     edsl.save("y0", edsl.index_axis(y_alice, axis=0, index=2)),
                     edsl.save("mux", zm_alice),
+                    edsl.save("z_twice", z_twice),
                 )
 
             return r_alice
@@ -83,6 +85,11 @@ class BooleanLogicExample(parameterized.TestCase):
         # test mux
         np.testing.assert_almost_equal(
             runtime.read_value_from_storage("alice", "mux"), np.array([-1.0, 2.3, 3, 2])
+        )
+
+        # test concat
+        np.testing.assert_almost_equal(
+            runtime.read_value_from_storage("alice", "z_twice"), np.concatenate([z, z])
         )
 
 
