@@ -6,7 +6,6 @@ edition = "2018"
 authors = []
 
 [dependencies]
-anyhow = "~1.0"
 async_cell = "~0.2"
 async-trait = "~0.1"
 bincode = "~1.3"
