@@ -7,11 +7,7 @@ authors = []
 default-run = "rudolph"
 
 [dependencies]
-async-trait = "~0.1"
 anyhow = "~1.0"
-async_cell = "~0.2"
-bincode = "~1.3"
-dashmap = "~5.1"
 maplit = "~1.0"
 moose = { path = "../moose", default-features = false, features = ["async_execute"] }
 moose-modules = { path = "../modules" }
