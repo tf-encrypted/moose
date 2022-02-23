@@ -13,9 +13,7 @@ repl = edsl.replicated_placement("replicated", [player0, player1, player2])
 
 
 @edsl.computation
-def linear_predict(
-    x: edsl.Argument(placement=player0, dtype=dtypes.float64)
-):
+def linear_predict():
     with player0:
         df = pd.read_csv('data.csv')
         data = df.to_numpy()
