@@ -9,11 +9,9 @@ authors = []
 async_cell = "~0.2"
 async-trait = "~0.1"
 bincode = "~1.3"
-csv = "~1.1"
 dashmap = "~4.0"
 futures = "0.3"
 moose = { path = "../moose", default-features = false, features = ["async_execute"] }
-ndarray = { version="~0.15", features=["serde"] }
 notify = "4.0"
 prost = "0.9"
 serde = { version = "~1.0", features = ["derive"] }
@@ -25,7 +23,6 @@ tracing = { version="0.1", features = ["log"] }
 tracing-attributes = "0.1"
 tracing-error = "0.2"
 tracing-futures = "0.2"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [build-dependencies]
 tonic-build = "0.6"
