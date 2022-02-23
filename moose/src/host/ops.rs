@@ -999,6 +999,19 @@ impl ConcatOp {
             ndarray::concatenate(ax, &arr).map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostRingTensor(concatenated, plc.clone()))
     }
+
+    pub(crate) fn bit_kernel<S: Session>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: u32,
+        xs: &[HostBitTensor],
+    ) -> Result<HostBitTensor> {
+        let ax = Axis(axis as usize);
+        let arr: Vec<_> = xs.iter().map(|x| x.0.view()).collect();
+        let c = ndarray::concatenate(ax, &arr).map_err(|e| Error::KernelError(e.to_string()))?;
+
+        Ok(HostBitTensor(c, plc.clone()))
+    }
 }
 
 impl TransposeOp {

@@ -1541,12 +1541,35 @@ pub struct Computation {
 }
 
 impl Computation {
-    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
+    pub fn from_msgpack<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
         rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
-    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+    pub fn to_msgpack(&self) -> Result<Vec<u8>> {
         rmp_serde::to_vec(self).map_err(|e| Error::SerializationError(e.to_string()))
+    }
+
+    pub fn from_textual(comp: &str) -> Result<Self> {
+        crate::textual::parallel_parse_computation(comp, 12)
+            .map_err(|e| Error::SerializationError(e.to_string()))
+    }
+
+    pub fn from_bincode<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
+        bincode::deserialize(bytes.as_ref()).map_err(|e| Error::SerializationError(e.to_string()))
+    }
+
+    pub fn to_bincode(&self) -> Result<Vec<u8>> {
+        bincode::serialize(self).map_err(|e| Error::SerializationError(e.to_string()))
+    }
+
+    #[deprecated]
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
+        Self::from_msgpack(&bytes)
+    }
+
+    #[deprecated]
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        self.to_msgpack()
     }
 
     pub fn from_disk<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -1686,8 +1709,8 @@ mod tests {
         dot_0 = Dot: (Tensor<Fixed128(24, 40)>, Tensor<Fixed128(24, 40)>) -> Tensor<Fixed128(24, 40)> (decrypt_0, cast_0) @Replicated(player0, player1, player2)
         cast_1 = Cast: (Tensor<Fixed128(24, 40)>) -> Tensor<Float64> (dot_0) @Host(player1)
         output_0 = Output: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
-        let bytes = original.to_bytes().unwrap();
-        let read_back = Computation::from_bytes(bytes).unwrap();
+        let bytes = original.to_msgpack().unwrap();
+        let read_back = Computation::from_msgpack(bytes).unwrap();
         assert_eq!(original.operations, read_back.operations);
     }
 }
