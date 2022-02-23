@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 from pymoose import edsl, elk_compiler
-from pymoose.computation import dtypes, utils
+from pymoose.computation import utils
 
 player0 = edsl.host_placement("player0")
 player1 = edsl.host_placement("player1")
@@ -15,17 +16,14 @@ repl = edsl.replicated_placement("replicated", [player0, player1, player2])
 @edsl.computation
 def linear_predict():
     with player0:
-        df = pd.read_csv('data.csv')
+        df = pd.read_csv("data.csv")
         data = df.to_numpy()
         biased = np.vstack([np.ones(len(data)), data.T]).T
         x = edsl.constant(biased)
         x = edsl.cast(x, dtype=edsl.fixed(14, 23))
     with player2:
         w = edsl.constant(
-            np.array(
-                [1, 2, 3, 4],
-                dtype=np.float64,
-            ).reshape((4, 1))
+            np.array([1, 2, 3, 4], dtype=np.float64).reshape((4, 1))
         )
         w = edsl.cast(w, dtype=edsl.fixed(14, 23))
     with repl:
@@ -38,9 +36,7 @@ def linear_predict():
 def comp_to_disk(filename):
     concrete_comp = edsl.trace(linear_predict)
     comp_bin = utils.serialize_computation(concrete_comp)
-    rust_compiled = elk_compiler.compile_computation(
-        comp_bin,
-    )
+    rust_compiled = elk_compiler.compile_computation(comp_bin)
     with open(filename, "wb") as f:
         f.write(rust_compiled.to_bytes())
 
