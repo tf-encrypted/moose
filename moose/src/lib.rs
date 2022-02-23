@@ -584,7 +584,7 @@ macro_rules! concrete_dispatch_kernel {
                                 let x2: $t2 = operands.pop().unwrap().try_into()?;
                                 let x1: $t1 = operands.pop().unwrap().try_into()?;
                                 let x0: $t0 = operands.pop().unwrap().try_into()?;
-                                
+
                                 let y: $u = k(sess, &plc, x0, x1, x2)?;
                                 if y.placement()? == plc.clone().into() {
                                     Ok(y.into())
@@ -654,7 +654,7 @@ macro_rules! concrete_dispatch_kernel {
                                         .unwrap()
                                         .map_err(crate::execution::map_receive_error)?
                                         .try_into()?;
-                                    
+
                                     let y: $u = k(&sess, &plc, x0, x1, x2)?;
                                     if y.placement()? == plc.clone().into() {
                                         crate::execution::map_send_result(sender.send(y.into()))?;
@@ -985,7 +985,7 @@ macro_rules! symbolic_dispatch_kernel {
                                 let x2: <$t2 as KnownType<SymbolicSession>>::Type = operands.pop().unwrap().try_into()?;
                                 let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.pop().unwrap().try_into()?;
                                 let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.pop().unwrap().try_into()?;
-                                
+
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0, x1, x2)?;
                                 Ok(y.into())
                             }))
