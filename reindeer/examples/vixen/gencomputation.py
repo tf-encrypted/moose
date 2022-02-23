@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 
+import pandas as pd
 import numpy as np
 from pymoose import edsl, elk_compiler
 from pymoose.computation import dtypes, utils
@@ -11,21 +12,15 @@ player2 = edsl.host_placement("player2")
 repl = edsl.replicated_placement("replicated", [player0, player1, player2])
 
 
-def bias_trick(X):
-    """Appends column of 1s to input matrix X."""
-    bias_shape = edsl.slice(edsl.shape(X), begin=0, end=1)
-    bias = edsl.ones(bias_shape, dtype=edsl.float64)
-    reshaped_bias = edsl.expand_dims(bias, 1)
-    X_b = edsl.concatenate([reshaped_bias, X], axis=1)
-    return X_b
-
-
 @edsl.computation
 def linear_predict(
     x: edsl.Argument(placement=player0, dtype=dtypes.float64)
 ):
     with player0:
-        x = bias_trick(x)
+        df = pd.read_csv('data.csv')
+        data = df.to_numpy()
+        biased = np.vstack([np.ones(len(data)), data.T]).T
+        x = edsl.constant(biased)
         x = edsl.cast(x, dtype=edsl.fixed(14, 23))
     with player2:
         w = edsl.constant(

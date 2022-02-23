@@ -1,10 +1,8 @@
-use maplit::hashmap;
 use moose::computation::Role;
 use moose::execution::Identity;
 use moose::prelude::*;
 use moose::storage::LocalAsyncStorage;
 use moose_modules::networking::tcpstream::TcpStreamNetworking;
-use moose_modules::storage::csv::read_csv;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
@@ -14,9 +12,6 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
-    #[structopt(long)]
-    data: String,
-
     #[structopt(long)]
     comp: String,
 
@@ -54,14 +49,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let computation = Computation::from_msgpack(computation_bytes)?;
 
-    let input = read_csv(&opt.data, None, &[], &opt.placement.clone()).await?;
-
     let storage = Arc::new(LocalAsyncStorage::default());
 
     let networking = TcpStreamNetworking::new(&opt.placement, hosts).await?;
     let networking = Arc::new(networking);
 
-    let arguments = hashmap!["x".to_string() => input];
+    let arguments = HashMap::new();
 
     let session_id = moose::computation::SessionId::try_from(opt.session_id.as_ref())?;
 
