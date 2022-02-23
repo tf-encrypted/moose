@@ -637,8 +637,8 @@ mod tests {
                         )
                     })
                     .prop_map(|(x, y)| {
-                        let a = ArrayD::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
-                        let b = ArrayD::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
+                        let a = Array::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
+                        let b = Array::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
                         (a, b)
                     })
                     .boxed()
@@ -653,7 +653,7 @@ mod tests {
         #[test]
         fn test_fuzzy_rep_mul64((a,b) in pairwise_same_length64())
         {
-            let mut target = ArrayD::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
             for i in 0..a.len() {
                 target[i] = (std::num::Wrapping(a[i]) * std::num::Wrapping(b[i])).0;
             }
@@ -663,7 +663,7 @@ mod tests {
         #[test]
         fn test_fuzzy_rep_mul128((a,b) in pairwise_same_length128())
         {
-            let mut target = ArrayD::from_shape_vec(IxDyn(&[a.len()]), vec![0u128; a.len()]).unwrap();
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u128; a.len()]).unwrap();
             for i in 0..a.len() {
                 target[i] = (std::num::Wrapping(a[i]) * std::num::Wrapping(b[i])).0;
             }
@@ -677,7 +677,7 @@ mod tests {
             for i in 0..a.len() {
                 target += std::num::Wrapping(a[i]) * std::num::Wrapping(b[i]);
             }
-            let target = ArrayD::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
+            let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
             test_rep_dot64(a, b, target);
         }
 
@@ -688,7 +688,7 @@ mod tests {
             for i in 0..a.len() {
                 target += std::num::Wrapping(a[i]) * std::num::Wrapping(b[i]);
             }
-            let target = ArrayD::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
+            let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
             test_rep_dot128(a, b, target);
         }
 

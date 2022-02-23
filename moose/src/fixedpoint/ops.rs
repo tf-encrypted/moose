@@ -2219,8 +2219,8 @@ mod tests {
                         )
                     })
                     .prop_map(|(x, y)| {
-                        let a = ArrayD::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
-                        let b = ArrayD::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
+                        let a = Array::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
+                        let b = Array::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
                         (a, b)
                     })
                     .boxed()
@@ -2257,8 +2257,8 @@ mod tests {
                         )
                     })
                     .prop_map(|(x, y)| {
-                        let a = ArrayD::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
-                        let b = ArrayD::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
+                        let a = Array::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
+                        let b = Array::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
                         (a, b)
                     })
                     .boxed()

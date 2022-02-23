@@ -826,7 +826,7 @@ where
             nrows += 1;
         }
 
-        ndarray::ArrayD::from_shape_vec(ndarray::IxDyn(&[nrows, ncols]), data)
+        ndarray::Array::from_shape_vec(ndarray::IxDyn(&[nrows, ncols]), data)
             .map(|a| (input, a))
             .map_err(|_: ndarray::ShapeError| Error(make_error(input, ErrorKind::MapRes)))
     }
