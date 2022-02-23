@@ -35,7 +35,6 @@ where
 }
 
 impl ReplicatedPlacement {
-    #[cfg(not(feature = "reindeer"))]
     pub(crate) fn gen_setup<S: Session, PrfKeyT>(&self, sess: &S) -> Result<RepSetup<PrfKeyT>>
     where
         PrfKeyT: Clone,

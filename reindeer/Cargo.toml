@@ -9,7 +9,7 @@ default-run = "rudolph"
 [dependencies]
 anyhow = "~1.0"
 maplit = "~1.0"
-moose = { path = "../moose", default-features = false, features = ["async_execute", "reindeer"] }
+moose = { path = "../moose", default-features = false, features = ["async_execute"] }
 moose-modules = { path = "../modules" }
 serde_json = "~1.0"
 structopt = "~0.3"

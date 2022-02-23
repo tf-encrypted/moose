@@ -16,7 +16,6 @@ blas = ["ndarray-linalg"]
 compile = []
 sync_execute = []
 async_execute = []
-reindeer = []
 
 [dependencies]
 aes = "~0.7"

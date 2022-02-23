@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let computation_bytes = std::fs::read(&opt.comp)?;
 
-    let computation = Computation::from_bytes(computation_bytes)?;
+    let computation = Computation::from_msgpack(computation_bytes)?;
 
     let input = read_csv(&opt.data, None, &[], &opt.placement.clone()).await?;
 
