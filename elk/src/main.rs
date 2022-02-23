@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use moose::compilation::compile;
+use moose::prelude::Computation;
 use moose::textual::parallel_parse_computation;
 use moose::textual::ToTextual;
 use std::collections::HashMap;
@@ -53,8 +54,7 @@ fn main() -> anyhow::Result<()> {
             output,
             passes,
         } => {
-            let source = read_to_string(input)?;
-            let comp = parallel_parse_computation(&source, 12)?;
+            let comp = parse_computation(input)?;
             let passes: Option<Vec<String>> = passes
                 .clone()
                 .map(|p| p.split(',').map(|s| s.to_string()).collect());
@@ -69,8 +69,7 @@ fn main() -> anyhow::Result<()> {
             input,
             by_placement,
         } => {
-            let source = read_to_string(input)?;
-            let comp = parallel_parse_computation(&source, 12)?;
+            let comp = parse_computation(input)?;
             match flavor.as_str() {
                 "op_hist" => {
                     let hist: HashMap<String, usize> = comp
@@ -109,6 +108,11 @@ fn main() -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+fn parse_computation(input: &PathBuf) -> anyhow::Result<Computation> {
+    let source = read_to_string(input)?;
+    parallel_parse_computation(&source, 12)
 }
 
 fn print_sorted(map: &HashMap<String, usize>) {
