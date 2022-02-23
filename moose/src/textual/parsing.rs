@@ -755,7 +755,7 @@ fn host_fixed64_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         input,
         Value::HostFixed64Tensor(Box::new(HostFixed64Tensor {
             tensor: crate::host::HostRingTensor::<u64>(
-                ndarray::Array::from(tensor).into_dyn(),
+                ndarray::Array::from(tensor).into_dyn().into_shared(),
                 placement,
             ),
             integral_precision,
@@ -826,7 +826,7 @@ where
             nrows += 1;
         }
 
-        ndarray::Array::from_shape_vec(ndarray::IxDyn(&[nrows, ncols]), data)
+        ndarray::ArrayD::from_shape_vec(ndarray::IxDyn(&[nrows, ncols]), data)
             .map(|a| (input, a))
             .map_err(|_: ndarray::ShapeError| Error(make_error(input, ErrorKind::MapRes)))
     }
@@ -1511,7 +1511,7 @@ impl ToTextual for Constant {
     }
 }
 
-impl<T: std::fmt::Debug> ToTextual for ndarray::ArrayD<T> {
+impl<T: std::fmt::Debug> ToTextual for ArcArrayD<T> {
     fn to_textual(&self) -> String {
         match self.shape() {
             [_len] => format!("{:?}", self.as_slice().unwrap()),
@@ -1537,7 +1537,7 @@ impl<T: std::fmt::Debug> ToTextual for ndarray::ArrayD<T> {
                 buffer.push(']');
                 buffer
             }
-            _ => unimplemented!("ArrayD.to_textual() unimplemented for tensors of rank > 3"),
+            _ => unimplemented!("ArcArrayD.to_textual() unimplemented for tensors of rank > 3"),
         }
     }
 }

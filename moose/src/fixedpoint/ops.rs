@@ -2219,8 +2219,8 @@ mod tests {
                         )
                     })
                     .prop_map(|(x, y)| {
-                        let a = Array::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
-                        let b = Array::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
+                        let a = ArrayD::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
+                        let b = ArrayD::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
                         (a, b)
                     })
                     .boxed()
@@ -2257,8 +2257,8 @@ mod tests {
                         )
                     })
                     .prop_map(|(x, y)| {
-                        let a = Array::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
-                        let b = Array::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
+                        let a = ArrayD::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
+                        let b = ArrayD::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
                         (a, b)
                     })
                     .boxed()
@@ -2496,7 +2496,7 @@ mod tests {
 
     fn squared_distance(x: &HostFloat64Tensor, target: &ArrayD<f64>) -> ArrayD<f64> {
         assert_eq!(x.shape().0 .0, target.shape());
-        let x = x.0.clone();
+        let x = x.0.clone().into_owned();
         let y = target.clone();
         (x.clone() - y.clone()) * (x - y)
     }

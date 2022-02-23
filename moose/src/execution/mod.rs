@@ -477,6 +477,7 @@ mod tests {
 
         let expected_output: Value = HostTensor::<f32>(
             array![[1.0, 2.0], [3.0, 4.0]]
+                .into_shared()
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
             HostPlacement::from("alice"),
@@ -510,6 +511,7 @@ mod tests {
 
         let expected_output = HostTensor::<f32>(
             array![[0.6, -0.40000004], [-0.40000004, 0.6]]
+                .into_shared()
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
             HostPlacement::from("alice"),
@@ -556,6 +558,7 @@ mod tests {
                     r,
                     HostTensor::<f32>(
                         array![[1.0, 1.0], [1.0, 1.0]]
+                            .into_shared()
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
                         HostPlacement::from("alice"),
@@ -569,6 +572,7 @@ mod tests {
                     r,
                     HostTensor::<f64>(
                         array![[1.0, 1.0], [1.0, 1.0]]
+                            .into_shared()
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
                         HostPlacement::from("alice"),
@@ -582,6 +586,7 @@ mod tests {
                     r,
                     HostTensor::<i64>(
                         array![[1, 1], [1, 1]]
+                            .into_shared()
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
                         HostPlacement::from("alice"),

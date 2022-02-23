@@ -586,7 +586,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
                 ref shape,
             } => {
                 let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
-                let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
+                let tensor = ArcArrayD::from_shape_vec(shape, items.clone())?;
                 let plc = HostPlacement::from("TODO");
                 Ok(Constant::HostFloat32Tensor(plc.from_raw(tensor)))
             }
@@ -595,7 +595,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
                 ref shape,
             } => {
                 let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
-                let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
+                let tensor = ArcArrayD::from_shape_vec(shape, items.clone())?;
                 let plc = HostPlacement::from("TODO");
                 Ok(Constant::HostFloat64Tensor(plc.from_raw(tensor)))
             }
@@ -604,7 +604,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
                 ref shape,
             } => {
                 let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
-                let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
+                let tensor = ArcArrayD::from_shape_vec(shape, items.clone())?;
                 let plc = HostPlacement::from("TODO");
                 Ok(Constant::HostUint64Tensor(plc.from_raw(tensor)))
             }
