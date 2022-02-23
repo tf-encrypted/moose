@@ -9,7 +9,6 @@ fi
 
 cargo run --bin vixen --release -- \
     --hosts "$(cat examples/vixen/hosts.json)" \
-    --data "examples/vixen/data.csv" \
     --placement $1 \
     --comp "examples/vixen/comp.bytes" \
     --role-assignment "$(cat examples/vixen/role_assignment.json)" \

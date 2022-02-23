@@ -1541,53 +1541,84 @@ impl ConcatOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: u32,
-        xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>],
+        x: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>],
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
     where
         ReplicatedPlacement: PlacementConcatenate<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementConcatenate<S, Fixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementConcatenate<S, BoolT, BoolT>,
         Fixed64T: Clone,
         Fixed128T: Clone,
+        BoolT: Clone,
     {
-        if xs.is_empty() {
-            Err(Error::InvalidArgument(
-                "cannot concatenate on empty array of tensors".to_string(),
-            ))
-        } else {
-            let x = &xs[0];
-            match x {
-                AbstractTensor::Fixed64(_) => {
-                    let vec: Result<Vec<Fixed64T>> = xs
-                        .iter()
-                        .map(|abstract_tensor| match abstract_tensor {
-                            AbstractTensor::Fixed64(x) => Ok(x.clone()),
-                            _ => Err(Error::InvalidArgument(
-                                "concat does not support mixed tensor types".to_string(),
-                            )),
-                        })
-                        .collect();
-                    let result = plc.concatenate(sess, axis, &vec?);
-                    Ok(AbstractTensor::Fixed64(result))
-                }
-                AbstractTensor::Fixed128(_) => {
-                    let vec: Result<Vec<Fixed128T>> = xs
-                        .iter()
-                        .map(|abstract_tensor| match abstract_tensor {
-                            AbstractTensor::Fixed128(x) => Ok(x.clone()),
-                            _ => Err(Error::InvalidArgument(
-                                "concat does not support mixed tensor types".to_string(),
-                            )),
-                        })
-                        .collect();
-                    let result = plc.concatenate(sess, axis, &vec?);
-                    Ok(AbstractTensor::Fixed128(result))
-                }
-                x => Err(Error::UnimplementedOperator(format!(
-                    "Missing replicated concatenate op for {:?}",
-                    &x.ty_desc(),
-                ))),
+        if x.is_empty() {
+            return Err(Error::InvalidArgument(
+                "Concat op needs a non-empty array of tensors".to_string(),
+            ));
+        }
+
+        for entry in x {
+            if entry.ty_desc() != x[0].ty_desc() {
+                return Err(Error::InvalidArgument(
+                    "concat op all args to have same types".to_string(),
+                ));
             }
         }
+
+        let out = match x[0] {
+            AbstractTensor::Fixed64(_) => {
+                let xv: Vec<Fixed64T> = x
+                    .iter()
+                    .filter_map(|entry| match entry {
+                        AbstractTensor::Fixed64(v) => Some(v.clone()),
+                        _ => None,
+                    })
+                    .collect();
+                if xv.len() != x.len() {
+                    return Err(Error::Unexpected(Some(
+                        "in concat op all args must have same types".to_string(),
+                    )));
+                }
+                AbstractTensor::Fixed64(plc.concatenate(sess, axis, &xv))
+            }
+            AbstractTensor::Fixed128(_) => {
+                let xv: Vec<Fixed128T> = x
+                    .iter()
+                    .filter_map(|entry| match entry {
+                        AbstractTensor::Fixed128(v) => Some(v.clone()),
+                        _ => None, // never going to be reached
+                    })
+                    .collect();
+                if xv.len() != x.len() {
+                    return Err(Error::Unexpected(Some(
+                        "in concat op all args must have same types".to_string(),
+                    )));
+                }
+                AbstractTensor::Fixed128(plc.concatenate(sess, axis, &xv))
+            }
+            AbstractTensor::Bool(_) => {
+                let xv: Vec<BoolT> = x
+                    .iter()
+                    .filter_map(|entry| match entry {
+                        AbstractTensor::Bool(v) => Some(v.clone()),
+                        _ => None, // never going to be reached
+                    })
+                    .collect();
+                if xv.len() != x.len() {
+                    return Err(Error::Unexpected(Some(
+                        "in concat op all args must have same types".to_string(),
+                    )));
+                }
+                AbstractTensor::Bool(plc.concatenate(sess, axis, &xv))
+            }
+            _ => {
+                return Err(Error::UnimplementedOperator(format!(
+                    "Missing replicated concat op for {:?}",
+                    &x[0].ty_desc(),
+                )))
+            }
+        };
+        Ok(out)
     }
 }
 

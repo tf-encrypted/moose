@@ -1,21 +1,17 @@
-use maplit::hashmap;
 use moose::computation::Role;
 use moose::execution::Identity;
 use moose::prelude::*;
 use moose::storage::LocalAsyncStorage;
 use moose_modules::networking::tcpstream::TcpStreamNetworking;
-use moose_modules::storage::csv::read_csv;
+use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::fs::File;
 use std::sync::Arc;
-use std::{collections::HashMap, io::Read};
 use structopt::StructOpt;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
-    #[structopt(long)]
-    data: String,
-
     #[structopt(long)]
     comp: String,
 
@@ -32,44 +28,37 @@ struct Opt {
     hosts: String,
 }
 
-fn read_comp_file(filename: &str) -> anyhow::Result<Vec<u8>> {
-    let mut file = File::open(filename)?;
-    let mut vec = Vec::new();
-    file.read_to_end(&mut vec)?;
-    if vec.is_empty() {
-        Err(anyhow::anyhow!("computation is empty"))
-    } else {
-        Ok(vec)
-    }
+fn init_tracer() {
+    let fmt_layer = Some(tracing_subscriber::fmt::Layer::default());
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env()) // The tracing formatter defaults to the max log level set by RUST_LOG
+        .with(fmt_layer)
+        .try_init()
+        .unwrap_or_else(|e| println!("Failed to initialize telemetry subscriber: {}", e));
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    init_tracer();
+    tracing::info!("starting up");
     let opt = Opt::from_args();
 
-    let hosts: HashMap<String, String> = serde_json::from_str(&opt.hosts).unwrap();
+    let hosts: HashMap<String, String> = serde_json::from_str(&opt.hosts)?;
 
-    let computation_bytes = read_comp_file(&opt.comp).unwrap();
+    let computation_bytes = std::fs::read(&opt.comp)?;
 
-    let computation = Computation::from_bytes(computation_bytes).unwrap();
-
-    let input = read_csv(&opt.data, None, &[], &opt.placement.clone())
-        .await
-        .unwrap();
+    let computation = Computation::from_msgpack(computation_bytes)?;
 
     let storage = Arc::new(LocalAsyncStorage::default());
 
-    let networking = TcpStreamNetworking::new(&opt.placement, hosts)
-        .await
-        .unwrap();
+    let networking = TcpStreamNetworking::new(&opt.placement, hosts).await?;
     let networking = Arc::new(networking);
 
-    let arguments = hashmap!["x".to_string() => input];
+    let arguments = HashMap::new();
 
-    let session_id = moose::computation::SessionId::try_from(opt.session_id.as_ref()).unwrap();
+    let session_id = moose::computation::SessionId::try_from(opt.session_id.as_ref())?;
 
-    let role_assignment_map: HashMap<String, String> =
-        serde_json::from_str(&opt.role_assignment).unwrap();
+    let role_assignment_map: HashMap<String, String> = serde_json::from_str(&opt.role_assignment)?;
     let role_assignment: HashMap<Role, Identity> = role_assignment_map
         .iter()
         .map(|(key, value)| {
@@ -92,27 +81,26 @@ async fn main() {
     let own_identity: Identity = Identity::from(&opt.placement);
     let mut executor = AsyncExecutor::default();
 
-    let outputs_handle = executor
-        .run_computation(
-            &computation,
-            &role_assignment,
-            &own_identity,
-            &moose_session,
-        )
-        .unwrap();
+    let outputs_handle = executor.run_computation(
+        &computation,
+        &role_assignment,
+        &own_identity,
+        &moose_session,
+    )?;
 
-    println!("joining on tasks");
-    moose_session_handle.join_on_first_error().await.unwrap();
+    tracing::info!("joining on tasks");
+    moose_session_handle.join_on_first_error().await?;
 
     let mut outputs = HashMap::new();
 
-    println!("collecting outputs");
+    tracing::info!("collecting outputs");
     for (output_name, output_future) in outputs_handle {
-        println!("awaiting output: {}", output_name);
+        tracing::info!("awaiting output: {}", output_name);
         let value = output_future.await.unwrap();
-        println!("got output: {}", output_name);
+        tracing::info!("got output: {}", output_name);
         outputs.insert(output_name, value);
     }
 
-    println!("outputs: {:?}", outputs);
+    tracing::info!("outputs: {:?}", outputs);
+    Ok(())
 }

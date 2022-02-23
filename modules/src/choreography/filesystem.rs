@@ -74,7 +74,7 @@ impl FilesystemChoreography {
     ) -> Result<(), Box<dyn std::error::Error>> {
         if path.is_file() {
             match path.extension() {
-                Some(ext) if ext == "toml" => {
+                Some(ext) if ext == "session" => {
                     let filename = path.file_stem().unwrap().to_string_lossy().to_string();
                     let session_id = SessionId::try_from(filename.as_str()).unwrap();
 
@@ -88,11 +88,11 @@ impl FilesystemChoreography {
                         match session_config.computation.format {
                             Format::Binary => {
                                 let comp_raw = std::fs::read(comp_path)?;
-                                moose::computation::Computation::from_bytes(comp_raw)?
+                                moose::computation::Computation::from_msgpack(comp_raw)?
                             }
                             Format::Textual => {
                                 let comp_raw = std::fs::read_to_string(comp_path)?;
-                                moose::textual::verbose_parse_computation(&comp_raw)?
+                                moose::computation::Computation::from_textual(&comp_raw)?
                             }
                         }
                     };
@@ -107,7 +107,7 @@ impl FilesystemChoreography {
                         })
                         .collect();
 
-                    let networking = (self.networking_strategy)();
+                    let networking = (self.networking_strategy)(session_id.clone());
                     let storage = (self.storage_strategy)();
 
                     let session =
