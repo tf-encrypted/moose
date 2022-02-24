@@ -81,7 +81,7 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            crate::error::Result::<Box<dyn Fn(&_, &_) -> _ + Send>>::Ok(Box::new(move |sess, plc| {
+            crate::error::Result::<crate::kernels::TypedNullaryKernel<_, _, _>>::Ok(Box::new(move |sess, plc| {
                 $k(sess, plc, $($attr.clone()),+)
             }))
         }
@@ -176,7 +176,7 @@ macro_rules! derive_runtime_kernel {
     };
 
     (nullary, $k:expr, $self:ident) => {
-        crate::error::Result::<Box<dyn Fn(&_, &_,) -> _ + Send>>::Ok(Box::new($k))
+        crate::error::Result::<crate::kernels::TypedNullaryKernel<_, _, _>>::Ok(Box::new($k))
     };
     (unary, $k:expr, $self:ident) => {
         crate::error::Result::<Box<dyn Fn(&_, &_, _) -> _ + Send>>::Ok(Box::new($k))
@@ -1088,12 +1088,13 @@ macro_rules! kernel {
             {
                 fn compile(
                     &self,
-                ) -> crate::error::Result<Box<dyn Fn(
-                    &crate::execution::SyncSession,
-                    &$plc)
-                    -> crate::error::Result<
-                        <$u as crate::computation::KnownType<crate::execution::SyncSession>>::Type> + Send>
+                ) -> crate::error::Result<
+                    crate::kernels::TypedNullaryKernel<
+                        crate::execution::SyncSession,
+                        $plc,
+                        <$u as crate::computation::KnownType<crate::execution::SyncSession>>::Type,
                     >
+                >
                 {
                     derive_runtime_kernel![nullary, $($kp)+, self]
                 }
@@ -1111,7 +1112,11 @@ macro_rules! kernel {
                 fn compile(
                     &self,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::execution::AsyncSession, &$plc) -> crate::error::Result<$u> + Send>
+                    TypedNullaryKernel<
+                        crate::execution::AsyncSession,
+                        $plc,
+                        $u,
+                    >
                 > {
                     derive_runtime_kernel![nullary, $($kp)+, self]
                 }
@@ -1131,11 +1136,13 @@ macro_rules! kernel {
             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self) -> crate::error::Result<Box<dyn Fn(
-                &crate::execution::SymbolicSession,
-                &$plc
-            ) -> crate::error::Result<
-                <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
+            fn compile(&self) -> crate::error::Result<
+                crate::kernels::TypedNullaryKernel<
+                    crate::execution::SymbolicSession,
+                    $plc,
+                    <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+                >
+            >
             {
                 use crate::execution::SymbolicSession;
 
@@ -1160,12 +1167,13 @@ macro_rules! kernel {
             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self) -> crate::error::Result<Box<dyn Fn(
-                &crate::execution::SymbolicSession,
-                &$plc
-            ) -> crate::error::Result<
-                <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
-            {
+            fn compile(&self) -> crate::error::Result<
+                TypedNullaryKernel<
+                    crate::execution::SymbolicSession,
+                    $plc,
+                    <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+                >
+            > {
                 use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let k = derive_runtime_kernel![nullary, $($kp)+, self]?;
@@ -1189,11 +1197,13 @@ macro_rules! kernel {
             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
-                &crate::execution::SymbolicSession,
-                &$plc
-            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
-            {
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<
+                crate::kernels::TypedNullaryKernel<
+                    crate::execution::SymbolicSession,
+                    $plc,
+                    <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+                >
+            > {
                 derive_runtime_kernel![nullary, $($kp)+, self]
             }
         }
@@ -1207,13 +1217,13 @@ macro_rules! kernel {
             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self) -> crate::error::Result<Box<dyn Fn(
-                &crate::execution::SymbolicSession,
-                &$plc)
-                -> crate::error::Result<
-                    <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-                > + Send
-            >> {
+            fn compile(&self) -> crate::error::Result<
+                crate::kernels::TypedNullaryKernel<
+                    crate::execution::SymbolicSession,
+                    $plc,
+                    <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+                >
+            > {
                 use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();
@@ -2648,7 +2658,11 @@ macro_rules! modelled_kernel {
                 fn compile(
                     &self,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::execution::SyncSession, &$plc) -> crate::error::Result<$u> + Send>
+                    crate::kernels::TypedNullaryKernel<
+                        crate::execution::SyncSession,
+                        $plc,
+                        $u,
+                    >
                 > {
                     derive_runtime_kernel![nullary, $(attributes[$($attr_id),+])? $($kp)+, self]
                 }
@@ -2691,7 +2705,11 @@ macro_rules! modelled_kernel {
                 fn compile(
                     &self,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::execution::AsyncSession, &$plc) -> crate::error::Result<$u> + Send>
+                    crate::kernels::TypedNullaryKernel<
+                        crate::execution::AsyncSession,
+                        $plc,
+                        $u,
+                    >
                 > {
                     derive_runtime_kernel![nullary, $(attributes[$($attr_id),+])? $($kp)+, self]
                 }
@@ -2727,11 +2745,13 @@ macro_rules! modelled_kernel {
             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self) -> crate::error::Result<Box<dyn Fn(
-                &crate::execution::SymbolicSession,
-                &$plc
-            ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
-            {
+            fn compile(&self) -> crate::error::Result<
+                TypedNullaryKernel<
+                    crate::execution::SymbolicSession,
+                    $plc,
+                    <$u as KnownType<crate::execution::SymbolicSession>>::Type,
+                >
+            > {
                 use crate::execution::symbolic::{Symbolic, SymbolicSession};
                 use std::convert::TryInto;
 
@@ -2789,11 +2809,13 @@ macro_rules! modelled_kernel {
             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self) -> crate::error::Result<Box<dyn Fn(
-                &crate::execution::SymbolicSession,
-                &$plc
-            ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
-            {
+            fn compile(&self) -> crate::error::Result<
+                crate::kernels::TypedNullaryKernel<
+                    crate::execution::SymbolicSession,
+                    $plc,
+                    <$u as KnownType<crate::execution::SymbolicSession>>::Type,
+                >
+            > {
                 use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
@@ -2882,11 +2904,13 @@ macro_rules! modelled_kernel {
             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self) -> crate::error::Result<Box<dyn Fn(
-                &crate::execution::SymbolicSession,
-                &$plc
-            ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
-            {
+            fn compile(&self) -> crate::error::Result<
+                crate::kernels::TypedNullaryKernel<
+                    crate::execution::SymbolicSession,
+                    $plc,
+                    <<$u as KnownType<crate::execution::SymbolicSession>>::Type>,
+                >
+            > {
                 derive_runtime_kernel![nullary, $(attributes[$($attr_id),+])? $($kp)+, self]
             }
         }
@@ -2928,11 +2952,13 @@ macro_rules! modelled_kernel {
             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self) -> crate::error::Result<Box<dyn Fn(
-                &crate::execution::SymbolicSession,
-                &$plc
-            ) -> crate::error::Result<<$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
-            {
+            fn compile(&self) -> crate::error::Result<
+                crate::kernels::TypedNullaryKernel<
+                    crate::execution::SymbolicSession,
+                    $plc,
+                    <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+                >
+            > {
                 use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();

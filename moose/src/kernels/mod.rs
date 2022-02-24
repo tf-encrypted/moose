@@ -33,7 +33,7 @@ pub use sampling::*;
 pub use shapes::*;
 
 pub type Kernel<S> =
-    Box<dyn Fn(&S, Vec<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send + Sync>;
+    Box<dyn Fn(&S, Vec<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send>;
 
 pub trait DispatchKernel<S: Session> {
     fn compile(&self, plc: &Placement) -> Result<Kernel<S>>;
@@ -43,9 +43,10 @@ pub trait DispatchKernel<S: Session> {
 // function kernels then we could consider returning an enum over
 // fn.. and Box<dyn Fn...> in the traits below instead
 
+pub type TypedNullaryKernel<S, P, Y> = Box<dyn Fn(&S, &P) -> Result<Y> + Send + Sync>;
+
 pub(crate) trait NullaryKernel<S: Session, P, Y> {
-    #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self) -> Result<Box<dyn Fn(&S, &P) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<TypedNullaryKernel<S, P, Y>>;
 }
 
 pub(crate) trait UnaryKernel<S: Session, P, X0, Y> {
