@@ -36,13 +36,13 @@ macro_rules! m {
 macro_rules! derive_runtime_kernel {
     (nullary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_,) -> _ + Send>> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedNullaryKernel<_, _, _>> = &|$op| $kf;
             kf($self)
         }
     };
     (unary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_, _) -> _ + Send>> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedUnaryKernel<_, _, _, _>> = &|$op| $kf;
             kf($self)
         }
     };
@@ -102,7 +102,7 @@ macro_rules! derive_runtime_kernel {
                 )?
             )+
             {
-                crate::error::Result::<Box<dyn Fn(&_, &_, _) -> _ + Send>>::Ok(
+                crate::error::Result::<crate::kernels::TypedUnaryKernel<_, _, _, _>>::Ok(
                     Box::new(move |sess, plc, x0| {
                         $k(sess, plc, $($attr.clone()),+, x0)
                     })
@@ -179,7 +179,7 @@ macro_rules! derive_runtime_kernel {
         crate::error::Result::<crate::kernels::TypedNullaryKernel<_, _, _>>::Ok(Box::new($k))
     };
     (unary, $k:expr, $self:ident) => {
-        crate::error::Result::<Box<dyn Fn(&_, &_, _) -> _ + Send>>::Ok(Box::new($k))
+        crate::error::Result::<crate::kernels::TypedUnaryKernel<_, _, _, _>>::Ok(Box::new($k))
     };
     (binary, $k:expr, $self:ident) => {
         crate::error::Result::<Box<dyn Fn(&_, &_, _, _) -> _ + Send>>::Ok(Box::new($k))
