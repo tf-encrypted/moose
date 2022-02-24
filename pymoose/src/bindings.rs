@@ -5,7 +5,6 @@ use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
 use moose::host::{FromRaw, HostBitTensor, HostPlacement, HostString, HostTensor};
 use moose::textual::{parallel_parse_computation, ToTextual};
-use ndarray::IxDyn;
 use ndarray::LinalgScalar;
 use numpy::{Element, PyArrayDescr, PyArrayDyn, ToPyArray};
 use pyo3::exceptions::PyRuntimeError;
@@ -58,13 +57,7 @@ where
 fn pyobj_tensor_to_host_bit_tensor(py: Python, obj: &PyObject) -> HostBitTensor {
     let plc = HostPlacement::from("TODO");
     let pyarray = obj.cast_as::<PyArrayDyn<bool>>(py).unwrap();
-    plc.from_raw(
-        pyarray
-            .to_owned_array()
-            .map(|b| *b as u8)
-            .into_dimensionality::<IxDyn>()
-            .unwrap(),
-    )
+    plc.from_raw(pyarray.to_owned_array().map(|b| *b as u8).into_dyn())
 }
 
 fn pyobj_tensor_to_value(py: Python, obj: &PyObject) -> Result<Value, anyhow::Error> {
