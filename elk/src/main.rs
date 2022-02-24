@@ -4,7 +4,7 @@ use moose::prelude::Computation;
 use moose::textual::ToTextual;
 use std::collections::HashMap;
 use std::fs::{read_to_string, write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
 #[clap(name = "elk")]
@@ -144,7 +144,7 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn parse_computation(input: &PathBuf) -> anyhow::Result<Computation> {
+fn parse_computation(input: &Path) -> anyhow::Result<Computation> {
     let source = read_to_string(input)?;
     Computation::from_textual(&source)
         .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
