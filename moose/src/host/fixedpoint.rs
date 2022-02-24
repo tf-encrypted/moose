@@ -51,20 +51,14 @@ where
         if let Some(ax) = axis {
             let dim_len = shape[*ax] as f64;
             Ok(HostTensor(
-                Array::from_elem([], 1.0 / dim_len)
-                    .into_shared()
-                    .into_dimensionality::<IxDyn>()
-                    .map_err(|e| Error::KernelError(e.to_string()))?,
+                Array::from_elem([], 1.0 / dim_len).into_shared().into_dyn(),
                 self.1.clone(),
             ))
         } else {
             let dim_prod: usize = std::iter::Product::product(shape.iter());
             let prod_inv = 1.0 / dim_prod as f64;
             Ok(HostTensor(
-                Array::from_elem([], prod_inv)
-                    .into_shared()
-                    .into_dimensionality::<IxDyn>()
-                    .map_err(|e| Error::KernelError(e.to_string()))?,
+                Array::from_elem([], prod_inv).into_shared().into_dyn(),
                 self.1.clone(),
             ))
         }

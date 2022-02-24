@@ -1,7 +1,7 @@
 //! Placement for plaintext operations by a single role
 
 use crate::computation::*;
-use crate::error::{Error, Result};
+use crate::error::Result;
 #[cfg(feature = "compile")]
 use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
@@ -474,9 +474,7 @@ where
                 self.1,
             ))
         } else {
-            let out = Array::from_elem([], self.0.sum())
-                .into_dimensionality::<IxDyn>()
-                .map_err(|e| Error::KernelError(e.to_string()))?;
+            let out = Array::from_elem([], self.0.sum()).into_dyn();
             Ok(HostRingTensor(out.into_shared(), self.1))
         }
     }

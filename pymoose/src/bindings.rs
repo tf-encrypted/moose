@@ -62,7 +62,7 @@ fn pyobj_tensor_to_host_bit_tensor(py: Python, obj: &PyObject) -> HostBitTensor 
         pyarray
             .to_owned_array()
             .map(|b| *b as u8)
-            .into_dimensionality::<IxDyn>()
+            .into_dyn()
             .unwrap(),
     )
 }
