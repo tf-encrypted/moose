@@ -55,7 +55,7 @@ pub(crate) trait UnaryKernel<S: Session, P, X0, Y> {
     fn compile(&self) -> Result<TypedUnaryKernel<S, P, X0, Y>>;
 }
 
-pub type TypedBinaryKernel<S, P, X0, X1, Y> = Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send>;
+pub type TypedBinaryKernel<S, P, X0, X1, Y> = Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send + Sync>;
 
 pub(crate) trait BinaryKernel<S: Session, P, X0, X1, Y> {
     fn compile(&self) -> Result<TypedBinaryKernel<S, P, X0, X1, Y>>;
