@@ -608,7 +608,7 @@ macro_rules! concrete_dispatch_kernel {
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature};
                 use crate::execution::{AsyncSession, AsyncValue};
-                use crate::kernels::{TernaryKernel, Kernel};
+                use crate::kernels::{TernaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -799,7 +799,7 @@ macro_rules! symbolic_dispatch_kernel {
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession>>
             {
                 use crate::computation::{KnownPlacement, Signature, NullarySignature, KnownType};
-                use crate::kernels::{NullaryKernel};
+                use crate::kernels::NullaryKernel;
                 use crate::execution::SymbolicSession;
                 use std::convert::TryInto;
 
