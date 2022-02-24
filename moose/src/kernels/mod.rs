@@ -49,9 +49,10 @@ pub(crate) trait NullaryKernel<S: Session, P, Y> {
     fn compile(&self) -> Result<TypedNullaryKernel<S, P, Y>>;
 }
 
+pub type TypedUnaryKernel<S, P, X0, Y> = Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send>;
+
 pub(crate) trait UnaryKernel<S: Session, P, X0, Y> {
-    #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self) -> Result<Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<TypedUnaryKernel<S, P, X0, Y>>;
 }
 
 pub(crate) trait BinaryKernel<S: Session, P, X0, X1, Y> {
