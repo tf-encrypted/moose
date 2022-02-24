@@ -1,5 +1,6 @@
 use crate::choreography::{NetworkingStrategy, StorageStrategy};
 use crate::execution::ExecutionContext;
+use moose::computation::CompactComputation;
 use moose::prelude::*;
 use notify::{DebouncedEvent, Watcher};
 use serde::Deserialize;
@@ -96,6 +97,10 @@ impl FilesystemChoreography {
                             }
                         }
                     };
+                    // TODO(Dragos) remove this after
+                    // let tiny_comp: CompactComputation = CompactComputation::from(&computation);
+                    let cloned: Vec<_> = (0..5).map(|_| computation.clone()).collect();
+                    std::process::exit(0);
 
                     let role_assignments: HashMap<Role, Identity> = session_config
                         .roles
