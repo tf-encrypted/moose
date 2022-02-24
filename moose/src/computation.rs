@@ -1430,7 +1430,7 @@ pub trait KnownPlacement {
 macro_rules! placements {
     ($($p:ident,)+) => {
         paste! {
-            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+            #[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
             pub enum Placement {
                 $($p([<$p Placement>]),)+
             }
@@ -1538,6 +1538,85 @@ pub struct Computation {
     // pub constants: Vec<Value>,
     // pub operators: Vec<Operator>,
     pub operations: Vec<Operation>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct CompactOperation {
+    pub kind: Operator,
+    pub inputs: Vec<usize>,
+    pub placement_index: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CompactComputation {
+    pub operations: Vec<CompactOperation>,
+    pub placements: Vec<Placement>,
+}
+
+impl From<&Computation> for CompactComputation {
+    fn from(computation: &Computation) -> CompactComputation {
+        let unique_placements = computation
+            .operations
+            .iter()
+            .map(|op| op.placement.clone())
+            .collect::<HashSet<_>>();
+
+        let placements: Vec<_> = unique_placements.into_iter().map(|x| x).collect();
+        let mut placements_map: HashMap<Placement, usize> =
+            HashMap::with_capacity(placements.len());
+
+        for (i, plc) in placements.clone().into_iter().enumerate() {
+            placements_map.insert(plc, i);
+        }
+
+        let op_names_map = computation
+            .operations
+            .iter()
+            .enumerate()
+            .map(|(i, op)| (op.name.clone(), i))
+            .collect::<HashMap<_, _>>();
+
+        let compact_operations: Vec<_> = computation
+            .operations
+            .iter()
+            .map(|x| {
+                let compact_inputs: Vec<_> = x.inputs.iter().map(|inp| op_names_map[inp]).collect();
+
+                CompactOperation {
+                    kind: x.kind.clone(),
+                    inputs: compact_inputs,
+                    placement_index: placements_map[&x.placement],
+                }
+            })
+            .collect();
+
+        CompactComputation {
+            operations: compact_operations,
+            placements,
+        }
+    }
+}
+
+impl PartialEq<Computation> for CompactComputation {
+    fn eq(&self, other: &Computation) -> bool {
+        if self.operations.len() != other.operations.len() {
+            false
+        } else {
+            let num_ops = other.operations.len();
+            for op_index in 0..num_ops {
+                let tiny_op = &self.operations[op_index];
+                let other_op = &other.operations[op_index];
+                if tiny_op.kind != other_op.kind {
+                    return false;
+                }
+                // small (but incomplete) sanity check to check op kinds of inputs
+                if tiny_op.inputs.len() != other_op.inputs.len() {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
 }
 
 impl Computation {

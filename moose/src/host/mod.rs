@@ -26,7 +26,7 @@ pub use fixedpoint::Convert;
 pub use prim::*;
 
 /// Placement type for single role plaintext operations
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
 pub struct HostPlacement {
     pub owner: Role,
 }
