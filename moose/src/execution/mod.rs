@@ -3,6 +3,7 @@
 use crate::computation::{Operator, Placement, Role, SessionId, Value};
 use crate::error::Result;
 use derive_more::Display;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -48,7 +49,7 @@ pub trait RuntimeSession: Session {
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity>;
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Display)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Display, Serialize, Deserialize)]
 pub struct Identity(pub String);
 
 impl From<&str> for Identity {
