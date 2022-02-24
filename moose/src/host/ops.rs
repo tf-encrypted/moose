@@ -331,8 +331,11 @@ impl DivOp {
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         match x.0.broadcast(y.0.dim()) {
-            Some(x_broadcasted) => Ok(HostTensor::<T>(x_broadcasted.to_owned() / y.0, plc.clone())),
-            None => Ok(HostTensor::<T>(x.0 / y.0, plc.clone())),
+            Some(x_broadcasted) => Ok(HostTensor::<T>(
+                (x_broadcasted.to_owned() / y.0).into_shared(),
+                plc.clone(),
+            )),
+            None => Ok(HostTensor::<T>((x.0 / y.0).into_shared(), plc.clone())),
         }
     }
 
@@ -360,6 +363,7 @@ where
                 let l = self.0.into_dimensionality::<Ix1>().unwrap();
                 let r = other.0.into_dimensionality::<Ix1>().unwrap();
                 let res = Array::from_elem([], l.dot(&r))
+                    .into_shared()
                     .into_dimensionality::<IxDyn>()
                     .unwrap();
                 HostTensor(res, self.1)
@@ -367,19 +371,31 @@ where
             (1, 2) => {
                 let l = self.0.into_dimensionality::<Ix1>().unwrap();
                 let r = other.0.into_dimensionality::<Ix2>().unwrap();
-                let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                let res = l
+                    .dot(&r)
+                    .into_shared()
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap();
                 HostTensor(res, self.1)
             }
             (2, 1) => {
                 let l = self.0.into_dimensionality::<Ix2>().unwrap();
                 let r = other.0.into_dimensionality::<Ix1>().unwrap();
-                let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                let res = l
+                    .dot(&r)
+                    .into_shared()
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap();
                 HostTensor(res, self.1)
             }
             (2, 2) => {
                 let l = self.0.into_dimensionality::<Ix2>().unwrap();
                 let r = other.0.into_dimensionality::<Ix2>().unwrap();
-                let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                let res = l
+                    .dot(&r)
+                    .into_shared()
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap();
                 HostTensor(res, self.1)
             }
             (self_rank, other_rank) => panic!(
@@ -414,7 +430,7 @@ impl OnesOp {
         shape: HostShape,
     ) -> Result<HostTensor<T>> {
         let raw_shape = shape.0;
-        Ok(HostTensor(ArrayD::ones(raw_shape.0), plc.clone()))
+        Ok(HostTensor(ArcArrayD::ones(raw_shape.0), plc.clone()))
     }
 }
 
@@ -473,7 +489,7 @@ impl SliceOp {
         let slice_info =
             ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(slice_info);
         let sliced = x.0.slice(slice_info).to_owned();
-        Ok(HostRingTensor(sliced, plc.clone()))
+        Ok(HostRingTensor(sliced.to_shared(), plc.clone()))
     }
 
     pub(crate) fn shape_kernel<S: RuntimeSession>(
@@ -546,7 +562,7 @@ impl<T: LinalgScalar> HostTensor<T> {
         }
         let axis = Axis(axis);
         let result = self.0.index_axis(axis, index);
-        Ok(HostTensor(result.to_owned(), self.1.clone()))
+        Ok(HostTensor(result.to_owned().into_shared(), self.1.clone()))
     }
 }
 
@@ -568,7 +584,7 @@ impl<T: Clone> HostRingTensor<T> {
         }
         let axis = Axis(axis);
         let result = self.0.index_axis(axis, index);
-        Ok(HostRingTensor(result.to_owned(), self.1))
+        Ok(HostRingTensor(result.to_owned().into_shared(), self.1))
     }
 }
 
@@ -590,7 +606,7 @@ impl HostBitTensor {
         }
         let axis = Axis(axis);
         let result = self.0.index_axis(axis, index);
-        Ok(HostBitTensor(result.to_owned(), self.1))
+        Ok(HostBitTensor(result.to_owned().into_shared(), self.1))
     }
 }
 
@@ -666,7 +682,7 @@ impl ShlDimOp {
         raw_tensor_shape.remove(0);
         let raw_shape = raw_tensor_shape.as_ref();
 
-        let zero = ArrayD::from_elem(raw_shape, 0);
+        let zero = ArcArrayD::from_elem(raw_shape, 0);
         let zero_view = zero.view();
 
         let concatenated: Vec<_> = (0..bit_length)
@@ -682,7 +698,7 @@ impl ShlDimOp {
         let result = ndarray::stack(Axis(0), &concatenated)
             .map_err(|e| Error::KernelError(e.to_string()))?;
 
-        Ok(HostBitTensor(result, plc.clone()))
+        Ok(HostBitTensor(result.into_shared(), plc.clone()))
     }
 }
 
@@ -694,7 +710,7 @@ impl BitDecomposeOp {
     ) -> Result<HostRing64Tensor> {
         let shape = x.shape();
         let raw_shape = shape.0 .0;
-        let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
+        let ones = ArcArrayD::from_elem(raw_shape, Wrapping(1));
 
         let bit_rep: Vec<_> = (0..<HostRing64Tensor as Ring>::BitLength::VALUE)
             .map(|i| (&x.0 >> i) & (&ones))
@@ -705,7 +721,7 @@ impl BitDecomposeOp {
         // in the current protocols it's easier to reason that the bits are stacked on axis(0)
         let result = ndarray::stack(Axis(0), &bit_rep_view)
             .map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostRingTensor(result, plc.clone()))
+        Ok(HostRingTensor(result.into_shared(), plc.clone()))
     }
 
     pub(crate) fn host_ring128_kernel<S: RuntimeSession>(
@@ -715,7 +731,7 @@ impl BitDecomposeOp {
     ) -> Result<HostRing128Tensor> {
         let shape = x.shape();
         let raw_shape = shape.0 .0;
-        let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
+        let ones = ArcArrayD::from_elem(raw_shape, Wrapping(1));
 
         let bit_rep: Vec<_> = (0..<HostRing128Tensor as Ring>::BitLength::VALUE)
             .map(|i| (&x.0 >> i) & (&ones))
@@ -724,7 +740,7 @@ impl BitDecomposeOp {
         let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
         let result = ndarray::stack(Axis(0), &bit_rep_view)
             .map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostRingTensor(result, plc.clone()))
+        Ok(HostRingTensor(result.into_shared(), plc.clone()))
     }
 
     pub(crate) fn host_bit64_kernel<S: RuntimeSession>(
@@ -734,7 +750,7 @@ impl BitDecomposeOp {
     ) -> Result<HostBitTensor> {
         let shape = x.shape();
         let raw_shape = shape.0 .0;
-        let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
+        let ones = ArcArrayD::from_elem(raw_shape, Wrapping(1));
 
         let bit_rep: Vec<_> = (0..<HostRing64Tensor as Ring>::BitLength::VALUE)
             .map(|i| (&x.0 >> i) & (&ones))
@@ -744,7 +760,10 @@ impl BitDecomposeOp {
         let result = ndarray::stack(Axis(0), &bit_rep_view)
             .map_err(|e| Error::KernelError(e.to_string()))?;
         // we unwrap only at the end since shifting can cause overflow
-        Ok(HostBitTensor(result.map(|v| v.0 as u8), plc.clone()))
+        Ok(HostBitTensor(
+            result.map(|v| v.0 as u8).into_shared(),
+            plc.clone(),
+        ))
     }
 
     pub(crate) fn host_bit128_kernel<S: RuntimeSession>(
@@ -754,7 +773,7 @@ impl BitDecomposeOp {
     ) -> Result<HostBitTensor> {
         let shape = x.shape();
         let raw_shape = shape.0 .0;
-        let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
+        let ones = ArcArrayD::from_elem(raw_shape, Wrapping(1));
 
         let bit_rep: Vec<_> = (0..<HostRing128Tensor as Ring>::BitLength::VALUE)
             .map(|i| (&x.0 >> i) & (&ones))
@@ -764,7 +783,10 @@ impl BitDecomposeOp {
         let result = ndarray::stack(Axis(0), &bit_rep_view)
             .map_err(|e| Error::KernelError(e.to_string()))?;
         // we unwrap only at the end since shifting can cause overflow
-        Ok(HostBitTensor(result.map(|v| v.0 as u8), plc.clone()))
+        Ok(HostBitTensor(
+            result.map(|v| v.0 as u8).into_shared(),
+            plc.clone(),
+        ))
     }
 }
 
@@ -786,7 +808,7 @@ impl HostMeanOp {
                         "HostMeanOp cannot reduce over an empty axis.".to_string(),
                     ));
                 };
-                Ok(HostTensor::place(plc, reduced.unwrap()))
+                Ok(HostTensor::place(plc, reduced.unwrap().into_shared()))
             }
             None => {
                 let mean = x.0.mean();
@@ -798,7 +820,7 @@ impl HostMeanOp {
                 let out = Array::from_elem([], mean.unwrap())
                     .into_dimensionality::<IxDyn>()
                     .map_err(|e| Error::KernelError(e.to_string()))?;
-                Ok(HostTensor::place(plc, out))
+                Ok(HostTensor::place(plc, out.into_shared()))
             }
         }
     }
@@ -814,19 +836,22 @@ impl SqrtOp {
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         let x_sqrt = x.0.mapv(T::sqrt);
-        Ok(HostTensor::place(plc, x_sqrt))
+        Ok(HostTensor::place(plc, x_sqrt.into_shared()))
     }
 }
 
 impl<T: LinalgScalar> HostTensor<T> {
     fn sum(self, axis: Option<usize>) -> Result<Self> {
         if let Some(i) = axis {
-            Ok(HostTensor::<T>(self.0.sum_axis(Axis(i)), self.1))
+            Ok(HostTensor::<T>(
+                self.0.sum_axis(Axis(i)).into_shared(),
+                self.1,
+            ))
         } else {
             let out = Array::from_elem([], self.0.sum())
                 .into_dimensionality::<IxDyn>()
                 .map_err(|e| Error::KernelError(e.to_string()))?;
-            Ok(HostTensor::<T>(out, self.1))
+            Ok(HostTensor::<T>(out.into_shared(), self.1))
         }
     }
 }
@@ -978,7 +1003,7 @@ impl ConcatOp {
             xs.iter().map(|x| x.0.view()).collect();
 
         let c = ndarray::concatenate(ax, &arr).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostTensor(c, plc.clone()))
+        Ok(HostTensor(c.into_shared(), plc.clone()))
     }
 
     pub(crate) fn ring_kernel<S: Session, T>(
@@ -997,7 +1022,7 @@ impl ConcatOp {
         let ax = Axis(axis as usize);
         let concatenated =
             ndarray::concatenate(ax, &arr).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostRingTensor(concatenated, plc.clone()))
+        Ok(HostRingTensor(concatenated.into_shared(), plc.clone()))
     }
 
     pub(crate) fn bit_kernel<S: Session>(
@@ -1010,7 +1035,7 @@ impl ConcatOp {
         let arr: Vec<_> = xs.iter().map(|x| x.0.view()).collect();
         let c = ndarray::concatenate(ax, &arr).map_err(|e| Error::KernelError(e.to_string()))?;
 
-        Ok(HostBitTensor(c, plc.clone()))
+        Ok(HostBitTensor(c.into_shared(), plc.clone()))
     }
 }
 
@@ -1039,11 +1064,12 @@ impl InverseOp {
         // TODO(Morten) better error handling below
         let x_inv = match x.0.ndim() {
             2 => {
-                let two_dim: Array2<T> = x.0.into_dimensionality::<Ix2>().unwrap();
+                let two_dim: ndarray::ArcArray2<T> = x.0.into_dimensionality::<Ix2>().unwrap();
                 HostTensor::<T>(
                     two_dim
                         .inv()
                         .unwrap()
+                        .into_shared()
                         .into_dimensionality::<IxDyn>()
                         .unwrap(),
                     x.1,
@@ -1079,7 +1105,7 @@ impl LogOp {
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         let x = plc.place(sess, x);
-        Ok(HostTensor::<T>(x.0.map(|e| e.ln()), x.1))
+        Ok(HostTensor::<T>(x.0.map(|e| e.ln()).into_shared(), x.1))
     }
 }
 
@@ -1093,7 +1119,7 @@ impl Log2Op {
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         let x = plc.place(sess, x);
-        Ok(HostTensor::<T>(x.0.map(|e| e.log2()), x.1))
+        Ok(HostTensor::<T>(x.0.map(|e| e.log2()).into_shared(), x.1))
     }
 }
 
@@ -1109,7 +1135,7 @@ impl RingFixedpointEncodeOp {
         let x_upshifted = &x.0 * (scaling_factor as f32);
         let x_converted: ArrayD<Wrapping<u64>> =
             x_upshifted.mapv(|el| Wrapping((el as i64) as u64));
-        Ok(HostRingTensor(x_converted, plc.clone()))
+        Ok(HostRingTensor(x_converted.into_shared(), plc.clone()))
     }
 
     pub(crate) fn float64_kernel<S: RuntimeSession>(
@@ -1123,7 +1149,7 @@ impl RingFixedpointEncodeOp {
         let x_upshifted = &x.0 * (scaling_factor as f64);
         let x_converted: ArrayD<Wrapping<u128>> =
             x_upshifted.mapv(|el| Wrapping((el as i128) as u128));
-        Ok(HostRingTensor(x_converted, plc.clone()))
+        Ok(HostRingTensor(x_converted.into_shared(), plc.clone()))
     }
 }
 
@@ -1148,7 +1174,10 @@ impl RingFixedpointDecodeOp {
         let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
         let x_upshifted: ArrayD<i128> = x.0.mapv(|xi| xi.0 as i128);
         let x_converted = x_upshifted.mapv(|el| el as f64);
-        Ok(HostTensor(x_converted / scaling_factor as f64, plc.clone()))
+        Ok(HostTensor(
+            (x_converted / scaling_factor as f64).into_shared(),
+            plc.clone(),
+        ))
     }
 }
 
@@ -1166,7 +1195,7 @@ impl SignOp {
                 Wrapping(1_u64)
             }
         });
-        Ok(HostRingTensor::<u64>(sign, plc.clone()))
+        Ok(HostRingTensor::<u64>(sign.into_shared(), plc.clone()))
     }
 
     pub(crate) fn ring128_kernel<S: RuntimeSession>(
@@ -1182,7 +1211,7 @@ impl SignOp {
                 Wrapping(1_u128)
             }
         });
-        Ok(HostRingTensor::<u128>(sign, plc.clone()))
+        Ok(HostRingTensor::<u128>(sign.into_shared(), plc.clone()))
     }
 }
 
@@ -1302,7 +1331,7 @@ impl BitExtractOp {
         x: HostRing64Tensor,
     ) -> Result<HostBitTensor> {
         Ok(HostBitTensor(
-            (x.0 >> bit_idx).mapv(|ai| (ai.0 & 1) as u8),
+            (x.0 >> bit_idx).mapv(|ai| (ai.0 & 1) as u8).into_shared(),
             plc.clone(),
         ))
     }
@@ -1314,7 +1343,7 @@ impl BitExtractOp {
         x: HostRing128Tensor,
     ) -> Result<HostBitTensor> {
         Ok(HostBitTensor(
-            (x.0 >> bit_idx).mapv(|ai| (ai.0 & 1) as u8),
+            (x.0 >> bit_idx).mapv(|ai| (ai.0 & 1) as u8).into_shared(),
             plc.clone(),
         ))
     }
@@ -1332,7 +1361,8 @@ impl RingInjectOp {
         Wrapping<T>: std::ops::Shl<usize, Output = Wrapping<T>>,
     {
         Ok(HostRingTensor(
-            x.0.mapv(|ai| Wrapping(T::from(ai)) << bit_idx),
+            x.0.mapv(|ai| Wrapping(T::from(ai)) << bit_idx)
+                .into_shared(),
             plc.clone(),
         ))
     }
@@ -1346,7 +1376,7 @@ impl FillOp {
         shape: HostShape,
     ) -> Result<HostBitTensor> {
         let raw_shape = shape.0 .0;
-        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value);
+        let raw_tensor = ArcArrayD::from_elem(raw_shape.as_ref(), value);
         Ok(HostBitTensor(raw_tensor, plc.clone()))
     }
 
@@ -1357,7 +1387,7 @@ impl FillOp {
         shape: HostShape,
     ) -> Result<HostRing64Tensor> {
         let raw_shape = shape.0 .0;
-        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
+        let raw_tensor = ArcArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
         Ok(HostRingTensor(raw_tensor, plc.clone()))
     }
 
@@ -1368,7 +1398,7 @@ impl FillOp {
         shape: HostShape,
     ) -> Result<HostRing128Tensor> {
         let raw_shape = shape.0 .0;
-        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
+        let raw_tensor = ArcArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
         Ok(HostRingTensor(raw_tensor, plc.clone()))
     }
 }
@@ -1392,7 +1422,7 @@ impl BroadcastOp {
         x: HostRingTensor<T>,
     ) -> Result<HostRingTensor<T>> {
         match x.0.broadcast(s.clone().0 .0) {
-            Some(y) => Ok(HostRingTensor(y.to_owned(), plc.clone())),
+            Some(y) => Ok(HostRingTensor(y.to_owned().into_shared(), plc.clone())),
             None => Err(Error::KernelError(format!(
                 "Tensor {:?} not broadcastable to shape {:?}.",
                 x, s
@@ -1407,7 +1437,7 @@ impl BroadcastOp {
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
         match x.0.broadcast(s.clone().0 .0) {
-            Some(y) => Ok(HostBitTensor(y.to_owned(), plc.clone())),
+            Some(y) => Ok(HostBitTensor(y.to_owned().into_shared(), plc.clone())),
             None => Err(Error::KernelError(format!(
                 "Tensor {:?} not broadcastable to shape {:?}.",
                 x, s
@@ -1480,7 +1510,7 @@ where
                     let res = Array::from_elem([], l.dot(&r))
                         .into_dimensionality::<IxDyn>()
                         .map_err(|e| Error::KernelError(e.to_string()))?;
-                    Ok(HostRingTensor(res, self.1))
+                    Ok(HostRingTensor(res.into_shared(), self.1))
                 }
                 2 => {
                     let l = self
@@ -1495,7 +1525,7 @@ where
                         .dot(&r)
                         .into_dimensionality::<IxDyn>()
                         .map_err(|e| Error::KernelError(e.to_string()))?;
-                    Ok(HostRingTensor(res, self.1))
+                    Ok(HostRingTensor(res.into_shared(), self.1))
                 }
                 other => Err(Error::KernelError(format!(
                     "Dot<HostRingTensor> cannot handle argument of rank {:?} ",
@@ -1516,7 +1546,7 @@ where
                         .dot(&r)
                         .into_dimensionality::<IxDyn>()
                         .map_err(|e| Error::KernelError(e.to_string()))?;
-                    Ok(HostRingTensor(res, self.1))
+                    Ok(HostRingTensor(res.into_shared(), self.1))
                 }
                 2 => {
                     let l = self
@@ -1531,7 +1561,7 @@ where
                         .dot(&r)
                         .into_dimensionality::<IxDyn>()
                         .map_err(|e| Error::KernelError(e.to_string()))?;
-                    Ok(HostRingTensor(res, self.1))
+                    Ok(HostRingTensor(res.into_shared(), self.1))
                 }
                 other => Err(Error::KernelError(format!(
                     "Dot<HostRingTensor> cannot handle argument of rank {:?} ",
@@ -1618,7 +1648,7 @@ impl SampleOp {
         let ix = IxDyn(shape.0 .0.as_ref());
         let raw_array =
             Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostRingTensor(raw_array, plc.clone()))
+        Ok(HostRingTensor(raw_array.into_shared(), plc.clone()))
     }
 
     pub(crate) fn ring128_kernel<S: RuntimeSession>(
@@ -1647,7 +1677,7 @@ impl SampleOp {
         let ix = IxDyn(shape.0 .0.as_ref());
         let arr =
             Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostRingTensor(arr, plc.clone()))
+        Ok(HostRingTensor(arr.into_shared(), plc.clone()))
     }
 
     pub(crate) fn bit_kernel<S: RuntimeSession>(
@@ -1667,7 +1697,7 @@ impl SampleOp {
         let ix = IxDyn(shape.0 .0.as_ref());
         let arr =
             Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostBitTensor(arr, plc.clone()))
+        Ok(HostBitTensor(arr.into_shared(), plc.clone()))
     }
 }
 
@@ -1697,7 +1727,7 @@ impl SampleSeededOp {
         let ix = IxDyn(shape.0 .0.as_ref());
         let raw_array =
             Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostRingTensor(raw_array, plc.clone()))
+        Ok(HostRingTensor(raw_array.into_shared(), plc.clone()))
     }
 
     pub(crate) fn ring128_kernel<S: RuntimeSession>(
@@ -1727,7 +1757,7 @@ impl SampleSeededOp {
         let ix = IxDyn(shape.0 .0.as_ref());
         let arr =
             Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostRingTensor(arr, plc.clone()))
+        Ok(HostRingTensor(arr.into_shared(), plc.clone()))
     }
 
     pub(crate) fn bit_kernel<S: RuntimeSession>(
@@ -1748,7 +1778,7 @@ impl SampleSeededOp {
         let ix = IxDyn(shape.0 .0.as_ref());
         let res =
             Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostBitTensor(res, plc.clone()))
+        Ok(HostBitTensor(res.into_shared(), plc.clone()))
     }
 }
 
@@ -1772,7 +1802,7 @@ impl LessThanOp {
         y: HostRing64Tensor,
     ) -> Result<HostBitTensor> {
         let result = (x.0 - y.0).mapv(|Wrapping(item)| if (item as i64) < 0 { 1_u8 } else { 0_u8 });
-        Ok(HostBitTensor(result, plc.clone()))
+        Ok(HostBitTensor(result.into_shared(), plc.clone()))
     }
 
     pub(crate) fn host_ring128_kernel<S: Session>(
@@ -1791,7 +1821,7 @@ impl LessThanOp {
             },
         );
 
-        Ok(HostBitTensor(result, plc.clone()))
+        Ok(HostBitTensor(result.into_shared(), plc.clone()))
     }
 
     pub(crate) fn host_float_kernel<S: Session, T: LinalgScalar + FromPrimitive>(
@@ -1804,7 +1834,7 @@ impl LessThanOp {
         T: std::cmp::PartialOrd + Zero,
     {
         let result = (x.0 - y.0).mapv(|item| (item < T::zero()) as u8);
-        Ok(HostBitTensor(result, plc.clone()))
+        Ok(HostBitTensor(result.into_shared(), plc.clone()))
     }
 }
 
@@ -1860,7 +1890,7 @@ impl MuxOp {
         // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
         let s_t: ArrayD<T> = s.0.mapv(|item| item.into()); // How to convert to a new type!!!!
         let res = s_t * (x.0 - y.0.clone()) + y.0;
-        Ok(HostTensor::<T>(res, plc.clone()))
+        Ok(HostTensor::<T>(res.into_shared(), plc.clone()))
     }
 
     pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
@@ -1884,7 +1914,7 @@ impl MuxOp {
         // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
         let s_t: ArrayD<Wrapping<T>> = s.0.mapv(|item| Wrapping(item.into())); // How to convert to a new type!!!!
         let res = s_t * (x.0 - y.0.clone()) + y.0;
-        Ok(HostRingTensor::<T>(res, plc.clone()))
+        Ok(HostRingTensor::<T>(res.into_shared(), plc.clone()))
     }
 }
 
@@ -1907,7 +1937,7 @@ impl CastOp {
         x: HostRing64Tensor,
     ) -> Result<HostTensor<u64>> {
         let unwrapped = x.0.mapv(|item| item.0);
-        Ok(HostTensor(unwrapped, plc.clone()))
+        Ok(HostTensor(unwrapped.into_shared(), plc.clone()))
     }
 
     pub(crate) fn ring_reduction_kernel<S: RuntimeSession>(
@@ -1920,7 +1950,7 @@ impl CastOp {
             Wrapping(reduced as u64)
         });
 
-        Ok(HostRingTensor(x_downshifted, plc.clone()))
+        Ok(HostRingTensor(x_downshifted.into_shared(), plc.clone()))
     }
 }
 
@@ -1951,7 +1981,7 @@ impl RingFixedpointArgmaxOp {
                 });
         }
         Ok(HostRingTensor(
-            current_pattern_max.mapv(Wrapping),
+            current_pattern_max.mapv(Wrapping).into_shared(),
             plc.clone(),
         ))
     }
@@ -1982,7 +2012,7 @@ impl RingFixedpointArgmaxOp {
                 });
         }
         Ok(HostRingTensor(
-            current_pattern_max.mapv(Wrapping),
+            current_pattern_max.mapv(Wrapping).into_shared(),
             plc.clone(),
         ))
     }
