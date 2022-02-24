@@ -208,7 +208,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::SyncSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
                 use crate::execution::{SyncSession};
@@ -250,7 +250,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
                 use crate::execution::{AsyncSession, AsyncValue};
@@ -309,7 +309,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::SyncSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, Value};
                 use crate::execution::{SyncSession};
@@ -354,7 +354,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature};
                 use crate::execution::{AsyncSession, AsyncValue};
@@ -421,7 +421,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::SyncSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
                 use crate::execution::{SyncSession};
@@ -475,7 +475,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
                 use crate::execution::{AsyncSession, AsyncValue};
@@ -556,7 +556,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::SyncSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature};
                 use crate::execution::{SyncSession};
@@ -604,11 +604,11 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature};
                 use crate::execution::{AsyncSession, AsyncValue};
-                use crate::kernels::{TernaryKernel};
+                use crate::kernels::{TernaryKernel, Kernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -686,7 +686,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::SyncSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature, Value};
                 use crate::execution::{SyncSession};
@@ -730,7 +730,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::AsyncSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature};
                 use crate::execution::{AsyncSession, AsyncValue};
@@ -796,7 +796,7 @@ macro_rules! symbolic_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::SymbolicSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession>>
             {
                 use crate::computation::{KnownPlacement, Signature, NullarySignature, KnownType};
                 use crate::kernels::{NullaryKernel};
@@ -842,7 +842,7 @@ macro_rules! symbolic_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::SymbolicSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession>>
             {
                 use crate::computation::{KnownPlacement, Signature, UnarySignature, KnownType};
                 use crate::kernels::{UnaryKernel};
@@ -896,7 +896,7 @@ macro_rules! symbolic_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::SymbolicSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession>>
             {
                 use crate::computation::{KnownPlacement, Signature, BinarySignature, KnownType};
                 use crate::kernels::{BinaryKernel};
@@ -950,7 +950,7 @@ macro_rules! symbolic_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::computation::CompiledKernel<crate::execution::SymbolicSession>>
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession>>
             {
                 use crate::computation::{KnownPlacement, Signature, TernarySignature, KnownType};
                 use crate::kernels::{TernaryKernel};
@@ -1007,7 +1007,7 @@ macro_rules! symbolic_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            )-> crate::error::Result<crate::computation::CompiledKernel<crate::execution::SymbolicSession>>
+            )-> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession>>
             {
                 use crate::computation::{KnownPlacement, Signature, VariadicSignature, KnownType};
                 use crate::kernels::{VariadicKernel};

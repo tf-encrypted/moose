@@ -630,9 +630,6 @@ impl Placed for Unit {
     }
 }
 
-pub type CompiledKernel<S> =
-    Box<dyn Fn(&S, Vec<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send>;
-
 impl Ty {
     pub(crate) fn flatten(&self) -> Ty {
         match self {

@@ -1,11 +1,10 @@
 //! Moose recognized kernels
 
-use crate::error::Result;
-use crate::execution::Session;
-
 use crate::additive::AdditivePlacement;
 use crate::computation::*;
 use crate::error::Error;
+use crate::error::Result;
+use crate::execution::Session;
 use crate::for_all_values;
 use crate::host::HostPlacement;
 use crate::mirrored::Mirrored3Placement;
@@ -33,14 +32,12 @@ pub use io::*;
 pub use sampling::*;
 pub use shapes::*;
 
-use crate::host::{SliceInfo, SyncKey};
+pub type Kernel<S> =
+    Box<dyn Fn(&S, Vec<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send>;
 
 pub trait DispatchKernel<S: Session> {
     #[allow(clippy::type_complexity)] // TODO
-    fn compile(
-        &self,
-        plc: &Placement,
-    ) -> Result<Box<dyn Fn(&S, Vec<S::Value>) -> Result<S::Value> + Send>>;
+    fn compile(&self, plc: &Placement) -> Result<Kernel<S>>;
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
