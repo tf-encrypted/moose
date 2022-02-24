@@ -112,7 +112,7 @@ fn main() -> anyhow::Result<()> {
 
 fn parse_computation(input: &PathBuf) -> anyhow::Result<Computation> {
     let source = read_to_string(input)?;
-    parallel_parse_computation(&source, 12)
+    Computation::from_textual(source)
 }
 
 fn print_sorted(map: &HashMap<String, usize>) {
