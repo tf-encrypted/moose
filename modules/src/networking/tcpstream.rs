@@ -19,10 +19,11 @@ use tokio::time::{sleep, Duration};
 type StoreType =
     Arc<dashmap::DashMap<(SessionId, RendezvousKey), Arc<async_cell::sync::AsyncCell<Value>>>>;
 
+type SendChannelsType = HashMap<Identity, mpsc::Sender<(SendData, mpsc::Sender<()>)>>;
 pub struct TcpStreamNetworking {
     own_name: String,
-    store: StoreType, // store incoming data
-    send_channels: HashMap<Identity, mpsc::Sender<(SendData, mpsc::Sender<()>)>>, // send data over each stream
+    store: StoreType,                // store incoming data
+    send_channels: SendChannelsType, // send data over each stream
 }
 
 fn u64_to_little_endian(n: u64, buf: &mut [u8; 8]) {
