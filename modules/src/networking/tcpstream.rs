@@ -240,14 +240,14 @@ impl AsyncNetworking for TcpStreamNetworking {
             session_id: session_id.clone(),
         };
         tracing::debug!("awaiting send: {:?}", key);
-        let (tx, mut rx) = mpsc::channel(1);
+        let (tx, mut send_finished) = mpsc::channel(1);
         send_channel.send((send_data, tx)).await.map_err(|e| {
             Error::Networking(format!(
                 "in session {}, channel send failed for rendezvous key {} from {} to {}: {}",
                 session_id, rendezvous_key, self.own_name, receiver, e
             ))
         })?;
-        let ack = rx.recv().await.ok_or_else(|| {
+        let ack = send_finished.recv().await.ok_or_else(|| {
             Error::Networking(
                 "did not receive the finished sending ack from the send loop".to_string(),
             )
