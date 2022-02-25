@@ -22,3 +22,7 @@ path = "src/rudolph.rs"
 [[bin]]
 name = "dasher"
 path = "src/dasher.rs"
+
+[[bin]]
+name = "overflow"
+path = "src/comp_overflow.rs"
