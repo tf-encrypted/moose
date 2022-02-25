@@ -21,8 +21,8 @@ type StoreType =
 
 pub struct TcpStreamNetworking {
     own_name: String,
-    store: StoreType,                                         // store incoming data
-    send_channels: HashMap<Identity, mpsc::Sender<SendData>>, // send data over each stream
+    store: StoreType, // store incoming data
+    send_channels: HashMap<Identity, mpsc::Sender<(SendData, mpsc::Sender<()>)>>, // send data over each stream
 }
 
 fn u64_to_little_endian(n: u64, buf: &mut [u8; 8]) {
@@ -127,13 +127,21 @@ async fn send_value(stream: &mut TcpStream, send_data: &SendData) -> Result<()> 
     Ok(())
 }
 
-async fn send_loop(mut stream: TcpStream, mut rx: mpsc::Receiver<SendData>) -> Result<()> {
+async fn send_loop(
+    mut stream: TcpStream,
+    mut rx: mpsc::Receiver<(SendData, mpsc::Sender<()>)>,
+) -> Result<()> {
     loop {
-        let send_data = rx.recv().await;
-        match send_data {
-            Some(data) => {
+        match rx.recv().await {
+            Some((data, finished_send_signal)) => {
                 send_value(&mut stream, &data).await.map_err(|e| {
                     Error::Networking(format!("could not send value to other worker: {}", e))
+                })?;
+                finished_send_signal.send(()).await.map_err(|e| {
+                    Error::Networking(format!(
+                        "could not transmit the finished sending ack over mpsc channel: {}",
+                        e
+                    ))
                 })?;
             }
             None => {
@@ -232,14 +240,20 @@ impl AsyncNetworking for TcpStreamNetworking {
             session_id: session_id.clone(),
         };
         tracing::debug!("awaiting send: {:?}", key);
-        send_channel.send(send_data).await.map_err(|e| {
+        let (tx, mut rx) = mpsc::channel(1);
+        send_channel.send((send_data, tx)).await.map_err(|e| {
             Error::Networking(format!(
                 "in session {}, channel send failed for rendezvous key {} from {} to {}: {}",
                 session_id, rendezvous_key, self.own_name, receiver, e
             ))
         })?;
+        let ack = rx.recv().await.ok_or_else(|| {
+            Error::Networking(
+                "did not receive the finished sending ack from the send loop".to_string(),
+            )
+        })?;
 
-        Ok(())
+        Ok(ack)
     }
 
     async fn receive(
