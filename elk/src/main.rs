@@ -1,10 +1,10 @@
 use clap::{Parser, Subcommand};
 use moose::compilation::compile;
-use moose::textual::parallel_parse_computation;
+use moose::prelude::Computation;
 use moose::textual::ToTextual;
 use std::collections::HashMap;
 use std::fs::{read_to_string, write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
 #[clap(name = "elk")]
@@ -57,8 +57,7 @@ fn main() -> anyhow::Result<()> {
             output,
             passes,
         } => {
-            let source = read_to_string(input)?;
-            let comp = parallel_parse_computation(&source, 12)?;
+            let comp = parse_computation(input)?;
             let passes: Option<Vec<String>> = passes
                 .clone()
                 .map(|p| p.split(',').map(|s| s.to_string()).collect());
@@ -74,8 +73,7 @@ fn main() -> anyhow::Result<()> {
             by_placement,
             by_op_kind,
         } => {
-            let source = read_to_string(input)?;
-            let comp = parallel_parse_computation(&source, 12)?;
+            let comp = parse_computation(input)?;
             match flavor.as_str() {
                 "op_hist" => {
                     let hist: HashMap<String, usize> = comp
@@ -144,6 +142,12 @@ fn main() -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+fn parse_computation(input: &Path) -> anyhow::Result<Computation> {
+    let source = read_to_string(input)?;
+    Computation::from_textual(&source)
+        .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
 }
 
 #[derive(Eq, PartialEq, Hash, Debug)]

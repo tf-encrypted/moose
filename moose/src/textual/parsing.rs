@@ -81,7 +81,7 @@ pub fn fast_parse_computation(source: &str) -> anyhow::Result<Computation> {
 
 pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result<Computation> {
     // Split the source into `chunks` parts at line breaks.
-    let mut parts = Vec::<String>::with_capacity(chunks);
+    let mut parts = Vec::<&str>::with_capacity(chunks);
     let mut left: usize = 0;
     let step = source.len() / chunks;
     for _ in 0..chunks {
@@ -96,7 +96,7 @@ pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result
                 .unwrap_or(source.len())
         };
         if left != right {
-            parts.push(source[left..right].to_string());
+            parts.push(&source[left..right]);
         }
         left = right;
     }
