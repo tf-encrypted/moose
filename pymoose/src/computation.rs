@@ -91,7 +91,7 @@ enum PyDType {
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
 enum PyConstant {
-    std_ShapeConstant { value: Vec<u8> },
+    std_ShapeConstant { value: Vec<usize> },
     std_StringConstant { value: String },
     std_TensorConstant { value: PyNdarray },
 }
@@ -100,9 +100,9 @@ enum PyConstant {
 #[serde(tag = "dtype")]
 #[allow(non_camel_case_types)]
 enum PyNdarray {
-    float32 { items: Vec<f32>, shape: Vec<u8> },
-    float64 { items: Vec<f64>, shape: Vec<u8> },
-    uint64 { items: Vec<u64>, shape: Vec<u8> },
+    float32 { items: Vec<f32>, shape: Vec<usize> },
+    float64 { items: Vec<f64>, shape: Vec<usize> },
+    uint64 { items: Vec<u64>, shape: Vec<usize> },
 }
 
 type Inputs = HashMap<String, String>;
