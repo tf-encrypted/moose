@@ -69,9 +69,10 @@ pub(crate) trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
     fn compile(&self) -> Result<TypedTernaryKernel<S, P, X0, X1, X2, Y>>;
 }
 
+pub type TypedVariadicKernel<S, P, XS, Y> = Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send>;
+
 pub(crate) trait VariadicKernel<S: Session, P, XS, Y> {
-    #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<TypedVariadicKernel<S, P, XS, Y>>;
 }
 
 pub(crate) trait NullaryKernelCheck<S: Session, P, Y>
