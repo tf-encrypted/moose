@@ -69,7 +69,8 @@ pub(crate) trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
     fn compile(&self) -> Result<TypedTernaryKernel<S, P, X0, X1, X2, Y>>;
 }
 
-pub(crate) type TypedVariadicKernel<S, P, XS, Y> = Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send>;
+pub(crate) type TypedVariadicKernel<S, P, XS, Y> =
+    Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send + Sync>;
 
 pub(crate) trait VariadicKernel<S: Session, P, XS, Y> {
     fn compile(&self) -> Result<TypedVariadicKernel<S, P, XS, Y>>;
