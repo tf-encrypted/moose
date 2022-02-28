@@ -1,6 +1,6 @@
 [package]
 name = "moose"
-version = "0.1.4-beta.1"
+version = "0.1.4"
 license = "MIT"
 authors = [""]
 description = ""
