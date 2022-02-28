@@ -63,7 +63,7 @@ pub(crate) trait BinaryKernel<S: Session, P, X0, X1, Y> {
 }
 
 pub type TypedTernaryKernel<S, P, X0, X1, X2, Y> =
-    Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send>;
+    Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send + Sync>;
 
 pub(crate) trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
     fn compile(&self) -> Result<TypedTernaryKernel<S, P, X0, X1, X2, Y>>;
