@@ -1,4 +1,5 @@
 use super::*;
+use crate::host::SliceInfo;
 
 pub trait PlacementIndexAxis<S: Session, T, O> {
     fn index_axis(&self, sess: &S, axis: usize, index: usize, x: &T) -> O;

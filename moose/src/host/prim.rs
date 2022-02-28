@@ -69,7 +69,7 @@ impl<S: Session> PlacementPlace<S, PrfKey> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
 pub struct SyncKey([u8; TAG_BYTES]);
 
 impl SyncKey {

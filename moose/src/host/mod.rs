@@ -135,7 +135,7 @@ impl<S: Session> PlacementPlace<S, HostShape> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
 pub struct SliceInfoElem {
     /// Start index; negative are counted from the back of the axis.
     pub start: isize,
@@ -147,7 +147,7 @@ pub struct SliceInfoElem {
 }
 
 // Slicing needs a SliceInfoElem for each shape dimension
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
 pub struct SliceInfo(pub Vec<SliceInfoElem>);
 
 impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn> {

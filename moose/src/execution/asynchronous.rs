@@ -10,7 +10,7 @@ use crate::storage::{AsyncStorage, LocalAsyncStorage};
 use futures::future::{Map, Shared};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
@@ -51,7 +51,7 @@ pub(crate) fn map_receive_error<T>(_: T) -> Error {
 }
 
 pub struct AsyncSessionHandle {
-    pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
+    pub tasks: Arc<RwLock<Vec<crate::execution::AsyncTask>>>,
 }
 
 impl AsyncSessionHandle {
@@ -118,7 +118,8 @@ pub struct AsyncSession {
     pub role_assignments: Arc<HashMap<Role, Identity>>,
     pub networking: AsyncNetworkingImpl,
     pub storage: AsyncStorageImpl,
-    pub tasks: Arc<std::sync::RwLock<Vec<crate::execution::AsyncTask>>>,
+    pub tasks: Arc<RwLock<Vec<crate::execution::AsyncTask>>>,
+    // pub kernel_cache: Arc<RwLock<HashMap<Operator, Kernel<Self>>>>,
 }
 
 impl AsyncSession {
@@ -136,6 +137,7 @@ impl AsyncSession {
             networking,
             storage,
             tasks: Default::default(),
+            // kernel_cache: Default::default(),
         }
     }
 }

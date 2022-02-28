@@ -1,11 +1,10 @@
 //! Moose recognized kernels
 
-use crate::error::Result;
-use crate::execution::Session;
-
 use crate::additive::AdditivePlacement;
 use crate::computation::*;
 use crate::error::Error;
+use crate::error::Result;
+use crate::execution::Session;
 use crate::for_all_values;
 use crate::host::HostPlacement;
 use crate::mirrored::Mirrored3Placement;
@@ -33,43 +32,48 @@ pub use io::*;
 pub use sampling::*;
 pub use shapes::*;
 
-use crate::host::{SliceInfo, SyncKey};
+pub type Kernel<S> =
+    Box<dyn Fn(&S, Vec<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send>;
 
 pub trait DispatchKernel<S: Session> {
-    #[allow(clippy::type_complexity)] // TODO
-    fn compile(
-        &self,
-        plc: &Placement,
-    ) -> Result<Box<dyn Fn(&S, Vec<S::Value>) -> Result<S::Value> + Send>>;
+    fn compile(&self, plc: &Placement) -> Result<Kernel<S>>;
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
 // function kernels then we could consider returning an enum over
 // fn.. and Box<dyn Fn...> in the traits below instead
 
+pub(crate) type TypedNullaryKernel<S, P, Y> = Box<dyn Fn(&S, &P) -> Result<Y> + Send + Sync>;
+
 pub(crate) trait NullaryKernel<S: Session, P, Y> {
-    #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self) -> Result<Box<dyn Fn(&S, &P) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<TypedNullaryKernel<S, P, Y>>;
 }
+
+pub(crate) type TypedUnaryKernel<S, P, X0, Y> = Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send + Sync>;
 
 pub(crate) trait UnaryKernel<S: Session, P, X0, Y> {
-    #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self) -> Result<Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<TypedUnaryKernel<S, P, X0, Y>>;
 }
+
+pub(crate) type TypedBinaryKernel<S, P, X0, X1, Y> =
+    Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send + Sync>;
 
 pub(crate) trait BinaryKernel<S: Session, P, X0, X1, Y> {
-    #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<TypedBinaryKernel<S, P, X0, X1, Y>>;
 }
+
+pub(crate) type TypedTernaryKernel<S, P, X0, X1, X2, Y> =
+    Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send + Sync>;
 
 pub(crate) trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
-    #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<TypedTernaryKernel<S, P, X0, X1, X2, Y>>;
 }
 
+pub(crate) type TypedVariadicKernel<S, P, XS, Y> =
+    Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send + Sync>;
+
 pub(crate) trait VariadicKernel<S: Session, P, XS, Y> {
-    #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self) -> Result<Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<TypedVariadicKernel<S, P, XS, Y>>;
 }
 
 pub(crate) trait NullaryKernelCheck<S: Session, P, Y>
