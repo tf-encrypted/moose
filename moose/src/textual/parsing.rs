@@ -105,9 +105,7 @@ pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result
         .map(|s| {
             parse_operations::<VerboseError<&str>>(s)
                 .map(|t| t.1) // Dropping the remainder
-                .map_err(|e| {
-                    friendly_error("Failed to parse computation", "base64 encoded model", e)
-                })
+                .map_err(|e| friendly_error("Failed to parse computation", source, e))
         })
         .collect();
     let mut operations = Vec::new();
@@ -1027,10 +1025,17 @@ pub fn parse_bool<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ///
 /// Note that it binds the E in the parser to be a `VerboseError`.
 fn friendly_error(message: &str, source: &str, e: nom::Err<VerboseError<&str>>) -> anyhow::Error {
+    if !source.contains('\n') {
+        return anyhow::anyhow!(
+            "{}. The input contains no line breaks, which usually indicates invalid format. {}",
+            message,
+            e
+        );
+    }
     match e {
         Failure(e) => anyhow::anyhow!("{}\n{}", message, convert_error(source, e)),
         Error(e) => anyhow::anyhow!("{}\n{}", message, convert_error(source, e)),
-        _ => anyhow::anyhow!("{} {} due to {}", message, source, e),
+        _ => anyhow::anyhow!("{} due to {}", message, e),
     }
 }
 
