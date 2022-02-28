@@ -794,7 +794,7 @@ macro_rules! operators {
     ($($t:ident,)+) => {
 
         paste! {
-            #[derive(Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
+            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
             pub enum Operator {
                 $($t([<$t Op>]),)+
             }
@@ -1577,9 +1577,6 @@ impl From<&Computation> for CompactComputation {
             .collect::<HashMap<_, _>>();
 
 
-        let mut op_kinds: Vec<_> = computation.operations.iter().map(|x| x.kind.clone()).collect();
-        op_kinds.sort();
-
         let compact_operations: Vec<_> = computation
             .operations
             .iter()
@@ -1644,46 +1641,48 @@ impl From<&Computation> for CompactestComputation {
             .iter()
             .map(|op| op.placement.clone()).collect();
 
-        unique_placements = {
-            unique_placements.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            unique_placements.dedup();
-            unique_placements
-        };
+        unimplemented!()
 
-        let op_names_map = computation
-            .operations
-            .iter()
-            .enumerate()
-            .map(|(i, op)| (op.name.clone(), i))
-            .collect::<HashMap<_, _>>();
+        // unique_placements = {
+        //     unique_placements.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        //     unique_placements.dedup();
+        //     unique_placements
+        // };
+
+        // let op_names_map = computation
+        //     .operations
+        //     .iter()
+        //     .enumerate()
+        //     .map(|(i, op)| (op.name.clone(), i))
+        //     .collect::<HashMap<_, _>>();
 
 
-        let mut op_kinds: Vec<_> = computation.operations.iter().map(|x| x.kind.clone()).collect();
-        op_kinds = {
-            op_kinds.sort();
-            op_kinds.dedup();
-            op_kinds
-        };
+        // let mut op_kinds: Vec<_> = computation.operations.iter().map(|x| x.kind.clone()).collect();
+        // op_kinds = {
+        //     op_kinds.sort();
+        //     op_kinds.dedup();
+        //     op_kinds
+        // };
 
-        let compactest_operations: Vec<_> = computation
-            .operations
-            .iter()
-            .map(|x| {
-                let compact_inputs: Vec<_> = x.inputs.iter().map(|inp| op_names_map[inp]).collect();
+        // let compactest_operations: Vec<_> = computation
+        //     .operations
+        //     .iter()
+        //     .map(|x| {
+        //         let compact_inputs: Vec<_> = x.inputs.iter().map(|inp| op_names_map[inp]).collect();
 
-                CompactestOperation {
-                    kind_index: op_kinds.iter().position(&x.kind).unwrap(),
-                    inputs: compact_inputs,
-                    placement_index: unique_placements.iter().position(&x.placement),
-                }
-            })
-            .collect();
+        //         CompactestOperation {
+        //             kind_index: op_kinds.iter().position(&x.kind).unwrap(),
+        //             inputs: compact_inputs,
+        //             placement_index: unique_placements.iter().position(&x.placement),
+        //         }
+        //     })
+        //     .collect();
 
-        CompactestComputation {
-            kinds: op_kinds,
-            operations: compactest_operations,
-            placements: unique_placements,
-        }
+        // CompactestComputation {
+        //     kinds: op_kinds,
+        //     operations: compactest_operations,
+        //     placements: unique_placements,
+        // }
     }
 }
 
