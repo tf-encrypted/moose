@@ -400,28 +400,28 @@ impl Session for AsyncSession {
         match op {
             // The kernels that are doing funny things to the async context, such as awaiting for more than their inputs.
             Load(op) => {
-                return if let Host(plc) = plc {
+                if let Host(plc) = plc {
                     self.storage_load(op, plc, operands)
                 } else {
                     unimplemented!()
                 }
             }
             Save(_) => {
-                return if let Host(plc) = plc {
+                if let Host(plc) = plc {
                     self.storage_save(plc, operands)
                 } else {
                     unimplemented!()
                 }
             }
             Send(op) => {
-                return if let Host(plc) = plc {
+                if let Host(plc) = plc {
                     self.networking_send(op, plc, operands)
                 } else {
                     unimplemented!()
                 }
             }
             Receive(op) => {
-                return if let Host(plc) = plc {
+                if let Host(plc) = plc {
                     self.networking_receive(op, plc, operands)
                 } else {
                     unimplemented!()
