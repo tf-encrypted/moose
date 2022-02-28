@@ -794,7 +794,7 @@ macro_rules! operators {
     ($($t:ident,)+) => {
 
         paste! {
-            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+            #[derive(Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
             pub enum Operator {
                 $($t([<$t Op>]),)+
             }
@@ -1576,6 +1576,10 @@ impl From<&Computation> for CompactComputation {
             .map(|(i, op)| (op.name.clone(), i))
             .collect::<HashMap<_, _>>();
 
+
+        let mut op_kinds: Vec<_> = computation.operations.iter().map(|x| x.kind.clone()).collect();
+        op_kinds.sort();
+
         let compact_operations: Vec<_> = computation
             .operations
             .iter()
@@ -1618,6 +1622,74 @@ impl PartialEq<Computation> for CompactComputation {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct CompactestOperation {
+    pub kind_index: usize,
+    pub inputs: Vec<usize>,
+    pub placement_index: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CompactestComputation {
+    pub operations: Vec<CompactestOperation>,
+    pub kinds: Vec<Operator>,
+    pub placements: Vec<Placement>,
+}
+
+impl From<&Computation> for CompactestComputation {
+    fn from(computation: &Computation) -> CompactestComputation {
+        let mut unique_placements: Vec<_>= computation
+            .operations
+            .iter()
+            .map(|op| op.placement.clone()).collect();
+
+        unique_placements = {
+            unique_placements.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            unique_placements.dedup();
+            unique_placements
+        };
+
+        let op_names_map = computation
+            .operations
+            .iter()
+            .enumerate()
+            .map(|(i, op)| (op.name.clone(), i))
+            .collect::<HashMap<_, _>>();
+
+
+        let mut op_kinds: Vec<_> = computation.operations.iter().map(|x| x.kind.clone()).collect();
+        op_kinds = {
+            op_kinds.sort();
+            op_kinds.dedup();
+            op_kinds
+        };
+
+        let compactest_operations: Vec<_> = computation
+            .operations
+            .iter()
+            .map(|x| {
+                let compact_inputs: Vec<_> = x.inputs.iter().map(|inp| op_names_map[inp]).collect();
+
+                CompactestOperation {
+                    kind_index: op_kinds.iter().position(&x.kind).unwrap(),
+                    inputs: compact_inputs,
+                    placement_index: unique_placements.iter().position(&x.placement),
+                }
+            })
+            .collect();
+
+        CompactestComputation {
+            kinds: op_kinds,
+            operations: compactest_operations,
+            placements: unique_placements,
+        }
+    }
+}
+
+
+
+
 
 impl Computation {
     pub fn from_msgpack<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
