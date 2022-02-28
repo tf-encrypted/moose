@@ -1964,9 +1964,14 @@ macro_rules! kernel {
             {
                 fn compile(
                     &self,
-                ) -> crate::error::Result<Box<
-                    dyn Fn(&crate::execution::SyncSession, &$plc, Vec<$ts>) -> crate::error::Result<$u> + Send
-                >> {
+                ) -> crate::error::Result<
+                    crate::kernels::TypedVariadicKernel<
+                        crate::execution::SyncSession,
+                        $plc,
+                        $ts,
+                        $u,
+                    >
+                > {
                     derive_runtime_kernel![variadic, $($kp)+, self]
                 }
             }
@@ -1985,7 +1990,12 @@ macro_rules! kernel {
                     &self,
                     _plc: &$plc,
                 ) -> crate::error::Result<
-                    Box<dyn Fn(&crate::execution::AsyncSession, &$plc, Vec<$ts>) -> crate::error::Result<$u> + Send>
+                    crate::kernels::TypedVariadicKernel<
+                        crate::execution::AsyncSession,
+                        $plc,
+                        $ts,
+                        $u,
+                    >
                 > {
                     derive_runtime_kernel![variadic, $($kp)+, self]
                 }
@@ -2006,12 +2016,14 @@ macro_rules! kernel {
             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self) -> crate::error::Result<Box<dyn Fn(
-                &crate::execution::SymbolicSession,
-                &$plc,
-                Vec<<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type>
-            ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
-            {
+            fn compile(&self) -> crate::error::Result<
+                crate::kernels::TypedVariadicKernel<
+                    crate::execution::SymbolicSession,
+                    $plc,
+                    <$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+                    <$u as KnownType<crate::execution::SymbolicSession>>::Type,
+                >
+            > {
                 derive_runtime_kernel![variadic, $($kp)+, self]
             }
         }
@@ -2026,12 +2038,14 @@ macro_rules! kernel {
             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self) -> crate::error::Result<Box<dyn Fn(
-                &crate::execution::SymbolicSession,
-                &$plc,
-                Vec<<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type>
-            ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
-            {
+            fn compile(&self) -> crate::error::Result<
+                crate::kernels::TypedVariadicKernel<
+                    crate::execution::SymbolicSession,
+                    $plc,
+                    <$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+                    <$u as KnownType<crate::execution::SymbolicSession>>::Type,
+                >
+            > {
                 use crate::execution::symbolic::{Symbolic, SymbolicSession};
                 use std::convert::TryInto;
 
@@ -2079,12 +2093,14 @@ macro_rules! kernel {
             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self) -> crate::error::Result<Box<dyn Fn(
-                &crate::execution::SymbolicSession,
-                &$plc,
-                Vec<<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type>
-            ) -> crate::error::Result<<$u as KnownType<crate::execution::SymbolicSession>>::Type> + Send>>
-            {
+            fn compile(&self) -> crate::error::Result<
+                crate::kernels::TypedVariadicKernel<
+                    crate::execution::SymbolicSession,
+                    $plc,
+                    <$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+                    <$u as KnownType<crate::execution::SymbolicSession>>::Type,
+                >
+            > {
                 use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
@@ -2134,12 +2150,13 @@ macro_rules! kernel {
             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self) -> crate::error::Result<Box<dyn Fn(
-                &crate::execution::SymbolicSession,
-                &$plc,
-                Vec<<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type>
-            ) -> crate::error::Result<
-                <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type> + Send>
+            fn compile(&self) -> crate::error::Result<
+                crate::kernels::TypedVariadicKernel<
+                    crate::execution::SymbolicSession,
+                    $plc,
+                    <$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+                    <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+                >
             > {
                 use crate::computation::{KnownType};
                 use crate::execution::symbolic::{SymbolicSession, Symbolic};
