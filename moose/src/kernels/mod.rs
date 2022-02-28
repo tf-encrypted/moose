@@ -43,33 +43,33 @@ pub trait DispatchKernel<S: Session> {
 // function kernels then we could consider returning an enum over
 // fn.. and Box<dyn Fn...> in the traits below instead
 
-pub type TypedNullaryKernel<S, P, Y> = Box<dyn Fn(&S, &P) -> Result<Y> + Send + Sync>;
+pub(crate) type TypedNullaryKernel<S, P, Y> = Box<dyn Fn(&S, &P) -> Result<Y> + Send + Sync>;
 
 pub(crate) trait NullaryKernel<S: Session, P, Y> {
     fn compile(&self) -> Result<TypedNullaryKernel<S, P, Y>>;
 }
 
-pub type TypedUnaryKernel<S, P, X0, Y> = Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send + Sync>;
+pub(crate) type TypedUnaryKernel<S, P, X0, Y> = Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send + Sync>;
 
 pub(crate) trait UnaryKernel<S: Session, P, X0, Y> {
     fn compile(&self) -> Result<TypedUnaryKernel<S, P, X0, Y>>;
 }
 
-pub type TypedBinaryKernel<S, P, X0, X1, Y> =
+pub(crate) type TypedBinaryKernel<S, P, X0, X1, Y> =
     Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send + Sync>;
 
 pub(crate) trait BinaryKernel<S: Session, P, X0, X1, Y> {
     fn compile(&self) -> Result<TypedBinaryKernel<S, P, X0, X1, Y>>;
 }
 
-pub type TypedTernaryKernel<S, P, X0, X1, X2, Y> =
+pub(crate) type TypedTernaryKernel<S, P, X0, X1, X2, Y> =
     Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send + Sync>;
 
 pub(crate) trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
     fn compile(&self) -> Result<TypedTernaryKernel<S, P, X0, X1, X2, Y>>;
 }
 
-pub type TypedVariadicKernel<S, P, XS, Y> = Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send>;
+pub(crate) type TypedVariadicKernel<S, P, XS, Y> = Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send>;
 
 pub(crate) trait VariadicKernel<S: Session, P, XS, Y> {
     fn compile(&self) -> Result<TypedVariadicKernel<S, P, XS, Y>>;
