@@ -55,15 +55,18 @@ pub(crate) trait UnaryKernel<S: Session, P, X0, Y> {
     fn compile(&self) -> Result<TypedUnaryKernel<S, P, X0, Y>>;
 }
 
-pub type TypedBinaryKernel<S, P, X0, X1, Y> = Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send + Sync>;
+pub type TypedBinaryKernel<S, P, X0, X1, Y> =
+    Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send + Sync>;
 
 pub(crate) trait BinaryKernel<S: Session, P, X0, X1, Y> {
     fn compile(&self) -> Result<TypedBinaryKernel<S, P, X0, X1, Y>>;
 }
 
+pub type TypedTernaryKernel<S, P, X0, X1, X2, Y> =
+    Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send>;
+
 pub(crate) trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
-    #[allow(clippy::type_complexity)] // TODO
-    fn compile(&self) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send>>;
+    fn compile(&self) -> Result<TypedTernaryKernel<S, P, X0, X1, X2, Y>>;
 }
 
 pub(crate) trait VariadicKernel<S: Session, P, XS, Y> {
