@@ -104,7 +104,7 @@ Follow these steps to release a new version:
 
 2. run `make release`
 
-3. Update the [CHANGLOG.md] file to include notable changes since the last release.
+3. Update the [CHANGLOG.md](CHANGLOG.md) file to include notable changes since the last release.
 
 4. if successful then `git push` to create a new PR
 
