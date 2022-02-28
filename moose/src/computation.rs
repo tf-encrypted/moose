@@ -1007,8 +1007,10 @@ pub struct ConstantOp {
 }
 
 impl Hash for ConstantOp {
-    fn hash<H: Hasher>(&self, _state: &mut H) {
-        unimplemented!()
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.sig.hash(state);
+        // TODO(Morten) we must also take `self.value` into account!
+        // self.value.hash(state);
     }
 }
 
@@ -1454,8 +1456,10 @@ pub struct FillOp {
 }
 
 impl Hash for FillOp {
-    fn hash<H: Hasher>(&self, _state: &mut H) {
-        unimplemented!()
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.sig.hash(state);
+        // TODO(Morten) we must also take `self.value` into account!
+        // self.value.hash(state);
     }
 }
 
