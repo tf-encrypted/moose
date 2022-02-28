@@ -1035,7 +1035,7 @@ fn friendly_error(message: &str, source: &str, e: nom::Err<VerboseError<&str>>) 
     match e {
         Failure(e) => anyhow::anyhow!("{}\n{}", message, convert_error(source, e)),
         Error(e) => anyhow::anyhow!("{}\n{}", message, convert_error(source, e)),
-        _ => anyhow::anyhow!("{} {} due to {}", message, source, e),
+        _ => anyhow::anyhow!("{} due to {}", message, e),
     }
 }
 
