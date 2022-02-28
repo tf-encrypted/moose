@@ -1006,6 +1006,7 @@ pub struct ConstantOp {
     pub value: Constant, // TODO Box<Constant> or Box inside Constant?
 }
 
+#[allow(clippy::derive_hash_xor_eq)]
 impl Hash for ConstantOp {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.sig.hash(state);
@@ -1455,6 +1456,7 @@ pub struct FillOp {
     pub value: Constant,
 }
 
+#[allow(clippy::derive_hash_xor_eq)]
 impl Hash for FillOp {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.sig.hash(state);
