@@ -3,7 +3,7 @@ use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::Identity;
 use crate::host::{HostPlacement, HostString, PrfKey};
-use crate::kernels::{DispatchKernel, Kernel};
+use crate::kernels::DispatchKernel;
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
 use crate::storage::{AsyncStorage, LocalAsyncStorage};
