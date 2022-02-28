@@ -1,0 +1,5 @@
+{
+    "player0": "localhost:8000",
+    "player1": "localhost:8001",
+    "player2": "localhost:8002"
+}

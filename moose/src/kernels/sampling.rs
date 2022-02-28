@@ -1,4 +1,5 @@
 use super::*;
+use crate::host::SyncKey;
 
 pub trait PlacementDeriveSeed<S: Session, KeyT, SeedT> {
     fn derive_seed(&self, sess: &S, sync_key: SyncKey, key: &KeyT) -> SeedT;

@@ -3,6 +3,7 @@
 use crate::computation::{Operator, Placement, Role, SessionId, Value};
 use crate::error::Result;
 use derive_more::Display;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -48,7 +49,7 @@ pub trait RuntimeSession: Session {
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity>;
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Display)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Display, Serialize, Deserialize)]
 pub struct Identity(pub String);
 
 impl From<&str> for Identity {
@@ -476,9 +477,7 @@ mod tests {
         };
 
         let expected_output: Value = HostTensor::<f32>(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
+            array![[1.0, 2.0], [3.0, 4.0]].into_shared().into_dyn(),
             HostPlacement::from("alice"),
         )
         .into();
@@ -510,8 +509,8 @@ mod tests {
 
         let expected_output = HostTensor::<f32>(
             array![[0.6, -0.40000004], [-0.40000004, 0.6]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
+                .into_shared()
+                .into_dyn(),
             HostPlacement::from("alice"),
         );
         let x_inv: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
@@ -555,9 +554,7 @@ mod tests {
                 assert_eq!(
                     r,
                     HostTensor::<f32>(
-                        array![[1.0, 1.0], [1.0, 1.0]]
-                            .into_dimensionality::<IxDyn>()
-                            .unwrap(),
+                        array![[1.0, 1.0], [1.0, 1.0]].into_shared().into_dyn(),
                         HostPlacement::from("alice"),
                     )
                 );
@@ -568,9 +565,7 @@ mod tests {
                 assert_eq!(
                     r,
                     HostTensor::<f64>(
-                        array![[1.0, 1.0], [1.0, 1.0]]
-                            .into_dimensionality::<IxDyn>()
-                            .unwrap(),
+                        array![[1.0, 1.0], [1.0, 1.0]].into_shared().into_dyn(),
                         HostPlacement::from("alice"),
                     )
                 );
@@ -581,9 +576,7 @@ mod tests {
                 assert_eq!(
                     r,
                     HostTensor::<i64>(
-                        array![[1, 1], [1, 1]]
-                            .into_dimensionality::<IxDyn>()
-                            .unwrap(),
+                        array![[1, 1], [1, 1]].into_shared().into_dyn(),
                         HostPlacement::from("alice"),
                     )
                 );

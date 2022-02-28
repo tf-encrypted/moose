@@ -20,7 +20,7 @@ pub enum Shape {
     Host(HostShape),
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Copy, Clone, Debug, Display)]
 pub enum TensorDType {
     #[display(fmt = "Fixed64({}, {})", integral_precision, fractional_precision)]
     Fixed64 {

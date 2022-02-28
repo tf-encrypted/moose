@@ -1,7 +1,7 @@
 //! Placement for plaintext operations by a single role
 
 use crate::computation::*;
-use crate::error::{Error, Result};
+use crate::error::Result;
 #[cfg(feature = "compile")]
 use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
@@ -24,6 +24,8 @@ mod ops;
 mod prim;
 pub use fixedpoint::Convert;
 pub use prim::*;
+
+pub type ArcArrayD<A> = ArcArray<A, IxDyn>;
 
 /// Placement type for single role plaintext operations
 #[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
@@ -133,7 +135,7 @@ impl<S: Session> PlacementPlace<S, HostShape> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
 pub struct SliceInfoElem {
     /// Start index; negative are counted from the back of the axis.
     pub start: isize,
@@ -145,7 +147,7 @@ pub struct SliceInfoElem {
 }
 
 // Slicing needs a SliceInfoElem for each shape dimension
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
 pub struct SliceInfo(pub Vec<SliceInfoElem>);
 
 impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn> {
@@ -161,7 +163,7 @@ impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, 
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct HostTensor<T>(pub ArrayD<T>, pub HostPlacement);
+pub struct HostTensor<T>(pub ArcArrayD<T>, pub HostPlacement);
 
 impl<T> Placed for HostTensor<T> {
     type Placement = HostPlacement;
@@ -184,7 +186,7 @@ impl<T> HostTensor<T>
 where
     T: LinalgScalar,
 {
-    pub(crate) fn place(plc: &HostPlacement, x: ArrayD<T>) -> HostTensor<T> {
+    pub(crate) fn place(plc: &HostPlacement, x: ArcArrayD<T>) -> HostTensor<T> {
         HostTensor::<T>(x, plc.clone())
     }
 
@@ -198,7 +200,7 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct HostBitTensor(pub ArrayD<u8>, pub HostPlacement);
+pub struct HostBitTensor(pub ArcArrayD<u8>, pub HostPlacement);
 
 impl std::fmt::Debug for HostBitTensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -232,7 +234,7 @@ impl<S: Session> PlacementPlace<S, HostBitTensor> for HostPlacement {
 }
 
 impl HostBitTensor {
-    pub(crate) fn place(plc: &HostPlacement, x: ArrayD<u8>) -> HostBitTensor {
+    pub(crate) fn place(plc: &HostPlacement, x: ArcArrayD<u8>) -> HostBitTensor {
         HostBitTensor(x, plc.clone())
     }
 
@@ -377,7 +379,7 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct HostRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
+pub struct HostRingTensor<T>(pub ArcArrayD<Wrapping<T>>, pub HostPlacement);
 
 impl Ring for HostRing64Tensor {
     type BitLength = N64;
@@ -416,7 +418,7 @@ where
 }
 
 impl<T> HostRingTensor<T> {
-    pub(crate) fn place(plc: &HostPlacement, x: ArrayD<Wrapping<T>>) -> HostRingTensor<T> {
+    pub(crate) fn place(plc: &HostPlacement, x: ArcArrayD<Wrapping<T>>) -> HostRingTensor<T> {
         HostRingTensor::<T>(x, plc.clone())
     }
 
@@ -439,7 +441,7 @@ impl<T: Clone> HostRingTensor<T> {
         plc: P,
     ) -> HostRingTensor<T> {
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
-        HostRingTensor(tensor, plc.into())
+        HostRingTensor(tensor.into_shared(), plc.into())
     }
 }
 
@@ -467,12 +469,13 @@ where
 {
     fn sum(self, axis: Option<usize>) -> Result<HostRingTensor<T>> {
         if let Some(i) = axis {
-            Ok(HostRingTensor(self.0.sum_axis(Axis(i)), self.1))
+            Ok(HostRingTensor(
+                self.0.sum_axis(Axis(i)).into_shared(),
+                self.1,
+            ))
         } else {
-            let out = Array::from_elem([], self.0.sum())
-                .into_dimensionality::<IxDyn>()
-                .map_err(|e| Error::KernelError(e.to_string()))?;
-            Ok(HostRingTensor(out, self.1))
+            let out = Array::from_elem([], self.0.sum()).into_dyn();
+            Ok(HostRingTensor(out.into_shared(), self.1))
         }
     }
 }
@@ -502,19 +505,22 @@ where
 
 impl<T: Clone, D: ndarray::Dimension> FromRaw<Array<T, D>, HostTensor<T>> for HostPlacement {
     fn from_raw(&self, raw: Array<T, D>) -> HostTensor<T> {
-        HostTensor(raw.into_dyn(), self.clone())
+        HostTensor(raw.into_dyn().into_shared(), self.clone())
     }
 }
 
 impl<T: Clone, D: ndarray::Dimension> FromRaw<Array<T, D>, HostRingTensor<T>> for HostPlacement {
     fn from_raw(&self, raw: Array<T, D>) -> HostRingTensor<T> {
-        HostRingTensor(raw.mapv(Wrapping).into_dyn(), self.clone())
+        HostRingTensor(raw.mapv(Wrapping).into_dyn().into_shared(), self.clone())
     }
 }
 
 impl<D: ndarray::Dimension> FromRaw<Array<u8, D>, HostBitTensor> for HostPlacement {
     fn from_raw(&self, raw: Array<u8, D>) -> HostBitTensor {
-        HostBitTensor(raw.mapv(|ai| (ai & 1)).into_dyn(), self.clone())
+        HostBitTensor(
+            raw.mapv(|ai| (ai & 1)).into_dyn().into_shared(),
+            self.clone(),
+        )
     }
 }
 

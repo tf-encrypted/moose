@@ -118,6 +118,8 @@ Once your PR has been merged to `main`:
 
 5. additionally tag the new versioned release with the `stable` tag, if the release is deemed stable.
 
+6. update to the next dev version with `cargo release --workspace --no-publish beta --execute` and create a PR for that
+
 If needed then tags on GitHub can be deleted using `git push --delete origin {tag-name}`
 
 ### Rust Development

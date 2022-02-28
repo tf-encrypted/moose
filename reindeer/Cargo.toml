@@ -1,6 +1,6 @@
 [package]
 name = "reindeer"
-version = "0.1.0"
+version = "0.1.4-beta.1"
 license = "MIT"
 edition = "2018"
 authors = []
@@ -9,11 +9,12 @@ default-run = "rudolph"
 [dependencies]
 moose = { path = "../moose", default-features = false, features = ["async_execute"] }
 moose-modules = { path = "../modules" }
+serde_json = "~1.0"
 structopt = "~0.3"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 tonic = "0.6"
 tracing = { version="0.1", features = ["log"] }
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [[bin]]
 name = "rudolph"
@@ -26,3 +27,7 @@ path = "src/dasher.rs"
 [[bin]]
 name = "overflow"
 path = "src/comp_overflow.rs"
+
+[[bin]]
+name = "vixen"
+path = "src/vixen.rs"

@@ -81,7 +81,7 @@ pub fn fast_parse_computation(source: &str) -> anyhow::Result<Computation> {
 
 pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result<Computation> {
     // Split the source into `chunks` parts at line breaks.
-    let mut parts = Vec::<String>::with_capacity(chunks);
+    let mut parts = Vec::<&str>::with_capacity(chunks);
     let mut left: usize = 0;
     let step = source.len() / chunks;
     for _ in 0..chunks {
@@ -96,7 +96,7 @@ pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result
                 .unwrap_or(source.len())
         };
         if left != right {
-            parts.push(source[left..right].to_string());
+            parts.push(&source[left..right]);
         }
         left = right;
     }
@@ -755,7 +755,7 @@ fn host_fixed64_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         input,
         Value::HostFixed64Tensor(Box::new(HostFixed64Tensor {
             tensor: crate::host::HostRingTensor::<u64>(
-                ndarray::Array::from(tensor).into_dyn(),
+                ndarray::Array::from(tensor).into_dyn().into_shared(),
                 placement,
             ),
             integral_precision,
@@ -1511,7 +1511,7 @@ impl ToTextual for Constant {
     }
 }
 
-impl<T: std::fmt::Debug> ToTextual for ndarray::ArrayD<T> {
+impl<T: std::fmt::Debug> ToTextual for ArcArrayD<T> {
     fn to_textual(&self) -> String {
         match self.shape() {
             [_len] => format!("{:?}", self.as_slice().unwrap()),
@@ -1537,7 +1537,7 @@ impl<T: std::fmt::Debug> ToTextual for ndarray::ArrayD<T> {
                 buffer.push(']');
                 buffer
             }
-            _ => unimplemented!("ArrayD.to_textual() unimplemented for tensors of rank > 3"),
+            _ => unimplemented!("ArcArrayD.to_textual() unimplemented for tensors of rank > 3"),
         }
     }
 }
