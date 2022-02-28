@@ -105,7 +105,9 @@ pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result
         .map(|s| {
             parse_operations::<VerboseError<&str>>(s)
                 .map(|t| t.1) // Dropping the remainder
-                .map_err(|e| friendly_error("Failed to parse computation", "base64 encoded model", e))
+                .map_err(|e| {
+                    friendly_error("Failed to parse computation", "base64 encoded model", e)
+                })
         })
         .collect();
     let mut operations = Vec::new();
