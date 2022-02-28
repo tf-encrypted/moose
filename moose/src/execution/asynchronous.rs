@@ -120,7 +120,7 @@ pub struct AsyncSession {
     pub networking: AsyncNetworkingImpl,
     pub storage: AsyncStorageImpl,
     pub tasks: Arc<RwLock<Vec<crate::execution::AsyncTask>>>,
-    // pub kernel_cache: Arc<DashMap<Operator, Kernel<Self>>>,
+    pub kernel_cache: Arc<DashMap<Operator, Kernel<Self>>>,
 }
 
 impl AsyncSession {
@@ -138,7 +138,7 @@ impl AsyncSession {
             networking,
             storage,
             tasks: Default::default(),
-            // kernel_cache: Arc::new(DashMap::new()),
+            kernel_cache: Arc::new(DashMap::new()),
         }
     }
 }
@@ -397,7 +397,7 @@ impl Session for AsyncSession {
     ) -> Result<Self::Value> {
         use Operator::*;
         use Placement::*;
-        let kernel: Kernel<Self> = match op {
+        match op {
             // The kernels that are doing funny things to the async context, such as awaiting for more than their inputs.
             Load(op) => {
                 return if let Host(plc) = plc {
@@ -430,14 +430,14 @@ impl Session for AsyncSession {
 
             // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
             op => {
-                // let kernel = self.kernel_cache.entry(&op)
-                //     .or_try_insert_with(|| DispatchKernel::compile(&op, plc))
-                //     .value()?;
-                // kernel
-                DispatchKernel::compile(&op, plc)?
+                let entry = self
+                    .kernel_cache
+                    .entry(op.clone())
+                    .or_try_insert_with(|| DispatchKernel::compile(&op, plc))?;
+                let kernel = entry.value();
+                kernel(self, operands)
             }
-        };
-        kernel(self, operands)
+        }
     }
 }
 
