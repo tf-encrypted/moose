@@ -7,8 +7,8 @@
 ## v0.1.3
 
 - Upgraded nom to 7.1 to deal with the floating point parser problems
-- Switched base from ndarray::Array to ndarray:ArcArray
-- Deprected `to_bytes/from_bytes` in favour fo `to_msgpack/from_msgpack`.
+- Switched base array from ndarray::Array to ndarray:ArcArray
+- Deprecated `to_bytes/from_bytes` in favour fo `to_msgpack/from_msgpack`.
 
 ## v0.1.2
 
