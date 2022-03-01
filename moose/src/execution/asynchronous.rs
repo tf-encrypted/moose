@@ -7,7 +7,6 @@ use crate::kernels::{DispatchKernel, Kernel};
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
 use crate::storage::{AsyncStorage, LocalAsyncStorage};
-use dashmap::DashMap;
 use futures::future::{Map, Shared};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
@@ -120,7 +119,6 @@ pub struct AsyncSession {
     pub networking: AsyncNetworkingImpl,
     pub storage: AsyncStorageImpl,
     pub tasks: Arc<RwLock<Vec<crate::execution::AsyncTask>>>,
-    pub kernel_cache: Arc<DashMap<Operator, Kernel<Self>>>,
 }
 
 impl AsyncSession {
@@ -138,7 +136,6 @@ impl AsyncSession {
             networking,
             storage,
             tasks: Default::default(),
-            kernel_cache: Arc::new(DashMap::new()),
         }
     }
 }
@@ -430,11 +427,7 @@ impl Session for AsyncSession {
 
             // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
             op => {
-                let entry = self
-                    .kernel_cache
-                    .entry(op.clone())
-                    .or_try_insert_with(|| DispatchKernel::compile(&op, plc))?;
-                let kernel = entry.value();
+                let kernel = DispatchKernel::compile(&op, plc)?;
                 kernel(self, operands)
             }
         }
