@@ -8,23 +8,56 @@ use tonic::transport::Server;
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
-    #[structopt(env, long, default_value = "50000")]
-    port: u16,
-
     #[structopt(env, long)]
+    /// Own identity in sessions
     identity: String,
 
+    #[structopt(env, long, default_value = "50000")]
+    /// Port to use for gRPC server
+    port: u16,
+
     #[structopt(env, long, default_value = "./examples")]
+    /// Directory to read sessions from
     sessions: String,
 
-    #[structopt(env, long)]
+    #[structopt(long)]
+    /// Ignore any existing files in the sessions directory and only listen for new
     ignore_existing: bool,
+
+    #[structopt(long)]
+    /// Report telemetry to Jaeger
+    telemetry: bool,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt::init();
     let opt = Opt::from_args();
+
+    if !opt.telemetry {
+        tracing_subscriber::fmt::init();
+    } else {
+        use opentelemetry::sdk::trace::Config;
+        use opentelemetry::sdk::Resource;
+        use opentelemetry::KeyValue;
+        use tracing_subscriber::{prelude::*, EnvFilter};
+
+        let tracer =
+            opentelemetry_jaeger::new_pipeline()
+                .with_service_name("rudolph")
+                .with_trace_config(Config::default().with_resource(Resource::new(vec![
+                    KeyValue::new("identity", opt.identity.clone()),
+                ])))
+                .install_simple()?;
+        let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+
+        tracing_subscriber::registry()
+            .with(EnvFilter::from_default_env())
+            .with(telemetry)
+            .try_init()?;
+    };
+
+    let root = tracing::span!(tracing::Level::INFO, "app_start");
+    let _enter = root.enter();
 
     let manager = GrpcNetworkingManager::default();
 

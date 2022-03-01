@@ -12,7 +12,7 @@ TODO
 
 Worker using filesystem-based choreography, in-memory storage, and gRPC-based networking.
 
-## Launching workers
+## Launching
 
 To launch Rudolph you need to specify:
 
@@ -36,13 +36,7 @@ cargo watch -c -x 'run --bin rudolph -- --identity "localhost:50000" --port 5000
 
 Note that the `-i examples` makes sure that the workers are not re-launched when files in `./examples` are changed.
 
-Debug logging may be turned on by setting:
-
-```
-export RUST_LOG="worker=debug"
-```
-
-## Launching sessions
+## Sessions
 
 Sessions are controlled by two sets of files:
 
@@ -51,3 +45,50 @@ Sessions are controlled by two sets of files:
 - `.session` files that specify sessions and we encourage taking a look at the example files to see their format. The name of the file is used to derive the session id.
 
 The worker listens for changes to the specified directory and will automatically launch new sessions when new `.session` files are created, i.e. there is no need to relaunch workers to run new sessions.
+
+## Logging
+
+Debug logging to console may be turned on by setting:
+
+```
+export RUST_LOG="moose=debug,moose_modules=debug"
+```
+
+## Tracing
+
+Rudolph has basic support for Jaeger/OpenTelemetry via the `--telemetry` flag.
+
+Jaeger may be launched via docker:
+
+```
+docker run -p6831:6831/udp -p6832:6832/udp -p16686:16686 jaegertracing/all-in-one:latest
+```
+
+Once running, Rudolph can be launched via the following. Note that we encourage setting `RUST_LOG` to limit the number of spans generated, in particular for large comptuations.
+
+```
+cargo run --bin rudolph -- --identity "localhost:50000" --port 50000 --sessions ./examples --telemetry
+```
+
+## Heaptrack
+
+We have been using [heaptrack](https://github.com/KDE/heaptrack) to measure the memory consumptions of computations,
+but in order to do so it appears that you need to launch Rudolph directly, and not via `cargo run`.
+
+This can be done by first building it:
+
+```
+cargo build --bin rudolph
+```
+
+and then running the produced executable:
+
+```
+./target/debug/rudolph
+```
+
+In particular, to use heaptrack run:
+
+```
+heaptrack ./target/debug/rudolph
+```
