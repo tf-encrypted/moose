@@ -6,9 +6,7 @@ from onnxmltools import convert_sklearn
 from skl2onnx.common import data_types as onnx_dtypes
 
 from pymoose import edsl
-from pymoose import elk_compiler
 from pymoose import testing
-from pymoose.predictors import from_onnx
 from pymoose.predictors import linear_predictor
 from pymoose.predictors import predictor_utils
 
