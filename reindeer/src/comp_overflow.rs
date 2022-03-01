@@ -36,9 +36,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     tracing::info!("Finished parsing the computation from");
+
     // let renamed_computation = computation.rename_ops();
-    // let reverted: Computation = Computation::from(&compact);
+    // let compactest = CompactestComputation::from(&computation);
+    // let reverted = Computation::from(&compactest);
     // assert_eq!(reverted, renamed_computation);
+    // tracing::info!("Inverting compactest computation done successfully");
 
     if opt.bench_compact == 1 {
         tracing::info!("Cloning the compact computation");

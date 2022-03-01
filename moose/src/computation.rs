@@ -1716,7 +1716,7 @@ impl From<&Computation> for CompactComputation {
             .map(|op| op.placement.clone())
             .collect::<HashSet<_>>();
 
-        let placements: Vec<_> = unique_placements.into_iter().map(|x| x).collect();
+        let placements: Vec<_> = unique_placements.into_iter().collect();
         let mut placements_map: HashMap<Placement, usize> =
             HashMap::with_capacity(placements.len());
 
@@ -1771,10 +1771,10 @@ impl From<&Computation> for CompactestComputation {
         let unique_placements = computation
             .operations
             .iter()
-            .map(|op| op.placement.clone())
-            .collect::<HashSet<_>>();
+            .map(|op| &op.placement)
+            .collect::<HashSet<&Placement>>();
 
-        let placements: Vec<_> = unique_placements.into_iter().map(|x| x).collect();
+        let placements: Vec<Placement> = unique_placements.into_iter().cloned().collect();
         let mut placements_map: HashMap<Placement, usize> =
             HashMap::with_capacity(placements.len());
         for (i, plc) in placements.clone().into_iter().enumerate() {
@@ -1784,10 +1784,10 @@ impl From<&Computation> for CompactestComputation {
         let unique_operators = computation
             .operations
             .iter()
-            .map(|op| op.kind.clone())
-            .collect::<HashSet<_>>();
+            .map(|op| &op.kind)
+            .collect::<HashSet<&Operator>>();
 
-        let operators: Vec<_> = unique_operators.into_iter().map(|x| x).collect();
+        let operators: Vec<_> = unique_operators.into_iter().cloned().collect();
         let mut operators_map: HashMap<Operator, usize> = HashMap::with_capacity(operators.len());
         for (i, plc) in operators.clone().into_iter().enumerate() {
             operators_map.insert(plc, i);
