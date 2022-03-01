@@ -295,6 +295,20 @@ pub(crate) fn new_async_value() -> (AsyncSender, AsyncReceiver) {
     (sender, shared_receiver)
 }
 
+impl DispatchKernel<AsyncSession> for SendOp {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession>> {
+        if let Placement::Host(plc) = plc {
+            let plc = plc.clone();
+            let op = self.clone();
+            Ok(Box::new(move |sess, operands| {
+                sess.networking_send(op.clone(), &plc, operands)
+            }))
+        } else {
+            unimplemented!()
+        }
+    }
+}
+
 impl DispatchKernel<AsyncSession> for Operator {
     fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession>> {
         use Operator::*;

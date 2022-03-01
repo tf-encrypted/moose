@@ -44,24 +44,6 @@ wrapping_constant_kernel!(shape_kernel for HostShape(RawShape));
 wrapping_constant_kernel!(prf_key_kernel for PrfKey(RawPrfKey));
 wrapping_constant_kernel!(seed_kernel for Seed(RawSeed));
 
-impl SendOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _rendezvous_key: RendezvousKey,
-        _receiver: Role,
-        _x: T,
-    ) -> Result<Unit>
-    where
-        Value: From<T>,
-    {
-        // let x: Value = x.into();
-        // sess.networking.send(&x, &receiver, &rendezvous_key)?;
-        // Ok(Unit(plc.clone()))
-        todo!()
-    }
-}
-
 impl ReceiveOp {
     pub(crate) fn kernel<S: RuntimeSession, T>(
         _sess: &S,
