@@ -74,7 +74,7 @@ impl<S: Session> PlacementPlace<S, HostString> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
 pub struct RawShape(pub Vec<usize>);
 
 impl RawShape {
@@ -135,7 +135,7 @@ impl<S: Session> PlacementPlace<S, HostShape> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct SliceInfoElem {
     /// Start index; negative are counted from the back of the axis.
     pub start: isize,
@@ -147,7 +147,7 @@ pub struct SliceInfoElem {
 }
 
 // Slicing needs a SliceInfoElem for each shape dimension
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct SliceInfo(pub Vec<SliceInfoElem>);
 
 impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn> {
@@ -162,7 +162,7 @@ impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, 
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Hash, Clone, Debug, PartialEq)]
 pub struct HostTensor<T>(pub ArcArrayD<T>, pub HostPlacement);
 
 impl<T> Placed for HostTensor<T> {
@@ -199,7 +199,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Hash, Clone, PartialEq)]
 pub struct HostBitTensor(pub ArcArrayD<u8>, pub HostPlacement);
 
 impl std::fmt::Debug for HostBitTensor {
@@ -378,7 +378,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Hash, Clone, Debug, PartialEq)]
 pub struct HostRingTensor<T>(pub ArcArrayD<Wrapping<T>>, pub HostPlacement);
 
 impl Ring for HostRing64Tensor {

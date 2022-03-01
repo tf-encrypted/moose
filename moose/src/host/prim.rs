@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::generichash;
 use std::convert::TryFrom;
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
 pub struct RawSeed(pub [u8; 16]);
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -36,7 +36,7 @@ impl<S: Session> PlacementPlace<S, Seed> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
 pub struct RawPrfKey(pub [u8; 16]);
 
 impl RawPrfKey {
@@ -69,7 +69,7 @@ impl<S: Session> PlacementPlace<S, PrfKey> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct SyncKey([u8; TAG_BYTES]);
 
 impl SyncKey {

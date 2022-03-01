@@ -1,5 +1,5 @@
+use moose::computation::{CompactComputation, CompactestComputation, Computation};
 use structopt::StructOpt;
-use moose::computation::CompactComputation;
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
@@ -14,6 +14,9 @@ struct Opt {
 
     #[structopt(env, long)]
     bench_compact: u8,
+
+    #[structopt(env, long)]
+    binary_format: u8,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -21,15 +24,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
 
     tracing::info!("Started to parse the computation from {:?}", opt.comp_path);
-
     let computation = {
         let comp_path = &opt.comp_path;
-        let comp_raw = std::fs::read_to_string(comp_path)?;
-        moose::computation::Computation::from_textual(&comp_raw)?
+        if opt.binary_format == 0 {
+            let comp_raw = std::fs::read_to_string(comp_path)?;
+            Computation::from_textual(&comp_raw)?
+        } else {
+            let comp_raw = std::fs::read(comp_path)?;
+            Computation::from_msgpack(&comp_raw)?
+        }
     };
 
-
     tracing::info!("Finished parsing the computation from");
+    // let renamed_computation = computation.rename_ops();
+    // let reverted: Computation = Computation::from(&compact);
+    // assert_eq!(reverted, renamed_computation);
 
     if opt.bench_compact == 1 {
         tracing::info!("Cloning the compact computation");
@@ -38,11 +47,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             tracing::info!("batch of cloning {:?}", x);
             let _cloned: Vec<_> = (0..opt.num_clones).map(|_| compact.clone()).collect();
         }
-    } else {
+    } else if opt.bench_compact == 0 {
         tracing::info!("Cloning the un-optimized computation");
         for x in 0..opt.iterations {
             tracing::info!("batch of cloning {:?}", x);
             let _cloned: Vec<_> = (0..opt.num_clones).map(|_| computation.clone()).collect();
+        }
+    } else {
+        tracing::info!("Cloning the super-optimized computation");
+        let compact = CompactestComputation::from(&computation);
+        for x in 0..opt.iterations {
+            tracing::info!("batch of cloning {:?}", x);
+            let _cloned: Vec<_> = (0..opt.num_clones).map(|_| compact.clone()).collect();
         }
     }
 
