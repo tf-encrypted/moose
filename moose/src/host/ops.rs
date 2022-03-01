@@ -44,40 +44,6 @@ wrapping_constant_kernel!(shape_kernel for HostShape(RawShape));
 wrapping_constant_kernel!(prf_key_kernel for PrfKey(RawPrfKey));
 wrapping_constant_kernel!(seed_kernel for Seed(RawSeed));
 
-impl ReceiveOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _rendezvous_key: RendezvousKey,
-        _sender: Role,
-    ) -> Result<T>
-    where
-        T: TryFrom<Value, Error = Error>,
-        T: std::fmt::Debug,
-        HostPlacement: PlacementPlace<S, T>,
-    {
-        // use std::convert::TryInto;
-        // let value = sess.networking.receive(&sender, &rendezvous_key)?;
-        // Ok(plc.place(sess, value.try_into()?))
-        todo!()
-    }
-
-    pub(crate) fn missing_kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _rendezvous_key: RendezvousKey,
-        _sender: Role,
-    ) -> Result<T>
-    where
-        T: KnownType<S>,
-    {
-        Err(Error::KernelError(format!(
-            "missing HostPlacement: PlacementPlace trait implementation for '{}'",
-            &<T as KnownType<S>>::TY
-        )))
-    }
-}
-
 impl IdentityOp {
     pub(crate) fn kernel<S: RuntimeSession, T>(sess: &S, plc: &HostPlacement, x: T) -> Result<T>
     where

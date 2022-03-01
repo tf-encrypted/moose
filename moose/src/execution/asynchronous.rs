@@ -309,13 +309,29 @@ impl DispatchKernel<AsyncSession> for SendOp {
     }
 }
 
+impl DispatchKernel<AsyncSession> for ReceiveOp {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession>> {
+        if let Placement::Host(plc) = plc {
+            let plc = plc.clone();
+            let op = self.clone();
+            Ok(Box::new(move |sess, operands| {
+                sess.networking_receive(op.clone(), &plc, operands)
+            }))
+        } else {
+            unimplemented!()
+        }
+    }
+}
+
 impl DispatchKernel<AsyncSession> for Operator {
     fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession>> {
         use Operator::*;
         match self {
             // these must be handled elsewhere by AsyncSession
-            Load(_) | Save(_) | Send(_) | Receive(_) => unimplemented!(),
+            Load(_) | Save(_) => unimplemented!(),
 
+            Send(op) => DispatchKernel::compile(op, plc),
+            Receive(op) => DispatchKernel::compile(op, plc),
             Shape(op) => DispatchKernel::compile(op, plc),
             Broadcast(op) => DispatchKernel::compile(op, plc),
             PrimPrfKeyGen(op) => DispatchKernel::compile(op, plc),
@@ -424,21 +440,6 @@ impl Session for AsyncSession {
                     unimplemented!()
                 }
             }
-            Send(op) => {
-                if let Host(plc) = plc {
-                    self.networking_send(op, plc, operands)
-                } else {
-                    unimplemented!()
-                }
-            }
-            Receive(op) => {
-                if let Host(plc) = plc {
-                    self.networking_receive(op, plc, operands)
-                } else {
-                    unimplemented!()
-                }
-            }
-
             // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
             op => {
                 let kernel = DispatchKernel::compile(&op, plc)?;

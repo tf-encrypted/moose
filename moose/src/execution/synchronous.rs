@@ -124,6 +124,24 @@ impl DispatchKernel<SyncSession> for SendOp {
     }
 }
 
+impl DispatchKernel<SyncSession> for ReceiveOp {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession>> {
+        if let Placement::Host(_plc) = plc {
+            let op = self.clone();
+            Ok(Box::new(move |sess, operands| {
+                // TODO(Morten) we should verify type of received value
+                sess.networking.receive(
+                    sess.find_role_assignment(&op.sender)?,
+                    &op.rendezvous_key,
+                    &sess.session_id,
+                )
+            }))
+        } else {
+            Err(Error::UnimplementedOperator(format!("ReceiveOp is not implemented for placement {:?}", plc)))
+        }
+    }
+}
+
 impl Session for SyncSession {
     type Value = Value;
 
@@ -131,12 +149,8 @@ impl Session for SyncSession {
         use Operator::*;
         let kernel_output = match op {
             Send(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            // TODO(Morten) we should verify type of received value
-            Receive(op) => self.networking.receive(
-                self.find_role_assignment(&op.sender)?,
-                &op.rendezvous_key,
-                &self.session_id,
-            )?,
+            Receive(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+
             // TODO(Morten) we should verify type of loaded value
             Load(op) => {
                 use std::convert::TryInto;

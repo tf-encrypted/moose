@@ -241,6 +241,14 @@ impl DispatchKernel<SymbolicSession> for SendOp {
     }
 }
 
+impl DispatchKernel<SymbolicSession> for ReceiveOp {
+    fn compile(&self, _plc: &Placement) -> Result<Kernel<SymbolicSession>> {
+        Err(Error::Compilation(format!(
+            "ReceiveOp not supported on symbolic sessions"
+        )))
+    }
+}
+
 pub(crate) trait SymbolicStrategy {
     fn execute(
         &self,
