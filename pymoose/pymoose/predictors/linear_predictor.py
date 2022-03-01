@@ -120,7 +120,9 @@ class LinearClassifier(LinearPredictor):
         # infer post_transform
         if not transform_output:
             self._post_transform = lambda x: x
-        elif multitask or n_classes == 2:
+        elif n_classes == 2:
+            self._post_transform = lambda x: edsl.sigmoid(x)
+        elif multitask:
             self._post_transform = lambda x: self._normalized_sigmoid(x, axis=1)
         elif n_classes > 2:
             self._post_transform = lambda x: edsl.softmax(
