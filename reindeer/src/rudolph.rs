@@ -25,6 +25,10 @@ struct Opt {
     ignore_existing: bool,
 
     #[structopt(long)]
+    /// Do not listen for new files but exit when existing have been processed
+    no_listen: bool,
+
+    #[structopt(long)]
     /// Report telemetry to Jaeger
     telemetry: bool,
 }
