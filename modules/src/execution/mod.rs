@@ -25,6 +25,7 @@ impl ExecutionContext {
         }
     }
 
+    #[tracing::instrument(skip(self, computation, role_assignments))]
     pub async fn execute_computation(
         &self,
         session_id: SessionId,

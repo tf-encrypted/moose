@@ -68,6 +68,7 @@ impl FilesystemChoreography {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     async fn launch_session_from_path(
         &self,
         path: &Path,
@@ -84,7 +85,11 @@ impl FilesystemChoreography {
                     let session_config: SessionConfig = toml::from_str(&config)?;
 
                     let computation = {
+                        let s = tracing::span!(tracing::Level::DEBUG, "load_computation");
+                        let _ = s.enter();
+
                         let comp_path = &session_config.computation.path;
+                        tracing::debug!("Loading computation from {:?}", comp_path);
                         match session_config.computation.format {
                             Format::Binary => {
                                 let comp_raw = std::fs::read(comp_path)?;
@@ -113,10 +118,12 @@ impl FilesystemChoreography {
                     let session =
                         ExecutionContext::new(self.own_identity.clone(), networking, storage);
 
+                    tracing::debug!("Scheduling computation");
                     let outputs = session
                         .execute_computation(session_id, &computation, role_assignments)
                         .await?;
 
+                    tracing::debug!("Ready for outputs");
                     for (output_name, output_value) in outputs {
                         let filename = filename.clone();
                         tokio::spawn(async move {
