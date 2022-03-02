@@ -202,7 +202,7 @@ where
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct HostBitTensor(pub std::sync::Arc<BitArrayRepr>, pub HostPlacement);
+pub struct HostBitTensor(pub BitArrayRepr, pub HostPlacement);
 
 impl std::fmt::Debug for HostBitTensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -237,7 +237,7 @@ impl<S: Session> PlacementPlace<S, HostBitTensor> for HostPlacement {
 
 impl HostBitTensor {
     pub(crate) fn place(plc: &HostPlacement, x: BitArrayRepr) -> HostBitTensor {
-        HostBitTensor(x.into_shared(), plc.clone())
+        HostBitTensor(x, plc.clone())
     }
 
     fn reshape(self, newshape: HostShape) -> Self {
@@ -245,7 +245,7 @@ impl HostBitTensor {
             data: self.0.data.clone(),
             dim: IxDyn(&newshape.0 .0),
         };
-        HostBitTensor(arr.into_shared(), self.1) // TODO need to be fix (unwrap)
+        HostBitTensor(arr, self.1)
     }
 
     fn expand_dims(self, mut axis: Vec<usize>) -> Self {
@@ -525,14 +525,7 @@ impl<D: ndarray::Dimension> FromRaw<Array<u8, D>, HostBitTensor> for HostPlaceme
     fn from_raw(&self, raw: Array<u8, D>) -> HostBitTensor {
         let raw = raw.into_dyn();
         let data = raw.as_slice().unwrap().iter().map(|&ai| ai & 1).collect();
-        HostBitTensor(
-            BitArrayRepr {
-                data,
-                dim: raw.dim(),
-            }
-            .into_shared(),
-            self.clone(),
-        )
+        HostBitTensor(BitArrayRepr::from_raw(data, raw.dim()), self.clone())
     }
 }
 

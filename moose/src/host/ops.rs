@@ -486,7 +486,7 @@ impl DiagOp {
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
         let diag = x.0.into_diag();
-        Ok(HostBitTensor(diag.into_shared(), plc.clone()))
+        Ok(HostBitTensor(diag, plc.clone()))
     }
 }
 
@@ -551,7 +551,7 @@ impl HostBitTensor {
             )));
         }
         let result = self.0.index_axis(axis, index);
-        Ok(HostBitTensor(result.into_shared(), self.1))
+        Ok(HostBitTensor(result, self.1))
     }
 }
 
@@ -1201,7 +1201,7 @@ impl ReshapeOp {
             data: x.0.data.clone(),
             dim: IxDyn(&shape.0 .0),
         };
-        Ok(HostBitTensor(res.into_shared(), plc.clone()))
+        Ok(HostBitTensor(res, plc.clone()))
     }
 
     pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
@@ -1224,12 +1224,8 @@ impl XorOp {
         x: HostBitTensor,
         y: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let data = x.0.data ^ y.0.data;
-        let arr = BitArrayRepr {
-            data,
-            dim: x.0.dim.clone(),
-        };
-        Ok(HostBitTensor(arr.into_shared(), plc.clone()))
+        let arr = BitArrayRepr::from_raw((*x.0.data) ^ (*y.0.data), x.0.dim.clone());
+        Ok(HostBitTensor(arr, plc.clone()))
     }
 }
 
@@ -1239,12 +1235,8 @@ impl NegOp {
         plc: &HostPlacement,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let data = !x.0.data;
-        let arr = BitArrayRepr {
-            data,
-            dim: x.0.dim.clone(),
-        };
-        Ok(HostBitTensor(arr.into_shared(), plc.clone()))
+        let arr = BitArrayRepr::from_raw(!(*x.0.data), x.0.dim.clone());
+        Ok(HostBitTensor(arr, plc.clone()))
     }
 }
 
@@ -1255,12 +1247,8 @@ impl AndOp {
         x: HostBitTensor,
         y: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let data = x.0.data & y.0.data;
-        let arr = BitArrayRepr {
-            data,
-            dim: x.0.dim.clone(),
-        };
-        Ok(HostBitTensor(arr.into_shared(), plc.clone()))
+        let arr = BitArrayRepr::from_raw((*x.0.data) & (*y.0.data), x.0.dim.clone());
+        Ok(HostBitTensor(arr, plc.clone()))
     }
 
     pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
@@ -1284,12 +1272,8 @@ impl OrOp {
         x: HostBitTensor,
         y: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let data = x.0.data | y.0.data;
-        let arr = BitArrayRepr {
-            data,
-            dim: x.0.dim.clone(),
-        };
-        Ok(HostBitTensor(arr.into_shared(), plc.clone()))
+        let arr = BitArrayRepr::from_raw((*x.0.data) | (*y.0.data), x.0.dim.clone());
+        Ok(HostBitTensor(arr, plc.clone()))
     }
 }
 
@@ -1349,7 +1333,7 @@ impl FillOp {
         shape: HostShape,
     ) -> Result<HostBitTensor> {
         let raw_tensor = BitArrayRepr::from_elem(&shape.0, value);
-        Ok(HostBitTensor(raw_tensor.into_shared(), plc.clone()))
+        Ok(HostBitTensor(raw_tensor, plc.clone()))
     }
 
     pub(crate) fn host_ring64_kernel<S: RuntimeSession>(
@@ -1670,7 +1654,7 @@ impl SampleOp {
         let arr = BitArrayRepr::try_from_vec(values, &shape.0).map_err(|e| {
             Error::KernelError("vector was too long to be converted into a `BitVec`".to_string())
         })?;
-        Ok(HostBitTensor(arr.into_shared(), plc.clone()))
+        Ok(HostBitTensor(arr, plc.clone()))
     }
 }
 
@@ -1751,7 +1735,7 @@ impl SampleSeededOp {
         let res = BitArrayRepr::try_from_vec(values, &shape.0).map_err(|e| {
             Error::KernelError("vector was too long to be converted into a `BitVec`".to_string())
         })?;
-        Ok(HostBitTensor(res.into_shared(), plc.clone()))
+        Ok(HostBitTensor(res, plc.clone()))
     }
 }
 
@@ -1783,11 +1767,8 @@ impl LessThanOp {
             .iter()
             .map(|&Wrapping(item)| if (item as i64) < 0 { 1 } else { 0 })
             .collect();
-        let result = BitArrayRepr {
-            data,
-            dim: x.0.dim().clone(),
-        };
-        Ok(HostBitTensor(result.into_shared(), plc.clone()))
+        let result = BitArrayRepr::from_raw(data, x.0.dim().clone());
+        Ok(HostBitTensor(result, plc.clone()))
     }
 
     pub(crate) fn host_ring128_kernel<S: Session>(
@@ -1805,11 +1786,8 @@ impl LessThanOp {
             .iter()
             .map(|&Wrapping(item)| if (item as i128) < 0 { 1 } else { 0 })
             .collect();
-        let result = BitArrayRepr {
-            data,
-            dim: x.0.dim().clone(),
-        };
-        Ok(HostBitTensor(result.into_shared(), plc.clone()))
+        let result = BitArrayRepr::from_raw(data, x.0.dim().clone());
+        Ok(HostBitTensor(result, plc.clone()))
     }
 
     pub(crate) fn host_float_kernel<S: Session, T: LinalgScalar + FromPrimitive>(
@@ -1830,11 +1808,8 @@ impl LessThanOp {
             .iter()
             .map(|&item| (item < T::zero()) as u8)
             .collect();
-        let result = BitArrayRepr {
-            data,
-            dim: x.0.dim().clone(),
-        };
-        Ok(HostBitTensor(result.into_shared(), plc.clone()))
+        let result = BitArrayRepr::from_raw(data, x.0.dim().clone());
+        Ok(HostBitTensor(result, plc.clone()))
     }
 }
 
