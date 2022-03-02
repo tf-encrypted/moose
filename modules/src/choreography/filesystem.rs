@@ -1,5 +1,7 @@
 use crate::choreography::{NetworkingStrategy, StorageStrategy};
+use crate::compact_execution::CompactExecutionContext;
 use crate::execution::ExecutionContext;
+use moose::computation::CompactestComputation;
 use moose::prelude::*;
 use notify::{DebouncedEvent, Watcher};
 use serde::Deserialize;
@@ -110,8 +112,34 @@ impl FilesystemChoreography {
                     let networking = (self.networking_strategy)(session_id.clone());
                     let storage = (self.storage_strategy)();
 
-                    let session =
-                        ExecutionContext::new(self.own_identity.clone(), networking, storage);
+                    // let session =
+                    //     ExecutionContext::new(self.own_identity.clone(), networking, storage);
+
+                    // let outputs = session
+                    //     .execute_computation(session_id, &computation, role_assignments)
+                    //     .await?;
+
+                    // for (output_name, output_value) in outputs {
+                    //     let filename = filename.clone();
+                    //     tokio::spawn(async move {
+                    //         let value = output_value.await.unwrap();
+                    //         tracing::info!(
+                    //             "Output '{}' from '{:?}' ready: {:?}",
+                    //             output_name,
+                    //             filename,
+                    //             value
+                    //         );
+                    //     });
+                    // }
+
+                    let session = CompactExecutionContext::new(
+                        self.own_identity.clone(),
+                        networking,
+                        storage,
+                    );
+
+                    let toposorted_comp = computation.toposort()?;
+                    let computation = CompactestComputation::from(&toposorted_comp);
 
                     let outputs = session
                         .execute_computation(session_id, &computation, role_assignments)
