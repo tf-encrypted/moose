@@ -129,6 +129,7 @@ impl DispatchKernel<SyncSession> for ReceiveOp {
         if let Placement::Host(_plc) = plc {
             let op = self.clone();
             Ok(Box::new(move |sess, operands| {
+                assert_eq!(operands.len(), 0);
                 // TODO(Morten) we should verify type of received value
                 sess.networking.receive(
                     sess.find_role_assignment(&op.sender)?,
