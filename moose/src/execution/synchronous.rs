@@ -137,7 +137,10 @@ impl DispatchKernel<SyncSession> for ReceiveOp {
                 )
             }))
         } else {
-            Err(Error::UnimplementedOperator(format!("ReceiveOp is not implemented for placement {:?}", plc)))
+            Err(Error::UnimplementedOperator(format!(
+                "ReceiveOp is not implemented for placement {:?}",
+                plc
+            )))
         }
     }
 }
