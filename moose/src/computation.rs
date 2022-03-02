@@ -1688,23 +1688,28 @@ pub struct Computation {
 }
 
 impl Computation {
+    #[tracing::instrument(skip(bytes))]
     pub fn from_msgpack<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
         rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn to_msgpack(&self) -> Result<Vec<u8>> {
         rmp_serde::to_vec(self).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(comp))]
     pub fn from_textual(comp: &str) -> Result<Self> {
         crate::textual::parallel_parse_computation(comp, 12)
             .map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(bytes))]
     pub fn from_bincode<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
         bincode::deserialize(bytes.as_ref()).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn to_bincode(&self) -> Result<Vec<u8>> {
         bincode::serialize(self).map_err(|e| Error::SerializationError(e.to_string()))
     }
