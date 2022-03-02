@@ -1619,6 +1619,7 @@ use_debug_to_textual!(Vec<usize>);
 use_debug_to_textual!(u64);
 use_debug_to_textual!(bool);
 use_debug_to_textual!(RawShape);
+use_debug_to_textual!(crate::host::BitArrayRepr); // TODO: how to format it?
 
 impl ToTextual for SliceInfo {
     fn to_textual(&self) -> String {
