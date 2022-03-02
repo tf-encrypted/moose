@@ -34,7 +34,7 @@ pub use sampling::*;
 pub use shapes::*;
 
 pub type Kernel<S> =
-    Box<dyn Fn(&S, Operands<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send>;
+    Box<dyn Fn(&S, Operands<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send + Sync>;
 
 pub trait DispatchKernel<S: Session> {
     fn compile(&self, plc: &Placement) -> Result<Kernel<S>>;

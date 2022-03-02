@@ -25,12 +25,13 @@ impl ExecutionContext {
         }
     }
 
+    #[tracing::instrument(skip(self, computation, role_assignments))]
     pub async fn execute_computation(
         &self,
         session_id: SessionId,
         computation: &Computation,
         role_assignments: HashMap<Role, Identity>,
-    ) -> Result<Environment, Box<dyn std::error::Error>> {
+    ) -> Result<(AsyncSessionHandle, Environment), Box<dyn std::error::Error>> {
         let session = AsyncSession::new(
             session_id,
             HashMap::new(),
@@ -80,9 +81,7 @@ impl ExecutionContext {
             }
         }
 
-        // let session_handle = AsyncSessionHandle::for_session(&session);
-        // session_handle.join_on_first_error().await?;
-
-        Ok(outputs)
+        let handle = AsyncSessionHandle::for_session(&session);
+        Ok((handle, outputs))
     }
 }

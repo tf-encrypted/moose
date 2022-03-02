@@ -4,7 +4,7 @@ use super::{Identity, Operands, RuntimeSession, Session, SetupGeneration};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::*;
-use crate::kernels::DispatchKernel;
+use crate::kernels::{DispatchKernel, Kernel};
 use crate::networking::{LocalSyncNetworking, SyncNetworking};
 use crate::replicated::*;
 use crate::storage::LocalSyncStorage;
@@ -102,35 +102,59 @@ impl SyncSession {
     }
 }
 
+impl DispatchKernel<SyncSession> for SendOp {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession>> {
+        if let Placement::Host(plc) = plc {
+            let plc = plc.clone();
+            let op = self.clone();
+            Ok(Box::new(move |sess, operands| {
+                assert_eq!(operands.len(), 1);
+                let x = operands.get(0).unwrap();
+                sess.networking.send(
+                    x,
+                    sess.find_role_assignment(&op.receiver)?,
+                    &op.rendezvous_key,
+                    &sess.session_id,
+                )?;
+                Ok(Unit(plc.clone()).into())
+            }))
+        } else {
+            unimplemented!()
+        }
+    }
+}
+
+impl DispatchKernel<SyncSession> for ReceiveOp {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession>> {
+        if let Placement::Host(_plc) = plc {
+            let op = self.clone();
+            Ok(Box::new(move |sess, operands| {
+                assert_eq!(operands.len(), 0);
+                // TODO(Morten) we should verify type of received value
+                sess.networking.receive(
+                    sess.find_role_assignment(&op.sender)?,
+                    &op.rendezvous_key,
+                    &sess.session_id,
+                )
+            }))
+        } else {
+            Err(Error::UnimplementedOperator(format!(
+                "ReceiveOp is not implemented for placement {:?}",
+                plc
+            )))
+        }
+    }
+}
+
 impl Session for SyncSession {
     type Value = Value;
 
     fn execute(&self, op: Operator, plc: &Placement, operands: Operands<Value>) -> Result<Value> {
         use Operator::*;
         let kernel_output = match op {
-            Send(op) => {
-                assert_eq!(operands.len(), 1);
-                let x = operands.get(0).unwrap();
-                self.networking.send(
-                    x,
-                    self.find_role_assignment(&op.receiver)?,
-                    &op.rendezvous_key,
-                    &self.session_id,
-                )?;
-                let host = match plc {
-                    Placement::Host(host) => host,
-                    _ => unimplemented!(
-                        "SyncSession does not support running Send on non-host placements yet"
-                    ),
-                };
-                Unit(host.clone()).into()
-            }
-            // TODO(Morten) we should verify type of received value
-            Receive(op) => self.networking.receive(
-                self.find_role_assignment(&op.sender)?,
-                &op.rendezvous_key,
-                &self.session_id,
-            )?,
+            Send(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            Receive(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+
             // TODO(Morten) we should verify type of loaded value
             Load(op) => {
                 use std::convert::TryInto;
