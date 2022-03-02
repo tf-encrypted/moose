@@ -1,7 +1,7 @@
 use super::{RoleAssignment, RuntimeSession, Session, SetupGeneration};
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::execution::Identity;
+use crate::execution::{Identity, Operands};
 use crate::host::{HostPlacement, HostString, PrfKey};
 use crate::kernels::DispatchKernel;
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
@@ -147,7 +147,7 @@ impl AsyncSession {
         &self,
         op: LoadOp,
         _plc: &HostPlacement,
-        operands: Vec<AsyncValue>,
+        operands: Operands<AsyncValue>,
     ) -> Result<AsyncValue> {
         use std::convert::TryInto;
 
@@ -185,7 +185,11 @@ impl AsyncSession {
         Ok(receiver)
     }
 
-    fn storage_save(&self, plc: &HostPlacement, operands: Vec<AsyncValue>) -> Result<AsyncValue> {
+    fn storage_save(
+        &self,
+        plc: &HostPlacement,
+        operands: Operands<AsyncValue>,
+    ) -> Result<AsyncValue> {
         use std::convert::TryInto;
 
         assert_eq!(operands.len(), 2);
@@ -223,7 +227,7 @@ impl AsyncSession {
         &self,
         op: ReceiveOp,
         _plc: &HostPlacement,
-        operands: Vec<AsyncValue>,
+        operands: Operands<AsyncValue>,
     ) -> Result<AsyncValue> {
         assert_eq!(operands.len(), 0);
         let sess = self.clone();
@@ -251,7 +255,7 @@ impl AsyncSession {
         &self,
         op: SendOp,
         plc: &HostPlacement,
-        operands: Vec<AsyncValue>,
+        operands: Operands<AsyncValue>,
     ) -> Result<AsyncValue> {
         assert_eq!(operands.len(), 1);
 
@@ -303,7 +307,7 @@ impl Session for AsyncSession {
         &self,
         op: Operator,
         plc: &Placement,
-        operands: Vec<Self::Value>,
+        operands: Operands<Self::Value>,
     ) -> Result<Self::Value> {
         use Operator::*;
         use Placement::*;
