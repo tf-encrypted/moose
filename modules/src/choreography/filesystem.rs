@@ -106,7 +106,7 @@ impl FilesystemChoreography {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, session_config))]
+    #[tracing::instrument(skip(self, session_id, session_config))]
     async fn launch_session(
         &self,
         session_id: SessionId,
