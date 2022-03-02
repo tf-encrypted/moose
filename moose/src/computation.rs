@@ -1697,7 +1697,7 @@ pub struct Computation {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CompactOperation {
-    pub kind: Operator,
+    pub kind_index: usize,
     pub inputs: Vec<usize>,
     pub placement_index: usize,
 }
@@ -1705,69 +1705,12 @@ pub struct CompactOperation {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CompactComputation {
     pub operations: Vec<CompactOperation>,
+    pub kinds: Vec<Operator>,
     pub placements: Vec<Placement>,
 }
 
 impl From<&Computation> for CompactComputation {
     fn from(computation: &Computation) -> CompactComputation {
-        let unique_placements = computation
-            .operations
-            .iter()
-            .map(|op| op.placement.clone())
-            .collect::<HashSet<_>>();
-
-        let placements: Vec<_> = unique_placements.into_iter().collect();
-        let mut placements_map: HashMap<Placement, usize> =
-            HashMap::with_capacity(placements.len());
-
-        for (i, plc) in placements.clone().into_iter().enumerate() {
-            placements_map.insert(plc, i);
-        }
-
-        let op_names_map = computation
-            .operations
-            .iter()
-            .enumerate()
-            .map(|(i, op)| (op.name.clone(), i))
-            .collect::<HashMap<_, _>>();
-
-        let compact_operations: Vec<_> = computation
-            .operations
-            .iter()
-            .map(|x| {
-                let compact_inputs: Vec<_> = x.inputs.iter().map(|inp| op_names_map[inp]).collect();
-
-                CompactOperation {
-                    kind: x.kind.clone(),
-                    inputs: compact_inputs,
-                    placement_index: placements_map[&x.placement],
-                }
-            })
-            .collect();
-
-        CompactComputation {
-            operations: compact_operations,
-            placements,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct CompactestOperation {
-    pub kind_index: usize,
-    pub inputs: Vec<usize>,
-    pub placement_index: usize,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct CompactestComputation {
-    pub operations: Vec<CompactestOperation>,
-    pub kinds: Vec<Operator>,
-    pub placements: Vec<Placement>,
-}
-
-impl From<&Computation> for CompactestComputation {
-    fn from(computation: &Computation) -> CompactestComputation {
         let unique_placements = computation
             .operations
             .iter()
@@ -1806,7 +1749,7 @@ impl From<&Computation> for CompactestComputation {
             .map(|x| {
                 let compact_inputs: Vec<_> = x.inputs.iter().map(|inp| op_names_map[inp]).collect();
 
-                CompactestOperation {
+                CompactOperation {
                     kind_index: operators_map[&x.kind],
                     inputs: compact_inputs,
                     placement_index: placements_map[&x.placement],
@@ -1814,7 +1757,7 @@ impl From<&Computation> for CompactestComputation {
             })
             .collect();
 
-        CompactestComputation {
+        CompactComputation {
             kinds: operators,
             operations: compactest_operations,
             placements,
@@ -1822,22 +1765,22 @@ impl From<&Computation> for CompactestComputation {
     }
 }
 
-impl From<&CompactestComputation> for Computation {
+impl From<&CompactComputation> for Computation {
     // assumes computation has all operations starting with the same prefix
-    fn from(compactest: &CompactestComputation) -> Computation {
-        let operations: Vec<_> = compactest
+    fn from(compact: &CompactComputation) -> Computation {
+        let operations: Vec<_> = compact
             .operations
             .iter()
             .enumerate()
             .map(|(i, op)| Operation {
                 name: format!("op_{:?}", i),
-                kind: compactest.kinds[op.kind_index].clone(),
+                kind: compact.kinds[op.kind_index].clone(),
                 inputs: op
                     .inputs
                     .iter()
                     .map(|inp| format!("op_{:?}", inp))
                     .collect(),
-                placement: compactest.placements[op.placement_index].clone(),
+                placement: compact.placements[op.placement_index].clone(),
             })
             .collect();
         Computation { operations }

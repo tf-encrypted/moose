@@ -1,7 +1,5 @@
 use crate::choreography::{NetworkingStrategy, StorageStrategy};
-use crate::compact_execution::CompactExecutionContext;
 use crate::execution::ExecutionContext;
-use moose::computation::CompactestComputation;
 use moose::prelude::*;
 use notify::{DebouncedEvent, Watcher};
 use serde::Deserialize;
@@ -78,7 +76,6 @@ impl FilesystemChoreography {
             match path.extension() {
                 Some(ext) if ext == "session" => {
                     let filename = path.file_stem().unwrap().to_string_lossy().to_string();
-                    let session_id = SessionId::try_from(filename.as_str()).unwrap();
 
                     tracing::info!("Launching session from {:?}", filename);
 
@@ -99,63 +96,42 @@ impl FilesystemChoreography {
                         }
                     };
 
-                    let role_assignments: HashMap<Role, Identity> = session_config
-                        .roles
-                        .into_iter()
-                        .map(|role_config| {
-                            let role = Role::from(&role_config.name);
-                            let identity = Identity::from(&role_config.endpoint);
-                            (role, identity)
-                        })
-                        .collect();
+                    for iterations in 0..5 {
+                        let session_id =
+                            SessionId::try_from(format!("{:?}{:?}", filename, iterations).as_str())
+                                .unwrap();
+                        let role_assignments: HashMap<Role, Identity> = session_config
+                            .roles
+                            .iter()
+                            .map(|role_config| {
+                                let role = Role::from(&role_config.name);
+                                let identity = Identity::from(&role_config.endpoint);
+                                (role, identity)
+                            })
+                            .collect();
 
-                    let networking = (self.networking_strategy)(session_id.clone());
-                    let storage = (self.storage_strategy)();
+                        let networking = (self.networking_strategy)(session_id.clone());
+                        let storage = (self.storage_strategy)();
 
-                    // let session =
-                    //     ExecutionContext::new(self.own_identity.clone(), networking, storage);
+                        let session =
+                            ExecutionContext::new(self.own_identity.clone(), networking, storage);
 
-                    // let outputs = session
-                    //     .execute_computation(session_id, &computation, role_assignments)
-                    //     .await?;
+                        let outputs = session
+                            .execute_compact_computation(session_id, &computation, role_assignments)
+                            .await?;
 
-                    // for (output_name, output_value) in outputs {
-                    //     let filename = filename.clone();
-                    //     tokio::spawn(async move {
-                    //         let value = output_value.await.unwrap();
-                    //         tracing::info!(
-                    //             "Output '{}' from '{:?}' ready: {:?}",
-                    //             output_name,
-                    //             filename,
-                    //             value
-                    //         );
-                    //     });
-                    // }
-
-                    let session = CompactExecutionContext::new(
-                        self.own_identity.clone(),
-                        networking,
-                        storage,
-                    );
-
-                    let toposorted_comp = computation.toposort()?;
-                    let computation = CompactestComputation::from(&toposorted_comp);
-
-                    let outputs = session
-                        .execute_computation(session_id, &computation, role_assignments)
-                        .await?;
-
-                    for (output_name, output_value) in outputs {
-                        let filename = filename.clone();
-                        tokio::spawn(async move {
-                            let value = output_value.await.unwrap();
-                            tracing::info!(
-                                "Output '{}' from '{:?}' ready: {:?}",
-                                output_name,
-                                filename,
-                                value
-                            );
-                        });
+                        for (output_name, output_value) in outputs {
+                            let filename = filename.clone();
+                            tokio::spawn(async move {
+                                let value = output_value.await.unwrap();
+                                tracing::info!(
+                                    "Output '{}' from '{:?}' ready: {:?}",
+                                    output_name,
+                                    filename,
+                                    value
+                                );
+                            });
+                        }
                     }
                 }
                 Some(ext) if ext == "moose" => {

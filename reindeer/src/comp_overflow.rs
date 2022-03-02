@@ -1,4 +1,4 @@
-use moose::computation::{CompactComputation, CompactestComputation, Computation};
+use moose::computation::{CompactComputation, Computation};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt, Clone)]
@@ -56,14 +56,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             tracing::info!("batch of cloning {:?}", x);
             let _cloned: Vec<_> = (0..opt.num_clones).map(|_| computation.clone()).collect();
         }
-    } else {
-        tracing::info!("Cloning the super-optimized computation");
-        let compact = CompactestComputation::from(&computation);
-        for x in 0..opt.iterations {
-            tracing::info!("batch of cloning {:?}", x);
-            let _cloned: Vec<_> = (0..opt.num_clones).map(|_| compact.clone()).collect();
-        }
     }
-
     Ok(())
 }
