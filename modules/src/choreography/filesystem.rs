@@ -14,6 +14,8 @@ pub struct FilesystemChoreography {
     storage_strategy: StorageStrategy,
 }
 
+type DoneSender = tokio::sync::mpsc::UnboundedSender<()>;
+
 impl FilesystemChoreography {
     pub fn new(
         own_identity: Identity,
@@ -35,11 +37,13 @@ impl FilesystemChoreography {
         ignore_existing: bool,
         no_listen: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        let (done_sender, mut done_receiver) = tokio::sync::mpsc::unbounded_channel::<()>();
+
         if !ignore_existing {
             for entry in std::fs::read_dir(&self.sessions_dir)? {
                 let entry = entry?;
                 let path = entry.path();
-                self.launch_session_from_path(&path).await?;
+                self.launch_session_from_path(&path, &done_sender).await?;
             }
         }
 
@@ -52,18 +56,19 @@ impl FilesystemChoreography {
                 match event {
                     DebouncedEvent::Create(path) => {
                         self.abort_session_from_path(&path).await?;
-                        self.launch_session_from_path(&path).await?;
+                        self.launch_session_from_path(&path, &done_sender).await?;
                     }
                     DebouncedEvent::Remove(path) => {
                         self.abort_session_from_path(&path).await?;
                     }
                     DebouncedEvent::Write(path) => {
                         self.abort_session_from_path(&path).await?;
-                        self.launch_session_from_path(&path).await?;
+                        self.launch_session_from_path(&path, &done_sender).await?;
                     }
                     DebouncedEvent::Rename(src_path, dst_path) => {
                         self.abort_session_from_path(&src_path).await?;
-                        self.launch_session_from_path(&dst_path).await?;
+                        self.launch_session_from_path(&dst_path, &done_sender)
+                            .await?;
                     }
                     _ => {
                         // ignore
@@ -72,12 +77,17 @@ impl FilesystemChoreography {
             }
         }
 
+        while let Some(_) = done_receiver.recv().await {
+            tracing::info!("Session done");
+        }
+
         Ok(())
     }
 
     async fn launch_session_from_path(
         &self,
         path: &Path,
+        _done_sender: &DoneSender,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if path.is_file() {
             match path.extension() {
@@ -89,7 +99,21 @@ impl FilesystemChoreography {
                     let session_config: SessionConfig =
                         toml::from_str(&std::fs::read_to_string(path)?)?;
 
-                    self.launch_session(session_id, session_config).await?;
+                    let session_handle = self.launch_session(session_id, session_config).await?;
+                    let res = session_handle.join_on_first_error().await;
+                    if let Err(e) = res {
+                        tracing::error!("Session error: {}", e);
+                    }
+
+                    // let done_sender = done_sender.clone();
+                    // tokio::spawn(async move {
+                    //     // TODO(Morten) AsyncSessionHandle::join_on_first_error is currently not Send
+                    //     // let res = session_handle.join_on_first_error().await;
+                    //     // if let Err(e) = res {
+                    //     //     tracing::error!("Session error: {}", e);
+                    //     // }
+                    //     done_sender.send(()).expect("Sending session done signal failed unexpectedly");
+                    // });
                 }
                 Some(ext) if ext == "moose" => {
                     // ok to skip
@@ -107,7 +131,7 @@ impl FilesystemChoreography {
         &self,
         session_id: SessionId,
         session_config: SessionConfig,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<AsyncSessionHandle, Box<dyn std::error::Error>> {
         let computation = {
             let comp_path = &session_config.computation.path;
             tracing::debug!("Loading computation from {:?}", comp_path);
@@ -136,10 +160,10 @@ impl FilesystemChoreography {
         let networking = (self.networking_strategy)(session_id.clone());
         let storage = (self.storage_strategy)();
 
-        let session = ExecutionContext::new(self.own_identity.clone(), networking, storage);
+        let context = ExecutionContext::new(self.own_identity.clone(), networking, storage);
 
         tracing::debug!("Scheduling computation");
-        let outputs = session
+        let (handle, outputs) = context
             .execute_computation(session_id.clone(), &computation, role_assignments)
             .await?;
 
@@ -157,7 +181,7 @@ impl FilesystemChoreography {
             });
         }
 
-        Ok(())
+        Ok(handle)
     }
 
     async fn abort_session_from_path(

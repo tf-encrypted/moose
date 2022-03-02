@@ -70,17 +70,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let addr = format!("0.0.0.0:{}", opt.port).parse()?;
         let manager = manager.clone();
         tokio::spawn(async move {
-            let _res = Server::builder()
+            let res = Server::builder()
                 .add_service(manager.new_server())
                 .serve(addr)
                 .await;
+            if let Err(e) = res {
+                tracing::error!("gRPC error: {}", e);
+            }
         })
     };
 
     // TODO(Morten) we should not have to do this; add retry logic on client side instead
     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
 
-    let _res = FilesystemChoreography::new(
+    // NOTE(Morten) if we want to move this into separate task then we need
+    // to make sure AsyncSessionHandle::join_on_first_error is Send, which
+    // means fixing the use of RwLock
+    FilesystemChoreography::new(
         Identity::from(opt.identity),
         opt.sessions,
         Box::new(move |session_id| manager.new_session(session_id)),
