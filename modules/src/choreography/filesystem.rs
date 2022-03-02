@@ -14,8 +14,6 @@ pub struct FilesystemChoreography {
     storage_strategy: StorageStrategy,
 }
 
-type DoneSender = tokio::sync::mpsc::UnboundedSender<()>;
-
 impl FilesystemChoreography {
     pub fn new(
         own_identity: Identity,
@@ -31,19 +29,17 @@ impl FilesystemChoreography {
         }
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, ignore_existing, no_listen))]
     pub async fn process(
         &self,
         ignore_existing: bool,
         no_listen: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let (done_sender, mut done_receiver) = tokio::sync::mpsc::unbounded_channel::<()>();
-
         if !ignore_existing {
             for entry in std::fs::read_dir(&self.sessions_dir)? {
                 let entry = entry?;
                 let path = entry.path();
-                self.launch_session_from_path(&path, &done_sender).await?;
+                self.launch_session_from_path(&path).await?;
             }
         }
 
@@ -56,19 +52,18 @@ impl FilesystemChoreography {
                 match event {
                     DebouncedEvent::Create(path) => {
                         self.abort_session_from_path(&path).await?;
-                        self.launch_session_from_path(&path, &done_sender).await?;
+                        self.launch_session_from_path(&path).await?;
                     }
                     DebouncedEvent::Remove(path) => {
                         self.abort_session_from_path(&path).await?;
                     }
                     DebouncedEvent::Write(path) => {
                         self.abort_session_from_path(&path).await?;
-                        self.launch_session_from_path(&path, &done_sender).await?;
+                        self.launch_session_from_path(&path).await?;
                     }
                     DebouncedEvent::Rename(src_path, dst_path) => {
                         self.abort_session_from_path(&src_path).await?;
-                        self.launch_session_from_path(&dst_path, &done_sender)
-                            .await?;
+                        self.launch_session_from_path(&dst_path).await?;
                     }
                     _ => {
                         // ignore
@@ -77,17 +72,12 @@ impl FilesystemChoreography {
             }
         }
 
-        while let Some(_) = done_receiver.recv().await {
-            tracing::info!("Session done");
-        }
-
         Ok(())
     }
 
     async fn launch_session_from_path(
         &self,
         path: &Path,
-        _done_sender: &DoneSender,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if path.is_file() {
             match path.extension() {
