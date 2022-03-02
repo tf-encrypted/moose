@@ -6,10 +6,10 @@
 //! Values are generally wrapped in the `Symbolic` enum.
 
 use super::{Session, SetupGeneration};
-use crate::computation::{Computation, Operation, Operator, Placed, Placement, SymbolicValue};
+use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::PrfKey;
-use crate::kernels::{DispatchKernel, PlacementPlace};
+use crate::kernels::{DispatchKernel, Kernel, PlacementPlace};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
 use crate::{MirroredCounterpart, Ring, TensorLike, Underlying};
 use parking_lot::RwLock;
@@ -230,6 +230,22 @@ impl SetupGeneration<ReplicatedPlacement> for SymbolicSession {
                 Ok(Arc::clone(setup))
             }
         }
+    }
+}
+
+impl DispatchKernel<SymbolicSession> for SendOp {
+    fn compile(&self, _plc: &Placement) -> Result<Kernel<SymbolicSession>> {
+        Err(Error::Compilation(
+            "SendOp not supported on symbolic sessions".to_string(),
+        ))
+    }
+}
+
+impl DispatchKernel<SymbolicSession> for ReceiveOp {
+    fn compile(&self, _plc: &Placement) -> Result<Kernel<SymbolicSession>> {
+        Err(Error::Compilation(
+            "ReceiveOp not supported on symbolic sessions".to_string(),
+        ))
     }
 }
 

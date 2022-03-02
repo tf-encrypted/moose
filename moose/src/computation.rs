@@ -945,7 +945,6 @@ pub struct IdentityOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual)]
-
 pub struct SendOp {
     pub sig: Signature,
     pub rendezvous_key: RendezvousKey,
@@ -953,7 +952,6 @@ pub struct SendOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual)]
-
 pub struct ReceiveOp {
     pub sig: Signature,
     pub rendezvous_key: RendezvousKey,
@@ -963,7 +961,6 @@ pub struct ReceiveOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-
 pub struct InputOp {
     pub sig: Signature,
     pub arg_name: String,
@@ -972,7 +969,6 @@ pub struct InputOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-
 pub struct OutputOp {
     pub sig: Signature,
 }
@@ -980,7 +976,6 @@ pub struct OutputOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-
 pub struct LoadOp {
     pub sig: Signature,
 }
@@ -995,13 +990,11 @@ pub struct CastOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-
 pub struct SaveOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-
 pub struct ConstantOp {
     pub sig: Signature,
     pub value: Constant, // TODO Box<Constant> or Box inside Constant?
@@ -1826,23 +1819,28 @@ impl Computation {
 }
 
 impl Computation {
+    #[tracing::instrument(skip(bytes))]
     pub fn from_msgpack<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
         rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn to_msgpack(&self) -> Result<Vec<u8>> {
         rmp_serde::to_vec(self).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(comp))]
     pub fn from_textual(comp: &str) -> Result<Self> {
         crate::textual::parallel_parse_computation(comp, 12)
             .map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(bytes))]
     pub fn from_bincode<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
         bincode::deserialize(bytes.as_ref()).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn to_bincode(&self) -> Result<Vec<u8>> {
         bincode::serialize(self).map_err(|e| Error::SerializationError(e.to_string()))
     }
