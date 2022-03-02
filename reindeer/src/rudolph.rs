@@ -60,8 +60,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .try_init()?;
     };
 
-    let root = tracing::span!(tracing::Level::INFO, "app_start");
-    let _enter = root.enter();
+    let root_span = tracing::span!(tracing::Level::INFO, "app_start");
+    let _enter = root_span.enter();
 
     let manager = GrpcNetworkingManager::default();
 
@@ -86,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(move |session_id| manager.new_session(session_id)),
         Box::new(|| Arc::new(LocalAsyncStorage::default())),
     )
-    .listen(opt.ignore_existing)
+    .process(opt.ignore_existing, opt.no_listen)
     .await?;
 
     Ok(())
