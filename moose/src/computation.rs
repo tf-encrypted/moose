@@ -792,7 +792,7 @@ macro_rules! operators {
     ($($t:ident,)+) => {
 
         paste! {
-            #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
+            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
             pub enum Operator {
                 $($t([<$t Op>]),)+
             }
@@ -997,18 +997,6 @@ pub struct SaveOp {
 pub struct ConstantOp {
     pub sig: Signature,
     pub value: Constant, // TODO Box<Constant> or Box inside Constant?
-}
-
-// TODO(Morten) we definitely shouldn't be doing this
-impl Eq for ConstantOp {}
-
-// TODO(Morten) we must also take `self.value` into account!
-#[allow(clippy::derive_hash_xor_eq)]
-impl Hash for ConstantOp {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.sig.hash(state);
-        // self.value.hash(state);
-    }
 }
 
 #[derive(
@@ -1450,18 +1438,6 @@ pub struct RepToAdtOp {
 pub struct FillOp {
     pub sig: Signature,
     pub value: Constant,
-}
-
-// TODO(Morten) we definitely shouldn't be doing this
-impl Eq for FillOp {}
-
-// TODO(Morten) we must also take `self.value` into account!
-#[allow(clippy::derive_hash_xor_eq)]
-impl Hash for FillOp {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.sig.hash(state);
-        // self.value.hash(state);
-    }
 }
 
 #[derive(

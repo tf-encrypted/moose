@@ -94,16 +94,6 @@ impl FilesystemChoreography {
                     if let Err(e) = res {
                         tracing::error!("Session error: {}", e);
                     }
-
-                    // let done_sender = done_sender.clone();
-                    // tokio::spawn(async move {
-                    //     // TODO(Morten) AsyncSessionHandle::join_on_first_error is currently not Send
-                    //     // let res = session_handle.join_on_first_error().await;
-                    //     // if let Err(e) = res {
-                    //     //     tracing::error!("Session error: {}", e);
-                    //     // }
-                    //     done_sender.send(()).expect("Sending session done signal failed unexpectedly");
-                    // });
                 }
                 Some(ext) if ext == "moose" => {
                     // ok to skip
