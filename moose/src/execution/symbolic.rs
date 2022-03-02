@@ -235,17 +235,17 @@ impl SetupGeneration<ReplicatedPlacement> for SymbolicSession {
 
 impl DispatchKernel<SymbolicSession> for SendOp {
     fn compile(&self, _plc: &Placement) -> Result<Kernel<SymbolicSession>> {
-        Err(Error::Compilation(format!(
-            "SendOp not supported on symbolic sessions"
-        )))
+        Err(Error::Compilation(
+            "SendOp not supported on symbolic sessions".to_string(),
+        ))
     }
 }
 
 impl DispatchKernel<SymbolicSession> for ReceiveOp {
     fn compile(&self, _plc: &Placement) -> Result<Kernel<SymbolicSession>> {
-        Err(Error::Compilation(format!(
-            "ReceiveOp not supported on symbolic sessions"
-        )))
+        Err(Error::Compilation(
+            "ReceiveOp not supported on symbolic sessions".to_string(),
+        ))
     }
 }
 
