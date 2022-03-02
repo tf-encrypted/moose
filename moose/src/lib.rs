@@ -2219,7 +2219,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), smallvec::smallvec![])
+                sess.execute(op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
