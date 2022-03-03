@@ -1781,44 +1781,6 @@ impl From<&CompactComputation> for Computation {
 }
 
 impl Computation {
-    pub fn rename_ops(&self) -> Computation {
-        let mut name_cache: HashMap<String, String> = HashMap::new();
-
-        let mut get_entry = |key: String| {
-            let other_name: String = {
-                if name_cache.contains_key(&key) {
-                    name_cache.get(&key).unwrap().to_string()
-                } else {
-                    let new_entry = format!("op_{:?}", name_cache.len());
-                    name_cache.insert(key, new_entry.clone());
-                    new_entry
-                }
-            };
-            other_name
-        };
-
-        let renamed_ops: Vec<_> = self
-            .operations
-            .iter()
-            .map(|op| {
-                let other_name = get_entry(op.name.clone());
-                let other_inputs: Vec<_> = op.inputs.iter().map(|x| get_entry(x.clone())).collect();
-                Operation {
-                    name: other_name,
-                    kind: op.kind.clone(),
-                    inputs: other_inputs,
-                    placement: op.placement.clone(),
-                }
-            })
-            .collect();
-
-        Computation {
-            operations: renamed_ops,
-        }
-    }
-}
-
-impl Computation {
     #[tracing::instrument(skip(bytes))]
     pub fn from_msgpack<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
         rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
