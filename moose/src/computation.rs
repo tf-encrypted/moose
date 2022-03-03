@@ -1768,25 +1768,49 @@ impl TryFrom<&Computation> for CompactComputation {
     }
 }
 
-impl From<&CompactComputation> for Computation {
-    // assumes computation has all operations starting with the same prefix
-    fn from(compact: &CompactComputation) -> Computation {
-        let operations: Vec<_> = compact
+impl TryFrom<&CompactComputation> for Computation {
+    type Error = Error;
+
+    fn try_from(compact: &CompactComputation) -> Result<Computation> {
+        let operations = compact
             .operations
             .iter()
             .enumerate()
-            .map(|(i, op)| Operation {
-                name: format!("op_{:?}", i),
-                kind: compact.operators[op.operator].clone(),
-                inputs: op
+            .map(|(i, op)| {
+                let kind = compact.operators.get(op.operator).cloned().ok_or_else(|| {
+                    Error::MalformedComputation(format!(
+                        "Missing operator with index {}",
+                        op.operator
+                    ))
+                })?;
+
+                let inputs = op
                     .inputs
                     .iter()
                     .map(|inp| format!("op_{:?}", inp))
-                    .collect(),
-                placement: compact.placements[op.placement].clone(),
+                    .collect();
+
+                let placement = compact
+                    .placements
+                    .get(op.placement)
+                    .cloned()
+                    .ok_or_else(|| {
+                        Error::MalformedComputation(format!(
+                            "Missing placement with index {}",
+                            op.placement
+                        ))
+                    })?;
+
+                Ok(Operation {
+                    name: format!("op_{:?}", i),
+                    kind,
+                    inputs,
+                    placement,
+                })
             })
-            .collect();
-        Computation { operations }
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(Computation { operations })
     }
 }
 
