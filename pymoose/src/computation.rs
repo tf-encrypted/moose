@@ -655,9 +655,9 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
     }
 }
 
-impl TryFrom<PyComputation> for NamedComputation {
+impl TryFrom<PyComputation> for Computation {
     type Error = anyhow::Error;
-    fn try_from(python_computation: PyComputation) -> anyhow::Result<NamedComputation> {
+    fn try_from(python_computation: PyComputation) -> anyhow::Result<Computation> {
         let placements: HashMap<String, Placement> = python_computation
             .placements
             .iter()
@@ -1082,6 +1082,6 @@ impl TryFrom<PyComputation> for NamedComputation {
                 }
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
-        Ok(NamedComputation { operations })
+        Ok(Computation { operations })
     }
 }

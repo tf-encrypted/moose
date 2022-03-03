@@ -367,9 +367,9 @@ pub struct SymbolicExecutor {
 impl SymbolicExecutor {
     pub fn run_computation(
         &self,
-        computation: &NamedComputation,
+        computation: &Computation,
         session: &SymbolicSession,
-    ) -> anyhow::Result<NamedComputation> {
+    ) -> anyhow::Result<Computation> {
         let computation = computation.toposort()?;
         let mut env: HashMap<String, SymbolicValue> =
             HashMap::with_capacity(computation.operations.len());
@@ -392,7 +392,7 @@ impl SymbolicExecutor {
             env.insert(op.name.clone(), value);
         }
         let state = session.state.read();
-        Ok(NamedComputation {
+        Ok(Computation {
             operations: state.ops.clone(),
         })
     }

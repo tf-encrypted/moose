@@ -118,11 +118,11 @@ impl FilesystemChoreography {
             match session_config.computation.format {
                 Format::Binary => {
                     let comp_raw = std::fs::read(comp_path)?;
-                    moose::computation::NamedComputation::from_msgpack(comp_raw)?
+                    moose::computation::Computation::from_msgpack(comp_raw)?
                 }
                 Format::Textual => {
                     let comp_raw = std::fs::read_to_string(comp_path)?;
-                    moose::computation::NamedComputation::from_textual(&comp_raw)?
+                    moose::computation::Computation::from_textual(&comp_raw)?
                 }
             }
         };

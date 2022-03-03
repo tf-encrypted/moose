@@ -35,7 +35,7 @@ impl ExecutionContext {
     pub async fn execute_computation(
         &self,
         session_id: SessionId,
-        computation: &NamedComputation,
+        computation: &Computation,
         role_assignments: HashMap<Role, Identity>,
     ) -> Result<(AsyncSessionHandle, Environment), Box<dyn std::error::Error>> {
         let session = AsyncSession::new(
@@ -95,7 +95,7 @@ impl ExecutionContext {
     pub async fn execute_compact_computation(
         &self,
         session_id: SessionId,
-        computation: &NamedComputation,
+        computation: &Computation,
         role_assignments: HashMap<Role, Identity>,
     ) -> Result<(AsyncSessionHandle, CompactOutputEnvironment), Box<dyn std::error::Error>> {
         let session = AsyncSession::new(

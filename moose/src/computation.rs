@@ -1768,7 +1768,7 @@ impl TryFrom<&NamedComputation> for IndexedComputation {
     }
 }
 
-impl TryFrom<&IndexedComputation> for NamedComputation {
+impl TryFrom<&IndexedComputation> for Computation {
     type Error = Error;
 
     fn try_from(compact: &IndexedComputation) -> Result<NamedComputation> {
@@ -1949,6 +1949,8 @@ impl NamedComputation {
         Ok(NamedComputation { operations })
     }
 }
+
+pub type Computation = NamedComputation;
 
 mod tests {
     #![allow(unused_imports)]

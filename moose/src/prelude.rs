@@ -5,7 +5,7 @@ pub use crate::execution::SyncSession;
 pub use crate::execution::{AsyncExecutor, AsyncReceiver, AsyncSession, AsyncSessionHandle};
 pub use crate::{
     additive::AdditivePlacement,
-    computation::{NamedComputation, Placement, RendezvousKey, Role, SessionId, Ty, Value},
+    computation::{Computation, Placement, RendezvousKey, Role, SessionId, Ty, Value},
     execution::Identity,
     host::{FromRaw, HostPlacement},
     kernels::*,

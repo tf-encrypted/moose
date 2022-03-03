@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use moose::compilation::compile;
-use moose::prelude::NamedComputation;
+use moose::prelude::Computation;
 use moose::textual::ToTextual;
 use std::collections::HashMap;
 use std::fs::{read_to_string, write};
@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 #[clap(name = "elk")]
 #[clap(
     about = "A Moose compiler wrapper CLI",
-    long_about = "Takes an input file with the NamedComputation's Textual representation and applies the specified passes to it."
+    long_about = "Takes an input file with the Computation's Textual representation and applies the specified passes to it."
 )]
 struct Cli {
     #[clap(subcommand)]
@@ -144,9 +144,9 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn parse_computation(input: &Path) -> anyhow::Result<NamedComputation> {
+fn parse_computation(input: &Path) -> anyhow::Result<Computation> {
     let source = read_to_string(input)?;
-    NamedComputation::from_textual(&source)
+    Computation::from_textual(&source)
         .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
 }
 

@@ -5,11 +5,9 @@ use crate::logical::TensorDType;
 ///
 /// It is used to process computations deserialized from python-traced-and-compiled computations.
 /// Once we full switch to Rust compiling of python-traced computations, this pass should be deleted.
-pub fn deprecated_logical_lowering(
-    comp: &NamedComputation,
-) -> anyhow::Result<Option<NamedComputation>> {
+pub fn deprecated_logical_lowering(comp: &Computation) -> anyhow::Result<Option<Computation>> {
     let operations = comp.operations.iter().map(lower_op).collect();
-    Ok(Some(NamedComputation { operations }))
+    Ok(Some(Computation { operations }))
 }
 
 fn lower_ty(ty: Ty) -> Ty {

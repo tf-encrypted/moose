@@ -26,10 +26,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let comp_path = &opt.computation;
         if opt.binary {
             let comp_raw = std::fs::read(comp_path)?;
-            moose::computation::NamedComputation::from_msgpack(&comp_raw)?
+            moose::computation::Computation::from_msgpack(&comp_raw)?
         } else {
             let comp_raw = std::fs::read_to_string(comp_path)?;
-            moose::computation::NamedComputation::from_textual(&comp_raw)?
+            moose::computation::Computation::from_textual(&comp_raw)?
         }
     };
 

@@ -1,17 +1,17 @@
 use super::*;
 
-impl TryFrom<&str> for NamedComputation {
+impl TryFrom<&str> for Computation {
     type Error = anyhow::Error;
 
-    fn try_from(source: &str) -> anyhow::Result<NamedComputation> {
+    fn try_from(source: &str) -> anyhow::Result<Computation> {
         verbose_parse_computation(source)
     }
 }
 
-impl TryFrom<String> for NamedComputation {
+impl TryFrom<String> for Computation {
     type Error = anyhow::Error;
 
-    fn try_from(source: String) -> anyhow::Result<NamedComputation> {
+    fn try_from(source: String) -> anyhow::Result<Computation> {
         verbose_parse_computation(&source)
     }
 }
@@ -57,7 +57,7 @@ impl FromStr for Value {
 }
 
 /// Parses the computation and returns a verbose error description if it fails.
-pub fn verbose_parse_computation(source: &str) -> anyhow::Result<NamedComputation> {
+pub fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
     match parse_computation::<VerboseError<&str>>(source) {
         Err(Failure(e)) => Err(anyhow::anyhow!(
             "Failed to parse computation\n{}",
@@ -69,7 +69,7 @@ pub fn verbose_parse_computation(source: &str) -> anyhow::Result<NamedComputatio
 }
 
 /// Parses the computation and returns a simple error if it fails. It is only about 10% faster than the verbose version.
-pub fn fast_parse_computation(source: &str) -> anyhow::Result<NamedComputation> {
+pub fn fast_parse_computation(source: &str) -> anyhow::Result<Computation> {
     match parse_computation::<(&str, ErrorKind)>(source) {
         Ok((_, computation)) => Ok(computation),
         e => Err(anyhow::anyhow!(
@@ -79,7 +79,7 @@ pub fn fast_parse_computation(source: &str) -> anyhow::Result<NamedComputation> 
     }
 }
 
-pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result<NamedComputation> {
+pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result<Computation> {
     // Split the source into `chunks` parts at line breaks.
     let mut parts = Vec::<&str>::with_capacity(chunks);
     let mut left: usize = 0;
@@ -113,7 +113,7 @@ pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result
         operations.append(&mut p?);
     }
 
-    Ok(NamedComputation { operations })
+    Ok(Computation { operations })
 }
 
 fn parse_operations<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
@@ -135,9 +135,9 @@ fn parse_operations<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 /// Parses the computation line by line.
 fn parse_computation<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, NamedComputation, E> {
+) -> IResult<&'a str, Computation, E> {
     let (input, operations) = parse_operations(input)?;
-    Ok((input, NamedComputation { operations }))
+    Ok((input, Computation { operations }))
 }
 
 /// Parses a single logical line of the textual IR
@@ -1039,7 +1039,7 @@ fn friendly_error(message: &str, source: &str, e: nom::Err<VerboseError<&str>>) 
     }
 }
 
-impl ToTextual for NamedComputation {
+impl ToTextual for Computation {
     fn to_textual(&self) -> String {
         itertools::join(self.operations.iter().map(|op| op.to_textual()), "\n")
     }
@@ -2127,7 +2127,7 @@ mod tests {
     #[test]
     fn test_computation_try_into() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
-        let comp: NamedComputation =
+        let comp: Computation =
             "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
             z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
@@ -2138,7 +2138,7 @@ mod tests {
 
     #[test]
     fn test_verbose_parse_computation() -> Result<(), anyhow::Error> {
-        let comp: NamedComputation = verbose_parse_computation("x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
+        let comp: Computation = verbose_parse_computation("x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
             z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
                 )?;
@@ -2148,7 +2148,7 @@ mod tests {
 
     #[test]
     fn test_fast_parse_computation() -> Result<(), anyhow::Error> {
-        let comp: NamedComputation = fast_parse_computation("x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
+        let comp: Computation = fast_parse_computation("x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
             z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)"
                 )?;
@@ -2158,7 +2158,7 @@ mod tests {
 
     #[test]
     fn test_parallel_parse_computation() -> Result<(), anyhow::Error> {
-        let comp: NamedComputation = parallel_parse_computation("x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
+        let comp: Computation = parallel_parse_computation("x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([2.0])}: () -> HostFloat32Tensor () @Host(bob)
             z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(carole)", 3)?;
         assert_eq!(comp.operations.len(), 3);
@@ -2214,7 +2214,7 @@ mod tests {
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
 
         "#;
-        let comp: NamedComputation = source.try_into()?;
+        let comp: Computation = source.try_into()?;
         assert_eq!(comp.operations.len(), 2);
         Ok(())
     }
@@ -2222,7 +2222,7 @@ mod tests {
     #[test]
     fn test_computation_into_text() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
-        let comp: NamedComputation = "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
+        let comp: Computation = "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
             z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, carole)
             seed = PrimDeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
@@ -2231,7 +2231,7 @@ mod tests {
             .try_into()?;
         let textual = comp.to_textual();
         // After serializing it into the textual IR we need to make sure it parses back the same
-        let comp2: NamedComputation = textual.try_into()?;
+        let comp2: Computation = textual.try_into()?;
         assert_eq!(comp.operations, comp2.operations);
         Ok(())
     }
@@ -2239,7 +2239,7 @@ mod tests {
     #[test]
     fn test_high_level_computation_into_text() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
-        let comp: NamedComputation = r#"constant_0 = Constant{value = HostFloat64Tensor([[0.12131529]])}: () -> Tensor<Float64> () @Host(player2)
+        let comp: Computation = r#"constant_0 = Constant{value = HostFloat64Tensor([[0.12131529]])}: () -> Tensor<Float64> () @Host(player2)
         cast_0 = Cast: (Tensor<Float64>) -> Tensor<Fixed128(24, 40)> (constant_0) @Host(player2)
         x = Input{arg_name = "x"}: () -> AesTensor () @Host(player0)
         key = Input{arg_name = "key"}: () -> AesKey () @Replicated(player0, player1, player2)
@@ -2249,7 +2249,7 @@ mod tests {
         output_0 = Output: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into()?;
         let textual = comp.to_textual();
         // After serializing it into the textual IR we need to make sure it parses back the same
-        let comp2: NamedComputation = textual.try_into()?;
+        let comp2: Computation = textual.try_into()?;
         assert_eq!(comp.operations, comp2.operations);
         Ok(())
     }
