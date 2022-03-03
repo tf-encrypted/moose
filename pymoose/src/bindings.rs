@@ -1,6 +1,6 @@
 use crate::computation::PyComputation;
 use moose::compilation::compile;
-use moose::computation::{Computation, Role, Value};
+use moose::computation::{NamedComputation, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
 use moose::host::{FromRaw, HostBitTensor, HostPlacement, HostString, HostTensor};
@@ -14,9 +14,9 @@ use pyo3::{exceptions::PyTypeError, prelude::*, AsPyPointer};
 use std::collections::HashMap;
 use std::convert::TryInto;
 
-fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> Computation {
+fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> NamedComputation {
     let comp: PyComputation = rmp_serde::from_read_ref(&computation).unwrap();
-    let rust_comp: Computation = comp.try_into().unwrap();
+    let rust_comp: NamedComputation = comp.try_into().unwrap();
     // TODO(Morten) we should not call toposort here
     rust_comp.toposort().unwrap()
 }
@@ -196,7 +196,7 @@ impl LocalRuntime {
     fn evaluate_compiled_computation(
         &mut self,
         py: Python,
-        computation: &Computation,
+        computation: &NamedComputation,
         role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
@@ -238,7 +238,7 @@ impl LocalRuntime {
 
 #[pyclass]
 pub struct MooseComputation {
-    computation: Computation,
+    computation: NamedComputation,
 }
 
 impl MooseComputation {
@@ -262,7 +262,7 @@ impl MooseComputation {
     #[classmethod]
     pub fn from_bytes(_cls: &PyType, py: Python, bytes: &PyBytes) -> PyResult<Py<Self>> {
         let mybytes: Vec<u8> = bytes.extract()?;
-        let computation = Computation::from_msgpack(mybytes)
+        let computation = NamedComputation::from_msgpack(mybytes)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         let moose_comp = MooseComputation { computation };
         Py::new(py, moose_comp)
@@ -279,8 +279,8 @@ impl MooseComputation {
     #[classmethod]
     pub fn from_disk(_cls: &PyType, py: Python, path: &PyString) -> PyResult<Py<Self>> {
         let mypath: &str = path.extract()?;
-        let computation =
-            Computation::from_disk(mypath).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        let computation = NamedComputation::from_disk(mypath)
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         let moose_comp = MooseComputation { computation };
         Py::new(py, moose_comp)
     }
@@ -295,7 +295,7 @@ impl MooseComputation {
     #[classmethod]
     pub fn from_textual(_cls: &PyType, py: Python, text: &PyString) -> PyResult<Py<Self>> {
         let text: &str = text.extract()?;
-        let computation: Computation = parallel_parse_computation(text, DEFAULT_PARSE_CHUNKS)
+        let computation: NamedComputation = parallel_parse_computation(text, DEFAULT_PARSE_CHUNKS)
             .map_err(|e: anyhow::Error| PyRuntimeError::new_err(e.to_string()))?;
         let moose_comp = MooseComputation { computation };
         Py::new(py, moose_comp)

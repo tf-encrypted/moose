@@ -95,7 +95,7 @@ mod tests {
     use tokio::runtime::Runtime;
 
     fn _run_computation_test(
-        computation: Computation,
+        computation: NamedComputation,
         storage_mapping: HashMap<String, HashMap<String, Value>>,
         role_assignments: HashMap<String, String>,
         arguments: HashMap<String, Value>,
@@ -406,7 +406,7 @@ mod tests {
         output = Output: (HostInt64Tensor) -> HostInt64Tensor (res) @Host(alice)
         "#;
         let source = source_template.replace("StdOp", &test_op);
-        let computation: Computation = source.try_into()?;
+        let computation: NamedComputation = source.try_into()?;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!(), "bob".to_string()=>hashmap!());
@@ -449,7 +449,7 @@ mod tests {
         res = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x0, x1) @Host(alice)
         output = Output: (HostFloat32Tensor) -> HostFloat32Tensor (res) @Host(alice)
         "#;
-        let computation: Computation = source.try_into()?;
+        let computation: NamedComputation = source.try_into()?;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!(), "bob".to_string()=>hashmap!());
@@ -1142,7 +1142,7 @@ mod tests {
         let moose_session =
             _create_async_session(&networking, &exec_storage, valid_role_assignments.clone());
 
-        let computation: Computation = source.try_into().unwrap();
+        let computation: NamedComputation = source.try_into().unwrap();
         let own_identity = identity;
 
         executor
@@ -1176,7 +1176,7 @@ mod tests {
 
     #[cfg(feature = "async_execute")]
     fn _run_new_async_computation_test(
-        computation: Computation,
+        computation: NamedComputation,
         storage_mapping: HashMap<String, HashMap<String, Value>>,
         role_assignments: HashMap<String, String>,
         arguments: HashMap<String, Value>,

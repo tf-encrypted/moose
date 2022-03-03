@@ -1,4 +1,4 @@
-use moose::computation::CompactComputation;
+use moose::computation::IndexedComputation;
 use moose::computation::Operator;
 use moose::execution::{AsyncNetworkingImpl, AsyncStorageImpl};
 use moose::prelude::*;
@@ -34,7 +34,7 @@ impl ExecutionContext {
     pub async fn execute_computation(
         &self,
         session_id: SessionId,
-        computation: &Computation,
+        computation: &NamedComputation,
         role_assignments: HashMap<Role, Identity>,
     ) -> Result<(AsyncSessionHandle, Environment), Box<dyn std::error::Error>> {
         let session = AsyncSession::new(
@@ -94,7 +94,7 @@ impl ExecutionContext {
     pub async fn execute_compact_computation(
         &self,
         session_id: SessionId,
-        computation: &Computation,
+        computation: &NamedComputation,
         role_assignments: HashMap<Role, Identity>,
     ) -> Result<(AsyncSessionHandle, CompactOutputEnvironment), Box<dyn std::error::Error>> {
         let session = AsyncSession::new(
@@ -105,7 +105,7 @@ impl ExecutionContext {
             Arc::clone(&self.storage),
         );
 
-        let computation = CompactComputation::try_from(computation)?;
+        let computation = IndexedComputation::try_from(computation)?;
         let mut outputs: CompactOutputEnvironment = Vec::default();
         {
             let mut env: CompactEnvironment = Vec::with_capacity(computation.operations.len());

@@ -4,7 +4,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use maplit::hashmap;
 use moose::{
     compilation::{compile, Pass},
-    computation::{Computation, Role, Value},
+    computation::{NamedComputation, Role, Value},
     execution::{AsyncTestRuntime, Identity},
 };
 
@@ -14,7 +14,7 @@ fn runtime_simple_computation(c: &mut Criterion) {
     z = Add: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(alice)
     output = Output: (Int64Tensor) -> Int64Tensor (z) @Host(alice)
     "#;
-    let computation: Computation = source.try_into().unwrap();
+    let computation: NamedComputation = source.try_into().unwrap();
     let x: Value = "Int64Tensor([5]) @Host(alice)".try_into().unwrap();
     let y: Value = "Int64Tensor([10]) @Host(alice)".try_into().unwrap();
     let arguments: HashMap<String, Value> = hashmap!("x".to_string() => x, "y".to_string()=> y);
@@ -43,7 +43,7 @@ fn runtime_two_hosts(c: &mut Criterion) {
     res = Dot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x0, x1) @Host(alice)
     output = Output: (Float32Tensor) -> Float32Tensor (res) @Host(alice)
     "#;
-    let computation: Computation = source.try_into().unwrap();
+    let computation: NamedComputation = source.try_into().unwrap();
     let computation = compile(&computation, Some(vec![Pass::Networking, Pass::Toposort])).unwrap();
 
     let arguments: HashMap<String, Value> = hashmap!();
@@ -68,7 +68,7 @@ fn runtime_two_hosts(c: &mut Criterion) {
 
 fn runtime_rep_computation(c: &mut Criterion) {
     let source = include_str!("./rep_computation.moose");
-    let computation: Computation = source.try_into().unwrap();
+    let computation: NamedComputation = source.try_into().unwrap();
     let computation = compile(&computation, Some(vec![Pass::Networking, Pass::Toposort])).unwrap();
 
     let arguments: HashMap<String, Value> = hashmap!();

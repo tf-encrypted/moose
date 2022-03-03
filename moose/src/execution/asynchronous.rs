@@ -482,7 +482,7 @@ impl AsyncExecutor {
     // After execution the AsyncTasks to block on will be in session.tasks vector.
     pub fn run_computation(
         &mut self,
-        computation: &Computation,
+        computation: &NamedComputation,
         role_assignment: &RoleAssignment,
         own_identity: &Identity,
         session: &AsyncSession,
@@ -590,7 +590,7 @@ impl AsyncTestRuntime {
 
     pub fn evaluate_computation(
         &mut self,
-        computation: &Computation,
+        computation: &NamedComputation,
         role_assignments: HashMap<Role, Identity>,
         arguments: HashMap<String, Value>,
     ) -> Result<HashMap<String, Value>> {

@@ -4,7 +4,7 @@ use crate::compilation::networking::NetworkingPass;
 use crate::compilation::print::print_graph;
 use crate::compilation::pruning::prune_graph;
 use crate::compilation::typing::update_types_one_hop;
-use crate::computation::Computation;
+use crate::computation::NamedComputation;
 use crate::textual::ToTextual;
 use std::convert::TryFrom;
 
@@ -68,7 +68,10 @@ pub const DEFAULT_PASSES: [Pass; 5] = [
 ];
 
 #[deprecated]
-pub fn compile_passes<'p, P>(comp: &Computation, passes: &'p [P]) -> anyhow::Result<Computation>
+pub fn compile_passes<'p, P>(
+    comp: &NamedComputation,
+    passes: &'p [P],
+) -> anyhow::Result<NamedComputation>
 where
     Pass: TryFrom<&'p P, Error = anyhow::Error>,
 {
@@ -86,7 +89,10 @@ where
     Ok(computation)
 }
 
-pub fn compile<P>(comp: &Computation, passes: Option<Vec<P>>) -> anyhow::Result<Computation>
+pub fn compile<P>(
+    comp: &NamedComputation,
+    passes: Option<Vec<P>>,
+) -> anyhow::Result<NamedComputation>
 where
     for<'p> Pass: TryFrom<&'p P, Error = anyhow::Error>,
 {
@@ -100,7 +106,7 @@ where
     }
 }
 
-fn do_pass(pass: &Pass, comp: &Computation) -> anyhow::Result<Option<Computation>> {
+fn do_pass(pass: &Pass, comp: &NamedComputation) -> anyhow::Result<Option<NamedComputation>> {
     match pass {
         Pass::Networking => NetworkingPass::pass(comp),
         Pass::Print => print_graph(comp),

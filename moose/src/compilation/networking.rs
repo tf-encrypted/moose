@@ -11,7 +11,7 @@ pub struct NetworkingPass {
 
 impl NetworkingPass {
     /// Create a new context for the Networking pass
-    fn new(comp: &Computation) -> NetworkingPass {
+    fn new(comp: &NamedComputation) -> NetworkingPass {
         NetworkingPass {
             operations: comp.operations.clone(),
             extra_ops: Vec::new(),
@@ -21,7 +21,7 @@ impl NetworkingPass {
     }
 
     /// Applies the networking pass to the entire computation
-    pub fn pass(comp: &Computation) -> anyhow::Result<Option<Computation>> {
+    pub fn pass(comp: &NamedComputation) -> anyhow::Result<Option<NamedComputation>> {
         // We clone the operations to make the changes to them.
         let mut pass = NetworkingPass::new(comp);
 
@@ -53,7 +53,7 @@ impl NetworkingPass {
         }
 
         pass.operations.extend(pass.extra_ops);
-        Ok(Some(Computation {
+        Ok(Some(NamedComputation {
             operations: pass.operations,
         }))
     }

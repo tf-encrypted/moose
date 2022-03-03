@@ -1,4 +1,4 @@
-use crate::computation::{Computation, Operation, Operator, ReceiveOp};
+use crate::computation::{NamedComputation, Operation, Operator, ReceiveOp};
 use crate::textual::ToTextual;
 use petgraph::dot::Config::{EdgeNoLabel, NodeNoLabel};
 use petgraph::dot::Dot;
@@ -12,7 +12,7 @@ const COLORS: [&str; 9] = [
 
 // TODO remove `get` prefix
 /// Prints the computation's graph DOT representation to stdout
-pub fn get_dot_graph(comp: &Computation) -> String {
+pub fn get_dot_graph(comp: &NamedComputation) -> String {
     let graph = comp.as_graph();
 
     // We need to compute the color lookup table ahead of time, because `Dot`'s closures capture everything as immutable
@@ -61,7 +61,7 @@ pub fn get_dot_graph(comp: &Computation) -> String {
 }
 
 /// Prints the computation's graph DOT representation to stdout
-pub fn print_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
+pub fn print_graph(comp: &NamedComputation) -> anyhow::Result<Option<NamedComputation>> {
     let graph = get_dot_graph(comp);
     println!("{}", graph);
     Ok(None)

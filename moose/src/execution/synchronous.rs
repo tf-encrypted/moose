@@ -299,7 +299,7 @@ pub struct TestSyncExecutor {
 impl TestSyncExecutor {
     pub fn run_computation(
         &self,
-        computation: &Computation,
+        computation: &NamedComputation,
         session: &SyncSession,
     ) -> anyhow::Result<HashMap<String, Value>> {
         let mut env: HashMap<String, Value> = HashMap::with_capacity(computation.operations.len());

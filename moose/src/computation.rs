@@ -1682,7 +1682,7 @@ pub struct Operation {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct Computation {
+pub struct NamedComputation {
     pub operations: Vec<Operation>,
 }
 
@@ -1694,16 +1694,16 @@ pub struct CompactOperation {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct CompactComputation {
+pub struct IndexedComputation {
     pub operations: Vec<CompactOperation>,
     pub operators: Vec<Operator>,
     pub placements: Vec<Placement>,
 }
 
-impl TryFrom<&Computation> for CompactComputation {
+impl TryFrom<&NamedComputation> for IndexedComputation {
     type Error = Error;
 
-    fn try_from(computation: &Computation) -> Result<CompactComputation> {
+    fn try_from(computation: &NamedComputation) -> Result<IndexedComputation> {
         let unique_placements = computation
             .operations
             .iter()
@@ -1760,7 +1760,7 @@ impl TryFrom<&Computation> for CompactComputation {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        Ok(CompactComputation {
+        Ok(IndexedComputation {
             operators,
             operations,
             placements,
@@ -1768,10 +1768,10 @@ impl TryFrom<&Computation> for CompactComputation {
     }
 }
 
-impl TryFrom<&CompactComputation> for Computation {
+impl TryFrom<&IndexedComputation> for NamedComputation {
     type Error = Error;
 
-    fn try_from(compact: &CompactComputation) -> Result<Computation> {
+    fn try_from(compact: &IndexedComputation) -> Result<NamedComputation> {
         let operations = compact
             .operations
             .iter()
@@ -1810,11 +1810,11 @@ impl TryFrom<&CompactComputation> for Computation {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        Ok(Computation { operations })
+        Ok(NamedComputation { operations })
     }
 }
 
-impl Computation {
+impl NamedComputation {
     #[tracing::instrument(skip(bytes))]
     pub fn from_msgpack<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
         rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
@@ -1935,7 +1935,7 @@ impl Computation {
         graph
     }
 
-    pub fn toposort(&self) -> Result<Computation> {
+    pub fn toposort(&self) -> Result<NamedComputation> {
         let graph = self.as_graph();
         let toposort = toposort(&graph, None).map_err(|_| {
             Error::MalformedComputation("There is a cycle detected in the runtime graph".into())
@@ -1946,7 +1946,7 @@ impl Computation {
             .map(|node| self.operations[graph[*node].1].clone())
             .collect();
 
-        Ok(Computation { operations })
+        Ok(NamedComputation { operations })
     }
 }
 
@@ -1980,7 +1980,7 @@ mod tests {
     #[test]
     fn test_binary_roundtrip() {
         use std::convert::TryInto;
-        let original: Computation = r#"constant_0 = Constant{value = HostFloat64Tensor([[0.12131529]])}: () -> Tensor<Float64> () @Host(player2)
+        let original: NamedComputation = r#"constant_0 = Constant{value = HostFloat64Tensor([[0.12131529]])}: () -> Tensor<Float64> () @Host(player2)
         cast_0 = Cast: (Tensor<Float64>) -> Tensor<Fixed128(24, 40)> (constant_0) @Host(player2)
         x = Input{arg_name = "x"}: () -> AesTensor () @Host(player0)
         key = Input{arg_name = "key"}: () -> AesKey () @Replicated(player0, player1, player2)
@@ -1989,7 +1989,7 @@ mod tests {
         cast_1 = Cast: (Tensor<Fixed128(24, 40)>) -> Tensor<Float64> (dot_0) @Host(player1)
         output_0 = Output: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
         let bytes = original.to_msgpack().unwrap();
-        let read_back = Computation::from_msgpack(bytes).unwrap();
+        let read_back = NamedComputation::from_msgpack(bytes).unwrap();
         assert_eq!(original.operations, read_back.operations);
     }
 }

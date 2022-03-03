@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let computation_bytes = std::fs::read(&opt.comp)?;
 
-    let computation = Computation::from_msgpack(computation_bytes)?;
+    let computation = NamedComputation::from_msgpack(computation_bytes)?;
 
     let storage = Arc::new(LocalAsyncStorage::default());
 
