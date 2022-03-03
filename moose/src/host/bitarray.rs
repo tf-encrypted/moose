@@ -59,7 +59,7 @@ impl BitArrayRepr {
             // Just a get element call
             let pos = IxDyn::stride_offset(&IxDyn(&[0, index]), &self.dim) as usize;
             return BitArrayRepr {
-                data: Arc::new(BitVec::from_slice(&[self.data[pos] as u8])),
+                data: Arc::new(BitVec::repeat(self.data[pos], 1)),
                 dim: Arc::new(dim),
             };
         }

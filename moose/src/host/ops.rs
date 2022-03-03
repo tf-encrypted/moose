@@ -1313,12 +1313,18 @@ impl RingInjectOp {
         T: From<u8>,
         Wrapping<T>: std::ops::Shl<usize, Output = Wrapping<T>>,
     {
-        // Ok(HostRingTensor(
-        //     x.0.mapv(|ai| Wrapping(T::from(ai)) << bit_idx)
-        //         .into_shared(),
-        //     plc.clone(),
-        // ))
-        todo!()
+        let values: Vec<_> =
+            x.0.data
+                .iter()
+                .map(|ai| {
+                    let bit = if *ai { 1 } else { 0 };
+                    Wrapping(T::from(bit)) << bit_idx
+                })
+                .collect();
+        let ix = IxDyn(x.0.shape());
+        let arr =
+            Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
+        Ok(HostRingTensor(arr.into_shared(), plc.clone()))
     }
 }
 
