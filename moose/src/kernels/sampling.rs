@@ -6,7 +6,7 @@ pub trait PlacementDeriveSeed<S: Session, KeyT, SeedT> {
 }
 
 modelled_kernel! {
-    PlacementDeriveSeed::derive_seed, PrimDeriveSeedOp{sync_key: SyncKey},
+    PlacementDeriveSeed::derive_seed, DeriveSeedOp{sync_key: SyncKey},
     [
         (HostPlacement, (PrfKey) -> Seed => [runtime] Self::kernel),
     ]

@@ -332,7 +332,7 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
 }
 
 impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
-    for PrimDeriveSeedOp
+    for DeriveSeedOp
 {
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
         let (input, sync_key) =
@@ -342,7 +342,7 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
                 })?;
         let (input, opt_sig) = opt(operator_signature(0))(input)?;
         let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
-        Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
+        Ok((input, DeriveSeedOp { sig, sync_key }.into()))
     }
 }
 
@@ -1149,7 +1149,7 @@ impl ToTextual for Operator {
             Shr(op) => op.to_textual(),
             RingInject(op) => op.to_textual(),
             BitExtract(op) => op.to_textual(),
-            PrimDeriveSeed(op) => op.to_textual(),
+            DeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
             Decrypt(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
@@ -1847,12 +1847,12 @@ mod tests {
     #[test]
     fn test_seed() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "seed = PrimDeriveSeed{sync_key = [1, 2, 3]}(key)@Host(alice)",
+            "seed = DeriveSeed{sync_key = [1, 2, 3]}(key)@Host(alice)",
         )?;
         assert_eq!(op.name, "seed");
         assert_eq!(
             op.kind,
-            Operator::PrimDeriveSeed(PrimDeriveSeedOp {
+            Operator::DeriveSeed(DeriveSeedOp {
                 sig: Signature::nullary(Ty::Seed),
                 sync_key: SyncKey::try_from(vec![1, 2, 3])?
             })
@@ -2225,7 +2225,7 @@ mod tests {
         let comp: Computation = "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
             z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, carole)
-            seed = PrimDeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
+            seed = DeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
             seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)}: () -> Seed @Host(alice)
             o = Output: (HostFloat32Tensor) -> HostFloat32Tensor (z) @Host(alice)"
             .try_into()?;

@@ -359,7 +359,7 @@ impl DispatchKernel<AsyncSession> for Operator {
             BitDecompose(op) => DispatchKernel::compile(op, plc),
             BitCompose(op) => DispatchKernel::compile(op, plc),
             AdtToRep(op) => DispatchKernel::compile(op, plc),
-            PrimDeriveSeed(op) => DispatchKernel::compile(op, plc),
+            DeriveSeed(op) => DispatchKernel::compile(op, plc),
             Constant(op) => DispatchKernel::compile(op, plc),
             Input(op) => DispatchKernel::compile(op, plc),
             Output(op) => DispatchKernel::compile(op, plc),

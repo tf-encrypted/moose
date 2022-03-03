@@ -1,5 +1,5 @@
 use super::HostPlacement;
-use crate::computation::{Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, TAG_BYTES};
+use crate::computation::{Placed, DeriveSeedOp, PrimPrfKeyGenOp, TAG_BYTES};
 use crate::error::{Error, Result};
 use crate::execution::{RuntimeSession, Session};
 use crate::kernels::PlacementPlace;
@@ -115,7 +115,7 @@ impl PrimPrfKeyGenOp {
     }
 }
 
-impl PrimDeriveSeedOp {
+impl DeriveSeedOp {
     pub(crate) fn kernel<S: RuntimeSession>(
         sess: &S,
         plc: &HostPlacement,

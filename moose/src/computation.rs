@@ -853,7 +853,7 @@ operators![
     Constant,
     Shape,
     Broadcast,
-    PrimDeriveSeed,
+    DeriveSeed,
     PrimPrfKeyGen,
     Decrypt,
     AtLeast2D,
@@ -1182,7 +1182,7 @@ pub struct BitToRingOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual)]
-pub struct PrimDeriveSeedOp {
+pub struct DeriveSeedOp {
     pub sig: Signature,
     pub sync_key: SyncKey,
 }

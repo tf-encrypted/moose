@@ -210,7 +210,7 @@ impl Session for SyncSession {
             BitCompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             ShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            DeriveSeed(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Decrypt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Constant(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Input(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
