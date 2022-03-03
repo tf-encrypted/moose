@@ -1,7 +1,6 @@
 [computation]
 path = "/tmp/sessions/test.moose"
 format = "textual"
-compact = "false"
 
 [[roles]]
 name = "alice"
