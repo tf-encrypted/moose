@@ -3,6 +3,7 @@ use moose::computation::Operator;
 use moose::execution::{AsyncNetworkingImpl, AsyncStorageImpl};
 use moose::prelude::*;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::sync::Arc;
 
 pub struct ExecutionContext {
@@ -89,6 +90,7 @@ impl ExecutionContext {
         Ok((handle, outputs))
     }
 
+    #[tracing::instrument(skip(self, computation, role_assignments))]
     pub async fn execute_compact_computation(
         &self,
         session_id: SessionId,
@@ -103,14 +105,20 @@ impl ExecutionContext {
             Arc::clone(&self.storage),
         );
 
-        let computation = CompactComputation::from(computation);
+        let computation = CompactComputation::try_from(computation)?;
         let mut outputs: CompactOutputEnvironment = Vec::default();
         {
             let mut env: CompactEnvironment = Vec::with_capacity(computation.operations.len());
 
             for (op_index, op) in computation.operations.iter().enumerate() {
                 // TODO(Morten) move filtering logic to the session
-                match &computation.placements[op.placement_index] {
+                let placement = computation.placements.get(op.placement).ok_or_else(|| {
+                    moose::Error::MalformedComputation(format!(
+                        "Missing placement for operation '{}'",
+                        op_index
+                    ))
+                })?;
+                match placement {
                     Placement::Host(host) => {
                         let owning_identity = role_assignments.get(&host.owner).unwrap();
                         if owning_identity == &self.own_identity {
@@ -122,8 +130,8 @@ impl ExecutionContext {
                         }
                     }
                     _ => {
-                        env.push(None);
                         // skip operation
+                        env.push(None);
                         continue;
                     }
                 };
@@ -134,15 +142,24 @@ impl ExecutionContext {
                     .map(|input_index| env.get(*input_index).unwrap().clone().unwrap())
                     .collect();
 
-                let result = session.execute(
-                    computation.kinds[op.kind_index].clone(),
-                    &computation.placements[op.placement_index],
-                    operands,
-                )?;
+                let operator =
+                    computation
+                        .operators
+                        .get(op.operator)
+                        .cloned()
+                        .ok_or_else(|| {
+                            moose::Error::MalformedComputation(format!(
+                                "Missing operator for operation '{}'",
+                                op_index
+                            ))
+                        })?;
+                let is_output = matches!(&operator, Operator::Output(_));
 
-                if matches!(computation.kinds[op.kind_index], Operator::Output(_)) {
+                let result = session.execute(operator, placement, operands)?;
+
+                if is_output {
                     // If it is an output, we need to make sure we capture it for returning.
-                    outputs.push((op_index, result.clone()));
+                    outputs.push((op_index, result));
                 } else {
                     // Everything else should be available in the env for other ops to use.
                     env.push(Some(result)); // assume computations are top sorted

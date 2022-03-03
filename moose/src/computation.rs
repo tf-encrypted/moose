@@ -1683,100 +1683,134 @@ pub struct Operation {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Computation {
-    // pub constants: Vec<Value>,
-    // pub operators: Vec<Operator>,
     pub operations: Vec<Operation>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CompactOperation {
-    pub kind_index: usize,
+    pub operator: usize,
     pub inputs: Vec<usize>,
-    pub placement_index: usize,
+    pub placement: usize,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CompactComputation {
     pub operations: Vec<CompactOperation>,
-    pub kinds: Vec<Operator>,
+    pub operators: Vec<Operator>,
     pub placements: Vec<Placement>,
 }
 
-impl From<&Computation> for CompactComputation {
-    fn from(computation: &Computation) -> CompactComputation {
+impl TryFrom<&Computation> for CompactComputation {
+    type Error = Error;
+
+    fn try_from(computation: &Computation) -> Result<CompactComputation> {
         let unique_placements = computation
             .operations
             .iter()
             .map(|op| &op.placement)
             .collect::<HashSet<&Placement>>();
-
         let placements: Vec<Placement> = unique_placements.into_iter().cloned().collect();
-        let mut placements_map: HashMap<Placement, usize> =
-            HashMap::with_capacity(placements.len());
-        for (i, plc) in placements.clone().into_iter().enumerate() {
-            placements_map.insert(plc, i);
-        }
+        let placements_map: HashMap<&Placement, usize> = placements
+            .iter()
+            .enumerate()
+            .map(|(i, plc)| (plc, i))
+            .collect();
 
         let unique_operators = computation
             .operations
             .iter()
             .map(|op| &op.kind)
             .collect::<HashSet<&Operator>>();
+        let operators: Vec<Operator> = unique_operators.into_iter().cloned().collect();
+        let operators_map: HashMap<&Operator, usize> = operators
+            .iter()
+            .enumerate()
+            .map(|(i, op)| (op, i))
+            .collect();
 
-        let operators: Vec<_> = unique_operators.into_iter().cloned().collect();
-        let mut operators_map: HashMap<Operator, usize> = HashMap::with_capacity(operators.len());
-        for (i, plc) in operators.clone().into_iter().enumerate() {
-            operators_map.insert(plc, i);
-        }
-
-        let op_names_map = computation
+        let op_names_map: HashMap<&String, usize> = computation
             .operations
             .iter()
             .enumerate()
-            .map(|(i, op)| (op.name.clone(), i))
-            .collect::<HashMap<_, _>>();
-
-        let compactest_operations: Vec<_> = computation
-            .operations
-            .iter()
-            .map(|x| {
-                let compact_inputs: Vec<_> = x.inputs.iter().map(|inp| op_names_map[inp]).collect();
-
-                CompactOperation {
-                    kind_index: operators_map[&x.kind],
-                    inputs: compact_inputs,
-                    placement_index: placements_map[&x.placement],
-                }
-            })
+            .map(|(i, op)| (&op.name, i))
             .collect();
 
-        CompactComputation {
-            kinds: operators,
-            operations: compactest_operations,
+        let operations = computation
+            .operations
+            .iter()
+            .map(|op| {
+                let inputs = op
+                    .inputs
+                    .iter()
+                    .map(|name| {
+                        op_names_map.get(name).cloned().ok_or_else(|| {
+                            Error::MalformedComputation(format!(
+                                "Missing operation '{}' used as an operand for '{}'",
+                                name, op.name
+                            ))
+                        })
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+
+                Ok(CompactOperation {
+                    inputs,
+                    operator: operators_map[&op.kind], // should be there by construction
+                    placement: placements_map[&op.placement], // should be there by construction
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(CompactComputation {
+            operators,
+            operations,
             placements,
-        }
+        })
     }
 }
 
-impl From<&CompactComputation> for Computation {
-    // assumes computation has all operations starting with the same prefix
-    fn from(compact: &CompactComputation) -> Computation {
-        let operations: Vec<_> = compact
+impl TryFrom<&CompactComputation> for Computation {
+    type Error = Error;
+
+    fn try_from(compact: &CompactComputation) -> Result<Computation> {
+        let operations = compact
             .operations
             .iter()
             .enumerate()
-            .map(|(i, op)| Operation {
-                name: format!("op_{:?}", i),
-                kind: compact.kinds[op.kind_index].clone(),
-                inputs: op
+            .map(|(i, op)| {
+                let kind = compact.operators.get(op.operator).cloned().ok_or_else(|| {
+                    Error::MalformedComputation(format!(
+                        "Missing operator with index {}",
+                        op.operator
+                    ))
+                })?;
+
+                let inputs = op
                     .inputs
                     .iter()
                     .map(|inp| format!("op_{:?}", inp))
-                    .collect(),
-                placement: compact.placements[op.placement_index].clone(),
+                    .collect();
+
+                let placement = compact
+                    .placements
+                    .get(op.placement)
+                    .cloned()
+                    .ok_or_else(|| {
+                        Error::MalformedComputation(format!(
+                            "Missing placement with index {}",
+                            op.placement
+                        ))
+                    })?;
+
+                Ok(Operation {
+                    name: format!("op_{:?}", i),
+                    kind,
+                    inputs,
+                    placement,
+                })
             })
-            .collect();
-        Computation { operations }
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(Computation { operations })
     }
 }
 
