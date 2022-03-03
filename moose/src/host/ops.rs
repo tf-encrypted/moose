@@ -716,23 +716,20 @@ impl BitDecomposeOp {
         plc: &HostPlacement,
         x: HostRing128Tensor,
     ) -> Result<HostBitTensor> {
-        let shape = x.shape();
-        let raw_shape = shape.0 .0;
-        let ones = ArcArrayD::from_elem(raw_shape, Wrapping(1));
+        use bitvec::prelude::*;
+        let mut dim = x.0.dim().insert_axis(Axis(0));
+        dim.slice_mut()[0] = <HostRing128Tensor as Ring>::BitLength::VALUE;
 
-        let bit_rep: Vec<_> = (0..<HostRing128Tensor as Ring>::BitLength::VALUE)
-            .map(|i| (&x.0 >> i) & (&ones))
-            .collect();
+        let mut data = BitVec::EMPTY;
+        for i in 0..<HostRing128Tensor as Ring>::BitLength::VALUE {
+            let slice: BitVec<u8, Lsb0> = x.0.iter().map(|ai| ((ai >> i).0 & 1) != 0).collect();
+            data.extend_from_bitslice(&slice);
+        }
 
-        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
-        let result = ndarray::stack(Axis(0), &bit_rep_view)
-            .map_err(|e| Error::KernelError(e.to_string()))?;
-        // we unwrap only at the end since shifting can cause overflow
-        // Ok(HostBitTensor(
-        //     result.map(|v| v.0 as u8).into_shared(),
-        //     plc.clone(),
-        // ))
-        todo!()
+        Ok(HostBitTensor(
+            BitArrayRepr::from_raw(data, dim),
+            plc.clone(),
+        ))
     }
 }
 
