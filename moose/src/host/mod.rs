@@ -697,6 +697,18 @@ mod tests {
     }
 
     #[test]
+    fn test_bit_diag() {
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
+
+        let x: HostBitTensor = plc.from_raw(array![[1, 1], [1, 0]]);
+        let y = plc.diag(&sess, &x);
+
+        let expected: HostBitTensor = plc.from_raw(array![1, 0]);
+        assert_eq!(y, expected);
+    }
+
+    #[test]
     fn test_index() {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
