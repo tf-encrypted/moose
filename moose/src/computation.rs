@@ -1700,8 +1700,10 @@ pub struct CompactComputation {
     pub placements: Vec<Placement>,
 }
 
-impl From<&Computation> for CompactComputation {
-    fn from(computation: &Computation) -> CompactComputation {
+impl TryFrom<&Computation> for CompactComputation {
+    type Error = Error;
+
+    fn try_from(computation: &Computation) -> Result<CompactComputation> {
         let unique_placements = computation
             .operations
             .iter()
@@ -1748,23 +1750,23 @@ impl From<&Computation> for CompactComputation {
                         op_names_map
                             .get(name)
                             .cloned()
-                            .unwrap()
+                            .ok_or_else(|| Error::MalformedComputation(format!("Missing operation '{}' used as an operand for '{}'", name, op.name)))
                     })
-                    .collect();
+                    .collect::<Result<Vec<_>>>()?;
 
-                CompactOperation {
+                Ok(CompactOperation {
                     inputs,
                     operator: operators_map[&op.kind], // should be there by construction
                     placement: placements_map[&op.placement], // should be there by construction
-                }
+                })
             })
-            .collect();
+            .collect::<Result<Vec<_>>>()?;
 
-        CompactComputation {
+        Ok(CompactComputation {
             operators,
             operations,
             placements,
-        }
+        })
     }
 }
 

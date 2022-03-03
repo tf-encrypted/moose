@@ -4,6 +4,7 @@ use moose::execution::{AsyncNetworkingImpl, AsyncStorageImpl};
 use moose::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::convert::TryFrom;
 
 pub struct ExecutionContext {
     own_identity: Identity,
@@ -103,7 +104,7 @@ impl ExecutionContext {
             Arc::clone(&self.storage),
         );
 
-        let computation = CompactComputation::from(computation);
+        let computation = CompactComputation::try_from(computation)?;
         let mut outputs: CompactOutputEnvironment = Vec::default();
         {
             let mut env: CompactEnvironment = Vec::with_capacity(computation.operations.len());
