@@ -1713,9 +1713,7 @@ impl TryFrom<&Computation> for CompactComputation {
         let placements_map: HashMap<&Placement, usize> = placements
             .iter()
             .enumerate()
-            .map(|(i, plc)| {
-                (plc, i)
-            })
+            .map(|(i, plc)| (plc, i))
             .collect();
 
         let unique_operators = computation
@@ -1727,9 +1725,7 @@ impl TryFrom<&Computation> for CompactComputation {
         let operators_map: HashMap<&Operator, usize> = operators
             .iter()
             .enumerate()
-            .map(|(i, op)| {
-                (op, i)
-            })
+            .map(|(i, op)| (op, i))
             .collect();
 
         let op_names_map: HashMap<&String, usize> = computation
@@ -1747,10 +1743,12 @@ impl TryFrom<&Computation> for CompactComputation {
                     .inputs
                     .iter()
                     .map(|name| {
-                        op_names_map
-                            .get(name)
-                            .cloned()
-                            .ok_or_else(|| Error::MalformedComputation(format!("Missing operation '{}' used as an operand for '{}'", name, op.name)))
+                        op_names_map.get(name).cloned().ok_or_else(|| {
+                            Error::MalformedComputation(format!(
+                                "Missing operation '{}' used as an operand for '{}'",
+                                name, op.name
+                            ))
+                        })
                     })
                     .collect::<Result<Vec<_>>>()?;
 

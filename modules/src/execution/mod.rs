@@ -3,8 +3,8 @@ use moose::computation::Operator;
 use moose::execution::{AsyncNetworkingImpl, AsyncStorageImpl};
 use moose::prelude::*;
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::convert::TryFrom;
+use std::sync::Arc;
 
 pub struct ExecutionContext {
     own_identity: Identity,
