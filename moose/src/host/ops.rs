@@ -1651,9 +1651,7 @@ impl SampleOp {
         let mut rng = AesRng::from_random_seed();
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
-        let arr = BitArrayRepr::try_from_vec(values, &shape.0).map_err(|e| {
-            Error::KernelError("vector was too long to be converted into a `BitVec`".to_string())
-        })?;
+        let arr = BitArrayRepr::from_vec(values, &shape.0);
         Ok(HostBitTensor(arr, plc.clone()))
     }
 }
@@ -1732,9 +1730,7 @@ impl SampleSeededOp {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
-        let res = BitArrayRepr::try_from_vec(values, &shape.0).map_err(|e| {
-            Error::KernelError("vector was too long to be converted into a `BitVec`".to_string())
-        })?;
+        let res = BitArrayRepr::from_vec(values, &shape.0);
         Ok(HostBitTensor(res, plc.clone()))
     }
 }

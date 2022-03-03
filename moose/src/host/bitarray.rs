@@ -17,13 +17,13 @@ impl BitArrayRepr {
         }
     }
 
-    pub fn try_from_vec(vec: Vec<u8>, shape: &RawShape) -> Result<Self, Vec<u8>> {
-        let data = BitVec::try_from_vec(vec)?;
+    pub fn from_vec(vec: Vec<u8>, shape: &RawShape) -> Self {
+        let data = vec.iter().map(|&ai| ai != 0).collect();
         let dim = IxDyn(&shape.0);
-        Ok(BitArrayRepr {
+        BitArrayRepr {
             data: Arc::new(data),
             dim,
-        })
+        }
     }
 
     pub fn from_elem(shape: &RawShape, elem: u8) -> Self {
