@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.5
+
+### Changed
+
+- `PrimDeriveSeed` operator renamed to `DeriveSeed`
+- `PrimPrfKeyGen` operator renamed to `PrfKeyGen`
+
 ## v0.1.2
 
 ### Release notes
