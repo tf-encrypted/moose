@@ -140,7 +140,7 @@ impl ExecutionContext {
                     operands,
                 )?;
 
-                if matches!(computation.kinds[op.kind_index], Operator::Output(_)) {
+                if matches!(computation.operators[op.operator], Operator::Output(_)) {
                     // If it is an output, we need to make sure we capture it for returning.
                     outputs.push((op_index, result.clone()));
                 } else {
