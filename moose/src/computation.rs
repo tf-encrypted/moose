@@ -1687,7 +1687,7 @@ pub struct NamedComputation {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct CompactOperation {
+pub struct IndexedOperation {
     pub operator: usize,
     pub inputs: Vec<usize>,
     pub placement: usize,
@@ -1695,7 +1695,7 @@ pub struct CompactOperation {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct IndexedComputation {
-    pub operations: Vec<CompactOperation>,
+    pub operations: Vec<IndexedOperation>,
     pub operators: Vec<Operator>,
     pub placements: Vec<Placement>,
 }
@@ -1752,7 +1752,7 @@ impl TryFrom<&NamedComputation> for IndexedComputation {
                     })
                     .collect::<Result<Vec<_>>>()?;
 
-                Ok(CompactOperation {
+                Ok(IndexedOperation {
                     inputs,
                     operator: operators_map[&op.kind], // should be there by construction
                     placement: placements_map[&op.placement], // should be there by construction
@@ -1982,7 +1982,7 @@ mod tests {
     #[test]
     fn test_binary_roundtrip() {
         use std::convert::TryInto;
-        let original: NamedComputation = r#"constant_0 = Constant{value = HostFloat64Tensor([[0.12131529]])}: () -> Tensor<Float64> () @Host(player2)
+        let original: Computation = r#"constant_0 = Constant{value = HostFloat64Tensor([[0.12131529]])}: () -> Tensor<Float64> () @Host(player2)
         cast_0 = Cast: (Tensor<Float64>) -> Tensor<Fixed128(24, 40)> (constant_0) @Host(player2)
         x = Input{arg_name = "x"}: () -> AesTensor () @Host(player0)
         key = Input{arg_name = "key"}: () -> AesKey () @Replicated(player0, player1, player2)
@@ -1991,7 +1991,7 @@ mod tests {
         cast_1 = Cast: (Tensor<Fixed128(24, 40)>) -> Tensor<Float64> (dot_0) @Host(player1)
         output_0 = Output: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
         let bytes = original.to_msgpack().unwrap();
-        let read_back = NamedComputation::from_msgpack(bytes).unwrap();
+        let read_back = Computation::from_msgpack(bytes).unwrap();
         assert_eq!(original.operations, read_back.operations);
     }
 }

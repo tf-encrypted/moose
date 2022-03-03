@@ -15,8 +15,8 @@ pub struct ExecutionContext {
 #[allow(dead_code)]
 type Environment = HashMap<String, <AsyncSession as Session>::Value>;
 
-type CompactEnvironment = Vec<Option<<AsyncSession as Session>::Value>>;
-type CompactOutputEnvironment = Vec<(usize, <AsyncSession as Session>::Value)>;
+type IndexedEnvironment = Vec<Option<<AsyncSession as Session>::Value>>;
+type IndexedOutputEnvironment = Vec<(usize, <AsyncSession as Session>::Value)>;
 
 impl ExecutionContext {
     pub fn new(
@@ -92,12 +92,12 @@ impl ExecutionContext {
     }
 
     #[tracing::instrument(skip(self, computation, role_assignments))]
-    pub async fn execute_compact_computation(
+    pub async fn execute_indexed_computation(
         &self,
         session_id: SessionId,
         computation: &Computation,
         role_assignments: HashMap<Role, Identity>,
-    ) -> Result<(AsyncSessionHandle, CompactOutputEnvironment), Box<dyn std::error::Error>> {
+    ) -> Result<(AsyncSessionHandle, IndexedOutputEnvironment), Box<dyn std::error::Error>> {
         let session = AsyncSession::new(
             session_id,
             HashMap::new(),
@@ -107,9 +107,9 @@ impl ExecutionContext {
         );
 
         let computation = IndexedComputation::try_from(computation)?;
-        let mut outputs: CompactOutputEnvironment = Vec::default();
+        let mut outputs: IndexedOutputEnvironment = Vec::default();
         {
-            let mut env: CompactEnvironment = Vec::with_capacity(computation.operations.len());
+            let mut env: IndexedEnvironment = Vec::with_capacity(computation.operations.len());
 
             for (op_index, op) in computation.operations.iter().enumerate() {
                 // TODO(Morten) move filtering logic to the session
