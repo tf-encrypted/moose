@@ -182,7 +182,7 @@ impl Session for SyncSession {
             // The regular kernels
             Shape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Broadcast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            PrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Xor(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             And(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Or(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

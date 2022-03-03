@@ -854,7 +854,7 @@ operators![
     Shape,
     Broadcast,
     DeriveSeed,
-    PrimPrfKeyGen,
+    PrfKeyGen,
     Decrypt,
     AtLeast2D,
     IndexAxis,
@@ -1190,7 +1190,7 @@ pub struct DeriveSeedOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-pub struct PrimPrfKeyGenOp {
+pub struct PrfKeyGenOp {
     pub sig: Signature,
 }
 

@@ -1150,7 +1150,7 @@ impl ToTextual for Operator {
             RingInject(op) => op.to_textual(),
             BitExtract(op) => op.to_textual(),
             DeriveSeed(op) => op.to_textual(),
-            PrimPrfKeyGen(op) => op.to_textual(),
+            PrfKeyGen(op) => op.to_textual(),
             Decrypt(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
@@ -1555,7 +1555,7 @@ impl ToTextual for Role {
     }
 }
 
-// Required to serialize PrimDeriveSeedOp
+// Required to serialize DeriveSeedOp
 impl ToTextual for SyncKey {
     fn to_textual(&self) -> String {
         format!("{:?}", self.as_bytes())
@@ -1838,7 +1838,7 @@ mod tests {
     #[test]
     fn test_primprfkeygen() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "key = PrimPrfKeyGen: () -> PrfKey () @Host(alice)",
+            "key = PrfKeyGen: () -> PrfKey () @Host(alice)",
         )?;
         assert_eq!(op.name, "key");
         Ok(())

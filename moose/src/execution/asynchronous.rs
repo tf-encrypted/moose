@@ -334,7 +334,7 @@ impl DispatchKernel<AsyncSession> for Operator {
             Receive(op) => DispatchKernel::compile(op, plc),
             Shape(op) => DispatchKernel::compile(op, plc),
             Broadcast(op) => DispatchKernel::compile(op, plc),
-            PrimPrfKeyGen(op) => DispatchKernel::compile(op, plc),
+            PrfKeyGen(op) => DispatchKernel::compile(op, plc),
             Xor(op) => DispatchKernel::compile(op, plc),
             And(op) => DispatchKernel::compile(op, plc),
             Or(op) => DispatchKernel::compile(op, plc),
