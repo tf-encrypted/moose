@@ -201,7 +201,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct HostBitTensor(pub BitArrayRepr, pub HostPlacement);
 
 impl std::fmt::Debug for HostBitTensor {

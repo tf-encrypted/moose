@@ -1224,7 +1224,7 @@ impl XorOp {
         x: HostBitTensor,
         y: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let arr = BitArrayRepr::from_raw((*x.0.data) ^ (*y.0.data), x.0.dim.clone());
+        let arr = &x.0 ^ &y.0;
         Ok(HostBitTensor(arr, plc.clone()))
     }
 }
@@ -1235,7 +1235,7 @@ impl NegOp {
         plc: &HostPlacement,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let arr = BitArrayRepr::from_raw(!(*x.0.data), x.0.dim.clone());
+        let arr = !(&x.0);
         Ok(HostBitTensor(arr, plc.clone()))
     }
 }
@@ -1247,7 +1247,7 @@ impl AndOp {
         x: HostBitTensor,
         y: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let arr = BitArrayRepr::from_raw((*x.0.data) & (*y.0.data), x.0.dim.clone());
+        let arr = &x.0 & &y.0;
         Ok(HostBitTensor(arr, plc.clone()))
     }
 
@@ -1272,7 +1272,7 @@ impl OrOp {
         x: HostBitTensor,
         y: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let arr = BitArrayRepr::from_raw((*x.0.data) | (*y.0.data), x.0.dim.clone());
+        let arr = &x.0 | &y.0;
         Ok(HostBitTensor(arr, plc.clone()))
     }
 }
@@ -1759,6 +1759,7 @@ impl LessThanOp {
         y: HostRing64Tensor,
     ) -> Result<HostBitTensor> {
         use bitvec::prelude::*;
+        let dim = x.0.dim().clone();
         let data: BitVec<u8, Lsb0> = (x.0 - y.0)
             .as_slice()
             .ok_or(Error::KernelError(
@@ -1767,7 +1768,7 @@ impl LessThanOp {
             .iter()
             .map(|&Wrapping(item)| if (item as i64) < 0 { 1 } else { 0 })
             .collect();
-        let result = BitArrayRepr::from_raw(data, x.0.dim().clone());
+        let result = BitArrayRepr::from_raw(data, dim);
         Ok(HostBitTensor(result, plc.clone()))
     }
 
@@ -1778,6 +1779,7 @@ impl LessThanOp {
         y: HostRing128Tensor,
     ) -> Result<HostBitTensor> {
         use bitvec::prelude::*;
+        let dim = x.0.dim().clone();
         let data: BitVec<u8, Lsb0> = (x.0 - y.0)
             .as_slice()
             .ok_or(Error::KernelError(
@@ -1786,7 +1788,7 @@ impl LessThanOp {
             .iter()
             .map(|&Wrapping(item)| if (item as i128) < 0 { 1 } else { 0 })
             .collect();
-        let result = BitArrayRepr::from_raw(data, x.0.dim().clone());
+        let result = BitArrayRepr::from_raw(data, dim);
         Ok(HostBitTensor(result, plc.clone()))
     }
 
@@ -1800,6 +1802,7 @@ impl LessThanOp {
         T: std::cmp::PartialOrd + Zero,
     {
         use bitvec::prelude::*;
+        let dim = x.0.dim().clone();
         let data: BitVec<u8, Lsb0> = (x.0 - y.0)
             .as_slice()
             .ok_or(Error::KernelError(
@@ -1808,7 +1811,7 @@ impl LessThanOp {
             .iter()
             .map(|&item| (item < T::zero()) as u8)
             .collect();
-        let result = BitArrayRepr::from_raw(data, x.0.dim().clone());
+        let result = BitArrayRepr::from_raw(data, dim);
         Ok(HostBitTensor(result, plc.clone()))
     }
 }

@@ -1238,7 +1238,7 @@ mod tests {
 
                 for (i, el) in out.iter().enumerate() {
                     let b = alice.reveal(&sess, el);
-                    assert_eq!(b.0[0], y_target[i]);
+                    assert_eq!(b.0.data[0] as u8, y_target[i]);
                 }
             }
         };

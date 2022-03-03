@@ -2947,7 +2947,7 @@ mod tests {
 
                 for i in 0..target.len() {
                     assert_eq!(
-                        target[i] as $tu, z.0[i] as $tu,
+                        target[i] as $tu, z.0.data[i] as $tu,
                         "failed comparing {:?} with {:?}",
                         x[i], y[i]
                     );

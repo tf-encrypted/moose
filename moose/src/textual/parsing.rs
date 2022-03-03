@@ -1601,6 +1601,12 @@ impl ToTextual for Signature {
     }
 }
 
+impl ToTextual for crate::host::BitArrayRepr {
+    fn to_textual(&self) -> String {
+        format!("{:?}", self.data)
+    }
+}
+
 macro_rules! use_debug_to_textual {
     ($op:ty) => {
         impl ToTextual for $op {
@@ -1619,7 +1625,6 @@ use_debug_to_textual!(Vec<usize>);
 use_debug_to_textual!(u64);
 use_debug_to_textual!(bool);
 use_debug_to_textual!(RawShape);
-use_debug_to_textual!(crate::host::BitArrayRepr); // TODO: how to format it?
 
 impl ToTextual for SliceInfo {
     fn to_textual(&self) -> String {
