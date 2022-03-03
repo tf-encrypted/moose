@@ -1683,22 +1683,20 @@ pub struct Operation {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Computation {
-    // pub constants: Vec<Value>,
-    // pub operators: Vec<Operator>,
     pub operations: Vec<Operation>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CompactOperation {
-    pub kind_index: usize,
+    pub operator: usize,
     pub inputs: Vec<usize>,
-    pub placement_index: usize,
+    pub placement: usize,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CompactComputation {
     pub operations: Vec<CompactOperation>,
-    pub kinds: Vec<Operator>,
+    pub operators: Vec<Operator>,
     pub placements: Vec<Placement>,
 }
 
@@ -1709,50 +1707,62 @@ impl From<&Computation> for CompactComputation {
             .iter()
             .map(|op| &op.placement)
             .collect::<HashSet<&Placement>>();
-
         let placements: Vec<Placement> = unique_placements.into_iter().cloned().collect();
-        let mut placements_map: HashMap<Placement, usize> =
-            HashMap::with_capacity(placements.len());
-        for (i, plc) in placements.clone().into_iter().enumerate() {
-            placements_map.insert(plc, i);
-        }
+        let placements_map: HashMap<&Placement, usize> = placements
+            .iter()
+            .enumerate()
+            .map(|(i, plc)| {
+                (plc, i)
+            })
+            .collect();
 
         let unique_operators = computation
             .operations
             .iter()
             .map(|op| &op.kind)
             .collect::<HashSet<&Operator>>();
+        let operators: Vec<Operator> = unique_operators.into_iter().cloned().collect();
+        let operators_map: HashMap<&Operator, usize> = operators
+            .iter()
+            .enumerate()
+            .map(|(i, op)| {
+                (op, i)
+            })
+            .collect();
 
-        let operators: Vec<_> = unique_operators.into_iter().cloned().collect();
-        let mut operators_map: HashMap<Operator, usize> = HashMap::with_capacity(operators.len());
-        for (i, plc) in operators.clone().into_iter().enumerate() {
-            operators_map.insert(plc, i);
-        }
-
-        let op_names_map = computation
+        let op_names_map: HashMap<&String, usize> = computation
             .operations
             .iter()
             .enumerate()
-            .map(|(i, op)| (op.name.clone(), i))
-            .collect::<HashMap<_, _>>();
+            .map(|(i, op)| (&op.name, i))
+            .collect();
 
-        let compactest_operations: Vec<_> = computation
+        let operations = computation
             .operations
             .iter()
-            .map(|x| {
-                let compact_inputs: Vec<_> = x.inputs.iter().map(|inp| op_names_map[inp]).collect();
+            .map(|op| {
+                let inputs = op
+                    .inputs
+                    .iter()
+                    .map(|name| {
+                        op_names_map
+                            .get(name)
+                            .cloned()
+                            .unwrap()
+                    })
+                    .collect();
 
                 CompactOperation {
-                    kind_index: operators_map[&x.kind],
-                    inputs: compact_inputs,
-                    placement_index: placements_map[&x.placement],
+                    inputs,
+                    operator: operators_map[&op.kind], // should be there by construction
+                    placement: placements_map[&op.placement], // should be there by construction
                 }
             })
             .collect();
 
         CompactComputation {
-            kinds: operators,
-            operations: compactest_operations,
+            operators,
+            operations,
             placements,
         }
     }
@@ -1767,13 +1777,13 @@ impl From<&CompactComputation> for Computation {
             .enumerate()
             .map(|(i, op)| Operation {
                 name: format!("op_{:?}", i),
-                kind: compact.kinds[op.kind_index].clone(),
+                kind: compact.operators[op.operator].clone(),
                 inputs: op
                     .inputs
                     .iter()
                     .map(|inp| format!("op_{:?}", inp))
                     .collect(),
-                placement: compact.placements[op.placement_index].clone(),
+                placement: compact.placements[op.placement].clone(),
             })
             .collect();
         Computation { operations }

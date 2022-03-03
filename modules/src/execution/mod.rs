@@ -110,7 +110,7 @@ impl ExecutionContext {
 
             for (op_index, op) in computation.operations.iter().enumerate() {
                 // TODO(Morten) move filtering logic to the session
-                match &computation.placements[op.placement_index] {
+                match &computation.placements[op.placement] {
                     Placement::Host(host) => {
                         let owning_identity = role_assignments.get(&host.owner).unwrap();
                         if owning_identity == &self.own_identity {
@@ -135,8 +135,8 @@ impl ExecutionContext {
                     .collect();
 
                 let result = session.execute(
-                    computation.kinds[op.kind_index].clone(),
-                    &computation.placements[op.placement_index],
+                    computation.operators[op.operator].clone(),
+                    &computation.placements[op.placement],
                     operands,
                 )?;
 
