@@ -834,6 +834,9 @@ macro_rules! operators {
                 use crate::textual::{FromTextual, parse_operator_error};
                 match name {
                     $(paste! {[<$t Op>]::SHORT_NAME} => paste! {[<$t Op>]::from_textual},)+
+                    // The names below are deprecated aliases, maintained for a long period of time for compatibility
+                    "PrimDeriveSeed" => DeriveSeedOp::from_textual, // pre v0.1.5
+                    "PrimPrfKeyGen" => PrfKeyGenOp::from_textual, // pre v0.1.5
                     _ => parse_operator_error,
                 }
             }
