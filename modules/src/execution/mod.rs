@@ -12,6 +12,7 @@ pub struct ExecutionContext {
     storage: AsyncStorageImpl,
 }
 
+#[allow(dead_code)]
 type Environment = HashMap<String, <AsyncSession as Session>::Value>;
 
 type CompactEnvironment = Vec<Option<<AsyncSession as Session>::Value>>;

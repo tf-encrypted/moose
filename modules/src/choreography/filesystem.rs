@@ -143,56 +143,23 @@ impl FilesystemChoreography {
         let context = ExecutionContext::new(self.own_identity.clone(), networking, storage);
 
         tracing::debug!("Scheduling computation");
-        let handle = {
-            match session_config.computation.compact {
-                Compact::True => {
-                    tracing::debug!("Transforming computation into compact computation");
-                    let (handle, outputs) = context
-                        .execute_compact_computation(
-                            session_id.clone(),
-                            &computation,
-                            role_assignments,
-                        )
-                        .await?;
+        let (handle, outputs) = context
+            .execute_compact_computation(session_id.clone(), &computation, role_assignments)
+            .await?;
 
-                    tracing::debug!("Ready for outputs");
-                    for (output_name, output_value) in outputs {
-                        let session_id = session_id.clone();
-                        tokio::spawn(async move {
-                            let value = output_value.await.unwrap();
-                            tracing::info!(
-                                "Output '{}' from '{}' ready: {:?}",
-                                output_name,
-                                session_id,
-                                value
-                            );
-                        });
-                    }
-                    handle
-                }
-                Compact::False => {
-                    tracing::debug!("Scheduling an ordinary computation");
-                    let (handle, outputs) = context
-                        .execute_computation(session_id.clone(), &computation, role_assignments)
-                        .await?;
-
-                    tracing::debug!("Ready for outputs");
-                    for (output_name, output_value) in outputs {
-                        let session_id = session_id.clone();
-                        tokio::spawn(async move {
-                            let value = output_value.await.unwrap();
-                            tracing::info!(
-                                "Output '{}' from '{}' ready: {:?}",
-                                output_name,
-                                session_id,
-                                value
-                            );
-                        });
-                    }
-                    handle
-                }
-            }
-        };
+        tracing::debug!("Ready for outputs");
+        for (output_name, output_value) in outputs {
+            let session_id = session_id.clone();
+            tokio::spawn(async move {
+                let value = output_value.await.unwrap();
+                tracing::info!(
+                    "Output '{}' from '{}' ready: {:?}",
+                    output_name,
+                    session_id,
+                    value
+                );
+            });
+        }
 
         Ok(handle)
     }
@@ -216,7 +183,6 @@ struct SessionConfig {
 struct ComputationConfig {
     path: String,
     format: Format,
-    compact: Compact,
 }
 
 #[derive(Debug, Deserialize)]
@@ -224,13 +190,6 @@ struct ComputationConfig {
 enum Format {
     Binary,
     Textual,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "lowercase")]
-enum Compact {
-    True,
-    False,
 }
 
 #[derive(Debug, Deserialize)]
