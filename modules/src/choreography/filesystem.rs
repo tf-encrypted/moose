@@ -144,7 +144,7 @@ impl FilesystemChoreography {
 
         tracing::debug!("Scheduling computation");
         let (handle, outputs) = context
-            .execute_computation(session_id.clone(), &computation, role_assignments)
+            .execute_indexed_computation(session_id.clone(), &computation, role_assignments)
             .await?;
 
         tracing::debug!("Ready for outputs");

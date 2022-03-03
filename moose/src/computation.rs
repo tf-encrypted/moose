@@ -7,6 +7,7 @@ use crate::host::*;
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::*;
+use crate::textual::ToTextual;
 use crate::types::*;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
@@ -20,6 +21,7 @@ use sodiumoxide::crypto::generichash;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::path::Path;
 
 pub const TAG_BYTES: usize = 128 / 8;
@@ -791,7 +793,7 @@ macro_rules! operators {
     ($($t:ident,)+) => {
 
         paste! {
-            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+            #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
             pub enum Operator {
                 $($t([<$t Op>]),)+
             }
@@ -997,6 +999,18 @@ pub struct ConstantOp {
     pub sig: Signature,
     pub value: Constant, // TODO Box<Constant> or Box inside Constant?
 }
+
+#[allow(clippy::derive_hash_xor_eq)]
+impl Hash for ConstantOp {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.sig.hash(state);
+        self.value.to_textual().hash(state)
+        // TODO(Morten) we must also take `self.value` into account!
+        // self.value.hash(state);
+    }
+}
+
+impl std::cmp::Eq for ConstantOp {}
 
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
@@ -1439,6 +1453,18 @@ pub struct FillOp {
     pub value: Constant,
 }
 
+impl std::cmp::Eq for FillOp {}
+
+#[allow(clippy::derive_hash_xor_eq)]
+impl Hash for FillOp {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.sig.hash(state);
+        self.value.to_textual().hash(state);
+        // TODO(Morten) we must also take `self.value` into account!
+        // self.value.hash(state);
+    }
+}
+
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
@@ -1552,7 +1578,7 @@ pub trait KnownPlacement {
 macro_rules! placements {
     ($($p:ident,)+) => {
         paste! {
-            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+            #[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
             pub enum Placement {
                 $($p([<$p Placement>]),)+
             }
@@ -1655,14 +1681,140 @@ pub struct Operation {
     pub placement: Placement,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Computation {
-    // pub constants: Vec<Value>,
-    // pub operators: Vec<Operator>,
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct NamedComputation {
     pub operations: Vec<Operation>,
 }
 
-impl Computation {
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct IndexedOperation {
+    pub operator: usize,
+    pub inputs: Vec<usize>,
+    pub placement: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct IndexedComputation {
+    pub operations: Vec<IndexedOperation>,
+    pub operators: Vec<Operator>,
+    pub placements: Vec<Placement>,
+}
+
+impl TryFrom<&NamedComputation> for IndexedComputation {
+    type Error = Error;
+
+    fn try_from(computation: &NamedComputation) -> Result<IndexedComputation> {
+        let unique_placements = computation
+            .operations
+            .iter()
+            .map(|op| &op.placement)
+            .collect::<HashSet<&Placement>>();
+        let placements: Vec<Placement> = unique_placements.into_iter().cloned().collect();
+        let placements_map: HashMap<&Placement, usize> = placements
+            .iter()
+            .enumerate()
+            .map(|(i, plc)| (plc, i))
+            .collect();
+
+        let unique_operators = computation
+            .operations
+            .iter()
+            .map(|op| &op.kind)
+            .collect::<HashSet<&Operator>>();
+        let operators: Vec<Operator> = unique_operators.into_iter().cloned().collect();
+        let operators_map: HashMap<&Operator, usize> = operators
+            .iter()
+            .enumerate()
+            .map(|(i, op)| (op, i))
+            .collect();
+
+        let op_names_map: HashMap<&String, usize> = computation
+            .operations
+            .iter()
+            .enumerate()
+            .map(|(i, op)| (&op.name, i))
+            .collect();
+
+        let operations = computation
+            .operations
+            .iter()
+            .map(|op| {
+                let inputs = op
+                    .inputs
+                    .iter()
+                    .map(|name| {
+                        op_names_map.get(name).cloned().ok_or_else(|| {
+                            Error::MalformedComputation(format!(
+                                "Missing operation '{}' used as an operand for '{}'",
+                                name, op.name
+                            ))
+                        })
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+
+                Ok(IndexedOperation {
+                    inputs,
+                    operator: operators_map[&op.kind], // should be there by construction
+                    placement: placements_map[&op.placement], // should be there by construction
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(IndexedComputation {
+            operators,
+            operations,
+            placements,
+        })
+    }
+}
+
+impl TryFrom<&IndexedComputation> for Computation {
+    type Error = Error;
+
+    fn try_from(compact: &IndexedComputation) -> Result<NamedComputation> {
+        let operations = compact
+            .operations
+            .iter()
+            .enumerate()
+            .map(|(i, op)| {
+                let kind = compact.operators.get(op.operator).cloned().ok_or_else(|| {
+                    Error::MalformedComputation(format!(
+                        "Missing operator with index {}",
+                        op.operator
+                    ))
+                })?;
+
+                let inputs = op
+                    .inputs
+                    .iter()
+                    .map(|inp| format!("op_{:?}", inp))
+                    .collect();
+
+                let placement = compact
+                    .placements
+                    .get(op.placement)
+                    .cloned()
+                    .ok_or_else(|| {
+                        Error::MalformedComputation(format!(
+                            "Missing placement with index {}",
+                            op.placement
+                        ))
+                    })?;
+
+                Ok(Operation {
+                    name: format!("op_{:?}", i),
+                    kind,
+                    inputs,
+                    placement,
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(NamedComputation { operations })
+    }
+}
+
+impl NamedComputation {
     #[tracing::instrument(skip(bytes))]
     pub fn from_msgpack<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
         rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
@@ -1783,7 +1935,7 @@ impl Computation {
         graph
     }
 
-    pub fn toposort(&self) -> Result<Computation> {
+    pub fn toposort(&self) -> Result<NamedComputation> {
         let graph = self.as_graph();
         let toposort = toposort(&graph, None).map_err(|_| {
             Error::MalformedComputation("There is a cycle detected in the runtime graph".into())
@@ -1794,9 +1946,11 @@ impl Computation {
             .map(|node| self.operations[graph[*node].1].clone())
             .collect();
 
-        Ok(Computation { operations })
+        Ok(NamedComputation { operations })
     }
 }
+
+pub type Computation = NamedComputation;
 
 mod tests {
     #![allow(unused_imports)]
