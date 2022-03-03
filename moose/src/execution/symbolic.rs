@@ -5,7 +5,7 @@
 //! recording the underlying operations perform as new computation.
 //! Values are generally wrapped in the `Symbolic` enum.
 
-use super::{Session, SetupGeneration};
+use super::{Operands, Session, SetupGeneration};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::PrfKey;
@@ -199,7 +199,7 @@ impl Session for SymbolicSession {
         &self,
         op: Operator,
         plc: &Placement,
-        operands: Vec<Self::Value>,
+        operands: Operands<Self::Value>,
     ) -> Result<Self::Value> {
         self.strategy.execute(self, op, plc, operands)
     }
@@ -255,7 +255,7 @@ pub(crate) trait SymbolicStrategy {
         sess: &SymbolicSession,
         op: Operator,
         plc: &Placement,
-        operands: Vec<SymbolicValue>,
+        operands: Operands<SymbolicValue>,
     ) -> Result<SymbolicValue>;
 }
 
@@ -268,7 +268,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
         sess: &SymbolicSession,
         op: Operator,
         plc: &Placement,
-        operands: Vec<SymbolicValue>,
+        operands: Operands<SymbolicValue>,
     ) -> Result<SymbolicValue> {
         use Operator::*;
         match op {

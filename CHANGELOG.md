@@ -2,10 +2,18 @@
 
 ## v0.1.5
 
-### Changed
-
 - `PrimDeriveSeed` operator renamed to `DeriveSeed`
 - `PrimPrfKeyGen` operator renamed to `PrfKeyGen`
+
+## v0.1.4
+
+- A bugfix to produce less verbose errors
+
+## v0.1.3
+
+- Upgraded nom to 7.1 to deal with the floating point parser problems
+- Switched base array from ndarray::Array to ndarray:ArcArray
+- Deprecated `to_bytes/from_bytes` in favour fo `to_msgpack/from_msgpack`.
 
 ## v0.1.2
 

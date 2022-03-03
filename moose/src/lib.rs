@@ -197,6 +197,12 @@ macro_rules! derive_runtime_kernel {
     };
 }
 
+macro_rules! operands {
+    ($($content:tt)*) => {
+        vec![$($content)*]
+    };
+}
+
 macro_rules! concrete_dispatch_kernel {
 
     /*
@@ -212,7 +218,7 @@ macro_rules! concrete_dispatch_kernel {
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
-                use crate::execution::{SyncSession};
+                use crate::execution::{SyncSession, Operands};
                 use crate::kernels::{NullaryKernel};
                 use std::convert::TryInto;
 
@@ -229,7 +235,7 @@ macro_rules! concrete_dispatch_kernel {
 
                             let k = <$op as NullaryKernel<SyncSession, $plc, $u>>::compile(self)?;
 
-                            Ok(Box::new(move |sess, operands: Vec<crate::computation::Value>| {
+                            Ok(Box::new(move |sess, operands: Operands<crate::computation::Value>| {
                                 assert_eq!(operands.len(), 0);
 
                                 let y: $u = k(sess, &plc)?;
@@ -254,7 +260,7 @@ macro_rules! concrete_dispatch_kernel {
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
-                use crate::execution::{AsyncSession, AsyncValue};
+                use crate::execution::{AsyncSession, AsyncValue, Operands};
                 use crate::kernels::{NullaryKernel};
                 use std::convert::TryInto;
 
@@ -270,7 +276,7 @@ macro_rules! concrete_dispatch_kernel {
                             // TODO: Do we want to be deriving the kernel inside? Probably not...
                             let op = self.clone();
 
-                            Ok(Box::new(move |sess, operands: Vec<AsyncValue>| {
+                            Ok(Box::new(move |sess, operands: Operands<AsyncValue>| {
                                 assert_eq!(operands.len(), 0);
                                 let sess = sess.clone();
                                 let plc = plc.clone();
@@ -313,7 +319,7 @@ macro_rules! concrete_dispatch_kernel {
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, Value};
-                use crate::execution::{SyncSession};
+                use crate::execution::{SyncSession, Operands};
                 use crate::kernels::{UnaryKernel};
                 use std::convert::TryInto;
 
@@ -331,7 +337,7 @@ macro_rules! concrete_dispatch_kernel {
                             let k = <$op as UnaryKernel<SyncSession, $plc, $t0, $u>>::compile(self)?;
                             let op = self.clone();
 
-                            Ok(Box::new(move |sess, mut operands: Vec<Value>| {
+                            Ok(Box::new(move |sess, mut operands: Operands<Value>| {
                                 assert_eq!(operands.len(), 1);
 
                                 let x0: $t0 = operands.pop().unwrap().try_into()?;
@@ -376,7 +382,7 @@ macro_rules! concrete_dispatch_kernel {
                             let op = self.clone();
                             // let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(self, &plc)?;
 
-                            Ok(Box::new(move |sess, operands: Vec<AsyncValue>| {
+                            Ok(Box::new(move |sess, operands: Operands<AsyncValue>| {
                                 assert_eq!(operands.len(), 1);
                                 let sess = sess.clone();
                                 let plc = plc.clone();
@@ -425,7 +431,7 @@ macro_rules! concrete_dispatch_kernel {
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
-                use crate::execution::{SyncSession};
+                use crate::execution::{SyncSession, Operands};
                 use crate::kernels::{BinaryKernel};
                 use std::convert::TryInto;
 
@@ -451,7 +457,7 @@ macro_rules! concrete_dispatch_kernel {
                             >>::compile(self)?;
 
                             Ok(Box::new(
-                                move |sess, mut operands: Vec<crate::computation::Value>| {
+                                move |sess, mut operands: Operands<crate::computation::Value>| {
                                 assert_eq!(operands.len(), 2);
 
                                 let x1: $t1 = operands.pop().unwrap().try_into()?;
@@ -479,7 +485,7 @@ macro_rules! concrete_dispatch_kernel {
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
-                use crate::execution::{AsyncSession, AsyncValue};
+                use crate::execution::{AsyncSession, AsyncValue, Operands};
                 use crate::kernels::{BinaryKernel};
                 use std::convert::TryInto;
 
@@ -497,7 +503,7 @@ macro_rules! concrete_dispatch_kernel {
                             // TODO: Do we want to be deriving the kernel inside? Probably not...
                             let op = self.clone();
 
-                            Ok(Box::new(move |sess: &AsyncSession, operands: Vec<AsyncValue>| {
+                            Ok(Box::new(move |sess: &AsyncSession, operands: Operands<AsyncValue>| {
                                 assert_eq!(operands.len(), 2);
 
                                 let k = <$op as BinaryKernel<AsyncSession, $plc, $t0, $t1, $u>>::compile(&op)?;
@@ -627,7 +633,7 @@ macro_rules! concrete_dispatch_kernel {
                             // TODO: Do we want to be deriving the kernel inside? Probably not...
                             let op = self.clone();
 
-                            Ok(Box::new(move |sess, operands: Vec<AsyncValue>| {
+                            Ok(Box::new(move |sess, operands: Operands<AsyncValue>| {
                                 assert_eq!(operands.len(), 3);
                                 let sess = sess.clone();
                                 let plc = plc.clone();
@@ -690,7 +696,7 @@ macro_rules! concrete_dispatch_kernel {
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature, Value};
-                use crate::execution::{SyncSession};
+                use crate::execution::{SyncSession, Operands};
                 use crate::kernels::{VariadicKernel};
                 use std::convert::TryInto;
 
@@ -708,8 +714,8 @@ macro_rules! concrete_dispatch_kernel {
 
                             let k = <$op as VariadicKernel<SyncSession, $plc, $ts, $u>>::compile(self)?;
 
-                            Ok(Box::new(move |sess, operands: Vec<Value>| {
-                                let xs: crate::error::Result<Vec<$ts>> = operands.into_iter().map(|xi| xi.try_into()).collect();
+                            Ok(Box::new(move |sess, operands: Operands<Value>| {
+                                let xs: crate::error::Result<Operands<$ts>> = operands.into_iter().map(|xi| xi.try_into()).collect();
 
                                 let y: $u = k(sess, &plc, xs?)?;
                                 debug_assert_eq!(y.placement()?, plc.clone().into());
@@ -734,7 +740,7 @@ macro_rules! concrete_dispatch_kernel {
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature};
-                use crate::execution::{AsyncSession, AsyncValue};
+                use crate::execution::{AsyncSession, AsyncValue, Operands};
                 use crate::kernels::{VariadicKernel};
                 use std::convert::TryInto;
 
@@ -751,7 +757,7 @@ macro_rules! concrete_dispatch_kernel {
                             // TODO: Do we want to be deriving the kernel inside? Probably not...
                             let op = self.clone();
 
-                            Ok(Box::new(move |sess, operands: Vec<AsyncValue>| {
+                            Ok(Box::new(move |sess, operands: Operands<AsyncValue>| {
                                 let sess = sess.clone();
                                 let plc = plc.clone();
                                 let k = <$op as VariadicKernel<AsyncSession, $plc, $ts, $u>>::compile(&op)?;
@@ -761,9 +767,9 @@ macro_rules! concrete_dispatch_kernel {
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
                                     // A bit of involved way of going from a vector of futures to a vector of concrete values extracted
                                     let xs = futures::future::join_all(operands).await;
-                                    let xs: std::result::Result<Vec<crate::computation::Value>, _> = xs.into_iter().collect();
+                                    let xs: std::result::Result<Operands<crate::computation::Value>, _> = xs.into_iter().collect();
                                     let xs = xs.map_err(crate::execution::map_receive_error)?;
-                                    let xs: crate::error::Result<Vec<$ts>> = xs.into_iter().map(|xi| xi.try_into()).collect();
+                                    let xs: crate::error::Result<Operands<$ts>> = xs.into_iter().map(|xi| xi.try_into()).collect();
                                     let y: $u = k(&sess, &plc, xs?)?;
                                     if y.placement()? == plc.clone().into() {
                                         crate::execution::map_send_result(sender.send(y.into()))?;
@@ -1012,7 +1018,7 @@ macro_rules! symbolic_dispatch_kernel {
             {
                 use crate::computation::{KnownPlacement, Signature, VariadicSignature, KnownType};
                 use crate::kernels::{VariadicKernel};
-                use crate::execution::SymbolicSession;
+                use crate::execution::{SymbolicSession, Operands};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -1034,7 +1040,7 @@ macro_rules! symbolic_dispatch_kernel {
                             >>::compile(self)?;
 
                             Ok(Box::new(move |sess, operands| {
-                                let xs: Vec<<$ts as KnownType<SymbolicSession>>::Type> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
+                                let xs: Operands<<$ts as KnownType<SymbolicSession>>::Type> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
 
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, xs)?;
                                 Ok(y.into())
@@ -2046,6 +2052,7 @@ macro_rules! kernel {
                     <$u as KnownType<crate::execution::SymbolicSession>>::Type,
                 >
             > {
+                use crate::executing::{Operands}
                 use crate::execution::symbolic::{Symbolic, SymbolicSession};
                 use std::convert::TryInto;
 
@@ -2054,7 +2061,7 @@ macro_rules! kernel {
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    xs: Vec<<$ts as KnownType<SymbolicSession>>::Type>,
+                    xs: Operands<<$ts as KnownType<SymbolicSession>>::Type>,
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
@@ -2063,7 +2070,7 @@ macro_rules! kernel {
                     let k = derive_runtime_kernel![variadic, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
 
                     // attempt to convert operands to match kernel
-                    let kernel_vals: Vec<_> = xs.iter().cloned().filter_map(|x| x.try_into().ok()).collect();
+                    let kernel_vals: Operands<_> = xs.iter().cloned().filter_map(|x| x.try_into().ok()).collect();
                     if kernel_vals.len() == xs.len() {
                         // success; we can apply kernel
                         let y = k(sess, plc, kernel_vals)?;
@@ -2101,6 +2108,7 @@ macro_rules! kernel {
                     <$u as KnownType<crate::execution::SymbolicSession>>::Type,
                 >
             > {
+                use crate::execution::Operands;
                 use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
@@ -2108,7 +2116,7 @@ macro_rules! kernel {
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    xs: Vec<<$ts as KnownType<SymbolicSession>>::Type>,
+                    xs: Operands<<$ts as KnownType<SymbolicSession>>::Type>,
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
@@ -2117,7 +2125,7 @@ macro_rules! kernel {
                     let k = derive_runtime_kernel![variadic, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
 
                     // attempt to convert operands to match kernel
-                    let kernel_vals: Vec<_> = xs.iter().cloned().filter_map(|x| match x {
+                    let kernel_vals: Operands<_> = xs.iter().cloned().filter_map(|x| match x {
                         Symbolic::Concrete(v) => Some(v),
                         Symbolic::Symbolic(_) => None,
                     }).collect();
@@ -2159,13 +2167,14 @@ macro_rules! kernel {
                 >
             > {
                 use crate::computation::{KnownType};
+                use crate::execution::Operands;
                 use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    xs: Vec<<$ts as KnownType<SymbolicSession>>::Type>
+                    xs: Operands<<$ts as KnownType<SymbolicSession>>::Type>
                 | {
                     let res: Vec<&str> = xs.iter().filter_map(|x| {
                         match x {
@@ -2210,7 +2219,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![])
+                sess.execute(op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2263,7 +2272,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![])
+                sess.execute(op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2302,7 +2311,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into()])
+                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2361,7 +2370,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into()])
+                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2395,7 +2404,7 @@ macro_rules! modelled {
                 sess.execute(
                     op.into(),
                     &self.into(),
-                    vec![x0.clone().into(), x1.clone().into()],
+                    operands![x0.clone().into(), x1.clone().into()],
                 )
                 .unwrap()
                 .try_into()
@@ -2462,7 +2471,7 @@ macro_rules! modelled {
         //         };
         //         let x0 = Symbolic::Concrete(x0.clone()).into();
         //         let x1 = Symbolic::Concrete(x1.clone()).into();
-        //         sess.execute(op.into(), &self.into(), vec![x0, x1])
+        //         sess.execute(op.into(), &self.into(), operands![x0, x1])
         //             .unwrap()
         //             .try_into()
         //             .unwrap()
@@ -2496,7 +2505,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into(), x1.clone().into()])
+                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2531,7 +2540,7 @@ macro_rules! modelled {
                 sess.execute(
                     op.into(),
                     &self.into(),
-                    vec![x0.clone().into(), x1.clone().into(), x2.clone().into()],
+                    operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
                 )
                 .unwrap()
                 .try_into()
@@ -2603,7 +2612,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2630,7 +2639,7 @@ macro_rules! modelled {
                 xs: &[$ts]
             ) -> $u {
                 use crate::computation::{KnownType, VariadicSignature};
-                use crate::execution::{Session, SyncSession};
+                use crate::execution::{Session, SyncSession, Operands};
                 use std::convert::TryInto;
 
                 let sig = VariadicSignature {
@@ -2641,7 +2650,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                let vs: Vec<Value> = xs.iter().map(|x| x.clone().into()).collect();
+                let vs: Operands<Value> = xs.iter().map(|x| x.clone().into()).collect();
                 sess.execute(op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
@@ -2690,7 +2699,7 @@ macro_rules! modelled {
                 xs: &[<$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type]
             ) -> <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type {
                 use crate::computation::{KnownType, VariadicSignature};
-                use crate::execution::{Session, SymbolicSession};
+                use crate::execution::{Session, SymbolicSession, Operands};
                 use std::convert::TryInto;
 
                 let sig = VariadicSignature {
@@ -2701,7 +2710,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                let vs: Vec<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
+                let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
                 sess.execute(op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
@@ -2761,7 +2770,7 @@ macro_rules! modelled_kernel {
                     let y = sess.execute(
                         op.into(),
                         &self.into(),
-                        vec![],
+                        operands![],
                     ).unwrap();
                     y.try_into().unwrap()
                 }
@@ -2868,7 +2877,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![])
+                sess.execute(op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2933,7 +2942,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let y = sess.execute(op.into(), &self.into(), vec![]).unwrap();
+                let y = sess.execute(op.into(), &self.into(), operands![]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -2965,7 +2974,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let y = sess.execute(op.into(), &self.into(), vec![]).unwrap();
+                let y = sess.execute(op.into(), &self.into(), operands![]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -3011,7 +3020,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![])
+                sess.execute(op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3068,7 +3077,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![])
+                sess.execute(op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3128,7 +3137,7 @@ macro_rules! modelled_kernel {
                     let y = sess.execute(
                         op.into(),
                         &self.into(),
-                        vec![x0],
+                        operands![x0],
                     ).unwrap();
                     y.try_into().unwrap()
                 }
@@ -3260,7 +3269,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into()])
+                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3340,7 +3349,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
-                let y = sess.execute(op.into(), &self.into(), vec![x0]).unwrap();
+                let y = sess.execute(op.into(), &self.into(), operands![x0]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -3376,7 +3385,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let x0 = SymbolicValue::from(x0.clone());
-                let y = sess.execute(op.into(), &self.into(), vec![x0]).unwrap();
+                let y = sess.execute(op.into(), &self.into(), operands![x0]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -3427,7 +3436,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into()])
+                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3496,7 +3505,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into()])
+                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3557,7 +3566,7 @@ macro_rules! modelled_kernel {
                     sess.execute(
                         op.into(),
                         &self.into(),
-                        vec![x0.clone().into(), x1.clone().into()],
+                        operands![x0.clone().into(), x1.clone().into()],
                     )
                     .unwrap()
                     .try_into()
@@ -3704,7 +3713,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into(), x1.clone().into()])
+                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3792,7 +3801,7 @@ macro_rules! modelled_kernel {
 
                 let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
                 let x1 = SymbolicValue::from(Symbolic::Concrete(x1.clone()));
-                let y = sess.execute(op.into(), &self.into(), vec![x0, x1]).unwrap();
+                let y = sess.execute(op.into(), &self.into(), operands![x0, x1]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -3832,7 +3841,7 @@ macro_rules! modelled_kernel {
 
                 let x0 = SymbolicValue::from(x0.clone());
                 let x1 = SymbolicValue::from(x1.clone());
-                let y = sess.execute(op.into(), &self.into(), vec![x0, x1]).unwrap();
+                let y = sess.execute(op.into(), &self.into(), operands![x0, x1]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -3888,7 +3897,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into(), x1.clone().into()])
+                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3963,7 +3972,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into(), x1.clone().into()])
+                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4027,7 +4036,7 @@ macro_rules! modelled_kernel {
                     sess.execute(
                         op.into(),
                         &self.into(),
-                        vec![x0.clone().into(), x1.clone().into(), x2.clone().into()],
+                        operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
                     )
                     .unwrap()
                     .try_into()
@@ -4185,7 +4194,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4280,7 +4289,7 @@ macro_rules! modelled_kernel {
                 let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
                 let x1 = SymbolicValue::from(Symbolic::Concrete(x1.clone()));
                 let x2 = SymbolicValue::from(Symbolic::Concrete(x2.clone()));
-                let y = sess.execute(op.into(), &self.into(), vec![x0, x1, x2]).unwrap();
+                let y = sess.execute(op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -4324,7 +4333,7 @@ macro_rules! modelled_kernel {
                 let x0 = SymbolicValue::from(x0.clone());
                 let x1 = SymbolicValue::from(x1.clone());
                 let x2 = SymbolicValue::from(x2.clone());
-                let y = sess.execute(op.into(), &self.into(), vec![x0, x1, x2]).unwrap();
+                let y = sess.execute(op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -4385,7 +4394,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4466,7 +4475,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), vec![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4517,7 +4526,7 @@ macro_rules! modelled_kernel {
                     xs: &[$ts]
                 ) -> $u {
                     use crate::computation::{KnownType, VariadicSignature};
-                    use crate::execution::{Session, SyncSession};
+                    use crate::execution::{Session, SyncSession, Operands};
                     use std::convert::TryInto;
 
                     let sig = VariadicSignature {
@@ -4528,7 +4537,7 @@ macro_rules! modelled_kernel {
                         sig: sig.into(),
                         $($($attr_id),*)?
                     };
-                    let vs: Vec<Value> = xs.iter().map(|x| x.clone().into()).collect();
+                    let vs: Operands<Value> = xs.iter().map(|x| x.clone().into()).collect();
                     sess.execute(op.into(), &self.into(), vs)
                         .unwrap()
                         .try_into()
@@ -4602,6 +4611,7 @@ macro_rules! modelled_kernel {
                     <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
                 >
             > {
+                use crate::execution::Operands;
                 use crate::execution::symbolic::{Symbolic, SymbolicSession};
                 use std::convert::TryInto;
 
@@ -4610,7 +4620,7 @@ macro_rules! modelled_kernel {
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    xs: Vec<<$ts as KnownType<SymbolicSession>>::Type>,
+                    xs: Operands<<$ts as KnownType<SymbolicSession>>::Type>,
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
@@ -4619,7 +4629,7 @@ macro_rules! modelled_kernel {
                     let k = derive_runtime_kernel![variadic, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
 
                     // attempt to convert operands to match kernel
-                    let kernel_vals: Vec<_> = xs.iter().cloned().filter_map(|x| x.try_into().ok()).collect();
+                    let kernel_vals: Operands<_> = xs.iter().cloned().filter_map(|x| x.try_into().ok()).collect();
                     if kernel_vals.len() == xs.len() {
                         // success; we can apply kernel
                         let y = k(sess, plc, kernel_vals)?;
@@ -4652,7 +4662,7 @@ macro_rules! modelled_kernel {
                 xs: &[$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, VariadicSignature};
-                use crate::execution::{Session, SymbolicSession};
+                use crate::execution::{Session, SymbolicSession, Operands};
                 use std::convert::TryInto;
 
                 let sig = VariadicSignature {
@@ -4663,7 +4673,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                let vs: Vec<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
+                let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
                 sess.execute(op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
@@ -4689,6 +4699,7 @@ macro_rules! modelled_kernel {
                     <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
                 >
             > {
+                use crate::execution::Operands;
                 use crate::execution::symbolic::{Symbolic, SymbolicSession};
 
                 let op = self.clone();
@@ -4696,7 +4707,7 @@ macro_rules! modelled_kernel {
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    xs: Vec<<$ts as KnownType<SymbolicSession>>::Type>,
+                    xs: Operands<<$ts as KnownType<SymbolicSession>>::Type>,
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
@@ -4705,7 +4716,7 @@ macro_rules! modelled_kernel {
                     let k = derive_runtime_kernel![variadic, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
 
                     // attempt to convert operands to match kernel
-                    let kernel_vals: Vec<_> = xs.iter().cloned().filter_map(|x| match x {
+                    let kernel_vals: Operands<_> = xs.iter().cloned().filter_map(|x| match x {
                         Symbolic::Concrete(v) => Some(v),
                         Symbolic::Symbolic(_) => None,
                     }).collect();
@@ -4741,7 +4752,7 @@ macro_rules! modelled_kernel {
                 xs: &[<$ts as crate::computation::PartiallySymbolicType>::Type]
             ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
                 use crate::computation::{KnownType, VariadicSignature, SymbolicValue};
-                use crate::execution::{Session};
+                use crate::execution::{Session, Operands};
                 use crate::execution::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
@@ -4754,7 +4765,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let vs: Vec<SymbolicValue> = xs.iter().map(|x| Symbolic::Concrete(x.clone()).into()).collect();
+                let vs: Operands<SymbolicValue> = xs.iter().map(|x| Symbolic::Concrete(x.clone()).into()).collect();
                 let y = sess.execute(op.into(), &self.into(), vs).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
@@ -4777,7 +4788,7 @@ macro_rules! modelled_kernel {
                 xs: &[<$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, VariadicSignature, SymbolicValue};
-                use crate::execution::{Session};
+                use crate::execution::{Session, Operands};
                 use crate::execution::symbolic::{SymbolicSession, Symbolic};
                 use std::convert::TryFrom;
 
@@ -4790,7 +4801,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let vs: Vec<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
+                let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
                 let y = sess.execute(op.into(), &self.into(), vs).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
@@ -4831,7 +4842,7 @@ macro_rules! modelled_kernel {
                 xs: &[<$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType};
-                use crate::execution::{Session, SymbolicSession};
+                use crate::execution::{Session, SymbolicSession, Operands};
                 use std::convert::TryInto;
 
                 let sig = VariadicSignature {
@@ -4842,7 +4853,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                let vs: Vec<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
+                let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
                 sess.execute(op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
@@ -4869,13 +4880,14 @@ macro_rules! modelled_kernel {
                 >
             > {
                 use crate::computation::{KnownType};
+                use crate::execution::Operands;
                 use crate::execution::symbolic::{SymbolicSession, Symbolic};
 
                 let op = self.clone();
                 Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
-                    xs: Vec<<$ts as KnownType<SymbolicSession>>::Type>
+                    xs: Operands<<$ts as KnownType<SymbolicSession>>::Type>
                 | {
                     let res: Vec<&str> = xs.iter().filter_map(|x| {
                         match x {
@@ -4909,7 +4921,7 @@ macro_rules! modelled_kernel {
                 xs: &[<$ts as crate::computation::SymbolicType>::Type]
             ) -> <$u as crate::computation::SymbolicType>::Type {
                 use crate::computation::{KnownType, VariadicSignature};
-                use crate::execution::{Session, SymbolicSession};
+                use crate::execution::{Session, SymbolicSession, Operands};
                 use std::convert::TryInto;
 
                 let sig = VariadicSignature {
@@ -4921,7 +4933,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let vs: Vec<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
+                let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
                 sess.execute(op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()

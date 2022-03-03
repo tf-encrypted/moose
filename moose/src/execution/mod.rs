@@ -20,6 +20,8 @@ pub use symbolic::*;
 #[cfg(feature = "sync_execute")]
 pub use synchronous::*;
 
+pub type Operands<V> = Vec<V>;
+
 /// General session trait determining basic properties for session objects.
 pub trait Session {
     type Value;
@@ -27,7 +29,7 @@ pub trait Session {
         &self,
         op: Operator,
         plc: &Placement,
-        operands: Vec<Self::Value>,
+        operands: Operands<Self::Value>,
     ) -> Result<Self::Value>;
 }
 

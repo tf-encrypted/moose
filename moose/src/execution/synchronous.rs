@@ -1,6 +1,6 @@
 //! Synchronous/eager execution of computations
 
-use super::{Identity, RuntimeSession, Session, SetupGeneration};
+use super::{Identity, Operands, RuntimeSession, Session, SetupGeneration};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::*;
@@ -149,7 +149,7 @@ impl DispatchKernel<SyncSession> for ReceiveOp {
 impl Session for SyncSession {
     type Value = Value;
 
-    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Result<Value> {
+    fn execute(&self, op: Operator, plc: &Placement, operands: Operands<Value>) -> Result<Value> {
         use Operator::*;
         let kernel_output = match op {
             Send(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
