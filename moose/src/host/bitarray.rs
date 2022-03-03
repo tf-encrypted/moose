@@ -6,11 +6,11 @@ use std::sync::Arc;
 #[derive(Clone, PartialEq)]
 pub struct BitArrayRepr {
     pub data: Arc<BitVec<u8, Lsb0>>,
-    pub dim: IxDyn,
+    pub dim: Arc<IxDyn>,
 }
 
 impl BitArrayRepr {
-    pub fn new_with_shape(dim: IxDyn) -> Self {
+    pub fn new_with_shape(dim: Arc<IxDyn>) -> Self {
         let data = BitVec::repeat(false, dim.size());
         BitArrayRepr {
             data: Arc::new(data),
@@ -21,7 +21,7 @@ impl BitArrayRepr {
     pub fn from_raw(data: BitVec<u8, Lsb0>, dim: IxDyn) -> Self {
         BitArrayRepr {
             data: Arc::new(data),
-            dim,
+            dim: Arc::new(dim),
         }
     }
 
@@ -30,7 +30,7 @@ impl BitArrayRepr {
         let dim = IxDyn(&shape.0);
         BitArrayRepr {
             data: Arc::new(data),
-            dim,
+            dim: Arc::new(dim),
         }
     }
 
@@ -39,7 +39,7 @@ impl BitArrayRepr {
         let data = BitVec::repeat(elem != 0, dim.size());
         BitArrayRepr {
             data: Arc::new(data),
-            dim,
+            dim: Arc::new(dim),
         }
     }
 
@@ -60,7 +60,7 @@ impl BitArrayRepr {
             let pos = IxDyn::stride_offset(&IxDyn(&[0, index]), &self.dim) as usize;
             return BitArrayRepr {
                 data: Arc::new(BitVec::from_slice(&[self.data[pos] as u8])),
-                dim,
+                dim: Arc::new(dim),
             };
         }
         println!(
@@ -88,7 +88,7 @@ impl BitArrayRepr {
         };
         BitArrayRepr {
             data: Arc::new(data),
-            dim: IxDyn(&[len]),
+            dim: Arc::new(IxDyn(&[len])),
         }
     }
 }

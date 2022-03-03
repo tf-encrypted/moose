@@ -243,7 +243,7 @@ impl HostBitTensor {
     fn reshape(self, newshape: HostShape) -> Self {
         let arr = BitArrayRepr {
             data: self.0.data.clone(),
-            dim: IxDyn(&newshape.0 .0),
+            dim: std::sync::Arc::new(IxDyn(&newshape.0 .0)),
         };
         HostBitTensor(arr, self.1)
     }

@@ -4,8 +4,8 @@ use crate::execution::{RuntimeSession, Session};
 use crate::host::bitarray::BitArrayRepr;
 use crate::prng::AesRng;
 use crate::{Const, Ring, N128, N224, N64};
+use ndarray::LinalgScalar;
 use ndarray::Zip;
-use ndarray::{LinalgScalar, RemoveAxis};
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack};
 use num_traits::{Float, FromPrimitive, Zero};
@@ -1194,7 +1194,7 @@ impl ReshapeOp {
     ) -> Result<HostBitTensor> {
         let res = BitArrayRepr {
             data: x.0.data.clone(),
-            dim: IxDyn(&shape.0 .0),
+            dim: std::sync::Arc::new(IxDyn(&shape.0 .0)),
         };
         Ok(HostBitTensor(res, plc.clone()))
     }
