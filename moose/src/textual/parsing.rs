@@ -331,9 +331,7 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
     }
 }
 
-impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
-    for DeriveSeedOp
-{
+impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E> for DeriveSeedOp {
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
         let (input, sync_key) =
             attributes_single("sync_key", map_res(vector(parse_int), SyncKey::try_from))(input)
@@ -1837,9 +1835,8 @@ mod tests {
 
     #[test]
     fn test_primprfkeygen() -> Result<(), anyhow::Error> {
-        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "key = PrfKeyGen: () -> PrfKey () @Host(alice)",
-        )?;
+        let (_, op) =
+            parse_assignment::<(&str, ErrorKind)>("key = PrfKeyGen: () -> PrfKey () @Host(alice)")?;
         assert_eq!(op.name, "key");
         Ok(())
     }

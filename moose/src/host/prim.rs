@@ -1,5 +1,5 @@
 use super::HostPlacement;
-use crate::computation::{Placed, DeriveSeedOp, PrfKeyGenOp, TAG_BYTES};
+use crate::computation::{DeriveSeedOp, Placed, PrfKeyGenOp, TAG_BYTES};
 use crate::error::{Error, Result};
 use crate::execution::{RuntimeSession, Session};
 use crate::kernels::PlacementPlace;
