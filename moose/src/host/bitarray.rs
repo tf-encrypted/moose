@@ -10,6 +10,14 @@ pub struct BitArrayRepr {
 }
 
 impl BitArrayRepr {
+    pub fn new_with_shape(dim: IxDyn) -> Self {
+        let data = BitVec::repeat(false, dim.size());
+        BitArrayRepr {
+            data: Arc::new(data),
+            dim,
+        }
+    }
+
     pub fn from_raw(data: BitVec<u8, Lsb0>, dim: IxDyn) -> Self {
         BitArrayRepr {
             data: Arc::new(data),

@@ -4,8 +4,8 @@ use crate::execution::{RuntimeSession, Session};
 use crate::host::bitarray::BitArrayRepr;
 use crate::prng::AesRng;
 use crate::{Const, Ring, N128, N224, N64};
-use ndarray::LinalgScalar;
 use ndarray::Zip;
+use ndarray::{LinalgScalar, RemoveAxis};
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack};
 use num_traits::{Float, FromPrimitive, Zero};
@@ -622,6 +622,8 @@ impl ShlDimOp {
         bit_length: usize,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
+        let result = BitArrayRepr::new_with_shape(x.0.dim.clone());
+        println!("FFFF {:?}", x.0.data);
         // let axis = 0;
         // let mut raw_tensor_shape = x.0.shape().to_vec();
         // raw_tensor_shape.remove(0);
@@ -643,8 +645,7 @@ impl ShlDimOp {
         // let result = ndarray::stack(Axis(0), &concatenated)
         //     .map_err(|e| Error::KernelError(e.to_string()))?;
 
-        // Ok(HostBitTensor(result.into_shared(), plc.clone()))
-        todo!()
+        Ok(HostBitTensor(result, plc.clone()))
     }
 }
 
@@ -694,23 +695,20 @@ impl BitDecomposeOp {
         plc: &HostPlacement,
         x: HostRing64Tensor,
     ) -> Result<HostBitTensor> {
-        let shape = x.shape();
-        let raw_shape = shape.0 .0;
-        let ones = ArcArrayD::from_elem(raw_shape, Wrapping(1));
+        use bitvec::prelude::*;
+        let mut dim = x.0.dim().insert_axis(Axis(0));
+        dim.slice_mut()[0] = <HostRing64Tensor as Ring>::BitLength::VALUE;
 
-        let bit_rep: Vec<_> = (0..<HostRing64Tensor as Ring>::BitLength::VALUE)
-            .map(|i| (&x.0 >> i) & (&ones))
-            .collect();
+        let mut data = BitVec::EMPTY;
+        for i in 0..<HostRing64Tensor as Ring>::BitLength::VALUE {
+            let slice: BitVec<u8, Lsb0> = x.0.iter().map(|ai| ((ai >> i).0 & 1) != 0).collect();
+            data.extend_from_bitslice(&slice);
+        }
 
-        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
-        let result = ndarray::stack(Axis(0), &bit_rep_view)
-            .map_err(|e| Error::KernelError(e.to_string()))?;
-        // we unwrap only at the end since shifting can cause overflow
-        // Ok(HostBitTensor(
-        //     result.map(|v| v.0 as u8).into_shared(),
-        //     plc.clone(),
-        // ))
-        todo!()
+        Ok(HostBitTensor(
+            BitArrayRepr::from_raw(data, dim),
+            plc.clone(),
+        ))
     }
 
     pub(crate) fn host_bit128_kernel<S: RuntimeSession>(
@@ -1284,11 +1282,12 @@ impl BitExtractOp {
         bit_idx: usize,
         x: HostRing64Tensor,
     ) -> Result<HostBitTensor> {
-        // Ok(HostBitTensor(
-        //     (x.0 >> bit_idx).mapv(|ai| (ai.0 & 1) as u8).into_shared(),
-        //     plc.clone(),
-        // ))
-        todo!("bit from ndarray")
+        let dim = x.0.dim().clone();
+        let data = x.0.iter().map(|ai| ((ai >> bit_idx).0 & 1) != 0).collect();
+        Ok(HostBitTensor(
+            BitArrayRepr::from_raw(data, dim),
+            plc.clone(),
+        ))
     }
 
     pub(crate) fn kernel128<S: RuntimeSession>(
@@ -1297,11 +1296,12 @@ impl BitExtractOp {
         bit_idx: usize,
         x: HostRing128Tensor,
     ) -> Result<HostBitTensor> {
-        // Ok(HostBitTensor(
-        //     (x.0 >> bit_idx).mapv(|ai| (ai.0 & 1) as u8).into_shared(),
-        //     plc.clone(),
-        // ))
-        todo!("bit from ndarray")
+        let dim = x.0.dim().clone();
+        let data = x.0.iter().map(|ai| ((ai >> bit_idx).0 & 1) != 0).collect();
+        Ok(HostBitTensor(
+            BitArrayRepr::from_raw(data, dim),
+            plc.clone(),
+        ))
     }
 }
 
