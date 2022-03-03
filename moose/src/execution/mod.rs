@@ -20,7 +20,7 @@ pub use symbolic::*;
 #[cfg(feature = "sync_execute")]
 pub use synchronous::*;
 
-pub type Operands<V> = smallvec::SmallVec<[V; 3]>;
+pub type Operands<V> = Vec<V>;
 
 /// General session trait determining basic properties for session objects.
 pub trait Session {

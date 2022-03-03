@@ -199,7 +199,7 @@ macro_rules! derive_runtime_kernel {
 
 macro_rules! operands {
     ($($content:tt)*) => {
-        smallvec::smallvec![$($content)*]
+        vec![$($content)*]
     };
 }
 
