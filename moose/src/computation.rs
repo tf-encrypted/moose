@@ -834,6 +834,9 @@ macro_rules! operators {
                 use crate::textual::{FromTextual, parse_operator_error};
                 match name {
                     $(paste! {[<$t Op>]::SHORT_NAME} => paste! {[<$t Op>]::from_textual},)+
+                    // The names below are deprecated aliases, maintained for a long period of time for compatibility
+                    "PrimDeriveSeed" => DeriveSeedOp::from_textual, // pre v0.1.5
+                    "PrimPrfKeyGen" => PrfKeyGenOp::from_textual, // pre v0.1.5
                     _ => parse_operator_error,
                 }
             }
@@ -853,8 +856,8 @@ operators![
     Constant,
     Shape,
     Broadcast,
-    PrimDeriveSeed,
-    PrimPrfKeyGen,
+    DeriveSeed,
+    PrfKeyGen,
     Decrypt,
     AtLeast2D,
     IndexAxis,
@@ -1182,7 +1185,7 @@ pub struct BitToRingOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual)]
-pub struct PrimDeriveSeedOp {
+pub struct DeriveSeedOp {
     pub sig: Signature,
     pub sync_key: SyncKey,
 }
@@ -1190,7 +1193,7 @@ pub struct PrimDeriveSeedOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-pub struct PrimPrfKeyGenOp {
+pub struct PrfKeyGenOp {
     pub sig: Signature,
 }
 

@@ -272,7 +272,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
     ) -> Result<SymbolicValue> {
         use Operator::*;
         match op {
-            PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            DeriveSeed(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Constant(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Cast(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Input(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
@@ -282,7 +282,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Shape(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Broadcast(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Fill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            PrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Decrypt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Xor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             And(op) => DispatchKernel::compile(&op, plc)?(sess, operands),

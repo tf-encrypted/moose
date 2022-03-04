@@ -182,7 +182,7 @@ impl Session for SyncSession {
             // The regular kernels
             Shape(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Broadcast(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            PrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Xor(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             And(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Or(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
@@ -210,7 +210,7 @@ impl Session for SyncSession {
             BitCompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             ShlDim(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AdtToRep(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
+            DeriveSeed(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Decrypt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Constant(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Input(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

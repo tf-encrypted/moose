@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.5
+
+- `PrimDeriveSeed` operator renamed to `DeriveSeed`
+- `PrimPrfKeyGen` operator renamed to `PrfKeyGen`
+
 ## v0.1.4
 
 - A bugfix to produce less verbose errors

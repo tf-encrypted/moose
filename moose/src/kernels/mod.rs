@@ -112,7 +112,7 @@ pub trait PlacementKeyGen<S: Session, KeyT> {
 }
 
 modelled_kernel! {
-    PlacementKeyGen::gen_key, PrimPrfKeyGenOp,
+    PlacementKeyGen::gen_key, PrfKeyGenOp,
     [
         (HostPlacement, () -> PrfKey => [runtime] Self::kernel),
     ]

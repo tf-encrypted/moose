@@ -1,5 +1,5 @@
 use super::HostPlacement;
-use crate::computation::{Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, TAG_BYTES};
+use crate::computation::{DeriveSeedOp, Placed, PrfKeyGenOp, TAG_BYTES};
 use crate::error::{Error, Result};
 use crate::execution::{RuntimeSession, Session};
 use crate::kernels::PlacementPlace;
@@ -108,14 +108,14 @@ impl TryFrom<&[u8]> for SyncKey {
     }
 }
 
-impl PrimPrfKeyGenOp {
+impl PrfKeyGenOp {
     pub(crate) fn kernel<S: RuntimeSession>(_sess: &S, plc: &HostPlacement) -> Result<PrfKey> {
         let raw_key = RawPrfKey(AesRng::generate_random_key());
         Ok(PrfKey(raw_key, plc.clone()))
     }
 }
 
-impl PrimDeriveSeedOp {
+impl DeriveSeedOp {
     pub(crate) fn kernel<S: RuntimeSession>(
         sess: &S,
         plc: &HostPlacement,
