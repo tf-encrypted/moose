@@ -721,6 +721,18 @@ mod tests {
     }
 
     #[test]
+    fn test_index_bit() {
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
+
+        let x: HostBitTensor = plc.from_raw(array![[[0, 1], [0, 0]], [[1, 1], [0, 0]]]);
+        let y = plc.index_axis(&sess, 0, 1, &x);
+
+        let expected: HostBitTensor = plc.from_raw(array![[1, 1], [0, 0]]);
+        assert_eq!(y, expected);
+    }
+
+    #[test]
     fn test_transpose() {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
