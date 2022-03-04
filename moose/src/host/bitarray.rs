@@ -1,6 +1,6 @@
 use crate::host::RawShape;
 use bitvec::prelude::*;
-use ndarray::{prelude::*, NdIndex, RemoveAxis};
+use ndarray::{prelude::*, RemoveAxis};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -62,6 +62,15 @@ impl BitArrayRepr {
                 IxDyn::stride_offset(&IxDyn(&[0, index]), &self.dim.default_strides()) as usize;
             return BitArrayRepr {
                 data: Arc::new(BitVec::repeat(self.data[pos], 1)),
+                dim: Arc::new(dim),
+            };
+        }
+        if dim.ndim() == 1 {
+            let start =
+                IxDyn::stride_offset(&IxDyn(&[0, index]), &self.dim.default_strides()) as usize;
+            let data = BitVec::from_bitslice(&self.data[start..(start + dim.size())]);
+            return BitArrayRepr {
+                data: Arc::new(data),
                 dim: Arc::new(dim),
             };
         }

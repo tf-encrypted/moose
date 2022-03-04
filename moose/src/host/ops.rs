@@ -622,29 +622,15 @@ impl ShlDimOp {
         bit_length: usize,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let result = BitArrayRepr::new_with_shape(x.0.dim.clone());
-        println!("FFFF {:?}", x.0.data);
-        // let axis = 0;
-        // let mut raw_tensor_shape = x.0.shape().to_vec();
-        // raw_tensor_shape.remove(0);
-        // let raw_shape = raw_tensor_shape.as_ref();
-
-        // let zero = ArcArrayD::from_elem(raw_shape, 0);
-        // let zero_view = zero.view();
-
-        // let concatenated: Vec<_> = (0..bit_length)
-        //     .map(|i| {
-        //         if i < amount {
-        //             zero_view.clone()
-        //         } else {
-        //             x.0.index_axis(axis, i - amount)
-        //         }
-        //     })
-        //     .collect();
-
-        // let result = ndarray::stack(Axis(0), &concatenated)
-        //     .map_err(|e| Error::KernelError(e.to_string()))?;
-
+        use bitvec::prelude::BitVec;
+        let height = x.0.shape().to_vec()[1];
+        let mut data = BitVec::repeat(false, height * amount); // Left portion is zeroes
+        let tail = height * (bit_length - amount);
+        data.extend_from_bitslice(&x.0.data[0..tail]); // The rest is just a portion of the input bitarray
+        let result = BitArrayRepr {
+            data: std::sync::Arc::new(data),
+            dim: x.0.dim.clone(),
+        };
         Ok(HostBitTensor(result, plc.clone()))
     }
 }
