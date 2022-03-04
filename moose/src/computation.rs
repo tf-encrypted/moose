@@ -209,7 +209,7 @@ impl AsFixedpoint for f64 {
 macro_rules! constants {
     ($($val:ident $($t:ident)?,)+) => {
 
-        #[derive(PartialEq, Clone, Debug, ShortName)]
+        #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
         pub enum Constant {
             $($val($val),)+
             // TODO promote below to match other values
@@ -375,7 +375,7 @@ macro_rules! values {
             }
         }
 
-        #[derive(PartialEq, Clone, Debug, ShortName)]
+        #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
         pub enum Value {
             $($val(Box<$val>),)+
             // TODO promote below to match other values
@@ -791,7 +791,7 @@ macro_rules! operators {
     ($($t:ident,)+) => {
 
         paste! {
-            #[derive(PartialEq, Clone, Debug)]
+            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
             pub enum Operator {
                 $($t([<$t Op>]),)+
             }
@@ -992,7 +992,7 @@ pub struct SaveOp {
     pub sig: Signature,
 }
 
-#[derive(PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct ConstantOp {
     pub sig: Signature,
     pub value: Constant, // TODO Box<Constant> or Box inside Constant?
@@ -1433,7 +1433,7 @@ pub struct RepToAdtOp {
     pub sig: Signature,
 }
 
-#[derive(PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
 pub struct FillOp {
     pub sig: Signature,
     pub value: Constant,
@@ -1647,7 +1647,7 @@ pub trait Placed {
     fn placement(&self) -> std::result::Result<Self::Placement, Error>;
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Operation {
     pub name: String,
     pub kind: Operator,
@@ -1655,7 +1655,7 @@ pub struct Operation {
     pub placement: Placement,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Computation {
     // pub constants: Vec<Value>,
     // pub operators: Vec<Operator>,
@@ -1665,14 +1665,12 @@ pub struct Computation {
 impl Computation {
     #[tracing::instrument(skip(bytes))]
     pub fn from_msgpack<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
-        // rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
-        todo!() // deprecated?
+        rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
     #[tracing::instrument(skip(self))]
     pub fn to_msgpack(&self) -> Result<Vec<u8>> {
-        // rmp_serde::to_vec(self).map_err(|e| Error::SerializationError(e.to_string()))
-        todo!() // deprecated?
+        rmp_serde::to_vec(self).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
     #[tracing::instrument(skip(comp))]
@@ -1683,14 +1681,12 @@ impl Computation {
 
     #[tracing::instrument(skip(bytes))]
     pub fn from_bincode<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
-        // bincode::deserialize(bytes.as_ref()).map_err(|e| Error::SerializationError(e.to_string()))
-        todo!() // deprecated?
+        bincode::deserialize(bytes.as_ref()).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
     #[tracing::instrument(skip(self))]
     pub fn to_bincode(&self) -> Result<Vec<u8>> {
-        // bincode::serialize(self).map_err(|e| Error::SerializationError(e.to_string()))
-        todo!() // deprecated?
+        bincode::serialize(self).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
     #[deprecated]
@@ -1712,17 +1708,15 @@ impl Computation {
                 e
             )))
         })?;
-        // rmp_serde::decode::from_read(f).map_err(|e| Error::SerializationError(e.to_string()))
-        todo!() // deprecated?
+        rmp_serde::decode::from_read(f).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
     pub fn to_disk<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        todo!() // deprecated?
-                // let mut file_buffer =
-                //     File::create(path).map_err(|e| Error::SerializationError(e.to_string()))?;
-                // rmp_serde::encode::write(&mut file_buffer, self)
-                //     .map_err(|e| Error::SerializationError(e.to_string()))?;
-                // Ok(())
+        let mut file_buffer =
+            File::create(path).map_err(|e| Error::SerializationError(e.to_string()))?;
+        rmp_serde::encode::write(&mut file_buffer, self)
+            .map_err(|e| Error::SerializationError(e.to_string()))?;
+        Ok(())
     }
 
     pub fn as_graph(&self) -> Graph<(String, usize), ()> {

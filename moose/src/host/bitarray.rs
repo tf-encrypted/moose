@@ -1,9 +1,10 @@
 use crate::host::RawShape;
 use bitvec::prelude::*;
-use ndarray::{prelude::*, RemoveAxis};
+use ndarray::{prelude::*, NdIndex, RemoveAxis};
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[derive(Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct BitArrayRepr {
     pub data: Arc<BitVec<u8, Lsb0>>,
     pub dim: Arc<IxDyn>,
@@ -57,7 +58,8 @@ impl BitArrayRepr {
         let dim = self.dim.remove_axis(Axis(axis));
         if dim.slice() == &[1] {
             // Just a get element call
-            let pos = IxDyn::stride_offset(&IxDyn(&[0, index]), &self.dim) as usize;
+            let pos =
+                IxDyn::stride_offset(&IxDyn(&[0, index]), &self.dim.default_strides()) as usize;
             return BitArrayRepr {
                 data: Arc::new(BitVec::repeat(self.data[pos], 1)),
                 dim: Arc::new(dim),
@@ -80,7 +82,8 @@ impl BitArrayRepr {
             1 => data.set(0, self.data[0]),
             2 => {
                 data.set(0, self.data[0]);
-                let pos = IxDyn::stride_offset(&IxDyn(&[1, 1]), &self.dim) as usize;
+                let pos =
+                    IxDyn::stride_offset(&IxDyn(&[1, 1]), &self.dim.default_strides()) as usize;
                 data.set(1, self.data[pos])
             }
             // Should probably find a way to write it for any dimensions using IxDyn
