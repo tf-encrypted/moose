@@ -718,17 +718,40 @@ mod tests {
 
         let expected: HostRing64Tensor = plc.from_raw(array![[4, 5], [6, 7]]);
         assert_eq!(y, expected);
+
+        let x: HostRing64Tensor = plc.from_raw(array![0_u64, 1, 2, 3]);
+        let y = plc.index_axis(&sess, 0, 1, &x);
+        let expected: HostRing64Tensor = plc.from_raw(array![1]);
+        let y = plc.expand_dims(&sess, [0].to_vec(), &y);
+        assert_eq!(y, expected);
     }
 
-    #[test]
-    fn test_index_bit() {
+    #[rstest]
+    #[case(
+        array![[[0, 1], [0, 0]], [[1, 1], [0, 0]]].into_dyn(),
+        0,
+        1,
+        array![[1, 1], [0, 0]].into_dyn(),
+    )]
+    #[case(
+        array![[[0, 1], [0, 0]], [[1, 1], [0, 0]]].into_dyn(),
+        0,
+        0,
+        array![[0, 1], [0, 0]].into_dyn(),
+    )]
+    fn test_index_bit(
+        #[case] x: ArrayD<u8>,
+        #[case] axis: usize,
+        #[case] index: usize,
+        #[case] expected: ArrayD<u8>,
+    ) {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
 
-        let x: HostBitTensor = plc.from_raw(array![[[0, 1], [0, 0]], [[1, 1], [0, 0]]]);
-        let y = plc.index_axis(&sess, 0, 1, &x);
+        let x: HostBitTensor = plc.from_raw(x);
+        let y = plc.index_axis(&sess, axis, index, &x);
 
-        let expected: HostBitTensor = plc.from_raw(array![[1, 1], [0, 0]]);
+        let expected: HostBitTensor = plc.from_raw(expected);
         assert_eq!(y, expected);
     }
 
