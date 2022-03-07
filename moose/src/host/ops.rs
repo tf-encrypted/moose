@@ -1389,14 +1389,24 @@ impl BroadcastOp {
         s: HostShape,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        // match x.0.broadcast(s.clone().0 .0) {
-        //     Some(y) => Ok(HostBitTensor(y.to_owned().into_shared(), plc.clone())),
-        //     None => Err(Error::KernelError(format!(
-        //         "Tensor {:?} not broadcastable to shape {:?}.",
-        //         x, s
-        //     ))),
-        // }
-        todo!("bitarray broadcast")
+        let dim = IxDyn(&s.0 .0);
+        let old_len = x.0.dim.size();
+        let new_len = dim.size();
+        if new_len < old_len || new_len % old_len != 0 {
+            return Err(Error::KernelError(format!(
+                "Tensor {:?} not broadcastable to shape {:?}.",
+                x, s
+            )));
+        }
+        use bitvec::prelude::*;
+        let mut data = BitVec::EMPTY;
+        for _ in 0..(new_len / old_len) {
+            data.extend_from_bitslice(&x.0.data);
+        }
+        Ok(HostBitTensor(
+            BitArrayRepr::from_raw(data, dim),
+            plc.clone(),
+        ))
     }
 }
 
