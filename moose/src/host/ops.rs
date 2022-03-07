@@ -1769,7 +1769,7 @@ impl LessThanOp {
                 "Failed to get tensor's slice".to_string(),
             ))?
             .iter()
-            .map(|&Wrapping(item)| if (item as i64) < 0 { 1 } else { 0 })
+            .map(|&Wrapping(item)| (item as i64) < 0)
             .collect();
         let result = BitArrayRepr::from_raw(data, dim);
         Ok(HostBitTensor(result, plc.clone()))
@@ -1789,7 +1789,7 @@ impl LessThanOp {
                 "Failed to get tensor's slice".to_string(),
             ))?
             .iter()
-            .map(|&Wrapping(item)| if (item as i128) < 0 { 1 } else { 0 })
+            .map(|&Wrapping(item)| (item as i128) < 0)
             .collect();
         let result = BitArrayRepr::from_raw(data, dim);
         Ok(HostBitTensor(result, plc.clone()))
@@ -1812,7 +1812,7 @@ impl LessThanOp {
                 "Failed to get tensor's slice".to_string(),
             ))?
             .iter()
-            .map(|&item| (item < T::zero()) as u8)
+            .map(|&item| item < T::zero())
             .collect();
         let result = BitArrayRepr::from_raw(data, dim);
         Ok(HostBitTensor(result, plc.clone()))
