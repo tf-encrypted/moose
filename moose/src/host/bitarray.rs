@@ -10,6 +10,26 @@ pub struct BitArrayRepr {
     pub dim: Arc<IxDyn>,
 }
 
+pub fn do_collapse_axis<D: Dimension>(
+    dims: &mut D,
+    strides: &D,
+    axis: usize,
+    index: usize,
+) -> isize {
+    let dim = dims.slice()[axis];
+    let stride = strides.slice()[axis];
+    assert!(
+        index < dim,
+        "collapse_axis: Index {} must be less than axis length {} for \
+         array with shape {:?}",
+        index,
+        dim,
+        *dims
+    );
+    dims.slice_mut()[axis] = 1;
+    (index as isize * (stride as isize)) as isize
+}
+
 impl BitArrayRepr {
     pub fn new_with_shape(dim: Arc<IxDyn>) -> Self {
         let data = BitVec::repeat(false, dim.size());
@@ -55,33 +75,28 @@ impl BitArrayRepr {
     }
 
     pub fn index_axis(&self, axis: usize, index: usize) -> BitArrayRepr {
-        let dim = self.dim.remove_axis(Axis(axis));
-        if dim.slice() == &[1] {
-            // Just a get element call
-            let pos =
-                IxDyn::stride_offset(&IxDyn(&[0, index]), &self.dim.default_strides()) as usize;
-            return BitArrayRepr {
-                data: Arc::new(BitVec::repeat(self.data[pos], 1)),
-                dim: Arc::new(dim),
-            };
+        // collapse axis
+        let mut dim = IxDyn(self.dim.slice());
+        let strides = dim.default_strides();
+
+        let offset = do_collapse_axis(&mut dim, &strides, axis, index) as usize;
+        let new_dim = self.dim.remove_axis(Axis(axis));
+        let new_ptr = self.data.as_bitslice();
+
+        // TODO(Dragos) can we make this init more efficient? ie use the ptr construction that BitVec has
+        let data = {
+            if new_dim.size() > 0 {
+                Arc::new(BitVec::from_bitslice(
+                    &new_ptr[offset..offset + new_dim.size()],
+                ))
+            } else {
+                Arc::new(BitVec::from_bitslice(&new_ptr[offset..offset + 1]))
+            }
+        };
+        BitArrayRepr {
+            data,
+            dim: Arc::new(new_dim),
         }
-        if dim.ndim() == 1 {
-            let start =
-                IxDyn::stride_offset(&IxDyn(&[0, index]), &self.dim.default_strides()) as usize;
-            let data = BitVec::from_bitslice(&self.data[start..(start + dim.size())]);
-            return BitArrayRepr {
-                data: Arc::new(data),
-                dim: Arc::new(dim),
-            };
-        }
-        println!(
-            "{:?}\naxis: {} index: {}\ndim: {:?}\n",
-            self.dim,
-            axis,
-            index,
-            dim.slice()
-        );
-        todo!("bit index_axis")
     }
 
     pub fn into_diag(&self) -> BitArrayRepr {
