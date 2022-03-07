@@ -1603,7 +1603,7 @@ impl ToTextual for Signature {
 
 impl ToTextual for crate::host::BitArrayRepr {
     fn to_textual(&self) -> String {
-        format!("{:?}", self.data)
+        self.into_array::<u8>().unwrap().into_shared().to_textual()
     }
 }
 
