@@ -1,4 +1,5 @@
 use crate::host::RawShape;
+use anyhow::anyhow;
 use bitvec::prelude::*;
 use ndarray::{prelude::*, RemoveAxis};
 use serde::{Deserialize, Serialize};
@@ -27,7 +28,7 @@ impl BitArrayRepr {
     }
 
     pub fn from_vec(vec: Vec<u8>, shape: &RawShape) -> Self {
-        let data = vec.iter().map(|&ai| ai != 0).collect();
+        let data: BitVec<u8, Lsb0> = vec.iter().map(|&ai| ai != 0).collect();
         let dim = IxDyn(&shape.0);
         BitArrayRepr {
             data: Arc::new(data),
@@ -52,6 +53,17 @@ impl BitArrayRepr {
     /// Return the shape of the array as a slice.
     pub fn shape(&self) -> &[usize] {
         self.dim.slice()
+    }
+
+    /// Converts into ArrayD for ndarray interop
+    pub fn into_array<T: From<u8>>(&self) -> anyhow::Result<ArrayD<T>> {
+        Array::from_iter(
+            self.data
+                .iter()
+                .map(|item| if *item { T::from(1) } else { T::from(0) }),
+        )
+        .into_shape(IxDyn(self.shape()))
+        .map_err(|e| anyhow!("Invalid shape {}", e))
     }
 
     pub fn index_axis(&self, axis: usize, index: usize) -> BitArrayRepr {
@@ -86,14 +98,14 @@ impl BitArrayRepr {
 
     pub fn into_diag(&self) -> BitArrayRepr {
         let len = self.dim.slice().iter().cloned().min().unwrap_or(1);
-        let mut data: BitVec<u8, Lsb0> = BitVec::repeat(false, len);
+        let mut data: BitVec<u8, Lsb0> = BitVec::EMPTY;
         match len {
-            1 => data.set(0, self.data[0]),
+            1 => data.push(self.data[0]),
             2 => {
-                data.set(0, self.data[0]);
+                data.push(self.data[0]);
                 let pos =
                     IxDyn::stride_offset(&IxDyn(&[1, 1]), &self.dim.default_strides()) as usize;
-                data.set(1, self.data[pos])
+                data.push(self.data[pos])
             }
             // Should probably find a way to write it for any dimensions using IxDyn
             _ => todo!(),

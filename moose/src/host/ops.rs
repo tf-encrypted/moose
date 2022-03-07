@@ -960,12 +960,20 @@ impl ConcatOp {
         axis: u32,
         xs: &[HostBitTensor],
     ) -> Result<HostBitTensor> {
-        todo!()
-        // let ax = Axis(axis as usize);
-        // let arr: Vec<_> = xs.iter().map(|x| x.0.view()).collect();
-        // let c = ndarray::concatenate(ax, &arr).map_err(|e| Error::KernelError(e.to_string()))?;
+        use bitvec::prelude::*;
+        let mut data = BitVec::<u8, Lsb0>::EMPTY;
+        for x in xs {
+            data.extend_from_bitslice(&x.0.data);
+        }
+        // Computing the dimension
+        let mut res_dim = xs[0].0.shape().to_vec();
+        let stacked_dim: usize = xs.iter().fold(0, |acc, a| acc + a.0.shape()[axis as usize]);
+        res_dim[axis as usize] = stacked_dim;
 
-        // Ok(HostBitTensor(c.into_shared(), plc.clone()))
+        Ok(HostBitTensor(
+            BitArrayRepr::from_raw(data, IxDyn(&res_dim)),
+            plc.clone(),
+        ))
     }
 }
 
@@ -1851,7 +1859,9 @@ impl MuxOp {
         // expression could be implemented at the HostPlacement level
         // (Add, Sub & Mul) instead of ndarray
         // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
-        let s_t: ArrayD<T> = todo!("bit array to ndarray"); // s.0.mapv(|item| item.into()); // How to convert to a new type!!!!
+        let s_t: ArrayD<T> =
+            s.0.into_array()
+                .map_err(|e| Error::KernelError(e.to_string()))?;
         let res = s_t * (x.0 - y.0.clone()) + y.0;
         Ok(HostTensor::<T>(res.into_shared(), plc.clone()))
     }
@@ -1875,7 +1885,10 @@ impl MuxOp {
         // expression could be implemented at the HostPlacement level
         // (Add, Sub & Mul) instead of ndarray
         // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
-        let s_t: ArrayD<Wrapping<T>> = todo!("bit array to ndarray"); //s.0.mapv(|item| Wrapping(item.into())); // How to convert to a new type!!!!
+        let s_t: ArrayD<Wrapping<T>> =
+            s.0.into_array()
+                .map_err(|e| Error::KernelError(e.to_string()))?
+                .mapv(|item| Wrapping(item));
         let res = s_t * (x.0 - y.0.clone()) + y.0;
         Ok(HostRingTensor::<T>(res.into_shared(), plc.clone()))
     }
