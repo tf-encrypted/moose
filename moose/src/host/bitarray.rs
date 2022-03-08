@@ -5,7 +5,7 @@ use ndarray::{prelude::*, RemoveAxis};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Hash, Clone, PartialEq)]
 pub struct BitArrayRepr {
     pub data: Arc<BitVec<u8, Lsb0>>,
     pub dim: Arc<IxDyn>,
