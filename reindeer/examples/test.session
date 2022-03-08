@@ -1,5 +1,5 @@
 [computation]
-path = "/tmp/sessions/test.moose"
+path = "./examples/test.moose"
 format = "textual"
 
 [[roles]]
