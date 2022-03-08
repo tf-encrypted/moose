@@ -89,22 +89,25 @@ if __name__ == '__main__':
     scales = [0.00001, 0.0001, 0.001, 0.01, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]
     classes = [2, 3, 5, 10, 100, 500, 1000]
 
-    # create dataset
-    X_train, y_train = make_classification(n_samples=n_sample_train, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
-    X_test, y_test = make_classification(n_samples=n_sample_test, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
-
     # table to store accuracy analysis results
     results = pd.DataFrame(columns=["min_X", "max_X", "features", "informative_features", "redundant_features", "classes", "match_2_decimals", "match_4_decimals", "mean_abs_diff", "max_abs_diff",
     "std_abs_diff", "mean_rel_diff", "max_rel_diff", "std_rel_diff"])
 
     # test robustness to varying features magnitude in dataset
     for scale in scales:
+        # create dataset
+        X_train, y_train = make_classification(n_samples=n_sample_train, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
+        X_test, y_test = make_classification(n_samples=n_sample_test, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
         benchmark(X_train, y_train, X_test, y_test)
 
     # test robustness to varying number of classes
     for n_classes in classes:
+        # create dataset
+        scale = 1.0
         n_informative = n_classes
         n_features = n_classes
+        X_train, y_train = make_classification(n_samples=n_sample_train, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
+        X_test, y_test = make_classification(n_samples=n_sample_test, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
         benchmark(X_train, y_train, X_test, y_test)
 
     # save results to csv
