@@ -115,19 +115,20 @@ class LinearClassifier(LinearPredictor):
     def __init__(self, coeffs, intercepts=None, multitask=False, transform_output=True):
         super().__init__(coeffs, intercepts)
         n_classes = self.coeffs.shape[0]
-        if multitask and n_classes == 1:
-            raise ValueError("Invalid argument: multitask=True found with n_classes=1.")
         # infer post_transform
         if not transform_output:
             self._post_transform = lambda x: x
         elif multitask and n_classes == 2:
             self._post_transform = lambda x: edsl.sigmoid(x)
-        elif multitask:
+        elif multitask and n_classes > 2:
             self._post_transform = lambda x: self._normalized_sigmoid(x, axis=1)
-        else:
+        elif not multitask:
+            # TODO special case n_classes=2
             self._post_transform = lambda x: edsl.softmax(
                 x, axis=1, upmost_index=n_classes
             )
+        else:
+            raise ValueError("Could not infer post-transform in LinearClassifier")
 
     @classmethod
     def from_onnx(cls, model_proto):
