@@ -1188,7 +1188,7 @@ impl ReshapeOp {
         shape: HostShape,
     ) -> Result<HostBitTensor> {
         let res = BitArrayRepr {
-            data: x.0.data.clone(),
+            data: x.0.data,
             dim: std::sync::Arc::new(IxDyn(&shape.0 .0)),
         };
         Ok(HostBitTensor(res, plc.clone()))
@@ -1274,7 +1274,7 @@ impl BitExtractOp {
         bit_idx: usize,
         x: HostRing64Tensor,
     ) -> Result<HostBitTensor> {
-        let dim = x.0.dim().clone();
+        let dim = x.0.dim();
         let data = x.0.iter().map(|ai| ((ai >> bit_idx).0 & 1) != 0).collect();
         Ok(HostBitTensor(
             BitArrayRepr::from_raw(data, dim),
@@ -1288,7 +1288,7 @@ impl BitExtractOp {
         bit_idx: usize,
         x: HostRing128Tensor,
     ) -> Result<HostBitTensor> {
-        let dim = x.0.dim().clone();
+        let dim = x.0.dim();
         let data = x.0.iter().map(|ai| ((ai >> bit_idx).0 & 1) != 0).collect();
         Ok(HostBitTensor(
             BitArrayRepr::from_raw(data, dim),
@@ -1763,12 +1763,10 @@ impl LessThanOp {
         y: HostRing64Tensor,
     ) -> Result<HostBitTensor> {
         use bitvec::prelude::*;
-        let dim = x.0.dim().clone();
+        let dim = x.0.dim();
         let data: BitVec<u8, Lsb0> = (x.0 - y.0)
             .as_slice()
-            .ok_or(Error::KernelError(
-                "Failed to get tensor's slice".to_string(),
-            ))?
+            .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
             .iter()
             .map(|&Wrapping(item)| (item as i64) < 0)
             .collect();
@@ -1783,12 +1781,10 @@ impl LessThanOp {
         y: HostRing128Tensor,
     ) -> Result<HostBitTensor> {
         use bitvec::prelude::*;
-        let dim = x.0.dim().clone();
+        let dim = x.0.dim();
         let data: BitVec<u8, Lsb0> = (x.0 - y.0)
             .as_slice()
-            .ok_or(Error::KernelError(
-                "Failed to get tensor's slice".to_string(),
-            ))?
+            .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
             .iter()
             .map(|&Wrapping(item)| (item as i128) < 0)
             .collect();
@@ -1806,12 +1802,10 @@ impl LessThanOp {
         T: std::cmp::PartialOrd + Zero,
     {
         use bitvec::prelude::*;
-        let dim = x.0.dim().clone();
+        let dim = x.0.dim();
         let data: BitVec<u8, Lsb0> = (x.0 - y.0)
             .as_slice()
-            .ok_or(Error::KernelError(
-                "Failed to get tensor's slice".to_string(),
-            ))?
+            .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
             .iter()
             .map(|&item| item < T::zero())
             .collect();
