@@ -8,11 +8,14 @@ use self::gen::networking_server::NetworkingServer;
 use self::gen::{SendValueRequest, SendValueResponse};
 use async_cell::sync::AsyncCell;
 use async_trait::async_trait;
+use backoff::future::retry;
+use backoff::ExponentialBackoff;
 use dashmap::DashMap;
 use moose::networking::AsyncNetworking;
 use moose::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::time::Duration;
 use tonic::transport::{Channel, Uri};
 
 #[derive(Default, Clone)]
@@ -84,15 +87,24 @@ impl AsyncNetworking for GrpcNetworking {
             tagged_value: bytes,
         };
 
-        let channel = self.channel(receiver)?;
-        let mut client = NetworkingClient::new(channel);
-
-        let _response = client
-            .send_value(request)
-            .await
-            .map_err(|e| moose::Error::Networking(e.to_string()))?;
-
-        Ok(())
+        retry(
+            ExponentialBackoff {
+                max_elapsed_time: Some(Duration::from_secs(3600)),
+                max_interval: Duration::from_secs(1),
+                multiplier: 1.,
+                ..Default::default()
+            },
+            || async {
+                let channel = self.channel(receiver)?;
+                let mut client = NetworkingClient::new(channel);
+                let _response = client
+                    .send_value(request.clone())
+                    .await
+                    .map_err(|e| moose::Error::Networking(e.to_string()))?;
+                Ok(())
+            },
+        )
+        .await
     }
 
     async fn receive(
@@ -101,12 +113,23 @@ impl AsyncNetworking for GrpcNetworking {
         rendezvous_key: &RendezvousKey,
         _session_id: &SessionId,
     ) -> moose::Result<Value> {
-        let cell = cell(
-            &self.stores,
-            self.session_id.clone(),
-            rendezvous_key.clone(),
-        );
-        Ok(cell.take().await)
+        retry(
+            ExponentialBackoff {
+                max_elapsed_time: Some(Duration::from_secs(3600)),
+                max_interval: Duration::from_secs(1),
+                multiplier: 1.,
+                ..Default::default()
+            },
+            || async {
+                let cell = cell(
+                    &self.stores,
+                    self.session_id.clone(),
+                    rendezvous_key.clone(),
+                );
+                Ok(cell.take().await)
+            },
+        )
+        .await
     }
 }
 
