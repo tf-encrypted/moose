@@ -30,7 +30,7 @@ pub use prim::*;
 pub type ArcArrayD<A> = ArcArray<A, IxDyn>;
 
 /// Placement type for single role plaintext operations
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
 pub struct HostPlacement {
     pub owner: Role,
 }
@@ -76,7 +76,7 @@ impl<S: Session> PlacementPlace<S, HostString> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
 pub struct RawShape(pub Vec<usize>);
 
 impl RawShape {
@@ -164,7 +164,7 @@ impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, 
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Hash, Clone, Debug, PartialEq)]
 pub struct HostTensor<T>(pub ArcArrayD<T>, pub HostPlacement);
 
 impl<T> Placed for HostTensor<T> {
@@ -201,7 +201,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Hash, Clone, PartialEq)]
 pub struct HostBitTensor(pub BitArrayRepr, pub HostPlacement);
 
 impl std::fmt::Debug for HostBitTensor {
@@ -384,7 +384,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Hash, Clone, Debug, PartialEq)]
 pub struct HostRingTensor<T>(pub ArcArrayD<Wrapping<T>>, pub HostPlacement);
 
 impl Ring for HostRing64Tensor {

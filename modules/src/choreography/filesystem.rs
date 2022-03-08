@@ -106,7 +106,7 @@ impl FilesystemChoreography {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, session_config))]
+    #[tracing::instrument(skip(self, session_id, session_config))]
     async fn launch_session(
         &self,
         session_id: SessionId,
@@ -144,7 +144,7 @@ impl FilesystemChoreography {
 
         tracing::debug!("Scheduling computation");
         let (handle, outputs) = context
-            .execute_computation(session_id.clone(), &computation, role_assignments)
+            .execute_indexed_computation(session_id.clone(), &computation, role_assignments)
             .await?;
 
         tracing::debug!("Ready for outputs");
