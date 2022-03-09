@@ -179,7 +179,8 @@ class NeuralClassifier(NeuralNetwork):
         weight_1 = np.asarray(weight_1.float_data)
         print(dim_1)
         print(weight_1.shape)
-        weight_1 = weight_1.reshape(dim_1[1], -1)
+        print("weight_1 the shape is", weight_1.shape)
+        weight_1 = weight_1.reshape(dim_1).T
         print(weight_1.shape)
         # parse classifier coefficients - weights of layer 2
         weight_2, dim_2 = predictor_utils.find_initializer_in_model_proto(model_proto, "coefficient1", enforce=False)
@@ -189,8 +190,10 @@ class NeuralClassifier(NeuralNetwork):
                 "MLP coefficients must be of type FLOATS, found other."
             )
         weight_2 = np.asarray(weight_2.float_data)
-        weight_2 = weight_2.reshape(dim_2[1], -1)
+        print("weight_2 the shape is", weight_2.shape)
+        weight_2 = weight_2.reshape(dim_2).T
         print(weight_2.shape)
+
 
         # labels
         labels_node = predictor_utils.find_node_in_model_proto(
@@ -222,7 +225,7 @@ class NeuralClassifier(NeuralNetwork):
                 "MLP coefficients must be of type FLOATS, found other."
             )
         bias_1 = np.asarray(bias_1.float_data)
-        bias_1 = bias_1.reshape(dim_1[0], -1)
+        # bias_1 = bias_1.reshape(dim_1[0], -1)
         
         # parse classifier biases of layer 2
         bias_2, dim_2 = predictor_utils.find_initializer_in_model_proto(model_proto, "intercepts1", enforce=False)
@@ -232,11 +235,11 @@ class NeuralClassifier(NeuralNetwork):
                 "MLP coefficients must be of type FLOATS, found other."
             )
         bias_2 = np.asarray(bias_2.float_data)
-        bias_2 = bias_2.reshape(dim_2[0], -1)
+        # bias_2 = bias_2.reshape(dim_2[0], -1)
         # print("Weights and biases")
         # print(weight_1.shape, weight_1)
         # print(weight_2.shape, weight_2)
-        # print(bias_1.shape, bias_1)
+        print(bias_1.shape, bias_1)
         # print(bias_2.shape, bias_2)
 
         return cls(

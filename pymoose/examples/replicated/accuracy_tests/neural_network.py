@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 
 # from onnxmltools import convert_sklearn
 # from onnxmltools.utils import save_model
-# from skl2onnx.common import data_types as onnx_dtypes
+from skl2onnx.common import data_types as onnx_dtypes
 
 # Convert into ONNX format
 from skl2onnx import convert_sklearn
@@ -72,10 +72,8 @@ expected_result = np.array(expected)
 
 print(actual_result.shape)
 print(expected_result.shape)
-print("expected", expected_result)
-print("actual", actual_result)
 print(actual_result - expected_result)
 
-# with open('graph_2.txt', 'w') as f:
-#     f.write(str(onnx_proto))
+with open('graph.txt', 'w') as f:
+    f.write(str(onnx_proto))
 # save_model(onnx_proto, "nn.onnx")
