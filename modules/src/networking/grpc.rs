@@ -113,23 +113,12 @@ impl AsyncNetworking for GrpcNetworking {
         rendezvous_key: &RendezvousKey,
         _session_id: &SessionId,
     ) -> moose::Result<Value> {
-        retry(
-            ExponentialBackoff {
-                max_elapsed_time: Some(Duration::from_secs(3600)),
-                max_interval: Duration::from_secs(1),
-                multiplier: 1.,
-                ..Default::default()
-            },
-            || async {
-                let cell = cell(
-                    &self.stores,
-                    self.session_id.clone(),
-                    rendezvous_key.clone(),
-                );
-                Ok(cell.take().await)
-            },
-        )
-        .await
+        let cell = cell(
+            &self.stores,
+            self.session_id.clone(),
+            rendezvous_key.clone(),
+        );
+        Ok(cell.take().await)
     }
 }
 
