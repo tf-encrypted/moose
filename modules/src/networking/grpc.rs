@@ -6,6 +6,7 @@ use self::gen::networking_client::NetworkingClient;
 use self::gen::networking_server::Networking;
 use self::gen::networking_server::NetworkingServer;
 use self::gen::{SendValueRequest, SendValueResponse};
+use crate::networking::constants;
 use async_cell::sync::AsyncCell;
 use async_trait::async_trait;
 use backoff::future::retry;
@@ -89,9 +90,9 @@ impl AsyncNetworking for GrpcNetworking {
 
         retry(
             ExponentialBackoff {
-                max_elapsed_time: Some(Duration::from_secs(3600)),
-                max_interval: Duration::from_secs(1),
-                multiplier: 1.,
+                max_elapsed_time: Some(Duration::from_millis(constants::MAX_ELAPSED_TIME_MILLIS)),
+                max_interval: Duration::from_millis(constants::MAX_INTERVAL_MILLIS),
+                multiplier: constants::MULTIPLIER,
                 ..Default::default()
             },
             || async {
