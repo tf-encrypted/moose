@@ -623,7 +623,6 @@ impl ShlDimOp {
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
         use bitvec::prelude::BitVec;
-        // TODO(Dragos) this needs more food for thought.
         let height = x.0.dim.default_strides()[0];
         let mut data = BitVec::repeat(false, height * amount); // Left portion is zeroes
         let tail = height * (bit_length - amount);

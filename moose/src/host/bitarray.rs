@@ -11,12 +11,7 @@ pub struct BitArrayRepr {
     pub dim: Arc<IxDyn>,
 }
 
-pub fn do_collapse_axis<D: Dimension>(
-    dims: &mut D,
-    strides: &D,
-    axis: usize,
-    index: usize,
-) -> isize {
+fn do_collapse_axis<D: Dimension>(dims: &mut D, strides: &D, axis: usize, index: usize) -> isize {
     let dim = dims.slice()[axis];
     let stride = strides.slice()[axis];
     assert!(
