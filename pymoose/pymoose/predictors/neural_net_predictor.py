@@ -1,11 +1,12 @@
 import abc
+from audioop import bias
 
 import numpy as np
 
 from pymoose import edsl
 from pymoose.predictors import aes_predictor
 from pymoose.predictors import predictor_utils
-
+from pymoose.computation import standard as standard_ops
 
 class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     def __init__(self, weights_layer_1, biases_layer_1, weights_layer_2, biases_layer_2):
@@ -43,22 +44,39 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         bias_1 = self.bias_trick(x, plc=self.bob, dtype=fixedpoint_dtype)
         x_1 = edsl.concatenate([bias_1, x], axis=1)
         y_1 = edsl.dot(x_1, w_1)
-
+        
+        print("nn predictor")
+        print(self.biases_layer_1.shape)
+        print(self.weights_layer_1.shape)
+        print(np.concatenate([self.biases_layer_1.T, self.weights_layer_1], axis=1).T.shape)
         # relu
-        # y_1 = edsl.cast(y_1, dtype=edsl.fixed(14, 23))
+        # y_1_shape = edsl.shape(edsl.cast(y_1, dtype=edsl.fixed(14, 23)))
         # y_1_shape = edsl.shape(y_1)
-        y_1_shape = edsl.shape(y_1, edsl.cast(y_1, dtype=edsl.fixed(14, 23)))
-        ones = edsl.ones(y_1_shape, dtype=edsl.float64)
-        ones = edsl.cast(ones, dtype=fixedpoint_dtype)
-        zeros = edsl.sub(ones, ones)
-        # zeros = edsl.cast(zeros, dtype=edsl.fixed(14, 23))
-        relu_output = edsl.maximum([zeros, y_1])
+        # y_1_shape = edsl.slice(
+        #     edsl.shape(y_1), begin=0, end=1)
+        # y_1_shape = edsl.constant(
+        #     [100, 100], vtype=standard_ops.ShapeType())
+        # ones = edsl.ones(y_1_shape, dtype=edsl.float64)
+        # ones = edsl.cast(ones, dtype=fixedpoint_dtype)
+        # zeros = edsl.sub(ones, ones)
+        # relu_output = edsl.maximum([zeros, y_1])
+
+        # y_1_shape = edsl.slice(
+        #     edsl.shape(x), begin=0, end=1)
+        # ones = edsl.ones(y_1_shape, dtype=edsl.float64)
+        # ones = edsl.cast(ones, dtype=fixedpoint_dtype)
+        # zeros = edsl.sub(ones, ones)
+        # relu_output = edsl.maximum([zeros, y_1])
+
+
+        relu_output = y_1
+        # relu_output = edsl.sigmoid(y_1)
 
         # layer 2
         w_2 = self.fixedpoint_constant(
-        np.concatenate([self.biases_layer_2.T, self.weights_layer_2], axis=1).T,
-        plc=self.mirrored,
-        dtype=fixedpoint_dtype,
+            np.concatenate([self.biases_layer_2.T, self.weights_layer_2], axis=1).T,
+            plc=self.mirrored,
+            dtype=fixedpoint_dtype,
         )
         bias_2 = self.bias_trick(relu_output, plc=self.bob, dtype=fixedpoint_dtype)
         # bias_2 = edsl.cast(bias_2, dtype=edsl.fixed(14, 23))
@@ -87,64 +105,63 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         return predictor
 
 
-class NeuralRegressor(NeuralNetwork):
-    def post_transform(self, y):
-        # no-op for linear regression models
-        return y
+# class NeuralRegressor(NeuralNetwork):
+#     def post_transform(self, y):
+#         # no-op for linear regression models
+#         return y
 
-    @classmethod
-    def from_onnx(cls, model_proto):
-        lr_node = predictor_utils.find_node_in_model_proto(
-            model_proto, "LinearRegressor", enforce=False
-        )
-        if lr_node is None:
-            raise ValueError(
-                "Incompatible ONNX graph provided: graph must contain a "
-                "LinearRegressor operator."
-            )
+#     @classmethod
+#     def from_onnx(cls, model_proto):
+#         lr_node = predictor_utils.find_node_in_model_proto(
+#             model_proto, "LinearRegressor", enforce=False
+#         )
+#         if lr_node is None:
+#             raise ValueError(
+#                 "Incompatible ONNX graph provided: graph must contain a "
+#                 "LinearRegressor operator."
+#             )
 
-        coeffs_attr = predictor_utils.find_attribute_in_node(lr_node, "coefficients")
-        if coeffs_attr.type != 6:  # FLOATS
-            raise ValueError(
-                "LinearRegressor coefficients must be of type FLOATS, found other."
-            )
-        coeffs = np.asarray(coeffs_attr.floats)
-        # extract intercept if it's there, otherwise pass it as None
-        intercepts_attr = predictor_utils.find_attribute_in_node(
-            lr_node, "intercepts", enforce=False
-        )
-        if intercepts_attr is None:
-            intercepts = None
-        elif intercepts_attr.type != 6:  # FLOATS
-            raise ValueError(
-                "LinearRegressor intercept must be of type FLOATS, found other."
-            )
-        else:
-            intercepts = intercepts_attr.floats
+#         coeffs_attr = predictor_utils.find_attribute_in_node(lr_node, "coefficients")
+#         if coeffs_attr.type != 6:  # FLOATS
+#             raise ValueError(
+#                 "LinearRegressor coefficients must be of type FLOATS, found other."
+#             )
+#         coeffs = np.asarray(coeffs_attr.floats)
+#         # extract intercept if it's there, otherwise pass it as None
+#         intercepts_attr = predictor_utils.find_attribute_in_node(
+#             lr_node, "intercepts", enforce=False
+#         )
+#         if intercepts_attr is None:
+#             intercepts = None
+#         elif intercepts_attr.type != 6:  # FLOATS
+#             raise ValueError(
+#                 "LinearRegressor intercept must be of type FLOATS, found other."
+#             )
+#         else:
+#             intercepts = intercepts_attr.floats
 
-        # if n_targets is not None reshape into (n_targets, n_features) matrix
-        n_targets_ints = predictor_utils.find_attribute_in_node(
-            lr_node, "targets", enforce=False
-        )
-        if n_targets_ints is not None:
-            n_targets = n_targets_ints.i
-            coeffs = coeffs.reshape(n_targets, -1)
+#         # if n_targets is not None reshape into (n_targets, n_features) matrix
+#         n_targets_ints = predictor_utils.find_attribute_in_node(
+#             lr_node, "targets", enforce=False
+#         )
+#         if n_targets_ints is not None:
+#             n_targets = n_targets_ints.i
+#             coeffs = coeffs.reshape(n_targets, -1)
 
-        return cls(coeffs=coeffs, intercepts=intercepts)
+#         return cls(coeffs=coeffs, intercepts=intercepts)
 
 
 class NeuralClassifier(NeuralNetwork):
     def __init__(self, weights_layer_1, biases_layer_1, weights_layer_2, biases_layer_2, n_classes, transform_output=True):
         super().__init__(weights_layer_1, biases_layer_1, weights_layer_2, biases_layer_2)
         n_classes = n_classes
+        print("N classes", n_classes)
 
         # infer post_transform
         if n_classes == 2:
-            self._post_transform = lambda x: edsl.sigmoid(x)
+            self._post_transform = lambda x: self._maybe_sigmoid(x, predictor_utils.DEFAULT_FIXED_DTYPE)
         elif n_classes > 2:
-            self._post_transform = lambda x: edsl.softmax(
-                x, axis=1, upmost_index=n_classes
-            )
+            self._post_transform = lambda x: edsl.softmax(x, axis=1, upmost_index=n_classes)
         else:
             raise ValueError("Specify number of classes")
 
@@ -215,6 +232,11 @@ class NeuralClassifier(NeuralNetwork):
             )
         bias_2 = np.asarray(bias_2.float_data)
         bias_2 = bias_2.reshape(dim_2[0], -1)
+        # print("Weights and biases")
+        # print(weight_1.shape, weight_1)
+        # print(weight_2.shape, weight_2)
+        # print(bias_1.shape, bias_1)
+        # print(bias_2.shape, bias_2)
 
         return cls(
             weight_1,
@@ -224,12 +246,19 @@ class NeuralClassifier(NeuralNetwork):
             n_classes,
         )
 
-    def post_transform(self, y):
+    def post_transform(self, y, fixedpoint_dtype):
         return self._post_transform(y)
 
     def _normalized_sigmoid(self, x, axis):
         y = edsl.sigmoid(x)
         return edsl.div(y, edsl.sum(y, axis))
+
+    def _maybe_sigmoid(self, y, fixedpoint_dtype):
+        # pos_prob = edsl.expand_dims(pos_prob, axis=1)
+        pos_prob = edsl.sigmoid(y)
+        one = self.fixedpoint_constant(1, plc=self.mirrored, dtype=fixedpoint_dtype)
+        neg_prob = edsl.sub(one, pos_prob)
+        return edsl.concatenate([neg_prob, pos_prob], axis=1)
 
 
 def _validate_model_args(coeffs, intercepts):

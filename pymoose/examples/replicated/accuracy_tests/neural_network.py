@@ -17,18 +17,20 @@ from pymoose.predictors import predictor_utils
  
 import numpy as np
 
-X, y = make_classification(n_samples=100, random_state=1)
+X, y = make_classification(n_samples=100, random_state=1 ,n_classes=2, n_informative=4)
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y,
                                                     random_state=1)
-clf = MLPClassifier(random_state=1, max_iter=300).fit(X_train, y_train)
+clf = MLPClassifier(activation='identity', random_state=1, max_iter=300).fit(X_train, y_train)
 clf.predict_proba(X_test[:1])
 clf.predict(X_test[:5, :])
 clf.score(X_test, y_test)
 
 print(clf.get_params())
 print(clf.n_layers_, clf.out_activation_, clf.n_outputs_, clf.n_features_in_, clf.classes_)
-print(X.shape)
-print(y.shape)
+print("X", X.shape)
+print("y", y.shape)
+print("X train", X_train.shape)
+print("y train", y_train.shape)
 
 # initial_type = ("float_input", onnx_dtypes.FloatTensorType([None, clf.n_features_in_]))
 # onnx_proto = convert_sklearn(clf, initial_types=[initial_type])
@@ -44,7 +46,7 @@ def _build_prediction_logic(onnx_proto):
             y = predictor.neural_predictor_fn(
                 x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE
             )
-            y = predictor.post_transform(y)
+            y = predictor.post_transform(y, predictor_utils.DEFAULT_FIXED_DTYPE)
         return predictor.handle_output(y, prediction_handler=predictor.bob)
 
     return predictor, predictor_no_aes
@@ -68,8 +70,10 @@ actual_result = list(result_dict.values())[0]
 expected = clf.predict_proba(X_test)
 expected_result = np.array(expected)
 
-print(actual_result)
-
+print(actual_result.shape)
+print(expected_result.shape)
+print("expected", expected_result[0])
+print("actual", actual_result[0])
 
 # with open('graph_2.txt', 'w') as f:
 #     f.write(str(onnx_proto))
