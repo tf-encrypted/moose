@@ -55,9 +55,11 @@ where
 }
 
 fn pyobj_tensor_to_host_bit_tensor(py: Python, obj: &PyObject) -> HostBitTensor {
+    use moose::host::BitArrayRepr;
     let plc = HostPlacement::from("TODO");
     let pyarray = obj.cast_as::<PyArrayDyn<bool>>(py).unwrap();
-    plc.from_raw(pyarray.to_owned_array().map(|b| *b as u8).into_dyn())
+    let data = pyarray.to_owned_array().iter().collect();
+    HostBitTensor(BitArrayRepr::from_raw(data, pyarray.dims()), plc)
 }
 
 fn pyobj_tensor_to_value(py: Python, obj: &PyObject) -> Result<Value, anyhow::Error> {
@@ -96,7 +98,11 @@ fn tensorval_to_pyobj(py: Python, tensor: Value) -> PyResult<PyObject> {
         Value::HostUint32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::HostUint64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::HostRing64Tensor(t) => Ok(t.0.map(|v| v.0).to_pyarray(py).to_object(py)),
-        Value::HostBitTensor(t) => Ok(t.0.map(|v| *v != 0).to_pyarray(py).to_object(py)),
+        Value::HostBitTensor(t) => {
+            t.0.into_array::<u8>()
+                .map(|arr| arr.to_pyarray(py).to_object(py))
+                .map_err(|e| PyRuntimeError::new_err(e.to_string()))
+        }
         otherwise => Err(PyTypeError::new_err(format!(
             r#"Values of type {:?} cannot be handled by runtime storage: must be a tensor of supported dtype."#,
             otherwise

@@ -1599,6 +1599,12 @@ impl ToTextual for Signature {
     }
 }
 
+impl ToTextual for crate::host::BitArrayRepr {
+    fn to_textual(&self) -> String {
+        self.into_array::<u8>().unwrap().into_shared().to_textual()
+    }
+}
+
 macro_rules! use_debug_to_textual {
     ($op:ty) => {
         impl ToTextual for $op {

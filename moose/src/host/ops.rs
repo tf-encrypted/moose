@@ -1,6 +1,7 @@
 use super::*;
 use crate::error::{Error, Result};
 use crate::execution::{RuntimeSession, Session};
+use crate::host::bitarray::BitArrayRepr;
 use crate::prng::AesRng;
 use crate::{Const, Ring, N128, N224, N64};
 use ndarray::LinalgScalar;
@@ -484,10 +485,7 @@ impl DiagOp {
         plc: &HostPlacement,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let diag =
-            x.0.into_diag()
-                .into_dimensionality::<IxDyn>()
-                .map_err(|e| Error::KernelError(e.to_string()))?;
+        let diag = x.0.into_diag();
         Ok(HostBitTensor(diag, plc.clone()))
     }
 }
@@ -552,9 +550,8 @@ impl HostBitTensor {
                 self.0.shape()
             )));
         }
-        let axis = Axis(axis);
         let result = self.0.index_axis(axis, index);
-        Ok(HostBitTensor(result.to_owned().into_shared(), self.1))
+        Ok(HostBitTensor(result, self.1))
     }
 }
 
@@ -625,28 +622,16 @@ impl ShlDimOp {
         bit_length: usize,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let axis = Axis(0);
-        let mut raw_tensor_shape = x.0.shape().to_vec();
-        raw_tensor_shape.remove(0);
-        let raw_shape = raw_tensor_shape.as_ref();
-
-        let zero = ArcArrayD::from_elem(raw_shape, 0);
-        let zero_view = zero.view();
-
-        let concatenated: Vec<_> = (0..bit_length)
-            .map(|i| {
-                if i < amount {
-                    zero_view.clone()
-                } else {
-                    x.0.index_axis(axis, i - amount)
-                }
-            })
-            .collect();
-
-        let result = ndarray::stack(Axis(0), &concatenated)
-            .map_err(|e| Error::KernelError(e.to_string()))?;
-
-        Ok(HostBitTensor(result.into_shared(), plc.clone()))
+        use bitvec::prelude::BitVec;
+        let height = x.0.dim.default_strides()[0];
+        let mut data = BitVec::repeat(false, height * amount); // Left portion is zeroes
+        let tail = height * (bit_length - amount);
+        data.extend_from_bitslice(&x.0.data[0..tail]); // The rest is just a portion of the input bitarray
+        let result = BitArrayRepr {
+            data: std::sync::Arc::new(data),
+            dim: x.0.dim.clone(),
+        };
+        Ok(HostBitTensor(result, plc.clone()))
     }
 }
 
@@ -696,20 +681,18 @@ impl BitDecomposeOp {
         plc: &HostPlacement,
         x: HostRing64Tensor,
     ) -> Result<HostBitTensor> {
-        let shape = x.shape();
-        let raw_shape = shape.0 .0;
-        let ones = ArcArrayD::from_elem(raw_shape, Wrapping(1));
+        use bitvec::prelude::*;
+        let mut dim = x.0.dim().insert_axis(Axis(0));
+        dim.slice_mut()[0] = <HostRing64Tensor as Ring>::BitLength::VALUE;
 
-        let bit_rep: Vec<_> = (0..<HostRing64Tensor as Ring>::BitLength::VALUE)
-            .map(|i| (&x.0 >> i) & (&ones))
-            .collect();
+        let mut data = BitVec::EMPTY;
+        for i in 0..<HostRing64Tensor as Ring>::BitLength::VALUE {
+            let slice: BitVec<u8, Lsb0> = x.0.iter().map(|ai| ((ai >> i).0 & 1) != 0).collect();
+            data.extend_from_bitslice(&slice);
+        }
 
-        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
-        let result = ndarray::stack(Axis(0), &bit_rep_view)
-            .map_err(|e| Error::KernelError(e.to_string()))?;
-        // we unwrap only at the end since shifting can cause overflow
         Ok(HostBitTensor(
-            result.map(|v| v.0 as u8).into_shared(),
+            BitArrayRepr::from_raw(data, dim),
             plc.clone(),
         ))
     }
@@ -719,20 +702,18 @@ impl BitDecomposeOp {
         plc: &HostPlacement,
         x: HostRing128Tensor,
     ) -> Result<HostBitTensor> {
-        let shape = x.shape();
-        let raw_shape = shape.0 .0;
-        let ones = ArcArrayD::from_elem(raw_shape, Wrapping(1));
+        use bitvec::prelude::*;
+        let mut dim = x.0.dim().insert_axis(Axis(0));
+        dim.slice_mut()[0] = <HostRing128Tensor as Ring>::BitLength::VALUE;
 
-        let bit_rep: Vec<_> = (0..<HostRing128Tensor as Ring>::BitLength::VALUE)
-            .map(|i| (&x.0 >> i) & (&ones))
-            .collect();
+        let mut data = BitVec::EMPTY;
+        for i in 0..<HostRing128Tensor as Ring>::BitLength::VALUE {
+            let slice: BitVec<u8, Lsb0> = x.0.iter().map(|ai| ((ai >> i).0 & 1) != 0).collect();
+            data.extend_from_bitslice(&slice);
+        }
 
-        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
-        let result = ndarray::stack(Axis(0), &bit_rep_view)
-            .map_err(|e| Error::KernelError(e.to_string()))?;
-        // we unwrap only at the end since shifting can cause overflow
         Ok(HostBitTensor(
-            result.map(|v| v.0 as u8).into_shared(),
+            BitArrayRepr::from_raw(data, dim),
             plc.clone(),
         ))
     }
@@ -979,11 +960,20 @@ impl ConcatOp {
         axis: u32,
         xs: &[HostBitTensor],
     ) -> Result<HostBitTensor> {
-        let ax = Axis(axis as usize);
-        let arr: Vec<_> = xs.iter().map(|x| x.0.view()).collect();
-        let c = ndarray::concatenate(ax, &arr).map_err(|e| Error::KernelError(e.to_string()))?;
+        use bitvec::prelude::*;
+        let mut data = BitVec::<u8, Lsb0>::EMPTY;
+        for x in xs {
+            data.extend_from_bitslice(&x.0.data);
+        }
+        // Computing the dimension
+        let mut res_dim = xs[0].0.shape().to_vec();
+        let stacked_dim: usize = xs.iter().fold(0, |acc, a| acc + a.0.shape()[axis as usize]);
+        res_dim[axis as usize] = stacked_dim;
 
-        Ok(HostBitTensor(c.into_shared(), plc.clone()))
+        Ok(HostBitTensor(
+            BitArrayRepr::from_raw(data, IxDyn(&res_dim)),
+            plc.clone(),
+        ))
     }
 }
 
@@ -1196,9 +1186,10 @@ impl ReshapeOp {
         x: HostBitTensor,
         shape: HostShape,
     ) -> Result<HostBitTensor> {
-        let res =
-            x.0.into_shape(shape.0 .0)
-                .map_err(|e| Error::KernelError(e.to_string()))?;
+        let res = BitArrayRepr {
+            data: x.0.data,
+            dim: std::sync::Arc::new(IxDyn(&shape.0 .0)),
+        };
         Ok(HostBitTensor(res, plc.clone()))
     }
 
@@ -1222,7 +1213,8 @@ impl XorOp {
         x: HostBitTensor,
         y: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        Ok(HostBitTensor(x.0 ^ y.0, plc.clone()))
+        let arr = &x.0 ^ &y.0;
+        Ok(HostBitTensor(arr, plc.clone()))
     }
 }
 
@@ -1232,7 +1224,8 @@ impl NegOp {
         plc: &HostPlacement,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        Ok(HostBitTensor((!x.0) & 1, plc.clone()))
+        let arr = !(&x.0);
+        Ok(HostBitTensor(arr, plc.clone()))
     }
 }
 
@@ -1243,7 +1236,8 @@ impl AndOp {
         x: HostBitTensor,
         y: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        Ok(HostBitTensor(x.0 & y.0, plc.clone()))
+        let arr = &x.0 & &y.0;
+        Ok(HostBitTensor(arr, plc.clone()))
     }
 
     pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
@@ -1267,7 +1261,8 @@ impl OrOp {
         x: HostBitTensor,
         y: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        Ok(HostBitTensor(x.0 | y.0, plc.clone()))
+        let arr = &x.0 | &y.0;
+        Ok(HostBitTensor(arr, plc.clone()))
     }
 }
 
@@ -1278,8 +1273,10 @@ impl BitExtractOp {
         bit_idx: usize,
         x: HostRing64Tensor,
     ) -> Result<HostBitTensor> {
+        let dim = x.0.dim();
+        let data = x.0.iter().map(|ai| ((ai >> bit_idx).0 & 1) != 0).collect();
         Ok(HostBitTensor(
-            (x.0 >> bit_idx).mapv(|ai| (ai.0 & 1) as u8).into_shared(),
+            BitArrayRepr::from_raw(data, dim),
             plc.clone(),
         ))
     }
@@ -1290,8 +1287,10 @@ impl BitExtractOp {
         bit_idx: usize,
         x: HostRing128Tensor,
     ) -> Result<HostBitTensor> {
+        let dim = x.0.dim();
+        let data = x.0.iter().map(|ai| ((ai >> bit_idx).0 & 1) != 0).collect();
         Ok(HostBitTensor(
-            (x.0 >> bit_idx).mapv(|ai| (ai.0 & 1) as u8).into_shared(),
+            BitArrayRepr::from_raw(data, dim),
             plc.clone(),
         ))
     }
@@ -1308,11 +1307,18 @@ impl RingInjectOp {
         T: From<u8>,
         Wrapping<T>: std::ops::Shl<usize, Output = Wrapping<T>>,
     {
-        Ok(HostRingTensor(
-            x.0.mapv(|ai| Wrapping(T::from(ai)) << bit_idx)
-                .into_shared(),
-            plc.clone(),
-        ))
+        let values: Vec<_> =
+            x.0.data
+                .iter()
+                .map(|ai| {
+                    let bit = if *ai { 1 } else { 0 };
+                    Wrapping(T::from(bit)) << bit_idx
+                })
+                .collect();
+        let ix = IxDyn(x.0.shape());
+        let arr =
+            Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
+        Ok(HostRingTensor(arr.into_shared(), plc.clone()))
     }
 }
 
@@ -1323,8 +1329,7 @@ impl FillOp {
         value: u8,
         shape: HostShape,
     ) -> Result<HostBitTensor> {
-        let raw_shape = shape.0 .0;
-        let raw_tensor = ArcArrayD::from_elem(raw_shape.as_ref(), value);
+        let raw_tensor = BitArrayRepr::from_elem(&shape.0, value);
         Ok(HostBitTensor(raw_tensor, plc.clone()))
     }
 
@@ -1384,13 +1389,24 @@ impl BroadcastOp {
         s: HostShape,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        match x.0.broadcast(s.clone().0 .0) {
-            Some(y) => Ok(HostBitTensor(y.to_owned().into_shared(), plc.clone())),
-            None => Err(Error::KernelError(format!(
+        let dim = IxDyn(&s.0 .0);
+        let old_len = x.0.dim.size();
+        let new_len = dim.size();
+        if new_len < old_len || new_len % old_len != 0 {
+            return Err(Error::KernelError(format!(
                 "Tensor {:?} not broadcastable to shape {:?}.",
                 x, s
-            ))),
+            )));
         }
+        use bitvec::prelude::*;
+        let mut data = BitVec::EMPTY;
+        for _ in 0..(new_len / old_len) {
+            data.extend_from_bitslice(&x.0.data);
+        }
+        Ok(HostBitTensor(
+            BitArrayRepr::from_raw(data, dim),
+            plc.clone(),
+        ))
     }
 }
 
@@ -1642,10 +1658,8 @@ impl SampleOp {
         let mut rng = AesRng::from_random_seed();
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
-        let ix = IxDyn(shape.0 .0.as_ref());
-        let arr =
-            Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostBitTensor(arr.into_shared(), plc.clone()))
+        let arr = BitArrayRepr::from_vec(values, &shape.0);
+        Ok(HostBitTensor(arr, plc.clone()))
     }
 }
 
@@ -1723,10 +1737,8 @@ impl SampleSeededOp {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
-        let ix = IxDyn(shape.0 .0.as_ref());
-        let res =
-            Array::from_shape_vec(ix, values).map_err(|e| Error::KernelError(e.to_string()))?;
-        Ok(HostBitTensor(res.into_shared(), plc.clone()))
+        let res = BitArrayRepr::from_vec(values, &shape.0);
+        Ok(HostBitTensor(res, plc.clone()))
     }
 }
 
@@ -1749,8 +1761,16 @@ impl LessThanOp {
         x: HostRing64Tensor,
         y: HostRing64Tensor,
     ) -> Result<HostBitTensor> {
-        let result = (x.0 - y.0).mapv(|Wrapping(item)| if (item as i64) < 0 { 1_u8 } else { 0_u8 });
-        Ok(HostBitTensor(result.into_shared(), plc.clone()))
+        use bitvec::prelude::*;
+        let dim = x.0.dim();
+        let data: BitVec<u8, Lsb0> = (x.0 - y.0)
+            .as_slice()
+            .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
+            .iter()
+            .map(|&Wrapping(item)| (item as i64) < 0)
+            .collect();
+        let result = BitArrayRepr::from_raw(data, dim);
+        Ok(HostBitTensor(result, plc.clone()))
     }
 
     pub(crate) fn host_ring128_kernel<S: Session>(
@@ -1759,17 +1779,16 @@ impl LessThanOp {
         x: HostRing128Tensor,
         y: HostRing128Tensor,
     ) -> Result<HostBitTensor> {
-        let result = (x.0 - y.0).mapv(
-            |Wrapping(item)| {
-                if (item as i128) < 0 {
-                    1_u8
-                } else {
-                    0_u8
-                }
-            },
-        );
-
-        Ok(HostBitTensor(result.into_shared(), plc.clone()))
+        use bitvec::prelude::*;
+        let dim = x.0.dim();
+        let data: BitVec<u8, Lsb0> = (x.0 - y.0)
+            .as_slice()
+            .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
+            .iter()
+            .map(|&Wrapping(item)| (item as i128) < 0)
+            .collect();
+        let result = BitArrayRepr::from_raw(data, dim);
+        Ok(HostBitTensor(result, plc.clone()))
     }
 
     pub(crate) fn host_float_kernel<S: Session, T: LinalgScalar + FromPrimitive>(
@@ -1781,8 +1800,16 @@ impl LessThanOp {
     where
         T: std::cmp::PartialOrd + Zero,
     {
-        let result = (x.0 - y.0).mapv(|item| (item < T::zero()) as u8);
-        Ok(HostBitTensor(result.into_shared(), plc.clone()))
+        use bitvec::prelude::*;
+        let dim = x.0.dim();
+        let data: BitVec<u8, Lsb0> = (x.0 - y.0)
+            .as_slice()
+            .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
+            .iter()
+            .map(|&item| item < T::zero())
+            .collect();
+        let result = BitArrayRepr::from_raw(data, dim);
+        Ok(HostBitTensor(result, plc.clone()))
     }
 }
 
@@ -1836,7 +1863,9 @@ impl MuxOp {
         // expression could be implemented at the HostPlacement level
         // (Add, Sub & Mul) instead of ndarray
         // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
-        let s_t: ArrayD<T> = s.0.mapv(|item| item.into()); // How to convert to a new type!!!!
+        let s_t: ArrayD<T> =
+            s.0.into_array()
+                .map_err(|e| Error::KernelError(e.to_string()))?;
         let res = s_t * (x.0 - y.0.clone()) + y.0;
         Ok(HostTensor::<T>(res.into_shared(), plc.clone()))
     }
@@ -1860,7 +1889,10 @@ impl MuxOp {
         // expression could be implemented at the HostPlacement level
         // (Add, Sub & Mul) instead of ndarray
         // [s] * ([x] - [y]) + [y] <=> if s=1 choose x, otherwise y
-        let s_t: ArrayD<Wrapping<T>> = s.0.mapv(|item| Wrapping(item.into())); // How to convert to a new type!!!!
+        let s_t: ArrayD<Wrapping<T>> =
+            s.0.into_array()
+                .map_err(|e| Error::KernelError(e.to_string()))?
+                .mapv(|item| Wrapping(item));
         let res = s_t * (x.0 - y.0.clone()) + y.0;
         Ok(HostRingTensor::<T>(res.into_shared(), plc.clone()))
     }
