@@ -17,7 +17,7 @@ from pymoose.predictors import predictor_utils
  
 import numpy as np
 
-X, y = make_classification(n_samples=100, random_state=1 ,n_classes=2, n_informative=4)
+X, y = make_classification(n_samples=100, random_state=44 ,n_classes=2, n_informative=2)
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y,
                                                     random_state=1)
 clf = MLPClassifier(activation='identity', random_state=1, max_iter=300).fit(X_train, y_train)
@@ -72,8 +72,9 @@ expected_result = np.array(expected)
 
 print(actual_result.shape)
 print(expected_result.shape)
-print("expected", expected_result[0])
-print("actual", actual_result[0])
+print("expected", expected_result)
+print("actual", actual_result)
+print(actual_result - expected_result)
 
 # with open('graph_2.txt', 'w') as f:
 #     f.write(str(onnx_proto))

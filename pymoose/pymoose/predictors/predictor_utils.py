@@ -2,6 +2,7 @@ from pymoose import edsl
 
 DEFAULT_FLOAT_DTYPE = edsl.float64
 DEFAULT_FIXED_DTYPE = edsl.fixed(24, 40)
+# DEFAULT_FIXED_DTYPE = edsl.fixed(14, 23)
 
 
 def find_attribute_in_node(node, attribute_name, enforce=True):
@@ -28,3 +29,12 @@ def find_node_in_model_proto(model_proto, operator_name, enforce=True):
     if enforce and node is None:
         raise ValueError(f"Model proto does not contain operator {operator_name}.")
     return node
+
+def find_initializer_in_model_proto(model_proto, operator_name, enforce=True):
+    initializer = None
+    for operator in model_proto.graph.initializer:
+        if operator.name == operator_name:
+            initializer = operator
+    if enforce and initializer is None:
+        raise ValueError(f"Model proto does not contain operator {operator_name}.")
+    return initializer, initializer.dims

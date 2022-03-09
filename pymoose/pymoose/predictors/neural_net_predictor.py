@@ -37,18 +37,18 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     def neural_predictor_fn(self, x, fixedpoint_dtype):
         # layer 1
         w_1 = self.fixedpoint_constant(
-            np.concatenate([self.biases_layer_1.T, self.weights_layer_1], axis=1).T,
+            self.weights_layer_1.T,
             plc=self.mirrored,
             dtype=fixedpoint_dtype,
         )
-        bias_1 = self.bias_trick(x, plc=self.bob, dtype=fixedpoint_dtype)
-        x_1 = edsl.concatenate([bias_1, x], axis=1)
-        y_1 = edsl.dot(x_1, w_1)
+        bias_1 = self.fixedpoint_constant(
+            self.biases_layer_1,
+            plc=self.mirrored,
+            dtype=fixedpoint_dtype,
+        )
+        y_1 = edsl.dot(x, w_1)
+        z_1 = edsl.add(y_1, bias_1)
         
-        print("nn predictor")
-        print(self.biases_layer_1.shape)
-        print(self.weights_layer_1.shape)
-        print(np.concatenate([self.biases_layer_1.T, self.weights_layer_1], axis=1).T.shape)
         # relu
         # y_1_shape = edsl.shape(edsl.cast(y_1, dtype=edsl.fixed(14, 23)))
         # y_1_shape = edsl.shape(y_1)
@@ -69,23 +69,24 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         # relu_output = edsl.maximum([zeros, y_1])
 
 
-        relu_output = y_1
-        # relu_output = edsl.sigmoid(y_1)
+        # relu_output = y_1
+        # activation_output = edsl.sigmoid(z_1)
+        activation_output = z_1
 
         # layer 2
         w_2 = self.fixedpoint_constant(
-            np.concatenate([self.biases_layer_2.T, self.weights_layer_2], axis=1).T,
+            self.weights_layer_2.T,
             plc=self.mirrored,
             dtype=fixedpoint_dtype,
         )
-        bias_2 = self.bias_trick(relu_output, plc=self.bob, dtype=fixedpoint_dtype)
-        # bias_2 = edsl.cast(bias_2, dtype=edsl.fixed(14, 23))
-        # relu_output = edsl.cast(relu_output, dtype=edsl.fixed(14, 23))
-        x_2 = edsl.concatenate([bias_2, relu_output], axis=1)
-        # x_2 = edsl.cast(x_2, dtype=edsl.fixed(14, 23))
-        # x_2 = edsl.cast(x_2, dtype=edsl.fixed(14, 23))
-        y_2 = edsl.dot(x_2, w_2)
-        return y_2
+        bias_2 = self.fixedpoint_constant(
+            self.biases_layer_2,
+            plc=self.mirrored,
+            dtype=fixedpoint_dtype,
+        )
+        y_2 = edsl.dot(activation_output, w_2)
+        z_2 = edsl.add(y_2, bias_2)
+        return z_2
 
 
     def predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
