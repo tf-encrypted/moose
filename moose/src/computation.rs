@@ -357,6 +357,8 @@ macro_rules! values {
                     "Ring64" => Some(Ty::Ring64),
                     "Ring128" => Some(Ty::Ring128),
                     "Fixed" => Some(Ty::Fixed),
+                    // The names below are deprecated aliases, maintained for a long period of time for compatibility
+                    "Seed" => Some(Ty::HostSeed), // pre v0.1.5
                     _ => None,
                 }
             }
