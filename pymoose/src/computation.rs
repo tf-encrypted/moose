@@ -798,7 +798,7 @@ impl TryFrom<PyComputation> for Computation {
                     std_ShapeOperation(op) => {
                         let placement = map_placement(&placements, &op.placement_name)?;
                         let sig = Signature::from_unary(&op.signature, "x")?;
-                        // Replace HostShape with ReplicatedShape on Replicated placments
+                        // Replace HostShape with ReplicatedShape on Replicated placements
                         let sig = match (&placement, sig) {
                             (
                                 Placement::Replicated(_),
