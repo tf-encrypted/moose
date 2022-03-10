@@ -5,11 +5,6 @@ use ndarray_npy::read_npy;
 use std::io::Read;
 
 pub async fn read_numpy(filename: &str, placement: &HostPlacement) -> Result<Value> {
-    let mut buf = vec![];
-    std::fs::File::open(filename)
-        .unwrap()
-        .read_to_end(&mut buf)
-        .unwrap();
     let arr: ArrayD<f64> = read_npy(filename).unwrap();
     let tensor: HostFloat64Tensor = placement.from_raw(arr);
     let value = Value::from(tensor);
