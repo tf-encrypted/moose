@@ -39,9 +39,16 @@ test:
 	pytest -m "not slow" ./pymoose
 
 .PHONY: test-long
-test-long:
-	$(MAKE) test
+test-long: test
 	pytest -m "slow" ./pymoose
+
+.PHONY: audit
+audit:
+	cargo audit
+
+.PHONY: deny
+deny:
+	cargo deny check
 
 .PHONY: test-ci
 test-ci: test
