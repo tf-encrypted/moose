@@ -427,7 +427,7 @@ def _onnx_base(model_proto, forest_node_name):
         raise ValueError(
             f"In the ONNX file, the input shape has {n_features} "
             f"features and there are {n_split_indices} distinct split indices . "
-            f"with the largest indice {largest_split_indices}. Validate you "
+            f"with the largest index {largest_split_indices}. Validate you "
             "set correctly the `initial_types` when converting your model to ONNX."
         )
 
