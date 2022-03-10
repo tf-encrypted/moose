@@ -799,7 +799,7 @@ impl TryFrom<PyComputation> for Computation {
                         let placement = map_placement(&placements, &op.placement_name)?;
                         let sig = Signature::from_unary(&op.signature, "x")?;
                         // Replace HostShape with ReplicatedShape on Replicated placments
-                        let sig = match (placement, sig) {
+                        let sig = match (&placement, sig) {
                             (
                                 Placement::Replicated(_),
                                 Signature::Unary(UnarySignature {
