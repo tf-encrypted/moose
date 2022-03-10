@@ -275,7 +275,7 @@ macro_rules! constants {
 // The lines with 1 identifier are for linking to the "Unplaced" values, where the Constant and Value are essentially the same and can be converted easily.
 constants![
     RawShape HostShape,
-    RawSeed Seed,
+    RawSeed HostSeed,
     RawPrfKey PrfKey,
     String HostString,
     HostBitTensor,
@@ -528,7 +528,7 @@ macro_rules! values {
 values![
     Unit,
     HostShape,
-    Seed,
+    HostSeed,
     PrfKey,
     HostString,
     Tensor(TensorDType::Unknown),
@@ -594,7 +594,7 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
         HostString,
         Unit,
         HostShape,
-        Seed,
+        HostSeed,
         PrfKey,
         HostBitTensor,
         HostRing64Tensor,

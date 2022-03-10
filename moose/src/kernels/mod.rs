@@ -185,7 +185,7 @@ modelled_kernel! {
         (HostPlacement, (HostString) -> HostString => [runtime] Self::kernel),
         (HostPlacement, (Unit) -> Unit => [runtime] Self::missing_kernel),
         (HostPlacement, (HostShape) -> HostShape => [runtime] Self::kernel),
-        (HostPlacement, (Seed) -> Seed => [runtime] Self::kernel),
+        (HostPlacement, (HostSeed) -> HostSeed => [runtime] Self::kernel),
         (HostPlacement, (PrfKey) -> PrfKey => [runtime] Self::kernel),
     ]
 }

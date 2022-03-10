@@ -547,9 +547,9 @@ impl FromRaw<RawShape, HostShape> for HostPlacement {
     }
 }
 
-impl FromRaw<RawSeed, Seed> for HostPlacement {
-    fn from_raw(&self, raw: RawSeed) -> Seed {
-        Seed(raw, self.clone())
+impl FromRaw<RawSeed, HostSeed> for HostPlacement {
+    fn from_raw(&self, raw: RawSeed) -> HostSeed {
+        HostSeed(raw, self.clone())
     }
 }
 
@@ -938,7 +938,7 @@ mod tests {
         let sess = SyncSession::default();
 
         let shape: HostShape = plc.from_raw(RawShape(vec![5]));
-        let seed: Seed = plc.from_raw(RawSeed([0u8; 16]));
+        let seed: HostSeed = plc.from_raw(RawSeed([0u8; 16]));
         let r: HostBitTensor = plc.sample_uniform_seeded(&sess, &shape, &seed);
 
         let expected: HostBitTensor = plc.from_raw(array![0, 1, 1, 0, 0]);

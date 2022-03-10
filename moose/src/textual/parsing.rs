@@ -339,7 +339,7 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
                     Error(make_error(input, ErrorKind::MapRes))
                 })?;
         let (input, opt_sig) = opt(operator_signature(0))(input)?;
-        let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
+        let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostSeed));
         Ok((input, DeriveSeedOp { sig, sync_key }.into()))
     }
 }
@@ -540,7 +540,7 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
     input: &'a str,
 ) -> IResult<&'a str, Constant, E> {
     alt((
-        constant_literal_helper(Ty::Seed.short_name(), parse_hex, |v| {
+        constant_literal_helper(Ty::HostSeed.short_name(), parse_hex, |v| {
             Constant::RawSeed(RawSeed(v))
         }),
         constant_literal_helper(Ty::PrfKey.short_name(), parse_hex, |v| {
@@ -1390,7 +1390,7 @@ impl ToTextual for Value {
                 x.0 .0,
                 x.1.to_textual()
             ),
-            Value::Seed(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
+            Value::HostSeed(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
             Value::PrfKey(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
             Value::Bit(x) => format!("{}({})", self.ty().short_name(), x),
             Value::Unit(_) => self.ty().short_name().to_string(),
@@ -1506,7 +1506,7 @@ impl ToTextual for Constant {
                 format!("{}({}, {})", self.ty().short_name(), value, precision)
             }
             Constant::RawShape(RawShape(x)) => format!("Shape({:?})", x),
-            Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
+            Constant::RawSeed(RawSeed(x)) => format!("HostSeed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
             Constant::Bit(x) => format!("{}({})", self.ty().short_name(), x),
             Constant::HostBitTensor(x) => {
@@ -1693,7 +1693,7 @@ mod tests {
             Constant::HostUint8Tensor(plc.from_raw(vec![1, 2, 3]))
         );
         let (_, parsed_seed) =
-            constant_literal::<(&str, ErrorKind)>("Seed(529c2fc9bf573d077f45f42b19cfb8d4)")?;
+            constant_literal::<(&str, ErrorKind)>("HostSeed(529c2fc9bf573d077f45f42b19cfb8d4)")?;
         assert_eq!(
             parsed_seed,
             Constant::RawSeed(RawSeed([
@@ -1856,7 +1856,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::DeriveSeed(DeriveSeedOp {
-                sig: Signature::nullary(Ty::Seed),
+                sig: Signature::nullary(Ty::HostSeed),
                 sync_key: SyncKey::try_from(vec![1, 2, 3])?
             })
         );
@@ -1909,7 +1909,7 @@ mod tests {
     #[test]
     fn test_ring_sample() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x10 = SampleSeeded{max_value = 1}: (HostShape, Seed) -> HostRing64Tensor (shape, seed) @Host(alice)",
+            "x10 = SampleSeeded{max_value = 1}: (HostShape, HostSeed) -> HostRing64Tensor (shape, seed) @Host(alice)",
         )?;
         assert_eq!(op.name, "x10");
         Ok(())
@@ -2044,7 +2044,7 @@ mod tests {
             "z = BitExtract {bit_idx = 2} : (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = SampleSeeded {}: (HostShape, Seed) -> HostBitTensor (shape, seed) @Host(alice)",
+            "z = SampleSeeded {}: (HostShape, HostSeed) -> HostBitTensor (shape, seed) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = Xor: (HostBitTensor, HostBitTensor) -> HostBitTensor (x, y) @Host(alice)",
@@ -2197,7 +2197,7 @@ mod tests {
     #[case("HostString(\"hi\") @Host(alice)")]
     #[case("HostBitTensor([0, 1, 1, 0]) @Host(alice)")]
     #[case("HostShape([3, 2]) @Host(alice)")]
-    #[case("Seed(529c2fc9bf573d077f45f42b19cfb8d4) @Host(alice)")]
+    #[case("HostSeed(529c2fc9bf573d077f45f42b19cfb8d4) @Host(alice)")]
     #[case("PrfKey(00000000000000000000000000000000) @Host(alice)")]
     #[case("HostFixed64Tensor[7/12]([2, 42, 12]) @Host(alice)")]
     #[case("HostFixed128Tensor[7/12]([2, 42, 12]) @Host(alice)")]
@@ -2229,7 +2229,7 @@ mod tests {
             y = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
             z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, carole)
             seed = DeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
-            seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)}: () -> Seed @Host(alice)
+            seed2 = Constant{value = HostSeed(529c2fc9bf573d077f45f42b19cfb8d4)}: () -> HostSeed @Host(alice)
             o = Output: (HostFloat32Tensor) -> HostFloat32Tensor (z) @Host(alice)"
             .try_into()?;
         let textual = comp.to_textual();

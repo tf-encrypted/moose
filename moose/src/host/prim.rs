@@ -13,9 +13,9 @@ use std::convert::TryFrom;
 pub struct RawSeed(pub [u8; 16]);
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct Seed(pub RawSeed, pub HostPlacement);
+pub struct HostSeed(pub RawSeed, pub HostPlacement);
 
-impl Placed for Seed {
+impl Placed for HostSeed {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -23,14 +23,14 @@ impl Placed for Seed {
     }
 }
 
-impl<S: Session> PlacementPlace<S, Seed> for HostPlacement {
-    fn place(&self, _sess: &S, seed: Seed) -> Seed {
+impl<S: Session> PlacementPlace<S, HostSeed> for HostPlacement {
+    fn place(&self, _sess: &S, seed: HostSeed) -> HostSeed {
         match seed.placement() {
             Ok(place) if &place == self => seed,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
-                Seed(seed.0, self.clone())
+                HostSeed(seed.0, self.clone())
             }
         }
     }
@@ -121,7 +121,7 @@ impl DeriveSeedOp {
         plc: &HostPlacement,
         sync_key: SyncKey,
         key: PrfKey,
-    ) -> Result<Seed> {
+    ) -> Result<HostSeed> {
         let sid = sess.session_id();
         let key_bytes = key.0.as_bytes();
 
@@ -137,6 +137,6 @@ impl DeriveSeedOp {
         let mut raw_seed: RngSeed = [0u8; SEED_SIZE];
         raw_seed.copy_from_slice(digest.as_ref());
 
-        Ok(Seed(RawSeed(raw_seed), plc.clone()))
+        Ok(HostSeed(RawSeed(raw_seed), plc.clone()))
     }
 }

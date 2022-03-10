@@ -45,7 +45,7 @@ kernel! {
         (HostPlacement, () -> HostString => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Unit => [runtime] attributes[arg_name] Self::missing_kernel),
         (HostPlacement, () -> HostShape => [runtime] attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Seed => [runtime] attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostSeed => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> PrfKey => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostBitArray64 => [concrete] attributes[arg_name] Self::host_bitarray64),
         (HostPlacement, () -> HostBitArray128 => [concrete] attributes[arg_name] Self::host_bitarray128),
@@ -105,7 +105,7 @@ kernel! {
     OutputOp, [
         (HostPlacement, (Unit) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (HostShape) -> HostShape => [runtime] Self::kernel),
-        (HostPlacement, (Seed) -> Seed => [runtime] Self::kernel),
+        (HostPlacement, (HostSeed) -> HostSeed => [runtime] Self::kernel),
         (HostPlacement, (PrfKey) -> PrfKey => [runtime] Self::kernel),
         (HostPlacement, (HostString) -> HostString => [runtime] Self::kernel),
         (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::kernel),
@@ -142,7 +142,7 @@ kernel! {
     LoadOp, [
         (HostPlacement, (HostString, HostString) -> Unit => [runtime] Self::missing_kernel),
         (HostPlacement, (HostString, HostString) -> HostShape => [runtime] Self::kernel),
-        (HostPlacement, (HostString, HostString) -> Seed => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostString) -> HostSeed => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostString) -> PrfKey => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostString) -> HostString => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostString) -> HostBitTensor => [runtime] Self::kernel),
@@ -185,7 +185,7 @@ kernel! {
     SaveOp, [
         (HostPlacement, (HostString, Unit) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostShape) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostString, Seed) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostString, HostSeed) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (HostString, PrfKey) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostString) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostBitTensor) -> Unit => [runtime] Self::kernel),

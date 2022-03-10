@@ -2,7 +2,7 @@
 use super::*;
 use crate::computation::{CanonicalType, KnownType};
 use crate::execution::Session;
-use crate::host::{HostPlacement, HostShape, PrfKey, Seed, SyncKey};
+use crate::host::{HostPlacement, HostSeed, HostShape, PrfKey, SyncKey};
 use crate::kernels::*;
 use crate::replicated::RepTensor;
 use crate::{Const, Ring};
@@ -22,11 +22,11 @@ pub trait TruncMaskGen<S: Session, ShapeT, RingT> {
 impl<S: Session, HostShapeT, HostRingT> TruncMaskGen<S, HostShapeT, HostRingT> for HostPlacement
 where
     PrfKey: KnownType<S>,
-    Seed: KnownType<S>,
+    HostSeed: KnownType<S>,
     HostRingT: Ring + Clone,
-    HostPlacement: PlacementDeriveSeed<S, m!(PrfKey), m!(Seed)>,
+    HostPlacement: PlacementDeriveSeed<S, m!(PrfKey), m!(HostSeed)>,
     HostPlacement: PlacementSampleUniform<S, HostShapeT, HostRingT>,
-    HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(Seed), HostRingT>,
+    HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(HostSeed), HostRingT>,
     HostPlacement: PlacementKeyGen<S, m!(PrfKey)>,
     HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
     HostPlacement: PlacementShr<S, HostRingT, HostRingT>,
