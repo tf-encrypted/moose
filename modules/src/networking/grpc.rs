@@ -75,18 +75,6 @@ impl AsyncNetworking for GrpcNetworking {
         rendezvous_key: &RendezvousKey,
         _session_id: &SessionId,
     ) -> moose::Result<()> {
-        let tagged_value = TaggedValue {
-            session_id: self.session_id.clone(),
-            rendezvous_key: rendezvous_key.clone(),
-            value: val.clone(),
-        };
-
-        let bytes = bincode::serialize(&tagged_value)
-            .map_err(|e| moose::Error::Networking(e.to_string()))?;
-        let request = SendValueRequest {
-            tagged_value: bytes,
-        };
-
         retry(
             ExponentialBackoff {
                 max_elapsed_time: *constants::MAX_ELAPSED_TIME,
@@ -95,10 +83,20 @@ impl AsyncNetworking for GrpcNetworking {
                 ..Default::default()
             },
             || async {
+                let tagged_value = TaggedValue {
+                    session_id: self.session_id.clone(),
+                    rendezvous_key: rendezvous_key.clone(),
+                    value: val.clone(),
+                };
+                let bytes = bincode::serialize(&tagged_value)
+                    .map_err(|e| moose::Error::Networking(e.to_string()))?;
+                let request = SendValueRequest {
+                    tagged_value: bytes,
+                };
                 let channel = self.channel(receiver)?;
                 let mut client = NetworkingClient::new(channel);
                 let _response = client
-                    .send_value(request.clone())
+                    .send_value(request)
                     .await
                     .map_err(|e| moose::Error::Networking(e.to_string()))?;
                 Ok(())
