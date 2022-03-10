@@ -55,6 +55,9 @@ clean:
 .PHONY: ci-ready
 ci-ready: fmt lint test-ci
 
+.PHONY: clean-ci
+clean-ci: clean ci-ready
+
 .PHONY: release
 release: ci-ready
 	cargo release --workspace --no-publish --execute
