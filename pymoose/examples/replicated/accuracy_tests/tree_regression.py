@@ -88,21 +88,26 @@ if __name__ == '__main__':
     noise_level = [0.0, 1.0, 1.5, 10.0, 100.0]
     scales = [0.00001, 0.0001, 0.001, 0.1, 10.0, 100.0, 1000.0, 100000.0, 1000000.0]
     
-    # create dataset
-    X_train, y_train = make_regression(n_samples=n_sample_train, n_features=n_features, n_informative=n_informative, noise=noise, random_state=random_state)
-    X_test, y_test = make_regression(n_samples=n_sample_test, n_features=n_features, n_informative=n_informative, noise=noise, random_state=random_state)
-
     # table to store accuracy analysis results
     results = pd.DataFrame(columns=["min_X", "max_X", "features", "informative_features", "redundant_features", "noise", "match_2_decimals", "match_4_decimals", "mean_abs_diff", "max_abs_diff",
     "std_abs_diff", "mean_rel_diff", "max_rel_diff", "std_rel_diff"])
     
     # test robustness to varying noise in dataset
     for noise in noise_level:
+        # create dataset
+        X_train, y_train = make_regression(n_samples=n_sample_train, n_features=n_features, n_informative=n_informative, noise=noise, random_state=random_state)
+        X_test, y_test = make_regression(n_samples=n_sample_test, n_features=n_features, n_informative=n_informative, noise=noise, random_state=random_state)
         benchmark(X_train, y_train, X_test, y_test)
 
     # test robustness to varying features magnitude in dataset
     for scale in scales:
-        benchmark(X_train * scale, y_train, X_test * scale, y_test)
+        noise = 0.0
+        # create dataset
+        X_train, y_train = make_regression(n_samples=n_sample_train, n_features=n_features, n_informative=n_informative, noise=noise, random_state=random_state)
+        X_test, y_test = make_regression(n_samples=n_sample_test, n_features=n_features, n_informative=n_informative, noise=noise, random_state=random_state)
+        X_train = X_train * scale
+        X_test = X_test * scale
+        benchmark(X_train, y_train, X_test, y_test)
     
     # save results to csv
     results.to_csv("forrest_regression_accuracy_analysis.csv")

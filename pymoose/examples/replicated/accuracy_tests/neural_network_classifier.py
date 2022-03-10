@@ -21,10 +21,8 @@ import numpy as np
 X, y = make_classification(n_samples=100, random_state=44 ,n_classes=2, n_informative=2)
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=1)
 
+# Sklearn classifier
 clf = MLPClassifier(activation='logistic', random_state=1, max_iter=300).fit(X_train, y_train)
-clf.predict_proba(X_test[:1])
-clf.predict(X_test[:5, :])
-clf.score(X_test, y_test)
 
 def _build_prediction_logic(onnx_proto):
     predictor = neural_net_predictor.NeuralClassifier.from_onnx(onnx_proto)
@@ -64,6 +62,5 @@ actual_result = list(result_dict.values())[0]
 expected = clf.predict_proba(X_test)
 expected_result = np.array(expected)
 
-# print(actual_result - expected_result)
 print(np.isclose(actual_result, expected_result, atol=1e-2).all()) # Do outputs match up to 2 decimal points
 

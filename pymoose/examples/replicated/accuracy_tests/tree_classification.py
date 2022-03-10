@@ -86,12 +86,8 @@ if __name__ == '__main__':
 
     # varying inputs and parameters
     scales = [0.00001, 0.0001, 0.001, 0.01, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0]
-    classes = [2]
+    classes = [2, 5, 10]
     features = [10, 50, 100]
-
-    # create dataset
-    X_train, y_train = make_classification(n_samples=n_sample_train, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
-    X_test, y_test = make_classification(n_samples=n_sample_test, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
 
     # table to store accuracy analysis results
     results = pd.DataFrame(columns=["min_X", "max_X", "features", "informative_features", "redundant_features", "classes", "match_2_decimals", "match_4_decimals", "mean_abs_diff", "max_abs_diff",
@@ -99,17 +95,27 @@ if __name__ == '__main__':
 
     # test robustness to varying features magnitude in dataset
     for scale in scales:
+        # create dataset
+        X_train, y_train = make_classification(n_samples=n_sample_train, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
+        X_test, y_test = make_classification(n_samples=n_sample_test, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
         benchmark(X_train, y_train, X_test, y_test)
 
     # test robustness to varying number of features
     for feature in features:
+        scale = 1.0
         n_features = feature
+        # create dataset
+        X_train, y_train = make_classification(n_samples=n_sample_train, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
+        X_test, y_test = make_classification(n_samples=n_sample_test, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
         benchmark(X_train, y_train, X_test, y_test)
 
     # test robustness to varying number of classes
     for n_classes in classes:
         n_informative = n_classes
         n_features = n_classes
+        # create dataset
+        X_train, y_train = make_classification(n_samples=n_sample_train, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
+        X_test, y_test = make_classification(n_samples=n_sample_test, n_features=n_features, n_informative=n_informative, n_classes=n_classes, n_redundant=n_redundant, scale=scale, random_state=random_state)
         benchmark(X_train, y_train, X_test, y_test)
 
     # save results to csv

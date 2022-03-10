@@ -20,12 +20,9 @@ import numpy as np
 # Regression data
 X, y = make_regression(n_samples=100, random_state=44, n_targets=3)
 X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=1)
-clf = MLPRegressor(activation='logistic', random_state=1, max_iter=300).fit(X_train, y_train)
 
-initial_type = ("float_input", FloatTensorType([None, clf.n_features_in_]))
-onnx_proto = convert_sklearn(clf, initial_types=[initial_type])
-# with open('reg_nn_graph.txt', 'w') as f:
-#     f.write(str(onnx_proto))
+# Sklearn regressor
+clf = MLPRegressor(activation='logistic', random_state=1, max_iter=300).fit(X_train, y_train)
 
 def _build_prediction_logic(onnx_proto):
     predictor = neural_net_predictor.NeuralRegressor.from_onnx(onnx_proto)
@@ -42,7 +39,11 @@ def _build_prediction_logic(onnx_proto):
         return predictor.handle_output(y, prediction_handler=predictor.bob)
 
     return predictor, predictor_no_aes
-    
+
+initial_type = ("float_input", FloatTensorType([None, clf.n_features_in_]))
+onnx_proto = convert_sklearn(clf, initial_types=[initial_type])
+# with open('reg_nn_graph.txt', 'w') as f:
+#     f.write(str(onnx_proto))  
 net, net_logic = _build_prediction_logic(onnx_proto)
 
 traced_predictor = edsl.trace(net_logic)
@@ -59,8 +60,5 @@ actual_result = list(result_dict.values())[0]
 expected = clf.predict(X_test)
 expected_result = np.array(expected)
 
-# print(actual_result - expected_result)
-# print(actual_result)
-# print(expected_result)
 print(np.isclose(actual_result, expected_result, atol=1e-1).all()) # Do outputs match up to 1 decimal points
 

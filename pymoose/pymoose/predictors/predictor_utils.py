@@ -47,3 +47,12 @@ def find_activation_in_model_proto(model_proto, operator_name, enforce=True):
     if enforce and activation is None:
         raise ValueError(f"Model proto does not contain operator {operator_name}.")
     return activation
+
+def find_parameters_in_model_proto(model_proto, operator_name, enforce=True):
+    parameters = []
+    for operator in model_proto.graph.initializer:
+        if operator_name in operator.name:
+            parameters.append(operator)
+    if enforce and parameters is None:
+        raise ValueError(f"Model proto does not contain operator {operator_name}.")
+    return parameters
