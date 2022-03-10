@@ -16,7 +16,6 @@ use moose::networking::AsyncNetworking;
 use moose::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use std::time::Duration;
 use tonic::transport::{Channel, Uri};
 
 #[derive(Default, Clone)]
@@ -91,7 +90,7 @@ impl AsyncNetworking for GrpcNetworking {
         retry(
             ExponentialBackoff {
                 max_elapsed_time: *constants::MAX_ELAPSED_TIME,
-                max_interval: *constants::MAX_INTERVAL_MILLIS,
+                max_interval: *constants::MAX_INTERVAL,
                 multiplier: constants::MULTIPLIER,
                 ..Default::default()
             },
