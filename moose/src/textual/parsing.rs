@@ -285,7 +285,7 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
         let (input, _) = ws(tag("{"))(input)?;
         let (input, (_, _, rendezvous_key)) =
-            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex))(input)?;
+            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex_zero_padded))(input)?;
         let (input, _) = ws(tag(","))(input)?;
         let (input, (_, _, receiver)) = tuple((tag("receiver"), ws(tag("=")), string))(input)?;
         let (input, _) = ws(tag("}"))(input)?;
@@ -306,7 +306,7 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
         let (input, _) = ws(tag("{"))(input)?;
         let (input, (_, _, rendezvous_key)) =
-            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex))(input)?;
+            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex_zero_padded))(input)?;
         let (input, _) = ws(tag(","))(input)?;
         let (input, (_, _, sender)) = tuple((tag("sender"), ws(tag("=")), string))(input)?;
         let (input, _) = ws(tag("}"))(input)?;
@@ -854,7 +854,7 @@ pub fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str> + Context
     .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 }
 
-/// Parses a single byte, writte as two hex character.
+/// Parses a single byte, written as two hex character.
 ///
 /// Leading '0' is mandatory for bytes 0x00 - 0x0F.
 fn parse_hex_u8<'a, E>(input: &'a str) -> IResult<&'a str, u8, E>
@@ -876,6 +876,32 @@ where
     let mut buf: [u8; N] = [0; N];
     let (rest, ()) = fill(parse_hex_u8, &mut buf)(input)?;
     Ok((rest, buf))
+}
+
+/// Parse sa hux dump, without any separators.
+///
+/// Leaves the tail zeroed if there is not enough data to fill an array of length N.
+pub fn parse_hex_zero_padded<'a, E, const N: usize>(input: &'a str) -> IResult<&'a str, [u8; N], E>
+where
+    E: ParseError<&'a str>,
+{
+    let mut buf: [u8; N] = [0; N];
+    let mut input = <&str>::clone(&input); // Explicitly cloning just the reference.
+    for elem in buf.iter_mut() {
+        match parse_hex_u8(input) {
+            Ok((i, o)) => {
+                *elem = o;
+                input = i;
+            }
+            Err(Error(_)) => {
+                return Ok((input, buf)); // Unlike `fill`, return the buffer if the child parser errored.
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
+    }
+    Ok((input, buf))
 }
 
 /// Wraps the inner parser in optional spaces.
@@ -1878,6 +1904,27 @@ mod tests {
                 receiver: Role::from("bob")
             })
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_send_shortened() -> Result<(), anyhow::Error> {
+        // Test that rendezvous_key can be specified without the tailing zeroes.
+        let (_, op1) = parse_assignment::<(&str, ErrorKind)>(
+            r#"send = Send{rendezvous_key = 179704, receiver = "bob"}: (HostFloat32Tensor) -> Unit() @Host(alice)"#,
+        )?;
+        let (_, op2) = parse_assignment::<(&str, ErrorKind)>(
+            r#"send = Send{rendezvous_key = 17970400000000000000000000000000, receiver = "bob"}: (HostFloat32Tensor) -> Unit() @Host(alice)"#,
+        )?;
+        let rendezvous_key1 = match op1.kind {
+            Operator::Send(SendOp { rendezvous_key, .. }) => rendezvous_key,
+            _ => panic!("Incorrect op type parsed"),
+        };
+        let rendezvous_key2 = match op2.kind {
+            Operator::Send(SendOp { rendezvous_key, .. }) => rendezvous_key,
+            _ => panic!("Incorrect op type parsed"),
+        };
+        assert_eq!(rendezvous_key1, rendezvous_key2);
         Ok(())
     }
 
