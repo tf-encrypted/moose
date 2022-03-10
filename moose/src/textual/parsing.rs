@@ -543,7 +543,7 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
         constant_literal_helper(Ty::HostSeed.short_name(), parse_hex, |v| {
             Constant::RawSeed(RawSeed(v))
         }),
-        constant_literal_helper(Ty::PrfKey.short_name(), parse_hex, |v| {
+        constant_literal_helper(Ty::HostPrfKey.short_name(), parse_hex, |v| {
             Constant::RawPrfKey(RawPrfKey(v))
         }),
         constant_literal_helper(Ty::Float32.short_name(), float, Constant::Float32),
@@ -1391,7 +1391,7 @@ impl ToTextual for Value {
                 x.1.to_textual()
             ),
             Value::HostSeed(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
-            Value::PrfKey(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
+            Value::HostPrfKey(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
             Value::Bit(x) => format!("{}({})", self.ty().short_name(), x),
             Value::Unit(_) => self.ty().short_name().to_string(),
             Value::HostBitTensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
@@ -1507,7 +1507,7 @@ impl ToTextual for Constant {
             }
             Constant::RawShape(RawShape(x)) => format!("Shape({:?})", x),
             Constant::RawSeed(RawSeed(x)) => format!("HostSeed({})", x.to_textual()),
-            Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
+            Constant::RawPrfKey(RawPrfKey(x)) => format!("HostPrfKey({})", x.to_textual()),
             Constant::Bit(x) => format!("{}({})", self.ty().short_name(), x),
             Constant::HostBitTensor(x) => {
                 format!("{}({})", self.ty().short_name(), x.0.to_textual())
@@ -1841,8 +1841,9 @@ mod tests {
 
     #[test]
     fn test_primprfkeygen() -> Result<(), anyhow::Error> {
-        let (_, op) =
-            parse_assignment::<(&str, ErrorKind)>("key = PrfKeyGen: () -> PrfKey () @Host(alice)")?;
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "key = PrfKeyGen: () -> HostPrfKey () @Host(alice)",
+        )?;
         assert_eq!(op.name, "key");
         Ok(())
     }
@@ -2198,7 +2199,7 @@ mod tests {
     #[case("HostBitTensor([0, 1, 1, 0]) @Host(alice)")]
     #[case("HostShape([3, 2]) @Host(alice)")]
     #[case("HostSeed(529c2fc9bf573d077f45f42b19cfb8d4) @Host(alice)")]
-    #[case("PrfKey(00000000000000000000000000000000) @Host(alice)")]
+    #[case("HostPrfKey(00000000000000000000000000000000) @Host(alice)")]
     #[case("HostFixed64Tensor[7/12]([2, 42, 12]) @Host(alice)")]
     #[case("HostFixed128Tensor[7/12]([2, 42, 12]) @Host(alice)")]
     fn test_value_round_trip(#[case] input: String) -> Result<(), anyhow::Error> {

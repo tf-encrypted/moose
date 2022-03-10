@@ -46,9 +46,9 @@ impl RawPrfKey {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct PrfKey(pub RawPrfKey, pub HostPlacement);
+pub struct HostPrfKey(pub RawPrfKey, pub HostPlacement);
 
-impl Placed for PrfKey {
+impl Placed for HostPrfKey {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -56,14 +56,14 @@ impl Placed for PrfKey {
     }
 }
 
-impl<S: Session> PlacementPlace<S, PrfKey> for HostPlacement {
-    fn place(&self, _sess: &S, key: PrfKey) -> PrfKey {
+impl<S: Session> PlacementPlace<S, HostPrfKey> for HostPlacement {
+    fn place(&self, _sess: &S, key: HostPrfKey) -> HostPrfKey {
         match key.placement() {
             Ok(place) if self == &place => key,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
-                PrfKey(key.0, self.clone())
+                HostPrfKey(key.0, self.clone())
             }
         }
     }
@@ -109,9 +109,9 @@ impl TryFrom<&[u8]> for SyncKey {
 }
 
 impl PrfKeyGenOp {
-    pub(crate) fn kernel<S: RuntimeSession>(_sess: &S, plc: &HostPlacement) -> Result<PrfKey> {
+    pub(crate) fn kernel<S: RuntimeSession>(_sess: &S, plc: &HostPlacement) -> Result<HostPrfKey> {
         let raw_key = RawPrfKey(AesRng::generate_random_key());
-        Ok(PrfKey(raw_key, plc.clone()))
+        Ok(HostPrfKey(raw_key, plc.clone()))
     }
 }
 
@@ -120,7 +120,7 @@ impl DeriveSeedOp {
         sess: &S,
         plc: &HostPlacement,
         sync_key: SyncKey,
-        key: PrfKey,
+        key: HostPrfKey,
     ) -> Result<HostSeed> {
         let sid = sess.session_id();
         let key_bytes = key.0.as_bytes();

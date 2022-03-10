@@ -136,8 +136,8 @@ mod tests {
     #[case(false)]
     fn test_eager_executor(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let mut definition = String::from(
-            r#"key = PrfKeyGen: () -> PrfKey () @Host(alice)
-        seed = DeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> HostSeed (key) @Host(alice)
+            r#"key = PrfKeyGen: () -> HostPrfKey () @Host(alice)
+        seed = DeriveSeed {sync_key = [1, 2, 3]}: (HostPrfKey) -> HostSeed (key) @Host(alice)
         shape = Constant{value = HostShape([2, 3])}: () -> HostShape @Host(alice)
         "#,
         );
@@ -176,8 +176,8 @@ mod tests {
     fn test_constants_derive_seed(
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)
-        seed = DeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> HostSeed (key) @Host(alice)
+        let source = r#"key = Constant{value=HostPrfKey(00000000000000000000000000000000)}: () -> HostPrfKey @Host(alice)
+        seed = DeriveSeed {sync_key = [1, 2, 3]}: (HostPrfKey) -> HostSeed (key) @Host(alice)
         output = Output: (HostSeed) -> HostSeed (seed) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -1121,8 +1121,8 @@ mod tests {
     #[cfg(feature = "async_execute")]
     #[test]
     fn test_duplicate_session_ids() {
-        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)
-        seed = DeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> HostSeed (key) @Host(alice)
+        let source = r#"key = Constant{value=HostPrfKey(00000000000000000000000000000000)}: () -> HostPrfKey @Host(alice)
+        seed = DeriveSeed {sync_key = [1, 2, 3]}: (HostPrfKey) -> HostSeed (key) @Host(alice)
         output = Output: (HostSeed) -> HostSeed (seed) @Host(alice)"#;
 
         let networking: Arc<dyn Send + Sync + AsyncNetworking> =
@@ -1196,8 +1196,8 @@ mod tests {
     #[cfg(feature = "async_execute")]
     #[test]
     fn test_new_async_session() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)
-        seed = DeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> HostSeed (key) @Host(alice)
+        let source = r#"key = Constant{value=HostPrfKey(00000000000000000000000000000000)}: () -> HostPrfKey @Host(alice)
+        seed = DeriveSeed {sync_key = [1, 2, 3]}: (HostPrfKey) -> HostSeed (key) @Host(alice)
         output = Output: (HostSeed) -> HostSeed (seed) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =

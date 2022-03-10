@@ -4,7 +4,7 @@ use crate::computation::KnownType;
 use crate::execution::Session;
 use crate::host::{HostPlacement, SyncKey};
 use crate::kernels::*;
-use crate::types::{HostSeed, PrfKey};
+use crate::types::{HostPrfKey, HostSeed};
 use macros::with_context;
 
 /// Internal trait for DaBit generation
@@ -23,9 +23,9 @@ impl<S: Session, HostShapeT, HostRingT, HostBitT>
 where
     HostRingT: Clone,
     HostSeed: KnownType<S>,
-    PrfKey: KnownType<S>,
-    HostPlacement: PlacementKeyGen<S, m!(PrfKey)>,
-    HostPlacement: PlacementDeriveSeed<S, m!(PrfKey), m!(HostSeed)>,
+    HostPrfKey: KnownType<S>,
+    HostPlacement: PlacementKeyGen<S, m!(HostPrfKey)>,
+    HostPlacement: PlacementDeriveSeed<S, m!(HostPrfKey), m!(HostSeed)>,
     HostPlacement: PlacementSampleUniform<S, HostShapeT, HostBitT>,
     HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(HostSeed), HostBitT>,
     HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(HostSeed), HostRingT>,

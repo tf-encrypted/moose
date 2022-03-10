@@ -42,7 +42,7 @@ macro_rules! wrapping_constant_kernel {
 
 wrapping_constant_kernel!(string_kernel for HostString(String));
 wrapping_constant_kernel!(shape_kernel for HostShape(RawShape));
-wrapping_constant_kernel!(prf_key_kernel for PrfKey(RawPrfKey));
+wrapping_constant_kernel!(prf_key_kernel for HostPrfKey(RawPrfKey));
 wrapping_constant_kernel!(seed_kernel for HostSeed(RawSeed));
 
 impl IdentityOp {

@@ -2,7 +2,7 @@ use super::{RoleAssignment, RuntimeSession, Session, SetupGeneration};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{Identity, Operands};
-use crate::host::{HostPlacement, HostString, PrfKey};
+use crate::host::{HostPlacement, HostPrfKey, HostString};
 use crate::kernels::{DispatchKernel, Kernel};
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
@@ -454,7 +454,7 @@ impl Session for AsyncSession {
 }
 
 impl SetupGeneration<ReplicatedPlacement> for AsyncSession {
-    type Setup = RepSetup<PrfKey>;
+    type Setup = RepSetup<HostPrfKey>;
 
     fn setup(&self, _plc: &ReplicatedPlacement) -> Result<Arc<Self::Setup>> {
         unimplemented!()

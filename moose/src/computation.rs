@@ -276,7 +276,7 @@ macro_rules! constants {
 constants![
     RawShape HostShape,
     RawSeed HostSeed,
-    RawPrfKey PrfKey,
+    RawPrfKey HostPrfKey,
     String HostString,
     HostBitTensor,
     HostRing64Tensor,
@@ -359,6 +359,7 @@ macro_rules! values {
                     "Fixed" => Some(Ty::Fixed),
                     // The names below are deprecated aliases, maintained for a long period of time for compatibility
                     "Seed" => Some(Ty::HostSeed), // pre v0.1.5
+                    "PrfKey" => Some(Ty::HostPrfKey), // pre v0.1.5
                     _ => None,
                 }
             }
@@ -531,7 +532,7 @@ values![
     Unit,
     HostShape,
     HostSeed,
-    PrfKey,
+    HostPrfKey,
     HostString,
     Tensor(TensorDType::Unknown),
     HostBitTensor,
@@ -597,7 +598,7 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
         Unit,
         HostShape,
         HostSeed,
-        PrfKey,
+        HostPrfKey,
         HostBitTensor,
         HostRing64Tensor,
         HostRing128Tensor,

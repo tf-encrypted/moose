@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::execution::SetupGeneration;
-use crate::host::{HostSeed, PrfKey, SyncKey};
+use crate::host::{HostPrfKey, HostSeed, SyncKey};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct RepZeroShare<HostRingT> {
@@ -60,10 +60,10 @@ pub(crate) trait SeedsGen<S: Session> {
 
 impl<S: Session> SeedsGen<S> for ReplicatedPlacement
 where
-    PrfKey: KnownType<S>,
+    HostPrfKey: KnownType<S>,
     HostSeed: KnownType<S>,
-    HostPlacement: PlacementDeriveSeed<S, m!(PrfKey), m!(HostSeed)>,
-    S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<m!(PrfKey)>>,
+    HostPlacement: PlacementDeriveSeed<S, m!(HostPrfKey), m!(HostSeed)>,
+    S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<m!(HostPrfKey)>>,
 {
     type HostSeed = m!(HostSeed);
 
