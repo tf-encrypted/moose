@@ -1,53 +1,60 @@
+.PHONY: build
 build:
 	cargo build
 
+.PHONY: pydep
 pydep:
 	pip install -r pymoose/requirements-dev.txt
 
+.PHONY: pylib-release
 pylib-release:
 	cd pymoose && python setup.py install
 	cd pymoose && python setup.py bdist_wheel
 
+.PHONY: install-release
 install-release: pydep pylib-release
 
+.PHONY: pylib
 pylib:
 	cd pymoose && python setup.py develop
 
+.PHONY: install
 install: pydep pylib
 
+.PHONY: fmt
 fmt:
 	cargo fmt
 	cd pymoose && isort .
 	cd pymoose && black .
 
+.PHONY: lint
 lint:
 	cargo fmt --all -- --check
 	cargo clippy --all-targets -- -D warnings --no-deps
 	cd pymoose && flake8 .
 
+.PHONY: test
 test:
 	cargo test
 	pytest -m "not slow" ./pymoose
 
+.PHONY: test-long
 test-long:
 	$(MAKE) test
 	pytest -m "slow" ./pymoose
 
-test-ci:
-	$(MAKE) test
+.PHONY: test-ci
+test-ci: test
 
+.PHONY: clean
 clean:
 	cargo clean
 	find ./ -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
 	rm -rf ./pymoose/.pytest_cache
 
-ci-ready:
-	cargo clean
-	$(MAKE) fmt
-	$(MAKE) lint
-	$(MAKE) test-ci
+.PHONY: ci-ready
+ci-ready: fmt lint test-ci
 
+.PHONY: release
 release: ci-ready
 	cargo release --workspace --no-publish --execute
-
-.PHONY: build pydep pylib install fmt lint test test-long test-ci clean ci-ready release
