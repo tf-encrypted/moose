@@ -26,15 +26,6 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     def post_transform(self, y):
         pass
 
-    @classmethod
-    def bias_trick(cls, x, plc, dtype):
-        bias_shape = edsl.slice(
-            edsl.shape(x, placement=plc), begin=0, end=1, placement=plc
-        )
-        bias = edsl.ones(bias_shape, dtype=edsl.float64, placement=plc)
-        reshaped_bias = edsl.expand_dims(bias, 1, placement=plc)
-        return edsl.cast(reshaped_bias, dtype=dtype, placement=plc)
-
     def neural_predictor_fn(self, x, fixedpoint_dtype):
         # layer 1
         w_1 = self.fixedpoint_constant(
@@ -97,50 +88,64 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         return predictor
 
 
-# class NeuralRegressor(NeuralNetwork):
-#     def post_transform(self, y):
-#         # no-op for linear regression models
-#         return y
+class NeuralRegressor(NeuralNetwork):
+    def post_transform(self, y, fixedpoint_dtype):
+        # no-op for linear regression models
+        return y
 
-#     @classmethod
-#     def from_onnx(cls, model_proto):
-#         lr_node = predictor_utils.find_node_in_model_proto(
-#             model_proto, "LinearRegressor", enforce=False
-#         )
-#         if lr_node is None:
-#             raise ValueError(
-#                 "Incompatible ONNX graph provided: graph must contain a "
-#                 "LinearRegressor operator."
-#             )
+    @classmethod
+    def from_onnx(cls, model_proto):
+        # parse classifier coefficients - weights of layer 1
+        weight_1, dim_1 = predictor_utils.find_initializer_in_model_proto(model_proto, "coefficient", enforce=False)
+        assert weight_1 is not None
+        if weight_1.data_type != 1:  # FLOATS
+            raise ValueError(
+                "MLP coefficients must be of type FLOATS, found other."
+            )
+        weight_1 = np.asarray(weight_1.float_data)
+        weight_1 = weight_1.reshape(dim_1).T
 
-#         coeffs_attr = predictor_utils.find_attribute_in_node(lr_node, "coefficients")
-#         if coeffs_attr.type != 6:  # FLOATS
-#             raise ValueError(
-#                 "LinearRegressor coefficients must be of type FLOATS, found other."
-#             )
-#         coeffs = np.asarray(coeffs_attr.floats)
-#         # extract intercept if it's there, otherwise pass it as None
-#         intercepts_attr = predictor_utils.find_attribute_in_node(
-#             lr_node, "intercepts", enforce=False
-#         )
-#         if intercepts_attr is None:
-#             intercepts = None
-#         elif intercepts_attr.type != 6:  # FLOATS
-#             raise ValueError(
-#                 "LinearRegressor intercept must be of type FLOATS, found other."
-#             )
-#         else:
-#             intercepts = intercepts_attr.floats
+        # parse classifier coefficients - weights of layer 2
+        weight_2, dim_2 = predictor_utils.find_initializer_in_model_proto(model_proto, "coefficient1", enforce=False)
+        assert weight_2 is not None
+        if weight_2.data_type != 1:  # FLOATS
+            raise ValueError(
+                "MLP coefficients must be of type FLOATS, found other."
+            )
+        weight_2 = np.asarray(weight_2.float_data)
+        weight_2 = weight_2.reshape(dim_2).T
 
-#         # if n_targets is not None reshape into (n_targets, n_features) matrix
-#         n_targets_ints = predictor_utils.find_attribute_in_node(
-#             lr_node, "targets", enforce=False
-#         )
-#         if n_targets_ints is not None:
-#             n_targets = n_targets_ints.i
-#             coeffs = coeffs.reshape(n_targets, -1)
+        # parse classifier biases of layer 1
+        bias_1, dim_1 = predictor_utils.find_initializer_in_model_proto(model_proto, "intercepts", enforce=False)
+        assert bias_1 is not None
+        if bias_1.data_type != 1:  # FLOATS
+            raise ValueError(
+                "MLP coefficients must be of type FLOATS, found other."
+            )
+        bias_1 = np.asarray(bias_1.float_data)
+        
+        # parse classifier biases of layer 2
+        bias_2, dim_2 = predictor_utils.find_initializer_in_model_proto(model_proto, "intercepts1", enforce=False)
+        assert bias_2 is not None
+        if bias_2.data_type != 1:  # FLOATS
+            raise ValueError(
+                "MLP coefficients must be of type FLOATS, found other."
+            )
+        bias_2 = np.asarray(bias_2.float_data)
 
-#         return cls(coeffs=coeffs, intercepts=intercepts)
+        # parse activation function
+        activation = predictor_utils.find_activation_in_model_proto(model_proto, "next_activations", enforce=False)
+
+        # infer number of regression targets
+        n_targets = dim_2[1]
+
+        return cls(
+            weight_1,
+            bias_1,
+            weight_2,
+            bias_2,
+            activation,
+        )
 
 
 class NeuralClassifier(NeuralNetwork):

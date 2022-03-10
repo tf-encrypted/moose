@@ -17,9 +17,10 @@ from pymoose.predictors import predictor_utils
  
 import numpy as np
 
+# Classification data
 X, y = make_classification(n_samples=100, random_state=44 ,n_classes=2, n_informative=2)
-X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y,
-                                                    random_state=1)
+X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=1)
+
 clf = MLPClassifier(activation='logistic', random_state=1, max_iter=300).fit(X_train, y_train)
 clf.predict_proba(X_test[:1])
 clf.predict(X_test[:5, :])
@@ -44,8 +45,8 @@ def _build_prediction_logic(onnx_proto):
 
 initial_type = ("float_input", FloatTensorType([None, clf.n_features_in_]))
 onnx_proto = convert_sklearn(clf, initial_types=[initial_type])
-with open('graph.txt', 'w') as f:
-    f.write(str(onnx_proto))
+# with open('graph.txt', 'w') as f:
+#     f.write(str(onnx_proto))
 
 net, net_logic = _build_prediction_logic(onnx_proto)
 
