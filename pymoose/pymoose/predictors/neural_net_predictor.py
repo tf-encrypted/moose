@@ -26,10 +26,6 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     def post_transform(self, y):
         pass
 
-    # @abc.abstractmethod
-    # def activation_function(self, x):
-    #     pass
-
     @classmethod
     def bias_trick(cls, x, plc, dtype):
         bias_shape = edsl.slice(
@@ -54,34 +50,16 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         y_1 = edsl.dot(x, w_1)
         z_1 = edsl.add(y_1, bias_1)
         
-        # relu
-        # y_1_shape = edsl.shape(edsl.cast(y_1, dtype=edsl.fixed(14, 23)))
-        # y_1_shape = edsl.shape(y_1)
-        # y_1_shape = edsl.slice(
-        #     edsl.shape(y_1), begin=0, end=1)
-        # y_1_shape = edsl.constant(
-        #     [100, 100], vtype=standard_ops.ShapeType())
-        # ones = edsl.ones(y_1_shape, dtype=edsl.float64)
-        # ones = edsl.cast(ones, dtype=fixedpoint_dtype)
-        # zeros = edsl.sub(ones, ones)
-        # relu_output = edsl.maximum([zeros, y_1])
-
-        # y_1_shape = edsl.slice(
-        #     edsl.shape(x), begin=0, end=1)
-        # ones = edsl.ones(y_1_shape, dtype=edsl.float64)
-        # ones = edsl.cast(ones, dtype=fixedpoint_dtype)
-        # zeros = edsl.sub(ones, ones)
-        # relu_output = edsl.maximum([zeros, y_1])
-
         # activation function
-        # if self.activation == "Sigmoid":
-        #     print("sigmoid")
-
-        # relu_output = y_1
-        #
-        print("Activation", self.activation)
         if self.activation == "Sigmoid":
             activation_output = edsl.sigmoid(z_1)
+        # There is a bug in edsl.shape
+        # elif self.activation == "Relu":
+        #     y_1_shape = edsl.slice(edsl.shape(x), begin=0, end=1)
+        #     ones = edsl.ones(y_1_shape, dtype=edsl.float64)
+        #     ones = edsl.cast(ones, dtype=fixedpoint_dtype)
+        #     zeros = edsl.sub(ones, ones)
+        #     activation_output = edsl.maximum([zeros, y_1])
         else:
             activation_output = z_1 # no activation
 
@@ -173,15 +151,11 @@ class NeuralClassifier(NeuralNetwork):
 
         # infer post_transform
         if n_classes == 2:
-            self._post_transform = lambda x: self._maybe_sigmoid(x, predictor_utils.DEFAULT_FIXED_DTYPE)
+            self._post_transform = lambda x: self._sigmoid(x, predictor_utils.DEFAULT_FIXED_DTYPE)
         elif n_classes > 2:
             self._post_transform = lambda x: edsl.softmax(x, axis=1, upmost_index=n_classes)
         else:
             raise ValueError("Specify number of classes")
-
-        # infer activation function
-        # if activation == "Sigmoid":
-        #     self._activation_function = lambda x: edsl.sigmoid(x)
 
     @classmethod
     def from_onnx(cls, model_proto):
@@ -192,13 +166,9 @@ class NeuralClassifier(NeuralNetwork):
             raise ValueError(
                 "MLP coefficients must be of type FLOATS, found other."
             )
-        # print(weight_1)
         weight_1 = np.asarray(weight_1.float_data)
-        # print(dim_1)
-        # print(weight_1.shape)
-        # print("weight_1 the shape is", weight_1.shape)
         weight_1 = weight_1.reshape(dim_1).T
-        # print(weight_1.shape)
+
         # parse classifier coefficients - weights of layer 2
         weight_2, dim_2 = predictor_utils.find_initializer_in_model_proto(model_proto, "coefficient1", enforce=False)
         assert weight_2 is not None
@@ -207,12 +177,9 @@ class NeuralClassifier(NeuralNetwork):
                 "MLP coefficients must be of type FLOATS, found other."
             )
         weight_2 = np.asarray(weight_2.float_data)
-        # print("weight_2 the shape is", weight_2.shape)
         weight_2 = weight_2.reshape(dim_2).T
-        # print(weight_2.shape)
 
-
-        # labels
+        # parse labels
         labels_node = predictor_utils.find_node_in_model_proto(
             model_proto, "ZipMap", enforce=False
         )
@@ -242,7 +209,6 @@ class NeuralClassifier(NeuralNetwork):
                 "MLP coefficients must be of type FLOATS, found other."
             )
         bias_1 = np.asarray(bias_1.float_data)
-        # bias_1 = bias_1.reshape(dim_1[0], -1)
         
         # parse classifier biases of layer 2
         bias_2, dim_2 = predictor_utils.find_initializer_in_model_proto(model_proto, "intercepts1", enforce=False)
@@ -252,12 +218,6 @@ class NeuralClassifier(NeuralNetwork):
                 "MLP coefficients must be of type FLOATS, found other."
             )
         bias_2 = np.asarray(bias_2.float_data)
-        # bias_2 = bias_2.reshape(dim_2[0], -1)
-        # print("Weights and biases")
-        # print(weight_1.shape, weight_1)
-        # print(weight_2.shape, weight_2)
-        # print(bias_1.shape, bias_1)
-        # print(bias_2.shape, bias_2)
 
         # parse activation function
         activation = predictor_utils.find_activation_in_model_proto(model_proto, "next_activations", enforce=False)
@@ -274,57 +234,15 @@ class NeuralClassifier(NeuralNetwork):
     def post_transform(self, y, fixedpoint_dtype):
         return self._post_transform(y)
     
-    # def activation_function(self, x, fixedpoint_dtype):
-    #     return self._activation_function(x)
-
     def _normalized_sigmoid(self, x, axis):
         y = edsl.sigmoid(x)
         return edsl.div(y, edsl.sum(y, axis))
 
-    def _maybe_sigmoid(self, y, fixedpoint_dtype):
-        # pos_prob = edsl.expand_dims(pos_prob, axis=1)
+    def _sigmoid(self, y, fixedpoint_dtype):
+        '''
+        returns both probabilities
+        '''
         pos_prob = edsl.sigmoid(y)
         one = self.fixedpoint_constant(1, plc=self.mirrored, dtype=fixedpoint_dtype)
         neg_prob = edsl.sub(one, pos_prob)
         return edsl.concatenate([neg_prob, pos_prob], axis=1)
-
-
-def _validate_model_args(coeffs, intercepts):
-    coeffs = _interpret_coeffs(coeffs)
-    intercepts = _interpret_intercepts(intercepts)
-    if intercepts is not None and coeffs.shape[0] != intercepts.shape[-1]:
-        raise ValueError(
-            "Shape mismatch between model coefficients and intercepts: "
-            f"Intercepts size of {coeffs.shape[0]} inferred from coefficients, "
-            f"found {intercepts.shape[-1]}."
-        )
-    return coeffs, intercepts
-
-
-def _interpret_coeffs(coeffs):
-    coeffs = np.asarray(coeffs, dtype=np.float64)
-    coeffs_shape = coeffs.shape
-    if len(coeffs_shape) == 1:
-        return np.expand_dims(coeffs, 0)
-    elif len(coeffs_shape) == 2:
-        return coeffs
-    raise ValueError(
-        f"Coeffs must be convertible to a rank-2 tensor, found shape of {coeffs_shape}."
-    )
-
-
-def _interpret_intercepts(intercepts):
-    if intercepts is None:
-        return intercepts
-    intercepts = np.asarray(intercepts, dtype=np.float64)
-    intercepts_shape = intercepts.shape
-    if len(intercepts_shape) == 1:
-        return np.expand_dims(intercepts, 0)
-    elif len(intercepts_shape) == 2:
-        if intercepts_shape[0] != 1:
-            pass
-        else:
-            return intercepts
-    raise ValueError(
-        f"Intercept must be convertible to a vector, found shape of {intercepts_shape}."
-    )

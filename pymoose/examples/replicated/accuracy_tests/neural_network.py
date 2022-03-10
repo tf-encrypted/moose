@@ -20,20 +20,10 @@ import numpy as np
 X, y = make_classification(n_samples=100, random_state=44 ,n_classes=2, n_informative=2)
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y,
                                                     random_state=1)
-clf = MLPClassifier(activation='identity', random_state=1, max_iter=300).fit(X_train, y_train)
+clf = MLPClassifier(activation='logistic', random_state=1, max_iter=300).fit(X_train, y_train)
 clf.predict_proba(X_test[:1])
 clf.predict(X_test[:5, :])
 clf.score(X_test, y_test)
-
-# print(clf.get_params())
-# print(clf.n_layers_, clf.out_activation_, clf.n_outputs_, clf.n_features_in_, clf.classes_)
-# print("X", X.shape)
-# print("y", y.shape)
-# print("X train", X_train.shape)
-# print("y train", y_train.shape)
-
-# initial_type = ("float_input", onnx_dtypes.FloatTensorType([None, clf.n_features_in_]))
-# onnx_proto = convert_sklearn(clf, initial_types=[initial_type])
 
 def _build_prediction_logic(onnx_proto):
     predictor = neural_net_predictor.NeuralClassifier.from_onnx(onnx_proto)
@@ -43,7 +33,6 @@ def _build_prediction_logic(onnx_proto):
         with predictor.alice:
             x_fixed = edsl.cast(x, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
         with predictor.replicated:
-            # activation = predictor.activation_function(x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE)
             y = predictor.neural_predictor_fn(
                 x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE
             )
@@ -74,10 +63,6 @@ actual_result = list(result_dict.values())[0]
 expected = clf.predict_proba(X_test)
 expected_result = np.array(expected)
 
-# print(actual_result.shape)
-# print(expected_result.shape)
 # print(actual_result - expected_result)
 print(np.isclose(actual_result, expected_result, atol=1e-2).all()) # Do outputs match up to 2 decimal points
 
-
-# save_model(onnx_proto, "nn.onnx")
