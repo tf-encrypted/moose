@@ -10,17 +10,13 @@ from pymoose.predictors import predictor_utils
 class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     def __init__(
         self,
-        weights_layer_1,
-        biases_layer_1,
-        weights_layer_2,
-        biases_layer_2,
-        activation,
+        weights,
+        biases,
+        activation
     ):
         super().__init__()
-        self.weights_layer_1 = weights_layer_1
-        self.biases_layer_1 = biases_layer_1
-        self.weights_layer_2 = weights_layer_2
-        self.biases_layer_2 = biases_layer_2
+        self.weights = weights
+        self.biases = biases
         self.activation = activation
 
     @classmethod
@@ -33,39 +29,35 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         pass
 
     def neural_predictor_fn(self, x, fixedpoint_dtype):
-        # layer 1
-        w_1 = self.fixedpoint_constant(
-            self.weights_layer_1.T, plc=self.mirrored, dtype=fixedpoint_dtype,
-        )
-        bias_1 = self.fixedpoint_constant(
-            self.biases_layer_1, plc=self.mirrored, dtype=fixedpoint_dtype,
-        )
-        y_1 = edsl.dot(x, w_1)
-        z_1 = edsl.add(y_1, bias_1)
+        num_hidden_layers = len(self.weights) - 1 # infer number of layers
 
-        # activation function
-        if self.activation == "Sigmoid":
-            activation_output = edsl.sigmoid(z_1)
-        # There is a bug in edsl.shape
-        # elif self.activation == "Relu":
-        #     y_1_shape = edsl.slice(edsl.shape(x), begin=0, end=1)
-        #     ones = edsl.ones(y_1_shape, dtype=edsl.float64)
-        #     ones = edsl.cast(ones, dtype=fixedpoint_dtype)
-        #     zeros = edsl.sub(ones, ones)
-        #     activation_output = edsl.maximum([zeros, y_1])
-        else:
-            activation_output = z_1  # no activation
+        def forward_pass(input, i):
+            w = self.fixedpoint_constant(self.weights[i].T, plc=self.mirrored, dtype=fixedpoint_dtype)
+            b = self.fixedpoint_constant(self.biases[i], plc=self.mirrored, dtype=fixedpoint_dtype)
+            y = edsl.dot(input, w)
+            z = edsl.add(y, b)
+            # activation function
+            if i < num_hidden_layers:
+                if self.activation == "Sigmoid":
+                    activation_output = edsl.sigmoid(z)
+                # There is a bug in edsl.shape
+                # elif self.activation == "Relu":
+                #     y_1_shape = edsl.slice(edsl.shape(x), begin=0, end=1)
+                #     ones = edsl.ones(y_1_shape, dtype=edsl.float64)
+                #     ones = edsl.cast(ones, dtype=fixedpoint_dtype)
+                #     zeros = edsl.sub(ones, ones)
+                #     activation_output = edsl.maximum([zeros, y_1])
+                else:
+                    activation_output = z  # identity activation
+            else:
+                activation_output = z
+            return activation_output
 
-        # layer 2
-        w_2 = self.fixedpoint_constant(
-            self.weights_layer_2.T, plc=self.mirrored, dtype=fixedpoint_dtype,
-        )
-        bias_2 = self.fixedpoint_constant(
-            self.biases_layer_2, plc=self.mirrored, dtype=fixedpoint_dtype,
-        )
-        y_2 = edsl.dot(activation_output, w_2)
-        z_2 = edsl.add(y_2, bias_2)
-        return z_2
+        i = 0
+        while i <= num_hidden_layers:
+            x = forward_pass(x, i)
+            i += 1
+        return x
 
     def predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
         @edsl.computation
@@ -92,65 +84,47 @@ class NeuralRegressor(NeuralNetwork):
 
     @classmethod
     def from_onnx(cls, model_proto):
-        # parse classifier coefficients - weights of layer 1
-        weight_1, dim_1 = predictor_utils.find_initializer_in_model_proto(
+        weights_data = predictor_utils.find_parameters_in_model_proto(
             model_proto, "coefficient", enforce=False
         )
-        assert weight_1 is not None
-        if weight_1.data_type != 1:  # FLOATS
-            raise ValueError("MLP coefficients must be of type FLOATS, found other.")
-        weight_1 = np.asarray(weight_1.float_data)
-        weight_1 = weight_1.reshape(dim_1).T
-
-        # parse classifier coefficients - weights of layer 2
-        weight_2, dim_2 = predictor_utils.find_initializer_in_model_proto(
-            model_proto, "coefficient1", enforce=False
-        )
-        assert weight_2 is not None
-        if weight_2.data_type != 1:  # FLOATS
-            raise ValueError("MLP coefficients must be of type FLOATS, found other.")
-        weight_2 = np.asarray(weight_2.float_data)
-        weight_2 = weight_2.reshape(dim_2).T
-
-        # parse classifier biases of layer 1
-        bias_1, dim_1 = predictor_utils.find_initializer_in_model_proto(
+        biases_data = predictor_utils.find_parameters_in_model_proto(
             model_proto, "intercepts", enforce=False
         )
-        assert bias_1 is not None
-        if bias_1.data_type != 1:  # FLOATS
-            raise ValueError("MLP coefficients must be of type FLOATS, found other.")
-        bias_1 = np.asarray(bias_1.float_data)
-
-        # parse classifier biases of layer 2
-        bias_2, dim_2 = predictor_utils.find_initializer_in_model_proto(
-            model_proto, "intercepts1", enforce=False
-        )
-        assert bias_2 is not None
-        if bias_2.data_type != 1:  # FLOATS
-            raise ValueError("MLP coefficients must be of type FLOATS, found other.")
-        bias_2 = np.asarray(bias_2.float_data)
+        weights = []
+        for weight in weights_data:
+            dimentions = weight.dims
+            assert weight is not None
+            if weight.data_type != 1:  # FLOATS
+                raise ValueError("MLP coefficients must be of type FLOATS, found other.")
+            weight = np.asarray(weight.float_data)
+            weight = weight.reshape(dimentions).T
+            weights.append(weight)
+        biases = []
+        for bias in biases_data:
+            assert bias is not None
+            if bias.data_type != 1:  # FLOATS
+                raise ValueError("MLP coefficients must be of type FLOATS, found other.")
+            bias = np.asarray(bias.float_data)
+            biases.append(bias)
 
         # parse activation function
         activation = predictor_utils.find_activation_in_model_proto(
             model_proto, "next_activations", enforce=False
         )
-
-        return cls(weight_1, bias_1, weight_2, bias_2, activation,)
+        return cls(weights, biases, activation)
 
 
 class NeuralClassifier(NeuralNetwork):
     def __init__(
         self,
-        weights_layer_1,
-        biases_layer_1,
-        weights_layer_2,
-        biases_layer_2,
+        weights,
+        biases,
         n_classes,
         activation,
         transform_output=True,
     ):
         super().__init__(
-            weights_layer_1, biases_layer_1, weights_layer_2, biases_layer_2, activation
+            weights, biases, activation
         )
         n_classes = n_classes
         activation = activation
@@ -169,25 +143,28 @@ class NeuralClassifier(NeuralNetwork):
 
     @classmethod
     def from_onnx(cls, model_proto):
-        # parse classifier coefficients - weights of layer 1
-        weight_1, dim_1 = predictor_utils.find_initializer_in_model_proto(
+        weights_data = predictor_utils.find_parameters_in_model_proto(
             model_proto, "coefficient", enforce=False
         )
-        assert weight_1 is not None
-        if weight_1.data_type != 1:  # FLOATS
-            raise ValueError("MLP coefficients must be of type FLOATS, found other.")
-        weight_1 = np.asarray(weight_1.float_data)
-        weight_1 = weight_1.reshape(dim_1).T
-
-        # parse classifier coefficients - weights of layer 2
-        weight_2, dim_2 = predictor_utils.find_initializer_in_model_proto(
-            model_proto, "coefficient1", enforce=False
+        biases_data = predictor_utils.find_parameters_in_model_proto(
+            model_proto, "intercepts", enforce=False
         )
-        assert weight_2 is not None
-        if weight_2.data_type != 1:  # FLOATS
-            raise ValueError("MLP coefficients must be of type FLOATS, found other.")
-        weight_2 = np.asarray(weight_2.float_data)
-        weight_2 = weight_2.reshape(dim_2).T
+        weights = []
+        for weight in weights_data:
+            dimentions = weight.dims
+            assert weight is not None
+            if weight.data_type != 1:  # FLOATS
+                raise ValueError("MLP coefficients must be of type FLOATS, found other.")
+            weight = np.asarray(weight.float_data)
+            weight = weight.reshape(dimentions).T
+            weights.append(weight)
+        biases = []
+        for bias in biases_data:
+            assert bias is not None
+            if bias.data_type != 1:  # FLOATS
+                raise ValueError("MLP coefficients must be of type FLOATS, found other.")
+            bias = np.asarray(bias.float_data)
+            biases.append(bias)
 
         # parse labels
         labels_node = predictor_utils.find_node_in_model_proto(
@@ -211,30 +188,11 @@ class NeuralClassifier(NeuralNetwork):
             classlabels = classlabels_strings.strings
         n_classes = len(classlabels)
 
-        # parse classifier biases of layer 1
-        bias_1, dim_1 = predictor_utils.find_initializer_in_model_proto(
-            model_proto, "intercepts", enforce=False
-        )
-        assert bias_1 is not None
-        if bias_1.data_type != 1:  # FLOATS
-            raise ValueError("MLP coefficients must be of type FLOATS, found other.")
-        bias_1 = np.asarray(bias_1.float_data)
-
-        # parse classifier biases of layer 2
-        bias_2, dim_2 = predictor_utils.find_initializer_in_model_proto(
-            model_proto, "intercepts1", enforce=False
-        )
-        assert bias_2 is not None
-        if bias_2.data_type != 1:  # FLOATS
-            raise ValueError("MLP coefficients must be of type FLOATS, found other.")
-        bias_2 = np.asarray(bias_2.float_data)
-
         # parse activation function
         activation = predictor_utils.find_activation_in_model_proto(
             model_proto, "next_activations", enforce=False
         )
-
-        return cls(weight_1, bias_1, weight_2, bias_2, n_classes, activation,)
+        return cls(weights, biases, n_classes, activation)
 
     def post_transform(self, y, fixedpoint_dtype):
         return self._post_transform(y)
