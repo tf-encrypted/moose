@@ -9,12 +9,13 @@ from pymoose.predictors import predictor_utils
 from pymoose.computation import standard as standard_ops
 
 class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
-    def __init__(self, weights_layer_1, biases_layer_1, weights_layer_2, biases_layer_2):
+    def __init__(self, weights_layer_1, biases_layer_1, weights_layer_2, biases_layer_2, activation):
         super().__init__()
         self.weights_layer_1 = weights_layer_1
         self.biases_layer_1 = biases_layer_1
         self.weights_layer_2 = weights_layer_2
         self.biases_layer_2 = biases_layer_2
+        self.activation = activation
 
     @classmethod
     @abc.abstractmethod
@@ -24,6 +25,10 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def post_transform(self, y):
         pass
+
+    # @abc.abstractmethod
+    # def activation_function(self, x):
+    #     pass
 
     @classmethod
     def bias_trick(cls, x, plc, dtype):
@@ -68,10 +73,17 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         # zeros = edsl.sub(ones, ones)
         # relu_output = edsl.maximum([zeros, y_1])
 
+        # activation function
+        # if self.activation == "Sigmoid":
+        #     print("sigmoid")
 
         # relu_output = y_1
-        # activation_output = edsl.sigmoid(z_1)
-        activation_output = z_1
+        #
+        print("Activation", self.activation)
+        if self.activation == "Sigmoid":
+            activation_output = edsl.sigmoid(z_1)
+        else:
+            activation_output = z_1 # no activation
 
         # layer 2
         w_2 = self.fixedpoint_constant(
@@ -99,7 +111,8 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         ):
             x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
             with self.replicated:
-                y = self.neural_predictor_fn(x, fixedpoint_dtype)
+                activation = self.activation_function(x, fixedpoint_dtype)
+                y = self.neural_predictor_fn(x, activation, fixedpoint_dtype)
                 pred = self.post_transform(y)
             return self.handle_output(pred, prediction_handler=self.bob)
 
@@ -153,10 +166,10 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
 
 
 class NeuralClassifier(NeuralNetwork):
-    def __init__(self, weights_layer_1, biases_layer_1, weights_layer_2, biases_layer_2, n_classes, transform_output=True):
-        super().__init__(weights_layer_1, biases_layer_1, weights_layer_2, biases_layer_2)
+    def __init__(self, weights_layer_1, biases_layer_1, weights_layer_2, biases_layer_2, n_classes, activation, transform_output=True):
+        super().__init__(weights_layer_1, biases_layer_1, weights_layer_2, biases_layer_2, activation)
         n_classes = n_classes
-        print("N classes", n_classes)
+        activation = activation
 
         # infer post_transform
         if n_classes == 2:
@@ -165,6 +178,10 @@ class NeuralClassifier(NeuralNetwork):
             self._post_transform = lambda x: edsl.softmax(x, axis=1, upmost_index=n_classes)
         else:
             raise ValueError("Specify number of classes")
+
+        # infer activation function
+        # if activation == "Sigmoid":
+        #     self._activation_function = lambda x: edsl.sigmoid(x)
 
     @classmethod
     def from_onnx(cls, model_proto):
@@ -177,11 +194,11 @@ class NeuralClassifier(NeuralNetwork):
             )
         # print(weight_1)
         weight_1 = np.asarray(weight_1.float_data)
-        print(dim_1)
-        print(weight_1.shape)
-        print("weight_1 the shape is", weight_1.shape)
+        # print(dim_1)
+        # print(weight_1.shape)
+        # print("weight_1 the shape is", weight_1.shape)
         weight_1 = weight_1.reshape(dim_1).T
-        print(weight_1.shape)
+        # print(weight_1.shape)
         # parse classifier coefficients - weights of layer 2
         weight_2, dim_2 = predictor_utils.find_initializer_in_model_proto(model_proto, "coefficient1", enforce=False)
         assert weight_2 is not None
@@ -190,9 +207,9 @@ class NeuralClassifier(NeuralNetwork):
                 "MLP coefficients must be of type FLOATS, found other."
             )
         weight_2 = np.asarray(weight_2.float_data)
-        print("weight_2 the shape is", weight_2.shape)
+        # print("weight_2 the shape is", weight_2.shape)
         weight_2 = weight_2.reshape(dim_2).T
-        print(weight_2.shape)
+        # print(weight_2.shape)
 
 
         # labels
@@ -239,8 +256,11 @@ class NeuralClassifier(NeuralNetwork):
         # print("Weights and biases")
         # print(weight_1.shape, weight_1)
         # print(weight_2.shape, weight_2)
-        print(bias_1.shape, bias_1)
+        # print(bias_1.shape, bias_1)
         # print(bias_2.shape, bias_2)
+
+        # parse activation function
+        activation = predictor_utils.find_activation_in_model_proto(model_proto, "next_activations", enforce=False)
 
         return cls(
             weight_1,
@@ -248,10 +268,14 @@ class NeuralClassifier(NeuralNetwork):
             weight_2,
             bias_2,
             n_classes,
+            activation,
         )
 
     def post_transform(self, y, fixedpoint_dtype):
         return self._post_transform(y)
+    
+    # def activation_function(self, x, fixedpoint_dtype):
+    #     return self._activation_function(x)
 
     def _normalized_sigmoid(self, x, axis):
         y = edsl.sigmoid(x)

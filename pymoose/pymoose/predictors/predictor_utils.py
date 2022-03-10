@@ -38,3 +38,12 @@ def find_initializer_in_model_proto(model_proto, operator_name, enforce=True):
     if enforce and initializer is None:
         raise ValueError(f"Model proto does not contain operator {operator_name}.")
     return initializer, initializer.dims
+
+def find_activation_in_model_proto(model_proto, operator_name, enforce=True):
+    activation = None
+    for operator in model_proto.graph.node:
+        if operator.output[0] == operator_name:
+            activation = operator.name
+    if enforce and activation is None:
+        raise ValueError(f"Model proto does not contain operator {operator_name}.")
+    return activation

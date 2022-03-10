@@ -25,12 +25,12 @@ clf.predict_proba(X_test[:1])
 clf.predict(X_test[:5, :])
 clf.score(X_test, y_test)
 
-print(clf.get_params())
-print(clf.n_layers_, clf.out_activation_, clf.n_outputs_, clf.n_features_in_, clf.classes_)
-print("X", X.shape)
-print("y", y.shape)
-print("X train", X_train.shape)
-print("y train", y_train.shape)
+# print(clf.get_params())
+# print(clf.n_layers_, clf.out_activation_, clf.n_outputs_, clf.n_features_in_, clf.classes_)
+# print("X", X.shape)
+# print("y", y.shape)
+# print("X train", X_train.shape)
+# print("y train", y_train.shape)
 
 # initial_type = ("float_input", onnx_dtypes.FloatTensorType([None, clf.n_features_in_]))
 # onnx_proto = convert_sklearn(clf, initial_types=[initial_type])
@@ -43,6 +43,7 @@ def _build_prediction_logic(onnx_proto):
         with predictor.alice:
             x_fixed = edsl.cast(x, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
         with predictor.replicated:
+            # activation = predictor.activation_function(x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE)
             y = predictor.neural_predictor_fn(
                 x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE
             )
@@ -54,6 +55,9 @@ def _build_prediction_logic(onnx_proto):
 
 initial_type = ("float_input", FloatTensorType([None, clf.n_features_in_]))
 onnx_proto = convert_sklearn(clf, initial_types=[initial_type])
+with open('graph.txt', 'w') as f:
+    f.write(str(onnx_proto))
+
 net, net_logic = _build_prediction_logic(onnx_proto)
 
 traced_predictor = edsl.trace(net_logic)
@@ -70,10 +74,10 @@ actual_result = list(result_dict.values())[0]
 expected = clf.predict_proba(X_test)
 expected_result = np.array(expected)
 
-print(actual_result.shape)
-print(expected_result.shape)
-print(actual_result - expected_result)
+# print(actual_result.shape)
+# print(expected_result.shape)
+# print(actual_result - expected_result)
+print(np.isclose(actual_result, expected_result, atol=1e-2).all()) # Do outputs match up to 2 decimal points
 
-with open('graph.txt', 'w') as f:
-    f.write(str(onnx_proto))
+
 # save_model(onnx_proto, "nn.onnx")
