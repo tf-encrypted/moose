@@ -8,12 +8,7 @@ from pymoose.predictors import predictor_utils
 
 
 class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
-    def __init__(
-        self,
-        weights,
-        biases,
-        activation
-    ):
+    def __init__(self, weights, biases, activation):
         super().__init__()
         self.weights = weights
         self.biases = biases
@@ -29,11 +24,15 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         pass
 
     def neural_predictor_fn(self, x, fixedpoint_dtype):
-        num_hidden_layers = len(self.weights) - 1 # infer number of layers
+        num_hidden_layers = len(self.weights) - 1  # infer number of layers
 
         def forward_pass(input, i):
-            w = self.fixedpoint_constant(self.weights[i].T, plc=self.mirrored, dtype=fixedpoint_dtype)
-            b = self.fixedpoint_constant(self.biases[i], plc=self.mirrored, dtype=fixedpoint_dtype)
+            w = self.fixedpoint_constant(
+                self.weights[i].T, plc=self.mirrored, dtype=fixedpoint_dtype
+            )
+            b = self.fixedpoint_constant(
+                self.biases[i], plc=self.mirrored, dtype=fixedpoint_dtype
+            )
             y = edsl.dot(input, w)
             z = edsl.add(y, b)
             # activation function
@@ -95,7 +94,9 @@ class NeuralRegressor(NeuralNetwork):
             dimentions = weight.dims
             assert weight is not None
             if weight.data_type != 1:  # FLOATS
-                raise ValueError("MLP coefficients must be of type FLOATS, found other.")
+                raise ValueError(
+                    "MLP coefficients must be of type FLOATS, found other."
+                )
             weight = np.asarray(weight.float_data)
             weight = weight.reshape(dimentions).T
             weights.append(weight)
@@ -103,7 +104,9 @@ class NeuralRegressor(NeuralNetwork):
         for bias in biases_data:
             assert bias is not None
             if bias.data_type != 1:  # FLOATS
-                raise ValueError("MLP coefficients must be of type FLOATS, found other.")
+                raise ValueError(
+                    "MLP coefficients must be of type FLOATS, found other."
+                )
             bias = np.asarray(bias.float_data)
             biases.append(bias)
 
@@ -116,16 +119,9 @@ class NeuralRegressor(NeuralNetwork):
 
 class NeuralClassifier(NeuralNetwork):
     def __init__(
-        self,
-        weights,
-        biases,
-        n_classes,
-        activation,
-        transform_output=True,
+        self, weights, biases, n_classes, activation, transform_output=True,
     ):
-        super().__init__(
-            weights, biases, activation
-        )
+        super().__init__(weights, biases, activation)
         n_classes = n_classes
         activation = activation
 
@@ -154,7 +150,9 @@ class NeuralClassifier(NeuralNetwork):
             dimentions = weight.dims
             assert weight is not None
             if weight.data_type != 1:  # FLOATS
-                raise ValueError("MLP coefficients must be of type FLOATS, found other.")
+                raise ValueError(
+                    "MLP coefficients must be of type FLOATS, found other."
+                )
             weight = np.asarray(weight.float_data)
             weight = weight.reshape(dimentions).T
             weights.append(weight)
@@ -162,7 +160,9 @@ class NeuralClassifier(NeuralNetwork):
         for bias in biases_data:
             assert bias is not None
             if bias.data_type != 1:  # FLOATS
-                raise ValueError("MLP coefficients must be of type FLOATS, found other.")
+                raise ValueError(
+                    "MLP coefficients must be of type FLOATS, found other."
+                )
             bias = np.asarray(bias.float_data)
             biases.append(bias)
 
