@@ -35,7 +35,7 @@ pub(crate) fn map_send_result(
     match res {
         Ok(_) => Ok(()),
         Err(val) => {
-            if val.ty() == Ty::Unit {
+            if val.ty() == Ty::HostUnit {
                 // ignoring unit value is okay
                 Ok(())
             } else {
@@ -211,7 +211,7 @@ impl AsyncSession {
 
             sess.storage.save(&key.0, &sess.session_id, &x).await?;
 
-            let result = Unit(plc);
+            let result = HostUnit(plc);
             map_send_result(sender.send(result.into()))?;
             Ok(())
         });
@@ -274,7 +274,7 @@ impl AsyncSession {
                 .send(&x, receiver, &op.rendezvous_key, &sess.session_id)
                 .await?;
 
-            let result = Unit(plc);
+            let result = HostUnit(plc);
             map_send_result(sender.send(result.into()))?;
             Ok(())
         });

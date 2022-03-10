@@ -280,8 +280,8 @@ mod tests {
         x_query = Input {arg_name="x_query"}: () -> HostString () @Host(alice)
         saved_uri = Constant{value = HostString("saved_data")}: () -> HostString () @Host(alice)
         x = Load: (HostString, HostString) -> TensorType (x_uri, x_query) @Host(alice)
-        save = Save: (HostString, TensorType) -> Unit (saved_uri, x) @Host(alice)
-        output = Output: (Unit) -> Unit (save) @Host(alice)
+        save = Save: (HostString, TensorType) -> HostUnit (saved_uri, x) @Host(alice)
+        output = Output: (HostUnit) -> HostUnit (save) @Host(alice)
         "#;
         let source = source_template.replace("TensorType", &data_type_str);
         let plc = HostPlacement::from("alice");

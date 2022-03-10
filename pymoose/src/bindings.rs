@@ -225,7 +225,7 @@ impl LocalRuntime {
             Ok(outputs) => {
                 for (output_name, value) in outputs {
                     match value {
-                        Value::Unit(_) => None,
+                        Value::HostUnit(_) => None,
                         // TODO: not sure what to support, should eventually standardize output types of computations
                         Value::HostString(s) => Some(PyString::new(py, &s.0).to_object(py)),
                         Value::Float64(f) => Some(PyFloat::new(py, *f).to_object(py)),

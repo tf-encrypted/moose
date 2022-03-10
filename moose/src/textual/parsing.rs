@@ -1393,7 +1393,7 @@ impl ToTextual for Value {
             Value::HostSeed(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
             Value::HostPrfKey(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
             Value::Bit(x) => format!("{}({})", self.ty().short_name(), x),
-            Value::Unit(_) => self.ty().short_name().to_string(),
+            Value::HostUnit(_) => self.ty().short_name().to_string(),
             Value::HostBitTensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
             Value::HostFixed64Tensor(x) => format_to_textual!(
                 "{}[{}/{}]({}) {}",
@@ -1738,8 +1738,8 @@ mod tests {
 
     #[test]
     fn test_type_parsing() -> Result<(), anyhow::Error> {
-        let (_, parsed_type) = parse_type::<(&str, ErrorKind)>("Unit")?;
-        assert_eq!(parsed_type, Ty::Unit);
+        let (_, parsed_type) = parse_type::<(&str, ErrorKind)>("HostUnit")?;
+        assert_eq!(parsed_type, Ty::HostUnit);
         let (_, parsed) = operator_signature::<(&str, ErrorKind)>(0)(
             ": (HostFloat32Tensor, HostFloat64Tensor) -> HostUint16Tensor",
         )?;
@@ -1867,13 +1867,13 @@ mod tests {
     #[test]
     fn test_send() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            r#"send = Send{rendezvous_key = 30313233343536373839616263646566, receiver = "bob"}: (HostFloat32Tensor) -> Unit() @Host(alice)"#,
+            r#"send = Send{rendezvous_key = 30313233343536373839616263646566, receiver = "bob"}: (HostFloat32Tensor) -> HostUnit() @Host(alice)"#,
         )?;
         assert_eq!(op.name, "send");
         assert_eq!(
             op.kind,
             Operator::Send(SendOp {
-                sig: Signature::unary(Ty::HostFloat32Tensor, Ty::Unit),
+                sig: Signature::unary(Ty::HostFloat32Tensor, Ty::HostUnit),
                 rendezvous_key: "0123456789abcdef".try_into()?,
                 receiver: Role::from("bob")
             })

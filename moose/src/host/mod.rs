@@ -43,11 +43,11 @@ impl From<&str> for HostPlacement {
     }
 }
 
-impl<S: Session> PlacementPlace<S, Unit> for HostPlacement {
-    fn place(&self, _sess: &S, x: Unit) -> Unit {
+impl<S: Session> PlacementPlace<S, HostUnit> for HostPlacement {
+    fn place(&self, _sess: &S, x: HostUnit) -> HostUnit {
         match x.placement() {
             Ok(place) if &place == self => x,
-            _ => Unit(self.clone()),
+            _ => HostUnit(self.clone()),
         }
     }
 }

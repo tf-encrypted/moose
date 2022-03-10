@@ -116,7 +116,7 @@ impl DispatchKernel<SyncSession> for SendOp {
                     &op.rendezvous_key,
                     &sess.session_id,
                 )?;
-                Ok(Unit(plc.clone()).into())
+                Ok(HostUnit(plc.clone()).into())
             }))
         } else {
             unimplemented!()
@@ -176,7 +176,7 @@ impl Session for SyncSession {
                         "SyncSession does not support running Save on non-host placements yet"
                     ),
                 };
-                Unit(host.clone()).into()
+                HostUnit(host.clone()).into()
             }
 
             // The regular kernels

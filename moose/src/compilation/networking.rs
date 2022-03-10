@@ -73,7 +73,7 @@ impl NetworkingPass {
         let send_operation = Operation {
             name: format!("send_{}", index),
             kind: SendOp {
-                sig: Signature::unary(src_op.kind.sig().ret(), Ty::Unit),
+                sig: Signature::unary(src_op.kind.sig().ret(), Ty::HostUnit),
                 rendezvous_key: rendezvous_key.clone(),
                 receiver: Role::from(dst),
             }
@@ -161,7 +161,7 @@ mod tests {
 
         // Networking should introduce one new networking operation (not 2) for the 2 jumps. And leave the mean unchaged (dot already on the right host)
         assert!(comp.contains(
-            r#"send_0 = Send{rendezvous_key = 00000000000000000000000000000000, receiver = "alice"}: (HostFloat32Tensor) -> Unit (y) @Host(bob)"#
+            r#"send_0 = Send{rendezvous_key = 00000000000000000000000000000000, receiver = "alice"}: (HostFloat32Tensor) -> HostUnit (y) @Host(bob)"#
         ));
         assert!(comp.contains(r#"receive_0 = Receive{rendezvous_key = 00000000000000000000000000000000, sender = "bob"}: () -> HostFloat32Tensor () @Host(alice)"#));
         assert!(comp.contains("mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, receive_0) @Host(alice)"));
@@ -184,11 +184,11 @@ mod tests {
             .to_textual();
         // Should have one send/receive pair per each variable being sent
         assert!(comp.contains(
-            r#"send_0 = Send{rendezvous_key = 00000000000000000000000000000000, receiver = "bob"}: (HostFloat32Tensor) -> Unit (x) @Host(alice)"#
+            r#"send_0 = Send{rendezvous_key = 00000000000000000000000000000000, receiver = "bob"}: (HostFloat32Tensor) -> HostUnit (x) @Host(alice)"#
         ));
         assert!(comp.contains(r#"receive_0 = Receive{rendezvous_key = 00000000000000000000000000000000, sender = "alice"}: () -> HostFloat32Tensor () @Host(bob)"#));
         assert!(comp.contains(
-            r#"send_1 = Send{rendezvous_key = 01000000000000000000000000000000, receiver = "bob"}: (HostFloat32Tensor) -> Unit (y) @Host(alice)"#
+            r#"send_1 = Send{rendezvous_key = 01000000000000000000000000000000, receiver = "bob"}: (HostFloat32Tensor) -> HostUnit (y) @Host(alice)"#
         ));
         assert!(comp.contains(r#"receive_1 = Receive{rendezvous_key = 01000000000000000000000000000000, sender = "alice"}: () -> HostFloat32Tensor () @Host(bob)"#));
         // Should use the same pair of operators for both computations on both (asserting for no extra jumps)
