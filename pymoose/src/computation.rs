@@ -795,16 +795,28 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    std_ShapeOperation(op) => Ok(Operation {
-                        kind: ShapeOp {
-                            sig: Signature::from_unary(&op.signature, "x")?,
-                        }
-                        .into(),
-                        inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        name: op.name.clone(),
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
+                    std_ShapeOperation(op) => {
+                        let placement = map_placement(&placements, &op.placement_name)?;
+                        let sig = Signature::from_unary(&op.signature, "x")?;
+                        // Replace HostShape with ReplicatedShape on Replicated placments
+                        let sig = match (placement, sig) {
+                            (
+                                Placement::Replicated(_),
+                                Signature::Unary(UnarySignature {
+                                    arg0,
+                                    ret: Ty::HostShape,
+                                }),
+                            ) => Signature::unary(arg0, Ty::ReplicatedShape),
+                            _ => sig,
+                        };
+                        Ok(Operation {
+                            kind: ShapeOp { sig }.into(),
+                            inputs: map_inputs(&op.inputs, &["x"])
+                                .with_context(|| format!("Failed at op {:?}", op))?,
+                            name: op.name.clone(),
+                            placement,
+                        })
+                    }
                     std_IndexAxisOperation(op) => Ok(Operation {
                         kind: IndexAxisOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
