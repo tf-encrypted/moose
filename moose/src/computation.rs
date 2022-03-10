@@ -474,13 +474,6 @@ macro_rules! values {
             pub fn ty(&self) -> Ty {
                 match self {
                     $(SymbolicValue::$val(_) => Ty::$val$(($inner::$default))?,)+
-                    // TODO promote below to match other values
-                    // SymbolicValue::HostUnit => Ty::HostUnit,
-                    // SymbolicValue::Bit(_) => Ty::Bit,
-                    // SymbolicValue::Float32(_) => Ty::Float32,
-                    // SymbolicValue::Float64(_) => Ty::Float64,
-                    // SymbolicValue::Ring64(_) => Ty::Ring64,
-                    // SymbolicValue::Ring128(_) => Ty::Ring128,
                 }
             }
         }
