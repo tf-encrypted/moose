@@ -1,11 +1,16 @@
+use moose::error::Error;
 use moose::prelude::*;
 use moose::Result;
 use ndarray::ArrayD;
 use ndarray_npy::read_npy;
-use std::io::Read;
 
 pub async fn read_numpy(filename: &str, placement: &HostPlacement) -> Result<Value> {
-    let arr: ArrayD<f64> = read_npy(filename).unwrap();
+    let arr: ArrayD<f64> = read_npy(filename).map_err(|e| {
+        Error::Storage(format!(
+            "failed to read numpy data file: {}: {}",
+            filename, e
+        ))
+    })?;
     let tensor: HostFloat64Tensor = placement.from_raw(arr);
     let value = Value::from(tensor);
     Ok(value)
