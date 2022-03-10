@@ -1,5 +1,5 @@
 {
-    "player0": "192.168.0.194:8000",
-    "player1": "192.168.0.157:8001",
-    "player2": "192.168.0.109:8002"
+    "player0": "localhost:8000",
+    "player1": "localhost:8001",
+    "player2": "localhost:8002"
 }

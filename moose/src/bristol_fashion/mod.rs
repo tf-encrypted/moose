@@ -279,7 +279,7 @@ mod tests {
 
             let c_bits: Vec<u8> = aes128(&sess, &host, k, m)
                 .iter()
-                .map(|t| t.0[0] & 1)
+                .map(|t| t.0.data[0] as u8)
                 .collect();
             let c: Vec<u8> = c_bits.chunks(8).map(bits_to_byte_be).collect();
             c
@@ -314,7 +314,7 @@ mod tests {
                     .iter()
                     .map(|te| {
                         let t = host.reveal(&sess, te);
-                        t.0[0] & 1
+                        t.0.data[0] as u8
                     })
                     .collect();
             let c: Vec<u8> = c_bits.chunks(8).map(bits_to_byte_be).collect();

@@ -1,7 +1,7 @@
 use super::*;
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::execution::Session;
+use crate::execution::{Operands, Session};
 use crate::host::HostPlacement;
 use crate::kernels::*;
 use crate::mirrored::Mirrored3Placement;
@@ -208,7 +208,7 @@ impl AddNOp {
             let x = &xs[0];
             match x {
                 AbstractTensor::Fixed64(_) => {
-                    let vec: Vec<Fixed64T> = xs
+                    let vec: Operands<Fixed64T> = xs
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
                             AbstractTensor::Fixed64(x) => x.clone(),
@@ -219,7 +219,7 @@ impl AddNOp {
                     Ok(AbstractTensor::Fixed64(result))
                 }
                 AbstractTensor::Fixed128(_) => {
-                    let vec: Vec<Fixed128T> = xs
+                    let vec: Operands<Fixed128T> = xs
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
                             AbstractTensor::Fixed128(x) => x.clone(),
@@ -230,7 +230,7 @@ impl AddNOp {
                     Ok(AbstractTensor::Fixed128(result))
                 }
                 AbstractTensor::Float32(_) => {
-                    let vec: Vec<Float32T> = xs
+                    let vec: Operands<Float32T> = xs
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
                             AbstractTensor::Float32(x) => x.clone(),
@@ -241,7 +241,7 @@ impl AddNOp {
                     Ok(AbstractTensor::Float32(result))
                 }
                 AbstractTensor::Float64(_) => {
-                    let vec: Vec<Float64T> = xs
+                    let vec: Operands<Float64T> = xs
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
                             AbstractTensor::Float64(x) => x.clone(),
@@ -286,7 +286,7 @@ impl AddNOp {
             let x = &xs[0];
             match x {
                 AbstractTensor::Fixed64(_) => {
-                    let vec: Vec<Fixed64T> = xs
+                    let vec: Operands<Fixed64T> = xs
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
                             AbstractTensor::Fixed64(x) => (*x).clone(),
@@ -297,7 +297,7 @@ impl AddNOp {
                     Ok(AbstractTensor::Fixed64(result))
                 }
                 AbstractTensor::Fixed128(_) => {
-                    let vec: Vec<Fixed128T> = xs
+                    let vec: Operands<Fixed128T> = xs
                         .iter()
                         .map(|abstract_tensor| match abstract_tensor {
                             AbstractTensor::Fixed128(x) => (*x).clone(),
@@ -1493,7 +1493,7 @@ impl ConcatOp {
             //     AbstractTensor::Fixed128(result)
             // }
             AbstractTensor::Float32(_) => {
-                let xs: Vec<Float32T> = xs
+                let xs: Operands<Float32T> = xs
                     .iter()
                     .map(|x| match x {
                         AbstractTensor::Float32(x) => x.clone(),
@@ -1508,7 +1508,7 @@ impl ConcatOp {
                 Ok(AbstractTensor::Float32(result))
             }
             AbstractTensor::Float64(_) => {
-                let xs: Vec<Float64T> = xs
+                let xs: Operands<Float64T> = xs
                     .iter()
                     .map(|x| match x {
                         AbstractTensor::Float64(x) => x.clone(),
@@ -1567,7 +1567,7 @@ impl ConcatOp {
 
         let out = match x[0] {
             AbstractTensor::Fixed64(_) => {
-                let xv: Vec<Fixed64T> = x
+                let xv: Operands<Fixed64T> = x
                     .iter()
                     .filter_map(|entry| match entry {
                         AbstractTensor::Fixed64(v) => Some(v.clone()),
@@ -1582,7 +1582,7 @@ impl ConcatOp {
                 AbstractTensor::Fixed64(plc.concatenate(sess, axis, &xv))
             }
             AbstractTensor::Fixed128(_) => {
-                let xv: Vec<Fixed128T> = x
+                let xv: Operands<Fixed128T> = x
                     .iter()
                     .filter_map(|entry| match entry {
                         AbstractTensor::Fixed128(v) => Some(v.clone()),
@@ -1597,7 +1597,7 @@ impl ConcatOp {
                 AbstractTensor::Fixed128(plc.concatenate(sess, axis, &xv))
             }
             AbstractTensor::Bool(_) => {
-                let xv: Vec<BoolT> = x
+                let xv: Operands<BoolT> = x
                     .iter()
                     .filter_map(|entry| match entry {
                         AbstractTensor::Bool(v) => Some(v.clone()),
@@ -2232,7 +2232,7 @@ impl MaximumOp {
 
         let out = match x[0] {
             AbstractTensor::Fixed64(_) => {
-                let xv: Vec<Fixed64T> = x
+                let xv: Operands<Fixed64T> = x
                     .iter()
                     .filter_map(|entry| match entry {
                         AbstractTensor::Fixed64(v) => Some(v.clone()),
@@ -2247,7 +2247,7 @@ impl MaximumOp {
                 AbstractTensor::Fixed64(plc.maximum(sess, &xv))
             }
             AbstractTensor::Fixed128(_) => {
-                let xv: Vec<Fixed128T> = x
+                let xv: Operands<Fixed128T> = x
                     .iter()
                     .filter_map(|entry| match entry {
                         AbstractTensor::Fixed128(v) => Some(v.clone()),

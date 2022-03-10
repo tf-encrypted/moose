@@ -1,7 +1,7 @@
 //! Placement for plaintext operations by a single role
 
 use crate::computation::*;
-use crate::error::{Error, Result};
+use crate::error::Result;
 #[cfg(feature = "compile")]
 use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
@@ -19,14 +19,18 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::num::Wrapping;
 
+mod bitarray;
 mod fixedpoint;
 mod ops;
 mod prim;
+pub use bitarray::*;
 pub use fixedpoint::Convert;
 pub use prim::*;
 
+pub type ArcArrayD<A> = ArcArray<A, IxDyn>;
+
 /// Placement type for single role plaintext operations
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
 pub struct HostPlacement {
     pub owner: Role,
 }
@@ -72,7 +76,7 @@ impl<S: Session> PlacementPlace<S, HostString> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
 pub struct RawShape(pub Vec<usize>);
 
 impl RawShape {
@@ -133,7 +137,7 @@ impl<S: Session> PlacementPlace<S, HostShape> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct SliceInfoElem {
     /// Start index; negative are counted from the back of the axis.
     pub start: isize,
@@ -145,7 +149,7 @@ pub struct SliceInfoElem {
 }
 
 // Slicing needs a SliceInfoElem for each shape dimension
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct SliceInfo(pub Vec<SliceInfoElem>);
 
 impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn> {
@@ -160,8 +164,8 @@ impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, 
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct HostTensor<T>(pub ArrayD<T>, pub HostPlacement);
+#[derive(Serialize, Deserialize, Hash, Clone, Debug, PartialEq)]
+pub struct HostTensor<T>(pub ArcArrayD<T>, pub HostPlacement);
 
 impl<T> Placed for HostTensor<T> {
     type Placement = HostPlacement;
@@ -184,7 +188,7 @@ impl<T> HostTensor<T>
 where
     T: LinalgScalar,
 {
-    pub(crate) fn place(plc: &HostPlacement, x: ArrayD<T>) -> HostTensor<T> {
+    pub(crate) fn place(plc: &HostPlacement, x: ArcArrayD<T>) -> HostTensor<T> {
         HostTensor::<T>(x, plc.clone())
     }
 
@@ -197,12 +201,12 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub struct HostBitTensor(pub ArrayD<u8>, pub HostPlacement);
+#[derive(Serialize, Deserialize, Hash, Clone, PartialEq)]
+pub struct HostBitTensor(pub BitArrayRepr, pub HostPlacement);
 
 impl std::fmt::Debug for HostBitTensor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.as_slice().unwrap().fmt(f)
+        self.0.data.as_bitslice().fmt(f)
     }
 }
 
@@ -232,12 +236,16 @@ impl<S: Session> PlacementPlace<S, HostBitTensor> for HostPlacement {
 }
 
 impl HostBitTensor {
-    pub(crate) fn place(plc: &HostPlacement, x: ArrayD<u8>) -> HostBitTensor {
+    pub(crate) fn place(plc: &HostPlacement, x: BitArrayRepr) -> HostBitTensor {
         HostBitTensor(x, plc.clone())
     }
 
     fn reshape(self, newshape: HostShape) -> Self {
-        HostBitTensor(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
+        let arr = BitArrayRepr {
+            data: self.0.data.clone(),
+            dim: std::sync::Arc::new(IxDyn(&newshape.0 .0)),
+        };
+        HostBitTensor(arr, self.1)
     }
 
     fn expand_dims(self, mut axis: Vec<usize>) -> Self {
@@ -376,8 +384,8 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct HostRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
+#[derive(Serialize, Deserialize, Hash, Clone, Debug, PartialEq)]
+pub struct HostRingTensor<T>(pub ArcArrayD<Wrapping<T>>, pub HostPlacement);
 
 impl Ring for HostRing64Tensor {
     type BitLength = N64;
@@ -416,7 +424,7 @@ where
 }
 
 impl<T> HostRingTensor<T> {
-    pub(crate) fn place(plc: &HostPlacement, x: ArrayD<Wrapping<T>>) -> HostRingTensor<T> {
+    pub(crate) fn place(plc: &HostPlacement, x: ArcArrayD<Wrapping<T>>) -> HostRingTensor<T> {
         HostRingTensor::<T>(x, plc.clone())
     }
 
@@ -439,7 +447,7 @@ impl<T: Clone> HostRingTensor<T> {
         plc: P,
     ) -> HostRingTensor<T> {
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
-        HostRingTensor(tensor, plc.into())
+        HostRingTensor(tensor.into_shared(), plc.into())
     }
 }
 
@@ -467,12 +475,13 @@ where
 {
     fn sum(self, axis: Option<usize>) -> Result<HostRingTensor<T>> {
         if let Some(i) = axis {
-            Ok(HostRingTensor(self.0.sum_axis(Axis(i)), self.1))
+            Ok(HostRingTensor(
+                self.0.sum_axis(Axis(i)).into_shared(),
+                self.1,
+            ))
         } else {
-            let out = Array::from_elem([], self.0.sum())
-                .into_dimensionality::<IxDyn>()
-                .map_err(|e| Error::KernelError(e.to_string()))?;
-            Ok(HostRingTensor(out, self.1))
+            let out = Array::from_elem([], self.0.sum()).into_dyn();
+            Ok(HostRingTensor(out.into_shared(), self.1))
         }
     }
 }
@@ -502,19 +511,21 @@ where
 
 impl<T: Clone, D: ndarray::Dimension> FromRaw<Array<T, D>, HostTensor<T>> for HostPlacement {
     fn from_raw(&self, raw: Array<T, D>) -> HostTensor<T> {
-        HostTensor(raw.into_dyn(), self.clone())
+        HostTensor(raw.into_dyn().into_shared(), self.clone())
     }
 }
 
 impl<T: Clone, D: ndarray::Dimension> FromRaw<Array<T, D>, HostRingTensor<T>> for HostPlacement {
     fn from_raw(&self, raw: Array<T, D>) -> HostRingTensor<T> {
-        HostRingTensor(raw.mapv(Wrapping).into_dyn(), self.clone())
+        HostRingTensor(raw.mapv(Wrapping).into_dyn().into_shared(), self.clone())
     }
 }
 
 impl<D: ndarray::Dimension> FromRaw<Array<u8, D>, HostBitTensor> for HostPlacement {
     fn from_raw(&self, raw: Array<u8, D>) -> HostBitTensor {
-        HostBitTensor(raw.mapv(|ai| (ai & 1)).into_dyn(), self.clone())
+        let raw = raw.into_dyn();
+        let data = raw.as_slice().unwrap().iter().map(|&ai| ai != 0).collect();
+        HostBitTensor(BitArrayRepr::from_raw(data, raw.dim()), self.clone())
     }
 }
 
@@ -686,6 +697,18 @@ mod tests {
     }
 
     #[test]
+    fn test_bit_diag() {
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
+
+        let x: HostBitTensor = plc.from_raw(array![[1, 1], [1, 0]]);
+        let y = plc.diag(&sess, &x);
+
+        let expected: HostBitTensor = plc.from_raw(array![1, 0]);
+        assert_eq!(y, expected);
+    }
+
+    #[test]
     fn test_index() {
         let sess = SyncSession::default();
         let plc = HostPlacement::from("host");
@@ -694,6 +717,41 @@ mod tests {
         let y = plc.index_axis(&sess, 0, 1, &x);
 
         let expected: HostRing64Tensor = plc.from_raw(array![[4, 5], [6, 7]]);
+        assert_eq!(y, expected);
+
+        let x: HostRing64Tensor = plc.from_raw(array![0_u64, 1, 2, 3]);
+        let y = plc.index_axis(&sess, 0, 1, &x);
+        let expected: HostRing64Tensor = plc.from_raw(array![1]);
+        let y = plc.expand_dims(&sess, [0].to_vec(), &y);
+        assert_eq!(y, expected);
+    }
+
+    #[rstest]
+    #[case(
+        array![[[0, 1], [0, 0]], [[1, 1], [0, 0]]].into_dyn(),
+        0,
+        1,
+        array![[1, 1], [0, 0]].into_dyn(),
+    )]
+    #[case(
+        array![[[0, 1], [0, 0]], [[1, 1], [0, 0]]].into_dyn(),
+        0,
+        0,
+        array![[0, 1], [0, 0]].into_dyn(),
+    )]
+    fn test_index_bit(
+        #[case] x: ArrayD<u8>,
+        #[case] axis: usize,
+        #[case] index: usize,
+        #[case] expected: ArrayD<u8>,
+    ) {
+        let sess = SyncSession::default();
+        let plc = HostPlacement::from("host");
+
+        let x: HostBitTensor = plc.from_raw(x);
+        let y = plc.index_axis(&sess, axis, index, &x);
+
+        let expected: HostBitTensor = plc.from_raw(expected);
         assert_eq!(y, expected);
     }
 
@@ -1137,6 +1195,27 @@ mod tests {
                 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0,
                 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1,
                 1, 0, 1, 1, 1, 0, 1, 0
+            ]
+            .into_shape((64, 1))
+            .unwrap(),
+        );
+        assert_eq!(x_bits, expected);
+    }
+
+    #[test]
+    fn bit_shl_dim() {
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
+
+        let x: HostRing64Tensor = plc.from_raw(array![6743216615002642708]);
+        let x_bits: HostBitTensor = plc.bit_decompose(&sess, &x);
+        let x_bits = plc.shl_dim(&sess, 6, 64, &x_bits);
+
+        let expected: HostBitTensor = plc.from_raw(
+            array![
+                0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1,
+                0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0,
+                1, 0, 1, 0, 0, 1, 1, 0,
             ]
             .into_shape((64, 1))
             .unwrap(),

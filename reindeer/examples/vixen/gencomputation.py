@@ -16,9 +16,8 @@ repl = edsl.replicated_placement("replicated", [player0, player1, player2])
 @edsl.computation
 def linear_predict():
     with player0:
-        #df = pd.read_csv("data.csv")
-        df = pd.read_csv("big_data.csv")
-        data = df.to_numpy()[:256]
+        df = pd.read_csv("data.csv")
+        data = df.to_numpy()
         biased = np.vstack([np.ones(len(data)), data.T]).T
         x = edsl.constant(biased)
         x = edsl.cast(x, dtype=edsl.fixed(14, 23))
@@ -29,8 +28,6 @@ def linear_predict():
         w = edsl.cast(w, dtype=edsl.fixed(14, 23))
     with repl:
         y_hat = edsl.dot(x, w)
-        #for _ in range(400):
-        #    y_hat = edsl.mul(y_hat, y_hat)
     with player1:
         result = edsl.cast(y_hat, dtype=edsl.float64)
     return result

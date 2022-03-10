@@ -81,7 +81,7 @@ pub fn fast_parse_computation(source: &str) -> anyhow::Result<Computation> {
 
 pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result<Computation> {
     // Split the source into `chunks` parts at line breaks.
-    let mut parts = Vec::<String>::with_capacity(chunks);
+    let mut parts = Vec::<&str>::with_capacity(chunks);
     let mut left: usize = 0;
     let step = source.len() / chunks;
     for _ in 0..chunks {
@@ -96,7 +96,7 @@ pub fn parallel_parse_computation(source: &str, chunks: usize) -> anyhow::Result
                 .unwrap_or(source.len())
         };
         if left != right {
-            parts.push(source[left..right].to_string());
+            parts.push(&source[left..right]);
         }
         left = right;
     }
@@ -331,9 +331,7 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
     }
 }
 
-impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
-    for PrimDeriveSeedOp
-{
+impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E> for DeriveSeedOp {
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
         let (input, sync_key) =
             attributes_single("sync_key", map_res(vector(parse_int), SyncKey::try_from))(input)
@@ -342,7 +340,7 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
                 })?;
         let (input, opt_sig) = opt(operator_signature(0))(input)?;
         let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
-        Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
+        Ok((input, DeriveSeedOp { sig, sync_key }.into()))
     }
 }
 
@@ -755,7 +753,7 @@ fn host_fixed64_tensor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         input,
         Value::HostFixed64Tensor(Box::new(HostFixed64Tensor {
             tensor: crate::host::HostRingTensor::<u64>(
-                ndarray::Array::from(tensor).into_dyn(),
+                ndarray::Array::from(tensor).into_dyn().into_shared(),
                 placement,
             ),
             integral_precision,
@@ -1025,10 +1023,17 @@ pub fn parse_bool<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ///
 /// Note that it binds the E in the parser to be a `VerboseError`.
 fn friendly_error(message: &str, source: &str, e: nom::Err<VerboseError<&str>>) -> anyhow::Error {
+    if !source.contains('\n') {
+        return anyhow::anyhow!(
+            "{}. The input contains no line breaks, which usually indicates invalid format. {}",
+            message,
+            e
+        );
+    }
     match e {
         Failure(e) => anyhow::anyhow!("{}\n{}", message, convert_error(source, e)),
         Error(e) => anyhow::anyhow!("{}\n{}", message, convert_error(source, e)),
-        _ => anyhow::anyhow!("{} {} due to {}", message, source, e),
+        _ => anyhow::anyhow!("{} due to {}", message, e),
     }
 }
 
@@ -1142,8 +1147,8 @@ impl ToTextual for Operator {
             Shr(op) => op.to_textual(),
             RingInject(op) => op.to_textual(),
             BitExtract(op) => op.to_textual(),
-            PrimDeriveSeed(op) => op.to_textual(),
-            PrimPrfKeyGen(op) => op.to_textual(),
+            DeriveSeed(op) => op.to_textual(),
+            PrfKeyGen(op) => op.to_textual(),
             Decrypt(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
@@ -1511,7 +1516,7 @@ impl ToTextual for Constant {
     }
 }
 
-impl<T: std::fmt::Debug> ToTextual for ndarray::ArrayD<T> {
+impl<T: std::fmt::Debug> ToTextual for ArcArrayD<T> {
     fn to_textual(&self) -> String {
         match self.shape() {
             [_len] => format!("{:?}", self.as_slice().unwrap()),
@@ -1537,7 +1542,7 @@ impl<T: std::fmt::Debug> ToTextual for ndarray::ArrayD<T> {
                 buffer.push(']');
                 buffer
             }
-            _ => unimplemented!("ArrayD.to_textual() unimplemented for tensors of rank > 3"),
+            _ => unimplemented!("ArcArrayD.to_textual() unimplemented for tensors of rank > 3"),
         }
     }
 }
@@ -1548,7 +1553,7 @@ impl ToTextual for Role {
     }
 }
 
-// Required to serialize PrimDeriveSeedOp
+// Required to serialize DeriveSeedOp
 impl ToTextual for SyncKey {
     fn to_textual(&self) -> String {
         format!("{:?}", self.as_bytes())
@@ -1591,6 +1596,12 @@ impl ToTextual for Signature {
                 format!("[{}] -> {}", args.to_textual(), ret.to_textual())
             }
         }
+    }
+}
+
+impl ToTextual for crate::host::BitArrayRepr {
+    fn to_textual(&self) -> String {
+        self.into_array::<u8>().unwrap().into_shared().to_textual()
     }
 }
 
@@ -1830,9 +1841,8 @@ mod tests {
 
     #[test]
     fn test_primprfkeygen() -> Result<(), anyhow::Error> {
-        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "key = PrimPrfKeyGen: () -> PrfKey () @Host(alice)",
-        )?;
+        let (_, op) =
+            parse_assignment::<(&str, ErrorKind)>("key = PrfKeyGen: () -> PrfKey () @Host(alice)")?;
         assert_eq!(op.name, "key");
         Ok(())
     }
@@ -1840,12 +1850,12 @@ mod tests {
     #[test]
     fn test_seed() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "seed = PrimDeriveSeed{sync_key = [1, 2, 3]}(key)@Host(alice)",
+            "seed = DeriveSeed{sync_key = [1, 2, 3]}(key)@Host(alice)",
         )?;
         assert_eq!(op.name, "seed");
         assert_eq!(
             op.kind,
-            Operator::PrimDeriveSeed(PrimDeriveSeedOp {
+            Operator::DeriveSeed(DeriveSeedOp {
                 sig: Signature::nullary(Ty::Seed),
                 sync_key: SyncKey::try_from(vec![1, 2, 3])?
             })
@@ -2218,7 +2228,7 @@ mod tests {
         let comp: Computation = "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
             z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, carole)
-            seed = PrimDeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
+            seed = DeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
             seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)}: () -> Seed @Host(alice)
             o = Output: (HostFloat32Tensor) -> HostFloat32Tensor (z) @Host(alice)"
             .try_into()?;

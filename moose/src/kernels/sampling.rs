@@ -1,11 +1,12 @@
 use super::*;
+use crate::host::SyncKey;
 
 pub trait PlacementDeriveSeed<S: Session, KeyT, SeedT> {
     fn derive_seed(&self, sess: &S, sync_key: SyncKey, key: &KeyT) -> SeedT;
 }
 
 modelled_kernel! {
-    PlacementDeriveSeed::derive_seed, PrimDeriveSeedOp{sync_key: SyncKey},
+    PlacementDeriveSeed::derive_seed, DeriveSeedOp{sync_key: SyncKey},
     [
         (HostPlacement, (PrfKey) -> Seed => [runtime] Self::kernel),
     ]

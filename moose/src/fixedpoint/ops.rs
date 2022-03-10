@@ -2494,11 +2494,9 @@ mod tests {
         }
     }
 
-    fn squared_distance(x: &HostFloat64Tensor, target: &ArrayD<f64>) -> ArrayD<f64> {
+    fn squared_distance(x: &HostFloat64Tensor, target: &ArrayD<f64>) -> ArcArrayD<f64> {
         assert_eq!(x.shape().0 .0, target.shape());
-        let x = x.0.clone();
-        let y = target.clone();
-        (x.clone() - y.clone()) * (x - y)
+        (x.0.clone() - target) * (x.0.clone() - target)
     }
 
     macro_rules! rep_div_func_concrete_test {
@@ -2949,7 +2947,7 @@ mod tests {
 
                 for i in 0..target.len() {
                     assert_eq!(
-                        target[i] as $tu, z.0[i] as $tu,
+                        target[i] as $tu, z.0.data[i] as $tu,
                         "failed comparing {:?} with {:?}",
                         x[i], y[i]
                     );

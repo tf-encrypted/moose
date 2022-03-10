@@ -1,5 +1,5 @@
 use super::HostPlacement;
-use crate::computation::{Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, TAG_BYTES};
+use crate::computation::{DeriveSeedOp, Placed, PrfKeyGenOp, TAG_BYTES};
 use crate::error::{Error, Result};
 use crate::execution::{RuntimeSession, Session};
 use crate::kernels::PlacementPlace;
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::generichash;
 use std::convert::TryFrom;
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
 pub struct RawSeed(pub [u8; 16]);
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -36,7 +36,7 @@ impl<S: Session> PlacementPlace<S, Seed> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
 pub struct RawPrfKey(pub [u8; 16]);
 
 impl RawPrfKey {
@@ -69,7 +69,7 @@ impl<S: Session> PlacementPlace<S, PrfKey> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct SyncKey([u8; TAG_BYTES]);
 
 impl SyncKey {
@@ -108,14 +108,14 @@ impl TryFrom<&[u8]> for SyncKey {
     }
 }
 
-impl PrimPrfKeyGenOp {
+impl PrfKeyGenOp {
     pub(crate) fn kernel<S: RuntimeSession>(_sess: &S, plc: &HostPlacement) -> Result<PrfKey> {
         let raw_key = RawPrfKey(AesRng::generate_random_key());
         Ok(PrfKey(raw_key, plc.clone()))
     }
 }
 
-impl PrimDeriveSeedOp {
+impl DeriveSeedOp {
     pub(crate) fn kernel<S: RuntimeSession>(
         sess: &S,
         plc: &HostPlacement,
