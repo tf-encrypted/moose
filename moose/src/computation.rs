@@ -7,6 +7,7 @@ use crate::host::*;
 use crate::logical::TensorDType;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::*;
+use crate::textual::ToTextual;
 use crate::types::*;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
@@ -639,7 +640,7 @@ impl Ty {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Copy, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Copy, Clone, Debug)]
 pub enum Signature {
     Nullary(NullarySignature),
     Unary(UnarySignature),
@@ -648,25 +649,25 @@ pub enum Signature {
     Variadic(VariadicSignature),
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Copy, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Copy, Clone, Debug)]
 pub struct NullarySignature {
     pub ret: Ty,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Copy, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Copy, Clone, Debug)]
 pub struct UnarySignature {
     pub arg0: Ty,
     pub ret: Ty,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Copy, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Copy, Clone, Debug)]
 pub struct BinarySignature {
     pub arg0: Ty,
     pub arg1: Ty,
     pub ret: Ty,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Copy, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Copy, Clone, Debug)]
 pub struct TernarySignature {
     pub arg0: Ty,
     pub arg1: Ty,
@@ -674,7 +675,7 @@ pub struct TernarySignature {
     pub ret: Ty,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Copy, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Copy, Clone, Debug)]
 pub struct VariadicSignature {
     pub args: Ty,
     pub ret: Ty,
@@ -792,7 +793,7 @@ macro_rules! operators {
     ($($t:ident,)+) => {
 
         paste! {
-            #[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
+            #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
             pub enum Operator {
                 $($t([<$t Op>]),)+
             }
@@ -833,6 +834,9 @@ macro_rules! operators {
                 use crate::textual::{FromTextual, parse_operator_error};
                 match name {
                     $(paste! {[<$t Op>]::SHORT_NAME} => paste! {[<$t Op>]::from_textual},)+
+                    // The names below are deprecated aliases, maintained for a long period of time for compatibility
+                    "PrimDeriveSeed" => DeriveSeedOp::from_textual, // pre v0.1.5
+                    "PrimPrfKeyGen" => PrfKeyGenOp::from_textual, // pre v0.1.5
                     _ => parse_operator_error,
                 }
             }
@@ -852,8 +856,8 @@ operators![
     Constant,
     Shape,
     Broadcast,
-    PrimDeriveSeed,
-    PrimPrfKeyGen,
+    DeriveSeed,
+    PrfKeyGen,
     Decrypt,
     AtLeast2D,
     IndexAxis,
@@ -937,22 +941,20 @@ pub trait HasShortName {
 // Top (logical) level ops:
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct IdentityOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual)]
-
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual)]
 pub struct SendOp {
     pub sig: Signature,
     pub rendezvous_key: RendezvousKey,
     pub receiver: Role,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual)]
-
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual)]
 pub struct ReceiveOp {
     pub sig: Signature,
     pub rendezvous_key: RendezvousKey,
@@ -960,47 +962,42 @@ pub struct ReceiveOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-
 pub struct InputOp {
     pub sig: Signature,
     pub arg_name: String,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-
 pub struct OutputOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-
 pub struct LoadOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct CastOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-
 pub struct SaveOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName, ToTextual, FromTextual)]
-
 pub struct ConstantOp {
     pub sig: Signature,
     pub value: Constant, // TODO Box<Constant> or Box inside Constant?
@@ -1010,13 +1007,16 @@ pub struct ConstantOp {
 impl Hash for ConstantOp {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.sig.hash(state);
+        self.value.to_textual().hash(state)
         // TODO(Morten) we must also take `self.value` into account!
         // self.value.hash(state);
     }
 }
 
+impl std::cmp::Eq for ConstantOp {}
+
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct AtLeast2DOp {
     pub sig: Signature,
@@ -1024,7 +1024,7 @@ pub struct AtLeast2DOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct IndexAxisOp {
     pub sig: Signature,
@@ -1033,7 +1033,7 @@ pub struct IndexAxisOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct SliceOp {
     pub sig: Signature,
@@ -1041,20 +1041,20 @@ pub struct SliceOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct OnesOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual)]
 pub struct ExpandDimsOp {
     pub sig: Signature,
     pub axis: Vec<usize>,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct ConcatOp {
     pub sig: Signature,
@@ -1062,27 +1062,27 @@ pub struct ConcatOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct ReshapeOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
 pub struct SqueezeOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct TransposeOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct InverseOp {
     pub sig: Signature,
@@ -1090,7 +1090,7 @@ pub struct InverseOp {
 
 // TODO(Morten) rename to LogicalAddOp?
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct AddOp {
     pub sig: Signature,
@@ -1098,74 +1098,74 @@ pub struct AddOp {
 
 // TODO(Morten) rename to LogicalSubOp?
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct SubOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct MulOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct DivOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct DotOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
 pub struct MeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct SigmoidOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
 pub struct SumOp {
     pub sig: Signature,
     pub axis: Option<usize>,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct SignOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
 pub struct HostMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct SqrtOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 
 pub struct ShapeOp {
@@ -1173,38 +1173,38 @@ pub struct ShapeOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct DiagOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual)]
 pub struct BitToRingOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual)]
-pub struct PrimDeriveSeedOp {
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual)]
+pub struct DeriveSeedOp {
     pub sig: Signature,
     pub sync_key: SyncKey,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-pub struct PrimPrfKeyGenOp {
+pub struct PrfKeyGenOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct DecryptOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
 pub struct RingFixedpointMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -1212,20 +1212,20 @@ pub struct RingFixedpointMeanOp {
     pub scaling_exp: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
 pub struct SampleOp {
     pub sig: Signature,
     pub max_value: Option<u64>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
 pub struct SampleSeededOp {
     pub sig: Signature,
     pub max_value: Option<u64>,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct ShlOp {
     pub sig: Signature,
@@ -1233,7 +1233,7 @@ pub struct ShlOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct ShrOp {
     pub sig: Signature,
@@ -1241,7 +1241,7 @@ pub struct ShrOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct RingInjectOp {
     pub sig: Signature,
@@ -1249,7 +1249,7 @@ pub struct RingInjectOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct BitExtractOp {
     pub sig: Signature,
@@ -1257,70 +1257,70 @@ pub struct BitExtractOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct XorOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct AndOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct OrOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct Pow2Op {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct ExpOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct EqualOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct EqualZeroOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct LessThanOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct GreaterThanOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct FixedpointEncodeOp {
     pub sig: Signature,
@@ -1329,34 +1329,34 @@ pub struct FixedpointEncodeOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct FixedpointDecodeOp {
     pub sig: Signature,
     pub fractional_precision: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
 pub struct FixedpointMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct NegOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
 pub struct FloatingpointMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct RingFixedpointEncodeOp {
     pub sig: Signature,
@@ -1365,7 +1365,7 @@ pub struct RingFixedpointEncodeOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct RingFixedpointDecodeOp {
     pub sig: Signature,
@@ -1374,7 +1374,7 @@ pub struct RingFixedpointDecodeOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct RingFixedpointArgmaxOp {
     pub sig: Signature,
@@ -1386,41 +1386,41 @@ pub struct RingFixedpointArgmaxOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct AdtToRepOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct AbsOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct MsbOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct ShareOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct RevealOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, FromTextual)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
 pub struct RepFixedpointMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -1429,14 +1429,14 @@ pub struct RepFixedpointMeanOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct AddNOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct TruncPrOp {
     pub sig: Signature,
@@ -1444,7 +1444,7 @@ pub struct TruncPrOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct RepToAdtOp {
     pub sig: Signature,
@@ -1456,17 +1456,20 @@ pub struct FillOp {
     pub value: Constant,
 }
 
+impl std::cmp::Eq for FillOp {}
+
 #[allow(clippy::derive_hash_xor_eq)]
 impl Hash for FillOp {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.sig.hash(state);
+        self.value.to_textual().hash(state);
         // TODO(Morten) we must also take `self.value` into account!
         // self.value.hash(state);
     }
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct ShlDimOp {
     pub sig: Signature,
@@ -1475,7 +1478,7 @@ pub struct ShlDimOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct IndexOp {
     pub sig: Signature,
@@ -1483,49 +1486,49 @@ pub struct IndexOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct BitDecomposeOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct BitComposeOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct MuxOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct DemirrorOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct MirrorOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct MaximumOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct SoftmaxOp {
     pub sig: Signature,
@@ -1535,7 +1538,7 @@ pub struct SoftmaxOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct ArgmaxOp {
     pub sig: Signature,
@@ -1547,21 +1550,21 @@ pub struct ArgmaxOp {
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct BroadcastOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct LogOp {
     pub sig: Signature,
 }
 
 #[derive(
-    Serialize, Deserialize, PartialEq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct Log2Op {
     pub sig: Signature,
@@ -1578,7 +1581,7 @@ pub trait KnownPlacement {
 macro_rules! placements {
     ($($p:ident,)+) => {
         paste! {
-            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+            #[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
             pub enum Placement {
                 $($p([<$p Placement>]),)+
             }
@@ -1681,31 +1684,162 @@ pub struct Operation {
     pub placement: Placement,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Computation {
-    // pub constants: Vec<Value>,
-    // pub operators: Vec<Operator>,
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct NamedComputation {
     pub operations: Vec<Operation>,
 }
 
-impl Computation {
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct IndexedOperation {
+    pub operator: usize,
+    pub inputs: Vec<usize>,
+    pub placement: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct IndexedComputation {
+    pub operations: Vec<IndexedOperation>,
+    pub operators: Vec<Operator>,
+    pub placements: Vec<Placement>,
+}
+
+impl TryFrom<&NamedComputation> for IndexedComputation {
+    type Error = Error;
+
+    fn try_from(computation: &NamedComputation) -> Result<IndexedComputation> {
+        let unique_placements = computation
+            .operations
+            .iter()
+            .map(|op| &op.placement)
+            .collect::<HashSet<&Placement>>();
+        let placements: Vec<Placement> = unique_placements.into_iter().cloned().collect();
+        let placements_map: HashMap<&Placement, usize> = placements
+            .iter()
+            .enumerate()
+            .map(|(i, plc)| (plc, i))
+            .collect();
+
+        let unique_operators = computation
+            .operations
+            .iter()
+            .map(|op| &op.kind)
+            .collect::<HashSet<&Operator>>();
+        let operators: Vec<Operator> = unique_operators.into_iter().cloned().collect();
+        let operators_map: HashMap<&Operator, usize> = operators
+            .iter()
+            .enumerate()
+            .map(|(i, op)| (op, i))
+            .collect();
+
+        let op_names_map: HashMap<&String, usize> = computation
+            .operations
+            .iter()
+            .enumerate()
+            .map(|(i, op)| (&op.name, i))
+            .collect();
+
+        let operations = computation
+            .operations
+            .iter()
+            .map(|op| {
+                let inputs = op
+                    .inputs
+                    .iter()
+                    .map(|name| {
+                        op_names_map.get(name).cloned().ok_or_else(|| {
+                            Error::MalformedComputation(format!(
+                                "Missing operation '{}' used as an operand for '{}'",
+                                name, op.name
+                            ))
+                        })
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+
+                Ok(IndexedOperation {
+                    inputs,
+                    operator: operators_map[&op.kind], // should be there by construction
+                    placement: placements_map[&op.placement], // should be there by construction
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(IndexedComputation {
+            operators,
+            operations,
+            placements,
+        })
+    }
+}
+
+impl TryFrom<&IndexedComputation> for Computation {
+    type Error = Error;
+
+    fn try_from(compact: &IndexedComputation) -> Result<NamedComputation> {
+        let operations = compact
+            .operations
+            .iter()
+            .enumerate()
+            .map(|(i, op)| {
+                let kind = compact.operators.get(op.operator).cloned().ok_or_else(|| {
+                    Error::MalformedComputation(format!(
+                        "Missing operator with index {}",
+                        op.operator
+                    ))
+                })?;
+
+                let inputs = op
+                    .inputs
+                    .iter()
+                    .map(|inp| format!("op_{:?}", inp))
+                    .collect();
+
+                let placement = compact
+                    .placements
+                    .get(op.placement)
+                    .cloned()
+                    .ok_or_else(|| {
+                        Error::MalformedComputation(format!(
+                            "Missing placement with index {}",
+                            op.placement
+                        ))
+                    })?;
+
+                Ok(Operation {
+                    name: format!("op_{:?}", i),
+                    kind,
+                    inputs,
+                    placement,
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(NamedComputation { operations })
+    }
+}
+
+impl NamedComputation {
+    #[tracing::instrument(skip(bytes))]
     pub fn from_msgpack<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
         rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn to_msgpack(&self) -> Result<Vec<u8>> {
         rmp_serde::to_vec(self).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(comp))]
     pub fn from_textual(comp: &str) -> Result<Self> {
         crate::textual::parallel_parse_computation(comp, 12)
             .map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(bytes))]
     pub fn from_bincode<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
         bincode::deserialize(bytes.as_ref()).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn to_bincode(&self) -> Result<Vec<u8>> {
         bincode::serialize(self).map_err(|e| Error::SerializationError(e.to_string()))
     }
@@ -1804,7 +1938,7 @@ impl Computation {
         graph
     }
 
-    pub fn toposort(&self) -> Result<Computation> {
+    pub fn toposort(&self) -> Result<NamedComputation> {
         let graph = self.as_graph();
         let toposort = toposort(&graph, None).map_err(|_| {
             Error::MalformedComputation("There is a cycle detected in the runtime graph".into())
@@ -1815,9 +1949,11 @@ impl Computation {
             .map(|node| self.operations[graph[*node].1].clone())
             .collect();
 
-        Ok(Computation { operations })
+        Ok(NamedComputation { operations })
     }
 }
+
+pub type Computation = NamedComputation;
 
 mod tests {
     #![allow(unused_imports)]

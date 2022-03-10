@@ -4,12 +4,13 @@ use crate::additive::AdditivePlacement;
 use crate::computation::*;
 use crate::error::Error;
 use crate::error::Result;
-use crate::execution::Session;
+use crate::execution::{Operands, Session};
 use crate::for_all_values;
 use crate::host::HostPlacement;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
 use crate::types::*;
+
 mod arithmetic;
 mod boolean;
 mod comparison;
@@ -33,7 +34,7 @@ pub use sampling::*;
 pub use shapes::*;
 
 pub type Kernel<S> =
-    Box<dyn Fn(&S, Vec<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send>;
+    Box<dyn Fn(&S, Operands<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send + Sync>;
 
 pub trait DispatchKernel<S: Session> {
     fn compile(&self, plc: &Placement) -> Result<Kernel<S>>;
@@ -70,7 +71,7 @@ pub(crate) trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
 }
 
 pub(crate) type TypedVariadicKernel<S, P, XS, Y> =
-    Box<dyn Fn(&S, &P, Vec<XS>) -> Result<Y> + Send + Sync>;
+    Box<dyn Fn(&S, &P, Operands<XS>) -> Result<Y> + Send + Sync>;
 
 pub(crate) trait VariadicKernel<S: Session, P, XS, Y> {
     fn compile(&self) -> Result<TypedVariadicKernel<S, P, XS, Y>>;
@@ -111,7 +112,7 @@ pub trait PlacementKeyGen<S: Session, KeyT> {
 }
 
 modelled_kernel! {
-    PlacementKeyGen::gen_key, PrimPrfKeyGenOp,
+    PlacementKeyGen::gen_key, PrfKeyGenOp,
     [
         (HostPlacement, () -> PrfKey => [runtime] Self::kernel),
     ]

@@ -104,7 +104,9 @@ Follow these steps to release a new version:
 
 2. run `make release`
 
-3. if successful then `git push` to create a new PR
+3. Update the [CHANGELOG.md](CHANGELOG.md) file to include notable changes since the last release.
+
+4. if successful then `git push` to create a new PR
 
 Once your PR has been merged to `main`:
 

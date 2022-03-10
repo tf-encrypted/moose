@@ -12,7 +12,7 @@ mod ops;
 /// Placement for mirroring operations across three hosts
 ///
 /// All values are plaintext and kept in lockstep across three host placements.
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]
 pub struct Mirrored3Placement {
     pub owners: [Role; 3],
 }

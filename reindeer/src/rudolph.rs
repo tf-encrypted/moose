@@ -8,23 +8,60 @@ use tonic::transport::Server;
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
-    #[structopt(env, long, default_value = "50000")]
-    port: u16,
-
     #[structopt(env, long)]
+    /// Own identity in sessions
     identity: String,
 
+    #[structopt(env, long, default_value = "50000")]
+    /// Port to use for gRPC server
+    port: u16,
+
     #[structopt(env, long, default_value = "./examples")]
+    /// Directory to read sessions from
     sessions: String,
 
-    #[structopt(env, long)]
+    #[structopt(long)]
+    /// Ignore any existing files in the sessions directory and only listen for new
     ignore_existing: bool,
+
+    #[structopt(long)]
+    /// Do not listen for new files but exit when existing have been processed
+    no_listen: bool,
+
+    #[structopt(long)]
+    /// Report telemetry to Jaeger
+    telemetry: bool,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt::init();
     let opt = Opt::from_args();
+
+    if !opt.telemetry {
+        tracing_subscriber::fmt::init();
+    } else {
+        use opentelemetry::sdk::trace::Config;
+        use opentelemetry::sdk::Resource;
+        use opentelemetry::KeyValue;
+        use tracing_subscriber::{prelude::*, EnvFilter};
+
+        let tracer =
+            opentelemetry_jaeger::new_pipeline()
+                .with_service_name("rudolph")
+                .with_trace_config(Config::default().with_resource(Resource::new(vec![
+                    KeyValue::new("identity", opt.identity.clone()),
+                ])))
+                .install_simple()?;
+        let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+
+        tracing_subscriber::registry()
+            .with(EnvFilter::from_default_env())
+            .with(telemetry)
+            .try_init()?;
+    };
+
+    let root_span = tracing::span!(tracing::Level::INFO, "app_start");
+    let _enter = root_span.enter();
 
     let manager = GrpcNetworkingManager::default();
 
@@ -33,23 +70,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let addr = format!("0.0.0.0:{}", opt.port).parse()?;
         let manager = manager.clone();
         tokio::spawn(async move {
-            let _res = Server::builder()
+            let res = Server::builder()
                 .add_service(manager.new_server())
                 .serve(addr)
                 .await;
+            if let Err(e) = res {
+                tracing::error!("gRPC error: {}", e);
+            }
         })
     };
 
     // TODO(Morten) we should not have to do this; add retry logic on client side instead
     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
 
-    let _res = FilesystemChoreography::new(
+    // NOTE(Morten) if we want to move this into separate task then we need
+    // to make sure AsyncSessionHandle::join_on_first_error is Send, which
+    // means fixing the use of RwLock
+    FilesystemChoreography::new(
         Identity::from(opt.identity),
         opt.sessions,
         Box::new(move |session_id| manager.new_session(session_id)),
         Box::new(|| Arc::new(LocalAsyncStorage::default())),
     )
-    .listen(opt.ignore_existing)
+    .process(opt.ignore_existing, opt.no_listen)
     .await?;
 
     Ok(())
