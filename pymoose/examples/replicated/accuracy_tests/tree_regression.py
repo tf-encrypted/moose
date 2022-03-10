@@ -1,20 +1,20 @@
-'''
-This script benchmarks accuracy of tree enseble regression against Sklearn's random forrest regressor to test if loss of precision occurs.
+"""
+This script benchmarks accuracy of tree enseble regression against Sklearn's random
+forrest regressor to test if loss of precision occurs.
 Local computations, replicated, no aes encryption
-'''
+"""
 
 import numpy as np
 import pandas as pd
+from onnxmltools import convert_sklearn
+from skl2onnx.common import data_types as onnx_dtypes
 from sklearn.datasets import make_regression
 from sklearn.ensemble import RandomForestRegressor
 
-from onnxmltools import convert_sklearn
-from skl2onnx.common import data_types as onnx_dtypes
-
 from pymoose import edsl
 from pymoose import testing
-from pymoose.predictors import tree_ensemble
 from pymoose.predictors import predictor_utils
+from pymoose.predictors import tree_ensemble
 
 
 def _build_prediction_logic(onnx_proto):
@@ -25,14 +25,13 @@ def _build_prediction_logic(onnx_proto):
         with predictor.alice:
             x_fixed = edsl.cast(x, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
         with predictor.replicated:
-            y = predictor.forest_fn(
-                x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE
-            )
+            y = predictor.forest_fn(x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE)
             y = predictor.post_transform(y, predictor_utils.DEFAULT_FIXED_DTYPE)
         return predictor.handle_output(y, prediction_handler=predictor.bob)
 
     return predictor, predictor_no_aes
-    
+
+
 def benchmark(X_train, y_train, X_test, y_test):
     lr = RandomForestRegressor(n_estimators=10)
     trained_model = lr.fit(X_train, y_train)
@@ -53,28 +52,59 @@ def benchmark(X_train, y_train, X_test, y_test):
         arguments={"x": X_test},
     )
     actual_result = list(result_dict.values())[0]
-    actual_result = actual_result.reshape((n_sample_test, ))
+    actual_result = actual_result.reshape((n_sample_test,))
     expected = trained_model.predict(X_test)
     expected_result = np.array(expected)
 
     min_X = np.min(X_train)
     max_X = np.max(X_train)
 
-    match_2_decimals = np.isclose(actual_result, expected_result, atol=1e-2).all() # Do outputs match up to 2 decimal points
-    match_4_decimals = np.isclose(actual_result, expected_result, atol=1e-4).all() # Do outputs match up to 4 decimal points
+    match_2_decimals = np.isclose(
+        actual_result, expected_result, atol=1e-2
+    ).all()  # Do outputs match up to 2 decimal points
+    match_4_decimals = np.isclose(
+        actual_result, expected_result, atol=1e-4
+    ).all()  # Do outputs match up to 4 decimal points
 
-    mean_abs_diff = np.mean(np.abs(actual_result - expected_result)) # Mean absolute difference
-    max_abs_diff = np.max(np.abs(actual_result - expected_result)) # Max absolute difference
-    std_abs_diff = np.std(np.abs(actual_result - expected_result)) # Standard deviation of absolute difference
+    mean_abs_diff = np.mean(
+        np.abs(actual_result - expected_result)
+    )  # Mean absolute difference
+    max_abs_diff = np.max(
+        np.abs(actual_result - expected_result)
+    )  # Max absolute difference
+    std_abs_diff = np.std(
+        np.abs(actual_result - expected_result)
+    )  # Standard deviation of absolute difference
 
-    mean_rel_diff = np.max(np.abs((actual_result - expected_result)/expected_result)) # Mean relative difference
-    max_rel_diff = np.mean(np.abs((actual_result - expected_result)/expected_result)) # Max relative difference
-    std_rel_diff = np.std(np.abs((actual_result - expected_result)/expected_result)) # Mean relative difference
+    mean_rel_diff = np.max(
+        np.abs((actual_result - expected_result) / expected_result)
+    )  # Mean relative difference
+    max_rel_diff = np.mean(
+        np.abs((actual_result - expected_result) / expected_result)
+    )  # Max relative difference
+    std_rel_diff = np.std(
+        np.abs((actual_result - expected_result) / expected_result)
+    )  # Mean relative difference
 
-    results.loc[results.shape[0]] = [min_X, max_X, n_features, n_informative, n_redundant, noise, match_2_decimals, match_4_decimals, mean_abs_diff, max_abs_diff,
-    std_abs_diff, mean_rel_diff, max_rel_diff, std_rel_diff]
+    results.loc[results.shape[0]] = [
+        min_X,
+        max_X,
+        n_features,
+        n_informative,
+        n_redundant,
+        noise,
+        match_2_decimals,
+        match_4_decimals,
+        mean_abs_diff,
+        max_abs_diff,
+        std_abs_diff,
+        mean_rel_diff,
+        max_rel_diff,
+        std_rel_diff,
+    ]
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # baseline default benchmark settings
     random_state = 99
     n_sample_train = 1000
@@ -87,28 +117,68 @@ if __name__ == '__main__':
     # varying inputs and parameters
     noise_level = [0.0, 1.0, 1.5, 10.0, 100.0]
     scales = [0.00001, 0.0001, 0.001, 0.1, 10.0, 100.0, 1000.0, 100000.0, 1000000.0]
-    
+
     # table to store accuracy analysis results
-    results = pd.DataFrame(columns=["min_X", "max_X", "features", "informative_features", "redundant_features", "noise", "match_2_decimals", "match_4_decimals", "mean_abs_diff", "max_abs_diff",
-    "std_abs_diff", "mean_rel_diff", "max_rel_diff", "std_rel_diff"])
-    
+    results = pd.DataFrame(
+        columns=[
+            "min_X",
+            "max_X",
+            "features",
+            "informative_features",
+            "redundant_features",
+            "noise",
+            "match_2_decimals",
+            "match_4_decimals",
+            "mean_abs_diff",
+            "max_abs_diff",
+            "std_abs_diff",
+            "mean_rel_diff",
+            "max_rel_diff",
+            "std_rel_diff",
+        ]
+    )
+
     # test robustness to varying noise in dataset
     for noise in noise_level:
         # create dataset
-        X_train, y_train = make_regression(n_samples=n_sample_train, n_features=n_features, n_informative=n_informative, noise=noise, random_state=random_state)
-        X_test, y_test = make_regression(n_samples=n_sample_test, n_features=n_features, n_informative=n_informative, noise=noise, random_state=random_state)
+        X_train, y_train = make_regression(
+            n_samples=n_sample_train,
+            n_features=n_features,
+            n_informative=n_informative,
+            noise=noise,
+            random_state=random_state,
+        )
+        X_test, y_test = make_regression(
+            n_samples=n_sample_test,
+            n_features=n_features,
+            n_informative=n_informative,
+            noise=noise,
+            random_state=random_state,
+        )
         benchmark(X_train, y_train, X_test, y_test)
 
     # test robustness to varying features magnitude in dataset
     for scale in scales:
         noise = 0.0
         # create dataset
-        X_train, y_train = make_regression(n_samples=n_sample_train, n_features=n_features, n_informative=n_informative, noise=noise, random_state=random_state)
-        X_test, y_test = make_regression(n_samples=n_sample_test, n_features=n_features, n_informative=n_informative, noise=noise, random_state=random_state)
+        X_train, y_train = make_regression(
+            n_samples=n_sample_train,
+            n_features=n_features,
+            n_informative=n_informative,
+            noise=noise,
+            random_state=random_state,
+        )
+        X_test, y_test = make_regression(
+            n_samples=n_sample_test,
+            n_features=n_features,
+            n_informative=n_informative,
+            noise=noise,
+            random_state=random_state,
+        )
         X_train = X_train * scale
         X_test = X_test * scale
         benchmark(X_train, y_train, X_test, y_test)
-    
+
     # save results to csv
     results.to_csv("forrest_regression_accuracy_analysis.csv")
     print(results)

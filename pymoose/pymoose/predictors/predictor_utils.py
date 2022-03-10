@@ -30,6 +30,7 @@ def find_node_in_model_proto(model_proto, operator_name, enforce=True):
         raise ValueError(f"Model proto does not contain operator {operator_name}.")
     return node
 
+
 def find_initializer_in_model_proto(model_proto, operator_name, enforce=True):
     initializer = None
     for operator in model_proto.graph.initializer:
@@ -39,6 +40,7 @@ def find_initializer_in_model_proto(model_proto, operator_name, enforce=True):
         raise ValueError(f"Model proto does not contain operator {operator_name}.")
     return initializer, initializer.dims
 
+
 def find_activation_in_model_proto(model_proto, operator_name, enforce=True):
     activation = None
     for operator in model_proto.graph.node:
@@ -47,6 +49,7 @@ def find_activation_in_model_proto(model_proto, operator_name, enforce=True):
     if enforce and activation is None:
         raise ValueError(f"Model proto does not contain operator {operator_name}.")
     return activation
+
 
 def find_parameters_in_model_proto(model_proto, operator_name, enforce=True):
     parameters = []

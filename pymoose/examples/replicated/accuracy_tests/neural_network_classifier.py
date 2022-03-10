@@ -1,28 +1,24 @@
-from sklearn.neural_network import MLPClassifier
-from sklearn.datasets import make_classification
-from sklearn.model_selection import train_test_split
-
-# from onnxmltools import convert_sklearn
-# from onnxmltools.utils import save_model
-from skl2onnx.common import data_types as onnx_dtypes
-
-# Convert into ONNX format
+import numpy as np
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
 
 from pymoose import edsl
 from pymoose import testing
 from pymoose.predictors import neural_net_predictor
 from pymoose.predictors import predictor_utils
- 
-import numpy as np
 
 # Classification data
-X, y = make_classification(n_samples=100, random_state=44 ,n_classes=2, n_informative=2)
+X, y = make_classification(n_samples=100, random_state=44, n_classes=2, n_informative=2)
 X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=1)
 
 # Sklearn classifier
-clf = MLPClassifier(activation='logistic', random_state=1, max_iter=300).fit(X_train, y_train)
+clf = MLPClassifier(activation="logistic", random_state=1, max_iter=300).fit(
+    X_train, y_train
+)
+
 
 def _build_prediction_logic(onnx_proto):
     predictor = neural_net_predictor.NeuralClassifier.from_onnx(onnx_proto)
@@ -39,7 +35,7 @@ def _build_prediction_logic(onnx_proto):
         return predictor.handle_output(y, prediction_handler=predictor.bob)
 
     return predictor, predictor_no_aes
-    
+
 
 initial_type = ("float_input", FloatTensorType([None, clf.n_features_in_]))
 onnx_proto = convert_sklearn(clf, initial_types=[initial_type])
@@ -62,5 +58,6 @@ actual_result = list(result_dict.values())[0]
 expected = clf.predict_proba(X_test)
 expected_result = np.array(expected)
 
-print(np.isclose(actual_result, expected_result, atol=1e-2).all()) # Do outputs match up to 2 decimal points
-
+print(
+    np.isclose(actual_result, expected_result, atol=1e-2).all()
+)  # Do outputs match up to 2 decimal points
