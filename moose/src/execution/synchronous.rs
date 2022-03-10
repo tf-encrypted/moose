@@ -19,7 +19,7 @@ pub type SyncStorageImpl = Rc<dyn SyncStorage>;
 /// Session object for synchronous/eager execution.
 pub struct SyncSession {
     session_id: SessionId,
-    replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<RepSetup<PrfKey>>>>,
+    replicated_keys: std::sync::RwLock<HashMap<ReplicatedPlacement, Arc<RepSetup<HostPrfKey>>>>,
     arguments: HashMap<String, Value>,
     role_assignments: HashMap<Role, Identity>,
     storage: SyncStorageImpl,
@@ -116,7 +116,7 @@ impl DispatchKernel<SyncSession> for SendOp {
                     &op.rendezvous_key,
                     &sess.session_id,
                 )?;
-                Ok(Unit(plc.clone()).into())
+                Ok(HostUnit(plc.clone()).into())
             }))
         } else {
             unimplemented!()
@@ -176,7 +176,7 @@ impl Session for SyncSession {
                         "SyncSession does not support running Save on non-host placements yet"
                     ),
                 };
-                Unit(host.clone()).into()
+                HostUnit(host.clone()).into()
             }
 
             // The regular kernels
@@ -264,7 +264,7 @@ impl Session for SyncSession {
 }
 
 impl SetupGeneration<ReplicatedPlacement> for SyncSession {
-    type Setup = RepSetup<PrfKey>;
+    type Setup = RepSetup<HostPrfKey>;
 
     fn setup(&self, plc: &ReplicatedPlacement) -> Result<Arc<Self::Setup>> {
         let mut replicated_keys = self.replicated_keys.write().unwrap();

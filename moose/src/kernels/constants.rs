@@ -246,8 +246,8 @@ macro_rules! constant_kernels {
         )+
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostString, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostShape, ConstantOp);
-        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> PrfKey, ConstantOp);
-        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Seed, ConstantOp);
+        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostPrfKey, ConstantOp);
+        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostSeed, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
         modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
@@ -264,8 +264,8 @@ macro_rules! constant_kernels {
                 )+
                 (HostPlacement, () -> HostString => [runtime] attributes[value: String] Self::string_kernel),
                 (HostPlacement, () -> HostShape => [runtime] attributes[value: RawShape] Self::shape_kernel),
-                (HostPlacement, () -> PrfKey => [runtime] attributes[value: RawPrfKey] Self::prf_key_kernel),
-                (HostPlacement, () -> Seed => [runtime] attributes[value: RawSeed] Self::seed_kernel),
+                (HostPlacement, () -> HostPrfKey => [runtime] attributes[value: RawPrfKey] Self::prf_key_kernel),
+                (HostPlacement, () -> HostSeed => [runtime] attributes[value: RawSeed] Self::seed_kernel),
                 (HostPlacement, () -> Tensor => [concrete] attributes[sig, value] Self::logical_kernel),
                 (HostPlacement, () -> Float32Tensor => [concrete] attributes[value] Self::float_kernel),
                 (HostPlacement, () -> Float64Tensor => [concrete] attributes[value] Self::float_kernel),

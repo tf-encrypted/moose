@@ -16,8 +16,8 @@ use crate::replicated::{
     RepAesKey, RepBitArray, RepFixedTensor, RepShape, RepTensor, RepUintTensor,
 };
 pub use crate::{
+    host::{HostPrfKey, HostSeed},
     host::{HostShape, HostString},
-    host::{PrfKey, Seed},
 };
 use crate::{N128, N224, N256, N64};
 // Logical types
@@ -108,8 +108,8 @@ pub type HostBitArray128 = HostBitArray<HostBitTensor, N128>;
 pub type HostBitArray224 = HostBitArray<HostBitTensor, N224>;
 pub type HostBitArray256 = HostBitArray<HostBitTensor, N256>;
 
-moose_type!(PrfKey);
-moose_type!(Seed);
+moose_type!(HostPrfKey);
+moose_type!(HostSeed);
 moose_type!(HostBitTensor);
 moose_type!(HostString);
 moose_type!(HostShape);

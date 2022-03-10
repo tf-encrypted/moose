@@ -207,7 +207,7 @@ impl AsFixedpoint for f64 {
 }
 
 // Constants are trivial values. They are what can live on the nodes of the computation graph.
-// Constant can not be a Unit, an Unknown or a complex structure such as ReplicatedTensor.
+// Constant can not be a HostUnit, an Unknown or a complex structure such as ReplicatedTensor.
 macro_rules! constants {
     ($($val:ident $($t:ident)?,)+) => {
 
@@ -275,8 +275,8 @@ macro_rules! constants {
 // The lines with 1 identifier are for linking to the "Unplaced" values, where the Constant and Value are essentially the same and can be converted easily.
 constants![
     RawShape HostShape,
-    RawSeed Seed,
-    RawPrfKey PrfKey,
+    RawSeed HostSeed,
+    RawPrfKey HostPrfKey,
     String HostString,
     HostBitTensor,
     HostRing64Tensor,
@@ -357,6 +357,10 @@ macro_rules! values {
                     "Ring64" => Some(Ty::Ring64),
                     "Ring128" => Some(Ty::Ring128),
                     "Fixed" => Some(Ty::Fixed),
+                    // The names below are deprecated aliases, maintained for a long period of time for compatibility
+                    "Seed" => Some(Ty::HostSeed), // pre v0.1.5
+                    "PrfKey" => Some(Ty::HostPrfKey), // pre v0.1.5
+                    "Unit" => Some(Ty::HostUnit), // pre v0.1.5
                     _ => None,
                 }
             }
@@ -470,13 +474,6 @@ macro_rules! values {
             pub fn ty(&self) -> Ty {
                 match self {
                     $(SymbolicValue::$val(_) => Ty::$val$(($inner::$default))?,)+
-                    // TODO promote below to match other values
-                    // SymbolicValue::Unit => Ty::Unit,
-                    // SymbolicValue::Bit(_) => Ty::Bit,
-                    // SymbolicValue::Float32(_) => Ty::Float32,
-                    // SymbolicValue::Float64(_) => Ty::Float64,
-                    // SymbolicValue::Ring64(_) => Ty::Ring64,
-                    // SymbolicValue::Ring128(_) => Ty::Ring128,
                 }
             }
         }
@@ -526,10 +523,10 @@ macro_rules! values {
 }
 
 values![
-    Unit,
+    HostUnit,
     HostShape,
-    Seed,
-    PrfKey,
+    HostSeed,
+    HostPrfKey,
     HostString,
     Tensor(TensorDType::Unknown),
     HostBitTensor,
@@ -592,10 +589,10 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
     macro_rules! __emit__ { $($rules)* }
     __emit__! {
         HostString,
-        Unit,
+        HostUnit,
         HostShape,
-        Seed,
-        PrfKey,
+        HostSeed,
+        HostPrfKey,
         HostBitTensor,
         HostRing64Tensor,
         HostRing128Tensor,
@@ -614,16 +611,16 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
     }
 )}
 
-// Unit is still special. Placed unit is just a host placement.
+// HostUnit is still special. Placed unit is just a host placement.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct Unit(pub HostPlacement);
+pub struct HostUnit(pub HostPlacement);
 
 #[cfg(feature = "compile")]
-impl PartiallySymbolicType for Unit {
-    type Type = Unit;
+impl PartiallySymbolicType for HostUnit {
+    type Type = HostUnit;
 }
 
-impl Placed for Unit {
+impl Placed for HostUnit {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {

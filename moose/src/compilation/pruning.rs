@@ -89,9 +89,9 @@ mod tests {
         let source = r#"
         x = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         y = Constant {value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
-        send_mul = Send {rendezvous_key=30303030303030303030303030303031, receiver="alice"}: (HostFloat32Tensor) -> Unit (y) @Host(bob)
+        send_mul = Send {rendezvous_key=30303030303030303030303030303031, receiver="alice"}: (HostFloat32Tensor) -> HostUnit (y) @Host(bob)
         recv_mul = Receive {rendezvous_key=30303030303030303030303030303031, sender="bob"} : () -> HostFloat32Tensor () @Host(alice)
-        send_add = Send {rendezvous_key=30303030303030303030303030303032, receiver="alice"}: (HostFloat32Tensor) -> Unit (y) @Host(bob)
+        send_add = Send {rendezvous_key=30303030303030303030303030303032, receiver="alice"}: (HostFloat32Tensor) -> HostUnit (y) @Host(bob)
         recv_add = Receive {rendezvous_key=30303030303030303030303030303032, sender="bob"} : () -> HostFloat32Tensor () @Host(alice)
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_mul) @Host(alice)
         add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_add) @Host(alice)
@@ -111,7 +111,7 @@ mod tests {
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_mul) @Host(alice)"
         ));
         assert!(comp.contains(
-            r#"send_mul = Send{rendezvous_key = 30303030303030303030303030303031, receiver = "alice"}: (HostFloat32Tensor) -> Unit (y) @Host(bob)"#
+            r#"send_mul = Send{rendezvous_key = 30303030303030303030303030303031, receiver = "alice"}: (HostFloat32Tensor) -> HostUnit (y) @Host(bob)"#
         ));
         assert!(comp.contains(
             r#"recv_mul = Receive{rendezvous_key = 30303030303030303030303030303031, sender = "bob"}: () -> HostFloat32Tensor () @Host(alice)"#
