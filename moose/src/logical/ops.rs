@@ -911,6 +911,16 @@ impl CastOp {
         };
 
         match (x, sig.ret()) {
+            // standard casts
+            (AbstractTensor::Float32(x), Ty::Tensor(TensorDType::Float64)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Float64(res))
+            }
+            (AbstractTensor::Float64(x), Ty::Tensor(TensorDType::Float32)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Float32(res))
+            }
+            // fixedpoint decoding
             (AbstractTensor::Fixed64(x), Ty::Tensor(TensorDType::Float32)) => {
                 let (_, fractional_precision) = arg0_precision.unwrap();
                 let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
@@ -921,6 +931,7 @@ impl CastOp {
                 let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
                 Ok(AbstractTensor::Float64(inner))
             }
+            // fixedpoint encoding
             (
                 AbstractTensor::Float32(x),
                 Ty::Tensor(TensorDType::Fixed64 {
@@ -944,7 +955,7 @@ impl CastOp {
                 Ok(AbstractTensor::Fixed128(inner))
             }
             (x, ret) => Err(Error::UnimplementedOperator(format!(
-                "Cast operator does not support casting of {:?} to {:?}",
+                "Cast operator does not support casting of {} to {:?}",
                 &x.ty_desc(),
                 &ret
             ))),

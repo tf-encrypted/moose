@@ -1932,6 +1932,15 @@ impl CastOp {
 
         Ok(HostRingTensor(x_downshifted.into_shared(), plc.clone()))
     }
+
+    // standard casts
+    pub(crate) fn standard_host_kernel<S: RuntimeSession, T1, T2>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T1>,
+    ) -> Result<HostTensor<T2>> {
+        unimplemented!("oops")
+    }
 }
 
 impl RingFixedpointArgmaxOp {
