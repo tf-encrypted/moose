@@ -333,11 +333,18 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
 
 impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E> for DeriveSeedOp {
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
-        let (input, sync_key) =
-            attributes_single("sync_key", map_res(vector(parse_int), SyncKey::try_from))(input)
-                .map_err(|_: nom::Err<nom::error::Error<&str>>| {
-                    Error(make_error(input, ErrorKind::MapRes))
-                })?;
+        let (input, sync_key) = attributes_single(
+            "sync_key",
+            alt((
+                // Deprecated representation using vector of ints. Pre v0.1.5
+                map_res(vector(parse_int), SyncKey::try_from),
+                // Expected format
+                map(parse_hex_zero_padded, SyncKey::from_bytes),
+            )),
+        )(input)
+        .map_err(|_: nom::Err<nom::error::Error<&str>>| {
+            Error(make_error(input, ErrorKind::MapRes))
+        })?;
         let (input, opt_sig) = opt(operator_signature(0))(input)?;
         let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostSeed));
         Ok((input, DeriveSeedOp { sig, sync_key }.into()))
@@ -1582,7 +1589,7 @@ impl ToTextual for Role {
 // Required to serialize DeriveSeedOp
 impl ToTextual for SyncKey {
     fn to_textual(&self) -> String {
-        format!("{:?}", self.as_bytes())
+        self.as_bytes().to_textual()
     }
 }
 
@@ -1887,6 +1894,29 @@ mod tests {
                 sync_key: SyncKey::try_from(vec![1, 2, 3])?
             })
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_seed_hex() -> Result<(), anyhow::Error> {
+        let source =
+            "seed = DeriveSeed{sync_key = 01020300000000000000000000000000}: () -> Seed (key) @Host(alice)";
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(source)?;
+        assert_eq!(op.name, "seed");
+        assert_eq!(
+            op.kind,
+            Operator::DeriveSeed(DeriveSeedOp {
+                sig: Signature::nullary(Ty::Seed),
+                sync_key: SyncKey::try_from(vec![1, 2, 3])?
+            })
+        );
+        // Verify that it serializes back to the same format
+        assert_eq!(source, op.to_textual());
+        // Verify the shorthand format
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "seed = DeriveSeed{sync_key = 010203}(key)@Host(alice)",
+        )?;
+        assert_eq!(source, op.to_textual());
         Ok(())
     }
 
@@ -2276,7 +2306,7 @@ mod tests {
         let comp: Computation = "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
             z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, carole)
-            seed = DeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
+            seed = DeriveSeed{sync_key = 010203} (key) @Host(alice)
             seed2 = Constant{value = HostSeed(529c2fc9bf573d077f45f42b19cfb8d4)}: () -> HostSeed @Host(alice)
             o = Output: (HostFloat32Tensor) -> HostFloat32Tensor (z) @Host(alice)"
             .try_into()?;
