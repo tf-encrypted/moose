@@ -22,6 +22,9 @@ pub async fn read_csv(
         .into_iter()
         .map(|header| header.to_string())
         .collect();
+    if headers.is_empty() {
+        return Err(Error::Storage(format!("no columns found for file: {}", filename)));
+    }
     for header in &headers {
         data.insert(header.clone(), Vec::new());
     }
