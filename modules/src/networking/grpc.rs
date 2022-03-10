@@ -90,8 +90,8 @@ impl AsyncNetworking for GrpcNetworking {
 
         retry(
             ExponentialBackoff {
-                max_elapsed_time: Some(Duration::from_millis(constants::MAX_ELAPSED_TIME_MILLIS)),
-                max_interval: Duration::from_millis(constants::MAX_INTERVAL_MILLIS),
+                max_elapsed_time: *constants::MAX_ELAPSED_TIME,
+                max_interval: *constants::MAX_INTERVAL_MILLIS,
                 multiplier: constants::MULTIPLIER,
                 ..Default::default()
             },
