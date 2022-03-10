@@ -6,9 +6,8 @@ use std::collections::{HashMap, HashSet};
 
 pub async fn read_csv(
     filename: &str,
-    _maybe_type_hint: Option<Ty>,
     columns: &[String],
-    placement: &str,
+    placement: &HostPlacement,
 ) -> Result<Value> {
     let mut include_columns: HashSet<String> = HashSet::new();
     for column_name in columns.iter() {
@@ -56,7 +55,34 @@ pub async fn read_csv(
             filename, e
         ))
     })?;
-    let plc = HostPlacement::from(placement);
-    let tensor: HostFloat64Tensor = plc.from_raw(ndarr);
+    let tensor: HostFloat64Tensor = placement.from_raw(ndarr);
     Ok(Value::from(tensor))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ndarray::array;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    #[tokio::test]
+    async fn test_read_csv() {
+        let plc = HostPlacement::from("host");
+        let arr = array![[1.1, 2.2], [3.3, 4.4], [5.5, 6.6]];
+        let tensor: HostFloat64Tensor = plc.from_raw(arr);
+        let expected = Value::from(tensor);
+        let file_data = concat!("col_0,col_1\n", "1.1,2.2\n", "3.3,4.4\n", "5.5,6.6\n");
+        let mut file = NamedTempFile::new().expect("trying to create tempfile");
+        file.write_all(file_data.as_bytes()).unwrap();
+        let path = file.path();
+        let filename = path
+            .to_str()
+            .expect("trying to get path from temp file")
+            .to_string();
+
+        let plc = HostPlacement::from("host");
+        let data = read_csv(&filename, &[], &plc).await.unwrap();
+        assert_eq!(data, expected);
+    }
 }

@@ -30,3 +30,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [build-dependencies]
 tonic-build = "0.6"
+
+[dev-dependencies]
+tempfile = "~3.3"
+base64 = "~0.13"
