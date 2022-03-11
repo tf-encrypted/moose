@@ -11,13 +11,13 @@ use crate::textual::ToTextual;
 use crate::types::*;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
+use getrandom;
 use macros::{FromTextual, ShortName, ToTextual};
 use paste::paste;
 use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use serde::{Deserialize, Serialize};
-use sodiumoxide::crypto::generichash;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fs::File;
@@ -25,9 +25,6 @@ use std::hash::{Hash, Hasher};
 use std::path::Path;
 
 pub const TAG_BYTES: usize = 128 / 8;
-static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::DIGEST_MIN);
-static_assertions::const_assert!(TAG_BYTES <= sodiumoxide::crypto::generichash::DIGEST_MAX);
-
 // TODO: the displayed representation of the RendezvousKey does not match with
 // the input. Might need to do something similar to what we did with the
 // session id, and have a secure and a logical form of it?
@@ -84,8 +81,9 @@ impl RendezvousKey {
 
     pub fn random() -> Self {
         let mut raw = [0; TAG_BYTES];
-        sodiumoxide::init().expect("failed to initialize sodiumoxide");
-        sodiumoxide::randombytes::randombytes_into(&mut raw);
+        if let Err(e) = getrandom::getrandom(&mut raw) {
+            panic!("failed to get randomness, Error: {}", e);
+        }
         RendezvousKey(raw)
     }
 }
@@ -106,20 +104,10 @@ impl std::fmt::Display for SessionId {
 impl TryFrom<&str> for SessionId {
     type Error = Error;
     fn try_from(s: &str) -> Result<SessionId> {
-        sodiumoxide::init().map_err(|e| {
-            crate::error::Error::Unexpected(Some(format!(
-                "failed to initialize sodiumoxide: {:?}",
-                e
-            )))
-        })?;
-        let digest = generichash::hash(s.as_bytes(), Some(TAG_BYTES), None).map_err(|e| {
-            crate::error::Error::Unexpected(Some(format!(
-                "failed to hash session ID: {}: {:?}",
-                s, e
-            )))
-        })?;
+        let digest = blake3::hash(s.as_bytes());
         let mut raw_hash = [0u8; TAG_BYTES];
-        raw_hash.copy_from_slice(digest.as_ref());
+        raw_hash.copy_from_slice(&digest.as_bytes()[..TAG_BYTES]);
+
         let sid = SessionId {
             logical: s.to_string(),
             secure: raw_hash,
@@ -135,8 +123,9 @@ impl SessionId {
 
     pub fn random() -> Self {
         let mut raw = [0; TAG_BYTES];
-        sodiumoxide::init().expect("failed to initialize sodiumoxide");
-        sodiumoxide::randombytes::randombytes_into(&mut raw);
+        if let Err(e) = getrandom::getrandom(&mut raw) {
+            panic!("failed to get randomness, Error: {}", e);
+        }
         let hex_vec: Vec<String> = raw.iter().map(|byte| format!("{:02X}", byte)).collect();
         let hex_string = hex_vec.join("");
         SessionId {

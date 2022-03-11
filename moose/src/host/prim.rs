@@ -1,12 +1,12 @@
 use super::HostPlacement;
 use crate::computation::{DeriveSeedOp, Placed, PrfKeyGenOp, TAG_BYTES};
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::execution::{RuntimeSession, Session};
 use crate::kernels::PlacementPlace;
 use crate::prng::AesRng;
 use crate::prng::{RngSeed, SEED_SIZE};
+use getrandom;
 use serde::{Deserialize, Serialize};
-use sodiumoxide::crypto::generichash;
 use std::convert::TryFrom;
 
 #[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
@@ -75,8 +75,9 @@ pub struct SyncKey([u8; TAG_BYTES]);
 impl SyncKey {
     pub fn random() -> SyncKey {
         let mut raw_sync_key = [0u8; TAG_BYTES];
-        sodiumoxide::init().expect("failed to initialize sodiumoxide");
-        sodiumoxide::randombytes::randombytes_into(&mut raw_sync_key);
+        if let Err(e) = getrandom::getrandom(&mut raw_sync_key) {
+            panic!("failed to get randomness, Error: {}", e);
+        }
         SyncKey(raw_sync_key)
     }
 
@@ -124,18 +125,22 @@ impl DeriveSeedOp {
     ) -> Result<HostSeed> {
         let sid = sess.session_id();
         let key_bytes = key.0.as_bytes();
+        let extended_key_bytes = blake3::hash(key_bytes);
 
         // compute seed as hash(sid || sync_key)[0..SEED_SIZE]
         let sid_bytes: [u8; TAG_BYTES] = *sid.as_bytes();
         let sync_key_bytes: [u8; TAG_BYTES] = sync_key.0;
-        let mut nonce: Vec<u8> = Vec::with_capacity(2 * TAG_BYTES);
-        nonce.extend(&sid_bytes);
-        nonce.extend(&sync_key_bytes);
-        sodiumoxide::init().expect("failed to initialize sodiumoxide");
-        let digest = generichash::hash(&nonce, Some(SEED_SIZE), Some(key_bytes))
-            .map_err(|_e| Error::KernelError("Failure to derive seed.".to_string()))?;
+
+        // init H(k, *)
+        let mut keyed_hash = blake3::Hasher::new_keyed(extended_key_bytes.as_bytes());
+
+        // nonce = sid || sync_key
+        keyed_hash.update(&sid_bytes);
+        keyed_hash.update(&sync_key_bytes);
+
+        let digest = keyed_hash.finalize();
         let mut raw_seed: RngSeed = [0u8; SEED_SIZE];
-        raw_seed.copy_from_slice(digest.as_ref());
+        raw_seed.copy_from_slice(&digest.as_bytes()[..SEED_SIZE]);
 
         Ok(HostSeed(RawSeed(raw_seed), plc.clone()))
     }
