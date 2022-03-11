@@ -83,6 +83,10 @@ impl SyncKey {
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
+
+    pub fn from_bytes(bytes: [u8; TAG_BYTES]) -> Self {
+        SyncKey(bytes)
+    }
 }
 
 impl TryFrom<Vec<u8>> for SyncKey {

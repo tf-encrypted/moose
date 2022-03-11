@@ -285,7 +285,7 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
         let (input, _) = ws(tag("{"))(input)?;
         let (input, (_, _, rendezvous_key)) =
-            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex))(input)?;
+            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex_zero_padded))(input)?;
         let (input, _) = ws(tag(","))(input)?;
         let (input, (_, _, receiver)) = tuple((tag("receiver"), ws(tag("=")), string))(input)?;
         let (input, _) = ws(tag("}"))(input)?;
@@ -306,7 +306,7 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
         let (input, _) = ws(tag("{"))(input)?;
         let (input, (_, _, rendezvous_key)) =
-            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex))(input)?;
+            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex_zero_padded))(input)?;
         let (input, _) = ws(tag(","))(input)?;
         let (input, (_, _, sender)) = tuple((tag("sender"), ws(tag("=")), string))(input)?;
         let (input, _) = ws(tag("}"))(input)?;
@@ -333,11 +333,18 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
 
 impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E> for DeriveSeedOp {
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
-        let (input, sync_key) =
-            attributes_single("sync_key", map_res(vector(parse_int), SyncKey::try_from))(input)
-                .map_err(|_: nom::Err<nom::error::Error<&str>>| {
-                    Error(make_error(input, ErrorKind::MapRes))
-                })?;
+        let (input, sync_key) = attributes_single(
+            "sync_key",
+            alt((
+                // Deprecated representation using vector of ints. Pre v0.1.5
+                map_res(vector(parse_int), SyncKey::try_from),
+                // Expected format
+                map(parse_hex_zero_padded, SyncKey::from_bytes),
+            )),
+        )(input)
+        .map_err(|_: nom::Err<nom::error::Error<&str>>| {
+            Error(make_error(input, ErrorKind::MapRes))
+        })?;
         let (input, opt_sig) = opt(operator_signature(0))(input)?;
         let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostSeed));
         Ok((input, DeriveSeedOp { sig, sync_key }.into()))
@@ -854,7 +861,7 @@ pub fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str> + Context
     .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 }
 
-/// Parses a single byte, writte as two hex character.
+/// Parses a single byte, written as two hex character.
 ///
 /// Leading '0' is mandatory for bytes 0x00 - 0x0F.
 fn parse_hex_u8<'a, E>(input: &'a str) -> IResult<&'a str, u8, E>
@@ -876,6 +883,32 @@ where
     let mut buf: [u8; N] = [0; N];
     let (rest, ()) = fill(parse_hex_u8, &mut buf)(input)?;
     Ok((rest, buf))
+}
+
+/// Parse sa hux dump, without any separators.
+///
+/// Leaves the tail zeroed if there is not enough data to fill an array of length N.
+pub fn parse_hex_zero_padded<'a, E, const N: usize>(input: &'a str) -> IResult<&'a str, [u8; N], E>
+where
+    E: ParseError<&'a str>,
+{
+    let mut buf: [u8; N] = [0; N];
+    let mut input = <&str>::clone(&input); // Explicitly cloning just the reference.
+    for elem in buf.iter_mut() {
+        match parse_hex_u8(input) {
+            Ok((i, o)) => {
+                *elem = o;
+                input = i;
+            }
+            Err(Error(_)) => {
+                return Ok((input, buf)); // Unlike `fill`, return the buffer if the child parser errored.
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
+    }
+    Ok((input, buf))
 }
 
 /// Wraps the inner parser in optional spaces.
@@ -1556,7 +1589,7 @@ impl ToTextual for Role {
 // Required to serialize DeriveSeedOp
 impl ToTextual for SyncKey {
     fn to_textual(&self) -> String {
-        format!("{:?}", self.as_bytes())
+        self.as_bytes().to_textual()
     }
 }
 
@@ -1865,6 +1898,29 @@ mod tests {
     }
 
     #[test]
+    fn test_seed_hex() -> Result<(), anyhow::Error> {
+        let source =
+            "seed = DeriveSeed{sync_key = 01020300000000000000000000000000}: () -> HostSeed (key) @Host(alice)";
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(source)?;
+        assert_eq!(op.name, "seed");
+        assert_eq!(
+            op.kind,
+            Operator::DeriveSeed(DeriveSeedOp {
+                sig: Signature::nullary(Ty::HostSeed),
+                sync_key: SyncKey::try_from(vec![1, 2, 3])?
+            })
+        );
+        // Verify that it serializes back to the same format
+        assert_eq!(source, op.to_textual());
+        // Verify the shorthand format
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "seed = DeriveSeed{sync_key = 010203}(key)@Host(alice)",
+        )?;
+        assert_eq!(source, op.to_textual());
+        Ok(())
+    }
+
+    #[test]
     fn test_send() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
             r#"send = Send{rendezvous_key = 30313233343536373839616263646566, receiver = "bob"}: (HostFloat32Tensor) -> HostUnit() @Host(alice)"#,
@@ -1878,6 +1934,27 @@ mod tests {
                 receiver: Role::from("bob")
             })
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_send_shortened() -> Result<(), anyhow::Error> {
+        // Test that rendezvous_key can be specified without the tailing zeroes.
+        let (_, op1) = parse_assignment::<(&str, ErrorKind)>(
+            r#"send = Send{rendezvous_key = 179704, receiver = "bob"}: (HostFloat32Tensor) -> Unit() @Host(alice)"#,
+        )?;
+        let (_, op2) = parse_assignment::<(&str, ErrorKind)>(
+            r#"send = Send{rendezvous_key = 17970400000000000000000000000000, receiver = "bob"}: (HostFloat32Tensor) -> Unit() @Host(alice)"#,
+        )?;
+        let rendezvous_key1 = match op1.kind {
+            Operator::Send(SendOp { rendezvous_key, .. }) => rendezvous_key,
+            _ => panic!("Incorrect op type parsed"),
+        };
+        let rendezvous_key2 = match op2.kind {
+            Operator::Send(SendOp { rendezvous_key, .. }) => rendezvous_key,
+            _ => panic!("Incorrect op type parsed"),
+        };
+        assert_eq!(rendezvous_key1, rendezvous_key2);
         Ok(())
     }
 
@@ -2229,7 +2306,7 @@ mod tests {
         let comp: Computation = "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
             z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, carole)
-            seed = DeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
+            seed = DeriveSeed{sync_key = 010203} (key) @Host(alice)
             seed2 = Constant{value = HostSeed(529c2fc9bf573d077f45f42b19cfb8d4)}: () -> HostSeed @Host(alice)
             o = Output: (HostFloat32Tensor) -> HostFloat32Tensor (z) @Host(alice)"
             .try_into()?;
