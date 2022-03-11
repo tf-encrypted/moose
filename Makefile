@@ -63,7 +63,7 @@ clean:
 ci-ready: fmt lint test-ci
 
 .PHONY: clean-ci
-clean-ci: clean ci-ready
+ci-clean-check: clean ci-ready
 
 .PHONY: release
 release: ci-ready
