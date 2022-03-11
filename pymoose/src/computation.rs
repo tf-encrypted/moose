@@ -628,10 +628,10 @@ fn map_signature(
 ) -> anyhow::Result<Signature> {
     let placement = plc.get(placement_name);
     let get_arg = |name: &str| {
-        pysig.input_types.get(name).ok_or(anyhow::anyhow!(
-            "Missing type information for argument {}",
-            name
-        ))
+        pysig
+            .input_types
+            .get(name)
+            .ok_or_else(|| anyhow::anyhow!("Missing type information for argument {}", name))
     };
     match expected_inputs {
         [] => Ok(Signature::nullary(map_type(&pysig.return_type, placement)?)),
@@ -666,10 +666,9 @@ fn map_signature_variadic(
     let placement = plc.get(placement_name);
     Ok(Signature::variadic(
         map_type(
-            pysig.input_types.get(any_arg).ok_or(anyhow::anyhow!(
-                "Missing type information for argument {}",
-                any_arg
-            ))?,
+            pysig.input_types.get(any_arg).ok_or_else(|| {
+                anyhow::anyhow!("Missing type information for argument {}", any_arg)
+            })?,
             placement,
         )?,
         map_type(&pysig.return_type, placement)?,
