@@ -41,6 +41,7 @@ _SK_REGRESSION_MODELS = [
 ]
 _SK_CLASSIFIER_MODELS = [
     ("logistic_regression_2class_multiclass", [0.5535523, 0.4464477]),
+    ("logistic_regression_2class_multiclass_autosk", [0.56790665, 0.43209335]),
     ("logistic_regression_3class_multiclass", [0.11341234, 0.51814332, 0.36844435]),
     ("logistic_regression_2class_multilabel", [0.56790665, 0.43209335]),
     ("logistic_regression_3class_multilabel", [0.1371954, 0.46855493, 0.39424967]),
