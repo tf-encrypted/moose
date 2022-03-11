@@ -112,23 +112,12 @@ class LinearRegressor(LinearPredictor):
 
 
 class LinearClassifier(LinearPredictor):
-    def __init__(self, coeffs, intercepts=None, multitask=False, transform_output=True):
+    def __init__(
+        self, coeffs, intercepts=None, post_transform=None, transform_output=True
+    ):
         super().__init__(coeffs, intercepts)
         n_classes = self.coeffs.shape[0]
-        # infer post_transform
-        if not transform_output:
-            self._post_transform = lambda x: x
-        elif multitask and n_classes == 2:
-            self._post_transform = lambda x: edsl.sigmoid(x)
-        elif multitask and n_classes > 2:
-            self._post_transform = lambda x: self._normalized_sigmoid(x, axis=1)
-        elif not multitask:
-            # TODO special case n_classes=2
-            self._post_transform = lambda x: edsl.softmax(
-                x, axis=1, upmost_index=n_classes
-            )
-        else:
-            raise ValueError("Could not infer post-transform in LinearClassifier")
+        self._post_transform = post_transform
 
     @classmethod
     def from_onnx(cls, model_proto):
@@ -192,34 +181,35 @@ class LinearClassifier(LinearPredictor):
         post_transform = predictor_utils.find_attribute_in_node(
             lc_node, "post_transform"
         )
-        post_transform_str = post_transform.s.decode()
-        transform_output = post_transform_str != "NONE"
+        post_transform_onx = post_transform.s.decode()
 
         # sanity check that post_transform conforms to our expectations
-        if post_transform_str == "PROBIT":
+        if post_transform_onx == "PROBIT":
             raise RuntimeError(
-                f"{post_transform_str} post_transform is unsupported for "
+                f"{post_transform_onx} post_transform is unsupported for "
                 "LinearClassifier."
             )
-        elif post_transform_str in ["SOFTMAX", "SOFTMAX_ZERO"] and multitask:
+        elif post_transform_onx in ["SOFTMAX", "SOFTMAX_ZERO"] and multitask:
             raise RuntimeError(
-                f"Invalid post_transform {post_transform_str} for multitask=True."
+                f"Invalid post_transform {post_transform_onx} for multitask=True."
             )
 
-        return cls(
-            coeffs=coeffs,
-            intercepts=intercepts,
-            multitask=multitask,
-            transform_output=transform_output,
-        )
+        # infer post_transform
+        if post_transform_onx == "NONE":
+            post_transform = lambda x: x
+        elif post_transform_onx == "LOGISTIC" and n_classes == 2:
+            post_transform = lambda x: edsl.sigmoid(x)
+        elif post_transform_onx == "LOGISTIC" and n_classes > 2:
+            post_transform = lambda x: _normalized_sigmoid(x, axis=1)
+        elif post_transform_onx == "SOFTMAX":
+            post_transform = lambda x: edsl.softmax(x, axis=1, upmost_index=n_classes)
+        else:
+            raise ValueError("Could not infer post-transform in LinearClassifier")
+
+        return cls(coeffs=coeffs, intercepts=intercepts, post_transform=post_transform,)
 
     def post_transform(self, y):
         return self._post_transform(y)
-
-    def _normalized_sigmoid(self, x, axis):
-        y = edsl.sigmoid(x)
-        y_sum = edsl.expand_dims(edsl.sum(y, axis), axis)
-        return edsl.div(y, y_sum)
 
 
 def _validate_model_args(coeffs, intercepts):
@@ -261,3 +251,9 @@ def _interpret_intercepts(intercepts):
     raise ValueError(
         f"Intercept must be convertible to a vector, found shape of {intercepts_shape}."
     )
+
+
+def _normalized_sigmoid(x, axis):
+    y = edsl.sigmoid(x)
+    y_sum = edsl.expand_dims(edsl.sum(y, axis), axis)
+    return edsl.div(y, y_sum)
