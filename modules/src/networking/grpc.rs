@@ -6,8 +6,11 @@ use self::gen::networking_client::NetworkingClient;
 use self::gen::networking_server::Networking;
 use self::gen::networking_server::NetworkingServer;
 use self::gen::{SendValueRequest, SendValueResponse};
+use crate::networking::constants;
 use async_cell::sync::AsyncCell;
 use async_trait::async_trait;
+use backoff::future::retry;
+use backoff::ExponentialBackoff;
 use dashmap::DashMap;
 use moose::networking::AsyncNetworking;
 use moose::prelude::*;
@@ -72,27 +75,34 @@ impl AsyncNetworking for GrpcNetworking {
         rendezvous_key: &RendezvousKey,
         _session_id: &SessionId,
     ) -> moose::Result<()> {
-        let tagged_value = TaggedValue {
-            session_id: self.session_id.clone(),
-            rendezvous_key: rendezvous_key.clone(),
-            value: val.clone(),
-        };
-
-        let bytes = bincode::serialize(&tagged_value)
-            .map_err(|e| moose::Error::Networking(e.to_string()))?;
-        let request = SendValueRequest {
-            tagged_value: bytes,
-        };
-
-        let channel = self.channel(receiver)?;
-        let mut client = NetworkingClient::new(channel);
-
-        let _response = client
-            .send_value(request)
-            .await
-            .map_err(|e| moose::Error::Networking(e.to_string()))?;
-
-        Ok(())
+        retry(
+            ExponentialBackoff {
+                max_elapsed_time: *constants::MAX_ELAPSED_TIME,
+                max_interval: *constants::MAX_INTERVAL,
+                multiplier: constants::MULTIPLIER,
+                ..Default::default()
+            },
+            || async {
+                let tagged_value = TaggedValue {
+                    session_id: self.session_id.clone(),
+                    rendezvous_key: rendezvous_key.clone(),
+                    value: val.clone(),
+                };
+                let bytes = bincode::serialize(&tagged_value)
+                    .map_err(|e| moose::Error::Networking(e.to_string()))?;
+                let request = SendValueRequest {
+                    tagged_value: bytes,
+                };
+                let channel = self.channel(receiver)?;
+                let mut client = NetworkingClient::new(channel);
+                let _response = client
+                    .send_value(request)
+                    .await
+                    .map_err(|e| moose::Error::Networking(e.to_string()))?;
+                Ok(())
+            },
+        )
+        .await
     }
 
     async fn receive(
