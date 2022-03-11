@@ -1900,13 +1900,13 @@ mod tests {
     #[test]
     fn test_seed_hex() -> Result<(), anyhow::Error> {
         let source =
-            "seed = DeriveSeed{sync_key = 01020300000000000000000000000000}: () -> Seed (key) @Host(alice)";
+            "seed = DeriveSeed{sync_key = 01020300000000000000000000000000}: () -> HostSeed (key) @Host(alice)";
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(source)?;
         assert_eq!(op.name, "seed");
         assert_eq!(
             op.kind,
             Operator::DeriveSeed(DeriveSeedOp {
-                sig: Signature::nullary(Ty::Seed),
+                sig: Signature::nullary(Ty::HostSeed),
                 sync_key: SyncKey::try_from(vec![1, 2, 3])?
             })
         );
