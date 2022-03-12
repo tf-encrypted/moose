@@ -719,8 +719,8 @@ impl BitDecomposeOp {
     }
 }
 
-impl HostMeanOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl MeanOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
