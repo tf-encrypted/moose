@@ -56,7 +56,6 @@ nom = { version="~7.1" }
 [dev-dependencies]
 aes-gcm = "~0.9"
 criterion = { version="~0.3", features=["async_tokio"] }
-env_logger = "~0.9"
 proptest = "~1.0"
 rstest = "~0.12"
 
