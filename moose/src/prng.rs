@@ -60,7 +60,7 @@
 //!
 
 use aes::cipher::generic_array::{typenum::U16, typenum::U8, GenericArray};
-use aes::cipher::{BlockEncrypt, NewBlockCipher};
+use aes::cipher::{BlockEncrypt, KeyInit};
 use aes::Aes128;
 use byteorder::{ByteOrder, LittleEndian};
 use rand::{CryptoRng, Error, RngCore, SeedableRng};
@@ -156,7 +156,7 @@ impl SeedableRng for AesRng {
     /// to be used few times, by default we should go with AesRng::from_random_seed
     #[inline]
     fn from_seed(seed: Self::Seed) -> Self {
-        let key: Block128 = GenericArray::clone_from_slice(&seed);
+        let key = GenericArray::clone_from_slice(&seed);
         let mut out = AesRng {
             state: AesRngState::default(),
             cipher: Aes128::new(&key),

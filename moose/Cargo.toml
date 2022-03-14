@@ -18,7 +18,7 @@ sync_execute = []
 async_execute = []
 
 [dependencies]
-aes = "~0.7"
+aes = "~0.8"
 anyhow = "~1.0"
 async_cell = "~0.2"
 async-trait = "~0.1"
