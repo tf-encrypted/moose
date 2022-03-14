@@ -34,31 +34,31 @@ macro_rules! m {
 }
 
 macro_rules! derive_runtime_kernel {
-    (nullary, custom |$op:ident| $kf:expr, $self:ident) => {
+    (nullary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedNullaryKernel<_, _, _>> = &|$op| $kf;
             kf($self)
         }
     };
-    (unary, custom |$op:ident| $kf:expr, $self:ident) => {
+    (unary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedUnaryKernel<_, _, _, _>> = &|$op| $kf;
             kf($self)
         }
     };
-    (binary, custom |$op:ident| $kf:expr, $self:ident) => {
+    (binary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedBinaryKernel<_, _, _, _, _>> = &|$op| $kf;
             kf($self)
         }
     };
-    (ternary, custom |$op:ident| $kf:expr, $self:ident) => {
+    (ternary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedTernaryKernel<_, _, _, _, _, _> = &|$op| $kf;
             kf($self)
         }
     };
-    (variadic, custom |$op:ident| $kf:expr, $self:ident) => {
+    (variadic, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedVariadicKernel<_, _, _, _>> = &|$op| $kf;
             kf($self)
