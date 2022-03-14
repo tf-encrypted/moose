@@ -43,5 +43,28 @@ fn chacha_rng(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, chacha_rng, aes_rng);
+fn thread_rng(c: &mut Criterion) {
+    c.bench_function("thread_rng_fill16bytes", |b| {
+        b.iter(|| {
+            let mut output = vec![0u8; 16];
+            for _i in 0..512 {
+                let mut rng = rand::thread_rng();
+                rng.try_fill_bytes(&mut output).unwrap();
+            }
+        })
+    });
+}
+
+fn getrandom_rng(c: &mut Criterion) {
+    c.bench_function("get_random_rng_fill16bytes", |b| {
+        b.iter(|| {
+            let mut output = vec![0u8; 16];
+            for _i in 0..512 {
+                getrandom::getrandom(&mut output).expect("failed to get randomness");
+            }
+        })
+    });
+}
+
+criterion_group!(benches, thread_rng, getrandom_rng, chacha_rng, aes_rng);
 criterion_main!(benches);
