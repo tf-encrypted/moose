@@ -44,37 +44,48 @@ fn chacha_rng(c: &mut Criterion) {
 }
 
 fn thread_rng(c: &mut Criterion) {
-    c.bench_function("thread_rng_multiple_fill_16B", |b| {
+    c.bench_function("thread_rng_16B_with_setup", |b| {
+        let mut rng = rand::thread_rng();
+        let mut output = vec![0u8; 16];
         b.iter(|| {
-            let mut output = vec![0u8; 16];
-            for _i in 0..512 {
-                let mut rng = rand::thread_rng();
-                rng.try_fill_bytes(&mut output).unwrap();
-            }
+            rng.fill_bytes(&mut output);
         })
     });
-    c.bench_function("thread_rng_single_fill_16B", |b| {
+    c.bench_function("thread_rng_16B", |b| {
         b.iter(|| {
-            let mut output = vec![0u8; 16];
             let mut rng = rand::thread_rng();
-            rng.try_fill_bytes(&mut output).unwrap();
+            let mut output = vec![0u8; 16];
+            rng.fill_bytes(&mut output);
+        })
+    });
+
+    c.bench_function("thread_rng_16B_10000", |b| {
+        let n: u64 = 10000;
+        let mut rng = rand::thread_rng();
+        let mut output = vec![0u8; 16];
+        b.iter(|| {
+            for _ in 0..n {
+                rng.fill_bytes(&mut output);
+            }
         })
     });
 }
 
 fn getrandom_rng(c: &mut Criterion) {
-    c.bench_function("get_random_rng_fill_16B", |b| {
-        b.iter(|| {
-            let mut output = vec![0u8; 16];
-            for _i in 0..512 {
-                getrandom::getrandom(&mut output).expect("failed to get randomness");
-            }
-        })
-    });
-    c.bench_function("get_random_rng_single_fill_16B", |b| {
+    c.bench_function("get_random_rng_16B", |b| {
         b.iter(|| {
             let mut output = vec![0u8; 16];
             getrandom::getrandom(&mut output).expect("failed to get randomness");
+        })
+    });
+
+    c.bench_function("get_random_rng_16B_10000", |b| {
+        let n: u64 = 10000;
+        let mut output = vec![0u8; 16];
+        b.iter(|| {
+            for _ in 0..n {
+                getrandom::getrandom(&mut output).expect("failed to get randomness");
+            }
         })
     });
 }
