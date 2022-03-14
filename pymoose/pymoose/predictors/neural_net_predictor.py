@@ -7,7 +7,7 @@ from pymoose.predictors import aes_predictor
 from pymoose.predictors import predictor_utils
 
 
-class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
+class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     def __init__(self, weights, biases, activation):
         super().__init__()
         self.weights = weights
@@ -20,42 +20,42 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def post_transform(self, y):
+    def post_transform(self, y, fixedpoint_dtype):
         pass
+
+    def apply_layer(self, input, num_hidden_layers, i, fixedpoint_dtype):
+        w = self.fixedpoint_constant(
+            self.weights[i].T, plc=self.mirrored, dtype=fixedpoint_dtype
+        )
+        b = self.fixedpoint_constant(
+            self.biases[i], plc=self.mirrored, dtype=fixedpoint_dtype
+        )
+        y = edsl.dot(input, w)
+        z = edsl.add(y, b)
+        return z
+
+    def activation_fn(self, z):
+        if self.activation == "Sigmoid":
+            activation_output = edsl.sigmoid(z)
+            # There is a bug in edsl.shape
+            # elif self.activation == "Relu":
+            #     y_1_shape = edsl.slice(edsl.shape(x), begin=0, end=1)
+            #     ones = edsl.ones(y_1_shape, dtype=edsl.float64)
+            #     ones = edsl.cast(ones, dtype=fixedpoint_dtype)
+            #     zeros = edsl.sub(ones, ones)
+            #     activation_output = edsl.maximum([zeros, y_1])
+        else:
+            activation_output = z  # identity activation
+        return activation_output
 
     def neural_predictor_fn(self, x, fixedpoint_dtype):
         num_hidden_layers = len(self.weights) - 1  # infer number of layers
-
-        def forward_pass(input, i):
-            w = self.fixedpoint_constant(
-                self.weights[i].T, plc=self.mirrored, dtype=fixedpoint_dtype
-            )
-            b = self.fixedpoint_constant(
-                self.biases[i], plc=self.mirrored, dtype=fixedpoint_dtype
-            )
-            y = edsl.dot(input, w)
-            z = edsl.add(y, b)
-            # activation function
+        for i in range(num_hidden_layers+1):
+            x = self.apply_layer(x, num_hidden_layers, i, fixedpoint_dtype)
             if i < num_hidden_layers:
-                if self.activation == "Sigmoid":
-                    activation_output = edsl.sigmoid(z)
-                # There is a bug in edsl.shape
-                # elif self.activation == "Relu":
-                #     y_1_shape = edsl.slice(edsl.shape(x), begin=0, end=1)
-                #     ones = edsl.ones(y_1_shape, dtype=edsl.float64)
-                #     ones = edsl.cast(ones, dtype=fixedpoint_dtype)
-                #     zeros = edsl.sub(ones, ones)
-                #     activation_output = edsl.maximum([zeros, y_1])
-                else:
-                    activation_output = z  # identity activation
+                x = self.activation_fn(x)
             else:
-                activation_output = z
-            return activation_output
-
-        i = 0
-        while i <= num_hidden_layers:
-            x = forward_pass(x, i)
-            i += 1
+                x = x
         return x
 
     def predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
@@ -68,15 +68,14 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         ):
             x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
             with self.replicated:
-                activation = self.activation_function(x, fixedpoint_dtype)
-                y = self.neural_predictor_fn(x, activation, fixedpoint_dtype)
-                pred = self.post_transform(y)
+                y = self.neural_predictor_fn(x, fixedpoint_dtype)
+                pred = self.post_transform(y, fixedpoint_dtype)
             return self.handle_output(pred, prediction_handler=self.bob)
 
         return predictor
 
 
-class NeuralRegressor(NeuralNetwork):
+class MLPRegressor(MLPPredictor):
     def post_transform(self, y, fixedpoint_dtype):
         # no-op for linear regression models
         return y
@@ -117,7 +116,7 @@ class NeuralRegressor(NeuralNetwork):
         return cls(weights, biases, activation)
 
 
-class NeuralClassifier(NeuralNetwork):
+class MLPClassifier(MLPPredictor):
     def __init__(
         self, weights, biases, n_classes, activation, transform_output=True,
     ):
@@ -196,10 +195,6 @@ class NeuralClassifier(NeuralNetwork):
 
     def post_transform(self, y, fixedpoint_dtype):
         return self._post_transform(y)
-
-    def _normalized_sigmoid(self, x, axis):
-        y = edsl.sigmoid(x)
-        return edsl.div(y, edsl.sum(y, axis))
 
     def _sigmoid(self, y, fixedpoint_dtype):
         """
