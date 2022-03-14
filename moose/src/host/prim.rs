@@ -128,7 +128,7 @@ impl DeriveSeedOp {
         let sync_key_bytes: [u8; TAG_BYTES] = sync_key.0;
 
         // init H(k, *)
-        let derived_key = blake3::derive_key("Derive Seed", &key_bytes);
+        let derived_key = blake3::derive_key("Derive Seed", key_bytes);
         let mut keyed_hash = blake3::Hasher::new_keyed(&derived_key);
 
         // nonce = sid || sync_key

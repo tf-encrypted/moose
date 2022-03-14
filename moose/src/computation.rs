@@ -25,6 +25,7 @@ use std::hash::{Hash, Hasher};
 use std::path::Path;
 
 pub const TAG_BYTES: usize = 128 / 8;
+static_assertions::const_assert!(TAG_BYTES <= blake3::OUT_LEN);
 // TODO: the displayed representation of the RendezvousKey does not match with
 // the input. Might need to do something similar to what we did with the
 // session id, and have a secure and a logical form of it?
@@ -103,7 +104,7 @@ impl TryFrom<&str> for SessionId {
     type Error = Error;
     fn try_from(s: &str) -> Result<SessionId> {
         let mut hasher = blake3::Hasher::new();
-        hasher.update(&s.as_bytes());
+        hasher.update(s.as_bytes());
         let mut digest = hasher.finalize_xof();
 
         let mut raw_hash = [0u8; TAG_BYTES];

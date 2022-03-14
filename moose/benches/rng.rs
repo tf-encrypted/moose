@@ -44,7 +44,7 @@ fn chacha_rng(c: &mut Criterion) {
 }
 
 fn thread_rng(c: &mut Criterion) {
-    c.bench_function("thread_rng_fill16bytes", |b| {
+    c.bench_function("thread_rng_multiple_fill_16B", |b| {
         b.iter(|| {
             let mut output = vec![0u8; 16];
             for _i in 0..512 {
@@ -53,15 +53,28 @@ fn thread_rng(c: &mut Criterion) {
             }
         })
     });
+    c.bench_function("thread_rng_single_fill_16B", |b| {
+        b.iter(|| {
+            let mut output = vec![0u8; 16];
+            let mut rng = rand::thread_rng();
+            rng.try_fill_bytes(&mut output).unwrap();
+        })
+    });
 }
 
 fn getrandom_rng(c: &mut Criterion) {
-    c.bench_function("get_random_rng_fill16bytes", |b| {
+    c.bench_function("get_random_rng_fill_16B", |b| {
         b.iter(|| {
             let mut output = vec![0u8; 16];
             for _i in 0..512 {
                 getrandom::getrandom(&mut output).expect("failed to get randomness");
             }
+        })
+    });
+    c.bench_function("get_random_rng_single_fill_16B", |b| {
+        b.iter(|| {
+            let mut output = vec![0u8; 16];
+            getrandom::getrandom(&mut output).expect("failed to get randomness");
         })
     });
 }
