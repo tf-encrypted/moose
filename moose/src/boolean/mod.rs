@@ -197,11 +197,11 @@ impl SaveOp {
         plc: &HostPlacement,
         key: m!(HostString),
         x: BoolTensor<HostT, RepT>,
-    ) -> Result<m!(Unit)>
+    ) -> Result<m!(HostUnit)>
     where
         HostString: KnownType<S>,
-        Unit: KnownType<S>,
-        HostPlacement: PlacementSave<S, m!(HostString), HostT, m!(Unit)>,
+        HostUnit: KnownType<S>,
+        HostPlacement: PlacementSave<S, m!(HostString), HostT, m!(HostUnit)>,
         HostPlacement: PlacementReveal<S, RepT, HostT>,
     {
         let x = match x {

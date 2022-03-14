@@ -8,7 +8,7 @@ pub trait PlacementDeriveSeed<S: Session, KeyT, SeedT> {
 modelled_kernel! {
     PlacementDeriveSeed::derive_seed, DeriveSeedOp{sync_key: SyncKey},
     [
-        (HostPlacement, (PrfKey) -> Seed => [runtime] Self::kernel),
+        (HostPlacement, (HostPrfKey) -> HostSeed => [runtime] Self::kernel),
     ]
 }
 
@@ -58,9 +58,9 @@ pub trait PlacementSampleSeeded<S: Session, ShapeT, SeedT, O> {
 modelled_kernel! {
     PlacementSampleSeeded::sample_seeded, SampleSeededOp{max_value: Option<u64>},
     [
-        (HostPlacement, (HostShape, Seed) -> HostBitTensor => [runtime] Self::bit_kernel),
-        (HostPlacement, (HostShape, Seed) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
-        (HostPlacement, (HostShape, Seed) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
+        (HostPlacement, (HostShape, HostSeed) -> HostBitTensor => [runtime] Self::bit_kernel),
+        (HostPlacement, (HostShape, HostSeed) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
+        (HostPlacement, (HostShape, HostSeed) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
     ]
 }
 

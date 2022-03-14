@@ -17,7 +17,6 @@ use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use serde::{Deserialize, Serialize};
-use sodiumoxide::crypto::generichash;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fs::File;
@@ -25,9 +24,7 @@ use std::hash::{Hash, Hasher};
 use std::path::Path;
 
 pub const TAG_BYTES: usize = 128 / 8;
-static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::DIGEST_MIN);
-static_assertions::const_assert!(TAG_BYTES <= sodiumoxide::crypto::generichash::DIGEST_MAX);
-
+static_assertions::const_assert!(TAG_BYTES <= blake3::OUT_LEN);
 // TODO: the displayed representation of the RendezvousKey does not match with
 // the input. Might need to do something similar to what we did with the
 // session id, and have a secure and a logical form of it?
@@ -83,9 +80,10 @@ impl RendezvousKey {
     }
 
     pub fn random() -> Self {
+        use rand::RngCore;
         let mut raw = [0; TAG_BYTES];
-        sodiumoxide::init().expect("failed to initialize sodiumoxide");
-        sodiumoxide::randombytes::randombytes_into(&mut raw);
+        let mut rng = rand::thread_rng();
+        rng.fill_bytes(&mut raw);
         RendezvousKey(raw)
     }
 }
@@ -106,20 +104,13 @@ impl std::fmt::Display for SessionId {
 impl TryFrom<&str> for SessionId {
     type Error = Error;
     fn try_from(s: &str) -> Result<SessionId> {
-        sodiumoxide::init().map_err(|e| {
-            crate::error::Error::Unexpected(Some(format!(
-                "failed to initialize sodiumoxide: {:?}",
-                e
-            )))
-        })?;
-        let digest = generichash::hash(s.as_bytes(), Some(TAG_BYTES), None).map_err(|e| {
-            crate::error::Error::Unexpected(Some(format!(
-                "failed to hash session ID: {}: {:?}",
-                s, e
-            )))
-        })?;
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(s.as_bytes());
+        let mut digest = hasher.finalize_xof();
+
         let mut raw_hash = [0u8; TAG_BYTES];
-        raw_hash.copy_from_slice(digest.as_ref());
+        digest.fill(&mut raw_hash);
+
         let sid = SessionId {
             logical: s.to_string(),
             secure: raw_hash,
@@ -134,9 +125,11 @@ impl SessionId {
     }
 
     pub fn random() -> Self {
+        use rand::RngCore;
         let mut raw = [0; TAG_BYTES];
-        sodiumoxide::init().expect("failed to initialize sodiumoxide");
-        sodiumoxide::randombytes::randombytes_into(&mut raw);
+        let mut rng = rand::thread_rng();
+        rng.fill_bytes(&mut raw);
+
         let hex_vec: Vec<String> = raw.iter().map(|byte| format!("{:02X}", byte)).collect();
         let hex_string = hex_vec.join("");
         SessionId {
@@ -207,7 +200,7 @@ impl AsFixedpoint for f64 {
 }
 
 // Constants are trivial values. They are what can live on the nodes of the computation graph.
-// Constant can not be a Unit, an Unknown or a complex structure such as ReplicatedTensor.
+// Constant can not be a HostUnit, an Unknown or a complex structure such as ReplicatedTensor.
 macro_rules! constants {
     ($($val:ident $($t:ident)?,)+) => {
 
@@ -275,8 +268,8 @@ macro_rules! constants {
 // The lines with 1 identifier are for linking to the "Unplaced" values, where the Constant and Value are essentially the same and can be converted easily.
 constants![
     RawShape HostShape,
-    RawSeed Seed,
-    RawPrfKey PrfKey,
+    RawSeed HostSeed,
+    RawPrfKey HostPrfKey,
     String HostString,
     HostBitTensor,
     HostRing64Tensor,
@@ -357,6 +350,10 @@ macro_rules! values {
                     "Ring64" => Some(Ty::Ring64),
                     "Ring128" => Some(Ty::Ring128),
                     "Fixed" => Some(Ty::Fixed),
+                    // The names below are deprecated aliases, maintained for a long period of time for compatibility
+                    "Seed" => Some(Ty::HostSeed), // pre v0.1.5
+                    "PrfKey" => Some(Ty::HostPrfKey), // pre v0.1.5
+                    "Unit" => Some(Ty::HostUnit), // pre v0.1.5
                     _ => None,
                 }
             }
@@ -470,13 +467,6 @@ macro_rules! values {
             pub fn ty(&self) -> Ty {
                 match self {
                     $(SymbolicValue::$val(_) => Ty::$val$(($inner::$default))?,)+
-                    // TODO promote below to match other values
-                    // SymbolicValue::Unit => Ty::Unit,
-                    // SymbolicValue::Bit(_) => Ty::Bit,
-                    // SymbolicValue::Float32(_) => Ty::Float32,
-                    // SymbolicValue::Float64(_) => Ty::Float64,
-                    // SymbolicValue::Ring64(_) => Ty::Ring64,
-                    // SymbolicValue::Ring128(_) => Ty::Ring128,
                 }
             }
         }
@@ -526,10 +516,10 @@ macro_rules! values {
 }
 
 values![
-    Unit,
+    HostUnit,
     HostShape,
-    Seed,
-    PrfKey,
+    HostSeed,
+    HostPrfKey,
     HostString,
     Tensor(TensorDType::Unknown),
     HostBitTensor,
@@ -592,10 +582,10 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
     macro_rules! __emit__ { $($rules)* }
     __emit__! {
         HostString,
-        Unit,
+        HostUnit,
         HostShape,
-        Seed,
-        PrfKey,
+        HostSeed,
+        HostPrfKey,
         HostBitTensor,
         HostRing64Tensor,
         HostRing128Tensor,
@@ -614,16 +604,16 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
     }
 )}
 
-// Unit is still special. Placed unit is just a host placement.
+// HostUnit is still special. Placed unit is just a host placement.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct Unit(pub HostPlacement);
+pub struct HostUnit(pub HostPlacement);
 
 #[cfg(feature = "compile")]
-impl PartiallySymbolicType for Unit {
-    type Type = Unit;
+impl PartiallySymbolicType for HostUnit {
+    type Type = HostUnit;
 }
 
-impl Placed for Unit {
+impl Placed for HostUnit {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -1964,7 +1954,7 @@ mod tests {
         let session_id_str = "01FGSQ37YDJSVJXSA6SSY7G4Y2";
         let session_id = SessionId::try_from(session_id_str).unwrap();
         let expected: [u8; 16] = [
-            155, 66, 92, 119, 188, 62, 148, 202, 13, 176, 137, 43, 64, 190, 251, 182,
+            240, 33, 112, 148, 149, 223, 59, 54, 60, 236, 245, 54, 147, 48, 64, 108,
         ];
         assert_eq!(session_id.logical, session_id_str);
         assert_eq!(session_id.to_string(), session_id_str);
@@ -1974,7 +1964,7 @@ mod tests {
         let session_id_str = "hello world";
         let session_id = SessionId::try_from(session_id_str).unwrap();
         let expected: [u8; 16] = [
-            233, 168, 4, 178, 229, 39, 253, 54, 1, 210, 255, 192, 187, 2, 60, 214,
+            215, 73, 129, 239, 167, 10, 12, 136, 11, 141, 140, 25, 133, 208, 117, 219,
         ];
         assert_eq!(session_id.logical, session_id_str);
         assert_eq!(session_id.to_string(), session_id_str);

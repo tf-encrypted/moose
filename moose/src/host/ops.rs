@@ -42,8 +42,8 @@ macro_rules! wrapping_constant_kernel {
 
 wrapping_constant_kernel!(string_kernel for HostString(String));
 wrapping_constant_kernel!(shape_kernel for HostShape(RawShape));
-wrapping_constant_kernel!(prf_key_kernel for PrfKey(RawPrfKey));
-wrapping_constant_kernel!(seed_kernel for Seed(RawSeed));
+wrapping_constant_kernel!(prf_key_kernel for HostPrfKey(RawPrfKey));
+wrapping_constant_kernel!(seed_kernel for HostSeed(RawSeed));
 
 impl IdentityOp {
     pub(crate) fn kernel<S: RuntimeSession, T>(sess: &S, plc: &HostPlacement, x: T) -> Result<T>
@@ -203,13 +203,13 @@ impl SaveOp {
         _plc: &HostPlacement,
         _key: HostString,
         _x: O,
-    ) -> Result<Unit>
+    ) -> Result<HostUnit>
     where
         Value: From<O>,
     {
         // let x: Value = x.into();
         // sess.storage.save(&key.0, &x)?;
-        // Ok(Unit(plc.clone()))
+        // Ok(HostUnit(plc.clone()))
         todo!()
     }
 }
@@ -1669,7 +1669,7 @@ impl SampleSeededOp {
         plc: &HostPlacement,
         max_value: Option<u64>,
         shape: HostShape,
-        seed: Seed,
+        seed: HostSeed,
     ) -> Result<HostRing64Tensor> {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
@@ -1697,7 +1697,7 @@ impl SampleSeededOp {
         plc: &HostPlacement,
         max_value: Option<u64>,
         shape: HostShape,
-        seed: Seed,
+        seed: HostSeed,
     ) -> Result<HostRing128Tensor> {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
@@ -1727,7 +1727,7 @@ impl SampleSeededOp {
         plc: &HostPlacement,
         max_value: Option<u64>,
         shape: HostShape,
-        seed: Seed,
+        seed: HostSeed,
     ) -> Result<HostBitTensor> {
         if max_value.is_some() {
             return Err(Error::UnimplementedOperator(

@@ -84,7 +84,7 @@ mod tests {
     use crate::compilation::{compile, Pass};
     use crate::error::Error;
     use crate::execution::{SyncSession, TestSyncExecutor};
-    use crate::host::{HostPlacement, HostTensor, RawSeed, RawShape, Seed};
+    use crate::host::{HostPlacement, HostSeed, HostTensor, RawSeed, RawShape};
     use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
     use crate::prelude::*;
     use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
@@ -136,15 +136,15 @@ mod tests {
     #[case(false)]
     fn test_eager_executor(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let mut definition = String::from(
-            r#"key = PrfKeyGen: () -> PrfKey () @Host(alice)
-        seed = DeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
+            r#"key = PrfKeyGen: () -> HostPrfKey () @Host(alice)
+        seed = DeriveSeed {sync_key = [1, 2, 3]}: (HostPrfKey) -> HostSeed (key) @Host(alice)
         shape = Constant{value = HostShape([2, 3])}: () -> HostShape @Host(alice)
         "#,
         );
         let body = (0..100)
             .map(|i| {
                 format!(
-                    "x{} = SampleSeeded{{}}: (HostShape, Seed) -> HostRing64Tensor (shape, seed) @Host(alice)",
+                    "x{} = SampleSeeded{{}}: (HostShape, HostSeed) -> HostRing64Tensor (shape, seed) @Host(alice)",
                     i
                 )
             })
@@ -176,9 +176,9 @@ mod tests {
     fn test_constants_derive_seed(
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)
-        seed = DeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
-        output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
+        let source = r#"key = Constant{value=HostPrfKey(00000000000000000000000000000000)}: () -> HostPrfKey @Host(alice)
+        seed = DeriveSeed {sync_key = [1, 2, 3]}: (HostPrfKey) -> HostSeed (key) @Host(alice)
+        output = Output: (HostSeed) -> HostSeed (seed) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
@@ -192,10 +192,10 @@ mod tests {
             run_async,
         )?;
 
-        let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
+        let seed: HostSeed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
             seed.0,
-            RawSeed([224, 87, 133, 2, 90, 170, 32, 253, 25, 80, 93, 74, 122, 196, 50, 1])
+            RawSeed([79, 203, 243, 208, 77, 199, 116, 216, 2, 206, 173, 36, 20, 204, 200, 146])
         );
         Ok(())
     }
@@ -206,9 +206,9 @@ mod tests {
     fn test_constants_sample_ring(
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"seed = Constant{value=Seed(00000000000000000000000000000000)}: () -> Seed @Host(alice)
+        let source = r#"seed = Constant{value=HostSeed(00000000000000000000000000000000)}: () -> HostSeed @Host(alice)
         xshape = Constant{value=HostShape([2, 2])}: () -> HostShape @Host(alice)
-        sampled = SampleSeeded{}: (HostShape, Seed) -> HostRing64Tensor (xshape, seed) @Host(alice)
+        sampled = SampleSeeded{}: (HostShape, HostSeed) -> HostRing64Tensor (xshape, seed) @Host(alice)
         shape = Shape: (HostRing64Tensor) -> HostShape (sampled) @Host(alice)
         output = Output: (HostShape) -> HostShape (shape) @Host(alice)
         "#;
@@ -280,8 +280,8 @@ mod tests {
         x_query = Input {arg_name="x_query"}: () -> HostString () @Host(alice)
         saved_uri = Constant{value = HostString("saved_data")}: () -> HostString () @Host(alice)
         x = Load: (HostString, HostString) -> TensorType (x_uri, x_query) @Host(alice)
-        save = Save: (HostString, TensorType) -> Unit (saved_uri, x) @Host(alice)
-        output = Output: (Unit) -> Unit (save) @Host(alice)
+        save = Save: (HostString, TensorType) -> HostUnit (saved_uri, x) @Host(alice)
+        output = Output: (HostUnit) -> HostUnit (save) @Host(alice)
         "#;
         let source = source_template.replace("TensorType", &data_type_str);
         let plc = HostPlacement::from("alice");
@@ -1121,9 +1121,9 @@ mod tests {
     #[cfg(feature = "async_execute")]
     #[test]
     fn test_duplicate_session_ids() {
-        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)
-        seed = DeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
-        output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
+        let source = r#"key = Constant{value=HostPrfKey(00000000000000000000000000000000)}: () -> HostPrfKey @Host(alice)
+        seed = DeriveSeed {sync_key = [1, 2, 3]}: (HostPrfKey) -> HostSeed (key) @Host(alice)
+        output = Output: (HostSeed) -> HostSeed (seed) @Host(alice)"#;
 
         let networking: Arc<dyn Send + Sync + AsyncNetworking> =
             Arc::new(LocalAsyncNetworking::default());
@@ -1196,9 +1196,9 @@ mod tests {
     #[cfg(feature = "async_execute")]
     #[test]
     fn test_new_async_session() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)}: () -> PrfKey @Host(alice)
-        seed = DeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
-        output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
+        let source = r#"key = Constant{value=HostPrfKey(00000000000000000000000000000000)}: () -> HostPrfKey @Host(alice)
+        seed = DeriveSeed {sync_key = [1, 2, 3]}: (HostPrfKey) -> HostSeed (key) @Host(alice)
+        output = Output: (HostSeed) -> HostSeed (seed) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
@@ -1211,10 +1211,10 @@ mod tests {
             arguments,
         )?;
 
-        let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
+        let seed: HostSeed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
             seed.0,
-            RawSeed([224, 87, 133, 2, 90, 170, 32, 253, 25, 80, 93, 74, 122, 196, 50, 1])
+            RawSeed([79, 203, 243, 208, 77, 199, 116, 216, 2, 206, 173, 36, 20, 204, 200, 146])
         );
         Ok(())
     }

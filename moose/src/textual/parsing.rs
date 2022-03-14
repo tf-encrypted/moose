@@ -285,7 +285,7 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
         let (input, _) = ws(tag("{"))(input)?;
         let (input, (_, _, rendezvous_key)) =
-            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex))(input)?;
+            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex_zero_padded))(input)?;
         let (input, _) = ws(tag(","))(input)?;
         let (input, (_, _, receiver)) = tuple((tag("receiver"), ws(tag("=")), string))(input)?;
         let (input, _) = ws(tag("}"))(input)?;
@@ -306,7 +306,7 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
         let (input, _) = ws(tag("{"))(input)?;
         let (input, (_, _, rendezvous_key)) =
-            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex))(input)?;
+            tuple((tag("rendezvous_key"), ws(tag("=")), parse_hex_zero_padded))(input)?;
         let (input, _) = ws(tag(","))(input)?;
         let (input, (_, _, sender)) = tuple((tag("sender"), ws(tag("=")), string))(input)?;
         let (input, _) = ws(tag("}"))(input)?;
@@ -333,13 +333,20 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
 
 impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E> for DeriveSeedOp {
     fn from_textual(input: &'a str) -> IResult<&'a str, Operator, E> {
-        let (input, sync_key) =
-            attributes_single("sync_key", map_res(vector(parse_int), SyncKey::try_from))(input)
-                .map_err(|_: nom::Err<nom::error::Error<&str>>| {
-                    Error(make_error(input, ErrorKind::MapRes))
-                })?;
+        let (input, sync_key) = attributes_single(
+            "sync_key",
+            alt((
+                // Deprecated representation using vector of ints. Pre v0.1.5
+                map_res(vector(parse_int), SyncKey::try_from),
+                // Expected format
+                map(parse_hex_zero_padded, SyncKey::from_bytes),
+            )),
+        )(input)
+        .map_err(|_: nom::Err<nom::error::Error<&str>>| {
+            Error(make_error(input, ErrorKind::MapRes))
+        })?;
         let (input, opt_sig) = opt(operator_signature(0))(input)?;
-        let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
+        let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostSeed));
         Ok((input, DeriveSeedOp { sig, sync_key }.into()))
     }
 }
@@ -540,10 +547,10 @@ pub fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>
     input: &'a str,
 ) -> IResult<&'a str, Constant, E> {
     alt((
-        constant_literal_helper(Ty::Seed.short_name(), parse_hex, |v| {
+        constant_literal_helper(Ty::HostSeed.short_name(), parse_hex, |v| {
             Constant::RawSeed(RawSeed(v))
         }),
-        constant_literal_helper(Ty::PrfKey.short_name(), parse_hex, |v| {
+        constant_literal_helper(Ty::HostPrfKey.short_name(), parse_hex, |v| {
             Constant::RawPrfKey(RawPrfKey(v))
         }),
         constant_literal_helper(Ty::Float32.short_name(), float, Constant::Float32),
@@ -854,7 +861,7 @@ pub fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str> + Context
     .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 }
 
-/// Parses a single byte, writte as two hex character.
+/// Parses a single byte, written as two hex character.
 ///
 /// Leading '0' is mandatory for bytes 0x00 - 0x0F.
 fn parse_hex_u8<'a, E>(input: &'a str) -> IResult<&'a str, u8, E>
@@ -876,6 +883,32 @@ where
     let mut buf: [u8; N] = [0; N];
     let (rest, ()) = fill(parse_hex_u8, &mut buf)(input)?;
     Ok((rest, buf))
+}
+
+/// Parse sa hux dump, without any separators.
+///
+/// Leaves the tail zeroed if there is not enough data to fill an array of length N.
+pub fn parse_hex_zero_padded<'a, E, const N: usize>(input: &'a str) -> IResult<&'a str, [u8; N], E>
+where
+    E: ParseError<&'a str>,
+{
+    let mut buf: [u8; N] = [0; N];
+    let mut input = <&str>::clone(&input); // Explicitly cloning just the reference.
+    for elem in buf.iter_mut() {
+        match parse_hex_u8(input) {
+            Ok((i, o)) => {
+                *elem = o;
+                input = i;
+            }
+            Err(Error(_)) => {
+                return Ok((input, buf)); // Unlike `fill`, return the buffer if the child parser errored.
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
+    }
+    Ok((input, buf))
 }
 
 /// Wraps the inner parser in optional spaces.
@@ -1390,10 +1423,10 @@ impl ToTextual for Value {
                 x.0 .0,
                 x.1.to_textual()
             ),
-            Value::Seed(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
-            Value::PrfKey(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
+            Value::HostSeed(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
+            Value::HostPrfKey(x) => format_to_textual!("{}({}) {}", self.ty(), x.0 .0, x.1),
             Value::Bit(x) => format!("{}({})", self.ty().short_name(), x),
-            Value::Unit(_) => self.ty().short_name().to_string(),
+            Value::HostUnit(_) => self.ty().short_name().to_string(),
             Value::HostBitTensor(x) => format_to_textual!("{}({}) {}", self.ty(), x.0, x.1),
             Value::HostFixed64Tensor(x) => format_to_textual!(
                 "{}[{}/{}]({}) {}",
@@ -1506,8 +1539,8 @@ impl ToTextual for Constant {
                 format!("{}({}, {})", self.ty().short_name(), value, precision)
             }
             Constant::RawShape(RawShape(x)) => format!("Shape({:?})", x),
-            Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
-            Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
+            Constant::RawSeed(RawSeed(x)) => format!("HostSeed({})", x.to_textual()),
+            Constant::RawPrfKey(RawPrfKey(x)) => format!("HostPrfKey({})", x.to_textual()),
             Constant::Bit(x) => format!("{}({})", self.ty().short_name(), x),
             Constant::HostBitTensor(x) => {
                 format!("{}({})", self.ty().short_name(), x.0.to_textual())
@@ -1556,7 +1589,7 @@ impl ToTextual for Role {
 // Required to serialize DeriveSeedOp
 impl ToTextual for SyncKey {
     fn to_textual(&self) -> String {
-        format!("{:?}", self.as_bytes())
+        self.as_bytes().to_textual()
     }
 }
 
@@ -1693,7 +1726,7 @@ mod tests {
             Constant::HostUint8Tensor(plc.from_raw(vec![1, 2, 3]))
         );
         let (_, parsed_seed) =
-            constant_literal::<(&str, ErrorKind)>("Seed(529c2fc9bf573d077f45f42b19cfb8d4)")?;
+            constant_literal::<(&str, ErrorKind)>("HostSeed(529c2fc9bf573d077f45f42b19cfb8d4)")?;
         assert_eq!(
             parsed_seed,
             Constant::RawSeed(RawSeed([
@@ -1738,8 +1771,8 @@ mod tests {
 
     #[test]
     fn test_type_parsing() -> Result<(), anyhow::Error> {
-        let (_, parsed_type) = parse_type::<(&str, ErrorKind)>("Unit")?;
-        assert_eq!(parsed_type, Ty::Unit);
+        let (_, parsed_type) = parse_type::<(&str, ErrorKind)>("HostUnit")?;
+        assert_eq!(parsed_type, Ty::HostUnit);
         let (_, parsed) = operator_signature::<(&str, ErrorKind)>(0)(
             ": (HostFloat32Tensor, HostFloat64Tensor) -> HostUint16Tensor",
         )?;
@@ -1841,8 +1874,9 @@ mod tests {
 
     #[test]
     fn test_primprfkeygen() -> Result<(), anyhow::Error> {
-        let (_, op) =
-            parse_assignment::<(&str, ErrorKind)>("key = PrfKeyGen: () -> PrfKey () @Host(alice)")?;
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "key = PrfKeyGen: () -> HostPrfKey () @Host(alice)",
+        )?;
         assert_eq!(op.name, "key");
         Ok(())
     }
@@ -1856,7 +1890,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::DeriveSeed(DeriveSeedOp {
-                sig: Signature::nullary(Ty::Seed),
+                sig: Signature::nullary(Ty::HostSeed),
                 sync_key: SyncKey::try_from(vec![1, 2, 3])?
             })
         );
@@ -1864,19 +1898,63 @@ mod tests {
     }
 
     #[test]
+    fn test_seed_hex() -> Result<(), anyhow::Error> {
+        let source =
+            "seed = DeriveSeed{sync_key = 01020300000000000000000000000000}: () -> HostSeed (key) @Host(alice)";
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(source)?;
+        assert_eq!(op.name, "seed");
+        assert_eq!(
+            op.kind,
+            Operator::DeriveSeed(DeriveSeedOp {
+                sig: Signature::nullary(Ty::HostSeed),
+                sync_key: SyncKey::try_from(vec![1, 2, 3])?
+            })
+        );
+        // Verify that it serializes back to the same format
+        assert_eq!(source, op.to_textual());
+        // Verify the shorthand format
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "seed = DeriveSeed{sync_key = 010203}(key)@Host(alice)",
+        )?;
+        assert_eq!(source, op.to_textual());
+        Ok(())
+    }
+
+    #[test]
     fn test_send() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            r#"send = Send{rendezvous_key = 30313233343536373839616263646566, receiver = "bob"}: (HostFloat32Tensor) -> Unit() @Host(alice)"#,
+            r#"send = Send{rendezvous_key = 30313233343536373839616263646566, receiver = "bob"}: (HostFloat32Tensor) -> HostUnit() @Host(alice)"#,
         )?;
         assert_eq!(op.name, "send");
         assert_eq!(
             op.kind,
             Operator::Send(SendOp {
-                sig: Signature::unary(Ty::HostFloat32Tensor, Ty::Unit),
+                sig: Signature::unary(Ty::HostFloat32Tensor, Ty::HostUnit),
                 rendezvous_key: "0123456789abcdef".try_into()?,
                 receiver: Role::from("bob")
             })
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_send_shortened() -> Result<(), anyhow::Error> {
+        // Test that rendezvous_key can be specified without the tailing zeroes.
+        let (_, op1) = parse_assignment::<(&str, ErrorKind)>(
+            r#"send = Send{rendezvous_key = 179704, receiver = "bob"}: (HostFloat32Tensor) -> Unit() @Host(alice)"#,
+        )?;
+        let (_, op2) = parse_assignment::<(&str, ErrorKind)>(
+            r#"send = Send{rendezvous_key = 17970400000000000000000000000000, receiver = "bob"}: (HostFloat32Tensor) -> Unit() @Host(alice)"#,
+        )?;
+        let rendezvous_key1 = match op1.kind {
+            Operator::Send(SendOp { rendezvous_key, .. }) => rendezvous_key,
+            _ => panic!("Incorrect op type parsed"),
+        };
+        let rendezvous_key2 = match op2.kind {
+            Operator::Send(SendOp { rendezvous_key, .. }) => rendezvous_key,
+            _ => panic!("Incorrect op type parsed"),
+        };
+        assert_eq!(rendezvous_key1, rendezvous_key2);
         Ok(())
     }
 
@@ -1909,7 +1987,7 @@ mod tests {
     #[test]
     fn test_ring_sample() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x10 = SampleSeeded{max_value = 1}: (HostShape, Seed) -> HostRing64Tensor (shape, seed) @Host(alice)",
+            "x10 = SampleSeeded{max_value = 1}: (HostShape, HostSeed) -> HostRing64Tensor (shape, seed) @Host(alice)",
         )?;
         assert_eq!(op.name, "x10");
         Ok(())
@@ -2044,7 +2122,7 @@ mod tests {
             "z = BitExtract {bit_idx = 2} : (HostFloat32Tensor) -> HostFloat32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = SampleSeeded {}: (HostShape, Seed) -> HostBitTensor (shape, seed) @Host(alice)",
+            "z = SampleSeeded {}: (HostShape, HostSeed) -> HostBitTensor (shape, seed) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = Xor: (HostBitTensor, HostBitTensor) -> HostBitTensor (x, y) @Host(alice)",
@@ -2197,8 +2275,8 @@ mod tests {
     #[case("HostString(\"hi\") @Host(alice)")]
     #[case("HostBitTensor([0, 1, 1, 0]) @Host(alice)")]
     #[case("HostShape([3, 2]) @Host(alice)")]
-    #[case("Seed(529c2fc9bf573d077f45f42b19cfb8d4) @Host(alice)")]
-    #[case("PrfKey(00000000000000000000000000000000) @Host(alice)")]
+    #[case("HostSeed(529c2fc9bf573d077f45f42b19cfb8d4) @Host(alice)")]
+    #[case("HostPrfKey(00000000000000000000000000000000) @Host(alice)")]
     #[case("HostFixed64Tensor[7/12]([2, 42, 12]) @Host(alice)")]
     #[case("HostFixed128Tensor[7/12]([2, 42, 12]) @Host(alice)")]
     fn test_value_round_trip(#[case] input: String) -> Result<(), anyhow::Error> {
@@ -2228,8 +2306,8 @@ mod tests {
         let comp: Computation = "x = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor @Host(alice)
             y = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
             z = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, carole)
-            seed = DeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
-            seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)}: () -> Seed @Host(alice)
+            seed = DeriveSeed{sync_key = 010203} (key) @Host(alice)
+            seed2 = Constant{value = HostSeed(529c2fc9bf573d077f45f42b19cfb8d4)}: () -> HostSeed @Host(alice)
             o = Output: (HostFloat32Tensor) -> HostFloat32Tensor (z) @Host(alice)"
             .try_into()?;
         let textual = comp.to_textual();

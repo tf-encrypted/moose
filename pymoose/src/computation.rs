@@ -615,7 +615,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
 fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
     match py_type {
         PyValueType::std_ShapeType => Ok(Ty::HostShape),
-        PyValueType::std_UnitType => Ok(Ty::Unit),
+        PyValueType::std_UnitType => Ok(Ty::HostUnit),
         PyValueType::std_StringType => Ok(Ty::HostString),
         PyValueType::std_TensorType { dtype } => match dtype {
             PyDType::float32 => Ok(Ty::Tensor(TensorDType::Float32)),

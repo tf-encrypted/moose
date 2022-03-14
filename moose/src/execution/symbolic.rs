@@ -8,7 +8,7 @@
 use super::{Operands, Session, SetupGeneration};
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::host::PrfKey;
+use crate::host::HostPrfKey;
 use crate::kernels::{DispatchKernel, Kernel, PlacementPlace};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
 use crate::{MirroredCounterpart, Ring, TensorLike, Underlying};
@@ -138,7 +138,7 @@ where
 #[derive(Default)]
 struct SymbolicSessionState {
     pub ops: Vec<Operation>,
-    pub replicated_keys: HashMap<ReplicatedPlacement, Arc<RepSetup<Symbolic<PrfKey>>>>,
+    pub replicated_keys: HashMap<ReplicatedPlacement, Arc<RepSetup<Symbolic<HostPrfKey>>>>,
 }
 
 /// Session object in which symbolic execution is happening
@@ -206,7 +206,7 @@ impl Session for SymbolicSession {
 }
 
 impl SetupGeneration<ReplicatedPlacement> for SymbolicSession {
-    type Setup = RepSetup<Symbolic<PrfKey>>;
+    type Setup = RepSetup<Symbolic<HostPrfKey>>;
 
     fn setup(&self, plc: &ReplicatedPlacement) -> Result<Arc<Self::Setup>> {
         // Produce a new replicated setup or returned a previously produced setup for the placement

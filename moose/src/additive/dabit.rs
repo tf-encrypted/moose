@@ -4,7 +4,7 @@ use crate::computation::KnownType;
 use crate::execution::Session;
 use crate::host::{HostPlacement, SyncKey};
 use crate::kernels::*;
-use crate::types::{PrfKey, Seed};
+use crate::types::{HostPrfKey, HostSeed};
 use macros::with_context;
 
 /// Internal trait for DaBit generation
@@ -22,13 +22,13 @@ impl<S: Session, HostShapeT, HostRingT, HostBitT>
     DaBitProvider<S, HostShapeT, AdtTensor<HostRingT>, AdtTensor<HostBitT>> for AdditivePlacement
 where
     HostRingT: Clone,
-    Seed: KnownType<S>,
-    PrfKey: KnownType<S>,
-    HostPlacement: PlacementKeyGen<S, m!(PrfKey)>,
-    HostPlacement: PlacementDeriveSeed<S, m!(PrfKey), m!(Seed)>,
+    HostSeed: KnownType<S>,
+    HostPrfKey: KnownType<S>,
+    HostPlacement: PlacementKeyGen<S, m!(HostPrfKey)>,
+    HostPlacement: PlacementDeriveSeed<S, m!(HostPrfKey), m!(HostSeed)>,
     HostPlacement: PlacementSampleUniform<S, HostShapeT, HostBitT>,
-    HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(Seed), HostBitT>,
-    HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(Seed), HostRingT>,
+    HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(HostSeed), HostBitT>,
+    HostPlacement: PlacementSampleUniformSeeded<S, HostShapeT, m!(HostSeed), HostRingT>,
     HostPlacement: PlacementSub<S, HostBitT, HostBitT, HostBitT>,
     HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
     HostPlacement: PlacementRingInject<S, HostBitT, HostRingT>,

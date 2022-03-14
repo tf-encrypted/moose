@@ -93,6 +93,7 @@ impl FilesystemChoreography {
                     let res = session_handle.join_on_first_error().await;
                     if let Err(e) = res {
                         tracing::error!("Session error: {}", e);
+                        return Result::Err(e.into());
                     }
                 }
                 Some(ext) if ext == "moose" => {

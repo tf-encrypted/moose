@@ -452,11 +452,11 @@ impl SaveOp {
         plc: &HostPlacement,
         key: m!(HostString),
         x: FloatTensor<HostFloatT, MirroredT>,
-    ) -> Result<m!(Unit)>
+    ) -> Result<m!(HostUnit)>
     where
         HostString: KnownType<S>,
-        Unit: KnownType<S>,
-        HostPlacement: PlacementSave<S, m!(HostString), HostFloatT, m!(Unit)>,
+        HostUnit: KnownType<S>,
+        HostPlacement: PlacementSave<S, m!(HostString), HostFloatT, m!(HostUnit)>,
     {
         let x = match x {
             FloatTensor::Host(v) => v,

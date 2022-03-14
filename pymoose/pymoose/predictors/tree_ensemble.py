@@ -420,6 +420,17 @@ def _onnx_base(model_proto, forest_node_name):
     assert len(input_shape) == 2
     n_features = input_shape[1].dim_value
 
+    n_split_indices = len(set(split_indices))
+    largest_split_indices = max(split_indices)
+
+    if n_split_indices > n_features or largest_split_indices > n_features:
+        raise ValueError(
+            f"In the ONNX file, the input shape has {n_features} "
+            f"features and there are {n_split_indices} distinct split indices . "
+            f"with the largest index {largest_split_indices}. Validate you "
+            "set correctly the `initial_types` when converting your model to ONNX."
+        )
+
     # `base_score` arg
     base_score_attr = utils.find_attribute_in_node(
         forest_node, "base_values", enforce=False

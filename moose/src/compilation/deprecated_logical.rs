@@ -286,7 +286,7 @@ mod tests {
     fn test_all_on_one_host() -> std::result::Result<(), anyhow::Error> {
         let source = r#"
         mul = Mul: (Tensor<Float64>, Tensor<Float64>) -> Tensor<Float64> (x, y) @Host(alice)
-        save = Save: (HostString, Tensor<Float64>) -> Unit (constant_0, mean) @Host(alice)
+        save = Save: (HostString, Tensor<Float64>) -> HostUnit (constant_0, mean) @Host(alice)
         "#;
 
         let comp = deprecated_logical_lowering(&source.try_into()?)?
@@ -297,7 +297,7 @@ mod tests {
             "mul = Mul: (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor (x, y) @Host(alice)"
         ));
         assert!(comp.contains(
-            "save = Save: (HostString, HostFloat64Tensor) -> Unit (constant_0, mean) @Host(alice)"
+            "save = Save: (HostString, HostFloat64Tensor) -> HostUnit (constant_0, mean) @Host(alice)"
         ));
         Ok(())
     }

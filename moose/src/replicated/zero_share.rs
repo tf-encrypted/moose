@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::execution::SetupGeneration;
-use crate::host::{PrfKey, Seed, SyncKey};
+use crate::host::{HostPrfKey, HostSeed, SyncKey};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct RepZeroShare<HostRingT> {
@@ -18,7 +18,7 @@ where
     S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<KeyT>>,
     HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, SeedT, RingT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
-    ReplicatedPlacement: SeedsGen<S, Seed = SeedT>,
+    ReplicatedPlacement: SeedsGen<S, HostSeed = SeedT>,
 {
     fn gen_zero_share(&self, sess: &S, shape: &RepShape<ShapeT>) -> Result<RepZeroShare<RingT>> {
         let (player0, player1, player2) = self.host_placements();
@@ -54,20 +54,20 @@ pub(crate) struct RepSeeds<HostSeedT> {
 }
 
 pub(crate) trait SeedsGen<S: Session> {
-    type Seed;
-    fn gen_seeds(&self, sess: &S) -> Result<RepSeeds<Self::Seed>>;
+    type HostSeed;
+    fn gen_seeds(&self, sess: &S) -> Result<RepSeeds<Self::HostSeed>>;
 }
 
 impl<S: Session> SeedsGen<S> for ReplicatedPlacement
 where
-    PrfKey: KnownType<S>,
-    Seed: KnownType<S>,
-    HostPlacement: PlacementDeriveSeed<S, m!(PrfKey), m!(Seed)>,
-    S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<m!(PrfKey)>>,
+    HostPrfKey: KnownType<S>,
+    HostSeed: KnownType<S>,
+    HostPlacement: PlacementDeriveSeed<S, m!(HostPrfKey), m!(HostSeed)>,
+    S: SetupGeneration<ReplicatedPlacement, Setup = RepSetup<m!(HostPrfKey)>>,
 {
-    type Seed = m!(Seed);
+    type HostSeed = m!(HostSeed);
 
-    fn gen_seeds(&self, sess: &S) -> Result<RepSeeds<m!(Seed)>> {
+    fn gen_seeds(&self, sess: &S) -> Result<RepSeeds<m!(HostSeed)>> {
         let (player0, player1, player2) = self.host_placements();
 
         let setup = sess.setup(self)?;

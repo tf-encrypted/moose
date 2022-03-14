@@ -3,7 +3,8 @@
 //! The underlying implementation is based on the pipelined version of AES from
 //! [`aes`] create.
 //! The PRNG supports two version can take a seed either given by the user
-//! or taken from /dev/random or dev/urandom using [`sodiumoxide`].
+//! or taken from ThreadRng which internally uses /dev/random or dev/urandom
+//! using [getrandom rust lib] to generate randomness.
 //!
 //! By default the package is compiled with AES-NI implementation
 //! for `i686`/`x86_64` target architectures with `target-feature=+aes`.
@@ -19,7 +20,8 @@
 //! use rand::{RngCore, SeedableRng};
 //! use moose::prng::{AesRng};
 //!
-//! // initialize PRNG seed using sodiumoxide entropy pool
+//! // initialize PRNG seed using (true) entropy from ThreadRng
+//! // this internally using syscalls to /dev/random or /dev/urandom
 //! let mut rng: AesRng = AesRng::from_random_seed();
 //! // gets 32 random bits
 //! let output32 = rng.next_u32();
@@ -53,7 +55,6 @@
 //! [`block-modes`]: https://docs.rs/block-modes
 //!
 //! [`aes`]: aes
-//! [`sodiumoxide`]: sodiumoxide
 //! [MP-SPDZ]: https://github.com/data61/MP-SPDZ
 //! [SCALE-MAMBA]: https://github.com/KULeuven-COSIC/SCALE-MAMBA
 //! [PRF]: https://en.wikipedia.org/wiki/Pseudorandom_function_family
@@ -64,7 +65,6 @@ use aes::cipher::{BlockEncrypt, NewBlockCipher};
 use aes::Aes128;
 use byteorder::{ByteOrder, LittleEndian};
 use rand::{CryptoRng, Error, RngCore, SeedableRng};
-use sodiumoxide::randombytes::randombytes_into;
 use std::mem;
 use std::slice;
 
@@ -185,14 +185,18 @@ impl AesRng {
 
     pub fn generate_random_key() -> [u8; SEED_SIZE] {
         let mut seed = [0u8; SEED_SIZE];
-        sodiumoxide::init().expect("failed to initialize sodiumoxide");
-        randombytes_into(&mut seed);
+        let mut rng = rand::thread_rng();
+        rng.fill_bytes(&mut seed);
         seed
     }
 
     /// Method to fetch a PRNG where its seed is taken from /dev/random
-    /// or /dev/urandom if /dev/random doesn't have enough entropy
-    /// The entropy selection is done automatically by sodiumoxide
+    /// or /dev/urandom if /dev/random doesn't have enough entropy.
+    /// Note that thread_rng is based on OsRng which internally uses the getrandom package.
+    /// to get a large chunk of random bytes using Os calls.
+    /// getrandom avoids returning low-entropy bytes.
+    /// first it polls from /dev/random and only switch to /dev/urandom once this has succeeded.
+    /// `We always choose failure over returning insecure “random” bytes` from getrandom package
     pub fn from_random_seed() -> Self {
         let seed = AesRng::generate_random_key();
         Self::from_seed(seed)

@@ -24,11 +24,11 @@ impl SaveOp {
         plc: &HostPlacement,
         key: m!(HostString),
         x: AbstractUint64Tensor<HostT, RepT>,
-    ) -> Result<m!(Unit)>
+    ) -> Result<m!(HostUnit)>
     where
         HostString: KnownType<S>,
-        Unit: KnownType<S>,
-        HostPlacement: PlacementSave<S, m!(HostString), HostT, m!(Unit)>,
+        HostUnit: KnownType<S>,
+        HostPlacement: PlacementSave<S, m!(HostString), HostT, m!(HostUnit)>,
     {
         let x = match x {
             AbstractUint64Tensor::Replicated(_v) => {

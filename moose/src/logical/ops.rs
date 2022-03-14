@@ -1726,16 +1726,16 @@ impl SaveOp {
         plc: &HostPlacement,
         key: m!(HostString),
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
-    ) -> Result<m!(Unit)>
+    ) -> Result<m!(HostUnit)>
     where
         HostString: KnownType<S>,
-        Unit: KnownType<S>,
-        // HostPlacement: PlacementSave<S, m!(HostString), Fixed64T, m!(Unit)>,
-        // HostPlacement: PlacementSave<S, m!(HostString), Fixed128T, m!(Unit)>,
-        HostPlacement: PlacementSave<S, m!(HostString), Float32T, m!(Unit)>,
-        HostPlacement: PlacementSave<S, m!(HostString), Float64T, m!(Unit)>,
-        HostPlacement: PlacementSave<S, m!(HostString), BoolT, m!(Unit)>,
-        HostPlacement: PlacementSave<S, m!(HostString), Uint64T, m!(Unit)>,
+        HostUnit: KnownType<S>,
+        // HostPlacement: PlacementSave<S, m!(HostString), Fixed64T, m!(HostUnit)>,
+        // HostPlacement: PlacementSave<S, m!(HostString), Fixed128T, m!(HostUnit)>,
+        HostPlacement: PlacementSave<S, m!(HostString), Float32T, m!(HostUnit)>,
+        HostPlacement: PlacementSave<S, m!(HostString), Float64T, m!(HostUnit)>,
+        HostPlacement: PlacementSave<S, m!(HostString), BoolT, m!(HostUnit)>,
+        HostPlacement: PlacementSave<S, m!(HostString), Uint64T, m!(HostUnit)>,
     {
         match x {
             AbstractTensor::Bool(x) => Ok(plc.save(sess, &key, &x)),
