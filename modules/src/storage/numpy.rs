@@ -102,7 +102,7 @@ fn match_char(got: u8, expected: char) -> Result<()> {
 fn consume_spaces(file: &mut File) -> Result<u8> {
     loop {
         let c = getc(file)?;
-        if c != ' ' as u8 {
+        if c != b' ' {
             return Ok(c);
         }
     }
@@ -136,7 +136,7 @@ fn extract_descr(file: &mut File) -> Result<Vec<char>> {
         let mut word: String = String::new();
         loop {
             let c = getc(file)?;
-            if c == '\'' as u8 || c == '"' as u8 {
+            if c == b'\'' || c == b'"' {
                 break;
             }
             word.push(c as char);
@@ -159,7 +159,7 @@ fn extract_descr(file: &mut File) -> Result<Vec<char>> {
     let mut descr = Vec::new();
     loop {
         let c = getc(file)?;
-        if c == '\'' as u8 {
+        if c == b'\'' {
             break;
         }
         descr.push(c as char);
@@ -174,7 +174,7 @@ fn extract_descr(file: &mut File) -> Result<Vec<char>> {
     }
 }
 
-fn descr_to_dtype(descr: &Vec<char>) -> Result<NumpyDtype> {
+fn descr_to_dtype(descr: &[char]) -> Result<NumpyDtype> {
     if descr.is_empty() {
         return Err(Error::Storage(
             "descr is empty in numpy data dictionary".to_string(),
