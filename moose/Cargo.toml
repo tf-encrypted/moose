@@ -56,7 +56,6 @@ vec-utils = "~0.3"
 nom = { version="~7.1" }
 
 [dev-dependencies]
-aes = "~0.7"
 aes-gcm = "~0.9"
 criterion = { version="~0.3", features=["async_tokio"] }
 env_logger = "~0.8"
