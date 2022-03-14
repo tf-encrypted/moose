@@ -1,6 +1,5 @@
 use super::HostPlacement;
 use crate::computation::{DeriveSeedOp, Placed, PrfKeyGenOp, TAG_BYTES};
-use crate::error::Result;
 use crate::execution::{RuntimeSession, Session};
 use crate::kernels::PlacementPlace;
 use crate::prng::AesRng;
@@ -17,7 +16,7 @@ pub struct HostSeed(pub RawSeed, pub HostPlacement);
 impl Placed for HostSeed {
     type Placement = HostPlacement;
 
-    fn placement(&self) -> Result<Self::Placement> {
+    fn placement(&self) -> crate::error::Result<Self::Placement> {
         Ok(self.1.clone())
     }
 }
@@ -50,7 +49,7 @@ pub struct HostPrfKey(pub RawPrfKey, pub HostPlacement);
 impl Placed for HostPrfKey {
     type Placement = HostPlacement;
 
-    fn placement(&self) -> Result<Self::Placement> {
+    fn placement(&self) -> crate::error::Result<Self::Placement> {
         Ok(self.1.clone())
     }
 }
@@ -109,7 +108,10 @@ impl TryFrom<&[u8]> for SyncKey {
 }
 
 impl PrfKeyGenOp {
-    pub(crate) fn kernel<S: RuntimeSession>(_sess: &S, plc: &HostPlacement) -> Result<HostPrfKey> {
+    pub(crate) fn kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+    ) -> crate::error::Result<HostPrfKey> {
         let raw_key = RawPrfKey(AesRng::generate_random_key());
         Ok(HostPrfKey(raw_key, plc.clone()))
     }
@@ -121,7 +123,7 @@ impl DeriveSeedOp {
         plc: &HostPlacement,
         sync_key: SyncKey,
         key: HostPrfKey,
-    ) -> Result<HostSeed> {
+    ) -> crate::error::Result<HostSeed> {
         let sid = sess.session_id();
         let key_bytes = key.0.as_bytes();
 
