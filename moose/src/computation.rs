@@ -1950,7 +1950,7 @@ mod tests {
         let session_id_str = "01FGSQ37YDJSVJXSA6SSY7G4Y2";
         let session_id = SessionId::try_from(session_id_str).unwrap();
         let expected: [u8; 16] = [
-            155, 66, 92, 119, 188, 62, 148, 202, 13, 176, 137, 43, 64, 190, 251, 182,
+            240, 33, 112, 148, 149, 223, 59, 54, 60, 236, 245, 54, 147, 48, 64, 108,
         ];
         assert_eq!(session_id.logical, session_id_str);
         assert_eq!(session_id.to_string(), session_id_str);
@@ -1960,7 +1960,7 @@ mod tests {
         let session_id_str = "hello world";
         let session_id = SessionId::try_from(session_id_str).unwrap();
         let expected: [u8; 16] = [
-            233, 168, 4, 178, 229, 39, 253, 54, 1, 210, 255, 192, 187, 2, 60, 214,
+            215, 73, 129, 239, 167, 10, 12, 136, 11, 141, 140, 25, 133, 208, 117, 219,
         ];
         assert_eq!(session_id.logical, session_id_str);
         assert_eq!(session_id.to_string(), session_id_str);
