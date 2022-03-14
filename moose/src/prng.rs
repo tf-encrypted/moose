@@ -3,7 +3,8 @@
 //! The underlying implementation is based on the pipelined version of AES from
 //! [`aes`] create.
 //! The PRNG supports two version can take a seed either given by the user
-//! or taken from /dev/random or dev/urandom using [getrandom rust lib].
+//! or taken from ThreadRng which internally uses /dev/random or dev/urandom
+//! using [getrandom rust lib] to generate randomness.
 //!
 //! By default the package is compiled with AES-NI implementation
 //! for `i686`/`x86_64` target architectures with `target-feature=+aes`.
@@ -19,8 +20,8 @@
 //! use rand::{RngCore, SeedableRng};
 //! use moose::prng::{AesRng};
 //!
-//! // initialize PRNG seed using (true) entropy from getrandom
-//! // internally using syscalls to /dev/random
+//! // initialize PRNG seed using (true) entropy from ThreadRng
+//! // this internally using syscalls to /dev/random or /dev/urandom
 //! let mut rng: AesRng = AesRng::from_random_seed();
 //! // gets 32 random bits
 //! let output32 = rng.next_u32();
