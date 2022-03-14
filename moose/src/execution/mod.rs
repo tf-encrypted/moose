@@ -195,7 +195,7 @@ mod tests {
         let seed: HostSeed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
             seed.0,
-            RawSeed([224, 87, 133, 2, 90, 170, 32, 253, 25, 80, 93, 74, 122, 196, 50, 1])
+            RawSeed([79, 203, 243, 208, 77, 199, 116, 216, 2, 206, 173, 36, 20, 204, 200, 146])
         );
         Ok(())
     }
@@ -1214,7 +1214,7 @@ mod tests {
         let seed: HostSeed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
             seed.0,
-            RawSeed([224, 87, 133, 2, 90, 170, 32, 253, 25, 80, 93, 74, 122, 196, 50, 1])
+            RawSeed([79, 203, 243, 208, 77, 199, 116, 216, 2, 206, 173, 36, 20, 204, 200, 146])
         );
         Ok(())
     }

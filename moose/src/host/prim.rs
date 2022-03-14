@@ -1,12 +1,10 @@
 use super::HostPlacement;
 use crate::computation::{DeriveSeedOp, Placed, PrfKeyGenOp, TAG_BYTES};
-use crate::error::{Error, Result};
 use crate::execution::{RuntimeSession, Session};
 use crate::kernels::PlacementPlace;
 use crate::prng::AesRng;
 use crate::prng::{RngSeed, SEED_SIZE};
 use serde::{Deserialize, Serialize};
-use sodiumoxide::crypto::generichash;
 use std::convert::TryFrom;
 
 #[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
@@ -18,7 +16,7 @@ pub struct HostSeed(pub RawSeed, pub HostPlacement);
 impl Placed for HostSeed {
     type Placement = HostPlacement;
 
-    fn placement(&self) -> Result<Self::Placement> {
+    fn placement(&self) -> crate::error::Result<Self::Placement> {
         Ok(self.1.clone())
     }
 }
@@ -51,7 +49,7 @@ pub struct HostPrfKey(pub RawPrfKey, pub HostPlacement);
 impl Placed for HostPrfKey {
     type Placement = HostPlacement;
 
-    fn placement(&self) -> Result<Self::Placement> {
+    fn placement(&self) -> crate::error::Result<Self::Placement> {
         Ok(self.1.clone())
     }
 }
@@ -74,9 +72,10 @@ pub struct SyncKey([u8; TAG_BYTES]);
 
 impl SyncKey {
     pub fn random() -> SyncKey {
+        use rand::RngCore;
         let mut raw_sync_key = [0u8; TAG_BYTES];
-        sodiumoxide::init().expect("failed to initialize sodiumoxide");
-        sodiumoxide::randombytes::randombytes_into(&mut raw_sync_key);
+        let mut rng = rand::thread_rng();
+        rng.fill_bytes(&mut raw_sync_key);
         SyncKey(raw_sync_key)
     }
 
@@ -113,7 +112,10 @@ impl TryFrom<&[u8]> for SyncKey {
 }
 
 impl PrfKeyGenOp {
-    pub(crate) fn kernel<S: RuntimeSession>(_sess: &S, plc: &HostPlacement) -> Result<HostPrfKey> {
+    pub(crate) fn kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+    ) -> crate::error::Result<HostPrfKey> {
         let raw_key = RawPrfKey(AesRng::generate_random_key());
         Ok(HostPrfKey(raw_key, plc.clone()))
     }
@@ -125,21 +127,24 @@ impl DeriveSeedOp {
         plc: &HostPlacement,
         sync_key: SyncKey,
         key: HostPrfKey,
-    ) -> Result<HostSeed> {
+    ) -> crate::error::Result<HostSeed> {
         let sid = sess.session_id();
         let key_bytes = key.0.as_bytes();
 
-        // compute seed as hash(sid || sync_key)[0..SEED_SIZE]
         let sid_bytes: [u8; TAG_BYTES] = *sid.as_bytes();
         let sync_key_bytes: [u8; TAG_BYTES] = sync_key.0;
-        let mut nonce: Vec<u8> = Vec::with_capacity(2 * TAG_BYTES);
-        nonce.extend(&sid_bytes);
-        nonce.extend(&sync_key_bytes);
-        sodiumoxide::init().expect("failed to initialize sodiumoxide");
-        let digest = generichash::hash(&nonce, Some(SEED_SIZE), Some(key_bytes))
-            .map_err(|_e| Error::KernelError("Failure to derive seed.".to_string()))?;
+
+        // init H(k, *)
+        let derived_key = blake3::derive_key("Derive Seed", key_bytes);
+        let mut keyed_hash = blake3::Hasher::new_keyed(&derived_key);
+
+        // nonce = sid || sync_key
+        keyed_hash.update(&sid_bytes);
+        keyed_hash.update(&sync_key_bytes);
+
+        let mut digest = keyed_hash.finalize_xof();
         let mut raw_seed: RngSeed = [0u8; SEED_SIZE];
-        raw_seed.copy_from_slice(digest.as_ref());
+        digest.fill(&mut raw_seed);
 
         Ok(HostSeed(RawSeed(raw_seed), plc.clone()))
     }

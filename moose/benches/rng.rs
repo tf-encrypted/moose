@@ -43,5 +43,52 @@ fn chacha_rng(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, chacha_rng, aes_rng);
+fn thread_rng(c: &mut Criterion) {
+    c.bench_function("thread_rng_16B_with_setup", |b| {
+        let mut rng = rand::thread_rng();
+        let mut output = vec![0u8; 16];
+        b.iter(|| {
+            rng.fill_bytes(&mut output);
+        })
+    });
+    c.bench_function("thread_rng_16B", |b| {
+        b.iter(|| {
+            let mut rng = rand::thread_rng();
+            let mut output = vec![0u8; 16];
+            rng.fill_bytes(&mut output);
+        })
+    });
+
+    c.bench_function("thread_rng_16B_10000", |b| {
+        let n: u64 = 10000;
+        let mut rng = rand::thread_rng();
+        let mut output = vec![0u8; 16];
+        b.iter(|| {
+            for _ in 0..n {
+                rng.fill_bytes(&mut output);
+            }
+        })
+    });
+}
+
+fn getrandom_rng(c: &mut Criterion) {
+    c.bench_function("get_random_rng_16B", |b| {
+        b.iter(|| {
+            let mut output = vec![0u8; 16];
+            getrandom::getrandom(&mut output).expect("failed to get randomness");
+        })
+    });
+
+    c.bench_function("get_random_rng_16B_10000", |b| {
+        let n: u64 = 10000;
+        let mut output = vec![0u8; 16];
+        b.iter(|| {
+            for _ in 0..n {
+                getrandom::getrandom(&mut output).expect("failed to get randomness");
+            }
+        })
+    });
+}
+
+criterion_group!(benches, thread_rng, getrandom_rng, chacha_rng, aes_rng);
 criterion_main!(benches);
