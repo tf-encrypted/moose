@@ -96,6 +96,7 @@ modelled_kernel! {
         (HostPlacement, (AdditiveRing64Tensor) -> HostRing64Tensor => [hybrid] Self::host_adt_kernel),
         (HostPlacement, (AdditiveRing128Tensor) -> HostRing128Tensor => [hybrid] Self::host_adt_kernel),
         (HostPlacement, (AdditiveBitTensor) -> HostBitTensor => [hybrid] Self::host_adt_kernel),
+        (HostPlacement, (ReplicatedShape) -> HostShape => [runtime] Self::shape_kernel),
     ]
 }
 
