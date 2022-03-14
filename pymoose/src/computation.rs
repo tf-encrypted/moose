@@ -557,8 +557,8 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
 fn map_type(py_type: &PyValueType, placement: Option<&Placement>) -> anyhow::Result<Ty> {
     match py_type {
         PyValueType::std_ShapeType => match placement {
-            Some(Placement::Host(_)) => Ok(Ty::HostShape),
-            Some(Placement::Replicated(_)) => Ok(Ty::ReplicatedShape),
+            Some(Placement::Host(p)) => Ok(Ty::TensorShape::Host(p)),
+            Some(Placement::Replicated(p)) => Ok(Ty::TensorShape::Replicated(p)),
             Some(other) => Err(anyhow::anyhow!(
                 "Do not know to map std_Shape to a placement {:?}",
                 other

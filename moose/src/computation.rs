@@ -524,6 +524,7 @@ macro_rules! values {
 
 values![
     HostUnit,
+    TensorShape,
     HostShape,
     HostSeed,
     HostPrfKey,

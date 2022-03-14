@@ -161,6 +161,27 @@ impl ShareOp {
 }
 
 impl RevealOp {
+    pub(crate) fn shape_kernel<S: Session>(
+        sess: &S,
+        receiver: &HostPlacement,
+        shape: ReplicatedShape,
+    ) -> Result<HostShape>
+    where
+        HostPlacement: PlacementPlace<S, HostShape>,
+    {
+        let rep_plc = shape.placement()?;
+        let (h0, h1, h2) = rep_plc.host_placements();
+        if receiver == &h0 {
+            Ok(shape.shapes[0].clone())
+        } else if receiver == &h1 {
+            Ok(shape.shapes[1].clone())
+        } else if receiver == &h2 {
+            Ok(shape.shapes[2].clone())
+        } else {
+            Ok(receiver.place(sess, shape.shapes[0].clone()))
+        }
+    }
+
     pub(crate) fn host_aeskey_kernel<S: Session, RepBitArrayT, HostBitArrayT>(
         sess: &S,
         receiver: &HostPlacement,

@@ -19,11 +19,10 @@ rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
 class ShapeExample(parameterized.TestCase):
     def _setup_comp(self, dtype, input_placement, shape_placement):
-
         @edsl.computation
         def my_comp():
             with input_placement:
-                x = edsl.constant(np.array([[1.0, 2.0],[3.0, 4.0]]), dtype=dtype)
+                x = edsl.constant(np.array([[1.0, 2.0], [3.0, 4.0]]), dtype=dtype)
 
             with shape_placement:
                 x_shape = edsl.shape(x)
@@ -37,8 +36,10 @@ class ShapeExample(parameterized.TestCase):
 
     @parameterized.parameters(
         (edsl.float64, bob),
-        (edsl.fixed(14, 23), bob), (edsl.fixed(24, 40), bob),
-        (edsl.fixed(14, 23), rep), (edsl.fixed(24, 40), rep),
+        (edsl.fixed(14, 23), bob),
+        (edsl.fixed(24, 40), bob),
+        (edsl.fixed(14, 23), rep),
+        (edsl.fixed(24, 40), rep),
     )
     def test_example_execute(self, dtype, shape_placement):
         comp = self._setup_comp(dtype, alice, shape_placement)

@@ -1444,11 +1444,14 @@ impl ToTextual for Value {
                 x.tensor.0,
                 x.tensor.1
             ),
-            Value::HostBitArray64(_) | Value::Tensor(_) | Value::HostBitArray128(_) => {
+            Value::Tensor(_)
+            | Value::TensorShape(_)
+            | Value::HostBitArray64(_)
+            | Value::HostBitArray128(_)
+            | Value::HostBitArray224(_)
+            | Value::HostBitArray256(_) => {
                 unimplemented!()
             }
-            Value::HostBitArray224(_) => unimplemented!(),
-            Value::HostBitArray256(_) => unimplemented!(),
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)
             | Value::Fixed128Tensor(_)

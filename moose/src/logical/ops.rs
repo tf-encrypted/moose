@@ -1245,32 +1245,32 @@ impl SumOp {
 
 impl OnesOp {
     #[allow(clippy::type_complexity)]
-    pub(crate) fn logical_host_kernel<S: Session>(
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+        HostS,
+        RepS,
+    >(
         sess: &S,
         plc: &HostPlacement,
-        shape: m!(HostShape),
-    ) -> Result<
-        AbstractTensor<
-            m!(Fixed64Tensor),
-            m!(Fixed128Tensor),
-            m!(Float32Tensor),
-            m!(Float64Tensor),
-            m!(BooleanTensor),
-            m!(Uint64Tensor),
-        >,
-    >
+        shape: AbstractShape<HostS, RepS>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
     where
-        HostShape: KnownType<S>,
-        Fixed64Tensor: KnownType<S>,
-        Fixed128Tensor: KnownType<S>,
-        Float32Tensor: KnownType<S>,
-        Float64Tensor: KnownType<S>,
-        BooleanTensor: KnownType<S>,
-        Uint64Tensor: KnownType<S>,
-        HostPlacement: PlacementOnes<S, m!(HostShape), m!(Float64Tensor)>,
+        HostPlacement: PlacementOnes<S, HostS, Float64T>,
+        HostPlacement: PlacementReveal<S, RepS, HostS>,
     {
-        let result = plc.ones(sess, &shape);
-        Ok(AbstractTensor::Float64(result))
+        match shape {
+            AbstractShape::Host(sh) => Ok(AbstractTensor::Float64(plc.ones(sess, &sh))),
+            AbstractShape::Replicated(sh) => {
+                let sh = plc.reveal(sess, &sh);
+                Ok(AbstractTensor::Float64(plc.ones(sess, &sh)))
+            }
+        }
     }
 }
 
@@ -1760,11 +1760,12 @@ impl ShapeOp {
         BoolT,
         Uint64T,
         HostShapeT,
+        RepShapeT,
     >(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
-    ) -> Result<HostShapeT>
+    ) -> Result<AbstractShape<HostShapeT, RepShapeT>>
     where
         HostPlacement: PlacementShape<S, Float32T, HostShapeT>,
         HostPlacement: PlacementShape<S, Float64T, HostShapeT>,
@@ -1772,10 +1773,10 @@ impl ShapeOp {
         HostPlacement: PlacementShape<S, Fixed128T, HostShapeT>,
     {
         match x {
-            AbstractTensor::Float32(x) => Ok(plc.shape(sess, &x)),
-            AbstractTensor::Float64(x) => Ok(plc.shape(sess, &x)),
-            AbstractTensor::Fixed64(x) => Ok(plc.shape(sess, &x)),
-            AbstractTensor::Fixed128(x) => Ok(plc.shape(sess, &x)),
+            AbstractTensor::Float32(x) => Ok(AbstractShape::Host(plc.shape(sess, &x))),
+            AbstractTensor::Float64(x) => Ok(AbstractShape::Host(plc.shape(sess, &x))),
+            AbstractTensor::Fixed64(x) => Ok(AbstractShape::Host(plc.shape(sess, &x))),
+            AbstractTensor::Fixed128(x) => Ok(AbstractShape::Host(plc.shape(sess, &x))),
             x => Err(Error::UnimplementedOperator(format!(
                 "Shape op (host) is unsupported for {:?}.",
                 x.ty_desc()
@@ -1791,19 +1792,20 @@ impl ShapeOp {
         Float64T,
         BoolT,
         Uint64T,
+        HostShapeT,
         RepShapeT,
     >(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
-    ) -> Result<RepShapeT>
+    ) -> Result<AbstractShape<HostShapeT, RepShapeT>>
     where
         ReplicatedPlacement: PlacementShape<S, Fixed64T, RepShapeT>,
         ReplicatedPlacement: PlacementShape<S, Fixed128T, RepShapeT>,
     {
         match x {
-            AbstractTensor::Fixed64(x) => Ok(plc.shape(sess, &x)),
-            AbstractTensor::Fixed128(x) => Ok(plc.shape(sess, &x)),
+            AbstractTensor::Fixed64(x) => Ok(AbstractShape::Replicated(plc.shape(sess, &x))),
+            AbstractTensor::Fixed128(x) => Ok(AbstractShape::Replicated(plc.shape(sess, &x))),
             _ => Err(Error::UnimplementedOperator(
                 "Shape op (Rep) op not supported on ReplicatedPlacement.".to_string(),
             )),

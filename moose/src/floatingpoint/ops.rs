@@ -266,15 +266,13 @@ impl LessThanOp {
 }
 
 impl OnesOp {
-    pub(crate) fn host_float_kernel<S: Session, HostFloatT, MirroredT>(
+    pub(crate) fn host_float_kernel<S: Session, HostFloatT, MirroredT, HostS>(
         sess: &S,
         plc: &HostPlacement,
-        shape: m!(HostShape),
+        shape: HostS,
     ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
-        HostShape: KnownType<S>,
-        HostFloat64Tensor: KnownType<S>,
-        HostPlacement: PlacementOnes<S, m!(HostShape), HostFloatT>,
+        HostPlacement: PlacementOnes<S, HostS, HostFloatT>,
     {
         let z = plc.ones(sess, &shape);
         Ok(FloatTensor::Host(z))
