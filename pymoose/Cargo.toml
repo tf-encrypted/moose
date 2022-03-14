@@ -20,16 +20,13 @@ approx = "~0.4"
 numpy = "~0.14"
 ndarray = "~0.15"
 moose = { path = "../moose" }
-rand = "~0.8"
-rmp-serde = "~0.15"
+pyo3 = "~0.14"
+rmp-serde = "~1.0"
 serde = { version = "~1.0", features = ["derive"] }
 
 [dev-dependencies]
 flate2 = "~1.0"
 rstest = "~0.12"
-
-[dependencies.pyo3]
-version = "~0.14"
 
 [features]
 extension-module = ["pyo3/extension-module"]
