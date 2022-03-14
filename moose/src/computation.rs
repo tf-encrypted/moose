@@ -102,9 +102,12 @@ impl std::fmt::Display for SessionId {
 impl TryFrom<&str> for SessionId {
     type Error = Error;
     fn try_from(s: &str) -> Result<SessionId> {
-        let digest = blake3::hash(s.as_bytes());
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(&s.as_bytes());
+        let mut digest = hasher.finalize_xof();
+
         let mut raw_hash = [0u8; TAG_BYTES];
-        raw_hash.copy_from_slice(&digest.as_bytes()[..TAG_BYTES]);
+        digest.fill(&mut raw_hash);
 
         let sid = SessionId {
             logical: s.to_string(),

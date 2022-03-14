@@ -135,9 +135,9 @@ impl DeriveSeedOp {
         keyed_hash.update(&sid_bytes);
         keyed_hash.update(&sync_key_bytes);
 
-        let digest = keyed_hash.finalize();
+        let mut digest = keyed_hash.finalize_xof();
         let mut raw_seed: RngSeed = [0u8; SEED_SIZE];
-        raw_seed.copy_from_slice(&digest.as_bytes()[..SEED_SIZE]);
+        digest.fill(&mut raw_seed);
 
         Ok(HostSeed(RawSeed(raw_seed), plc.clone()))
     }
