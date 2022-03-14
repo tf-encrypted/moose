@@ -50,7 +50,7 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
 
     def neural_predictor_fn(self, x, fixedpoint_dtype):
         num_hidden_layers = len(self.weights) - 1  # infer number of layers
-        for i in range(num_hidden_layers+1):
+        for i in range(num_hidden_layers + 1):
             x = self.apply_layer(x, num_hidden_layers, i, fixedpoint_dtype)
             if i < num_hidden_layers:
                 x = self.activation_fn(x)
