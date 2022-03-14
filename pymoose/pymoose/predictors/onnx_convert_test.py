@@ -20,11 +20,11 @@ _SK_MODELS = [
     ("xgboost_regressor", tree_ensemble.TreeEnsembleRegressor),
     ("xgboost_classifier_2class", tree_ensemble.TreeEnsembleClassifier),
     (
-        "MPL_regressor_2hidden_layers_1target_logistic",
+        "MLP_regressor_2hidden_layers_1target_logistic",
         neural_net_predictor.MLPRegressor,
     ),
     (
-        "MPL_classfier_3hidden_layers_2classes_identity",
+        "MLP_classfier_3hidden_layers_2classes_identity",
         neural_net_predictor.MLPClassifier,
     ),
 ]
