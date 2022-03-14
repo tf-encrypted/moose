@@ -14,24 +14,24 @@ from pymoose.predictors import neural_net_predictor
 from pymoose.predictors import predictor_utils
 
 _SK_REGRESSION_MODELS = [
-    ("MPL_regressor_1hidden_layers_1target_logistic", [14.61085493, 10.79791606]),
-    ("MPL_regressor_2hidden_layers_1target_logistic", [11.42481646, 10.5622954]),
-    ("MPL_regressor_3hidden_layers_1target_logistic", [4.27051111, 4.03313707]),
+    ("MLP_regressor_1hidden_layers_1target_logistic", [14.61085493, 10.79791606]),
+    ("MLP_regressor_2hidden_layers_1target_logistic", [11.42481646, 10.5622954]),
+    ("MLP_regressor_3hidden_layers_1target_logistic", [4.27051111, 4.03313707]),
     (
-        "MPL_regressor_2hidden_layers_2target_logistic",
+        "MLP_regressor_2hidden_layers_2target_logistic",
         [[9.7588123, 10.30390732], [-0.89381576, -1.49784495]],
     ),
     (
-        "MPL_regressor_2hidden_layers_2target_identity",
+        "MLP_regressor_2hidden_layers_2target_identity",
         [[550.57188666, 431.31144628], [57.07484159, 128.76424831]],
     ),
 ]
 _SK_CLASSIFIER_MODELS = [
-    ("MPL_classifier_1hidden_layers_2classes_logistic", [0.60823407, 0.39176593]),
-    ("MPL_classfier_3hidden_layers_2classes_identity", [0.90055265, 0.09944735]),
-    ("MPL_classfier_3hidden_layers_2classes_logistic", [0.96068223, 0.03931777]),
+    ("MLP_classifier_1hidden_layers_2classes_logistic", [0.60823407, 0.39176593]),
+    ("MLP_classfier_3hidden_layers_2classes_identity", [0.90055265, 0.09944735]),
+    ("MLP_classfier_3hidden_layers_2classes_logistic", [0.96068223, 0.03931777]),
     (
-        "MPL_classfier_3hidden_layers_10classes_logistic",
+        "MLP_classfier_3hidden_layers_10classes_logistic",
         [
             0.03720068,
             0.01509579,
@@ -46,7 +46,7 @@ _SK_CLASSIFIER_MODELS = [
         ],
     ),
     (
-        "MPL_classfier_1hidden_layers_10classes_logistic",
+        "MLP_classfier_1hidden_layers_10classes_logistic",
         [
             0.19517187,
             0.04481253,
