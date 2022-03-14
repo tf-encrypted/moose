@@ -380,7 +380,13 @@ pub trait PlacementMean<S: Session, T, O> {
 modelled_kernel! {
     PlacementMean::mean, MeanOp{axis: Option<u32>},
     [
-        (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig, axis] Self::logical_host_kernel),
+        (HostPlacement, (Tensor) -> Tensor => [concrete] custom |op| {
+            let sig = op.sig.clone();
+            let axis = op.axis.clone();
+            Ok(Box::new(move |sess, plc, x| {
+                Self::logical_host_kernel(sess, plc, sig, axis, x)
+            }))
+        }),
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
@@ -389,7 +395,13 @@ modelled_kernel! {
         (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_host_kernel),
         (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [concrete] Self::hostfixed_kernel),
         (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::hostfixed_kernel),
-        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] attributes[sig, axis] Self::logical_rep_kernel),
+        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] custom |op| {
+            let sig = op.sig.clone();
+            let axis = op.axis.clone();
+            Ok(Box::new(move |sess, plc, x| {
+                Self::logical_rep_kernel(sess, plc, sig, axis, x)
+            }))
+        }),
         (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::repfixed_kernel),
