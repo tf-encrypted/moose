@@ -11,7 +11,6 @@ use crate::textual::ToTextual;
 use crate::types::*;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
-use getrandom;
 use macros::{FromTextual, ShortName, ToTextual};
 use paste::paste;
 use petgraph::algo::toposort;
@@ -81,8 +80,10 @@ impl RendezvousKey {
     }
 
     pub fn random() -> Self {
+        use rand::RngCore;
         let mut raw = [0; TAG_BYTES];
-        getrandom::getrandom(&mut raw).expect("failed to get randomness");
+        let mut rng = rand::thread_rng();
+        rng.fill_bytes(&mut raw);
         RendezvousKey(raw)
     }
 }
@@ -124,8 +125,11 @@ impl SessionId {
     }
 
     pub fn random() -> Self {
+        use rand::RngCore;
         let mut raw = [0; TAG_BYTES];
-        getrandom::getrandom(&mut raw).expect("failed to get randomness");
+        let mut rng = rand::thread_rng();
+        rng.fill_bytes(&mut raw);
+
         let hex_vec: Vec<String> = raw.iter().map(|byte| format!("{:02X}", byte)).collect();
         let hex_string = hex_vec.join("");
         SessionId {

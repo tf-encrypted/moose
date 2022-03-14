@@ -5,7 +5,6 @@ use crate::execution::{RuntimeSession, Session};
 use crate::kernels::PlacementPlace;
 use crate::prng::AesRng;
 use crate::prng::{RngSeed, SEED_SIZE};
-use getrandom;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
@@ -74,8 +73,10 @@ pub struct SyncKey([u8; TAG_BYTES]);
 
 impl SyncKey {
     pub fn random() -> SyncKey {
+        use rand::RngCore;
         let mut raw_sync_key = [0u8; TAG_BYTES];
-        getrandom::getrandom(&mut raw_sync_key).expect("failed to get randomness");
+        let mut rng = rand::thread_rng();
+        rng.fill_bytes(&mut raw_sync_key);
         SyncKey(raw_sync_key)
     }
 

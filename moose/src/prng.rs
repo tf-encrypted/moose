@@ -63,7 +63,6 @@ use aes::cipher::generic_array::{typenum::U16, typenum::U8, GenericArray};
 use aes::cipher::{BlockEncrypt, NewBlockCipher};
 use aes::Aes128;
 use byteorder::{ByteOrder, LittleEndian};
-use getrandom;
 use rand::{CryptoRng, Error, RngCore, SeedableRng};
 use std::mem;
 use std::slice;
@@ -185,13 +184,16 @@ impl AesRng {
 
     pub fn generate_random_key() -> [u8; SEED_SIZE] {
         let mut seed = [0u8; SEED_SIZE];
-        getrandom::getrandom(&mut seed).expect("failed to get randomness");
+        let mut rng = rand::thread_rng();
+        rng.fill_bytes(&mut seed);
         seed
     }
 
     /// Method to fetch a PRNG where its seed is taken from /dev/random
-    /// or /dev/urandom if /dev/random doesn't have enough entropy
-    /// getrandom avoids returning low-entropy bytes,
+    /// or /dev/urandom if /dev/random doesn't have enough entropy.
+    /// Note that thread_rng is based on OsRng which internally uses the getrandom package.
+    /// to get a large chunk of random bytes using Os calls.
+    /// getrandom avoids returning low-entropy bytes.
     /// first it polls from /dev/random and only switch to /dev/urandom once this has succeeded.
     /// `We always choose failure over returning insecure “random” bytes` from getrandom package
     pub fn from_random_seed() -> Self {
