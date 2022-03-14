@@ -9,10 +9,7 @@ pub async fn read_csv(
     columns: &[String],
     placement: &HostPlacement,
 ) -> Result<Value> {
-    let mut include_columns: HashSet<String> = HashSet::new();
-    for column_name in columns.iter() {
-        include_columns.insert(column_name.clone());
-    }
+    let include_columns: HashSet<&String> = columns.iter().collect();
     let mut reader = csv::Reader::from_path(filename)
         .map_err(|e| Error::Storage(format!("could not open file: {}: {}", filename, e)))?;
     let mut data: HashMap<String, Vec<f64>> = HashMap::new();
