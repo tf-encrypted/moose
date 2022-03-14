@@ -17,7 +17,12 @@ enum NumpyDtype {
 
 #[allow(dead_code)]
 pub(crate) async fn read_numpy(filename: &str, placement: &HostPlacement) -> Result<Value> {
-    let dtype = extract_dtype(filename)?;
+    let dtype = extract_dtype(filename).map_err(|e| {
+        Error::Storage(format!(
+            "parsing failure from numpy data file: {}: {}",
+            filename, e
+        ))
+    })?;
     match dtype {
         NumpyDtype::Float64 => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
