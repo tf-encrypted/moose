@@ -8,6 +8,7 @@ from absl.testing import parameterized
 
 from pymoose.logger import get_logger
 from pymoose.predictors import linear_predictor
+from pymoose.predictors import neural_net_predictor
 from pymoose.predictors import onnx_convert
 from pymoose.predictors import tree_ensemble
 
@@ -18,6 +19,14 @@ _SK_MODELS = [
     ("random_forest_classifier_2class", tree_ensemble.TreeEnsembleClassifier),
     ("xgboost_regressor", tree_ensemble.TreeEnsembleRegressor),
     ("xgboost_classifier_2class", tree_ensemble.TreeEnsembleClassifier),
+    (
+        "MLP_regressor_2hidden_layers_1target_logistic",
+        neural_net_predictor.MLPRegressor,
+    ),
+    (
+        "MLP_classfier_3hidden_layers_2classes_identity",
+        neural_net_predictor.MLPClassifier,
+    ),
 ]
 
 
