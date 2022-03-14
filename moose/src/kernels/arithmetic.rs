@@ -382,7 +382,7 @@ modelled_kernel! {
     [
         (HostPlacement, (Tensor) -> Tensor => [concrete] custom |op| {
             let sig = op.sig.clone();
-            let axis = op.axis.clone();
+            let axis = op.axis;
             Ok(Box::new(move |sess, plc, x| {
                 Self::logical_host_kernel(sess, plc, sig, axis, x)
             }))
@@ -397,7 +397,7 @@ modelled_kernel! {
         (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::hostfixed_kernel),
         (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] custom |op| {
             let sig = op.sig.clone();
-            let axis = op.axis.clone();
+            let axis = op.axis;
             Ok(Box::new(move |sess, plc, x| {
                 Self::logical_rep_kernel(sess, plc, sig, axis, x)
             }))
