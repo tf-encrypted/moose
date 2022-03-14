@@ -421,18 +421,12 @@ pub trait PlacementMeanAsFixedpoint<S: Session, T, O> {
 }
 
 modelled_kernel! {
-    PlacementMeanAsFixedpoint::mean_as_fixedpoint, RepFixedpointMeanOp{axis: Option<u32>, scaling_base: u64, scaling_exp: u32},
-    [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::kernel),
-    ]
-}
-
-modelled_kernel! {
     PlacementMeanAsFixedpoint::mean_as_fixedpoint, RingFixedpointMeanOp{axis: Option<u32>, scaling_base: u64, scaling_exp: u32},
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_kernel),
     ]
 }
 

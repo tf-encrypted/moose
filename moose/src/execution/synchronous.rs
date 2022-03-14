@@ -203,7 +203,6 @@ impl Session for SyncSession {
             Msb(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Abs(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             RepToAdt(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
-            RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             AddN(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             Index(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,
             BitDecompose(op) => DispatchKernel::compile(&op, plc)?(self, operands)?,

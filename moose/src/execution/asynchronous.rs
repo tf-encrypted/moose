@@ -359,7 +359,6 @@ impl DispatchKernel<AsyncSession> for Operator {
             TruncPr(op) => DispatchKernel::compile(op, plc),
             Msb(op) => DispatchKernel::compile(op, plc),
             RepToAdt(op) => DispatchKernel::compile(op, plc),
-            RepFixedpointMean(op) => DispatchKernel::compile(op, plc),
             BitDecompose(op) => DispatchKernel::compile(op, plc),
             BitCompose(op) => DispatchKernel::compile(op, plc),
             AdtToRep(op) => DispatchKernel::compile(op, plc),

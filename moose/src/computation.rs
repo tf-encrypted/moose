@@ -908,7 +908,6 @@ operators![
     Reveal,
     Fill,
     Msb,
-    RepFixedpointMean,
     AddN,
     TruncPr,
     RepToAdt,
@@ -1393,14 +1392,6 @@ pub struct ShareOp {
 )]
 pub struct RevealOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
-pub struct RepFixedpointMeanOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
-    pub scaling_base: u64,
-    pub scaling_exp: u32,
 }
 
 #[derive(

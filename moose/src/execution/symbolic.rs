@@ -298,7 +298,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Share(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Reveal(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             TruncPr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             AddN(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Shl(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             Shr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
