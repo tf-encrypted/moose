@@ -1,10 +1,17 @@
 import abc
+from enum import Enum
 
 import numpy as np
 
 from pymoose import edsl
 from pymoose.predictors import aes_predictor
 from pymoose.predictors import predictor_utils
+
+
+class PostTransform(Enum):
+    NONE = 1
+    SIGMOID = 2
+    SOFTMAX = 3
 
 
 class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
@@ -112,22 +119,24 @@ class LinearRegressor(LinearPredictor):
 
 
 class LinearClassifier(LinearPredictor):
-    def __init__(self, coeffs, intercepts=None, multitask=False, transform_output=True):
+    def __init__(
+        self, coeffs, intercepts=None, post_transform=None, transform_output=True
+    ):
         super().__init__(coeffs, intercepts)
         n_classes = self.coeffs.shape[0]
-        if multitask and n_classes == 1:
-            raise ValueError("Invalid argument: multitask=True found with n_classes=1.")
         # infer post_transform
-        if not transform_output:
+        if post_transform == post_transform.NONE:
             self._post_transform = lambda x: x
-        elif multitask and n_classes == 2:
+        elif post_transform == post_transform.SIGMOID and n_classes == 2:
             self._post_transform = lambda x: edsl.sigmoid(x)
-        elif multitask:
+        elif post_transform == post_transform.SIGMOID and n_classes > 2:
             self._post_transform = lambda x: self._normalized_sigmoid(x, axis=1)
-        else:
+        elif post_transform == post_transform.SOFTMAX:
             self._post_transform = lambda x: edsl.softmax(
                 x, axis=1, upmost_index=n_classes
             )
+        else:
+            raise ValueError("Could not infer post-transform in LinearClassifier")
 
     @classmethod
     def from_onnx(cls, model_proto):
@@ -180,37 +189,25 @@ class LinearClassifier(LinearPredictor):
         else:
             intercepts = np.asarray(intercepts_attr.floats).reshape(1, n_classes)
 
-        # infer multitask arg from multi_class attribute
-        multi_class_int = predictor_utils.find_attribute_in_node(lc_node, "multi_class")
-        assert multi_class_int.type == 2  # INT
-        multi_class = bool(multi_class_int.i)
-        multitask = not multi_class
-
         # derive transform_output
-        multi_class_int = predictor_utils.find_attribute_in_node(lc_node, "multi_class")
         post_transform = predictor_utils.find_attribute_in_node(
             lc_node, "post_transform"
         )
         post_transform_str = post_transform.s.decode()
-        transform_output = post_transform_str != "NONE"
 
-        # sanity check that post_transform conforms to our expectations
-        if post_transform_str == "PROBIT":
+        if post_transform_str == "NONE":
+            post_transform = PostTransform.NONE
+        elif post_transform_str == "LOGISTIC":
+            post_transform = PostTransform.SIGMOID
+        elif post_transform_str == "SOFTMAX":
+            post_transform = PostTransform.SOFTMAX
+        else:
             raise RuntimeError(
                 f"{post_transform_str} post_transform is unsupported for "
                 "LinearClassifier."
             )
-        elif post_transform_str in ["SOFTMAX", "SOFTMAX_ZERO"] and multitask:
-            raise RuntimeError(
-                f"Invalid post_transform {post_transform_str} for multitask=True."
-            )
 
-        return cls(
-            coeffs=coeffs,
-            intercepts=intercepts,
-            multitask=multitask,
-            transform_output=transform_output,
-        )
+        return cls(coeffs=coeffs, intercepts=intercepts, post_transform=post_transform,)
 
     def post_transform(self, y):
         return self._post_transform(y)
