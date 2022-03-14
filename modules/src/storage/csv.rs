@@ -4,7 +4,8 @@ use moose::Result;
 use ndarray::{Array2, ShapeBuilder};
 use std::collections::{HashMap, HashSet};
 
-pub async fn read_csv(
+#[allow(dead_code)]
+pub(crate) async fn read_csv(
     filename: &str,
     columns: &[String],
     placement: &HostPlacement,
