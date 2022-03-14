@@ -81,9 +81,7 @@ impl RendezvousKey {
 
     pub fn random() -> Self {
         let mut raw = [0; TAG_BYTES];
-        if let Err(e) = getrandom::getrandom(&mut raw) {
-            panic!("failed to get randomness, Error: {}", e);
-        }
+        getrandom::getrandom(&mut raw).expect("failed to get randomness");
         RendezvousKey(raw)
     }
 }
@@ -123,9 +121,7 @@ impl SessionId {
 
     pub fn random() -> Self {
         let mut raw = [0; TAG_BYTES];
-        if let Err(e) = getrandom::getrandom(&mut raw) {
-            panic!("failed to get randomness, Error: {}", e);
-        }
+        getrandom::getrandom(&mut raw).expect("failed to get randomness");
         let hex_vec: Vec<String> = raw.iter().map(|byte| format!("{:02X}", byte)).collect();
         let hex_string = hex_vec.join("");
         SessionId {

@@ -185,9 +185,7 @@ impl AesRng {
 
     pub fn generate_random_key() -> [u8; SEED_SIZE] {
         let mut seed = [0u8; SEED_SIZE];
-        if let Err(e) = getrandom::getrandom(&mut seed) {
-            panic!("failed to get randomness, Error: {}", e);
-        }
+        getrandom::getrandom(&mut seed).expect("failed to get randomness");
         seed
     }
 

@@ -75,9 +75,7 @@ pub struct SyncKey([u8; TAG_BYTES]);
 impl SyncKey {
     pub fn random() -> SyncKey {
         let mut raw_sync_key = [0u8; TAG_BYTES];
-        if let Err(e) = getrandom::getrandom(&mut raw_sync_key) {
-            panic!("failed to get randomness, Error: {}", e);
-        }
+        getrandom::getrandom(&mut raw_sync_key).expect("failed to get randomness");
         SyncKey(raw_sync_key)
     }
 
@@ -125,14 +123,13 @@ impl DeriveSeedOp {
     ) -> Result<HostSeed> {
         let sid = sess.session_id();
         let key_bytes = key.0.as_bytes();
-        let extended_key_bytes = blake3::hash(key_bytes);
 
-        // compute seed as hash(sid || sync_key)[0..SEED_SIZE]
         let sid_bytes: [u8; TAG_BYTES] = *sid.as_bytes();
         let sync_key_bytes: [u8; TAG_BYTES] = sync_key.0;
 
         // init H(k, *)
-        let mut keyed_hash = blake3::Hasher::new_keyed(extended_key_bytes.as_bytes());
+        let derived_key = blake3::derive_key("Derive Seed", &key_bytes);
+        let mut keyed_hash = blake3::Hasher::new_keyed(&derived_key);
 
         // nonce = sid || sync_key
         keyed_hash.update(&sid_bytes);
