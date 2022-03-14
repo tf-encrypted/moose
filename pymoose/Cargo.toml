@@ -21,11 +21,11 @@ maplit = "~1.0"
 numpy = "~0.14"
 ndarray = "~0.15"
 moose = { path = "../moose" }
-tokio = { version="~1.14", features=["full"] }
+tokio = { version = "1.0", features = ["full"] }
 rand = "~0.8"
 rmp-serde = "~0.15"
-serde = { version="~1.0", features=["derive"] }
-serde_bytes="~0.11"
+serde = { version = "~1.0", features = ["derive"] }
+serde_bytes = "~0.11"
 
 [dev-dependencies]
 flate2 = "~1.0"
