@@ -16,7 +16,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 anyhow = "~1.0"
-approx = "~0.4"
+approx = "~0.5"
 numpy = "~0.14"
 ndarray = "~0.15"
 moose = { path = "../moose" }
