@@ -189,24 +189,11 @@ class LinearClassifier(LinearPredictor):
         else:
             intercepts = np.asarray(intercepts_attr.floats).reshape(1, n_classes)
 
-        # infer multitask arg from multi_class attribute
-        multi_class_int = predictor_utils.find_attribute_in_node(lc_node, "multi_class")
-        assert multi_class_int.type == 2  # INT
-        multi_class = bool(multi_class_int.i)
-        multitask = not multi_class
-
         # derive transform_output
-        multi_class_int = predictor_utils.find_attribute_in_node(lc_node, "multi_class")
         post_transform = predictor_utils.find_attribute_in_node(
             lc_node, "post_transform"
         )
         post_transform_str = post_transform.s.decode()
-
-        # sanity check that post_transform conforms to our expectations
-        if post_transform_str in ["SOFTMAX", "SOFTMAX_ZERO"] and multitask:
-            raise RuntimeError(
-                f"Invalid post_transform {post_transform_str} for multitask=True."
-            )
 
         if post_transform_str == "NONE":
             post_transform = PostTransform.NONE
