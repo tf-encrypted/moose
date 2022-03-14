@@ -44,8 +44,10 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
             #     ones = edsl.cast(ones, dtype=fixedpoint_dtype)
             #     zeros = edsl.sub(ones, ones)
             #     activation_output = edsl.maximum([zeros, y_1])
-        else:
+        elif self.activation is None:
             activation_output = z  # identity activation
+        else:
+            raise ValueError("Invalid or unsupported activation function")
         return activation_output
 
     def neural_predictor_fn(self, x, fixedpoint_dtype):

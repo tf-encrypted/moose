@@ -21,6 +21,12 @@ def from_onnx(model_proto):
         else:
             unrocognized_ops.append(node_type)
 
+    number_of_coefficients = len(
+        predictor_utils.find_parameters_in_model_proto(
+            model_proto, "coefficient", enforce=False
+        )
+    )
+
     if len(recognized_ops) == 1:
         model_type = recognized_ops.pop()
 
@@ -30,17 +36,14 @@ def from_onnx(model_proto):
             "one node of type LinearRegressor or LinearClassifier or "
             f"TreeEnsembleRegressor or TreeEnsembleClassifier, found {recognized_ops}"
         )
-    # MultiLayerPerceptron (MLP) onnx graph does not contain a node name that identifies that the model is MLP
-    # However, an MLP has at least two sets of weights
-    elif (
-        len(
-            predictor_utils.find_parameters_in_model_proto(
-                model_proto, "coefficient", enforce=False
-            )
-        )
-        > 1
-    ):
+    # MultiLayerPerceptron (MLP) onnx graph does not contain a node name that identifies
+    # that the model is MLP.
+    # However, an MLP has at least two sets of weights.
+    elif number_of_coefficients > 1:
         model_type = "MLP"
+        classes = predictor_utils.find_node_in_model_proto(
+            model_proto, "ZipMap", enforce=False
+        )
 
     else:
         raise ValueError(
@@ -57,19 +60,7 @@ def from_onnx(model_proto):
         return tree_ensemble.TreeEnsembleRegressor.from_onnx(model_proto)
     elif model_type == "TreeEnsembleClassifier":
         return tree_ensemble.TreeEnsembleClassifier.from_onnx(model_proto)
-    elif (
-        model_type == "MLP"
-        and predictor_utils.find_node_in_model_proto(
-            model_proto, "ZipMap", enforce=False
-        )
-        == None
-    ):
+    elif model_type == "MLP" and classes is None:
         return neural_net_predictor.MLPRegressor.from_onnx(model_proto)
-    elif (
-        model_type == "MLP"
-        and predictor_utils.find_node_in_model_proto(
-            model_proto, "ZipMap", enforce=False
-        )
-        != None
-    ):
+    elif model_type == "MLP" and classes is not None:
         return neural_net_predictor.MLPClassifier.from_onnx(model_proto)
