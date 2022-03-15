@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let manager = GrpcNetworkingManager::default();
 
     let _server_task = {
-        use tonic::transport::{Server, Certificate};
+        use tonic::transport::{Server, Identity, ServerTlsConfig, Certificate};
 
         // TODO(Morten) construct `addr` in a nicer way
         let addr = format!("0.0.0.0:{}", opt.port).parse()?;
@@ -78,22 +78,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let cert_name = certificate(&opt.identity);
         let cert_raw = tokio::fs::read(format!("examples/certs/{}.crt", cert_name)).await?;
         let key_raw = tokio::fs::read(format!("examples/certs/{}.key", cert_name)).await?;
-        // let identity = Identity::from_pem(cert_raw, key_raw);
+        let identity = Identity::from_pem(cert_raw, key_raw);
 
         let ca_cert_raw = tokio::fs::read("examples/certs/ca.crt").await?;
         let ca_cert = Certificate::from_pem(ca_cert_raw);
 
-        // let tls = ServerTlsConfig::new()
-        //     .identity(identity)
-        //     .client_ca_root(ca_cert);
+        let tls = ServerTlsConfig::new()
+            .identity(identity)
+            .client_ca_root(ca_cert);
+
+        let server = Server::builder()
+            .tls_config(tls)?
+            .add_service(manager.new_server());
 
         tokio::spawn(async move {
-            let res = Server::builder()
-                // .tls_config(tls)?
-                .add_service(manager.new_server())
+            if let Err(e) = server
                 .serve(addr)
-                .await;
-            if let Err(e) = res {
+                .await {
                 tracing::error!("gRPC error: {}", e);
             }
         })

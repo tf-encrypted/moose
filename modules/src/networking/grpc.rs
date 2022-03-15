@@ -99,7 +99,10 @@ impl AsyncNetworking for GrpcNetworking {
                 let _response = client
                     .send_value(request)
                     .await
-                    .map_err(|e| moose::Error::Networking(e.to_string()))?;
+                    .map_err(|e| {
+                        tracing::error!("{:?}", e);
+                        moose::Error::Networking(e.to_string())}
+                    )?;
                 Ok(())
             },
         )
