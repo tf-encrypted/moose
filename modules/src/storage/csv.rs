@@ -55,7 +55,7 @@ pub(crate) async fn read_csv(
         let column = &data[header];
         matrix.extend_from_slice(column);
     }
-    let ndarr: Array2<f64> = Array2::from_shape_vec((nrows, ncols), matrix).map_err(|e| {
+    let ndarr: Array2<f64> = Array2::from_shape_vec((nrows, ncols).f(), matrix).map_err(|e| {
         Error::Storage(format!(
             "could not convert data from: {} to matrix: {}",
             filename, e
