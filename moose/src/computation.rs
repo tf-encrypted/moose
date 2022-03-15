@@ -352,9 +352,14 @@ macro_rules! values {
                 use std::convert::TryInto;
                 match name {
                     "Unknown" => Ok(Ty::Unknown),
-                    $(stringify!($val) => {
-                        Ok(Ty::$val$((inner.map(|i| i.try_into()).transpose()?.unwrap_or($inner::$default)))?)
-                    },)+
+                    $(stringify!($val) => Ok(Ty::$val
+                        // Optional inner type conversion clause
+                        $((
+                            TryInto::<$inner>::try_into(
+                                inner.ok_or_else(|| anyhow::anyhow!("Expected an inner type for {}", name))?
+                            )?
+                        ))?
+                    ),)+
                     "Bit" => Ok(Ty::Bit),
                     "Float32" => Ok(Ty::Float32),
                     "Float64" => Ok(Ty::Float64),
