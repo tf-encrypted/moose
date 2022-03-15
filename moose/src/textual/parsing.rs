@@ -475,12 +475,21 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Ty, E> {
     let (i, type_name) = alphanumeric1(input)?;
-    let (i, inner) = opt(tuple((tag("<"), parse_tensor_dtype, tag(">"))))(i)?;
-    let inner = inner.map(|t| t.1);
+    let (i, inner) = opt(delimited(tag("<"), is_not(">"), tag(">")))(i)?;
     let result = Ty::from_name(type_name, inner);
     match result {
-        Some(ty) => Ok((i, ty)),
+        Ok(ty) => Ok((i, ty)),
         _ => Err(Error(make_error(input, ErrorKind::Tag))),
+    }
+}
+
+impl TryFrom<&str> for TensorDType {
+    type Error = anyhow::Error;
+
+    fn try_from(source: &str) -> anyhow::Result<TensorDType> {
+        parse_tensor_dtype(source)
+            .map(|(_, v)| v)
+            .map_err(|e| friendly_error("Failed to parse TensorDType", source, e))
     }
 }
 
@@ -519,6 +528,36 @@ fn parse_tensor_dtype<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
                     fractional_precision: t.3,
                 },
             ),
+        ),
+    ))(input)
+}
+
+impl TryFrom<&str> for TensorShape {
+    type Error = anyhow::Error;
+
+    fn try_from(source: &str) -> anyhow::Result<TensorShape> {
+        parse_tensor_shape(source)
+            .map(|(_, v)| v)
+            .map_err(|e| friendly_error("Failed to parse TensorShape", source, e))
+    }
+}
+
+fn parse_tensor_shape<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, TensorShape, E> {
+    alt((
+        value(TensorShape::Host, tag(TensorShape::Host.short_name())),
+        value(
+            TensorShape::Replicated,
+            tag(TensorShape::Replicated.short_name()),
+        ),
+        value(
+            TensorShape::Additive,
+            tag(TensorShape::Additive.short_name()),
+        ),
+        value(
+            TensorShape::Mirrored,
+            tag(TensorShape::Mirrored.short_name()),
         ),
     ))(input)
 }
