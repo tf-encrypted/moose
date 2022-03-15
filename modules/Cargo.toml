@@ -1,6 +1,6 @@
 [package]
 name = "moose-modules"
-version = "0.1.5-beta.1"
+version = "0.1.5"
 license = "MIT"
 edition = "2018"
 authors = []
