@@ -221,7 +221,7 @@ where
 modelled_kernel! {
     PlacementOnes::ones, OnesOp,
     [
-        (HostPlacement, (TensorShape) -> Tensor => [concrete] Self::logical_host_kernel),
+        (HostPlacement, (Shape) -> Tensor => [concrete] Self::logical_host_kernel),
         // We do not support the ReplicatedPlacement: PlacementFill yet, hence we do not support Ones.
         // Also, logical Tensor can only hold Host tensors at the moment.
         // (ReplicatedPlacement, (HostShape) -> Tensor => [hybrid] Self::logical_rep_kernel),

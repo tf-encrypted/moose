@@ -31,7 +31,7 @@ pub type Tensor = AbstractTensor<
     Uint64Tensor,
 >;
 
-pub type TensorShape = AbstractShape<HostShape, ReplicatedShape>;
+pub type Shape = AbstractShape<HostShape, ReplicatedShape>;
 
 moose_type!(Fixed64Tensor = FixedTensor<HostFixed64Tensor, Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor>);
 moose_type!(HostFixed64Tensor = HostFixedTensor<HostRing64Tensor>);

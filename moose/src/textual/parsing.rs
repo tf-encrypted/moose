@@ -1394,7 +1394,7 @@ impl ToTextual for Value {
                 x.tensor.1
             ),
             Value::Tensor(_)
-            | Value::TensorShape(_)
+            | Value::Shape(_)
             | Value::HostBitArray64(_)
             | Value::HostBitArray128(_)
             | Value::HostBitArray224(_)
