@@ -31,8 +31,13 @@ impl GrpcNetworkingManager {
         })
     }
 
-    pub fn new_session(&self, session_id: SessionId) -> Arc<impl AsyncNetworking> {
+    pub fn new_session(
+        &self,
+        session_id: SessionId,
+        own_identity: Identity,
+    ) -> Arc<impl AsyncNetworking> {
         Arc::new(GrpcNetworking {
+            own_identity,
             session_id,
             stores: Arc::clone(&self.stores),
             channels: Arc::clone(&self.channels),
@@ -41,14 +46,49 @@ impl GrpcNetworkingManager {
 }
 
 struct GrpcNetworking {
+    own_identity: Identity,
     session_id: SessionId,
     stores: Arc<SessionStores>,
     channels: Arc<Channels>,
 }
 
+fn certificate(endpoint: &str) -> String {
+    endpoint.replace(":", "_")
+}
+
+use tonic::transport::{Certificate, ClientTlsConfig, Server};
 impl GrpcNetworking {
-    // fn retrieve_cert(&self, id: &Identity) -> TlsConfig
+    fn retrieve_cert(
+        &self,
+        receiver: &Identity,
+    ) -> Result<ClientTlsConfig, Box<dyn std::error::Error>> {
+        use tonic::transport::Identity;
+        let server_cert_path = certificate(&receiver.0);
+        let client_cert_path = certificate(&self.own_identity.0);
+
+        let server_root_ca_cert = Certificate::from_pem(std::fs::read(format!(
+            "examples/certs/{}.crt",
+            server_cert_path
+        ))?);
+
+        let client_cert = std::fs::read(format!("examples/certs/{}.crt", client_cert_path))?;
+        let client_key = std::fs::read(format!("examples/certs/{}.key", client_cert_path))?;
+        let client_identity = Identity::from_pem(client_cert, client_key);
+
+        let tls = ClientTlsConfig::new()
+            .domain_name("ca")
+            .ca_certificate(server_root_ca_cert)
+            .identity(client_identity);
+
+        Ok(tls)
+
+        // let channel = Channel::from_static("http://[::1]:50051")
+        //     .tls_config(tls)?
+        //     .connect()
+        //     .await?;
+    }
     fn channel(&self, receiver: &Identity) -> moose::Result<Channel> {
+        tracing::debug!("Identity: {:?}", receiver);
         let channel = self
             .channels
             .entry(receiver.clone())
@@ -60,7 +100,27 @@ impl GrpcNetworking {
                         receiver
                     ))
                 })?;
-                Ok(Channel::builder(endpoint).connect_lazy())
+
+                let tls_config = self.retrieve_cert(receiver);
+                let new_channel: moose::Result<Channel> = match tls_config {
+                    Ok(tls_config) => {
+                        let channel = Channel::builder(endpoint)
+                            .tls_config(tls_config)
+                            .map_err(|e| {
+                                moose::Error::Networking(format!(
+                                    "failed to TLS config {:?}",
+                                    e.to_string()
+                                ))
+                            })?
+                            .connect_lazy();
+                        Ok(channel)
+                    }
+                    Err(err) => Err(moose::Error::Networking(format!(
+                        "failed to setup TLS files configuration {:?}",
+                        err.to_string()
+                    ))),
+                };
+                new_channel
             })?
             .clone(); // cloning channels is cheap per tonic documentation
         Ok(channel)
@@ -96,13 +156,10 @@ impl AsyncNetworking for GrpcNetworking {
                 };
                 let channel = self.channel(receiver)?;
                 let mut client = NetworkingClient::new(channel);
-                let _response = client
-                    .send_value(request)
-                    .await
-                    .map_err(|e| {
-                        tracing::error!("{:?}", e);
-                        moose::Error::Networking(e.to_string())}
-                    )?;
+                let _response = client.send_value(request).await.map_err(|e| {
+                    tracing::error!("{:?}", e);
+                    moose::Error::Networking(e.to_string())
+                })?;
                 Ok(())
             },
         )
@@ -167,9 +224,9 @@ impl Networking for NetworkingImpl {
         &self,
         request: tonic::Request<SendValueRequest>,
     ) -> Result<tonic::Response<SendValueResponse>, tonic::Status> {
-            //     let certs = request
-            // .peer_certs()
-            // .expect("Client did not send its certs!");
+        //     let certs = request
+        // .peer_certs()
+        // .expect("Client did not send its certs!");
         let request = request.into_inner();
         let tagged_value = bincode::deserialize::<TaggedValue>(&request.tagged_value).unwrap(); // TODO error handling
 

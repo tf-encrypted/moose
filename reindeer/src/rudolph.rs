@@ -36,7 +36,7 @@ struct Opt {
     telemetry: bool,
 }
 
-fn certificate(endpoint: &str) -> String {
+pub fn certificate(endpoint: &str) -> String {
     endpoint.replace(":", "_")
 }
 
@@ -73,7 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let manager = GrpcNetworkingManager::default();
 
     let _server_task = {
-        use tonic::transport::{Server, Identity, ServerTlsConfig, Certificate};
+        use tonic::transport::{Certificate, Identity, Server, ServerTlsConfig};
 
         // TODO(Morten) construct `addr` in a nicer way
         let addr = format!("0.0.0.0:{}", opt.port).parse()?;
@@ -97,13 +97,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             server = server.tls_config(tls)?;
         }
 
-        let router = server
-            .add_service(manager.new_server());
+        let router = server.add_service(manager.new_server());
 
         tokio::spawn(async move {
-            if let Err(e) = router
-                .serve(addr)
-                .await {
+            if let Err(e) = router.serve(addr).await {
                 tracing::error!("gRPC error: {}", e);
             }
         })
@@ -112,10 +109,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // NOTE(Morten) if we want to move this into separate task then we need
     // to make sure AsyncSessionHandle::join_on_first_error is Send, which
     // means fixing the use of RwLock
+    let own_identity = Identity::from(opt.identity);
+
     FilesystemChoreography::new(
-        Identity::from(opt.identity),
+        own_identity.clone(),
         opt.sessions,
-        Box::new(move |session_id| manager.new_session(session_id)),
+        Box::new(move |session_id| manager.new_session(session_id, own_identity.clone())),
         Box::new(|| Arc::new(LocalAsyncStorage::default())),
     )
     .process(opt.ignore_existing, opt.no_listen)
