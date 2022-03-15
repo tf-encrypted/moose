@@ -365,6 +365,7 @@ mod compatibility_tests {
 
     #[rstest]
     #[case("compatibility/aes-lingreg-physical-0.1.2.moose.gz")]
+    #[case("compatibility/aes-lingreg-physical-0.1.5.moose.gz")]
     fn test_old_versions_parsing_gzip(#[case] path: String) -> Result<(), anyhow::Error> {
         use flate2::read::GzDecoder;
         use std::io::Read;
