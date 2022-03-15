@@ -347,10 +347,14 @@ macro_rules! values {
         }
 
         impl Ty {
-            pub fn from_name(name: &str, inner: Option<TensorDType>) -> Option<Self> {
+            pub fn from_name<T>(name: &str, inner: T) -> Option<Self>
+            where
+                T: Into<Option<TensorDType>>,
+                T: Into<Option<TensorShape>>,
+            {
                 match name {
                     "Unknown" => Some(Ty::Unknown),
-                    $(stringify!($val) => Some(Ty::$val$((inner.unwrap_or($inner::$default)))?),)+
+                    $(stringify!($val) => Some(Ty::$val$((Into::<Option<$inner>>::into(inner).unwrap_or($inner::$default)))?),)+
                     "Bit" => Some(Ty::Bit),
                     "Float32" => Some(Ty::Float32),
                     "Float64" => Some(Ty::Float64),

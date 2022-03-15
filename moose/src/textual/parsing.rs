@@ -470,13 +470,36 @@ fn variadic_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     }
 }
 
+pub struct TyInnerType {
+    tensor_d_type: Option<TensorDType>,
+    tensor_shape: Option<TensorShape>,
+}
+
+impl From<TyInnerType> for Option<TensorDType> {
+    fn from(inner: TyInnerType) -> Self {
+        inner.tensor_d_type
+    }
+}
+
+impl From<TyInnerType> for Option<TensorShape> {
+    fn from(inner: TyInnerType) -> Self {
+        inner.tensor_shape
+    }
+}
+
 /// Parses an individual type's literal
 fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Ty, E> {
     let (i, type_name) = alphanumeric1(input)?;
-    let (i, inner) = opt(tuple((tag("<"), parse_tensor_dtype, tag(">"))))(i)?;
-    let inner = inner.map(|t| t.1);
+    let (i, inner1) = opt(tuple((tag("<"), parse_tensor_dtype, tag(">"))))(i)?;
+    let inner1 = inner1.map(|t| t.1);
+    let (i, inner2) = opt(tuple((tag("<"), parse_tensor_shape, tag(">"))))(i)?;
+    let inner2 = inner2.map(|t| t.1);
+    let inner = TyInnerType {
+        tensor_d_type: inner1,
+        tensor_shape: inner2,
+    };
     let result = Ty::from_name(type_name, inner);
     match result {
         Some(ty) => Ok((i, ty)),
@@ -521,6 +544,12 @@ fn parse_tensor_dtype<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             ),
         ),
     ))(input)
+}
+
+fn parse_tensor_shape<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, TensorShape, E> {
+    todo!()
 }
 
 fn constant_literal_helper<'a, O1, F1, F2, E>(
