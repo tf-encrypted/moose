@@ -1,7 +1,7 @@
 use moose::error::Error;
 use moose::prelude::*;
 use moose::Result;
-use ndarray::{Array2, ShapeBuilder};
+use ndarray::prelude::*;
 use std::collections::{HashMap, HashSet};
 
 #[allow(dead_code)]
@@ -11,9 +11,10 @@ pub(crate) async fn read_csv(
     placement: &HostPlacement,
 ) -> Result<Value> {
     let include_columns: HashSet<&String> = columns.iter().collect();
+
     let mut reader = csv::Reader::from_path(filename)
         .map_err(|e| Error::Storage(format!("could not open file: {}: {}", filename, e)))?;
-    let mut data: HashMap<String, Vec<f64>> = HashMap::new();
+
     let headers: Vec<String> = reader
         .headers()
         .map_err(|e| Error::Storage(format!("could not get headers from: {}: {}", filename, e)))?
@@ -26,34 +27,35 @@ pub(crate) async fn read_csv(
             filename
         )));
     }
-    for header in &headers {
-        data.insert(header.clone(), Vec::new());
-    }
 
-    for result in reader.records() {
-        let record = result.map_err(|e| {
+    let mut data: HashMap<&String, Vec<f64>> = HashMap::new();
+    for record in reader.records() {
+        let record = record.map_err(|e| {
             Error::Storage(format!("could not get record from: {}: {}", filename, e))
         })?;
         for (header, value) in headers.iter().zip(record.iter()) {
             if include_columns.contains(header) || include_columns.is_empty() {
-                data.entry(header.to_string())
-                    .or_default()
-                    .push(value.parse::<f64>().map_err(|e| {
-                        Error::Storage(format!("could not parse '{}' to f64: {}", value, e))
-                    })?);
+                let value = value.parse::<f64>().map_err(|e| {
+                    Error::Storage(format!("could not parse '{}' to f64: {}", value, e))
+                })?;
+                data.entry(header).or_default().push(value);
             }
         }
     }
 
-    let ncols = data.len();
-    let nrows = data[&headers[0]].len();
-    let shape = (nrows, ncols).f();
-    let mut matrix: Vec<f64> = Vec::new();
-    for header in headers {
-        let column = &data[&header];
+    let ncols = data.keys().len();
+    let nrows = data
+        .values()
+        .map(|col| col.len())
+        .next()
+        .ok_or_else(|| Error::Storage("no data found".to_string()))?;
+
+    let mut matrix: Vec<f64> = Vec::with_capacity(ncols * nrows);
+    for header in &headers {
+        let column = &data[header];
         matrix.extend_from_slice(column);
     }
-    let ndarr: Array2<f64> = Array2::from_shape_vec(shape, matrix).map_err(|e| {
+    let ndarr: Array2<f64> = Array2::from_shape_vec((nrows, ncols), matrix).map_err(|e| {
         Error::Storage(format!(
             "could not convert data from: {} to matrix: {}",
             filename, e
