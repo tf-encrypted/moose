@@ -1,6 +1,6 @@
 [package]
 name = "macros"
-version = "0.1.5"
+version = "0.1.6-beta.1"
 license = "MIT"
 edition = "2018"
 
