@@ -425,8 +425,7 @@ mod tests {
         };
 
         let actual_ciphertext = {
-            use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
-            use aes::NewBlockCipher;
+            use aes::cipher::{generic_array::GenericArray, BlockEncrypt, KeyInit};
 
             let mut raw_block = [0_u8; 16];
             // fill first bytes with nonce

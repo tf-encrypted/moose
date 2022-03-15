@@ -246,8 +246,8 @@ mod tests {
     #[test]
     fn test_aes_reference() {
         let expected_c = {
-            use aes::cipher::{generic_array::GenericArray, BlockEncrypt};
-            use aes::{Aes128, Block, NewBlockCipher};
+            use aes::cipher::{generic_array::GenericArray, BlockEncrypt, KeyInit};
+            use aes::{Aes128, Block};
 
             let mut block = Block::clone_from_slice(&M);
             let key = GenericArray::from_slice(&K);
