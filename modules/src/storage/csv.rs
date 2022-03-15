@@ -2,7 +2,7 @@ use moose::error::Error;
 use moose::prelude::*;
 use moose::Result;
 use ndarray::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 #[allow(dead_code)]
 pub(crate) async fn read_csv(
@@ -28,34 +28,28 @@ pub(crate) async fn read_csv(
         )));
     }
 
-    let mut data: HashMap<&String, Vec<f64>> = HashMap::new();
+    let mut matrix: Vec<f64> = Vec::new();
+    let mut nrows = 0;
+    let mut ncols = 0;
     for record in reader.records() {
+        nrows += 1;
         let record = record.map_err(|e| {
             Error::Storage(format!("could not get record from: {}: {}", filename, e))
         })?;
         for (header, value) in headers.iter().zip(record.iter()) {
             if include_columns.contains(header) || include_columns.is_empty() {
+                if nrows == 1 {
+                    // i.e., only count number of cols for the first row
+                    ncols += 1;
+                }
                 let value = value.parse::<f64>().map_err(|e| {
                     Error::Storage(format!("could not parse '{}' to f64: {}", value, e))
                 })?;
-                data.entry(header).or_default().push(value);
+                matrix.push(value);
             }
         }
     }
-
-    let ncols = data.keys().len();
-    let nrows = data
-        .values()
-        .map(|col| col.len())
-        .next()
-        .ok_or_else(|| Error::Storage("no data found".to_string()))?;
-
-    let mut matrix: Vec<f64> = Vec::with_capacity(ncols * nrows);
-    for header in &headers {
-        let column = &data[header];
-        matrix.extend_from_slice(column);
-    }
-    let ndarr: Array2<f64> = Array2::from_shape_vec((nrows, ncols).f(), matrix).map_err(|e| {
+    let ndarr: Array2<f64> = Array2::from_shape_vec((nrows, ncols), matrix).map_err(|e| {
         Error::Storage(format!(
             "could not convert data from: {} to matrix: {}",
             filename, e
