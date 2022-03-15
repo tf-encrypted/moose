@@ -2,6 +2,7 @@
 
 ## v0.1.5
 
+- Significant RAM usage improvements throughout the codebase
 - Add Multilayer Perceptron (MLP), a type of neural network to pymoose predictors
 - `PrimDeriveSeed` operator renamed to `DeriveSeed`
 - `PrimPrfKeyGen` operator renamed to `PrfKeyGen`
