@@ -4,7 +4,7 @@ use moose_modules::choreography::filesystem::FilesystemChoreography;
 use moose_modules::networking::grpc::GrpcNetworkingManager;
 use std::sync::Arc;
 use structopt::StructOpt;
-use tonic::transport::Server;
+use tonic::transport::{Server, ServerTlsConfig, Certificate};
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
@@ -31,6 +31,10 @@ struct Opt {
     #[structopt(long)]
     /// Report telemetry to Jaeger
     telemetry: bool,
+}
+
+fn certificate(endpoint: &str) -> String {
+    endpoint.replace(":", "_")
 }
 
 #[tokio::main]
@@ -70,13 +74,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let addr = format!("0.0.0.0:{}", opt.port).parse()?;
         let manager = manager.clone();
 
+        let cert_name = certificate(&opt.identity);
+        let cert_raw = tokio::fs::read(format!("examples/certs/{}.crt", cert_name)).await?;
+        let key_raw = tokio::fs::read(format!("examples/certs/{}.key", cert_name)).await?;
+        let identity = tonic::transport::Identity::from_pem(cert_raw, key_raw);
+
+        let ca_cert_raw = tokio::fs::read("examples/certs/ca.crt").await?;
+        let ca_cert = Certificate::from_pem(ca_cert_raw);
 
         let tls = ServerTlsConfig::new()
-            .identity(server_identity)
-            .client_ca_root(client_ca_cert);
+            .identity(identity)
+            .client_ca_root(ca_cert);
 
         tokio::spawn(async move {
             let res = Server::builder()
+                .tls_config(tls)?
                 .add_service(manager.new_server())
                 .serve(addr)
                 .await;

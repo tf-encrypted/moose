@@ -60,7 +60,7 @@ impl GrpcNetworking {
                         receiver
                     ))
                 })?;
-                Ok(Channel::builder(endpoint).tls_config(tls_config).connect_lazy())
+                Ok(Channel::builder(endpoint).connect_lazy())
             })?
             .clone(); // cloning channels is cheap per tonic documentation
         Ok(channel)
