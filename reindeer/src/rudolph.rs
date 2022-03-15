@@ -109,9 +109,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
     };
 
-    // TODO(Morten) we should not have to do this; add retry logic on client side instead
-    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-
     // NOTE(Morten) if we want to move this into separate task then we need
     // to make sure AsyncSessionHandle::join_on_first_error is Send, which
     // means fixing the use of RwLock
