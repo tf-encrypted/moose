@@ -27,7 +27,7 @@ impl IdentityOp {
     }
 }
 
-impl FloatingpointMeanOp {
+impl MeanOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
