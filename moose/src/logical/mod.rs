@@ -55,6 +55,17 @@ impl HasShortName for TensorDType {
     }
 }
 
+impl HasShortName for TensorShape {
+    fn short_name(&self) -> &str {
+        match self {
+            TensorShape::Host => "Host",
+            TensorShape::Replicated => "Replicated",
+            TensorShape::Additive => "Additive",
+            TensorShape::Mirrored => "Mirrored",
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T> {
     Fixed64(Fixed64T),

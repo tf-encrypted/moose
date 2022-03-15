@@ -470,40 +470,26 @@ fn variadic_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     }
 }
 
-pub struct TyInnerType {
-    tensor_d_type: Option<TensorDType>,
-    tensor_shape: Option<TensorShape>,
-}
-
-impl From<TyInnerType> for Option<TensorDType> {
-    fn from(inner: TyInnerType) -> Self {
-        inner.tensor_d_type
-    }
-}
-
-impl From<TyInnerType> for Option<TensorShape> {
-    fn from(inner: TyInnerType) -> Self {
-        inner.tensor_shape
-    }
-}
-
 /// Parses an individual type's literal
 fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Ty, E> {
     let (i, type_name) = alphanumeric1(input)?;
-    let (i, inner1) = opt(tuple((tag("<"), parse_tensor_dtype, tag(">"))))(i)?;
-    let inner1 = inner1.map(|t| t.1);
-    let (i, inner2) = opt(tuple((tag("<"), parse_tensor_shape, tag(">"))))(i)?;
-    let inner2 = inner2.map(|t| t.1);
-    let inner = TyInnerType {
-        tensor_d_type: inner1,
-        tensor_shape: inner2,
-    };
+    let (i, inner) = opt(delimited(tag("<"), alphanumeric1, tag(">")))(i)?;
     let result = Ty::from_name(type_name, inner);
     match result {
-        Some(ty) => Ok((i, ty)),
+        Ok(ty) => Ok((i, ty)),
         _ => Err(Error(make_error(input, ErrorKind::Tag))),
+    }
+}
+
+impl TryFrom<&str> for TensorDType {
+    type Error = anyhow::Error;
+
+    fn try_from(source: &str) -> anyhow::Result<TensorDType> {
+        parse_tensor_dtype(source)
+            .map(|(_, v)| v)
+            .map_err(|e| friendly_error("Failed to parse TensorDType", source, e))
     }
 }
 
@@ -546,10 +532,34 @@ fn parse_tensor_dtype<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     ))(input)
 }
 
+impl TryFrom<&str> for TensorShape {
+    type Error = anyhow::Error;
+
+    fn try_from(source: &str) -> anyhow::Result<TensorShape> {
+        parse_tensor_shape(source)
+            .map(|(_, v)| v)
+            .map_err(|e| friendly_error("Failed to parse TensorShape", source, e))
+    }
+}
+
 fn parse_tensor_shape<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, TensorShape, E> {
-    todo!()
+    alt((
+        value(TensorShape::Host, tag(TensorShape::Host.short_name())),
+        value(
+            TensorShape::Replicated,
+            tag(TensorShape::Replicated.short_name()),
+        ),
+        value(
+            TensorShape::Additive,
+            tag(TensorShape::Additive.short_name()),
+        ),
+        value(
+            TensorShape::Mirrored,
+            tag(TensorShape::Mirrored.short_name()),
+        ),
+    ))(input)
 }
 
 fn constant_literal_helper<'a, O1, F1, F2, E>(

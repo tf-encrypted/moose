@@ -4,7 +4,7 @@ use crate::error::{Error, Result};
 use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::host::*;
-use crate::logical::{TensorShape, TensorDType};
+use crate::logical::{TensorDType, TensorShape};
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::*;
 use crate::textual::ToTextual;
@@ -347,25 +347,25 @@ macro_rules! values {
         }
 
         impl Ty {
-            pub fn from_name<T>(name: &str, inner: T) -> Option<Self>
-            where
-                T: Into<Option<TensorDType>>,
-                T: Into<Option<TensorShape>>,
+            pub fn from_name(name: &str, inner: Option<&str>) -> anyhow::Result<Self>
             {
+                use std::convert::TryInto;
                 match name {
-                    "Unknown" => Some(Ty::Unknown),
-                    $(stringify!($val) => Some(Ty::$val$((Into::<Option<$inner>>::into(inner).unwrap_or($inner::$default)))?),)+
-                    "Bit" => Some(Ty::Bit),
-                    "Float32" => Some(Ty::Float32),
-                    "Float64" => Some(Ty::Float64),
-                    "Ring64" => Some(Ty::Ring64),
-                    "Ring128" => Some(Ty::Ring128),
-                    "Fixed" => Some(Ty::Fixed),
+                    "Unknown" => Ok(Ty::Unknown),
+                    $(stringify!($val) => {
+                        Ok(Ty::$val$((inner.map(|i| i.try_into()).transpose()?.unwrap_or($inner::$default)))?)
+                    },)+
+                    "Bit" => Ok(Ty::Bit),
+                    "Float32" => Ok(Ty::Float32),
+                    "Float64" => Ok(Ty::Float64),
+                    "Ring64" => Ok(Ty::Ring64),
+                    "Ring128" => Ok(Ty::Ring128),
+                    "Fixed" => Ok(Ty::Fixed),
                     // The names below are deprecated aliases, maintained for a long period of time for compatibility
-                    "Seed" => Some(Ty::HostSeed), // pre v0.1.5
-                    "PrfKey" => Some(Ty::HostPrfKey), // pre v0.1.5
-                    "Unit" => Some(Ty::HostUnit), // pre v0.1.5
-                    _ => None,
+                    "Seed" => Ok(Ty::HostSeed), // pre v0.1.5
+                    "PrfKey" => Ok(Ty::HostPrfKey), // pre v0.1.5
+                    "Unit" => Ok(Ty::HostUnit), // pre v0.1.5
+                    _ => Err(anyhow::anyhow!("Unsupported type name {}", name)),
                 }
             }
         }
