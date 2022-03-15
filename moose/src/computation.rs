@@ -4,7 +4,7 @@ use crate::error::{Error, Result};
 use crate::execution::symbolic::Symbolic;
 use crate::execution::Session;
 use crate::host::*;
-use crate::logical::TensorDType;
+use crate::logical::{TensorShape, TensorDType};
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::*;
 use crate::textual::ToTextual;
@@ -524,11 +524,11 @@ macro_rules! values {
 
 values![
     HostUnit,
-    TensorShape,
     HostShape,
     HostSeed,
     HostPrfKey,
     HostString,
+    Shape(TensorShape::Host),
     Tensor(TensorDType::Unknown),
     HostBitTensor,
     HostBitArray64,

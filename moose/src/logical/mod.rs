@@ -33,6 +33,14 @@ pub enum TensorDType {
     Unknown,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Copy, Clone, Debug, Display)]
+pub enum TensorShape {
+    Host,
+    Replicated,
+    Additive,
+    Mirrored,
+}
+
 impl HasShortName for TensorDType {
     fn short_name(&self) -> &str {
         match self {
@@ -163,7 +171,7 @@ where
 }
 
 #[cfg(feature = "compile")]
-impl PartiallySymbolicType for TensorShape {
+impl PartiallySymbolicType for Shape {
     type Type =
         AbstractShape<<HostShape as SymbolicType>::Type, <ReplicatedShape as SymbolicType>::Type>;
 }
