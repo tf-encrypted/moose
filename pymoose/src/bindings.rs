@@ -355,6 +355,8 @@ mod compatibility_tests {
     #[rstest]
     #[case("compatibility/aes-lingreg-logical-0.1.2.moose")]
     #[case("compatibility/aes-lingreg-logical-0.1.3.moose")]
+    #[case("compatibility/mean-logical-0.1.4.moose")]
+    #[case("compatibility/mean-logical-0.1.5.moose")]
     fn test_old_versions_parsing(#[case] path: String) -> Result<(), anyhow::Error> {
         let source = std::fs::read_to_string(path)?;
         let computation =

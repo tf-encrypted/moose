@@ -827,6 +827,7 @@ macro_rules! operators {
                     // The names below are deprecated aliases, maintained for a long period of time for compatibility
                     "PrimDeriveSeed" => DeriveSeedOp::from_textual, // pre v0.1.5
                     "PrimPrfKeyGen" => PrfKeyGenOp::from_textual, // pre v0.1.5
+                    "HostMean" => MeanOp::from_textual, // pre v0.1.5
                     _ => parse_operator_error,
                 }
             }
