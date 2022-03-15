@@ -6,7 +6,7 @@ use ndarray_npy::read_npy;
 use std::fs::File;
 use std::io::Read;
 
-enum NumpyDtype {
+pub(crate) enum NumpyDtype {
     Float32,
     Float64,
     Int32,
@@ -16,13 +16,20 @@ enum NumpyDtype {
 }
 
 #[allow(dead_code)]
-pub(crate) async fn read_numpy(filename: &str, placement: &HostPlacement) -> Result<Value> {
-    let dtype = extract_dtype(filename).map_err(|e| {
-        Error::Storage(format!(
-            "parsing failure from numpy data file: {}: {}",
-            filename, e
-        ))
-    })?;
+pub(crate) async fn read_numpy(
+    filename: &str,
+    placement: &HostPlacement,
+    dtype: Option<NumpyDtype>,
+) -> Result<Value> {
+    let dtype = match dtype {
+        Some(dtype) => Ok(dtype),
+        None => extract_dtype(filename).map_err(|e| {
+            Error::Storage(format!(
+                "parsing failure from numpy data file: {}: {}",
+                filename, e
+            ))
+        }),
+    }?;
     match dtype {
         NumpyDtype::Float64 => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
@@ -267,7 +274,7 @@ mod tests {
         file.write_all(&raw_bytes).unwrap();
 
         let plc = HostPlacement::from("host");
-        let data = read_numpy(&filename, &plc).await.unwrap();
+        let data = read_numpy(&filename, &plc, None).await.unwrap();
         assert_eq!(data, expected);
     }
 }
