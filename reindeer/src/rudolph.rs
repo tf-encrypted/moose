@@ -19,6 +19,10 @@ struct Opt {
     /// Directory to read sessions from
     sessions: String,
 
+    #[structopt(env, long)]
+    /// Directory to read certificates from
+    certs: Option<String>,
+
     #[structopt(long)]
     /// Ignore any existing files in the sessions directory and only listen for new
     ignore_existing: bool,
@@ -75,24 +79,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let addr = format!("0.0.0.0:{}", opt.port).parse()?;
         let manager = manager.clone();
 
-        let cert_name = certificate(&opt.identity);
-        let cert_raw = tokio::fs::read(format!("examples/certs/{}.crt", cert_name)).await?;
-        let key_raw = tokio::fs::read(format!("examples/certs/{}.key", cert_name)).await?;
-        let identity = Identity::from_pem(cert_raw, key_raw);
+        let mut server = Server::builder();
 
-        let ca_cert_raw = tokio::fs::read("examples/certs/ca.crt").await?;
-        let ca_cert = Certificate::from_pem(ca_cert_raw);
+        if let Some(cert_dir) = opt.certs {
+            let cert_name = certificate(&opt.identity);
+            let cert_raw = tokio::fs::read(format!("examples/certs/{}.crt", cert_name)).await?;
+            let key_raw = tokio::fs::read(format!("examples/certs/{}.key", cert_name)).await?;
+            let identity = Identity::from_pem(cert_raw, key_raw);
 
-        let tls = ServerTlsConfig::new()
-            .identity(identity)
-            .client_ca_root(ca_cert);
+            let ca_cert_raw = tokio::fs::read("examples/certs/ca.crt").await?;
+            let ca_cert = Certificate::from_pem(ca_cert_raw);
 
-        let server = Server::builder()
-            .tls_config(tls)?
+            let tls = ServerTlsConfig::new()
+                .identity(identity)
+                .client_ca_root(ca_cert);
+
+            server = server.tls_config(tls)?;
+        }
+
+        let router = server
             .add_service(manager.new_server());
 
         tokio::spawn(async move {
-            if let Err(e) = server
+            if let Err(e) = router
                 .serve(addr)
                 .await {
                 tracing::error!("gRPC error: {}", e);
