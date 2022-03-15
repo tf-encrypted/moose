@@ -47,6 +47,7 @@ struct GrpcNetworking {
 }
 
 impl GrpcNetworking {
+    // fn retrieve_cert(&self, id: &Identity) -> TlsConfig
     fn channel(&self, receiver: &Identity) -> moose::Result<Channel> {
         let channel = self
             .channels
@@ -59,7 +60,7 @@ impl GrpcNetworking {
                         receiver
                     ))
                 })?;
-                Ok(Channel::builder(endpoint).connect_lazy())
+                Ok(Channel::builder(endpoint).tls_config(tls_config).connect_lazy())
             })?
             .clone(); // cloning channels is cheap per tonic documentation
         Ok(channel)
@@ -163,6 +164,9 @@ impl Networking for NetworkingImpl {
         &self,
         request: tonic::Request<SendValueRequest>,
     ) -> Result<tonic::Response<SendValueResponse>, tonic::Status> {
+            //     let certs = request
+            // .peer_certs()
+            // .expect("Client did not send its certs!");
         let request = request.into_inner();
         let tagged_value = bincode::deserialize::<TaggedValue>(&request.tagged_value).unwrap(); // TODO error handling
 

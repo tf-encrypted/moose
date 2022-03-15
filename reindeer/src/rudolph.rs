@@ -69,6 +69,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // TODO(Morten) construct `addr` in a nicer way
         let addr = format!("0.0.0.0:{}", opt.port).parse()?;
         let manager = manager.clone();
+
+
+        let tls = ServerTlsConfig::new()
+            .identity(server_identity)
+            .client_ca_root(client_ca_cert);
+
         tokio::spawn(async move {
             let res = Server::builder()
                 .add_service(manager.new_server())
