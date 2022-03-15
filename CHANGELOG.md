@@ -2,8 +2,19 @@
 
 ## v0.1.5
 
+- Add Multilayer Perceptron (MLP), a type of neural network to pymoose predictors
 - `PrimDeriveSeed` operator renamed to `DeriveSeed`
 - `PrimPrfKeyGen` operator renamed to `PrfKeyGen`
+- Added `Host` prefix to `Seed`, `PrfKey` and `Unit`
+- Unified `MeanOp` and fuse `RepFixedpointMeanOp` with `RingFixedpointMeanOp`
+- Using BitVec as the data storage for HostBitTensor
+- Replace sodium oxide with thread_rng and blake3
+
+### Other changes
+
+- Fix binary LinearClassifier logic
+- Introduce Compact computation logic
+- Uniform textual format for rendezvous and sync keys
 
 ## v0.1.4
 
