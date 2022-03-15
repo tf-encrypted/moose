@@ -893,6 +893,12 @@ impl CastOp {
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
     where
+        HostPlacement: PlacementCast<S, Float32T, Float64T>,
+        HostPlacement: PlacementCast<S, Float32T, Uint64T>,
+        HostPlacement: PlacementCast<S, Float64T, Float32T>,
+        HostPlacement: PlacementCast<S, Float64T, Uint64T>,
+        HostPlacement: PlacementCast<S, Uint64T, Float32T>,
+        HostPlacement: PlacementCast<S, Uint64T, Float64T>,
         HostPlacement: PlacementFixedpointDecode<S, Fixed64T, Float32T>,
         HostPlacement: PlacementFixedpointDecode<S, Fixed128T, Float64T>,
         HostPlacement: PlacementFixedpointEncode<S, Float32T, Fixed64T>,
@@ -917,6 +923,22 @@ impl CastOp {
                 Ok(AbstractTensor::Float64(res))
             }
             (AbstractTensor::Float64(x), Ty::Tensor(TensorDType::Float32)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Float32(res))
+            }
+            (AbstractTensor::Float32(x), Ty::Tensor(TensorDType::Uint64)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Uint64(res))
+            }
+            (AbstractTensor::Float64(x), Ty::Tensor(TensorDType::Uint64)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Uint64(res))
+            }
+            (AbstractTensor::Uint64(x), Ty::Tensor(TensorDType::Float64)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Float64(res))
+            }
+            (AbstractTensor::Uint64(x), Ty::Tensor(TensorDType::Float32)) => {
                 let res = plc.cast(sess, &x);
                 Ok(AbstractTensor::Float32(res))
             }

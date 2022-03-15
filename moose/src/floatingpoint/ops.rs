@@ -47,13 +47,13 @@ impl FloatingpointMeanOp {
 }
 
 impl CastOp {
-    pub(crate) fn float_host_kernel<S: Session, HostFloatT1, HostFloatT2, MirroredT>(
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT1, HostFloatT2, MirroredT1, MirroredT2>(
         sess: &S,
         plc: &HostPlacement,
-        x: FloatTensor<HostFloatT1, MirroredT>,
-    ) -> Result<FloatTensor<HostFloatT2, MirroredT>> 
+        x: FloatTensor<HostFloatT1, MirroredT1>,
+    ) -> Result<FloatTensor<HostFloatT2, MirroredT2>>
     where
-        HostPlacement: PlacementCast<S, HostFloatT1, HostFloatT2>
+        HostPlacement: PlacementCast<S, HostFloatT1, HostFloatT2>,
     {
         let x = match x {
             FloatTensor::Host(v) => v,

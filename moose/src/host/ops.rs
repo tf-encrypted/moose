@@ -1934,12 +1934,30 @@ impl CastOp {
     }
 
     // standard casts
+    // pub(crate) fn to_f64_kernel<S, T>(
+    //     _sess: &S,
+    //     plc: &HostPlacement,
+    //     x: HostTensor<T>,
+    // ) -> Result<HostTensor<f64>>
+    // where
+    //     T: num_traits::ToPrimitive
+    // {
+    //     Ok(HostTensor::<f64>(x.0.map(|x| numcast(x)), x.1))
+    // }
+
     pub(crate) fn standard_host_kernel<S: RuntimeSession, T1, T2>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T1>,
-    ) -> Result<HostTensor<T2>> {
-        unimplemented!("oops")
+    ) -> Result<HostTensor<T2>>
+    where
+        T1: num_traits::NumCast + Clone,
+        T2: num_traits::NumCast + Clone,
+    {
+        Ok(HostTensor::<T2>(
+            x.0.mapv(|x| num_traits::cast(x).unwrap()).into(),
+            plc.clone(),
+        ))
     }
 }
 
