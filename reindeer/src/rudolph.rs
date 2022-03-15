@@ -4,7 +4,6 @@ use moose_modules::choreography::filesystem::FilesystemChoreography;
 use moose_modules::networking::grpc::GrpcNetworkingManager;
 use std::sync::Arc;
 use structopt::StructOpt;
-use tonic::transport::{Server, ServerTlsConfig, Certificate};
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
@@ -70,6 +69,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let manager = GrpcNetworkingManager::default();
 
     let _server_task = {
+        use tonic::transport::{Server, Certificate};
+
         // TODO(Morten) construct `addr` in a nicer way
         let addr = format!("0.0.0.0:{}", opt.port).parse()?;
         let manager = manager.clone();
@@ -77,18 +78,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let cert_name = certificate(&opt.identity);
         let cert_raw = tokio::fs::read(format!("examples/certs/{}.crt", cert_name)).await?;
         let key_raw = tokio::fs::read(format!("examples/certs/{}.key", cert_name)).await?;
-        let identity = tonic::transport::Identity::from_pem(cert_raw, key_raw);
+        // let identity = Identity::from_pem(cert_raw, key_raw);
 
         let ca_cert_raw = tokio::fs::read("examples/certs/ca.crt").await?;
         let ca_cert = Certificate::from_pem(ca_cert_raw);
 
-        let tls = ServerTlsConfig::new()
-            .identity(identity)
-            .client_ca_root(ca_cert);
+        // let tls = ServerTlsConfig::new()
+        //     .identity(identity)
+        //     .client_ca_root(ca_cert);
 
         tokio::spawn(async move {
             let res = Server::builder()
-                .tls_config(tls)?
+                // .tls_config(tls)?
                 .add_service(manager.new_server())
                 .serve(addr)
                 .await;
