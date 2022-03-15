@@ -9,10 +9,10 @@
 - Unified `MeanOp` and fuse `RepFixedpointMeanOp` with `RingFixedpointMeanOp`
 - Using BitVec as the data storage for HostBitTensor
 - Replace sodium oxide with thread_rng and blake3
+- Fix binary LinearClassifier logic
 
 ### Other changes
 
-- Fix binary LinearClassifier logic
 - Uniform textual format for rendezvous and sync keys
 
 ## v0.1.4
