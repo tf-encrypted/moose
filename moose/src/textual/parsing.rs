@@ -475,7 +475,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Ty, E> {
     let (i, type_name) = alphanumeric1(input)?;
-    let (i, inner) = opt(delimited(tag("<"), alphanumeric1, tag(">")))(i)?;
+    let (i, inner) = opt(delimited(tag("<"), is_not(">"), tag(">")))(i)?;
     let result = Ty::from_name(type_name, inner);
     match result {
         Ok(ty) => Ok((i, ty)),
