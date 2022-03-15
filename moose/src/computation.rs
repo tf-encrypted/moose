@@ -828,6 +828,9 @@ macro_rules! operators {
                     "PrimDeriveSeed" => DeriveSeedOp::from_textual, // pre v0.1.5
                     "PrimPrfKeyGen" => PrfKeyGenOp::from_textual, // pre v0.1.5
                     "HostMean" => MeanOp::from_textual, // pre v0.1.5
+                    "FixedpointMeanOp" => MeanOp::from_textual, // pre v0.1.5
+                    "FloatingpointMeanOp" => MeanOp::from_textual, // pre v0.1.5
+                    "RepFixedpointMean" => MeanOp::from_textual, // pre v0.1.5
                     _ => parse_operator_error,
                 }
             }
