@@ -13,7 +13,6 @@
 ### Other changes
 
 - Fix binary LinearClassifier logic
-- Introduce Compact computation logic
 - Uniform textual format for rendezvous and sync keys
 
 ## v0.1.4
