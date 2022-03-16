@@ -63,29 +63,25 @@ impl GrpcNetworking {
         receiver: &Identity,
     ) -> Result<ClientTlsConfig, Box<dyn std::error::Error>> {
         use tonic::transport::Identity;
-        let server_cert_path = certificate(&receiver.0);
         let client_cert_path = certificate(&self.own_identity.0);
 
         let server_root_ca_cert = Certificate::from_pem(std::fs::read(format!(
-            "examples/certs/{}.crt",
-            server_cert_path
+            "examples/certs/ca.crt"
         ))?);
 
         let client_cert = std::fs::read(format!("examples/certs/{}.crt", client_cert_path))?;
         let client_key = std::fs::read(format!("examples/certs/{}.key", client_cert_path))?;
         let client_identity = Identity::from_pem(client_cert, client_key);
 
+        tracing::debug!("Server ca cert: {:?}", server_root_ca_cert);
+        tracing::debug!("client identity: {:?}", client_identity);
+
         let tls = ClientTlsConfig::new()
-            .domain_name("ca")
+            .domain_name("localhost")
             .ca_certificate(server_root_ca_cert)
             .identity(client_identity);
 
         Ok(tls)
-
-        // let channel = Channel::from_static("http://[::1]:50051")
-        //     .tls_config(tls)?
-        //     .connect()
-        //     .await?;
     }
     fn channel(&self, receiver: &Identity) -> moose::Result<Channel> {
         tracing::debug!("Identity: {:?}", receiver);
