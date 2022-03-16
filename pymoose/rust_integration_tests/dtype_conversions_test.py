@@ -9,6 +9,7 @@ from pymoose import edsl
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
+
 class DTypeConversionTest(parameterized.TestCase):
     def _setup_comp(self, x_array, from_dtype, to_dtype):
         alice = edsl.host_placement(name="alice")
@@ -32,10 +33,10 @@ class DTypeConversionTest(parameterized.TestCase):
         ##
         # float <-> bool
         ##
-        # ([-1.0, 0, 1, 2], edsl.float64, edsl.bool_),
-        # ([-1.0, 0, 1, 2], edsl.float32, edsl.bool_),
-        # ([1, 0, 1, 1], edsl.bool_, edsl.float64),
-        # ([1, 0, 1, 1], edsl.bool_, edsl.float32),
+        ([-1.0, 0, 1, 2], edsl.float64, edsl.bool_),
+        ([-1.0, 0, 1, 2], edsl.float32, edsl.bool_),
+        ([1, 0, 1, 1], edsl.bool_, edsl.float64),
+        ([1, 0, 1, 1], edsl.bool_, edsl.float32),
         ##
         # float <-> int
         ##
@@ -59,11 +60,11 @@ class DTypeConversionTest(parameterized.TestCase):
         ##
         # int <-> bool
         ##
-        # ([3, 0, 1, 2], edsl.uint64, edsl.bool_),
+        ([3, 0, 1, 2], edsl.uint64, edsl.bool_),
         # ([3, 0, 1, 2], edsl.uint32, edsl.bool_),
         # ([-1, 0, 1, 2], edsl.int64, edsl.bool_),
         # ([-1, 0, 1, 2], edsl.int32, edsl.bool_),
-        # ([1, 0, 1, 1], edsl.bool_, edsl.uint64),
+        ([1, 0, 1, 1], edsl.bool_, edsl.uint64),
         # ([1, 0, 1, 1], edsl.bool_, edsl.uint32),
         # ([1, 0, 1, 1], edsl.bool_, edsl.int64),
         # ([1, 0, 1, 1], edsl.bool_, edsl.int32),
@@ -101,4 +102,3 @@ class DTypeConversionTest(parameterized.TestCase):
         )
         actual_result = runtime.read_value_from_storage("alice", "x")
         np.testing.assert_equal(actual_result, expected_npy)
-    
