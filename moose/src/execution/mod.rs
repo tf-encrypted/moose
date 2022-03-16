@@ -1225,8 +1225,12 @@ mod tests {
         use crate::host::SyncKey;
         let sess = SymbolicSession::default();
         let alice: HostPlacement = "alice".into();
-        let key: <HostPrfKey as SymbolicType>::Type = alice.constant(&sess, "HostPrfKey(00000000000000000000000000000000)".try_into()?);
-        let seed: <HostSeed as SymbolicType>::Type = alice.derive_seed(&sess, SyncKey::try_from(vec![1, 2, 3])?, &key);
+        let key: <HostPrfKey as SymbolicType>::Type = alice.constant(
+            &sess,
+            "HostPrfKey(00000000000000000000000000000000)".try_into()?,
+        );
+        let seed: <HostSeed as SymbolicType>::Type =
+            alice.derive_seed(&sess, SyncKey::try_from(vec![1, 2, 3])?, &key);
         let _: <HostSeed as SymbolicType>::Type = alice.output(&sess, &seed);
         let computation = sess.into_computation();
 
@@ -1243,12 +1247,11 @@ mod tests {
             false,
         )?;
 
-        let seed: HostSeed = (outputs.get("op_3").unwrap().clone()).try_into()?;
+        let seed: HostSeed = (outputs.get("op_2").unwrap().clone()).try_into()?;
         assert_eq!(
             seed.0,
             RawSeed([79, 203, 243, 208, 77, 199, 116, 216, 2, 206, 173, 36, 20, 204, 200, 146])
         );
         Ok(())
     }
-
 }
