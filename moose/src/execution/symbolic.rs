@@ -367,25 +367,29 @@ impl SymbolicExecutor {
         session: &SymbolicSession,
     ) -> anyhow::Result<Computation> {
         let computation = computation.toposort()?;
-        let mut env: HashMap<String, SymbolicValue> =
-            HashMap::with_capacity(computation.operations.len());
 
-        for op in computation.operations.iter() {
-            let operands = op
-                .inputs
-                .iter()
-                .map(|input_name| env.get(input_name).unwrap().clone())
-                .collect();
-            let value = session
-                .execute(&op.kind, &op.placement, operands)
-                .map_err(|e| {
-                    Error::Compilation(format!(
-                        "SymbolicSession failed to lower computation due to an error: {:?}",
-                        e,
-                    ))
-                })?;
-            env.insert(op.name.clone(), value);
+        {
+            let mut env: HashMap<&String, SymbolicValue> =
+                HashMap::with_capacity(computation.operations.len());
+
+            for op in computation.operations.iter() {
+                let operands = op
+                    .inputs
+                    .iter()
+                    .map(|input_name| env.get(input_name).unwrap().clone())
+                    .collect();
+                let result = session
+                    .execute(&op.kind, &op.placement, operands)
+                    .map_err(|e| {
+                        Error::Compilation(format!(
+                            "SymbolicSession failed to lower computation due to an error: {:?}",
+                            e,
+                        ))
+                    })?;
+                env.insert(&op.name, result);
+            }
         }
+
         let state = session.state.read();
         Ok(Computation {
             operations: state.ops.clone(),
