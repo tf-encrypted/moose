@@ -2219,7 +2219,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![])
+                sess.execute(&op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2272,7 +2272,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![])
+                sess.execute(&op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2311,7 +2311,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2370,7 +2370,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2402,7 +2402,7 @@ macro_rules! modelled {
                     $($($attr_id),*)?
                 };
                 sess.execute(
-                    op.into(),
+                    &op.into(),
                     &self.into(),
                     operands![x0.clone().into(), x1.clone().into()],
                 )
@@ -2471,7 +2471,7 @@ macro_rules! modelled {
         //         };
         //         let x0 = Symbolic::Concrete(x0.clone()).into();
         //         let x1 = Symbolic::Concrete(x1.clone()).into();
-        //         sess.execute(op.into(), &self.into(), operands![x0, x1])
+        //         sess.execute(&op.into(), &self.into(), operands![x0, x1])
         //             .unwrap()
         //             .try_into()
         //             .unwrap()
@@ -2505,7 +2505,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2538,7 +2538,7 @@ macro_rules! modelled {
                     $($($attr_id),*)?
                 };
                 sess.execute(
-                    op.into(),
+                    &op.into(),
                     &self.into(),
                     operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
                 )
@@ -2612,7 +2612,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2651,7 +2651,7 @@ macro_rules! modelled {
                     $($($attr_id),*)?
                 };
                 let vs: Operands<Value> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(op.into(), &self.into(), vs)
+                sess.execute(&op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2711,7 +2711,7 @@ macro_rules! modelled {
                     $($($attr_id),*)?
                 };
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(op.into(), &self.into(), vs)
+                sess.execute(&op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2768,7 +2768,7 @@ macro_rules! modelled_kernel {
                     };
 
                     let y = sess.execute(
-                        op.into(),
+                        &op.into(),
                         &self.into(),
                         operands![],
                     ).unwrap();
@@ -2877,7 +2877,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![])
+                sess.execute(&op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2942,7 +2942,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let y = sess.execute(op.into(), &self.into(), operands![]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -2974,7 +2974,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let y = sess.execute(op.into(), &self.into(), operands![]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -3020,7 +3020,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![])
+                sess.execute(&op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3077,7 +3077,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![])
+                sess.execute(&op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3135,7 +3135,7 @@ macro_rules! modelled_kernel {
 
                     let x0 = x0.clone().into();
                     let y = sess.execute(
-                        op.into(),
+                        &op.into(),
                         &self.into(),
                         operands![x0],
                     ).unwrap();
@@ -3269,7 +3269,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3349,7 +3349,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
-                let y = sess.execute(op.into(), &self.into(), operands![x0]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![x0]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -3385,7 +3385,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let x0 = SymbolicValue::from(x0.clone());
-                let y = sess.execute(op.into(), &self.into(), operands![x0]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![x0]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -3436,7 +3436,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3505,7 +3505,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3564,7 +3564,7 @@ macro_rules! modelled_kernel {
                         $($($attr_id),*)?
                     };
                     sess.execute(
-                        op.into(),
+                        &op.into(),
                         &self.into(),
                         operands![x0.clone().into(), x1.clone().into()],
                     )
@@ -3713,7 +3713,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3801,7 +3801,7 @@ macro_rules! modelled_kernel {
 
                 let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
                 let x1 = SymbolicValue::from(Symbolic::Concrete(x1.clone()));
-                let y = sess.execute(op.into(), &self.into(), operands![x0, x1]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -3841,7 +3841,7 @@ macro_rules! modelled_kernel {
 
                 let x0 = SymbolicValue::from(x0.clone());
                 let x1 = SymbolicValue::from(x1.clone());
-                let y = sess.execute(op.into(), &self.into(), operands![x0, x1]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -3897,7 +3897,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3972,7 +3972,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4034,7 +4034,7 @@ macro_rules! modelled_kernel {
                         $($($attr_id),*)?
                     };
                     sess.execute(
-                        op.into(),
+                        &op.into(),
                         &self.into(),
                         operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
                     )
@@ -4194,7 +4194,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4289,7 +4289,7 @@ macro_rules! modelled_kernel {
                 let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
                 let x1 = SymbolicValue::from(Symbolic::Concrete(x1.clone()));
                 let x2 = SymbolicValue::from(Symbolic::Concrete(x2.clone()));
-                let y = sess.execute(op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -4333,7 +4333,7 @@ macro_rules! modelled_kernel {
                 let x0 = SymbolicValue::from(x0.clone());
                 let x1 = SymbolicValue::from(x1.clone());
                 let x2 = SymbolicValue::from(x2.clone());
-                let y = sess.execute(op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -4394,7 +4394,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4475,7 +4475,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4538,7 +4538,7 @@ macro_rules! modelled_kernel {
                         $($($attr_id),*)?
                     };
                     let vs: Operands<Value> = xs.iter().map(|x| x.clone().into()).collect();
-                    sess.execute(op.into(), &self.into(), vs)
+                    sess.execute(&op.into(), &self.into(), vs)
                         .unwrap()
                         .try_into()
                         .unwrap()
@@ -4674,7 +4674,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(op.into(), &self.into(), vs)
+                sess.execute(&op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4766,7 +4766,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| Symbolic::Concrete(x.clone()).into()).collect();
-                let y = sess.execute(op.into(), &self.into(), vs).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), vs).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -4802,7 +4802,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                let y = sess.execute(op.into(), &self.into(), vs).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), vs).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -4854,7 +4854,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(op.into(), &self.into(), vs)
+                sess.execute(&op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4934,7 +4934,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(op.into(), &self.into(), vs)
+                sess.execute(&op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()

@@ -27,7 +27,7 @@ pub trait Session {
     type Value;
     fn execute(
         &self,
-        op: Operator,
+        op: &Operator,
         plc: &Placement,
         operands: Operands<Self::Value>,
     ) -> Result<Self::Value>;
