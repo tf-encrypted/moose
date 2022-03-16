@@ -24,12 +24,16 @@ enum Commands {
         /// Input file
         input: PathBuf,
 
-        /// Computation format
-        #[clap(arg_enum, default_value = "textual")]
-        format: ComputationFormat,
-
         /// Output file, stdout if not present
         output: Option<PathBuf>,
+
+        /// Computation format
+        #[clap(arg_enum, short, long, default_value = "textual")]
+        input_format: ComputationFormat,
+
+        /// Computation format
+        #[clap(arg_enum, short, long, default_value = "textual")]
+        output_format: ComputationFormat,
 
         /// Comma-separated list of passes to apply in-order; default to all passes
         #[clap(short, long)]
@@ -48,8 +52,8 @@ enum StatsCommands {
         input: PathBuf,
 
         /// Computation format
-        #[clap(arg_enum, default_value = "textual")]
-        format: ComputationFormat,
+        #[clap(arg_enum, short, long, default_value = "textual")]
+        input_format: ComputationFormat,
 
         /// Include placement in the category
         #[clap(long)]
@@ -61,8 +65,8 @@ enum StatsCommands {
         input: PathBuf,
 
         /// Computation format
-        #[clap(arg_enum, default_value = "textual")]
-        format: ComputationFormat,
+        #[clap(arg_enum, short, long, default_value = "textual")]
+        input_format: ComputationFormat,
 
         /// Include placement in the category
         #[clap(long)]
@@ -74,8 +78,8 @@ enum StatsCommands {
         input: PathBuf,
 
         /// Computation format
-        #[clap(arg_enum, default_value = "textual")]
-        format: ComputationFormat,
+        #[clap(arg_enum, short, long, default_value = "textual")]
+        input_format: ComputationFormat,
 
         /// Include operator in the category
         #[clap(long)]
@@ -86,7 +90,7 @@ enum StatsCommands {
 #[derive(Clone, Debug, ArgEnum)]
 enum ComputationFormat {
     Bincode,
-    MsgPack,
+    Msgpack,
     Textual,
 }
 
@@ -95,23 +99,24 @@ fn main() -> anyhow::Result<()> {
     match &args.command {
         Commands::Compile {
             input,
-            format,
             output,
+            input_format,
+            output_format,
             passes,
         } => {
-            let comp = input_computation(input, format)?;
+            let comp = input_computation(input, input_format)?;
             let passes: Option<Vec<String>> = passes
                 .clone()
                 .map(|p| p.split(',').map(|s| s.to_string()).collect());
             let comp = compile(&comp, passes)?;
-            output_computation(&comp, output, format)?;
+            output_computation(&comp, output, output_format)?;
         }
         Commands::Stats(StatsCommands::OpHist {
             input,
-            format,
+            input_format,
             by_placement,
         }) => {
-            let comp = input_computation(input, format)?;
+            let comp = input_computation(input, input_format)?;
             let hist: HashMap<String, usize> = comp
                 .operations
                 .iter()
@@ -130,10 +135,10 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Stats(StatsCommands::OpCount {
             input,
-            format,
+            input_format,
             by_placement,
         }) => {
-            let comp = input_computation(input, format)?;
+            let comp = input_computation(input, input_format)?;
             if *by_placement {
                 let hist: HashMap<String, usize> = comp
                     .operations
@@ -150,10 +155,10 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Stats(StatsCommands::OutDegree {
             input,
-            format,
+            input_format,
             by_operator,
         }) => {
-            let comp = input_computation(input, format)?;
+            let comp = input_computation(input, input_format)?;
             let op_name_to_out_degree: HashMap<&String, usize> =
                 comp.operations.iter().fold(HashMap::new(), |mut map, op| {
                     for input_op_name in op.inputs.iter() {
@@ -192,7 +197,7 @@ fn input_computation(input: &Path, format: &ComputationFormat) -> anyhow::Result
             Computation::from_textual(&source)
                 .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
         }
-        ComputationFormat::MsgPack => {
+        ComputationFormat::Msgpack => {
             let comp_raw = std::fs::read(input)?;
             Computation::from_msgpack(comp_raw)
                 .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
@@ -224,7 +229,7 @@ fn output_computation(
                 }
             }
         }
-        ComputationFormat::MsgPack => {
+        ComputationFormat::Msgpack => {
             let result = comp.to_msgpack()?;
             match output {
                 Some(path) => {
