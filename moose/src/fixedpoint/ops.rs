@@ -1123,7 +1123,7 @@ impl ShapeOp {
     }
 }
 
-impl FixedpointMeanOp {
+impl MeanOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &HostPlacement,

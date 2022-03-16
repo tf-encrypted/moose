@@ -827,6 +827,10 @@ macro_rules! operators {
                     // The names below are deprecated aliases, maintained for a long period of time for compatibility
                     "PrimDeriveSeed" => DeriveSeedOp::from_textual, // pre v0.1.5
                     "PrimPrfKeyGen" => PrfKeyGenOp::from_textual, // pre v0.1.5
+                    "HostMean" => MeanOp::from_textual, // pre v0.1.5
+                    "FixedpointMeanOp" => MeanOp::from_textual, // pre v0.1.5
+                    "FloatingpointMeanOp" => MeanOp::from_textual, // pre v0.1.5
+                    "RepFixedpointMean" => MeanOp::from_textual, // pre v0.1.5
                     _ => parse_operator_error,
                 }
             }
@@ -870,7 +874,6 @@ operators![
     Shl,
     Shr,
     Abs,
-    HostMean,
     Diag,
     Sign,
     RingFixedpointMean,
@@ -887,7 +890,6 @@ operators![
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
-    FixedpointMean,
     Pow2,
     Exp,
     Sigmoid,
@@ -896,8 +898,6 @@ operators![
     EqualZero,
     LessThan,
     GreaterThan,
-    // Floating-point operators
-    FloatingpointMean,
     // Additive operators
     AdtToRep,
     // Replicated operators
@@ -905,7 +905,6 @@ operators![
     Reveal,
     Fill,
     Msb,
-    RepFixedpointMean,
     AddN,
     TruncPr,
     RepToAdt,
@@ -1141,12 +1140,6 @@ pub struct SignOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
-pub struct HostMeanOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
-}
-
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
@@ -1326,23 +1319,11 @@ pub struct FixedpointDecodeOp {
     pub fractional_precision: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
-pub struct FixedpointMeanOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
-}
-
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct NegOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
-pub struct FloatingpointMeanOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
 }
 
 #[derive(
@@ -1408,14 +1389,6 @@ pub struct ShareOp {
 )]
 pub struct RevealOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
-pub struct RepFixedpointMeanOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
-    pub scaling_base: u64,
-    pub scaling_exp: u32,
 }
 
 #[derive(

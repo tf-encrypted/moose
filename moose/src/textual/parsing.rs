@@ -1165,7 +1165,6 @@ impl ToTextual for Operator {
             Xor(op) => op.to_textual(),
             And(op) => op.to_textual(),
             Or(op) => op.to_textual(),
-            HostMean(op) => op.to_textual(),
             Sqrt(op) => op.to_textual(),
             Diag(op) => op.to_textual(),
             ShlDim(op) => op.to_textual(),
@@ -1185,11 +1184,8 @@ impl ToTextual for Operator {
             Decrypt(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
-            FixedpointMean(op) => op.to_textual(),
-            FloatingpointMean(op) => op.to_textual(),
             Share(op) => op.to_textual(),
             Reveal(op) => op.to_textual(),
-            RepFixedpointMean(op) => op.to_textual(),
             AddN(op) => op.to_textual(),
             TruncPr(op) => op.to_textual(),
             AdtToRep(op) => op.to_textual(),
@@ -1243,22 +1239,7 @@ macro_rules! op_with_axis_to_textual {
 
 op_with_axis_to_textual!(MeanOp);
 op_with_axis_to_textual!(SumOp);
-op_with_axis_to_textual!(HostMeanOp);
-op_with_axis_to_textual!(FloatingpointMeanOp);
 op_with_axis_to_textual!(SqueezeOp);
-
-impl ToTextual for FixedpointMeanOp {
-    fn to_textual(&self) -> String {
-        match self {
-            FixedpointMeanOp { sig, axis: Some(a) } => {
-                format!("FixedpointMean{{axis = {}}}: {}", a, sig.to_textual())
-            }
-            FixedpointMeanOp { sig, axis: None } => {
-                format!("FixedpointMean{{}}: {}", sig.to_textual())
-            }
-        }
-    }
-}
 
 impl ToTextual for RingFixedpointMeanOp {
     fn to_textual(&self) -> String {
@@ -1284,38 +1265,6 @@ impl ToTextual for RingFixedpointMeanOp {
                 scaling_exp,
             } => format!(
                 "RingFixedpointMean{{scaling_base={}, scaling_exp={}}}: {}",
-                scaling_base,
-                scaling_exp,
-                sig.to_textual()
-            ),
-        }
-    }
-}
-
-impl ToTextual for RepFixedpointMeanOp {
-    fn to_textual(&self) -> String {
-        match self {
-            RepFixedpointMeanOp {
-                sig,
-                axis: Some(a),
-                scaling_base,
-                scaling_exp,
-            } => {
-                format!(
-                    "RepFixedpointMean{{axis = {}, scaling_base={}, scaling_exp={}}}: {}",
-                    a,
-                    scaling_base,
-                    scaling_exp,
-                    sig.to_textual()
-                )
-            }
-            RepFixedpointMeanOp {
-                sig,
-                axis: None,
-                scaling_base,
-                scaling_exp,
-            } => format!(
-                "RepFixedpointMean{{scaling_base={}, scaling_exp={}}}: {}",
                 scaling_base,
                 scaling_exp,
                 sig.to_textual()

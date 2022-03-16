@@ -690,16 +690,16 @@ mod tests {
         false,
         true
     )]
-    #[case("HostMean", None, "Float32(2.5) @Host(alice)", true, true)]
+    #[case("Mean", None, "Float32(2.5) @Host(alice)", true, true)]
     #[case(
-        "HostMean",
+        "Mean",
         Some(0),
         "HostFloat32Tensor([2.0, 3.0]) @Host(alice)",
         false,
         true
     )]
     #[case(
-        "HostMean",
+        "Mean",
         Some(1),
         "HostFloat32Tensor([1.5, 3.5]) @Host(alice)",
         false,
@@ -720,16 +720,16 @@ mod tests {
         false,
         false
     )]
-    #[case("HostMean", None, "Float32(2.5) @Host(alice)", true, false)]
+    #[case("Mean", None, "Float32(2.5) @Host(alice)", true, false)]
     #[case(
-        "HostMean",
+        "Mean",
         Some(0),
         "HostFloat32Tensor([2.0, 3.0]) @Host(alice)",
         false,
         false
     )]
     #[case(
-        "HostMean",
+        "Mean",
         Some(1),
         "HostFloat32Tensor([1.5, 3.5]) @Host(alice)",
         false,

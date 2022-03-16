@@ -719,8 +719,8 @@ impl BitDecomposeOp {
     }
 }
 
-impl HostMeanOp {
-    pub(crate) fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+impl MeanOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
@@ -734,7 +734,7 @@ impl HostMeanOp {
                 let reduced: Option<ArrayD<T>> = x.0.mean_axis(Axis(i as usize));
                 if reduced.is_none() {
                     return Err(Error::KernelError(
-                        "HostMeanOp cannot reduce over an empty axis.".to_string(),
+                        "MeanOp cannot reduce over an empty axis.".to_string(),
                     ));
                 };
                 Ok(HostTensor::place(plc, reduced.unwrap().into_shared()))
@@ -743,7 +743,7 @@ impl HostMeanOp {
                 let mean = x.0.mean();
                 if mean.is_none() {
                     return Err(Error::KernelError(
-                        "HostMeanOp cannot reduce over an empty tensor.".to_string(),
+                        "MeanOp cannot reduce over an empty tensor.".to_string(),
                     ));
                 };
                 let out = Array::from_elem([], mean.unwrap())

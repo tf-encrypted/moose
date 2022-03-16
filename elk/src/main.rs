@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{ArgEnum, Parser, Subcommand};
 use moose::compilation::compile;
 use moose::prelude::Computation;
 use moose::textual::ToTextual;
@@ -19,7 +19,7 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Compiles the moose computation
+    /// Compile a Moose computation
     Compile {
         /// Input file
         input: PathBuf,
@@ -27,31 +27,71 @@ enum Commands {
         /// Output file, stdout if not present
         output: Option<PathBuf>,
 
-        #[clap(short, long)]
-        format: String,
+        /// Computation format
+        #[clap(arg_enum, short, long, default_value = "textual")]
+        input_format: ComputationFormat,
 
-        /// Comma-separated list of passes to apply. In order. Default to run all the passes
+        /// Computation format
+        #[clap(arg_enum, short, long, default_value = "textual")]
+        output_format: ComputationFormat,
+
+        /// Comma-separated list of passes to apply in-order; default to all passes
         #[clap(short, long)]
         passes: Option<String>,
     },
-    /// Prints stats about a computation without transforming it
-    Stats {
-        /// The kind of the stats to produce
-        flavor: String,
+    /// Print stats about a computation without transforming it
+    #[clap(subcommand)]
+    Stats(StatsCommands),
+}
 
+#[derive(Subcommand, Debug)]
+enum StatsCommands {
+    /// Print operator histogram
+    OpHist {
         /// Input file
         input: PathBuf,
 
-        format: String,
+        /// Computation format
+        #[clap(arg_enum, short, long, default_value = "textual")]
+        input_format: ComputationFormat,
 
-        /// Include placement in the category, where supported
-        #[clap(short, long)]
-        by_placement: bool,
-
-        /// Include operation kind in the category, where supported
+        /// Include placement in the category
         #[clap(long)]
-        by_op_kind: bool,
+        by_placement: bool,
     },
+    /// Print operator counts
+    OpCount {
+        /// Input file
+        input: PathBuf,
+
+        /// Computation format
+        #[clap(arg_enum, short, long, default_value = "textual")]
+        input_format: ComputationFormat,
+
+        /// Include placement in the category
+        #[clap(long)]
+        by_placement: bool,
+    },
+    /// Print out degree
+    OutDegree {
+        /// Input file
+        input: PathBuf,
+
+        /// Computation format
+        #[clap(arg_enum, short, long, default_value = "textual")]
+        input_format: ComputationFormat,
+
+        /// Include operator in the category
+        #[clap(long)]
+        by_operator: bool,
+    },
+}
+
+#[derive(Clone, Debug, ArgEnum)]
+enum ComputationFormat {
+    Bincode,
+    Msgpack,
+    Textual,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -60,113 +100,154 @@ fn main() -> anyhow::Result<()> {
         Commands::Compile {
             input,
             output,
-            format,
+            input_format,
+            output_format,
             passes,
         } => {
-            let comp = parse_computation(input, format)?;
+            let comp = input_computation(input, input_format)?;
             let passes: Option<Vec<String>> = passes
                 .clone()
                 .map(|p| p.split(',').map(|s| s.to_string()).collect());
             let comp = compile(&comp, passes)?;
-            match (output, &format[..]) {
-                (Some(path), "Textual") => write(path, comp.to_textual())?,
-                (Some(path), "Binary") => {
-                    let comp_bytes = comp.to_msgpack()?;
-                    write(path, comp_bytes)?
-                }
-                (None, _) => println!("{}", comp.to_textual()),
-                (&Some(_), &_) => println!("{}", comp.to_textual()),
+            output_computation(&comp, output, output_format)?;
+        }
+        Commands::Stats(StatsCommands::OpHist {
+            input,
+            input_format,
+            by_placement,
+        }) => {
+            let comp = input_computation(input, input_format)?;
+            let hist: HashMap<String, usize> = comp
+                .operations
+                .iter()
+                .map(|op| {
+                    if *by_placement {
+                        format!("{} {}", op.kind.short_name(), op.placement.to_textual())
+                    } else {
+                        op.kind.short_name().to_string()
+                    }
+                })
+                .fold(HashMap::new(), |mut map, name| {
+                    *map.entry(name).or_insert(0) += 1;
+                    map
+                });
+            print_sorted("Operator", &hist);
+        }
+        Commands::Stats(StatsCommands::OpCount {
+            input,
+            input_format,
+            by_placement,
+        }) => {
+            let comp = input_computation(input, input_format)?;
+            if *by_placement {
+                let hist: HashMap<String, usize> = comp
+                    .operations
+                    .iter()
+                    .map(|op| op.placement.to_textual())
+                    .fold(HashMap::new(), |mut map, name| {
+                        *map.entry(name).or_insert(0) += 1;
+                        map
+                    });
+                print_sorted("Placement", &hist);
+            } else {
+                println!("{}", comp.operations.len())
             }
         }
-        Commands::Stats {
-            flavor,
+        Commands::Stats(StatsCommands::OutDegree {
             input,
-            format,
-            by_placement,
-            by_op_kind,
-        } => {
-            let comp = parse_computation(input, format)?;
-            match flavor.as_str() {
-                "op_hist" => {
-                    let hist: HashMap<String, usize> = comp
-                        .operations
-                        .iter()
-                        .map(|op| {
-                            if *by_placement {
-                                format!("{} {}", op.kind.short_name(), op.placement.to_textual())
-                            } else {
-                                op.kind.short_name().to_string()
-                            }
-                        })
-                        .fold(HashMap::new(), |mut map, name| {
-                            *map.entry(name).or_insert(0) += 1;
-                            map
-                        });
-                    print_sorted("Operator", &hist);
-                }
-                "op_count" => {
-                    if *by_placement {
-                        let hist: HashMap<String, usize> = comp
-                            .operations
-                            .iter()
-                            .map(|op| op.placement.to_textual())
-                            .fold(HashMap::new(), |mut map, name| {
-                                *map.entry(name).or_insert(0) += 1;
-                                map
-                            });
-                        print_sorted("Placement", &hist);
-                    } else {
-                        println!("{}", comp.operations.len())
+            input_format,
+            by_operator,
+        }) => {
+            let comp = input_computation(input, input_format)?;
+            let op_name_to_out_degree: HashMap<&String, usize> =
+                comp.operations.iter().fold(HashMap::new(), |mut map, op| {
+                    for input_op_name in op.inputs.iter() {
+                        *map.entry(input_op_name).or_insert(0) += 1;
                     }
-                }
-                "out_degree" => {
-                    let op_name_to_out_degree: HashMap<&String, usize> =
-                        comp.operations.iter().fold(HashMap::new(), |mut map, op| {
-                            for input_op_name in op.inputs.iter() {
-                                *map.entry(input_op_name).or_insert(0) += 1;
-                            }
-                            map
-                        });
-                    let op_kind_map: HashMap<&String, &str> = if *by_op_kind {
-                        comp.operations
-                            .iter()
-                            .map(|op| (&op.name, op.kind.short_name()))
-                            .collect()
-                    } else {
-                        HashMap::new()
-                    };
-                    let out_degree_distribution: HashMap<NumericalHistKey, usize> =
-                        op_name_to_out_degree.into_iter().fold(
-                            HashMap::new(),
-                            |mut map, (op_name, out_degree)| {
-                                *map.entry(NumericalHistKey {
-                                    value: out_degree,
-                                    category: op_kind_map.get(op_name),
-                                })
-                                .or_insert(0) += 1;
-                                map
-                            },
-                        );
-                    print_sorted("Out degree", &out_degree_distribution);
-                }
-                _ => return Err(anyhow::anyhow!("Unexpected stats flavor {}", flavor)),
-            }
+                    map
+                });
+            let operator_map: HashMap<&String, &str> = if *by_operator {
+                comp.operations
+                    .iter()
+                    .map(|op| (&op.name, op.kind.short_name()))
+                    .collect()
+            } else {
+                HashMap::new()
+            };
+            let out_degree_distribution: HashMap<NumericalHistKey, usize> = op_name_to_out_degree
+                .into_iter()
+                .fold(HashMap::new(), |mut map, (op_name, out_degree)| {
+                    *map.entry(NumericalHistKey {
+                        value: out_degree,
+                        category: operator_map.get(op_name),
+                    })
+                    .or_insert(0) += 1;
+                    map
+                });
+            print_sorted("Out degree", &out_degree_distribution);
         }
     }
     Ok(())
 }
 
-fn parse_computation(input: &Path, format: &String) -> anyhow::Result<Computation> {
-    match &format[..] {
-        "Binary" => {
+fn input_computation(input: &Path, format: &ComputationFormat) -> anyhow::Result<Computation> {
+    match format {
+        ComputationFormat::Textual => {
+            let source = read_to_string(input)?;
+            Computation::from_textual(&source)
+                .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
+        }
+        ComputationFormat::Msgpack => {
             let comp_raw = std::fs::read(input)?;
             Computation::from_msgpack(comp_raw)
                 .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
         }
-        _ => {
-            let source = read_to_string(input)?;
-            Computation::from_textual(&source)
+        ComputationFormat::Bincode => {
+            let comp_raw = std::fs::read(input)?;
+            Computation::from_bincode(comp_raw)
                 .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
+        }
+    }
+}
+
+fn output_computation(
+    comp: &Computation,
+    output: &Option<PathBuf>,
+    format: &ComputationFormat,
+) -> anyhow::Result<()> {
+    match format {
+        ComputationFormat::Textual => {
+            let result = comp.to_textual();
+            match output {
+                Some(path) => {
+                    write(path, result)?;
+                    Ok(())
+                }
+                None => {
+                    println!("{}", result);
+                    Ok(())
+                }
+            }
+        }
+        ComputationFormat::Msgpack => {
+            let result = comp.to_msgpack()?;
+            match output {
+                Some(path) => {
+                    write(path, result)?;
+                    Ok(())
+                }
+                None => todo!(),
+            }
+        }
+        ComputationFormat::Bincode => {
+            let result = comp.to_bincode()?;
+            match output {
+                Some(path) => {
+                    write(path, result)?;
+                    Ok(())
+                }
+                None => todo!(),
+            }
         }
     }
 }
