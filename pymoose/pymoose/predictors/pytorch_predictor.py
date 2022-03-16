@@ -19,11 +19,6 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         self.operations = operations
         self.n_classes = np.shape(biases[-1])[0] # infer number of classes
 
-    @classmethod
-    @abc.abstractmethod
-    def from_onnx(cls, model_proto):
-        pass
-
     def apply_layer(self, input, i, fixedpoint_dtype):
         w = self.fixedpoint_constant(
             self.weights[i], plc=self.mirrored, dtype=fixedpoint_dtype
@@ -75,56 +70,6 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
             return self.handle_output(y, prediction_handler=self.bob)
 
         return predictor
-
-
-class NeuralNetworkRegressor(NeuralNetwork):
-
-    @classmethod
-    def from_onnx(cls, model_proto):
-        operations = predictor_utils.find_op_types_in_model_proto(model_proto)
-
-        weights_data = predictor_utils.find_parameters_in_model_proto(
-            model_proto, "weight", enforce=False
-        )
-        biases_data = predictor_utils.find_parameters_in_model_proto(
-            model_proto, "bias", enforce=False
-        )
-        weights = []
-        for weight in weights_data:
-            dimentions = weight.dims
-            assert weight is not None
-            if weight.data_type != 1:  # FLOATS
-                raise ValueError(
-                    "Neural Network Weights must be of type FLOATS, found other."
-                )
-            weight = weight.raw_data
-            # decode bytes object
-            weight = struct.unpack('f' * (dimentions[0] * dimentions[1]), weight)
-            weight = np.asarray(weight)
-            weight = weight.reshape(dimentions[0], dimentions[1]).T
-            weights.append(weight)
-        
-        biases = []
-        for bias in biases_data:
-            dimentions = bias.dims
-            assert bias is not None
-            if bias.data_type != 1:  # FLOATS
-                raise ValueError(
-                    "Neural network biases must be of type FLOATS, found other."
-                )
-            bias = bias.raw_data
-            bias = struct.unpack('f' * dimentions[0], bias)
-            bias = np.asarray(bias)
-            biases.append(bias)
-
-        return cls(weights, biases, operations)
-
-
-class NeuralNetworkClassifier(NeuralNetwork):
-    def __init__(
-        self, weights, biases, operations
-    ):
-        super().__init__(weights, biases, operations)
 
     @classmethod
     def from_onnx(cls, model_proto):
