@@ -19,7 +19,7 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    /// Compiles the moose computation
+    /// Compile a Moose computation
     Compile {
         /// Input file
         input: PathBuf,
@@ -27,25 +27,43 @@ enum Commands {
         /// Output file, stdout if not present
         output: Option<PathBuf>,
 
-        /// Comma-separated list of passes to apply. In order. Default to run all the passes
+        /// Comma-separated list of passes to apply in-order; default to all passes
         #[clap(short, long)]
         passes: Option<String>,
     },
-    /// Prints stats about a computation without transforming it
-    Stats {
-        /// The kind of the stats to produce
-        flavor: String,
+    /// Print stats about a computation without transforming it
+    #[clap(subcommand)]
+    Stats(StatsCommands),
+}
 
+#[derive(Subcommand, Debug)]
+enum StatsCommands {
+    /// Print operator histogram
+    OpHist {
         /// Input file
         input: PathBuf,
 
-        /// Include placement in the category, where supported
-        #[clap(short, long)]
-        by_placement: bool,
-
-        /// Include operation kind in the category, where supported
+        /// Include placement in the category
         #[clap(long)]
-        by_op_kind: bool,
+        by_placement: bool,
+    },
+    /// Print operator counts
+    OpCount {
+        /// Input file
+        input: PathBuf,
+
+        /// Include placement in the category
+        #[clap(long)]
+        by_placement: bool,
+    },
+    /// Print out degree
+    OutDegree {
+        /// Input file
+        input: PathBuf,
+
+        /// Include operator in the category
+        #[clap(long)]
+        by_operator: bool,
     },
 }
 
@@ -67,78 +85,74 @@ fn main() -> anyhow::Result<()> {
                 None => println!("{}", comp.to_textual()),
             }
         }
-        Commands::Stats {
-            flavor,
+        Commands::Stats(StatsCommands::OpHist {
             input,
             by_placement,
-            by_op_kind,
-        } => {
+        }) => {
             let comp = parse_computation(input)?;
-            match flavor.as_str() {
-                "op_hist" => {
-                    let hist: HashMap<String, usize> = comp
-                        .operations
-                        .iter()
-                        .map(|op| {
-                            if *by_placement {
-                                format!("{} {}", op.kind.short_name(), op.placement.to_textual())
-                            } else {
-                                op.kind.short_name().to_string()
-                            }
-                        })
-                        .fold(HashMap::new(), |mut map, name| {
-                            *map.entry(name).or_insert(0) += 1;
-                            map
-                        });
-                    print_sorted("Operator", &hist);
-                }
-                "op_count" => {
+            let hist: HashMap<String, usize> = comp
+                .operations
+                .iter()
+                .map(|op| {
                     if *by_placement {
-                        let hist: HashMap<String, usize> = comp
-                            .operations
-                            .iter()
-                            .map(|op| op.placement.to_textual())
-                            .fold(HashMap::new(), |mut map, name| {
-                                *map.entry(name).or_insert(0) += 1;
-                                map
-                            });
-                        print_sorted("Placement", &hist);
+                        format!("{} {}", op.kind.short_name(), op.placement.to_textual())
                     } else {
-                        println!("{}", comp.operations.len())
+                        op.kind.short_name().to_string()
                     }
-                }
-                "out_degree" => {
-                    let op_name_to_out_degree: HashMap<&String, usize> =
-                        comp.operations.iter().fold(HashMap::new(), |mut map, op| {
-                            for input_op_name in op.inputs.iter() {
-                                *map.entry(input_op_name).or_insert(0) += 1;
-                            }
-                            map
-                        });
-                    let op_kind_map: HashMap<&String, &str> = if *by_op_kind {
-                        comp.operations
-                            .iter()
-                            .map(|op| (&op.name, op.kind.short_name()))
-                            .collect()
-                    } else {
-                        HashMap::new()
-                    };
-                    let out_degree_distribution: HashMap<NumericalHistKey, usize> =
-                        op_name_to_out_degree.into_iter().fold(
-                            HashMap::new(),
-                            |mut map, (op_name, out_degree)| {
-                                *map.entry(NumericalHistKey {
-                                    value: out_degree,
-                                    category: op_kind_map.get(op_name),
-                                })
-                                .or_insert(0) += 1;
-                                map
-                            },
-                        );
-                    print_sorted("Out degree", &out_degree_distribution);
-                }
-                _ => return Err(anyhow::anyhow!("Unexpected stats flavor {}", flavor)),
+                })
+                .fold(HashMap::new(), |mut map, name| {
+                    *map.entry(name).or_insert(0) += 1;
+                    map
+                });
+            print_sorted("Operator", &hist);
+        }
+        Commands::Stats(StatsCommands::OpCount {
+            input,
+            by_placement,
+        }) => {
+            let comp = parse_computation(input)?;
+            if *by_placement {
+                let hist: HashMap<String, usize> = comp
+                    .operations
+                    .iter()
+                    .map(|op| op.placement.to_textual())
+                    .fold(HashMap::new(), |mut map, name| {
+                        *map.entry(name).or_insert(0) += 1;
+                        map
+                    });
+                print_sorted("Placement", &hist);
+            } else {
+                println!("{}", comp.operations.len())
             }
+        }
+        Commands::Stats(StatsCommands::OutDegree { input, by_operator }) => {
+            let comp = parse_computation(input)?;
+            let op_name_to_out_degree: HashMap<&String, usize> =
+                comp.operations.iter().fold(HashMap::new(), |mut map, op| {
+                    for input_op_name in op.inputs.iter() {
+                        *map.entry(input_op_name).or_insert(0) += 1;
+                    }
+                    map
+                });
+            let operator_map: HashMap<&String, &str> = if *by_operator {
+                comp.operations
+                    .iter()
+                    .map(|op| (&op.name, op.kind.short_name()))
+                    .collect()
+            } else {
+                HashMap::new()
+            };
+            let out_degree_distribution: HashMap<NumericalHistKey, usize> = op_name_to_out_degree
+                .into_iter()
+                .fold(HashMap::new(), |mut map, (op_name, out_degree)| {
+                    *map.entry(NumericalHistKey {
+                        value: out_degree,
+                        category: operator_map.get(op_name),
+                    })
+                    .or_insert(0) += 1;
+                    map
+                });
+            print_sorted("Out degree", &out_degree_distribution);
         }
     }
     Ok(())
