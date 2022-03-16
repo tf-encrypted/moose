@@ -231,7 +231,7 @@ fn output_computation(
                     write(path, result)?;
                     Ok(())
                 }
-                None => unimplemented!(),
+                None => todo!(),
             }
         }
         ComputationFormat::Bincode => {
@@ -241,7 +241,7 @@ fn output_computation(
                     write(path, result)?;
                     Ok(())
                 }
-                None => unimplemented!(),
+                None => todo!(),
             }
         }
     }
