@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{ArgEnum, Parser, Subcommand};
 use moose::compilation::compile;
 use moose::prelude::Computation;
 use moose::textual::ToTextual;
@@ -24,6 +24,10 @@ enum Commands {
         /// Input file
         input: PathBuf,
 
+        /// Computation format
+        #[clap(arg_enum, default_value = "textual")]
+        format: ComputationFormat,
+
         /// Output file, stdout if not present
         output: Option<PathBuf>,
 
@@ -43,6 +47,10 @@ enum StatsCommands {
         /// Input file
         input: PathBuf,
 
+        /// Computation format
+        #[clap(arg_enum, default_value = "textual")]
+        format: ComputationFormat,
+
         /// Include placement in the category
         #[clap(long)]
         by_placement: bool,
@@ -51,6 +59,10 @@ enum StatsCommands {
     OpCount {
         /// Input file
         input: PathBuf,
+
+        /// Computation format
+        #[clap(arg_enum, default_value = "textual")]
+        format: ComputationFormat,
 
         /// Include placement in the category
         #[clap(long)]
@@ -61,10 +73,21 @@ enum StatsCommands {
         /// Input file
         input: PathBuf,
 
+        /// Computation format
+        #[clap(arg_enum, default_value = "textual")]
+        format: ComputationFormat,
+
         /// Include operator in the category
         #[clap(long)]
         by_operator: bool,
     },
+}
+
+#[derive(Clone, Debug, ArgEnum)]
+enum ComputationFormat {
+    Bincode,
+    MsgPack,
+    Textual,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -72,24 +95,23 @@ fn main() -> anyhow::Result<()> {
     match &args.command {
         Commands::Compile {
             input,
+            format,
             output,
             passes,
         } => {
-            let comp = parse_computation(input)?;
+            let comp = input_computation(input, format)?;
             let passes: Option<Vec<String>> = passes
                 .clone()
                 .map(|p| p.split(',').map(|s| s.to_string()).collect());
             let comp = compile(&comp, passes)?;
-            match output {
-                Some(path) => write(path, comp.to_textual())?,
-                None => println!("{}", comp.to_textual()),
-            }
+            output_computation(&comp, output, format)?;
         }
         Commands::Stats(StatsCommands::OpHist {
             input,
+            format,
             by_placement,
         }) => {
-            let comp = parse_computation(input)?;
+            let comp = input_computation(input, format)?;
             let hist: HashMap<String, usize> = comp
                 .operations
                 .iter()
@@ -108,9 +130,10 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Stats(StatsCommands::OpCount {
             input,
+            format,
             by_placement,
         }) => {
-            let comp = parse_computation(input)?;
+            let comp = input_computation(input, format)?;
             if *by_placement {
                 let hist: HashMap<String, usize> = comp
                     .operations
@@ -125,8 +148,12 @@ fn main() -> anyhow::Result<()> {
                 println!("{}", comp.operations.len())
             }
         }
-        Commands::Stats(StatsCommands::OutDegree { input, by_operator }) => {
-            let comp = parse_computation(input)?;
+        Commands::Stats(StatsCommands::OutDegree {
+            input,
+            format,
+            by_operator,
+        }) => {
+            let comp = input_computation(input, format)?;
             let op_name_to_out_degree: HashMap<&String, usize> =
                 comp.operations.iter().fold(HashMap::new(), |mut map, op| {
                     for input_op_name in op.inputs.iter() {
@@ -158,10 +185,66 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn parse_computation(input: &Path) -> anyhow::Result<Computation> {
-    let source = read_to_string(input)?;
-    Computation::from_textual(&source)
-        .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
+fn input_computation(input: &Path, format: &ComputationFormat) -> anyhow::Result<Computation> {
+    match format {
+        ComputationFormat::Textual => {
+            let source = read_to_string(input)?;
+            Computation::from_textual(&source)
+                .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
+        }
+        ComputationFormat::MsgPack => {
+            let comp_raw = std::fs::read(input)?;
+            Computation::from_msgpack(comp_raw)
+                .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
+        }
+        ComputationFormat::Bincode => {
+            let comp_raw = std::fs::read(input)?;
+            Computation::from_bincode(comp_raw)
+                .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
+        }
+    }
+}
+
+fn output_computation(
+    comp: &Computation,
+    output: &Option<PathBuf>,
+    format: &ComputationFormat,
+) -> anyhow::Result<()> {
+    match format {
+        ComputationFormat::Textual => {
+            let result = comp.to_textual();
+            match output {
+                Some(path) => {
+                    write(path, result)?;
+                    Ok(())
+                }
+                None => {
+                    println!("{}", result);
+                    Ok(())
+                }
+            }
+        }
+        ComputationFormat::MsgPack => {
+            let result = comp.to_msgpack()?;
+            match output {
+                Some(path) => {
+                    write(path, result)?;
+                    Ok(())
+                }
+                None => unimplemented!(),
+            }
+        }
+        ComputationFormat::Bincode => {
+            let result = comp.to_bincode()?;
+            match output {
+                Some(path) => {
+                    write(path, result)?;
+                    Ok(())
+                }
+                None => unimplemented!(),
+            }
+        }
+    }
 }
 
 #[derive(Eq, PartialEq, Hash, Debug)]
