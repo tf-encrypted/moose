@@ -2,7 +2,7 @@
 
 use moose::computation::*;
 use moose::host::{FromRaw, HostPlacement, RawShape, SliceInfo, SliceInfoElem};
-use moose::logical::TensorDType;
+use moose::logical::{TensorDType, TensorShape};
 use moose::mirrored::Mirrored3Placement;
 use moose::replicated::ReplicatedPlacement;
 use ndarray::prelude::*;
