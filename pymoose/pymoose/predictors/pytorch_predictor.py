@@ -1,10 +1,7 @@
 import abc
-
-import numpy as np
 import struct
 
-import torch.nn.functional as F
-import torch.nn as nn
+import numpy as np
 
 from pymoose import edsl
 from pymoose.predictors import aes_predictor
@@ -17,7 +14,7 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         self.weights = weights
         self.biases = biases
         self.operations = operations
-        self.n_classes = np.shape(biases[-1])[0] # infer number of classes
+        self.n_classes = np.shape(biases[-1])[0]  # infer number of classes
 
     def apply_layer(self, input, i, fixedpoint_dtype):
         w = self.fixedpoint_constant(
@@ -33,13 +30,13 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     def activation_fn(self, z, op):
         if op == "Sigmoid":
             activation_output = edsl.sigmoid(z)
-            # There is a bug in edsl.shape
-            # elif self.activation == "Relu":
-            #     y_1_shape = edsl.slice(edsl.shape(x), begin=0, end=1)
-            #     ones = edsl.ones(y_1_shape, dtype=edsl.float64)
-            #     ones = edsl.cast(ones, dtype=fixedpoint_dtype)
-            #     zeros = edsl.sub(ones, ones)
-            #     activation_output = edsl.maximum([zeros, y_1])
+        # There is a bug in edsl.shape
+        # elif op == "Relu":
+        #     z_shape = edsl.shape(edsl.cast(z, dtype=edsl.fixed(14, 23)))
+        #     ones = edsl.ones(z_shape, dtype=edsl.float64)
+        #     ones = edsl.cast(ones, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
+        #     zeros = edsl.sub(ones, ones)
+        #     activation_output = edsl.maximum([zeros, z])
         elif op == "Softmax":
             activation_output = edsl.softmax(z, axis=1, upmost_index=self.n_classes)
         else:
@@ -91,11 +88,11 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
                 )
             weight = weight.raw_data
             # decode bytes object
-            weight = struct.unpack('f' * (dimentions[0] * dimentions[1]), weight)
+            weight = struct.unpack("f" * (dimentions[0] * dimentions[1]), weight)
             weight = np.asarray(weight)
             weight = weight.reshape(dimentions[0], dimentions[1]).T
             weights.append(weight)
-        
+
         biases = []
         for bias in biases_data:
             dimentions = bias.dims
@@ -105,7 +102,7 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
                     "Neural network biases must be of type FLOATS, found other."
                 )
             bias = bias.raw_data
-            bias = struct.unpack('f' * dimentions[0], bias)
+            bias = struct.unpack("f" * dimentions[0], bias)
             bias = np.asarray(bias)
             biases.append(bias)
 

@@ -10,6 +10,7 @@ from pymoose.logger import get_logger
 from pymoose.predictors import linear_predictor
 from pymoose.predictors import neural_net_predictor
 from pymoose.predictors import onnx_convert
+from pymoose.predictors import pytorch_predictor
 from pymoose.predictors import tree_ensemble
 
 _SK_MODELS = [
@@ -27,6 +28,8 @@ _SK_MODELS = [
         "MLP_classfier_3hidden_layers_2classes_identity",
         neural_net_predictor.MLPClassifier,
     ),
+    ("pytorch_net_1hidden_layer_sigmoid", pytorch_predictor.NeuralNetwork),
+    ("pytorch_net_2hidden_layer_sigmoid", pytorch_predictor.NeuralNetwork),
 ]
 
 
