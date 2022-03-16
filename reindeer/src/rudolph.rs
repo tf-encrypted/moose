@@ -4,7 +4,6 @@ use moose_modules::choreography::filesystem::FilesystemChoreography;
 use moose_modules::networking::grpc::GrpcNetworkingManager;
 use std::sync::Arc;
 use structopt::StructOpt;
-use tonic::transport::Server;
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
@@ -65,20 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let manager = GrpcNetworkingManager::default();
 
-    let _server_task = {
-        // TODO(Morten) construct `addr` in a nicer way
-        let addr = format!("0.0.0.0:{}", opt.port).parse()?;
-        let manager = manager.clone();
-        tokio::spawn(async move {
-            let res = Server::builder()
-                .add_service(manager.new_server())
-                .serve(addr)
-                .await;
-            if let Err(e) = res {
-                tracing::error!("gRPC error: {}", e);
-            }
-        })
-    };
+    let _server_task = manager.start_server(opt.port)?;
 
     // TODO(Morten) we should not have to do this; add retry logic on client side instead
     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
