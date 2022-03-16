@@ -196,6 +196,11 @@ impl SymbolicSession {
         let state = self.state.read();
         operation(state.ops.iter())
     }
+
+    pub fn into_computation(&self) -> Computation {
+        let state = self.state.read();
+        Computation{ operations: state.ops.iter().cloned().collect()}
+    }
 }
 
 impl Session for SymbolicSession {
