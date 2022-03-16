@@ -27,6 +27,9 @@ enum Commands {
         /// Output file, stdout if not present
         output: Option<PathBuf>,
 
+        #[clap(short, long)]
+        format: String,
+
         /// Comma-separated list of passes to apply. In order. Default to run all the passes
         #[clap(short, long)]
         passes: Option<String>,
@@ -38,6 +41,8 @@ enum Commands {
 
         /// Input file
         input: PathBuf,
+
+        format: String,
 
         /// Include placement in the category, where supported
         #[clap(short, long)]
@@ -55,25 +60,32 @@ fn main() -> anyhow::Result<()> {
         Commands::Compile {
             input,
             output,
+            format,
             passes,
         } => {
-            let comp = parse_computation(input)?;
+            let comp = parse_computation(input, format)?;
             let passes: Option<Vec<String>> = passes
                 .clone()
                 .map(|p| p.split(',').map(|s| s.to_string()).collect());
             let comp = compile(&comp, passes)?;
-            match output {
-                Some(path) => write(path, comp.to_textual())?,
-                None => println!("{}", comp.to_textual()),
+            match (output, &format[..]) {
+                (Some(path), "Textual") => write(path, comp.to_textual())?,
+                (Some(path), "Binary") => {
+                    let comp_bytes = comp.to_msgpack()?;
+                    write(path, comp_bytes)?
+                }
+                (None, _) => println!("{}", comp.to_textual()),
+                (&Some(_), &_) => println!("{}", comp.to_textual()),
             }
         }
         Commands::Stats {
             flavor,
             input,
+            format,
             by_placement,
             by_op_kind,
         } => {
-            let comp = parse_computation(input)?;
+            let comp = parse_computation(input, format)?;
             match flavor.as_str() {
                 "op_hist" => {
                     let hist: HashMap<String, usize> = comp
@@ -144,10 +156,19 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn parse_computation(input: &Path) -> anyhow::Result<Computation> {
-    let source = read_to_string(input)?;
-    Computation::from_textual(&source)
-        .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
+fn parse_computation(input: &Path, format: &String) -> anyhow::Result<Computation> {
+    match &format[..] {
+        "Binary" => {
+            let comp_raw = std::fs::read(input)?;
+            Computation::from_msgpack(comp_raw)
+                .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
+        }
+        _ => {
+            let source = read_to_string(input)?;
+            Computation::from_textual(&source)
+                .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
+        }
+    }
 }
 
 #[derive(Eq, PartialEq, Hash, Debug)]
