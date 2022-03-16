@@ -12,11 +12,12 @@ use async_trait::async_trait;
 use backoff::future::retry;
 use backoff::ExponentialBackoff;
 use dashmap::DashMap;
+use moose::error::Error;
 use moose::networking::AsyncNetworking;
 use moose::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tonic::transport::{Channel, Uri};
+use tonic::transport::{Channel, Server, Uri};
 
 #[derive(Default, Clone)]
 pub struct GrpcNetworkingManager {
@@ -37,6 +38,23 @@ impl GrpcNetworkingManager {
             stores: Arc::clone(&self.stores),
             channels: Arc::clone(&self.channels),
         })
+    }
+
+    pub fn start_server(&self, port: u16) -> moose::Result<tokio::task::JoinHandle<()>> {
+        let addr = format!("0.0.0.0:{}", port)
+            .parse()
+            .map_err(|e| Error::Networking(format!("failed to parse port and address: {}", e)))?;
+        let manager = self.clone();
+        let handle = tokio::spawn(async move {
+            let res = Server::builder()
+                .add_service(manager.new_server())
+                .serve(addr)
+                .await;
+            if let Err(e) = res {
+                tracing::error!("gRPC error: {}", e);
+            }
+        });
+        Ok(handle)
     }
 }
 
