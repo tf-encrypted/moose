@@ -1,7 +1,7 @@
 from pymoose.predictors import linear_predictor
 from pymoose.predictors import neural_net_predictor
 from pymoose.predictors import predictor_utils
-from pymoose.predictors import pytorch_predictor
+from pymoose.predictors import neural_net_predictor
 from pymoose.predictors import tree_ensemble
 
 
@@ -72,4 +72,4 @@ def from_onnx(model_proto):
     elif model_type == "MLP" and classes is not None:
         return neural_net_predictor.MLPClassifier.from_onnx(model_proto)
     elif model_type == "NeuralNetwork":
-        return pytorch_predictor.NeuralNetwork.from_onnx(model_proto)
+        return neural_net_predictor.FullyConnectedNeuralNetwork.from_onnx(model_proto)
