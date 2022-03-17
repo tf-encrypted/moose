@@ -65,16 +65,12 @@ impl GrpcNetworking {
         use tonic::transport::Identity;
         let client_cert_path = certificate(&self.own_identity.0);
 
-        let server_root_ca_cert = Certificate::from_pem(std::fs::read(format!(
-            "examples/certs/ca.crt"
-        ))?);
+        let server_root_ca_cert =
+            Certificate::from_pem(std::fs::read(format!("examples/certs/ca.crt"))?);
 
         let client_cert = std::fs::read(format!("examples/certs/{}.crt", client_cert_path))?;
         let client_key = std::fs::read(format!("examples/certs/{}.key", client_cert_path))?;
         let client_identity = Identity::from_pem(client_cert, client_key);
-
-        tracing::debug!("Server ca cert: {:?}", server_root_ca_cert);
-        tracing::debug!("client identity: {:?}", client_identity);
 
         let tls = ClientTlsConfig::new()
             .domain_name("localhost")
@@ -97,26 +93,22 @@ impl GrpcNetworking {
                     ))
                 })?;
 
-                let tls_config = self.retrieve_cert(receiver);
-                let new_channel: moose::Result<Channel> = match tls_config {
-                    Ok(tls_config) => {
-                        let channel = Channel::builder(endpoint)
-                            .tls_config(tls_config)
-                            .map_err(|e| {
-                                moose::Error::Networking(format!(
-                                    "failed to TLS config {:?}",
-                                    e.to_string()
-                                ))
-                            })?
-                            .connect_lazy();
-                        Ok(channel)
-                    }
-                    Err(err) => Err(moose::Error::Networking(format!(
+                let tls_config = self.retrieve_cert(receiver).map_err(|e| {
+                    moose::Error::Networking(format!(
                         "failed to setup TLS files configuration {:?}",
-                        err.to_string()
-                    ))),
-                };
-                new_channel
+                        e.to_string()
+                    ))
+                })?;
+                let channel = Channel::builder(endpoint)
+                    .tls_config(tls_config)
+                    .map_err(|e| {
+                        moose::Error::Networking(format!(
+                            "failed to TLS config {:?}",
+                            e.to_string()
+                        ))
+                    })?
+                    .connect_lazy();
+                Ok(channel)
             })?
             .clone(); // cloning channels is cheap per tonic documentation
         Ok(channel)
@@ -220,9 +212,9 @@ impl Networking for NetworkingImpl {
         &self,
         request: tonic::Request<SendValueRequest>,
     ) -> Result<tonic::Response<SendValueResponse>, tonic::Status> {
-        //     let certs = request
-        // .peer_certs()
-        // .expect("Client did not send its certs!");
+        let _certs = request
+            .peer_certs()
+            .expect("Client did not send its certs!");
         let request = request.into_inner();
         let tagged_value = bincode::deserialize::<TaggedValue>(&request.tagged_value).unwrap(); // TODO error handling
 
