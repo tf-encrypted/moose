@@ -1,6 +1,6 @@
 [package]
 name = "reindeer"
-version = "0.1.6-beta.1"
+version = "0.1.6"
 license = "MIT"
 edition = "2018"
 authors = []
