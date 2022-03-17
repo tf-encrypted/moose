@@ -5,6 +5,7 @@ use crate::error::{Error, Result};
 use crate::execution::Session;
 use crate::floatingpoint::FloatTensor;
 use crate::host::HostPlacement;
+use crate::integer::AbstractUint64Tensor;
 use crate::kernels::*;
 use crate::replicated::ReplicatedPlacement;
 use crate::types::*;
@@ -122,6 +123,42 @@ impl CastOp {
         };
         let y = plc.cast(sess, &x);
         Ok(BoolTensor::Host(y))
+    }
+
+    pub(crate) fn u64_bool_kernel<S: Session, HostT, RepT, IntHostT, IntRepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractUint64Tensor<IntHostT, IntRepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementPlace<S, IntHostT>,
+        HostPlacement: PlacementReveal<S, IntRepT, IntHostT>,
+        HostPlacement: PlacementCast<S, IntHostT, HostT>,
+    {
+        let x = match x {
+            AbstractUint64Tensor::Host(v) => plc.place(sess, v),
+            AbstractUint64Tensor::Replicated(v) => plc.reveal(sess, &v)
+        };
+        let y = plc.cast(sess, &x);
+        Ok(BoolTensor::Host(y))
+    }
+
+    pub(crate) fn bool_u64_kernel<S: Session, HostT, RepT, IntHostT, IntRepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<AbstractUint64Tensor<IntHostT, IntRepT>>
+    where
+        HostPlacement: PlacementPlace<S, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+        HostPlacement: PlacementCast<S, HostT, IntHostT>,
+    {
+        let x = match x {
+            BoolTensor::Host(v) => plc.place(sess, v),
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v)
+        };
+        let y = plc.cast(sess, &x);
+        Ok(AbstractUint64Tensor::Host(y))
     }
 }
 

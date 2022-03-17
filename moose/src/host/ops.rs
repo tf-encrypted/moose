@@ -1934,17 +1934,6 @@ impl CastOp {
     }
 
     // standard casts
-    // pub(crate) fn to_f64_kernel<S, T>(
-    //     _sess: &S,
-    //     plc: &HostPlacement,
-    //     x: HostTensor<T>,
-    // ) -> Result<HostTensor<f64>>
-    // where
-    //     T: num_traits::ToPrimitive
-    // {
-    //     Ok(HostTensor::<f64>(x.0.map(|x| numcast(x)), x.1))
-    // }
-
     pub(crate) fn standard_host_kernel<S: RuntimeSession, T1, T2>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1960,7 +1949,7 @@ impl CastOp {
         ))
     }
 
-    pub(crate) fn bool_float_host_kernel<S: RuntimeSession, T>(
+    pub(crate) fn from_bool_host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostBitTensor,
@@ -1968,13 +1957,13 @@ impl CastOp {
     where
         T: From<u8>,
     {
-        let float_ndarray: ArrayD<T> = x.0.into_array().map_err(|e| {
+        let std_ndarray: ArrayD<T> = x.0.into_array().map_err(|e| {
             Error::KernelError(format!(
                 "Could not convert BitArrayRepr into ndarray: {}",
                 e.to_string()
             ))
         })?;
-        Ok(HostTensor::<T>(float_ndarray.into(), plc.clone()))
+        Ok(HostTensor::<T>(std_ndarray.into(), plc.clone()))
     }
 
     pub(crate) fn f32_bool_host_kernel<S: RuntimeSession>(
@@ -1986,7 +1975,7 @@ impl CastOp {
         let x_vec: Vec<u8> = x
             .0
             // infer boolean vals then cast to u8 for BitArrayRepr
-            // NOTE this could be wasteful, potential for double clone if not in std mem layout
+            // NOTE this could be wasteful, potential for double clone if tensor not in std mem layout
             .as_standard_layout()
             .mapv(|x| (x == 0.0) as u8)
             .into_raw_vec();
@@ -2005,9 +1994,28 @@ impl CastOp {
         let x_vec: Vec<u8> = x
             .0
             // infer boolean vals then cast to u8 for BitArrayRepr
-            // NOTE this could be wasteful, potential for double clone if not in std mem layout
+            // NOTE this could be wasteful, potential for double clone if tensor not in std mem layout
             .as_standard_layout()
             .mapv(|x| (x == 0.0) as u8)
+            .into_raw_vec();
+        Ok(HostBitTensor(
+            BitArrayRepr::from_vec(x_vec, &x_shape),
+            plc.clone(),
+        ))
+    }
+
+    pub(crate) fn u64_bool_host_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<u64>,
+    ) -> Result<HostBitTensor> {
+        let x_shape = RawShape(x.0.shape().into());
+        let x_vec: Vec<u8> = x
+            .0
+            // infer boolean vals then cast to u8 for BitArrayRepr
+            // NOTE this could be wasteful, potential for double clone if tensor not in std mem layout
+            .as_standard_layout()
+            .mapv(|x| (x == 0) as u8)
             .into_raw_vec();
         Ok(HostBitTensor(
             BitArrayRepr::from_vec(x_vec, &x_shape),
