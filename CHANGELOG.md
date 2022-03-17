@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.1.6
+- Having a bytes version of >1.0 caused a problem for dependencies of Kola. Setting bytes="1" allows the consumer of moose to use any bytes version >= 1.0.0 and < 2.0.0.
+
 ## v0.1.5
 
 - Significant RAM usage improvements throughout the codebase
