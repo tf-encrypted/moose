@@ -137,7 +137,7 @@ impl CastOp {
     {
         let x = match x {
             AbstractUint64Tensor::Host(v) => plc.place(sess, v),
-            AbstractUint64Tensor::Replicated(v) => plc.reveal(sess, &v)
+            AbstractUint64Tensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = plc.cast(sess, &x);
         Ok(BoolTensor::Host(y))
@@ -155,7 +155,7 @@ impl CastOp {
     {
         let x = match x {
             BoolTensor::Host(v) => plc.place(sess, v),
-            BoolTensor::Replicated(v) => plc.reveal(sess, &v)
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = plc.cast(sess, &x);
         Ok(AbstractUint64Tensor::Host(y))

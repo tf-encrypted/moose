@@ -1959,8 +1959,8 @@ impl CastOp {
     {
         let std_ndarray: ArrayD<T> = x.0.into_array().map_err(|e| {
             Error::KernelError(format!(
-                "Could not convert BitArrayRepr into ndarray: {}",
-                e.to_string()
+                "Could not convert BitArrayRepr into ndarray: {:?}",
+                e
             ))
         })?;
         Ok(HostTensor::<T>(std_ndarray.into(), plc.clone()))
