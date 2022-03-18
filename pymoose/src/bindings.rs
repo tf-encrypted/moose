@@ -361,7 +361,7 @@ mod compatibility_tests {
         let source = std::fs::read_to_string(path)?;
         let computation =
             parallel_parse_computation(&source, crate::bindings::DEFAULT_PARSE_CHUNKS)?;
-        let _ = compile::<Pass>(&computation, None)?;
+        let _ = compile::<Pass>(computation, None)?;
         Ok(())
     }
 
