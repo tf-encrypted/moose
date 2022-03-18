@@ -366,11 +366,8 @@ pub struct SymbolicExecutor {
 }
 
 impl SymbolicExecutor {
-    pub fn run_computation(
-        &self,
-        computation: &Computation,
-        session: &SymbolicSession,
-    ) -> anyhow::Result<Computation> {
+    pub fn run_computation(&self, computation: &Computation) -> anyhow::Result<Computation> {
+        let session = SymbolicSession::default();
         let computation = computation.toposort()?;
 
         {
@@ -395,9 +392,10 @@ impl SymbolicExecutor {
             }
         }
 
-        let state = session.state.read();
-        Ok(Computation {
-            operations: state.ops.clone(),
-        })
+        let state = Arc::try_unwrap(session.state)
+            .map_err(|_| Error::Compilation(format!("could not consume state after lowering")))?
+            .into_inner();
+        let operations = state.ops;
+        Ok(Computation { operations })
     }
 }
