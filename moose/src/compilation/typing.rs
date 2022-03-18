@@ -241,9 +241,7 @@ mod tests {
         save = Save: (HostString, Unknown) -> HostUnit (constant_0, mean) @Host(alice)
         "#;
 
-        let comp = update_types_one_hop(&source.try_into()?)?
-            .unwrap()
-            .to_textual();
+        let comp = update_types_one_hop(&source.try_into()?)?.to_textual();
         // The computation should now contain the type information
         assert!(comp.contains(
             "save = Save: (HostString, HostFloat32Tensor) -> HostUnit (constant_0, mean) @Host(alice)"

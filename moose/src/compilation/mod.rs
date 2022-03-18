@@ -81,9 +81,7 @@ where
         .collect::<anyhow::Result<Vec<Pass>>>()?;
 
     for pass in passes {
-        if let Some(new_computation) = pass.run(&computation)? {
-            computation = new_computation;
-        }
+        computation = pass.run(&computation)?;
     }
     Ok(computation)
 }
@@ -103,23 +101,23 @@ where
 }
 
 impl Pass {
-    fn run(&self, comp: &Computation) -> anyhow::Result<Option<Computation>> {
+    fn run(&self, comp: &Computation) -> anyhow::Result<Computation> {
         match self {
-            Pass::Networking => Ok(Some(networking_pass(comp)?)),
-            Pass::Print => Ok(Some(print_graph(comp)?)),
-            Pass::Prune => Ok(Some(prune_graph(comp)?)),
-            Pass::Lowering => Ok(Some(lowering(comp)?)),
-            Pass::Typing => Ok(Some(update_types_one_hop(comp)?)),
-            Pass::DeprecatedLogical => Ok(Some(deprecated_logical_lowering(comp)?)),
+            Pass::Networking => networking_pass(comp),
+            Pass::Print => print_graph(comp),
+            Pass::Prune => prune_graph(comp),
+            Pass::Lowering => lowering(comp),
+            Pass::Typing => update_types_one_hop(comp),
+            Pass::DeprecatedLogical => deprecated_logical_lowering(comp),
             Pass::Dump => {
                 println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
-                Ok(Some(comp.clone())) // TODO
+                Ok(comp.clone()) // TODO
             }
             Pass::Toposort => {
                 let comp = comp
                     .toposort()
                     .map_err(|e| anyhow::anyhow!("Toposort failed due to {}", e))?;
-                Ok(Some(comp))
+                Ok(comp)
             }
         }
     }

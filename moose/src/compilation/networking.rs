@@ -129,7 +129,7 @@ mod tests {
         dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         mean = Mean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"#;
 
-        let comp = networking_pass(&source.try_into()?)?.unwrap().to_textual();
+        let comp = networking_pass(&source.try_into()?)?.to_textual();
         // Networking should not introduce any changes to such a computation
         assert!(comp.contains(
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
@@ -150,7 +150,7 @@ mod tests {
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         mean = Mean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"#;
-        let comp = networking_pass(&source.try_into()?)?.unwrap().to_textual();
+        let comp = networking_pass(&source.try_into()?)?.to_textual();
 
         // Networking should introduce one new networking operation (not 2) for the 2 jumps. And leave the mean unchaged (dot already on the right host)
         assert!(comp.contains(
@@ -171,7 +171,7 @@ mod tests {
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(bob)
         add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(bob)"#;
-        let comp = networking_pass(&source.try_into()?)?.unwrap().to_textual();
+        let comp = networking_pass(&source.try_into()?)?.to_textual();
         // Should have one send/receive pair per each variable being sent
         assert!(comp.contains(
             r#"send_0 = Send{rendezvous_key = 00000000000000000000000000000000, receiver = "bob"}: (HostFloat32Tensor) -> HostUnit (x) @Host(alice)"#
@@ -193,7 +193,7 @@ mod tests {
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, charlie)"#;
 
-        let comp = networking_pass(&source.try_into()?)?.unwrap().to_textual();
+        let comp = networking_pass(&source.try_into()?)?.to_textual();
         // Networking should not make any changes to the replicated placement (should probably never see it in real life)
         assert!(comp.contains("mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, charlie)"));
         Ok(())

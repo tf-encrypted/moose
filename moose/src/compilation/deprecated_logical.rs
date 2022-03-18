@@ -289,9 +289,7 @@ mod tests {
         save = Save: (HostString, Tensor<Float64>) -> HostUnit (constant_0, mean) @Host(alice)
         "#;
 
-        let comp = deprecated_logical_lowering(&source.try_into()?)?
-            .unwrap()
-            .to_textual();
+        let comp = deprecated_logical_lowering(&source.try_into()?)?.to_textual();
         // The computation should now contain the modified type information
         assert!(comp.contains(
             "mul = Mul: (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor (x, y) @Host(alice)"
