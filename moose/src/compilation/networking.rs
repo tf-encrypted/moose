@@ -70,7 +70,7 @@ impl NetworkingPass {
 
         let rendezvous_key = RendezvousKey::from(self.rendezvous.next().unwrap() as u128);
 
-        let send_operation = Operation {
+        let send_op = Operation {
             name: format!("send_{}", index),
             kind: SendOp {
                 sig: Signature::unary(src_op.kind.sig().ret(), Ty::HostUnit),
@@ -81,10 +81,11 @@ impl NetworkingPass {
             inputs: vec![src_op.name.clone()],
             placement: src_op.placement.clone(),
         };
-        self.extra_ops.push(send_operation);
+        self.extra_ops.push(send_op);
 
-        let receive_operation = Operation {
-            name: format!("receive_{}", index),
+        let receive_op_name = format!("receive_{}", index);
+        let receive_op = Operation {
+            name: receive_op_name.clone(),
             kind: ReceiveOp {
                 sig: Signature::nullary(src_op.kind.sig().ret()),
                 rendezvous_key,
@@ -94,10 +95,9 @@ impl NetworkingPass {
             inputs: vec![],
             placement: dst_op.placement.clone(),
         };
-        self.extra_ops.push(receive_operation);
+        self.extra_ops.push(receive_op);
 
-        // Return the name of the receive operation
-        format!("receive_{}", index)
+        receive_op_name
     }
 }
 
