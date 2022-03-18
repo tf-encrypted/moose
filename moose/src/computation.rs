@@ -13,7 +13,6 @@ use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
 use macros::{FromTextual, ShortName, ToTextual};
 use paste::paste;
-use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use serde::{Deserialize, Serialize};
@@ -1781,7 +1780,7 @@ impl TryFrom<&IndexedComputation> for Computation {
 }
 
 #[derive(Debug)]
-pub struct GraphOperation<'c> {
+pub struct GraphOperationRef<'c> {
     pub op_name: &'c String,
     pub index: usize,
 }
@@ -1843,7 +1842,7 @@ impl NamedComputation {
         Ok(())
     }
 
-    pub fn as_graph(&self) -> Graph<GraphOperation, ()> {
+    pub fn as_graph(&self) -> Graph<GraphOperationRef, ()> {
         let mut graph = Graph::new();
 
         let mut vertex_map: HashMap<&str, NodeIndex> = HashMap::new();
@@ -1854,7 +1853,7 @@ impl NamedComputation {
         let mut rdv_keys: HashSet<&RendezvousKey> = HashSet::new();
 
         for (index, op) in self.operations.iter().enumerate() {
-            let vertex = graph.add_node(GraphOperation {
+            let vertex = graph.add_node(GraphOperationRef {
                 op_name: &op.name,
                 index,
             });
@@ -1912,7 +1911,7 @@ impl NamedComputation {
 
     pub fn toposort(&self) -> Result<NamedComputation> {
         let graph = self.as_graph();
-        let toposort = toposort(&graph, None).map_err(|_| {
+        let toposort = petgraph::algo::toposort(&graph, None).map_err(|_| {
             Error::MalformedComputation("There is a cycle detected in the runtime graph".into())
         })?;
 
