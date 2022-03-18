@@ -158,12 +158,17 @@ impl Default for SymbolicSession {
 
 impl SymbolicSession {
     /// Add operation to the session's underlying computation
-    pub(crate) fn add_operation<'s, O: Into<Operator> + Clone, P: Into<Placement> + Clone>(
+    pub(crate) fn add_operation<'s, O, P, Q>(
         &'s self,
         operator: &O,
         operands: &[&str],
         plc: &P,
-    ) -> SymbolicHandle<P> {
+    ) -> SymbolicHandle<Q>
+    where
+        O: Into<Operator> + Clone,
+        P: Into<Placement> + Clone,
+        P: Into<Q>,
+    {
         let mut state = self.state.write();
         let op_name: String = format!("op_{}", state.ops.len());
         let op = Operation {
@@ -176,7 +181,7 @@ impl SymbolicSession {
 
         SymbolicHandle {
             op: op_name,
-            plc: plc.clone(),
+            plc: plc.clone().into(),
         }
     }
 

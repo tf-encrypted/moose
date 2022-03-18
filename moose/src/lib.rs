@@ -1238,7 +1238,7 @@ macro_rules! kernel {
                     sess: &SymbolicSession,
                     plc: &$plc,
                 | {
-                    let h = sess.add_operation(&op, &[], &plc.clone().into());
+                    let h = sess.add_operation(&op, &[], plc);
                     Ok(Symbolic::Symbolic(h))
                 }))
             }
@@ -1348,7 +1348,7 @@ macro_rules! kernel {
                         }
                         _ => match x0 {
                             Symbolic::Symbolic(h0) => {
-                                let h = sess.add_operation(op, &[&h0.op], &plc.clone().into());
+                                let h = sess.add_operation(op, &[&h0.op], plc);
                                 Ok(Symbolic::Symbolic(h))
                             }
                             x0 => Err(crate::error::Error::Unexpected(Some(format!("Unary hybrid kernel flavor encountered Concrete argument in Symbolic-only case {:?}.", x0))))
@@ -1396,7 +1396,7 @@ macro_rules! kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         Symbolic::Symbolic(h0) => {
-                            let h = sess.add_operation(op, &[&h0.op], &plc.clone().into());
+                            let h = sess.add_operation(op, &[&h0.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                     }
@@ -1455,7 +1455,7 @@ macro_rules! kernel {
                 | {
                     match x0 {
                         Symbolic::Symbolic(h0) => {
-                            let h = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
+                            let h = sess.add_operation(&op, &[&h0.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         x0 => Err(crate::error::Error::Unexpected(Some(format!("Unary runtime kernel encountered Concrete argument: {:?}.", x0))))
@@ -1575,7 +1575,7 @@ macro_rules! kernel {
                         }
                         _ => match (x0, x1) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                                let h = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                                let h = sess.add_operation(op, &[&h0.op, &h1.op], plc);
                                 Ok(Symbolic::Symbolic(h))
                             }
                             _ => {
@@ -1628,7 +1628,7 @@ macro_rules! kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                            let h = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                            let h = sess.add_operation(op, &[&h0.op, &h1.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
@@ -1693,7 +1693,7 @@ macro_rules! kernel {
                 | {
                     match (x0, x1) {
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                            let h = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
+                            let h = sess.add_operation(&op, &[&h0.op, &h1.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         (x0, x1) => Err(crate::error::Error::Unexpected(Some(format!("Binary runtime kernel flavor encountered Concrete arguments: {:?} and {:?}", x0, x1))))
@@ -1843,7 +1843,7 @@ macro_rules! kernel {
                         }
                         _ => match (x0, x1, x2) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                                let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                                let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], plc);
                                 Ok(Symbolic::Symbolic(h))
                             }
                             (x0, x1, x2) => Err(crate::error::Error::Unexpected(Some(format!("Ternary hybrid kernel flavor encountered Concrete arguments in Symbolic-only case: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
@@ -1897,7 +1897,7 @@ macro_rules! kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                            let h = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                            let h = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         (x0, x1, x2) => Err(crate::error::Error::Unexpected(Some(format!("Ternary concrete kernel flavor encountered mixed Symbolic/Concrete arguments during compilation: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
@@ -1941,7 +1941,7 @@ macro_rules! kernel {
                 | {
                     match (x0, x1, x2) {
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                            let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                            let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         (x0, x1, x2) => Err(crate::error::Error::Unexpected(Some(format!("Ternary runtime kernel flavor encountered Concrete arguments during compilation: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
@@ -2080,7 +2080,7 @@ macro_rules! kernel {
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
                         if handles.len() == xs.len() {
                             // success; we can record in graph
-                            let h = sess.add_operation(op, &handles, &plc.clone().into());
+                            let h = sess.add_operation(op, &handles, plc);
                             Ok(Symbolic::Symbolic(h))
                         } else {
                             Err(crate::error::Error::Unexpected(Some("Variadic hybrid kernel flavor found mixed symbolic and concrete values during compilation.".to_string())))
@@ -2138,7 +2138,7 @@ macro_rules! kernel {
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
                         if handles.len() == xs.len() {
                             // success; we can record in graph
-                            let h = sess.add_operation(op, &handles, &plc.clone().into());
+                            let h = sess.add_operation(op, &handles, plc);
                             Ok(Symbolic::Symbolic(h))
                         } else {
                             Err(crate::error::Error::Unexpected(Some("Variadic concrete flavor found mixed symbolic and concrete value during compilation.".to_string())))
@@ -2186,7 +2186,7 @@ macro_rules! kernel {
                     }).collect();
 
                     if res.len() == xs.len() {
-                        let h = sess.add_operation(&op, &res, &plc.clone().into());
+                        let h = sess.add_operation(&op, &res, plc);
                         return Ok(Symbolic::Symbolic(h));
                     }
 
@@ -3050,7 +3050,7 @@ macro_rules! modelled_kernel {
                     sess: &SymbolicSession,
                     plc: &$plc
                 | {
-                    let h = sess.add_operation(&op, &[], &plc.clone().into());
+                    let h = sess.add_operation(&op, &[], plc);
                     Ok(Symbolic::Symbolic(h))
                 }))
             }
@@ -3233,7 +3233,7 @@ macro_rules! modelled_kernel {
                         }
                         _ => match x0 {
                             Symbolic::Symbolic(h0) => {
-                                let h = sess.add_operation(op, &[&h0.op], &plc.clone().into());
+                                let h = sess.add_operation(op, &[&h0.op], plc);
                                 Ok(Symbolic::Symbolic(h))
                             }
                             _ => {
@@ -3314,7 +3314,7 @@ macro_rules! modelled_kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         Symbolic::Symbolic(h0) => {
-                            let h = sess.add_operation(op, &[&h0.op], &plc.clone().into());
+                            let h = sess.add_operation(op, &[&h0.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                     }
@@ -3472,7 +3472,7 @@ macro_rules! modelled_kernel {
                 | {
                     match x0 {
                         Symbolic::Symbolic(h0) => {
-                            let h = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
+                            let h = sess.add_operation(&op, &[&h0.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Expected symbolic value during compilation".to_string())))
@@ -3674,7 +3674,7 @@ macro_rules! modelled_kernel {
                         }
                         _ => match (x0, x1) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                                let h = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                                let h = sess.add_operation(op, &[&h0.op, &h1.op], plc);
                                 Ok(Symbolic::Symbolic(h))
                             }
                             _ => {
@@ -3761,7 +3761,7 @@ macro_rules! modelled_kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                            let h = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                            let h = sess.add_operation(op, &[&h0.op, &h1.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
@@ -3936,7 +3936,7 @@ macro_rules! modelled_kernel {
                 | {
                     match (x0, x1) {
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                            let h = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
+                            let h = sess.add_operation(&op, &[&h0.op, &h1.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
@@ -4152,7 +4152,7 @@ macro_rules! modelled_kernel {
                         }
                         _ => match (x0, x1, x2) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                                let h = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                                let h = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], plc);
                                 Ok(Symbolic::Symbolic(h))
                             }
                             _ => {
@@ -4245,7 +4245,7 @@ macro_rules! modelled_kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                            let h = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                            let h = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
@@ -4436,7 +4436,7 @@ macro_rules! modelled_kernel {
                 | {
                     match (x0, x1, x2) {
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                            let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                            let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
@@ -4639,7 +4639,7 @@ macro_rules! modelled_kernel {
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
                         if handles.len() == xs.len() {
                             // success; we can record in graph
-                            let h = sess.add_operation(op, &handles, &plc.clone().into());
+                            let h = sess.add_operation(op, &handles, plc);
                             Ok(Symbolic::Symbolic(h))
                         } else {
                             Err(crate::error::Error::Unexpected(Some("Variadic hybrid kernel flavor found mixed symbolic and concrete values during compilation.".to_string())))
@@ -4729,7 +4729,7 @@ macro_rules! modelled_kernel {
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
                         if handles.len() == xs.len() {
                             // success; we can record in graph
-                            let h = sess.add_operation(op, &handles, &plc.clone().into());
+                            let h = sess.add_operation(op, &handles, plc);
                             Ok(Symbolic::Symbolic(h))
                         } else {
                             Err(crate::error::Error::Unexpected(Some("Variadic concrete flavor found mixed symbolic and concrete value during compilation.".to_string())))
@@ -4899,7 +4899,7 @@ macro_rules! modelled_kernel {
                     }).collect();
 
                     if res.len() == xs.len() {
-                        let h = sess.add_operation(&op, &res, &plc.clone().into());
+                        let h = sess.add_operation(&op, &res, plc);
                         return Ok(Symbolic::Symbolic(h));
                     }
 
