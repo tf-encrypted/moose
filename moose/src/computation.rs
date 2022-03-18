@@ -1912,7 +1912,7 @@ impl NamedComputation {
     pub fn toposort(&self) -> Result<NamedComputation> {
         let graph = self.as_graph();
         let toposort = petgraph::algo::toposort(&graph, None).map_err(|_| {
-            Error::MalformedComputation("There is a cycle detected in the runtime graph".into())
+            Error::MalformedComputation("cycle detected in the computation graph".into())
         })?;
 
         let operations = toposort
