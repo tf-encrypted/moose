@@ -1940,13 +1940,27 @@ impl CastOp {
         x: HostTensor<T1>,
     ) -> Result<HostTensor<T2>>
     where
-        T1: num_traits::NumCast + Clone,
+        T1: num_traits::NumCast + Clone + Debug,
         T2: num_traits::NumCast + Clone,
+        HostTensor<T2>: KnownType<S>,
     {
-        Ok(HostTensor::<T2>(
-            x.0.mapv(|x| num_traits::cast(x).unwrap()).into(),
-            plc.clone(),
-        ))
+        let i = Array::from_vec(
+            x.0.iter()
+                .cloned()
+                .map(|v| {
+                    num_traits::cast(v).ok_or_else(|| {
+                        crate::error::Error::KernelError(format!(
+                            "Conversion error from tensor {:?} into type {}",
+                            x,
+                            <HostTensor::<T2> as KnownType<S>>::TY
+                        ))
+                    })
+                })
+                .collect::<Result<Vec<T2>>>()?,
+        )
+        .into_shape(x.0.dim())
+        .unwrap(); // the error case is impossible
+        Ok(HostTensor::<T2>(i.into(), plc.clone()))
     }
 
     pub(crate) fn from_bool_host_kernel<S: RuntimeSession, T>(

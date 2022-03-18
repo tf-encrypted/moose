@@ -103,6 +103,7 @@ class DTypeConversionTest(parameterized.TestCase):
         actual_result = runtime.read_value_from_storage("alice", "x")
         np.testing.assert_equal(actual_result, expected_npy)
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Log example")
     parser.add_argument("--verbose", action="store_true")
