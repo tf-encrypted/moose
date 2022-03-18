@@ -368,7 +368,6 @@ pub struct SymbolicExecutor {
 impl SymbolicExecutor {
     pub fn run_computation(&self, computation: &Computation) -> anyhow::Result<Computation> {
         let session = SymbolicSession::default();
-        let computation = computation.toposort()?;
 
         {
             let mut env: HashMap<&String, SymbolicValue> =
