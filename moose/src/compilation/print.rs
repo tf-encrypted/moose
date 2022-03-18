@@ -19,7 +19,7 @@ pub fn get_dot_graph(comp: &Computation) -> String {
     let mut color_cache = HashMap::new();
     let mut color = 0..;
     for n in graph.node_indices() {
-        let placement = comp.operations[graph[n].1].placement.to_textual();
+        let placement = comp.operations[graph[n].index].placement.to_textual();
         color_cache
             .entry(placement)
             .or_insert_with(|| COLORS[color.next().unwrap_or_default() % COLORS.len()]);
@@ -33,8 +33,8 @@ pub fn get_dot_graph(comp: &Computation) -> String {
             &[EdgeNoLabel, NodeNoLabel],
             // Edge formatter.
             &|_, edge| {
-                let source = &comp.operations[graph[edge.source()].1];
-                let target = &comp.operations[graph[edge.target()].1];
+                let source = &comp.operations[graph[edge.source()].index];
+                let target = &comp.operations[graph[edge.target()].index];
                 // Annotate jumps in between the hosts
                 match (&source.kind, &target.kind) {
                     (
@@ -51,9 +51,9 @@ pub fn get_dot_graph(comp: &Computation) -> String {
             &|_, (_, n)| {
                 format!(
                     "label = \"{}\" shape = {} color = \"{}\"",
-                    pretty(&comp.operations[n.1]),
-                    shape(&comp.operations[n.1]),
-                    color_cache[&comp.operations[n.1].placement.to_textual()]
+                    pretty(&comp.operations[n.index]),
+                    shape(&comp.operations[n.index]),
+                    color_cache[&comp.operations[n.index].placement.to_textual()]
                 )
             }
         )

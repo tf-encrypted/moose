@@ -1780,6 +1780,12 @@ impl TryFrom<&IndexedComputation> for Computation {
     }
 }
 
+#[derive(Debug)]
+pub struct GraphOperation<'c> {
+    pub op_name: &'c String,
+    pub index: usize,
+}
+
 impl NamedComputation {
     #[tracing::instrument(skip(bytes))]
     pub fn from_msgpack<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
@@ -1837,7 +1843,7 @@ impl NamedComputation {
         Ok(())
     }
 
-    pub fn as_graph(&self) -> Graph<(&String, usize), ()> {
+    pub fn as_graph(&self) -> Graph<GraphOperation, ()> {
         let mut graph = Graph::new();
 
         let mut vertex_map: HashMap<&str, NodeIndex> = HashMap::new();
@@ -1847,8 +1853,11 @@ impl NamedComputation {
 
         let mut rdv_keys: HashSet<&RendezvousKey> = HashSet::new();
 
-        for (i, op) in self.operations.iter().enumerate() {
-            let vertex = graph.add_node((&op.name, i));
+        for (index, op) in self.operations.iter().enumerate() {
+            let vertex = graph.add_node(GraphOperation {
+                op_name: &op.name,
+                index,
+            });
             match op.kind {
                 Operator::Send(ref op) => {
                     let key = &op.rendezvous_key;
@@ -1909,7 +1918,7 @@ impl NamedComputation {
 
         let operations = toposort
             .iter()
-            .map(|node| self.operations[graph[*node].1].clone())
+            .map(|node| self.operations[graph[*node].index].clone())
             .collect();
 
         Ok(NamedComputation { operations })
