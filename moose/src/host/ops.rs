@@ -1764,6 +1764,7 @@ impl LessThanOp {
         use bitvec::prelude::*;
         let dim = x.0.dim();
         let data: BitVec<u8, Lsb0> = (x.0 - y.0)
+            .as_standard_layout()
             .as_slice()
             .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
             .iter()
@@ -1782,6 +1783,7 @@ impl LessThanOp {
         use bitvec::prelude::*;
         let dim = x.0.dim();
         let data: BitVec<u8, Lsb0> = (x.0 - y.0)
+            .as_standard_layout()
             .as_slice()
             .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
             .iter()
@@ -1803,6 +1805,7 @@ impl LessThanOp {
         use bitvec::prelude::*;
         let dim = x.0.dim();
         let data: BitVec<u8, Lsb0> = (x.0 - y.0)
+            .as_standard_layout()
             .as_slice()
             .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
             .iter()
