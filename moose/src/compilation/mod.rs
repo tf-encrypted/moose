@@ -1,6 +1,6 @@
 use self::deprecated_logical::deprecated_logical_lowering;
 use crate::compilation::lowering::lowering;
-use crate::compilation::networking::NetworkingPass;
+use crate::compilation::networking::networking_pass;
 use crate::compilation::print::print_graph;
 use crate::compilation::pruning::prune_graph;
 use crate::compilation::typing::update_types_one_hop;
@@ -104,7 +104,7 @@ where
 
 fn do_pass(pass: &Pass, comp: &Computation) -> anyhow::Result<Option<Computation>> {
     match pass {
-        Pass::Networking => NetworkingPass::pass(comp),
+        Pass::Networking => networking_pass(comp),
         Pass::Print => print_graph(comp),
         Pass::Prune => prune_graph(comp),
         Pass::Lowering => lowering(comp),
