@@ -2,7 +2,7 @@ use crate::computation::{Computation, Operator};
 use petgraph::visit::{depth_first_search, DfsEvent};
 
 /// Prunes the computation from anything not relevant for the output
-pub fn prune_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
+pub fn prune_graph(comp: &Computation) -> anyhow::Result<Computation> {
     // Need to reverse the graph, because we will be traversing it from the outputs
     let mut graph = comp.as_graph();
     graph.reverse();
@@ -21,7 +21,7 @@ pub fn prune_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
     });
 
     // Construct a new computation. NB: we did not toposort it.
-    Ok(Some(Computation { operations: keep }))
+    Ok(Computation { operations: keep })
 }
 
 #[cfg(test)]

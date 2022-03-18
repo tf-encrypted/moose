@@ -104,12 +104,12 @@ where
 
 fn do_pass(pass: &Pass, comp: &Computation) -> anyhow::Result<Option<Computation>> {
     match pass {
-        Pass::Networking => networking_pass(comp),
+        Pass::Networking => Ok(Some(networking_pass(comp)?)),
         Pass::Print => print_graph(comp),
-        Pass::Prune => prune_graph(comp),
-        Pass::Lowering => lowering(comp),
-        Pass::Typing => update_types_one_hop(comp),
-        Pass::DeprecatedLogical => deprecated_logical_lowering(comp),
+        Pass::Prune => Ok(Some(prune_graph(comp)?)),
+        Pass::Lowering => Ok(Some(lowering(comp)?)),
+        Pass::Typing => Ok(Some(update_types_one_hop(comp)?)),
+        Pass::DeprecatedLogical => Ok(Some(deprecated_logical_lowering(comp)?)),
         Pass::Dump => {
             println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
             Ok(None)

@@ -4,7 +4,7 @@ use petgraph::Direction;
 use std::collections::HashMap;
 
 /// Updates the operators such that the type information is inferred by one-hop check, without any recursive graph traversal.
-pub(crate) fn update_types_one_hop(comp: &Computation) -> anyhow::Result<Option<Computation>> {
+pub(crate) fn update_types_one_hop(comp: &Computation) -> anyhow::Result<Computation> {
     let mut operations = comp.operations.clone();
     let graph = comp.as_graph();
 
@@ -47,7 +47,7 @@ pub(crate) fn update_types_one_hop(comp: &Computation) -> anyhow::Result<Option<
         // Update the existing signature with it.
         operations[graph[n].index].kind.sig_mut().merge(new_sig)?;
     }
-    Ok(Some(Computation { operations }))
+    Ok(Computation { operations })
 }
 
 impl Signature {

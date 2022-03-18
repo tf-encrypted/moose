@@ -3,7 +3,7 @@ use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
 
 /// Applies the networking pass to the entire computation
-pub fn networking_pass(comp: &Computation) -> anyhow::Result<Option<Computation>> {
+pub fn networking_pass(comp: &Computation) -> anyhow::Result<Computation> {
     let graph = comp.as_graph();
     let mut pass = NetworkingPass::new(comp);
 
@@ -33,9 +33,9 @@ pub fn networking_pass(comp: &Computation) -> anyhow::Result<Option<Computation>
     }
 
     pass.operations.extend(pass.extra_ops);
-    Ok(Some(Computation {
+    Ok(Computation {
         operations: pass.operations,
-    }))
+    })
 }
 
 pub struct NetworkingPass {
