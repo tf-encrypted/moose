@@ -19,7 +19,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fs::File;
+use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
+use std::io::prelude::*;
 use std::path::Path;
 
 pub const TAG_BYTES: usize = 128 / 8;
@@ -1802,6 +1804,24 @@ impl NamedComputation {
             .map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[tracing::instrument(skip(self, path))]
+    pub fn write_textual<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .append(true)
+            .open(path)
+            .map_err(|e| Error::SerializationError(e.to_string()))?;
+
+        for op in self.operations.iter() {
+            let op_textual = op.to_textual();
+            writeln!(file, "{}", op_textual)
+                .map_err(|e| Error::SerializationError(e.to_string()))?;
+        }
+
+        Ok(())
+    }
+
     #[tracing::instrument(skip(bytes))]
     pub fn from_bincode<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
         bincode::deserialize(bytes.as_ref()).map_err(|e| Error::SerializationError(e.to_string()))
@@ -1966,6 +1986,27 @@ mod tests {
         output_0 = Output: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
         let bytes = original.to_msgpack().unwrap();
         let read_back = Computation::from_msgpack(bytes).unwrap();
+        assert_eq!(original.operations, read_back.operations);
+    }
+
+    #[test]
+    fn test_write_textual() {
+        use std::convert::TryInto;
+        use std::fs::read_to_string;
+        use tempfile::tempdir;
+        let original: Computation = r#"constant_0 = Constant{value = HostFloat64Tensor([[0.12131529]])}: () -> Tensor<Float64> () @Host(player2)
+        cast_0 = Cast: (Tensor<Float64>) -> Tensor<Fixed128(24, 40)> (constant_0) @Host(player2)
+        x = Input{arg_name = "x"}: () -> AesTensor () @Host(player0)
+        key = Input{arg_name = "key"}: () -> AesKey () @Replicated(player0, player1, player2)
+        decrypt_0 = Decrypt: (AesKey, AesTensor) -> Tensor<Fixed128(24, 40)> (key, x) @Replicated(player0, player1, player2)
+        dot_0 = Dot: (Tensor<Fixed128(24, 40)>, Tensor<Fixed128(24, 40)>) -> Tensor<Fixed128(24, 40)> (decrypt_0, cast_0) @Replicated(player0, player1, player2)
+        cast_1 = Cast: (Tensor<Fixed128(24, 40)>) -> Tensor<Float64> (dot_0) @Host(player1)
+        output_0 = Output: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("temp_comp.moose");
+        original.write_textual(file_path.clone()).unwrap();
+        let source = read_to_string(file_path).unwrap();
+        let read_back = Computation::from_textual(&source).unwrap();
         assert_eq!(original.operations, read_back.operations);
     }
 }

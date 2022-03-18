@@ -59,6 +59,7 @@ getrandom = "~0.2"
 proptest = "~1.0"
 rand_chacha = "~0.3"
 rstest = "~0.12"
+tempfile = "~3.3"
 
 [[bench]]
 name = "rng"
