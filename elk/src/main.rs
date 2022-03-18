@@ -216,19 +216,17 @@ fn output_computation(
     format: &ComputationFormat,
 ) -> anyhow::Result<()> {
     match format {
-        ComputationFormat::Textual => {
-            let result = comp.to_textual();
-            match output {
-                Some(path) => {
-                    write(path, result)?;
-                    Ok(())
-                }
-                None => {
-                    println!("{}", result);
-                    Ok(())
-                }
+        ComputationFormat::Textual => match output {
+            Some(path) => {
+                comp.write_textual(path)?;
+                Ok(())
             }
-        }
+            None => {
+                let result = comp.to_textual();
+                println!("{}", result);
+                Ok(())
+            }
+        },
         ComputationFormat::Msgpack => {
             let result = comp.to_msgpack()?;
             match output {
