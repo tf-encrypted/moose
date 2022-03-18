@@ -1940,15 +1940,14 @@ impl CastOp {
         x: HostTensor<T1>,
     ) -> Result<HostTensor<T2>>
     where
-        T1: num_traits::NumCast + Clone + Debug,
-        T2: num_traits::NumCast + Clone,
+        T1: num_traits::NumCast + Debug + Copy,
+        T2: num_traits::NumCast,
         HostTensor<T2>: KnownType<S>,
     {
         let i = Array::from_vec(
             x.0.iter()
-                .cloned()
                 .map(|v| {
-                    num_traits::cast(v).ok_or_else(|| {
+                    num_traits::cast(*v).ok_or_else(|| {
                         crate::error::Error::KernelError(format!(
                             "Conversion error from tensor {:?} into type {}",
                             x,
