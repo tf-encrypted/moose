@@ -393,7 +393,7 @@ impl SymbolicExecutor {
         }
 
         let state = Arc::try_unwrap(session.state)
-            .map_err(|_| Error::Compilation(format!("could not consume state after lowering")))?
+            .map_err(|_| Error::Compilation("could not consume state after lowering".to_string()))?
             .into_inner();
         let operations = state.ops;
         Ok(Computation { operations })
