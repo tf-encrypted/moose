@@ -22,6 +22,7 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
 use std::io::prelude::*;
+use std::io::BufWriter;
 use std::path::Path;
 
 pub const TAG_BYTES: usize = 128 / 8;
@@ -1806,18 +1807,23 @@ impl NamedComputation {
 
     #[tracing::instrument(skip(self, path))]
     pub fn write_textual<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let mut file = OpenOptions::new()
+        let file = OpenOptions::new()
             .write(true)
             .create_new(true)
             .append(true)
             .open(path)
             .map_err(|e| Error::SerializationError(e.to_string()))?;
 
+        let mut file = BufWriter::new(file);
+
         for op in self.operations.iter() {
             let op_textual = op.to_textual();
             writeln!(file, "{}", op_textual)
                 .map_err(|e| Error::SerializationError(e.to_string()))?;
         }
+
+        file.flush()
+            .map_err(|e| Error::SerializationError(e.to_string()))?;
 
         Ok(())
     }
