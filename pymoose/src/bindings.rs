@@ -144,7 +144,7 @@ impl LocalRuntime {
         compiler_passes: Option<Vec<String>>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let computation = create_computation_graph_from_py_bytes(computation);
-        let computation = compile(&computation, compiler_passes)
+        let computation = compile(computation, compiler_passes)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         self.evaluate_compiled_computation(py, &computation, role_assignments, arguments)
     }
@@ -324,7 +324,7 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> PyResult<MooseComputation> {
         let computation = create_computation_graph_from_py_bytes(computation);
         let computation =
-            compile(&computation, passes).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+            compile(computation, passes).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         Ok(MooseComputation { computation })
     }
 
@@ -361,7 +361,7 @@ mod compatibility_tests {
         let source = std::fs::read_to_string(path)?;
         let computation =
             parallel_parse_computation(&source, crate::bindings::DEFAULT_PARSE_CHUNKS)?;
-        let _ = compile::<Pass>(&computation, None)?;
+        let _ = compile::<Pass>(computation, None)?;
         Ok(())
     }
 

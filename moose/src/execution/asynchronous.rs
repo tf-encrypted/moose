@@ -143,7 +143,7 @@ impl AsyncSession {
 impl AsyncSession {
     fn storage_load(
         &self,
-        op: LoadOp,
+        op: &LoadOp,
         _plc: &HostPlacement,
         operands: Operands<AsyncValue>,
     ) -> Result<AsyncValue> {
@@ -151,6 +151,7 @@ impl AsyncSession {
 
         assert_eq!(operands.len(), 2);
         let sess = self.clone();
+        let type_hint = Some(op.sig.ret());
 
         let (sender, receiver) = new_async_value();
         let task = tokio::spawn(async move {
@@ -170,7 +171,7 @@ impl AsyncSession {
 
             let value: Value = sess
                 .storage
-                .load(&key.0, &sess.session_id, Some(op.sig.ret()), &query.0)
+                .load(&key.0, &sess.session_id, type_hint, &query.0)
                 .await?;
             // TODO: Hmm, placement of a Value does not work like this... But perhaps it should?
             // let value = plc.place(&sess, value);
@@ -418,7 +419,7 @@ impl Session for AsyncSession {
     type Value = AsyncValue;
     fn execute(
         &self,
-        op: Operator,
+        op: &Operator,
         plc: &Placement,
         operands: Operands<Self::Value>,
     ) -> Result<Self::Value> {
@@ -442,7 +443,7 @@ impl Session for AsyncSession {
             }
             // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
             op => {
-                let kernel = DispatchKernel::compile(&op, plc)?;
+                let kernel = DispatchKernel::compile(op, plc)?;
                 kernel(self, operands)
             }
         }
@@ -527,14 +528,13 @@ impl AsyncExecutor {
         let mut outputs: HashMap<String, AsyncReceiver> = HashMap::default();
 
         for op in own_operations {
-            let operator = op.kind.clone();
             let operands = op
                 .inputs
                 .iter()
                 .map(|input_name| env.get(input_name).unwrap().clone())
                 .collect();
             let value = session
-                .execute(operator, &op.placement, operands)
+                .execute(&op.kind, &op.placement, operands)
                 .map_err(|e| {
                     Error::KernelError(format!("AsyncSession failed due to an error: {:?}", e,))
                 })?;

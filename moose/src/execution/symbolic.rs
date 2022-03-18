@@ -158,12 +158,17 @@ impl Default for SymbolicSession {
 
 impl SymbolicSession {
     /// Add operation to the session's underlying computation
-    pub(crate) fn add_operation<'s, O: Into<Operator> + Clone, P: Into<Placement> + Clone>(
+    pub(crate) fn add_operation<'s, O, P, Q>(
         &'s self,
         operator: &O,
         operands: &[&str],
         plc: &P,
-    ) -> SymbolicHandle<P> {
+    ) -> SymbolicHandle<Q>
+    where
+        O: Into<Operator> + Clone,
+        P: Into<Placement> + Clone,
+        P: Into<Q>,
+    {
         let mut state = self.state.write();
         let op_name: String = format!("op_{}", state.ops.len());
         let op = Operation {
@@ -176,7 +181,7 @@ impl SymbolicSession {
 
         SymbolicHandle {
             op: op_name,
-            plc: plc.clone(),
+            plc: plc.clone().into(),
         }
     }
 
@@ -197,7 +202,7 @@ impl Session for SymbolicSession {
     type Value = crate::computation::SymbolicValue;
     fn execute(
         &self,
-        op: Operator,
+        op: &Operator,
         plc: &Placement,
         operands: Operands<Self::Value>,
     ) -> Result<Self::Value> {
@@ -253,7 +258,7 @@ pub(crate) trait SymbolicStrategy {
     fn execute(
         &self,
         sess: &SymbolicSession,
-        op: Operator,
+        op: &Operator,
         plc: &Placement,
         operands: Operands<SymbolicValue>,
     ) -> Result<SymbolicValue>;
@@ -266,90 +271,90 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
     fn execute(
         &self,
         sess: &SymbolicSession,
-        op: Operator,
+        op: &Operator,
         plc: &Placement,
         operands: Operands<SymbolicValue>,
     ) -> Result<SymbolicValue> {
         use Operator::*;
         match op {
-            DeriveSeed(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Constant(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Cast(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Input(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Output(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Load(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Save(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Shape(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Broadcast(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Fill(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            PrfKeyGen(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Decrypt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Xor(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            And(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Or(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            BitExtract(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Sample(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            SampleSeeded(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RingFixedpointArgmax(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RingFixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RingInject(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Share(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Reveal(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            TruncPr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            AddN(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Shl(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Shr(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Msb(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Abs(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Mux(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Maximum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Softmax(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Argmax(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Demirror(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Mirror(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            RepToAdt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Index(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Diag(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            BitDecompose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            BitCompose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            ShlDim(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            AdtToRep(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Sqrt(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Sign(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Pow2(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Exp(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Sigmoid(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Log2(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Log(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Equal(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            EqualZero(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            LessThan(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            GreaterThan(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            FixedpointEncode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            FixedpointDecode(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Identity(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            AtLeast2D(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            IndexAxis(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Slice(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Ones(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            ExpandDims(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Concat(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Reshape(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Squeeze(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Transpose(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Inverse(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Add(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Sub(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Mul(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Div(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Dot(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Mean(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Neg(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Sum(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Send(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
-            Receive(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
+            DeriveSeed(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Constant(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Cast(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Input(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Output(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Load(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Save(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Shape(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Broadcast(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Fill(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            PrfKeyGen(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Decrypt(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Xor(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            And(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Or(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            BitExtract(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Sample(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            SampleSeeded(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            RingFixedpointArgmax(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            RingFixedpointEncode(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            RingFixedpointDecode(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            RingFixedpointMean(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            RingInject(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Share(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Reveal(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            TruncPr(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            AddN(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Shl(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Shr(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Msb(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Abs(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Mux(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Maximum(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Softmax(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Argmax(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Demirror(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Mirror(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            RepToAdt(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Index(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Diag(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            BitDecompose(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            BitCompose(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            ShlDim(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            AdtToRep(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Sqrt(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Sign(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Pow2(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Exp(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Sigmoid(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Log2(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Log(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Equal(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            EqualZero(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            LessThan(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            GreaterThan(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            FixedpointEncode(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            FixedpointDecode(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Identity(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            AtLeast2D(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            IndexAxis(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Slice(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Ones(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            ExpandDims(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Concat(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Reshape(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Squeeze(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Transpose(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Inverse(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Add(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Sub(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Mul(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Div(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Dot(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Mean(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Neg(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Sum(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Send(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Receive(op) => DispatchKernel::compile(op, plc)?(sess, operands),
         }
     }
 }
@@ -361,35 +366,35 @@ pub struct SymbolicExecutor {
 }
 
 impl SymbolicExecutor {
-    pub fn run_computation(
-        &self,
-        computation: &Computation,
-        session: &SymbolicSession,
-    ) -> anyhow::Result<Computation> {
-        let computation = computation.toposort()?;
-        let mut env: HashMap<String, SymbolicValue> =
-            HashMap::with_capacity(computation.operations.len());
+    pub fn run_computation(&self, computation: &Computation) -> anyhow::Result<Computation> {
+        let session = SymbolicSession::default();
 
-        for op in computation.operations.iter() {
-            let operator = op.kind.clone();
-            let operands = op
-                .inputs
-                .iter()
-                .map(|input_name| env.get(input_name).unwrap().clone())
-                .collect();
-            let value = session
-                .execute(operator, &op.placement, operands)
-                .map_err(|e| {
-                    Error::Compilation(format!(
-                        "SymbolicSession failed to lower computation due to an error: {:?}",
-                        e,
-                    ))
-                })?;
-            env.insert(op.name.clone(), value);
+        {
+            let mut env: HashMap<&String, SymbolicValue> =
+                HashMap::with_capacity(computation.operations.len());
+
+            for op in computation.operations.iter() {
+                let operands = op
+                    .inputs
+                    .iter()
+                    .map(|input_name| env.get(input_name).unwrap().clone())
+                    .collect();
+                let result = session
+                    .execute(&op.kind, &op.placement, operands)
+                    .map_err(|e| {
+                        Error::Compilation(format!(
+                            "SymbolicSession failed to lower computation due to an error: {:?}",
+                            e,
+                        ))
+                    })?;
+                env.insert(&op.name, result);
+            }
         }
-        let state = session.state.read();
-        Ok(Computation {
-            operations: state.ops.clone(),
-        })
+
+        let state = Arc::try_unwrap(session.state)
+            .map_err(|_| Error::Compilation("could not consume state after lowering".to_string()))?
+            .into_inner();
+        let operations = state.ops;
+        Ok(Computation { operations })
     }
 }

@@ -68,25 +68,27 @@ pub const DEFAULT_PASSES: [Pass; 5] = [
 ];
 
 #[deprecated]
-pub fn compile_passes<'p, P>(comp: &Computation, passes: &'p [P]) -> anyhow::Result<Computation>
+pub fn compile_passes<'p, P>(
+    mut computation: Computation,
+    passes: &'p [P],
+) -> anyhow::Result<Computation>
 where
     Pass: TryFrom<&'p P, Error = anyhow::Error>,
 {
-    let mut computation = comp.toposort()?;
     let passes = passes
         .iter()
         .map(Pass::try_from)
         .collect::<anyhow::Result<Vec<Pass>>>()?;
 
     for pass in passes {
-        if let Some(new_comp) = do_pass(&pass, &computation)? {
-            computation = new_comp;
+        if let Some(new_computation) = do_pass(&pass, &computation)? {
+            computation = new_computation;
         }
     }
     Ok(computation)
 }
 
-pub fn compile<P>(comp: &Computation, passes: Option<Vec<P>>) -> anyhow::Result<Computation>
+pub fn compile<P>(comp: Computation, passes: Option<Vec<P>>) -> anyhow::Result<Computation>
 where
     for<'p> Pass: TryFrom<&'p P, Error = anyhow::Error>,
 {

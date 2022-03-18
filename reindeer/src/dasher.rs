@@ -86,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .map(|input_name| env.get(input_name).unwrap().clone())
                 .collect();
 
-            let result = session.execute(op.kind.clone(), &op.placement, operands)?;
+            let result = session.execute(&op.kind, &op.placement, operands)?;
 
             if matches!(op.kind, Operator::Output(_)) {
                 // If it is an output, we need to make sure we capture it for returning.
