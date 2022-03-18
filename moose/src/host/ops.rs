@@ -4,6 +4,7 @@ use crate::execution::{RuntimeSession, Session};
 use crate::host::bitarray::BitArrayRepr;
 use crate::prng::AesRng;
 use crate::{Const, Ring, N128, N224, N64};
+use bitvec::prelude::BitVec;
 use ndarray::LinalgScalar;
 use ndarray::Zip;
 #[cfg(feature = "blas")]
@@ -622,7 +623,6 @@ impl ShlDimOp {
         bit_length: usize,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        use bitvec::prelude::BitVec;
         let height = x.0.dim.default_strides()[0];
         let mut data = BitVec::repeat(false, height * amount); // Left portion is zeroes
         let tail = height * (bit_length - amount);
@@ -1971,16 +1971,10 @@ impl CastOp {
         plc: &HostPlacement,
         x: HostTensor<f32>,
     ) -> Result<HostBitTensor> {
-        let x_shape = RawShape(x.0.shape().into());
-        let x_vec: Vec<u8> = x
-            .0
-            // infer boolean vals then cast to u8 for BitArrayRepr
-            // NOTE this could be wasteful, potential for double clone if tensor not in std mem layout
-            .as_standard_layout()
-            .mapv(|x| (x == 0.0) as u8)
-            .into_raw_vec();
+        let x_shape = IxDyn(x.0.shape());
+        let x_raw: BitVec<u8> = x.0.iter().map(|x| (*x == 0.0)).collect();
         Ok(HostBitTensor(
-            BitArrayRepr::from_vec(x_vec, &x_shape),
+            BitArrayRepr::from_raw(x_raw, x_shape),
             plc.clone(),
         ))
     }
@@ -1990,16 +1984,10 @@ impl CastOp {
         plc: &HostPlacement,
         x: HostTensor<f64>,
     ) -> Result<HostBitTensor> {
-        let x_shape = RawShape(x.0.shape().into());
-        let x_vec: Vec<u8> = x
-            .0
-            // infer boolean vals then cast to u8 for BitArrayRepr
-            // NOTE this could be wasteful, potential for double clone if tensor not in std mem layout
-            .as_standard_layout()
-            .mapv(|x| (x == 0.0) as u8)
-            .into_raw_vec();
+        let x_shape = IxDyn(x.0.shape());
+        let x_raw: BitVec<u8> = x.0.iter().map(|x| (*x == 0.0)).collect();
         Ok(HostBitTensor(
-            BitArrayRepr::from_vec(x_vec, &x_shape),
+            BitArrayRepr::from_raw(x_raw, x_shape),
             plc.clone(),
         ))
     }
@@ -2009,16 +1997,10 @@ impl CastOp {
         plc: &HostPlacement,
         x: HostTensor<u64>,
     ) -> Result<HostBitTensor> {
-        let x_shape = RawShape(x.0.shape().into());
-        let x_vec: Vec<u8> = x
-            .0
-            // infer boolean vals then cast to u8 for BitArrayRepr
-            // NOTE this could be wasteful, potential for double clone if tensor not in std mem layout
-            .as_standard_layout()
-            .mapv(|x| (x == 0) as u8)
-            .into_raw_vec();
+        let x_shape = IxDyn(x.0.shape());
+        let x_raw: BitVec<u8> = x.0.iter().map(|x| (*x == 0)).collect();
         Ok(HostBitTensor(
-            BitArrayRepr::from_vec(x_vec, &x_shape),
+            BitArrayRepr::from_raw(x_raw, x_shape),
             plc.clone(),
         ))
     }
