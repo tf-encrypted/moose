@@ -68,7 +68,10 @@ pub const DEFAULT_PASSES: [Pass; 5] = [
 ];
 
 #[deprecated]
-pub fn compile_passes<'p, P>(mut computation: Computation, passes: &'p [P]) -> anyhow::Result<Computation>
+pub fn compile_passes<'p, P>(
+    mut computation: Computation,
+    passes: &'p [P],
+) -> anyhow::Result<Computation>
 where
     Pass: TryFrom<&'p P, Error = anyhow::Error>,
 {
