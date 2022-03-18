@@ -13,7 +13,7 @@ pub(crate) fn update_types_one_hop(comp: &Computation) -> anyhow::Result<Option<
         let inputs = &comp.operations[graph[n].1].inputs;
         let types: HashMap<&String, Ty> = graph
             .neighbors_directed(n, Direction::Incoming)
-            .map(|i| (&graph[i].0, comp.operations[graph[i].1].kind.sig().ret()))
+            .map(|i| (graph[i].0, comp.operations[graph[i].1].kind.sig().ret()))
             .collect();
         let ret = comp.operations[graph[n].1].kind.sig().ret();
 
