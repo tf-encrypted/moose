@@ -2,7 +2,7 @@ use crate::computation::{Computation, Operator};
 use petgraph::visit::{depth_first_search, DfsEvent};
 
 /// Prunes the computation from anything not relevant for the output
-pub fn prune_graph(comp: &Computation) -> anyhow::Result<Computation> {
+pub fn prune_graph(comp: Computation) -> anyhow::Result<Computation> {
     // Need to reverse the graph, because we will be traversing it from the outputs
     let mut graph = comp.as_graph();
     graph.reverse();
@@ -38,7 +38,7 @@ mod tests {
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#;
 
-        let comp = prune_graph(&source.try_into()?)?;
+        let comp = prune_graph(source.try_into()?)?;
         // Pruning should not introduce any changes to such a computation
         assert_eq!(comp.operations.len(), 4);
         let comp = comp.to_textual();
@@ -66,7 +66,7 @@ mod tests {
         dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#;
 
-        let comp = prune_graph(&source.try_into()?)?;
+        let comp = prune_graph(source.try_into()?)?;
         // Pruning should remove `add` and `dot`
         assert_eq!(comp.operations.len(), 4);
         let comp = comp.to_textual();
@@ -97,7 +97,7 @@ mod tests {
         add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_add) @Host(alice)
         z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#;
 
-        let comp = prune_graph(&source.try_into()?)?;
+        let comp = prune_graph(source.try_into()?)?;
 
         assert_eq!(comp.operations.len(), 6);
         let comp = comp.to_textual();
@@ -135,7 +135,7 @@ mod tests {
         z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)
         z2 = Output: (HostFloat32Tensor) -> HostFloat32Tensor (add) @Host(alice)"#;
 
-        let comp = prune_graph(&source.try_into()?)?;
+        let comp = prune_graph(source.try_into()?)?;
         // Pruning should remove only  `dot`
         assert_eq!(comp.operations.len(), 6);
         let comp = comp.to_textual();

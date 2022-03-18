@@ -61,10 +61,10 @@ pub fn get_dot_graph(comp: &Computation) -> String {
 }
 
 /// Prints the computation's graph DOT representation to stdout
-pub fn print_graph(comp: &Computation) -> anyhow::Result<Computation> {
-    let graph = get_dot_graph(comp);
+pub fn print_graph(comp: Computation) -> anyhow::Result<Computation> {
+    let graph = get_dot_graph(&comp);
     println!("{}", graph);
-    Ok(comp.clone()) // TODO
+    Ok(comp)
 }
 
 /// Prints only the bits of the operation that we want visible on the graph's DOT

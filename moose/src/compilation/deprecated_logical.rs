@@ -5,7 +5,7 @@ use crate::logical::TensorDType;
 ///
 /// It is used to process computations deserialized from python-traced-and-compiled computations.
 /// Once we full switch to Rust compiling of python-traced computations, this pass should be deleted.
-pub fn deprecated_logical_lowering(comp: &Computation) -> anyhow::Result<Computation> {
+pub fn deprecated_logical_lowering(comp: Computation) -> anyhow::Result<Computation> {
     let operations = comp.operations.iter().map(lower_op).collect();
     Ok(Computation { operations })
 }
@@ -289,7 +289,7 @@ mod tests {
         save = Save: (HostString, Tensor<Float64>) -> HostUnit (constant_0, mean) @Host(alice)
         "#;
 
-        let comp = deprecated_logical_lowering(&source.try_into()?)?.to_textual();
+        let comp = deprecated_logical_lowering(source.try_into()?)?.to_textual();
         // The computation should now contain the modified type information
         assert!(comp.contains(
             "mul = Mul: (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor (x, y) @Host(alice)"

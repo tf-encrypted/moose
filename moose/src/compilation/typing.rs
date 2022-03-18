@@ -4,7 +4,7 @@ use petgraph::Direction;
 use std::collections::HashMap;
 
 /// Updates the operators such that the type information is inferred by one-hop check, without any recursive graph traversal.
-pub(crate) fn update_types_one_hop(comp: &Computation) -> anyhow::Result<Computation> {
+pub(crate) fn update_types_one_hop(comp: Computation) -> anyhow::Result<Computation> {
     let mut operations = comp.operations.clone();
     let graph = comp.as_graph();
 
@@ -241,7 +241,7 @@ mod tests {
         save = Save: (HostString, Unknown) -> HostUnit (constant_0, mean) @Host(alice)
         "#;
 
-        let comp = update_types_one_hop(&source.try_into()?)?.to_textual();
+        let comp = update_types_one_hop(source.try_into()?)?.to_textual();
         // The computation should now contain the type information
         assert!(comp.contains(
             "save = Save: (HostString, HostFloat32Tensor) -> HostUnit (constant_0, mean) @Host(alice)"

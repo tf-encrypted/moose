@@ -81,7 +81,7 @@ where
         .collect::<anyhow::Result<Vec<Pass>>>()?;
 
     for pass in passes {
-        computation = pass.run(&computation)?;
+        computation = pass.run(computation)?;
     }
     Ok(computation)
 }
@@ -101,9 +101,9 @@ where
 }
 
 impl Pass {
-    fn run(&self, comp: &Computation) -> anyhow::Result<Computation> {
+    fn run(&self, comp: Computation) -> anyhow::Result<Computation> {
         match self {
-            Pass::Networking => networking_pass(comp),
+            Pass::Networking => networking_pass(&comp),
             Pass::Print => print_graph(comp),
             Pass::Prune => prune_graph(comp),
             Pass::Lowering => lowering(comp),
@@ -111,7 +111,7 @@ impl Pass {
             Pass::DeprecatedLogical => deprecated_logical_lowering(comp),
             Pass::Dump => {
                 println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
-                Ok(comp.clone()) // TODO
+                Ok(comp)
             }
             Pass::Toposort => {
                 let comp = comp
