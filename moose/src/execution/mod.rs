@@ -417,7 +417,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let computation =
-                    compile(&computation, Some(vec![Pass::Networking, Pass::Toposort]))?;
+                    compile(computation, Some(vec![Pass::Networking, Pass::Toposort]))?;
                 _run_computation_test(
                     computation,
                     storage_mapping,
@@ -460,7 +460,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let computation =
-                    compile(&computation, Some(vec![Pass::Networking, Pass::Toposort]))?;
+                    compile(computation, Some(vec![Pass::Networking, Pass::Toposort]))?;
                 _run_computation_test(
                     computation,
                     storage_mapping,

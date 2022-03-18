@@ -111,7 +111,7 @@ fn main() -> anyhow::Result<()> {
                     .map(|s| s.to_string())
                     .collect()
             });
-            let comp = compile(&comp, passes)?;
+            let comp = compile(comp, passes)?;
             output_computation(&comp, output, output_format)?;
         }
         Commands::Stats(StatsCommands::OpHist {
