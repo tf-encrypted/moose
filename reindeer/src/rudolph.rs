@@ -4,7 +4,7 @@ use moose_modules::choreography::filesystem::FilesystemChoreography;
 use moose_modules::networking::grpc::GrpcNetworkingManager;
 use std::sync::Arc;
 use structopt::StructOpt;
-use tonic::transport::{ClientTlsConfig, ServerTlsConfig};
+use tonic::transport::{Certificate, ClientTlsConfig, ServerTlsConfig};
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
@@ -46,7 +46,7 @@ fn setup_tls_server(
     my_cert_name: &str,
     certs_dir: &str,
 ) -> Result<ServerTlsConfig, Box<dyn std::error::Error>> {
-    use tonic::transport::{Certificate, Identity};
+    use tonic::transport::Identity;
     let cert_raw = std::fs::read(format!("{}/{}.crt", certs_dir, my_cert_name))?;
     let key_raw = std::fs::read(format!("{}/{}.key", certs_dir, my_cert_name))?;
     let identity = Identity::from_pem(cert_raw, key_raw);
@@ -65,7 +65,7 @@ fn setup_tls_client(
     my_cert_name: &str,
     certs_dir: &str,
 ) -> Result<ClientTlsConfig, Box<dyn std::error::Error>> {
-    use tonic::transport::{Certificate, Identity};
+    use tonic::transport::Identity;
     let server_root_ca_cert =
         Certificate::from_pem(std::fs::read(format!("{}/{}.crt", certs_dir, CA_NAME))?);
 
