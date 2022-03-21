@@ -17,8 +17,7 @@ use moose::networking::AsyncNetworking;
 use moose::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tonic::transport::ServerTlsConfig;
-use tonic::transport::{Channel, Server, Uri};
+use tonic::transport::{Channel, ClientTlsConfig, Server, ServerTlsConfig, Uri};
 
 #[derive(Default, Clone)]
 pub struct GrpcNetworkingManager {
@@ -87,7 +86,6 @@ struct GrpcNetworking {
     channels: Arc<Channels>,
 }
 
-use tonic::transport::ClientTlsConfig;
 impl GrpcNetworking {
     fn channel(&self, receiver: &Identity) -> moose::Result<Channel> {
         tracing::debug!("Identity: {:?}", receiver);
