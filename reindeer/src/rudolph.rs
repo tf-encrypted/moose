@@ -39,12 +39,12 @@ struct Opt {
 
 const CA_NAME: &str = "ca";
 pub fn certificate(endpoint: &str) -> String {
-    endpoint.replace(":", "_")
+    endpoint.replace(':', "_")
 }
 
 fn setup_tls_server(
-    my_cert_name: &String,
-    certs_dir: &String,
+    my_cert_name: &str,
+    certs_dir: &str,
 ) -> Result<ServerTlsConfig, Box<dyn std::error::Error>> {
     use tonic::transport::{Certificate, Identity};
     let cert_raw = std::fs::read(format!("{}/{}.crt", certs_dir, my_cert_name))?;
@@ -62,8 +62,8 @@ fn setup_tls_server(
 }
 
 fn setup_tls_client(
-    my_cert_name: &String,
-    certs_dir: &String,
+    my_cert_name: &str,
+    certs_dir: &str,
 ) -> Result<ClientTlsConfig, Box<dyn std::error::Error>> {
     use tonic::transport::{Certificate, Identity};
     let server_root_ca_cert =
@@ -122,7 +122,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut server = Server::builder();
 
         if let Some(cert_dir) = &opt.certs {
-            let tls_server_config = setup_tls_server(&my_cert_name, &cert_dir)?;
+            let tls_server_config = setup_tls_server(&my_cert_name, cert_dir)?;
             server = server.tls_config(tls_server_config)?;
         }
 
@@ -135,7 +135,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
     };
     let tls_client_config = match &opt.certs {
-        Some(certs_dir) => Some(setup_tls_client(&my_cert_name, &certs_dir)?),
+        Some(certs_dir) => Some(setup_tls_client(&my_cert_name, certs_dir)?),
         None => None,
     };
     let own_identity = Identity::from(opt.identity);
