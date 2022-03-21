@@ -27,7 +27,8 @@ jobs:
 
       - name: Install OpenSSL.
         run: |
-          sudo apt install pkg-config libssl-dev
+          sudo apt install pkg-config
+          sudo apt install libssl-dev
 
       - name: Install build dependencies.
         run: |
