@@ -213,7 +213,7 @@ def fixed(integ, frac):
         if not isinstance(p, int):
             raise TypeError("Fixed-point dtype expects integers for its bounds.")
     return _ConcreteDType(
-        f"fixed{integ}_{frac}",
+        "fixed",
         f"q{integ}.{frac}",
         numpy_dtype=None,
         is_native=False,
