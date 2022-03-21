@@ -1068,7 +1068,15 @@ impl AtLeast2DOp {
 }
 
 impl MeanOp {
-    pub(crate) fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>(
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
         sess: &S,
         plc: &HostPlacement,
         sig: Signature,
@@ -1120,7 +1128,15 @@ impl MeanOp {
         }
     }
 
-    pub(crate) fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>(
+    pub(crate) fn logical_rep_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
         sess: &S,
         plc: &ReplicatedPlacement,
         sig: Signature,

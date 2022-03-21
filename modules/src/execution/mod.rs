@@ -75,7 +75,7 @@ impl ExecutionContext {
                     .map(|input_name| env.get(input_name).unwrap().clone())
                     .collect();
 
-                let result = session.execute(op.kind.clone(), &op.placement, operands)?;
+                let result = session.execute(&op.kind, &op.placement, operands)?;
 
                 if matches!(op.kind, Operator::Output(_)) {
                     // If it is an output, we need to make sure we capture it for returning.
@@ -143,18 +143,13 @@ impl ExecutionContext {
                     .map(|input_index| env.get(*input_index).unwrap().clone().unwrap())
                     .collect();
 
-                let operator =
-                    computation
-                        .operators
-                        .get(op.operator)
-                        .cloned()
-                        .ok_or_else(|| {
-                            moose::Error::MalformedComputation(format!(
-                                "Missing operator for operation '{}'",
-                                op_index
-                            ))
-                        })?;
-                let is_output = matches!(&operator, Operator::Output(_));
+                let operator = computation.operators.get(op.operator).ok_or_else(|| {
+                    moose::Error::MalformedComputation(format!(
+                        "Missing operator for operation '{}'",
+                        op_index
+                    ))
+                })?;
+                let is_output = matches!(operator, Operator::Output(_));
 
                 let result = session.execute(operator, placement, operands)?;
 

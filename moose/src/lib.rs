@@ -34,31 +34,31 @@ macro_rules! m {
 }
 
 macro_rules! derive_runtime_kernel {
-    (nullary, custom |$op:ident| $kf:expr, $self:ident) => {
+    (nullary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedNullaryKernel<_, _, _>> = &|$op| $kf;
             kf($self)
         }
     };
-    (unary, custom |$op:ident| $kf:expr, $self:ident) => {
+    (unary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedUnaryKernel<_, _, _, _>> = &|$op| $kf;
             kf($self)
         }
     };
-    (binary, custom |$op:ident| $kf:expr, $self:ident) => {
+    (binary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedBinaryKernel<_, _, _, _, _>> = &|$op| $kf;
             kf($self)
         }
     };
-    (ternary, custom |$op:ident| $kf:expr, $self:ident) => {
+    (ternary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedTernaryKernel<_, _, _, _, _, _> = &|$op| $kf;
             kf($self)
         }
     };
-    (variadic, custom |$op:ident| $kf:expr, $self:ident) => {
+    (variadic, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedVariadicKernel<_, _, _, _>> = &|$op| $kf;
             kf($self)
@@ -1239,7 +1239,7 @@ macro_rules! kernel {
                     sess: &SymbolicSession,
                     plc: &$plc,
                 | {
-                    let h = sess.add_operation(&op, &[], &plc.clone().into());
+                    let h = sess.add_operation(&op, &[], plc);
                     Ok(Symbolic::Symbolic(h))
                 }))
             }
@@ -1349,7 +1349,7 @@ macro_rules! kernel {
                         }
                         _ => match x0 {
                             Symbolic::Symbolic(h0) => {
-                                let h = sess.add_operation(op, &[&h0.op], &plc.clone().into());
+                                let h = sess.add_operation(op, &[&h0.op], plc);
                                 Ok(Symbolic::Symbolic(h))
                             }
                             x0 => Err(crate::error::Error::Unexpected(Some(format!("Unary hybrid kernel flavor encountered Concrete argument in Symbolic-only case {:?}.", x0))))
@@ -1397,7 +1397,7 @@ macro_rules! kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         Symbolic::Symbolic(h0) => {
-                            let h = sess.add_operation(op, &[&h0.op], &plc.clone().into());
+                            let h = sess.add_operation(op, &[&h0.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                     }
@@ -1456,7 +1456,7 @@ macro_rules! kernel {
                 | {
                     match x0 {
                         Symbolic::Symbolic(h0) => {
-                            let h = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
+                            let h = sess.add_operation(&op, &[&h0.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         x0 => Err(crate::error::Error::Unexpected(Some(format!("Unary runtime kernel encountered Concrete argument: {:?}.", x0))))
@@ -1576,7 +1576,7 @@ macro_rules! kernel {
                         }
                         _ => match (x0, x1) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                                let h = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                                let h = sess.add_operation(op, &[&h0.op, &h1.op], plc);
                                 Ok(Symbolic::Symbolic(h))
                             }
                             _ => {
@@ -1629,7 +1629,7 @@ macro_rules! kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                            let h = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                            let h = sess.add_operation(op, &[&h0.op, &h1.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
@@ -1694,7 +1694,7 @@ macro_rules! kernel {
                 | {
                     match (x0, x1) {
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                            let h = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
+                            let h = sess.add_operation(&op, &[&h0.op, &h1.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         (x0, x1) => Err(crate::error::Error::Unexpected(Some(format!("Binary runtime kernel flavor encountered Concrete arguments: {:?} and {:?}", x0, x1))))
@@ -1844,7 +1844,7 @@ macro_rules! kernel {
                         }
                         _ => match (x0, x1, x2) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                                let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                                let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], plc);
                                 Ok(Symbolic::Symbolic(h))
                             }
                             (x0, x1, x2) => Err(crate::error::Error::Unexpected(Some(format!("Ternary hybrid kernel flavor encountered Concrete arguments in Symbolic-only case: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
@@ -1898,7 +1898,7 @@ macro_rules! kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                            let h = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                            let h = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         (x0, x1, x2) => Err(crate::error::Error::Unexpected(Some(format!("Ternary concrete kernel flavor encountered mixed Symbolic/Concrete arguments during compilation: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
@@ -1942,7 +1942,7 @@ macro_rules! kernel {
                 | {
                     match (x0, x1, x2) {
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                            let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                            let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         (x0, x1, x2) => Err(crate::error::Error::Unexpected(Some(format!("Ternary runtime kernel flavor encountered Concrete arguments during compilation: Arg0: {:?}, Arg1: {:?}, Arg2: {:?}.", x0, x1, x2))))
@@ -2081,7 +2081,7 @@ macro_rules! kernel {
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
                         if handles.len() == xs.len() {
                             // success; we can record in graph
-                            let h = sess.add_operation(op, &handles, &plc.clone().into());
+                            let h = sess.add_operation(op, &handles, plc);
                             Ok(Symbolic::Symbolic(h))
                         } else {
                             Err(crate::error::Error::Unexpected(Some("Variadic hybrid kernel flavor found mixed symbolic and concrete values during compilation.".to_string())))
@@ -2139,7 +2139,7 @@ macro_rules! kernel {
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
                         if handles.len() == xs.len() {
                             // success; we can record in graph
-                            let h = sess.add_operation(op, &handles, &plc.clone().into());
+                            let h = sess.add_operation(op, &handles, plc);
                             Ok(Symbolic::Symbolic(h))
                         } else {
                             Err(crate::error::Error::Unexpected(Some("Variadic concrete flavor found mixed symbolic and concrete value during compilation.".to_string())))
@@ -2187,7 +2187,7 @@ macro_rules! kernel {
                     }).collect();
 
                     if res.len() == xs.len() {
-                        let h = sess.add_operation(&op, &res, &plc.clone().into());
+                        let h = sess.add_operation(&op, &res, plc);
                         return Ok(Symbolic::Symbolic(h));
                     }
 
@@ -2220,7 +2220,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![])
+                sess.execute(&op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2273,7 +2273,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![])
+                sess.execute(&op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2312,7 +2312,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2371,7 +2371,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2403,7 +2403,7 @@ macro_rules! modelled {
                     $($($attr_id),*)?
                 };
                 sess.execute(
-                    op.into(),
+                    &op.into(),
                     &self.into(),
                     operands![x0.clone().into(), x1.clone().into()],
                 )
@@ -2472,7 +2472,7 @@ macro_rules! modelled {
         //         };
         //         let x0 = Symbolic::Concrete(x0.clone()).into();
         //         let x1 = Symbolic::Concrete(x1.clone()).into();
-        //         sess.execute(op.into(), &self.into(), operands![x0, x1])
+        //         sess.execute(&op.into(), &self.into(), operands![x0, x1])
         //             .unwrap()
         //             .try_into()
         //             .unwrap()
@@ -2506,7 +2506,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2539,7 +2539,7 @@ macro_rules! modelled {
                     $($($attr_id),*)?
                 };
                 sess.execute(
-                    op.into(),
+                    &op.into(),
                     &self.into(),
                     operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
                 )
@@ -2613,7 +2613,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2652,7 +2652,7 @@ macro_rules! modelled {
                     $($($attr_id),*)?
                 };
                 let vs: Operands<Value> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(op.into(), &self.into(), vs)
+                sess.execute(&op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2712,7 +2712,7 @@ macro_rules! modelled {
                     $($($attr_id),*)?
                 };
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(op.into(), &self.into(), vs)
+                sess.execute(&op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2769,7 +2769,7 @@ macro_rules! modelled_kernel {
                     };
 
                     let y = sess.execute(
-                        op.into(),
+                        &op.into(),
                         &self.into(),
                         operands![],
                     ).unwrap();
@@ -2878,7 +2878,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![])
+                sess.execute(&op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2943,7 +2943,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let y = sess.execute(op.into(), &self.into(), operands![]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -2975,7 +2975,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let y = sess.execute(op.into(), &self.into(), operands![]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -3021,7 +3021,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![])
+                sess.execute(&op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3051,7 +3051,7 @@ macro_rules! modelled_kernel {
                     sess: &SymbolicSession,
                     plc: &$plc
                 | {
-                    let h = sess.add_operation(&op, &[], &plc.clone().into());
+                    let h = sess.add_operation(&op, &[], plc);
                     Ok(Symbolic::Symbolic(h))
                 }))
             }
@@ -3078,7 +3078,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![])
+                sess.execute(&op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3136,7 +3136,7 @@ macro_rules! modelled_kernel {
 
                     let x0 = x0.clone().into();
                     let y = sess.execute(
-                        op.into(),
+                        &op.into(),
                         &self.into(),
                         operands![x0],
                     ).unwrap();
@@ -3234,7 +3234,7 @@ macro_rules! modelled_kernel {
                         }
                         _ => match x0 {
                             Symbolic::Symbolic(h0) => {
-                                let h = sess.add_operation(op, &[&h0.op], &plc.clone().into());
+                                let h = sess.add_operation(op, &[&h0.op], plc);
                                 Ok(Symbolic::Symbolic(h))
                             }
                             _ => {
@@ -3270,7 +3270,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3315,7 +3315,7 @@ macro_rules! modelled_kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         Symbolic::Symbolic(h0) => {
-                            let h = sess.add_operation(op, &[&h0.op], &plc.clone().into());
+                            let h = sess.add_operation(op, &[&h0.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                     }
@@ -3350,7 +3350,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
-                let y = sess.execute(op.into(), &self.into(), operands![x0]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![x0]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -3386,7 +3386,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let x0 = SymbolicValue::from(x0.clone());
-                let y = sess.execute(op.into(), &self.into(), operands![x0]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![x0]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -3437,7 +3437,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3473,7 +3473,7 @@ macro_rules! modelled_kernel {
                 | {
                     match x0 {
                         Symbolic::Symbolic(h0) => {
-                            let h = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
+                            let h = sess.add_operation(&op, &[&h0.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Expected symbolic value during compilation".to_string())))
@@ -3506,7 +3506,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3565,7 +3565,7 @@ macro_rules! modelled_kernel {
                         $($($attr_id),*)?
                     };
                     sess.execute(
-                        op.into(),
+                        &op.into(),
                         &self.into(),
                         operands![x0.clone().into(), x1.clone().into()],
                     )
@@ -3675,7 +3675,7 @@ macro_rules! modelled_kernel {
                         }
                         _ => match (x0, x1) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                                let h = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                                let h = sess.add_operation(op, &[&h0.op, &h1.op], plc);
                                 Ok(Symbolic::Symbolic(h))
                             }
                             _ => {
@@ -3714,7 +3714,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3762,7 +3762,7 @@ macro_rules! modelled_kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                            let h = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                            let h = sess.add_operation(op, &[&h0.op, &h1.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
@@ -3802,7 +3802,7 @@ macro_rules! modelled_kernel {
 
                 let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
                 let x1 = SymbolicValue::from(Symbolic::Concrete(x1.clone()));
-                let y = sess.execute(op.into(), &self.into(), operands![x0, x1]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -3842,7 +3842,7 @@ macro_rules! modelled_kernel {
 
                 let x0 = SymbolicValue::from(x0.clone());
                 let x1 = SymbolicValue::from(x1.clone());
-                let y = sess.execute(op.into(), &self.into(), operands![x0, x1]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -3898,7 +3898,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3937,7 +3937,7 @@ macro_rules! modelled_kernel {
                 | {
                     match (x0, x1) {
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                            let h = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
+                            let h = sess.add_operation(&op, &[&h0.op, &h1.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
@@ -3973,7 +3973,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4035,7 +4035,7 @@ macro_rules! modelled_kernel {
                         $($($attr_id),*)?
                     };
                     sess.execute(
-                        op.into(),
+                        &op.into(),
                         &self.into(),
                         operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
                     )
@@ -4153,7 +4153,7 @@ macro_rules! modelled_kernel {
                         }
                         _ => match (x0, x1, x2) {
                             (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                                let h = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                                let h = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], plc);
                                 Ok(Symbolic::Symbolic(h))
                             }
                             _ => {
@@ -4195,7 +4195,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4246,7 +4246,7 @@ macro_rules! modelled_kernel {
                             Ok(Symbolic::Concrete(y))
                         }
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                            let h = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                            let h = sess.add_operation(op, &[&h0.op, &h1.op, &h2.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
@@ -4290,7 +4290,7 @@ macro_rules! modelled_kernel {
                 let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
                 let x1 = SymbolicValue::from(Symbolic::Concrete(x1.clone()));
                 let x2 = SymbolicValue::from(Symbolic::Concrete(x2.clone()));
-                let y = sess.execute(op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -4334,7 +4334,7 @@ macro_rules! modelled_kernel {
                 let x0 = SymbolicValue::from(x0.clone());
                 let x1 = SymbolicValue::from(x1.clone());
                 let x2 = SymbolicValue::from(x2.clone());
-                let y = sess.execute(op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -4395,7 +4395,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4437,7 +4437,7 @@ macro_rules! modelled_kernel {
                 | {
                     match (x0, x1, x2) {
                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                            let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                            let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
                         _ => Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
@@ -4476,7 +4476,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4539,7 +4539,7 @@ macro_rules! modelled_kernel {
                         $($($attr_id),*)?
                     };
                     let vs: Operands<Value> = xs.iter().map(|x| x.clone().into()).collect();
-                    sess.execute(op.into(), &self.into(), vs)
+                    sess.execute(&op.into(), &self.into(), vs)
                         .unwrap()
                         .try_into()
                         .unwrap()
@@ -4640,7 +4640,7 @@ macro_rules! modelled_kernel {
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
                         if handles.len() == xs.len() {
                             // success; we can record in graph
-                            let h = sess.add_operation(op, &handles, &plc.clone().into());
+                            let h = sess.add_operation(op, &handles, plc);
                             Ok(Symbolic::Symbolic(h))
                         } else {
                             Err(crate::error::Error::Unexpected(Some("Variadic hybrid kernel flavor found mixed symbolic and concrete values during compilation.".to_string())))
@@ -4675,7 +4675,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(op.into(), &self.into(), vs)
+                sess.execute(&op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4730,7 +4730,7 @@ macro_rules! modelled_kernel {
                         let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
                         if handles.len() == xs.len() {
                             // success; we can record in graph
-                            let h = sess.add_operation(op, &handles, &plc.clone().into());
+                            let h = sess.add_operation(op, &handles, plc);
                             Ok(Symbolic::Symbolic(h))
                         } else {
                             Err(crate::error::Error::Unexpected(Some("Variadic concrete flavor found mixed symbolic and concrete value during compilation.".to_string())))
@@ -4767,7 +4767,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| Symbolic::Concrete(x.clone()).into()).collect();
-                let y = sess.execute(op.into(), &self.into(), vs).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), vs).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -4803,7 +4803,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                let y = sess.execute(op.into(), &self.into(), vs).unwrap();
+                let y = sess.execute(&op.into(), &self.into(), vs).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -4855,7 +4855,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(op.into(), &self.into(), vs)
+                sess.execute(&op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4900,7 +4900,7 @@ macro_rules! modelled_kernel {
                     }).collect();
 
                     if res.len() == xs.len() {
-                        let h = sess.add_operation(&op, &res, &plc.clone().into());
+                        let h = sess.add_operation(&op, &res, plc);
                         return Ok(Symbolic::Symbolic(h));
                     }
 
@@ -4935,7 +4935,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(op.into(), &self.into(), vs)
+                sess.execute(&op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()

@@ -13,14 +13,16 @@ use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
 use macros::{FromTextual, ShortName, ToTextual};
 use paste::paste;
-use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fs::File;
+use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
+use std::io::prelude::*;
+use std::io::BufWriter;
 use std::path::Path;
 
 pub const TAG_BYTES: usize = 128 / 8;
@@ -827,6 +829,10 @@ macro_rules! operators {
                     // The names below are deprecated aliases, maintained for a long period of time for compatibility
                     "PrimDeriveSeed" => DeriveSeedOp::from_textual, // pre v0.1.5
                     "PrimPrfKeyGen" => PrfKeyGenOp::from_textual, // pre v0.1.5
+                    "HostMean" => MeanOp::from_textual, // pre v0.1.5
+                    "FixedpointMeanOp" => MeanOp::from_textual, // pre v0.1.5
+                    "FloatingpointMeanOp" => MeanOp::from_textual, // pre v0.1.5
+                    "RepFixedpointMean" => MeanOp::from_textual, // pre v0.1.5
                     _ => parse_operator_error,
                 }
             }
@@ -870,7 +876,6 @@ operators![
     Shl,
     Shr,
     Abs,
-    HostMean,
     Diag,
     Sign,
     RingFixedpointMean,
@@ -887,7 +892,6 @@ operators![
     // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
-    FixedpointMean,
     Pow2,
     Exp,
     Sigmoid,
@@ -896,8 +900,6 @@ operators![
     EqualZero,
     LessThan,
     GreaterThan,
-    // Floating-point operators
-    FloatingpointMean,
     // Additive operators
     AdtToRep,
     // Replicated operators
@@ -905,7 +907,6 @@ operators![
     Reveal,
     Fill,
     Msb,
-    RepFixedpointMean,
     AddN,
     TruncPr,
     RepToAdt,
@@ -1141,12 +1142,6 @@ pub struct SignOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
-pub struct HostMeanOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
-}
-
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
@@ -1326,23 +1321,11 @@ pub struct FixedpointDecodeOp {
     pub fractional_precision: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
-pub struct FixedpointMeanOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
-}
-
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct NegOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
-pub struct FloatingpointMeanOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
 }
 
 #[derive(
@@ -1408,14 +1391,6 @@ pub struct ShareOp {
 )]
 pub struct RevealOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
-pub struct RepFixedpointMeanOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
-    pub scaling_base: u64,
-    pub scaling_exp: u32,
 }
 
 #[derive(
@@ -1807,6 +1782,12 @@ impl TryFrom<&IndexedComputation> for Computation {
     }
 }
 
+#[derive(Debug)]
+pub struct GraphOperationRef<'c> {
+    pub op_name: &'c String,
+    pub index: usize,
+}
+
 impl NamedComputation {
     #[tracing::instrument(skip(bytes))]
     pub fn from_msgpack<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
@@ -1822,6 +1803,29 @@ impl NamedComputation {
     pub fn from_textual(comp: &str) -> Result<Self> {
         crate::textual::parallel_parse_computation(comp, 12)
             .map_err(|e| Error::SerializationError(e.to_string()))
+    }
+
+    #[tracing::instrument(skip(self, path))]
+    pub fn write_textual<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .append(true)
+            .open(path)
+            .map_err(|e| Error::SerializationError(e.to_string()))?;
+
+        let mut file = BufWriter::new(file);
+
+        for op in self.operations.iter() {
+            let op_textual = op.to_textual();
+            writeln!(file, "{}", op_textual)
+                .map_err(|e| Error::SerializationError(e.to_string()))?;
+        }
+
+        file.flush()
+            .map_err(|e| Error::SerializationError(e.to_string()))?;
+
+        Ok(())
     }
 
     #[tracing::instrument(skip(bytes))]
@@ -1864,7 +1868,7 @@ impl NamedComputation {
         Ok(())
     }
 
-    pub fn as_graph(&self) -> Graph<(String, usize), ()> {
+    pub fn as_graph(&self) -> Graph<GraphOperationRef, ()> {
         let mut graph = Graph::new();
 
         let mut vertex_map: HashMap<&str, NodeIndex> = HashMap::new();
@@ -1874,8 +1878,11 @@ impl NamedComputation {
 
         let mut rdv_keys: HashSet<&RendezvousKey> = HashSet::new();
 
-        for (i, op) in self.operations.iter().enumerate() {
-            let vertex = graph.add_node((op.name.clone(), i));
+        for (index, op) in self.operations.iter().enumerate() {
+            let vertex = graph.add_node(GraphOperationRef {
+                op_name: &op.name,
+                index,
+            });
             match op.kind {
                 Operator::Send(ref op) => {
                     let key = &op.rendezvous_key;
@@ -1930,13 +1937,13 @@ impl NamedComputation {
 
     pub fn toposort(&self) -> Result<NamedComputation> {
         let graph = self.as_graph();
-        let toposort = toposort(&graph, None).map_err(|_| {
-            Error::MalformedComputation("There is a cycle detected in the runtime graph".into())
+        let toposort = petgraph::algo::toposort(&graph, None).map_err(|_| {
+            Error::MalformedComputation("cycle detected in the computation graph".into())
         })?;
 
         let operations = toposort
             .iter()
-            .map(|node| self.operations[graph[*node].1].clone())
+            .map(|node| self.operations[graph[*node].index].clone())
             .collect();
 
         Ok(NamedComputation { operations })
@@ -1985,6 +1992,27 @@ mod tests {
         output_0 = Output: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
         let bytes = original.to_msgpack().unwrap();
         let read_back = Computation::from_msgpack(bytes).unwrap();
+        assert_eq!(original.operations, read_back.operations);
+    }
+
+    #[test]
+    fn test_write_textual() {
+        use std::convert::TryInto;
+        use std::fs::read_to_string;
+        use tempfile::tempdir;
+        let original: Computation = r#"constant_0 = Constant{value = HostFloat64Tensor([[0.12131529]])}: () -> Tensor<Float64> () @Host(player2)
+        cast_0 = Cast: (Tensor<Float64>) -> Tensor<Fixed128(24, 40)> (constant_0) @Host(player2)
+        x = Input{arg_name = "x"}: () -> AesTensor () @Host(player0)
+        key = Input{arg_name = "key"}: () -> AesKey () @Replicated(player0, player1, player2)
+        decrypt_0 = Decrypt: (AesKey, AesTensor) -> Tensor<Fixed128(24, 40)> (key, x) @Replicated(player0, player1, player2)
+        dot_0 = Dot: (Tensor<Fixed128(24, 40)>, Tensor<Fixed128(24, 40)>) -> Tensor<Fixed128(24, 40)> (decrypt_0, cast_0) @Replicated(player0, player1, player2)
+        cast_1 = Cast: (Tensor<Fixed128(24, 40)>) -> Tensor<Float64> (dot_0) @Host(player1)
+        output_0 = Output: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("temp_comp.moose");
+        original.write_textual(file_path.clone()).unwrap();
+        let source = read_to_string(file_path).unwrap();
+        let read_back = Computation::from_textual(&source).unwrap();
         assert_eq!(original.operations, read_back.operations);
     }
 }

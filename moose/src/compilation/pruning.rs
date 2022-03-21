@@ -11,12 +11,12 @@ pub fn prune_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
     // Identify all the output nodes
     let outputs = graph
         .node_indices()
-        .filter(|i| matches!(comp.operations[graph[*i].1].kind, Operator::Output(_)));
+        .filter(|i| matches!(comp.operations[graph[*i].index].kind, Operator::Output(_)));
 
     // Perform a DFS
     depth_first_search(&graph, outputs, |event| {
         if let DfsEvent::Discover(visited, _) = event {
-            keep.push(comp.operations[graph[visited].1].clone());
+            keep.push(comp.operations[graph[visited].index].clone());
         };
     });
 

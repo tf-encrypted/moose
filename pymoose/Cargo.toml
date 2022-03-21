@@ -1,6 +1,6 @@
 [package]
 name = "pymoose"
-version = "0.1.5-beta.1"
+version = "0.1.6-beta.1"
 license = "MIT/Apache-2.0"
 authors = [""]
 description = ""
@@ -17,10 +17,10 @@ crate-type = ["cdylib"]
 [dependencies]
 anyhow = "~1.0"
 approx = "~0.5"
-numpy = "~0.14"
+numpy = "~0.16"
 ndarray = "~0.15"
 moose = { path = "../moose" }
-pyo3 = "~0.14"
+pyo3 = "~0.16"
 rmp-serde = "~1.0"
 serde = { version = "~1.0", features = ["derive"] }
 

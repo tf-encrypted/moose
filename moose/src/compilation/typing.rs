@@ -10,12 +10,17 @@ pub(crate) fn update_types_one_hop(comp: &Computation) -> anyhow::Result<Option<
 
     for n in graph.node_indices() {
         // Prepare the raw data for the signature computation
-        let inputs = &comp.operations[graph[n].1].inputs;
+        let inputs = &comp.operations[graph[n].index].inputs;
         let types: HashMap<&String, Ty> = graph
             .neighbors_directed(n, Direction::Incoming)
-            .map(|i| (&graph[i].0, comp.operations[graph[i].1].kind.sig().ret()))
+            .map(|i| {
+                (
+                    graph[i].op_name,
+                    comp.operations[graph[i].index].kind.sig().ret(),
+                )
+            })
             .collect();
-        let ret = comp.operations[graph[n].1].kind.sig().ret();
+        let ret = comp.operations[graph[n].index].kind.sig().ret();
 
         let find_type = |i: usize| -> anyhow::Result<Ty> {
             match types.get(&inputs[i]) {
@@ -40,7 +45,7 @@ pub(crate) fn update_types_one_hop(comp: &Computation) -> anyhow::Result<Option<
         };
 
         // Update the existing signature with it.
-        operations[graph[n].1].kind.sig_mut().merge(new_sig)?;
+        operations[graph[n].index].kind.sig_mut().merge(new_sig)?;
     }
     Ok(Some(Computation { operations }))
 }
@@ -231,7 +236,7 @@ mod tests {
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
-        mean = HostMean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)
+        mean = Mean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)
         constant_0 = Constant{value = HostString("regression_weights")}: () -> HostString () @Host(alice)
         save = Save: (HostString, Unknown) -> HostUnit (constant_0, mean) @Host(alice)
         "#;

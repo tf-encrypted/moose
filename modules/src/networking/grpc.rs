@@ -12,16 +12,20 @@ use async_trait::async_trait;
 use backoff::future::retry;
 use backoff::ExponentialBackoff;
 use dashmap::DashMap;
+use moose::error::Error;
 use moose::networking::AsyncNetworking;
 use moose::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tonic::transport::{Channel, Uri};
+use tonic::transport::ServerTlsConfig;
+use tonic::transport::{Channel, Server, Uri};
 
 #[derive(Default, Clone)]
 pub struct GrpcNetworkingManager {
     stores: Arc<SessionStores>,
     channels: Arc<Channels>,
+    tls_client_config: Option<ClientTlsConfig>,
+    tls_server_config: Option<ServerTlsConfig>,
 }
 
 impl GrpcNetworkingManager {
@@ -31,17 +35,48 @@ impl GrpcNetworkingManager {
         })
     }
 
-    pub fn new_session(
-        &self,
-        session_id: SessionId,
-        tls_config: Option<ClientTlsConfig>,
-    ) -> Arc<impl AsyncNetworking> {
+    pub fn from_tls_config(
+        client: Option<ClientTlsConfig>,
+        server: Option<ServerTlsConfig>,
+    ) -> Self {
+        GrpcNetworkingManager {
+            stores: Default::default(),
+            channels: Default::default(),
+            tls_client_config: client,
+            tls_server_config: server,
+        }
+    }
+
+    pub fn new_session(&self, session_id: SessionId) -> Arc<impl AsyncNetworking> {
         Arc::new(GrpcNetworking {
             session_id,
             stores: Arc::clone(&self.stores),
             channels: Arc::clone(&self.channels),
-            tls_config,
+            tls_config: self.tls_client_config.clone(),
         })
+    }
+
+    pub fn start_server(&self, port: u16) -> moose::Result<tokio::task::JoinHandle<()>> {
+        let addr = format!("0.0.0.0:{}", port)
+            .parse()
+            .map_err(|e| Error::Networking(format!("failed to parse port and address: {}", e)))?;
+        let manager = self.clone();
+
+        let builder = Server::builder();
+        let mut server = match self.tls_server_config.clone() {
+            Some(tls_config) => builder.tls_config(tls_config).map_err(|e| {
+                moose::Error::Networking(format!("failed to TLS config {:?}", e.to_string()))
+            })?,
+            None => builder,
+        };
+
+        let handle = tokio::spawn(async move {
+            let res = server.add_service(manager.new_server()).serve(addr).await;
+            if let Err(e) = res {
+                tracing::error!("gRPC error: {}", e);
+            }
+        });
+        Ok(handle)
     }
 }
 

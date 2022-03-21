@@ -29,8 +29,8 @@ impl NetworkingPass {
 
         let mut created_cache = HashMap::new();
         for er in graph.edge_references() {
-            let src_op = &comp.operations[graph[er.source()].1];
-            let dst_op = &comp.operations[graph[er.target()].1];
+            let src_op = &comp.operations[graph[er.source()].index];
+            let dst_op = &comp.operations[graph[er.target()].index];
             match placement_discrimnator(src_op, dst_op) {
                 // We only operate on edges that jump from a host to a different host
                 (Some(src), Some(dst)) if src != dst => {
@@ -40,7 +40,7 @@ impl NetworkingPass {
                         .or_insert_with(|| pass.create_networking_jump(src_op, dst_op, src, dst));
 
                     // Update target operation's input to the receive operation's name
-                    if let Some(input) = pass.operations[graph[er.target()].1]
+                    if let Some(input) = pass.operations[graph[er.target()].index]
                         .inputs
                         .iter_mut()
                         .find(|r| *r == &src_op.name)
@@ -129,7 +129,7 @@ mod tests {
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
-        mean = HostMean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"#;
+        mean = Mean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"#;
 
         let comp = NetworkingPass::pass(&source.try_into()?)?
             .unwrap()
@@ -141,9 +141,8 @@ mod tests {
         assert!(comp.contains(
             "dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
-        assert!(comp.contains(
-            "mean = HostMean: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"
-        ));
+        assert!(comp
+            .contains("mean = Mean: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"));
         Ok(())
     }
 
@@ -154,7 +153,7 @@ mod tests {
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
-        mean = HostMean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"#;
+        mean = Mean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"#;
         let comp = NetworkingPass::pass(&source.try_into()?)?
             .unwrap()
             .to_textual();
@@ -166,9 +165,8 @@ mod tests {
         assert!(comp.contains(r#"receive_0 = Receive{rendezvous_key = 00000000000000000000000000000000, sender = "bob"}: () -> HostFloat32Tensor () @Host(alice)"#));
         assert!(comp.contains("mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, receive_0) @Host(alice)"));
         assert!(comp.contains("dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, receive_0) @Host(alice)"));
-        assert!(comp.contains(
-            "mean = HostMean: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"
-        ));
+        assert!(comp
+            .contains("mean = Mean: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"));
         Ok(())
     }
 

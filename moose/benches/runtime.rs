@@ -44,7 +44,7 @@ fn runtime_two_hosts(c: &mut Criterion) {
     output = Output: (Float32Tensor) -> Float32Tensor (res) @Host(alice)
     "#;
     let computation: Computation = source.try_into().unwrap();
-    let computation = compile(&computation, Some(vec![Pass::Networking, Pass::Toposort])).unwrap();
+    let computation = compile(computation, Some(vec![Pass::Networking, Pass::Toposort])).unwrap();
 
     let arguments: HashMap<String, Value> = hashmap!();
     let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -69,7 +69,7 @@ fn runtime_two_hosts(c: &mut Criterion) {
 fn runtime_rep_computation(c: &mut Criterion) {
     let source = include_str!("./rep_computation.moose");
     let computation: Computation = source.try_into().unwrap();
-    let computation = compile(&computation, Some(vec![Pass::Networking, Pass::Toposort])).unwrap();
+    let computation = compile(computation, Some(vec![Pass::Networking, Pass::Toposort])).unwrap();
 
     let arguments: HashMap<String, Value> = hashmap!();
     let storage_mapping: HashMap<String, HashMap<String, Value>> = hashmap!(

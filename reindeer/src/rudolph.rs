@@ -110,34 +110,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root_span = tracing::span!(tracing::Level::INFO, "app_start");
     let _enter = root_span.enter();
 
-    let manager = GrpcNetworkingManager::default();
     let my_cert_name = certificate(&opt.identity);
 
-    let _server_task = {
-        use tonic::transport::Server;
-        // TODO(Morten) construct `addr` in a nicer way
-        let addr = format!("0.0.0.0:{}", opt.port).parse()?;
-        let manager = manager.clone();
-
-        let mut server = Server::builder();
-
-        if let Some(cert_dir) = &opt.certs {
-            let tls_server_config = setup_tls_server(&my_cert_name, cert_dir)?;
-            server = server.tls_config(tls_server_config)?;
+    let manager = match opt.certs {
+        Some(certs_dir) => {
+            let client = setup_tls_client(&my_cert_name, &certs_dir)?;
+            let server = setup_tls_server(&my_cert_name, &certs_dir)?;
+            GrpcNetworkingManager::from_tls_config(Some(client), Some(server))
         }
-
-        let router = server.add_service(manager.new_server());
-
-        tokio::spawn(async move {
-            if let Err(e) = router.serve(addr).await {
-                tracing::error!("gRPC error: {}", e);
-            }
-        })
+        None => GrpcNetworkingManager::from_tls_config(None, None),
     };
-    let tls_client_config = match &opt.certs {
-        Some(certs_dir) => Some(setup_tls_client(&my_cert_name, certs_dir)?),
-        None => None,
-    };
+    let _server_task = manager.start_server(opt.port)?;
     let own_identity = Identity::from(opt.identity);
 
     // NOTE(Morten) if we want to move this into separate task then we need
@@ -146,7 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     FilesystemChoreography::new(
         own_identity,
         opt.sessions,
-        Box::new(move |session_id| manager.new_session(session_id, tls_client_config.clone())),
+        Box::new(move |session_id| manager.new_session(session_id)),
         Box::new(|| Arc::new(LocalAsyncStorage::default())),
     )
     .process(opt.ignore_existing, opt.no_listen)

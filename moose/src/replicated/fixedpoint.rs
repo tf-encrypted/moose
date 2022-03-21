@@ -46,8 +46,8 @@ where
     }
 }
 
-impl RepFixedpointMeanOp {
-    pub(crate) fn kernel<S: Session, HostRingT>(
+impl RingFixedpointMeanOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         axis: Option<u32>,
