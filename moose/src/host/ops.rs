@@ -4,6 +4,7 @@ use crate::execution::{RuntimeSession, Session};
 use crate::host::bitarray::BitArrayRepr;
 use crate::prng::AesRng;
 use crate::{Const, Ring, N128, N224, N64};
+use bitvec::prelude::BitVec;
 use ndarray::LinalgScalar;
 use ndarray::Zip;
 #[cfg(feature = "blas")]
@@ -622,7 +623,6 @@ impl ShlDimOp {
         bit_length: usize,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        use bitvec::prelude::BitVec;
         let height = x.0.dim.default_strides()[0];
         let mut data = BitVec::repeat(false, height * amount); // Left portion is zeroes
         let tail = height * (bit_length - amount);
@@ -1934,6 +1934,91 @@ impl CastOp {
         });
 
         Ok(HostRingTensor(x_downshifted.into_shared(), plc.clone()))
+    }
+
+    // standard casts
+    pub(crate) fn standard_host_kernel<S: RuntimeSession, T1, T2>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T1>,
+    ) -> Result<HostTensor<T2>>
+    where
+        T1: num_traits::NumCast + Debug + Copy,
+        T2: num_traits::NumCast,
+        HostTensor<T2>: KnownType<S>,
+    {
+        let i = Array::from_vec(
+            x.0.iter()
+                .map(|v| {
+                    num_traits::cast(*v).ok_or_else(|| {
+                        crate::error::Error::KernelError(format!(
+                            "Conversion error from tensor {:?} into type {}",
+                            x,
+                            <HostTensor::<T2> as KnownType<S>>::TY
+                        ))
+                    })
+                })
+                .collect::<Result<Vec<T2>>>()?,
+        )
+        .into_shape(x.0.dim())
+        .unwrap(); // the error case is impossible
+        Ok(HostTensor::<T2>(i.into(), plc.clone()))
+    }
+
+    pub(crate) fn from_bool_host_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostBitTensor,
+    ) -> Result<HostTensor<T>>
+    where
+        T: From<u8>,
+    {
+        let std_ndarray: ArrayD<T> = x.0.into_array().map_err(|e| {
+            Error::KernelError(format!(
+                "Could not convert BitArrayRepr into ndarray: {:?}",
+                e
+            ))
+        })?;
+        Ok(HostTensor::<T>(std_ndarray.into(), plc.clone()))
+    }
+
+    pub(crate) fn f32_bool_host_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<f32>,
+    ) -> Result<HostBitTensor> {
+        let x_shape = IxDyn(x.0.shape());
+        let x_raw: BitVec<u8> = x.0.iter().map(|x| (*x != 0.0)).collect();
+        Ok(HostBitTensor(
+            BitArrayRepr::from_raw(x_raw, x_shape),
+            plc.clone(),
+        ))
+    }
+
+    pub(crate) fn f64_bool_host_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<f64>,
+    ) -> Result<HostBitTensor> {
+        let x_shape = IxDyn(x.0.shape());
+        let x_raw: BitVec<u8> = x.0.iter().map(|x| (*x != 0.0)).collect();
+        Ok(HostBitTensor(
+            BitArrayRepr::from_raw(x_raw, x_shape),
+            plc.clone(),
+        ))
+    }
+
+    pub(crate) fn u64_bool_host_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<u64>,
+    ) -> Result<HostBitTensor> {
+        let x_shape = IxDyn(x.0.shape());
+        let x_raw: BitVec<u8> = x.0.iter().map(|x| (*x != 0)).collect();
+        Ok(HostBitTensor(
+            BitArrayRepr::from_raw(x_raw, x_shape),
+            plc.clone(),
+        ))
     }
 }
 

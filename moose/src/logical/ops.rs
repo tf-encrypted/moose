@@ -893,6 +893,18 @@ impl CastOp {
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
     where
+        HostPlacement: PlacementCast<S, BoolT, Float32T>,
+        HostPlacement: PlacementCast<S, BoolT, Float64T>,
+        HostPlacement: PlacementCast<S, BoolT, Uint64T>,
+        HostPlacement: PlacementCast<S, Float32T, BoolT>,
+        HostPlacement: PlacementCast<S, Float32T, Float64T>,
+        HostPlacement: PlacementCast<S, Float32T, Uint64T>,
+        HostPlacement: PlacementCast<S, Float64T, BoolT>,
+        HostPlacement: PlacementCast<S, Float64T, Float32T>,
+        HostPlacement: PlacementCast<S, Float64T, Uint64T>,
+        HostPlacement: PlacementCast<S, Uint64T, BoolT>,
+        HostPlacement: PlacementCast<S, Uint64T, Float32T>,
+        HostPlacement: PlacementCast<S, Uint64T, Float64T>,
         HostPlacement: PlacementFixedpointDecode<S, Fixed64T, Float32T>,
         HostPlacement: PlacementFixedpointDecode<S, Fixed128T, Float64T>,
         HostPlacement: PlacementFixedpointEncode<S, Float32T, Fixed64T>,
@@ -911,6 +923,60 @@ impl CastOp {
         };
 
         match (x, sig.ret()) {
+            // standard casts
+            // from bool
+            (AbstractTensor::Bool(x), Ty::Tensor(TensorDType::Float32)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Float32(res))
+            }
+            (AbstractTensor::Bool(x), Ty::Tensor(TensorDType::Float64)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Float64(res))
+            }
+            (AbstractTensor::Bool(x), Ty::Tensor(TensorDType::Uint64)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Uint64(res))
+            }
+            // from float
+            (AbstractTensor::Float32(x), Ty::Tensor(TensorDType::Bool)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Bool(res))
+            }
+            (AbstractTensor::Float32(x), Ty::Tensor(TensorDType::Float64)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Float64(res))
+            }
+            (AbstractTensor::Float32(x), Ty::Tensor(TensorDType::Uint64)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Uint64(res))
+            }
+            (AbstractTensor::Float64(x), Ty::Tensor(TensorDType::Bool)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Bool(res))
+            }
+            (AbstractTensor::Float64(x), Ty::Tensor(TensorDType::Float32)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Float32(res))
+            }
+            (AbstractTensor::Float64(x), Ty::Tensor(TensorDType::Uint64)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Uint64(res))
+            }
+            // from int
+            (AbstractTensor::Uint64(x), Ty::Tensor(TensorDType::Float32)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Float32(res))
+            }
+            (AbstractTensor::Uint64(x), Ty::Tensor(TensorDType::Float64)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Float64(res))
+            }
+            (AbstractTensor::Uint64(x), Ty::Tensor(TensorDType::Bool)) => {
+                let res = plc.cast(sess, &x);
+                Ok(AbstractTensor::Bool(res))
+            }
+            // fixedpoint casts
+            // fixedpoint decoding
             (AbstractTensor::Fixed64(x), Ty::Tensor(TensorDType::Float32)) => {
                 let (_, fractional_precision) = arg0_precision.unwrap();
                 let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
@@ -921,6 +987,7 @@ impl CastOp {
                 let inner = plc.fixedpoint_decode(sess, fractional_precision, &x);
                 Ok(AbstractTensor::Float64(inner))
             }
+            // fixedpoint encoding
             (
                 AbstractTensor::Float32(x),
                 Ty::Tensor(TensorDType::Fixed64 {
@@ -944,7 +1011,7 @@ impl CastOp {
                 Ok(AbstractTensor::Fixed128(inner))
             }
             (x, ret) => Err(Error::UnimplementedOperator(format!(
-                "Cast operator does not support casting of {:?} to {:?}",
+                "Cast operator does not support casting of {} to {:?}",
                 &x.ty_desc(),
                 &ret
             ))),
@@ -1846,6 +1913,7 @@ impl ConstantOp {
         HostPlacement: PlacementConstant<S, Float32T>,
         HostPlacement: PlacementConstant<S, Float64T>,
         HostPlacement: PlacementConstant<S, Uint64T>,
+        HostPlacement: PlacementConstant<S, BoolT>,
     {
         match sig.ret() {
             Ty::Tensor(TensorDType::Float32) => {
@@ -1859,6 +1927,10 @@ impl ConstantOp {
             Ty::Tensor(TensorDType::Uint64) => {
                 let z = plc.constant(sess, value);
                 Ok(AbstractTensor::Uint64(z))
+            }
+            Ty::Tensor(TensorDType::Bool) => {
+                let z = plc.constant(sess, value);
+                Ok(AbstractTensor::Bool(z))
             }
             ret => Err(Error::UnimplementedOperator(format!(
                 "ConstantOp can not produce tensors of type {:?} yet",

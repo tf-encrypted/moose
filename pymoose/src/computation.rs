@@ -103,6 +103,7 @@ enum PyNdarray {
     float32 { items: Vec<f32>, shape: Vec<usize> },
     float64 { items: Vec<f64>, shape: Vec<usize> },
     uint64 { items: Vec<u64>, shape: Vec<usize> },
+    bool { items: Vec<bool>, shape: Vec<usize> },
 }
 
 type Inputs = HashMap<String, String>;
@@ -607,6 +608,18 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
                 let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
                 let plc = HostPlacement::from("TODO");
                 Ok(Constant::HostUint64Tensor(plc.from_raw(tensor)))
+            }
+            PyNdarray::bool {
+                ref items,
+                ref shape,
+            } => {
+                use ::moose::host::BitArrayRepr;
+                use ::moose::host::HostBitTensor;
+                let shape: RawShape = RawShape(shape.iter().map(|i| *i as usize).collect());
+                let items: Vec<u8> = items.iter().map(|x| *x as u8).collect();
+                let tensor = BitArrayRepr::from_vec(items, &shape);
+                let plc = HostPlacement::from("TODO");
+                Ok(Constant::HostBitTensor(HostBitTensor(tensor, plc)))
             }
         },
     }
