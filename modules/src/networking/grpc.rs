@@ -34,51 +34,26 @@ impl GrpcNetworkingManager {
     pub fn new_session(
         &self,
         session_id: SessionId,
-        own_identity: Identity,
+        tls_config: Option<ClientTlsConfig>,
     ) -> Arc<impl AsyncNetworking> {
         Arc::new(GrpcNetworking {
-            own_identity,
             session_id,
             stores: Arc::clone(&self.stores),
             channels: Arc::clone(&self.channels),
+            tls_config,
         })
     }
 }
 
 struct GrpcNetworking {
-    own_identity: Identity,
+    tls_config: Option<ClientTlsConfig>,
     session_id: SessionId,
     stores: Arc<SessionStores>,
     channels: Arc<Channels>,
 }
 
-fn certificate(endpoint: &str) -> String {
-    endpoint.replace(":", "_")
-}
-
-use tonic::transport::{Certificate, ClientTlsConfig, Server};
+use tonic::transport::ClientTlsConfig;
 impl GrpcNetworking {
-    fn retrieve_cert(
-        &self,
-        receiver: &Identity,
-    ) -> Result<ClientTlsConfig, Box<dyn std::error::Error>> {
-        use tonic::transport::Identity;
-        let client_cert_path = certificate(&self.own_identity.0);
-
-        let server_root_ca_cert =
-            Certificate::from_pem(std::fs::read(format!("examples/certs/ca.crt"))?);
-
-        let client_cert = std::fs::read(format!("examples/certs/{}.crt", client_cert_path))?;
-        let client_key = std::fs::read(format!("examples/certs/{}.key", client_cert_path))?;
-        let client_identity = Identity::from_pem(client_cert, client_key);
-
-        let tls = ClientTlsConfig::new()
-            .domain_name("localhost")
-            .ca_certificate(server_root_ca_cert)
-            .identity(client_identity);
-
-        Ok(tls)
-    }
     fn channel(&self, receiver: &Identity) -> moose::Result<Channel> {
         tracing::debug!("Identity: {:?}", receiver);
         let channel = self
@@ -93,22 +68,17 @@ impl GrpcNetworking {
                     ))
                 })?;
 
-                let tls_config = self.retrieve_cert(receiver).map_err(|e| {
-                    moose::Error::Networking(format!(
-                        "failed to setup TLS files configuration {:?}",
-                        e.to_string()
-                    ))
-                })?;
-                let channel = Channel::builder(endpoint)
-                    .tls_config(tls_config)
-                    .map_err(|e| {
+                let channel = Channel::builder(endpoint);
+                let channel = match self.tls_config.clone() {
+                    Some(tls_config) => channel.tls_config(tls_config).map_err(|e| {
                         moose::Error::Networking(format!(
                             "failed to TLS config {:?}",
                             e.to_string()
                         ))
-                    })?
-                    .connect_lazy();
-                Ok(channel)
+                    })?,
+                    None => channel,
+                };
+                Ok(channel.connect_lazy())
             })?
             .clone(); // cloning channels is cheap per tonic documentation
         Ok(channel)
@@ -144,10 +114,10 @@ impl AsyncNetworking for GrpcNetworking {
                 };
                 let channel = self.channel(receiver)?;
                 let mut client = NetworkingClient::new(channel);
-                let _response = client.send_value(request).await.map_err(|e| {
-                    tracing::error!("{:?}", e);
-                    moose::Error::Networking(e.to_string())
-                })?;
+                let _response = client
+                    .send_value(request)
+                    .await
+                    .map_err(|e| moose::Error::Networking(e.to_string()))?;
                 Ok(())
             },
         )
@@ -156,7 +126,7 @@ impl AsyncNetworking for GrpcNetworking {
 
     async fn receive(
         &self,
-        _sender: &Identity,
+        sender: &Identity,
         rendezvous_key: &RendezvousKey,
         _session_id: &SessionId,
     ) -> moose::Result<Value> {
@@ -165,7 +135,21 @@ impl AsyncNetworking for GrpcNetworking {
             self.session_id.clone(),
             rendezvous_key.clone(),
         );
-        Ok(cell.take().await)
+
+        let (actual_sender, value) = cell.take().await;
+        match actual_sender {
+            Some(actual_sender) => {
+                if sender != &actual_sender {
+                    Err(moose::Error::Networking(format!(
+                        "wrong CA validation. Expected {:?} but got {:?}",
+                        sender, actual_sender
+                    )))
+                } else {
+                    Ok(value)
+                }
+            }
+            None => Ok(value),
+        }
     }
 }
 
@@ -175,10 +159,10 @@ impl Drop for GrpcNetworking {
     }
 }
 
-type SessionStore = DashMap<RendezvousKey, Arc<AsyncCell<Value>>>;
+type AuthValue = (Option<Identity>, Value);
 
+type SessionStore = DashMap<RendezvousKey, Arc<AsyncCell<AuthValue>>>;
 type SessionStores = DashMap<SessionId, Arc<SessionStore>>;
-
 type Channels = DashMap<Identity, Channel>;
 
 #[derive(Default)]
@@ -190,7 +174,7 @@ fn cell(
     stores: &Arc<SessionStores>,
     session_id: SessionId,
     rendezvous_key: RendezvousKey,
-) -> Arc<AsyncCell<Value>> {
+) -> Arc<AsyncCell<AuthValue>> {
     let session_store = stores
         .entry(session_id) // TODO(Morten) only use the secure bytes?
         .or_insert_with(Arc::default)
@@ -212,19 +196,59 @@ impl Networking for NetworkingImpl {
         &self,
         request: tonic::Request<SendValueRequest>,
     ) -> Result<tonic::Response<SendValueResponse>, tonic::Status> {
-        let _certs = request
-            .peer_certs()
-            .expect("Client did not send its certs!");
+        use openssl::nid::Nid;
+        use openssl::x509::X509;
+        use tonic::{Code, Status};
+
+        let certs = request.peer_certs();
+
         let request = request.into_inner();
         let tagged_value = bincode::deserialize::<TaggedValue>(&request.tagged_value).unwrap(); // TODO error handling
 
-        let cell = cell(
-            &self.stores,
-            tagged_value.session_id,
-            tagged_value.rendezvous_key,
-        );
-        cell.set(tagged_value.value);
+        match certs {
+            Some(certs) => {
+                if certs.len() != 1 {
+                    tracing::debug!("Returning Aborted status since SSL cert has a large chain");
+                    Status::new(
+                        Code::Aborted,
+                        format!(
+                            "Cannot extract identity from an SSL Cert chain of length {:?}",
+                            certs.len()
+                        ),
+                    );
+                } else {
+                    let cert = X509::from_der(certs[0].get_ref()).map_err(|err| {
+                        Status::new(
+                            Code::Aborted,
+                            format!(
+                                "Error parsing the X509 certificate with err: {:?}",
+                                err.to_string()
+                            ),
+                        )
+                    })?;
+                    let subject = cert.subject_name();
+                    let cn = subject.entries_by_nid(Nid::COMMONNAME).next().unwrap();
 
+                    let cn_string = std::str::from_utf8(cn.data().as_slice())
+                        .map_err(|err| Status::new(Code::Aborted, err.to_string()))?;
+                    let sender = Identity::from(cn_string);
+                    let cell = cell(
+                        &self.stores,
+                        tagged_value.session_id,
+                        tagged_value.rendezvous_key,
+                    );
+                    cell.set((Some(sender), tagged_value.value));
+                }
+            }
+            None => {
+                let cell = cell(
+                    &self.stores,
+                    tagged_value.session_id,
+                    tagged_value.rendezvous_key,
+                );
+                cell.set((None, tagged_value.value));
+            }
+        }
         Ok(tonic::Response::new(SendValueResponse::default()))
     }
 }
