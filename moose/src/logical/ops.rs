@@ -1332,6 +1332,7 @@ impl OnesOp {
         sess: &S,
         plc: &HostPlacement,
         shape: m!(HostShape),
+        ret: Ty,
     ) -> Result<
         AbstractTensor<
             m!(Fixed64Tensor),
@@ -1350,10 +1351,17 @@ impl OnesOp {
         Float64Tensor: KnownType<S>,
         BooleanTensor: KnownType<S>,
         Uint64Tensor: KnownType<S>,
+        HostPlacement: PlacementOnes<S, m!(HostShape), m!(Float32Tensor)>,
         HostPlacement: PlacementOnes<S, m!(HostShape), m!(Float64Tensor)>,
     {
-        let result = plc.ones(sess, &shape);
-        Ok(AbstractTensor::Float64(result))
+        match ret {
+            Ty::Tensor(TensorDType::Float32) => Ok(AbstractTensor::Float32(plc.ones(sess, &shape))),
+            Ty::Tensor(TensorDType::Float64) => Ok(AbstractTensor::Float64(plc.ones(sess, &shape))),
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing ones kernel for return type {:?}",
+                ret,
+            ))),
+        }
     }
 }
 
