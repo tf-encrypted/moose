@@ -1780,8 +1780,7 @@ impl TryFrom<&IndexedComputation> for Computation {
 }
 
 #[derive(Debug)]
-pub struct GraphOperationRef<'c> {
-    pub op_name: &'c String,
+pub struct GraphOperationRef {
     pub index: usize,
 }
 
@@ -1843,9 +1842,12 @@ impl NamedComputation {
     }
 
     pub fn as_graph(&self) -> Graph<GraphOperationRef, ()> {
-        let mut graph = Graph::new();
+        let exact_node_count = self.operations.len();
+        let rough_edge_count = self.operations.len() * 2; // assume roughly two inputs on average
 
-        let mut vertex_map: HashMap<&str, NodeIndex> = HashMap::new();
+        let mut graph = Graph::with_capacity(exact_node_count, rough_edge_count);
+
+        let mut vertex_map: HashMap<&str, NodeIndex> = HashMap::with_capacity(exact_node_count);
 
         let mut send_nodes: HashMap<&RendezvousKey, NodeIndex> = HashMap::new();
         let mut recv_nodes: HashMap<&RendezvousKey, NodeIndex> = HashMap::new();
@@ -1854,7 +1856,6 @@ impl NamedComputation {
 
         for (index, op) in self.operations.iter().enumerate() {
             let vertex = graph.add_node(GraphOperationRef {
-                op_name: &op.name,
                 index,
             });
             match op.kind {

@@ -15,7 +15,7 @@ pub(crate) fn update_types_one_hop(comp: Computation) -> anyhow::Result<Computat
             .neighbors_directed(n, Direction::Incoming)
             .map(|i| {
                 (
-                    graph[i].op_name,
+                    &comp.operations[graph[i].index].name,
                     comp.operations[graph[i].index].kind.sig().ret(),
                 )
             })

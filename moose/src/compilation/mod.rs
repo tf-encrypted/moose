@@ -103,7 +103,7 @@ where
 impl Pass {
     fn run(&self, comp: Computation) -> anyhow::Result<Computation> {
         match self {
-            Pass::Networking => networking_pass(&comp),
+            Pass::Networking => networking_pass(comp),
             Pass::Print => print_graph(comp),
             Pass::Prune => prune_graph(comp),
             Pass::Lowering => lowering(comp),

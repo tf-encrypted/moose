@@ -3,14 +3,14 @@ use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
 
 /// Applies the networking pass to the entire computation
-pub fn networking_pass(comp: &Computation) -> anyhow::Result<Computation> {
+pub fn networking_pass(comp: Computation) -> anyhow::Result<Computation> {
     let graph = comp.as_graph();
-    let mut pass = NetworkingPass::new(comp);
+    let mut pass = NetworkingPass::new(&comp);
 
     let mut created_cache = HashMap::new();
-    for er in graph.edge_references() {
-        let src_op = &comp.operations[graph[er.source()].index];
-        let dst_op = &comp.operations[graph[er.target()].index];
+    for edge in graph.edge_references() {
+        let src_op = &comp.operations[graph[edge.source()].index];
+        let dst_op = &comp.operations[graph[edge.target()].index];
         match placement_discrimnator(src_op, dst_op) {
             // We only operate on edges that jump from a host to a different host
             (Some(src), Some(dst)) if src != dst => {
@@ -20,7 +20,7 @@ pub fn networking_pass(comp: &Computation) -> anyhow::Result<Computation> {
                     .or_insert_with(|| pass.create_networking_jump(src_op, dst_op, src, dst));
 
                 // Update target operation's input to the receive operation's name
-                if let Some(input) = pass.operations[graph[er.target()].index]
+                if let Some(input) = pass.operations[graph[edge.target()].index]
                     .inputs
                     .iter_mut()
                     .find(|r| *r == &src_op.name)
@@ -38,7 +38,7 @@ pub fn networking_pass(comp: &Computation) -> anyhow::Result<Computation> {
     })
 }
 
-pub struct NetworkingPass {
+struct NetworkingPass {
     operations: Vec<Operation>,
     extra_ops: Vec<Operation>,
     counter: std::ops::RangeFrom<usize>,
@@ -129,7 +129,7 @@ mod tests {
         dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         mean = Mean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"#;
 
-        let comp = networking_pass(&source.try_into()?)?.to_textual();
+        let comp = networking_pass(source.try_into()?)?.to_textual();
         // Networking should not introduce any changes to such a computation
         assert!(comp.contains(
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
@@ -150,7 +150,7 @@ mod tests {
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         mean = Mean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"#;
-        let comp = networking_pass(&source.try_into()?)?.to_textual();
+        let comp = networking_pass(source.try_into()?)?.to_textual();
 
         // Networking should introduce one new networking operation (not 2) for the 2 jumps. And leave the mean unchaged (dot already on the right host)
         assert!(comp.contains(
@@ -171,7 +171,7 @@ mod tests {
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(bob)
         add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(bob)"#;
-        let comp = networking_pass(&source.try_into()?)?.to_textual();
+        let comp = networking_pass(source.try_into()?)?.to_textual();
         // Should have one send/receive pair per each variable being sent
         assert!(comp.contains(
             r#"send_0 = Send{rendezvous_key = 00000000000000000000000000000000, receiver = "bob"}: (HostFloat32Tensor) -> HostUnit (x) @Host(alice)"#
@@ -193,7 +193,7 @@ mod tests {
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, charlie)"#;
 
-        let comp = networking_pass(&source.try_into()?)?.to_textual();
+        let comp = networking_pass(source.try_into()?)?.to_textual();
         // Networking should not make any changes to the replicated placement (should probably never see it in real life)
         assert!(comp.contains("mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, charlie)"));
         Ok(())
