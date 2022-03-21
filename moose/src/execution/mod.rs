@@ -1221,36 +1221,19 @@ mod tests {
 
     #[test]
     fn test_run_logical() -> std::result::Result<(), anyhow::Error> {
-        use crate::computation::SymbolicType;
         use crate::host::SyncKey;
-        let sess = SymbolicSession::default();
+        let sess = SyncSession::default();
         let alice: HostPlacement = "alice".into();
-        let key: <HostPrfKey as SymbolicType>::Type = alice.constant(
+        let key: HostPrfKey = alice.constant(
             &sess,
             "HostPrfKey(00000000000000000000000000000000)".try_into()?,
         );
-        let seed: <HostSeed as SymbolicType>::Type =
-            alice.derive_seed(&sess, SyncKey::try_from(vec![1, 2, 3])?, &key);
-        let _: <HostSeed as SymbolicType>::Type = alice.output(&sess, &seed);
-        let computation = sess.into_computation();
+        let seed: HostSeed = alice.derive_seed(&sess, SyncKey::try_from(vec![1, 2, 3])?, &key);
+        let seed: HostSeed = alice.output(&sess, &seed);
 
-        let arguments: HashMap<String, Value> = hashmap!();
-        let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            computation,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            false,
-        )?;
-
-        let seed: HostSeed = (outputs.get("op_2").unwrap().clone()).try_into()?;
         assert_eq!(
             seed.0,
-            RawSeed([79, 203, 243, 208, 77, 199, 116, 216, 2, 206, 173, 36, 20, 204, 200, 146])
+            RawSeed([31, 83, 179, 52, 42, 114, 124, 234, 69, 117, 111, 155, 187, 254, 7, 77])
         );
         Ok(())
     }
