@@ -100,7 +100,7 @@ fn tensorval_to_pyobj(py: Python, tensor: Value) -> PyResult<PyObject> {
         Value::HostRing64Tensor(t) => Ok(t.0.map(|v| v.0).to_pyarray(py).to_object(py)),
         Value::HostBitTensor(t) => {
             t.0.into_array::<u8>()
-                .map(|arr| arr.map(|x| *x == 0))
+                .map(|arr| arr.map(|x| *x != 0))
                 .map(|arr| arr.to_pyarray(py).to_object(py))
                 .map_err(|e| PyRuntimeError::new_err(e.to_string()))
         }

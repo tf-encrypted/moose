@@ -1985,7 +1985,7 @@ impl CastOp {
         x: HostTensor<f32>,
     ) -> Result<HostBitTensor> {
         let x_shape = IxDyn(x.0.shape());
-        let x_raw: BitVec<u8> = x.0.iter().map(|x| (*x == 0.0)).collect();
+        let x_raw: BitVec<u8> = x.0.iter().map(|x| (*x != 0.0)).collect();
         Ok(HostBitTensor(
             BitArrayRepr::from_raw(x_raw, x_shape),
             plc.clone(),
@@ -1998,7 +1998,7 @@ impl CastOp {
         x: HostTensor<f64>,
     ) -> Result<HostBitTensor> {
         let x_shape = IxDyn(x.0.shape());
-        let x_raw: BitVec<u8> = x.0.iter().map(|x| (*x == 0.0)).collect();
+        let x_raw: BitVec<u8> = x.0.iter().map(|x| (*x != 0.0)).collect();
         Ok(HostBitTensor(
             BitArrayRepr::from_raw(x_raw, x_shape),
             plc.clone(),
@@ -2011,7 +2011,7 @@ impl CastOp {
         x: HostTensor<u64>,
     ) -> Result<HostBitTensor> {
         let x_shape = IxDyn(x.0.shape());
-        let x_raw: BitVec<u8> = x.0.iter().map(|x| (*x == 0)).collect();
+        let x_raw: BitVec<u8> = x.0.iter().map(|x| (*x != 0)).collect();
         Ok(HostBitTensor(
             BitArrayRepr::from_raw(x_raw, x_shape),
             plc.clone(),
