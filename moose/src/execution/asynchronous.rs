@@ -612,8 +612,8 @@ impl AsyncTestRuntime {
                 missing_identities, missing_roles)));
         }
 
+        let i: i32 = rand::random();
         for (own_identity, executor) in self.executors.iter_mut() {
-            let i: i32 = rand::random();
             let moose_session = AsyncSession::new(
                 SessionId::try_from(format!("foobar{}", i).as_str()).unwrap(),
                 arguments.clone(),
