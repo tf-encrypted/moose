@@ -50,6 +50,27 @@ class MirroredOpsExample(parameterized.TestCase):
         np.testing.assert_almost_equal(actual_result[1], 2.3)
         np.testing.assert_almost_equal(actual_result[2], 3)
 
+        result_dict = runtime.evaluate_computation(
+            computation=traced_less_comp,
+            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            arguments={},
+        )
+
+        result_dict = runtime.evaluate_computation(
+            computation=traced_less_comp,
+            role_assignment={"alice": "bob", "bob": "carole", "carole": "alice"},
+            arguments={},
+        )
+
+        # The only way to change the participating identities now
+        runtime = LocalMooseRuntime(identities=["newalice", "newbob", "newcarole"])
+        result_dict = runtime.evaluate_computation(
+            computation=traced_less_comp,
+            role_assignment={"alice": "newalice", "bob": "newbob", "carole": "newcarole"},
+            arguments={},
+        )
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="comparison example")

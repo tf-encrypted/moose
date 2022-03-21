@@ -613,8 +613,9 @@ impl AsyncTestRuntime {
         }
 
         for (own_identity, executor) in self.executors.iter_mut() {
+            let i: i32 = rand::random();
             let moose_session = AsyncSession::new(
-                SessionId::try_from("foobar").unwrap(),
+                SessionId::try_from(format!("foobar{}", i).as_str()).unwrap(),
                 arguments.clone(),
                 valid_role_assignments.clone(),
                 Arc::clone(&self.networking),
