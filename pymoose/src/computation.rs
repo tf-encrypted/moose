@@ -1313,7 +1313,7 @@ mod tests {
         let comp: Computation = py_comp.try_into()?;
         assert_eq!(
             comp.operations[0].to_textual(),
-            "x = Shape: (Tensor<Float32>) -> ReplicatedShape (op_1) @Replicated(a, b, c)"
+            "x = Shape: (Tensor<Float32>) -> Shape (op_1) @Replicated(a, b, c)"
         );
         Ok(())
     }
@@ -1349,7 +1349,7 @@ mod tests {
         let comp: Computation = py_comp.try_into()?;
         assert_eq!(
             comp.operations[0].to_textual(),
-            "x = Shape: (Tensor<Float32>) -> HostShape (op_1) @Host(host)"
+            "x = Shape: (Tensor<Float32>) -> Shape (op_1) @Host(host)"
         );
         Ok(())
     }
