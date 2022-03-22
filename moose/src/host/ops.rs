@@ -215,7 +215,7 @@ impl SaveOp {
 }
 
 impl AbsOp {
-    pub(crate) fn host_float_kernel<S: RuntimeSession, T: 'static + Float>(
+    pub(crate) fn host_kernel<S: RuntimeSession, T: 'static + Signed>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -223,18 +223,10 @@ impl AbsOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        Ok(HostTensor::<T>(x.0.mapv(T::abs).into_shared(), plc.clone()))
-    }
-
-    pub(crate) fn host_int_kernel<S: RuntimeSession, T: 'static + Signed + Clone>(
-        _sess: &S,
-        plc: &HostPlacement,
-        x: HostTensor<T>,
-    ) -> Result<HostTensor<T>>
-    where
-        HostPlacement: PlacementPlace<S, HostTensor<T>>,
-    {
-        Ok(HostTensor::<T>(x.0.mapv(T::abs).into_shared(), plc.clone()))
+        Ok(HostTensor::<T>(
+            x.0.map(|x| T::abs(x)).into_shared(),
+            plc.clone(),
+        ))
     }
 }
 
