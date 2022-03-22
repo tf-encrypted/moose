@@ -1841,6 +1841,9 @@ impl NamedComputation {
         Ok(())
     }
 
+    /// Compute the dataflow graph associated with a computation.
+    ///
+    /// Edges indicate the direction in which data flows, i.e. from producer to consumer.
     pub fn as_graph(&self) -> Graph<OperationIndex, ()> {
         let exact_node_count = self.operations.len();
         let rough_edge_count = self.operations.len() * 2; // assume roughly two inputs on average
@@ -1855,9 +1858,7 @@ impl NamedComputation {
         let mut rdv_keys: HashSet<&RendezvousKey> = HashSet::new();
 
         for (index, op) in self.operations.iter().enumerate() {
-            let vertex = graph.add_node(OperationIndex {
-                index,
-            });
+            let vertex = graph.add_node(OperationIndex { index });
             match op.kind {
                 Operator::Send(ref op) => {
                     let key = &op.rendezvous_key;
