@@ -95,7 +95,7 @@ heaptrack ./target/debug/rudolph
 
 ## Rudolph with TLS support
 
-In order to run `rudolph` with with gRPC and TLS make sure to generate TLS certificates.
+In order to run `rudolph` with gRPC and TLS make sure to generate TLS certificates.
 The certificates used for `test.session` example were generated using the following commands.
 
 ```
@@ -116,8 +116,3 @@ rudolph --identity 'localhost:50000' --port 50000 --session ./examples --no-list
 rudolph --identity 'localhost:50001' --port 50001 --session ./examples --no-listen --certs examples/certs
 rudolph --identity 'localhost:50002' --port 50002 --session ./examples --no-listen --certs examples/certs
 ```
-
-
-
-
-
