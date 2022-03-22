@@ -34,15 +34,24 @@ impl GrpcNetworkingManager {
         })
     }
 
+    pub fn without_tls() -> Self {
+        GrpcNetworkingManager {
+            stores: Default::default(),
+            channels: Default::default(),
+            tls_client_config: None,
+            tls_server_config: None,
+        }
+    }
+
     pub fn from_tls_config(
-        client: Option<ClientTlsConfig>,
-        server: Option<ServerTlsConfig>,
+        client: ClientTlsConfig,
+        server: ServerTlsConfig,
     ) -> Self {
         GrpcNetworkingManager {
             stores: Default::default(),
             channels: Default::default(),
-            tls_client_config: client,
-            tls_server_config: server,
+            tls_client_config: Some(client),
+            tls_server_config: Some(server),
         }
     }
 
