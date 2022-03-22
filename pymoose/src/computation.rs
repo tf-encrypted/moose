@@ -603,15 +603,22 @@ fn map_type(py_type: &PyValueType, placement: Option<&Placement>) -> anyhow::Res
                 integral_precision,
                 fractional_precision,
             } => Ok(Ty::Tensor(TensorDType::Fixed128 {
-                integral_precision: *integral_precision,
-                fractional_precision: *fractional_precision,
+                integral_precision,
+                fractional_precision,
             })),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
         },
         PyValueType::AesTensorType { dtype } => match dtype {
+            PyDType::fixed {
+                integral_precision: 24,
+                fractional_precision: 40,
+            } => Ok(Ty::AesTensor),
             // TODO we are erasing fixedpoint precision here on purpose
             //  -- but we robably want to avoid this down the road
-            PyDType::fixed { .. } => Ok(Ty::AesTensor),
+            PyDType::fixed { .. } => Err(anyhow::anyhow!(
+                "Unsupported precision for the fixedpoint AES Tensor '{:?}'",
+                dtype
+            )),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
         },
         PyValueType::AesKeyType => Ok(Ty::AesKey),
