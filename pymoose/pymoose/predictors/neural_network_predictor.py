@@ -1,11 +1,18 @@
 import abc
 import struct
+from enum import Enum
 
 import numpy as np
 
 from pymoose import edsl
 from pymoose.predictors import aes_predictor
 from pymoose.predictors import predictor_utils
+
+
+class Activation(Enum):
+    IDENTITY = 1
+    SIGMOID = 2
+    SOFTMAX = 3
 
 
 class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
@@ -29,18 +36,18 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
 
     def activation_fn(self, z, i):
         activation = self.activations[i]
-        if activation == "Sigmoid":
+        if activation == Activation.SIGMOID:
             activation_output = edsl.sigmoid(z)
         # There is a bug in edsl.shape
-        # elif op == "Relu":
-        #     z_shape = edsl.shape(edsl.cast(z, dtype=edsl.fixed(14, 23)))
-        #     ones = edsl.ones(z_shape, dtype=edsl.float64)
-        #     ones = edsl.cast(ones, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
+        #  Relu code:
+        #     y_1_shape = edsl.slice(edsl.shape(x), begin=0, end=1)
+        #     ones = edsl.ones(y_1_shape, dtype=edsl.float64)
+        #     ones = edsl.cast(ones, dtype=fixedpoint_dtype)
         #     zeros = edsl.sub(ones, ones)
-        #     activation_output = edsl.maximum([zeros, z])
-        elif activation == "Softmax":
+        #     activation_output = edsl.maximum([zeros, y_1])
+        elif activation == Activation.SOFTMAX:
             activation_output = edsl.softmax(z, axis=1, upmost_index=self.n_classes)
-        elif activation == "Identity":
+        elif activation == Activation.IDENTITY:
             activation_output = z
         else:
             raise ValueError("Invalid or unsupported activation function")
@@ -74,11 +81,14 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         operations = predictor_utils.find_op_types_in_model_proto(model_proto)
         activations = []
         for i in range(len(operations)):
-            if operations[i] != "Gemm":
-                activations.append(operations[i])
+            if operations[i] == "Sigmoid":
+                activations.append(Activation.SIGMOID)
+            elif operations[i] == "Softmax":
+                activations.append(Activation.SOFTMAX)
             if i > 0:
                 if operations[i] == "Gemm" and operations[i - 1] == "Gemm":
-                    activations.append("Identity")
+                    activations.append(Activation.IDENTITY)
+
         weights_data = predictor_utils.find_parameters_in_model_proto(
             model_proto, "weight", enforce=False
         )

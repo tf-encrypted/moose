@@ -10,8 +10,8 @@ from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose import testing
 from pymoose.computation import utils as comp_utils
+from pymoose.predictors import neural_network_predictor
 from pymoose.predictors import predictor_utils
-from pymoose.predictors import pytorch_predictor
 
 _TORCH_MODELS = [
     ("pytorch_net_1hidden_layer_sigmoid", [[0.32620516, 0.6737948]]),
@@ -46,7 +46,7 @@ class NNPredictorTest(parameterized.TestCase):
     @parameterized.parameters(*_TORCH_MODELS)
     def test_regression_logic(self, model_name, expected):
         regressor, regressor_logic = self._build_prediction_logic(
-            model_name, pytorch_predictor.NeuralNetwork
+            model_name, neural_network_predictor.NeuralNetwork
         )
 
         traced_predictor = edsl.trace(regressor_logic)
@@ -83,7 +83,7 @@ class NNPredictorTest(parameterized.TestCase):
     @parameterized.parameters(
         *zip(
             map(lambda x: x[0], _TORCH_MODELS),
-            itertools.repeat(pytorch_predictor.NeuralNetwork),
+            itertools.repeat(neural_network_predictor.NeuralNetwork),
         ),
     )
     def test_serde(self, model_name, predictor_cls):
