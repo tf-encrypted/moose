@@ -271,7 +271,7 @@ impl Networking for NetworkingImpl {
                         Some(name) => Ok(name),
                         None => Err(Status::new(
                             Code::Aborted,
-                            format!("certificate common name was empty"),
+                            "certificate common name was empty".to_string(),
                         )),
                     }?;
 
