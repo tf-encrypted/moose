@@ -88,7 +88,6 @@ struct GrpcNetworking {
 
 impl GrpcNetworking {
     fn channel(&self, receiver: &Identity) -> moose::Result<Channel> {
-        tracing::debug!("Identity: {:?}", receiver);
         let channel = self
             .channels
             .entry(receiver.clone())

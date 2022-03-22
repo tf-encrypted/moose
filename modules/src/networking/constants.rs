@@ -2,7 +2,7 @@
 use lazy_static::lazy_static;
 use std::time::Duration;
 
-/// The default multiplier to determine the next internal between retries
+/// The default multiplier to determine the next interval between retries
 pub(crate) const MULTIPLIER: f64 = 1.1;
 
 lazy_static! {
