@@ -229,9 +229,8 @@ impl Networking for NetworkingImpl {
         &self,
         request: tonic::Request<SendValueRequest>,
     ) -> Result<tonic::Response<SendValueResponse>, tonic::Status> {
-        use openssl::nid::Nid;
-        use openssl::x509::X509;
         use tonic::{Code, Status};
+        use x509_parser::prelude::*;
 
         let certs = request.peer_certs();
 
@@ -250,20 +249,32 @@ impl Networking for NetworkingImpl {
                         ),
                     );
                 } else {
-                    let cert = X509::from_der(certs[0].get_ref()).map_err(|err| {
-                        Status::new(
-                            Code::Aborted,
-                            format!(
-                                "Error parsing the X509 certificate with err: {:?}",
-                                err.to_string()
-                            ),
-                        )
-                    })?;
-                    let subject = cert.subject_name();
-                    let cn = subject.entries_by_nid(Nid::COMMONNAME).next().unwrap();
+                    let (_rem, cert) =
+                        parse_x509_certificate(certs[0].get_ref()).map_err(|err| {
+                            Status::new(
+                                Code::Aborted,
+                                format!(
+                                    "Error parsing the X509 certificate with err: {:?}",
+                                    err.to_string()
+                                ),
+                            )
+                        })?;
+                    let subject = cert.subject();
 
-                    let cn_string = std::str::from_utf8(cn.data().as_slice())
-                        .map_err(|err| Status::new(Code::Aborted, err.to_string()))?;
+                    let cn_list: Result<Vec<_>, X509Error> = subject
+                        .iter_common_name()
+                        .map(|attr| attr.as_str())
+                        .collect();
+                    let cn_list =
+                        cn_list.map_err(|err| Status::new(Code::Aborted, err.to_string()))?;
+                    let cn_string: &str = match cn_list.first() {
+                        Some(name) => Ok(name),
+                        None => Err(Status::new(
+                            Code::Aborted,
+                            format!("certificate common name was empty"),
+                        )),
+                    }?;
+
                     let sender = Identity::from(cn_string);
                     let cell = cell(
                         &self.stores,

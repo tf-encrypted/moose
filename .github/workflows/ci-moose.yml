@@ -25,11 +25,6 @@ jobs:
         run: |
           sudo apt install libopenblas-dev
 
-      - name: Install OpenSSL.
-        run: |
-          yes | sudo apt install pkg-config
-          sudo apt install libssl-dev
-
       - name: Install build dependencies.
         run: |
           sudo apt install make clang libpython3.8-dev
