@@ -205,7 +205,7 @@ impl AbsOp {
             }
             // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             _ => Err(Error::UnimplementedOperator(format!(
-                "Missing replicated abs for {:?}",
+                "Missing host abs for {:?}",
                 &x.ty_desc(),
             ))),
         }
