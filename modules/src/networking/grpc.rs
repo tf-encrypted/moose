@@ -43,10 +43,7 @@ impl GrpcNetworkingManager {
         }
     }
 
-    pub fn from_tls_config(
-        client: ClientTlsConfig,
-        server: ServerTlsConfig,
-    ) -> Self {
+    pub fn from_tls_config(client: ClientTlsConfig, server: ServerTlsConfig) -> Self {
         GrpcNetworkingManager {
             stores: Default::default(),
             channels: Default::default(),
@@ -70,16 +67,16 @@ impl GrpcNetworkingManager {
             .map_err(|e| Error::Networking(format!("failed to parse port and address: {}", e)))?;
         let manager = self.clone();
 
-        let builder = Server::builder();
-        let mut server = match self.tls_server_config.clone() {
-            Some(tls_config) => builder.tls_config(tls_config).map_err(|e| {
+        let mut server = Server::builder();
+        if let Some(ref tls_config) = self.tls_server_config {
+            server = server.tls_config(tls_config.clone()).map_err(|e| {
                 moose::Error::Networking(format!("failed to TLS config {:?}", e.to_string()))
-            })?,
-            None => builder,
-        };
+            })?;
+        }
+        let router = server.add_service(manager.new_server());
 
         let handle = tokio::spawn(async move {
-            let res = server.add_service(manager.new_server()).serve(addr).await;
+            let res = router.serve(addr).await;
             if let Err(e) = res {
                 tracing::error!("gRPC error: {}", e);
             }
@@ -109,15 +106,14 @@ impl GrpcNetworking {
                     ))
                 })?;
 
-                let channel = Channel::builder(endpoint);
-                let channel = match self.tls_config.clone() {
-                    Some(tls_config) => channel.tls_config(tls_config).map_err(|e| {
+                let mut channel = Channel::builder(endpoint);
+                if let Some(ref tls_config) = self.tls_config {
+                    channel = channel.tls_config(tls_config.clone()).map_err(|e| {
                         moose::Error::Networking(format!(
                             "failed to TLS config {:?}",
                             e.to_string()
                         ))
-                    })?,
-                    None => channel,
+                    })?;
                 };
                 Ok(channel.connect_lazy())
             })?
@@ -180,9 +176,9 @@ impl AsyncNetworking for GrpcNetworking {
         let (actual_sender, value) = cell.take().await;
         match actual_sender {
             Some(actual_sender) => {
-                if sender != &actual_sender {
+                if *sender != actual_sender {
                     Err(moose::Error::Networking(format!(
-                        "wrong CA validation. Expected {:?} but got {:?}",
+                        "wrong sender; expected {:?} but got {:?}",
                         sender, actual_sender
                     )))
                 } else {
