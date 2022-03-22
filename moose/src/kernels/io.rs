@@ -134,7 +134,9 @@ pub trait PlacementLoad<S: Session, KeyT, QueryT, O> {
     fn load(&self, sess: &S, key: &KeyT, query: &QueryT) -> O;
 }
 
+modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> HostFloat32Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> HostFloat64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> Float32Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> Float64Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (HostString, HostString) -> Tensor, LoadOp);
 
@@ -160,8 +162,9 @@ kernel! {
         (HostPlacement, (HostString, HostString) -> HostUint64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostString) -> HostFixed64Tensor => [runtime] Self::missing_kernel),
         (HostPlacement, (HostString, HostString) -> HostFixed128Tensor => [runtime] Self::missing_kernel),
+        (HostPlacement, (HostString, HostString) -> Float32Tensor => [hybrid] Self::float_kernel),
         (HostPlacement, (HostString, HostString) -> Float64Tensor => [hybrid] Self::float_kernel),
-        (HostPlacement, (HostString, HostString) -> Tensor => [hybrid] Self::logical_kernel),
+        (HostPlacement, (HostString, HostString) -> Tensor => [hybrid] attributes[sig] Self::logical_kernel),
     ]
 }
 

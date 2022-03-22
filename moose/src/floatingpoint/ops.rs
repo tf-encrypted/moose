@@ -291,7 +291,6 @@ impl OnesOp {
     ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
         HostShape: KnownType<S>,
-        HostFloat64Tensor: KnownType<S>,
         HostPlacement: PlacementOnes<S, m!(HostShape), HostFloatT>,
     {
         let z = plc.ones(sess, &shape);
@@ -447,17 +446,15 @@ impl Log2Op {
 }
 
 impl LoadOp {
-    pub(crate) fn float_kernel<S: Session, MirroredT>(
+    pub(crate) fn float_kernel<S: Session, HostT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
         key: m!(HostString),
         query: m!(HostString),
-    ) -> Result<FloatTensor<m!(HostFloat64Tensor), MirroredT>>
+    ) -> Result<FloatTensor<HostT, MirroredT>>
     where
         HostString: KnownType<S>,
-        HostFloat32Tensor: KnownType<S>,
-        HostFloat64Tensor: KnownType<S>,
-        HostPlacement: PlacementLoad<S, m!(HostString), m!(HostString), m!(HostFloat64Tensor)>,
+        HostPlacement: PlacementLoad<S, m!(HostString), m!(HostString), HostT>,
     {
         let z = plc.load(sess, &key, &query);
         Ok(FloatTensor::Host(z))

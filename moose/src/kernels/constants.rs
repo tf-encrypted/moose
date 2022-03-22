@@ -221,20 +221,7 @@ where
 modelled_kernel! {
     PlacementOnes::ones, OnesOp,
     [
-        (HostPlacement, (HostShape) -> Tensor => [hybrid] custom |op| {
-            use crate::logical::TensorDType;
-            let ret = op.sig.ret();
-            match ret {
-                Ty::Tensor(TensorDType::Float32) |
-                Ty::Tensor(TensorDType::Float64) => Ok(Box::new(move |sess, plc, shape| {
-                    Self::logical_host_kernel(sess, plc, shape, ret)
-                })),
-                _ => {
-                    return Err(Error::UnimplementedOperator(
-                        format!("Cannot build ones of type {:?}", ret)))
-                },
-            }
-        }),
+        (HostPlacement, (HostShape) -> Tensor => [hybrid] attributes[sig] Self::logical_host_kernel),
         // We do not support the ReplicatedPlacement: PlacementFill yet, hence we do not support Ones.
         // Also, logical Tensor can only hold Host tensors at the moment.
         // (ReplicatedPlacement, (HostShape) -> Tensor => [hybrid] Self::logical_rep_kernel),

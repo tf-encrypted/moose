@@ -1331,8 +1331,8 @@ impl OnesOp {
     pub(crate) fn logical_host_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
+        sig: Signature,
         shape: m!(HostShape),
-        ret: Ty,
     ) -> Result<
         AbstractTensor<
             m!(Fixed64Tensor),
@@ -1354,12 +1354,12 @@ impl OnesOp {
         HostPlacement: PlacementOnes<S, m!(HostShape), m!(Float32Tensor)>,
         HostPlacement: PlacementOnes<S, m!(HostShape), m!(Float64Tensor)>,
     {
-        match ret {
+        match sig.ret() {
             Ty::Tensor(TensorDType::Float32) => Ok(AbstractTensor::Float32(plc.ones(sess, &shape))),
             Ty::Tensor(TensorDType::Float64) => Ok(AbstractTensor::Float64(plc.ones(sess, &shape))),
             _ => Err(Error::UnimplementedOperator(format!(
-                "Missing ones kernel for return type {:?}",
-                ret,
+                "Missing ones kernel for return type signature {:?}",
+                sig,
             ))),
         }
     }
@@ -1776,6 +1776,7 @@ impl LoadOp {
     pub(crate) fn logical_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
+        sig: Signature,
         key: m!(HostString),
         query: m!(HostString),
     ) -> Result<
@@ -1796,10 +1797,21 @@ impl LoadOp {
         Float64Tensor: KnownType<S>,
         BooleanTensor: KnownType<S>,
         Uint64Tensor: KnownType<S>,
+        HostPlacement: PlacementLoad<S, m!(HostString), m!(HostString), m!(Float32Tensor)>,
         HostPlacement: PlacementLoad<S, m!(HostString), m!(HostString), m!(Float64Tensor)>,
     {
-        let z = plc.load(sess, &key, &query);
-        Ok(AbstractTensor::Float64(z))
+        match sig.ret() {
+            Ty::Tensor(TensorDType::Float32) => {
+                Ok(AbstractTensor::Float32(plc.load(sess, &key, &query)))
+            }
+            Ty::Tensor(TensorDType::Float64) => {
+                Ok(AbstractTensor::Float64(plc.load(sess, &key, &query)))
+            }
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing load kernel for return type signature {:?}",
+                sig,
+            ))),
+        }
     }
 }
 
