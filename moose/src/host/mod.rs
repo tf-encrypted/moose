@@ -524,7 +524,13 @@ impl<T: Clone, D: ndarray::Dimension> FromRaw<Array<T, D>, HostRingTensor<T>> fo
 impl<D: ndarray::Dimension> FromRaw<Array<u8, D>, HostBitTensor> for HostPlacement {
     fn from_raw(&self, raw: Array<u8, D>) -> HostBitTensor {
         let raw = raw.into_dyn();
-        let data = raw.as_slice().unwrap().iter().map(|&ai| ai != 0).collect();
+        let data = raw
+            .as_standard_layout()
+            .as_slice()
+            .unwrap()
+            .iter()
+            .map(|&ai| ai != 0)
+            .collect();
         HostBitTensor(BitArrayRepr::from_raw(data, raw.dim()), self.clone())
     }
 }

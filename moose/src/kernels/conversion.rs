@@ -7,11 +7,40 @@ pub trait PlacementCast<S: Session, T, O> {
 modelled_kernel! {
     PlacementCast::cast, CastOp,
     [
+        // standard dtype conversions
+        // lowering kernels
         (HostPlacement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::kernel),
-        (HostPlacement, (HostRing64Tensor) -> HostUint64Tensor => [runtime] Self::hr64_hu64_kernel),
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::no_op_reduction_kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing64Tensor => [runtime] Self::ring_reduction_kernel),
+        (HostPlacement, (BooleanTensor) -> Float32Tensor => [concrete] Self::bool_float_kernel),
+        (HostPlacement, (BooleanTensor) -> Float64Tensor => [concrete] Self::bool_float_kernel),
+        (HostPlacement, (BooleanTensor) -> Uint64Tensor => [concrete] Self::bool_u64_kernel),
+        (HostPlacement, (Float32Tensor) -> BooleanTensor => [concrete] Self::float_bool_kernel),
+        (HostPlacement, (Float32Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Uint64Tensor => [concrete] Self::float_u64_kernel),
+        (HostPlacement, (Float64Tensor) -> BooleanTensor => [concrete] Self::float_bool_kernel),
+        (HostPlacement, (Float64Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Uint64Tensor => [concrete] Self::float_u64_kernel),
+        (HostPlacement, (Uint64Tensor) -> BooleanTensor => [concrete] Self::u64_bool_kernel),
+        (HostPlacement, (Uint64Tensor) -> Float32Tensor => [concrete] Self::u64_float_kernel),
+        (HostPlacement, (Uint64Tensor) -> Float64Tensor => [concrete] Self::u64_float_kernel),
+        // runtime kernels
+        (HostPlacement, (HostBitTensor) -> HostFloat32Tensor => [runtime] Self::from_bool_host_kernel),
+        (HostPlacement, (HostBitTensor) -> HostFloat64Tensor => [runtime] Self::from_bool_host_kernel),
+        (HostPlacement, (HostBitTensor) -> HostUint64Tensor => [runtime] Self::from_bool_host_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostBitTensor => [runtime] Self::f32_bool_host_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat64Tensor => [runtime] Self::standard_host_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostUint64Tensor => [runtime] Self::standard_host_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostBitTensor => [runtime] Self::f64_bool_host_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat32Tensor => [runtime] Self::standard_host_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostUint64Tensor => [runtime] Self::standard_host_kernel),
+        (HostPlacement, (HostUint64Tensor) -> HostBitTensor => [runtime] Self::u64_bool_host_kernel),
+        (HostPlacement, (HostUint64Tensor) -> HostFloat32Tensor => [runtime] Self::standard_host_kernel),
+        (HostPlacement, (HostUint64Tensor) -> HostFloat64Tensor => [runtime] Self::standard_host_kernel),
+        // mirrored casting
         (Mirrored3Placement, (Tensor) -> Tensor => [concrete] attributes[sig] Self::mir_kernel),
+        // ring conversions
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::no_op_reduction_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostUint64Tensor => [runtime] Self::hr64_hu64_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing64Tensor => [runtime] Self::ring_reduction_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_reduction_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_reduction_kernel),
     ]

@@ -3,7 +3,9 @@
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::Session;
+use crate::floatingpoint::FloatTensor;
 use crate::host::HostPlacement;
+use crate::integer::AbstractUint64Tensor;
 use crate::kernels::*;
 use crate::replicated::ReplicatedPlacement;
 use crate::types::*;
@@ -69,6 +71,94 @@ impl IdentityOp {
             }
             BoolTensor::Replicated(v) => Ok(BoolTensor::Replicated(plc.identity(sess, &v))),
         }
+    }
+}
+
+impl ConstantOp {
+    pub(crate) fn bool_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        value: Constant,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementConstant<S, HostT>,
+    {
+        let z = plc.constant(sess, value);
+        Ok(BoolTensor::Host(z))
+    }
+}
+
+impl CastOp {
+    pub(crate) fn bool_float_kernel<S: Session, HostT, RepT, HostFloatT, MirFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<FloatTensor<HostFloatT, MirFloatT>>
+    where
+        HostPlacement: PlacementPlace<S, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+        HostPlacement: PlacementCast<S, HostT, HostFloatT>,
+    {
+        let x = match x {
+            BoolTensor::Host(v) => plc.place(sess, v),
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let y = plc.cast(sess, &x);
+        Ok(FloatTensor::Host(y))
+    }
+
+    pub(crate) fn float_bool_kernel<S: Session, HostT, RepT, HostFloatT, MirFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT, MirFloatT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementPlace<S, HostFloatT>,
+        HostPlacement: PlacementDemirror<S, MirFloatT, HostFloatT>,
+        HostPlacement: PlacementCast<S, HostFloatT, HostT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => plc.place(sess, v),
+            FloatTensor::Mirrored3(v) => plc.demirror(sess, &v),
+        };
+        let y = plc.cast(sess, &x);
+        Ok(BoolTensor::Host(y))
+    }
+
+    pub(crate) fn u64_bool_kernel<S: Session, HostT, RepT, IntHostT, IntRepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractUint64Tensor<IntHostT, IntRepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementPlace<S, IntHostT>,
+        HostPlacement: PlacementReveal<S, IntRepT, IntHostT>,
+        HostPlacement: PlacementCast<S, IntHostT, HostT>,
+    {
+        let x = match x {
+            AbstractUint64Tensor::Host(v) => plc.place(sess, v),
+            AbstractUint64Tensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let y = plc.cast(sess, &x);
+        Ok(BoolTensor::Host(y))
+    }
+
+    pub(crate) fn bool_u64_kernel<S: Session, HostT, RepT, IntHostT, IntRepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<AbstractUint64Tensor<IntHostT, IntRepT>>
+    where
+        HostPlacement: PlacementPlace<S, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+        HostPlacement: PlacementCast<S, HostT, IntHostT>,
+    {
+        let x = match x {
+            BoolTensor::Host(v) => plc.place(sess, v),
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let y = plc.cast(sess, &x);
+        Ok(AbstractUint64Tensor::Host(y))
     }
 }
 
