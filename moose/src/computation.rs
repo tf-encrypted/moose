@@ -1809,8 +1809,8 @@ impl NamedComputation {
     pub fn write_textual<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let file = OpenOptions::new()
             .write(true)
-            .create_new(true)
-            .append(true)
+            .create(true)
+            .truncate(true)
             .open(path)
             .map_err(|e| Error::SerializationError(e.to_string()))?;
 
