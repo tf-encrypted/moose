@@ -18,6 +18,7 @@ use moose::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tonic::transport::{Channel, ClientTlsConfig, Server, ServerTlsConfig, Uri};
+use x509_parser::prelude::*;
 
 #[derive(Default, Clone)]
 pub struct GrpcNetworkingManager {
@@ -233,71 +234,54 @@ impl Networking for NetworkingImpl {
         &self,
         request: tonic::Request<SendValueRequest>,
     ) -> Result<tonic::Response<SendValueResponse>, tonic::Status> {
-        use tonic::{Code, Status};
-        use x509_parser::prelude::*;
-
-        let certs = request.peer_certs();
+        let sender =
+            extract_sender(&request).map_err(|e| tonic::Status::new(tonic::Code::Aborted, e))?;
 
         let request = request.into_inner();
-        let tagged_value = bincode::deserialize::<TaggedValue>(&request.tagged_value).unwrap(); // TODO error handling
+        let tagged_value =
+            bincode::deserialize::<TaggedValue>(&request.tagged_value).map_err(|_e| {
+                tonic::Status::new(tonic::Code::Aborted, "failed to parse value".to_string())
+            })?;
 
-        match certs {
-            Some(certs) => {
-                if certs.len() != 1 {
-                    tracing::debug!("Returning Aborted status since SSL cert has a large chain");
-                    Status::new(
-                        Code::Aborted,
-                        format!(
-                            "Cannot extract identity from an SSL Cert chain of length {:?}",
-                            certs.len()
-                        ),
-                    );
-                } else {
-                    let (_rem, cert) =
-                        parse_x509_certificate(certs[0].get_ref()).map_err(|err| {
-                            Status::new(
-                                Code::Aborted,
-                                format!(
-                                    "Error parsing the X509 certificate with err: {:?}",
-                                    err.to_string()
-                                ),
-                            )
-                        })?;
-                    let subject = cert.subject();
+        let cell = cell(
+            &self.stores,
+            tagged_value.session_id,
+            tagged_value.rendezvous_key,
+        );
+        cell.set((sender, tagged_value.value));
 
-                    let cn_list: Result<Vec<_>, X509Error> = subject
-                        .iter_common_name()
-                        .map(|attr| attr.as_str())
-                        .collect();
-                    let cn_list =
-                        cn_list.map_err(|err| Status::new(Code::Aborted, err.to_string()))?;
-                    let cn_string: &str = match cn_list.first() {
-                        Some(name) => Ok(name),
-                        None => Err(Status::new(
-                            Code::Aborted,
-                            "certificate common name was empty".to_string(),
-                        )),
-                    }?;
+        Ok(tonic::Response::new(SendValueResponse::default()))
+    }
+}
 
-                    let sender = Identity::from(cn_string);
-                    let cell = cell(
-                        &self.stores,
-                        tagged_value.session_id,
-                        tagged_value.rendezvous_key,
-                    );
-                    cell.set((Some(sender), tagged_value.value));
-                }
+fn extract_sender(request: &tonic::Request<SendValueRequest>) -> Result<Option<Identity>, String> {
+    match request.peer_certs() {
+        None => Ok(None),
+        Some(certs) => {
+            if certs.len() != 1 {
+                return Err(format!(
+                    "cannot extract identity from certificate chain of length {:?}",
+                    certs.len()
+                ));
             }
-            None => {
-                let cell = cell(
-                    &self.stores,
-                    tagged_value.session_id,
-                    tagged_value.rendezvous_key,
-                );
-                cell.set((None, tagged_value.value));
+
+            let (_rem, cert) = parse_x509_certificate(certs[0].as_ref()).map_err(|err| {
+                format!("failed to parse X509 certificate: {:?}", err.to_string())
+            })?;
+
+            let cns: Vec<_> = cert
+                .subject()
+                .iter_common_name()
+                .map(|attr| attr.as_str().map_err(|err| err.to_string()))
+                .collect::<Result<_, _>>()?;
+
+            if let Some(cn) = cns.first() {
+                let sender = Identity::from(*cn);
+                Ok(Some(sender))
+            } else {
+                Err("certificate common name was empty".to_string())
             }
         }
-        Ok(tonic::Response::new(SendValueResponse::default()))
     }
 }
 
