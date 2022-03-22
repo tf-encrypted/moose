@@ -116,9 +116,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(certs_dir) => {
             let client = setup_tls_client(&my_cert_name, &certs_dir)?;
             let server = setup_tls_server(&my_cert_name, &certs_dir)?;
-            GrpcNetworkingManager::from_tls_config(Some(client), Some(server))
+            GrpcNetworkingManager::from_tls_config(client, server)
         }
-        None => GrpcNetworkingManager::from_tls_config(None, None),
+        None => GrpcNetworkingManager::without_tls(),
     };
     let _server_task = manager.start_server(opt.port)?;
     let own_identity = Identity::from(opt.identity);
