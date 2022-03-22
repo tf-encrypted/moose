@@ -383,7 +383,7 @@ impl SymbolicExecutor {
                     .execute(&op.kind, &op.placement, operands)
                     .map_err(|e| {
                         Error::Compilation(format!(
-                            "SymbolicSession failed to lower computation due to an error: {:?}",
+                            "SymbolicSession failed to lower computation due to an error: {}",
                             e,
                         ))
                     })?;
