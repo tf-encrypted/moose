@@ -197,6 +197,7 @@ macro_rules! derive_runtime_kernel {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! operands {
     ($($content:tt)*) => {
         vec![$($content)*]
