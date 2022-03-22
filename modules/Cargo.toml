@@ -22,12 +22,13 @@ prost = "0.9"
 serde = { version = "~1.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 toml = "0.5"
-tonic = "0.6"
+tonic = { version = "~0.6", features = ["tls"] }
 tracing = { version="0.1", features = ["log"] }
 tracing-attributes = "0.1"
+x509-parser = "~0.13"
 
 [build-dependencies]
-tonic-build = "0.6"
+tonic-build = "~0.6"
 
 [dev-dependencies]
 tempfile = "~3.3"

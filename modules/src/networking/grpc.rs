@@ -17,12 +17,15 @@ use moose::networking::AsyncNetworking;
 use moose::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tonic::transport::{Channel, Server, Uri};
+use tonic::transport::{Channel, ClientTlsConfig, Server, ServerTlsConfig, Uri};
+use x509_parser::prelude::*;
 
 #[derive(Default, Clone)]
 pub struct GrpcNetworkingManager {
     stores: Arc<SessionStores>,
     channels: Arc<Channels>,
+    tls_client_config: Option<ClientTlsConfig>,
+    tls_server_config: Option<ServerTlsConfig>,
 }
 
 impl GrpcNetworkingManager {
@@ -32,11 +35,30 @@ impl GrpcNetworkingManager {
         })
     }
 
+    pub fn without_tls() -> Self {
+        GrpcNetworkingManager {
+            stores: Default::default(),
+            channels: Default::default(),
+            tls_client_config: None,
+            tls_server_config: None,
+        }
+    }
+
+    pub fn from_tls_config(client: ClientTlsConfig, server: ServerTlsConfig) -> Self {
+        GrpcNetworkingManager {
+            stores: Default::default(),
+            channels: Default::default(),
+            tls_client_config: Some(client),
+            tls_server_config: Some(server),
+        }
+    }
+
     pub fn new_session(&self, session_id: SessionId) -> Arc<impl AsyncNetworking> {
         Arc::new(GrpcNetworking {
             session_id,
             stores: Arc::clone(&self.stores),
             channels: Arc::clone(&self.channels),
+            tls_config: self.tls_client_config.clone(),
         })
     }
 
@@ -45,11 +67,17 @@ impl GrpcNetworkingManager {
             .parse()
             .map_err(|e| Error::Networking(format!("failed to parse port and address: {}", e)))?;
         let manager = self.clone();
+
+        let mut server = Server::builder();
+        if let Some(ref tls_config) = self.tls_server_config {
+            server = server.tls_config(tls_config.clone()).map_err(|e| {
+                moose::Error::Networking(format!("failed to TLS config {:?}", e.to_string()))
+            })?;
+        }
+        let router = server.add_service(manager.new_server());
+
         let handle = tokio::spawn(async move {
-            let res = Server::builder()
-                .add_service(manager.new_server())
-                .serve(addr)
-                .await;
+            let res = router.serve(addr).await;
             if let Err(e) = res {
                 tracing::error!("gRPC error: {}", e);
             }
@@ -59,6 +87,7 @@ impl GrpcNetworkingManager {
 }
 
 struct GrpcNetworking {
+    tls_config: Option<ClientTlsConfig>,
     session_id: SessionId,
     stores: Arc<SessionStores>,
     channels: Arc<Channels>,
@@ -77,7 +106,17 @@ impl GrpcNetworking {
                         receiver
                     ))
                 })?;
-                Ok(Channel::builder(endpoint).connect_lazy())
+
+                let mut channel = Channel::builder(endpoint);
+                if let Some(ref tls_config) = self.tls_config {
+                    channel = channel.tls_config(tls_config.clone()).map_err(|e| {
+                        moose::Error::Networking(format!(
+                            "failed to TLS config {:?}",
+                            e.to_string()
+                        ))
+                    })?;
+                };
+                Ok(channel.connect_lazy())
             })?
             .clone(); // cloning channels is cheap per tonic documentation
         Ok(channel)
@@ -125,7 +164,7 @@ impl AsyncNetworking for GrpcNetworking {
 
     async fn receive(
         &self,
-        _sender: &Identity,
+        sender: &Identity,
         rendezvous_key: &RendezvousKey,
         _session_id: &SessionId,
     ) -> moose::Result<Value> {
@@ -134,7 +173,21 @@ impl AsyncNetworking for GrpcNetworking {
             self.session_id.clone(),
             rendezvous_key.clone(),
         );
-        Ok(cell.take().await)
+
+        let (actual_sender, value) = cell.take().await;
+        match actual_sender {
+            Some(actual_sender) => {
+                if *sender != actual_sender {
+                    Err(moose::Error::Networking(format!(
+                        "wrong sender; expected {:?} but got {:?}",
+                        sender, actual_sender
+                    )))
+                } else {
+                    Ok(value)
+                }
+            }
+            None => Ok(value),
+        }
     }
 }
 
@@ -144,10 +197,10 @@ impl Drop for GrpcNetworking {
     }
 }
 
-type SessionStore = DashMap<RendezvousKey, Arc<AsyncCell<Value>>>;
+type AuthValue = (Option<Identity>, Value);
 
+type SessionStore = DashMap<RendezvousKey, Arc<AsyncCell<AuthValue>>>;
 type SessionStores = DashMap<SessionId, Arc<SessionStore>>;
-
 type Channels = DashMap<Identity, Channel>;
 
 #[derive(Default)]
@@ -159,7 +212,7 @@ fn cell(
     stores: &Arc<SessionStores>,
     session_id: SessionId,
     rendezvous_key: RendezvousKey,
-) -> Arc<AsyncCell<Value>> {
+) -> Arc<AsyncCell<AuthValue>> {
     let session_store = stores
         .entry(session_id) // TODO(Morten) only use the secure bytes?
         .or_insert_with(Arc::default)
@@ -181,17 +234,54 @@ impl Networking for NetworkingImpl {
         &self,
         request: tonic::Request<SendValueRequest>,
     ) -> Result<tonic::Response<SendValueResponse>, tonic::Status> {
+        let sender =
+            extract_sender(&request).map_err(|e| tonic::Status::new(tonic::Code::Aborted, e))?;
+
         let request = request.into_inner();
-        let tagged_value = bincode::deserialize::<TaggedValue>(&request.tagged_value).unwrap(); // TODO error handling
+        let tagged_value =
+            bincode::deserialize::<TaggedValue>(&request.tagged_value).map_err(|_e| {
+                tonic::Status::new(tonic::Code::Aborted, "failed to parse value".to_string())
+            })?;
 
         let cell = cell(
             &self.stores,
             tagged_value.session_id,
             tagged_value.rendezvous_key,
         );
-        cell.set(tagged_value.value);
+        cell.set((sender, tagged_value.value));
 
         Ok(tonic::Response::new(SendValueResponse::default()))
+    }
+}
+
+fn extract_sender(request: &tonic::Request<SendValueRequest>) -> Result<Option<Identity>, String> {
+    match request.peer_certs() {
+        None => Ok(None),
+        Some(certs) => {
+            if certs.len() != 1 {
+                return Err(format!(
+                    "cannot extract identity from certificate chain of length {:?}",
+                    certs.len()
+                ));
+            }
+
+            let (_rem, cert) = parse_x509_certificate(certs[0].as_ref()).map_err(|err| {
+                format!("failed to parse X509 certificate: {:?}", err.to_string())
+            })?;
+
+            let cns: Vec<_> = cert
+                .subject()
+                .iter_common_name()
+                .map(|attr| attr.as_str().map_err(|err| err.to_string()))
+                .collect::<Result<_, _>>()?;
+
+            if let Some(cn) = cns.first() {
+                let sender = Identity::from(*cn);
+                Ok(Some(sender))
+            } else {
+                Err("certificate common name was empty".to_string())
+            }
+        }
     }
 }
 

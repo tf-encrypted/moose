@@ -2,12 +2,13 @@
 use lazy_static::lazy_static;
 use std::time::Duration;
 
-/// The default multiplier value
-pub(crate) const MULTIPLIER: f64 = 1.;
+/// The default multiplier to determine the next interval between retries
+pub(crate) const MULTIPLIER: f64 = 1.1;
 
 lazy_static! {
-    /// The default maximum elapsed time in milliseconds (1 minute).
-    pub(crate) static ref MAX_ELAPSED_TIME: Option<Duration> = Some(Duration::from_millis(60_000));
-    /// The default maximum back off time in milliseconds (3600 seconds).
-    pub(crate) static ref MAX_INTERVAL: Duration = Duration::from_millis(3_600_000);
+    /// The default maximum internal between retries
+    pub(crate) static ref MAX_INTERVAL: Duration = Duration::from_secs(5);
+
+    /// The default maximum elapsed time before giving up on retrying
+    pub(crate) static ref MAX_ELAPSED_TIME: Option<Duration> = Some(Duration::from_secs(5 * 60));
 }
