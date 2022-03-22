@@ -161,13 +161,14 @@ impl ShareOp {
 }
 
 impl RevealOp {
-    pub(crate) fn shape_kernel<S: Session>(
+    pub(crate) fn shape_kernel<S: Session, HostShapeT>(
         sess: &S,
         receiver: &HostPlacement,
-        shape: ReplicatedShape,
-    ) -> Result<HostShape>
+        shape: RepShape<HostShapeT>,
+    ) -> Result<HostShapeT>
     where
-        HostPlacement: PlacementPlace<S, HostShape>,
+        HostShapeT: Clone + Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementPlace<S, HostShapeT>,
     {
         let rep_plc = shape.placement()?;
         let (h0, h1, h2) = rep_plc.host_placements();
