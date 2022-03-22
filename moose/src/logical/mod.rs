@@ -39,6 +39,7 @@ pub enum TensorShape {
     Replicated,
     Additive,
     Mirrored,
+    Unknown,
 }
 
 impl HasShortName for TensorDType {
@@ -62,6 +63,7 @@ impl HasShortName for TensorShape {
             TensorShape::Replicated => "Replicated",
             TensorShape::Additive => "Additive",
             TensorShape::Mirrored => "Mirrored",
+            TensorShape::Unknown => "Unknown",
         }
     }
 }

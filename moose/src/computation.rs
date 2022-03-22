@@ -532,7 +532,7 @@ values![
     HostSeed,
     HostPrfKey,
     HostString,
-    Shape(TensorShape::Host),
+    Shape(TensorShape::Unknown),
     Tensor(TensorDType::Unknown),
     HostBitTensor,
     HostBitArray64,
@@ -637,6 +637,7 @@ impl Ty {
     pub(crate) fn flatten(&self) -> Ty {
         match self {
             Ty::Tensor(_) => Ty::Tensor(TensorDType::Unknown),
+            Ty::Shape(_) => Ty::Shape(TensorShape::Unknown),
             _ => *self,
         }
     }
