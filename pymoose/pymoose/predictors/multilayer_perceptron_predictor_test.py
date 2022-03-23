@@ -10,7 +10,7 @@ from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose import testing
 from pymoose.computation import utils as comp_utils
-from pymoose.predictors import neural_net_predictor
+from pymoose.predictors import multilayer_perceptron_predictor
 from pymoose.predictors import predictor_utils
 
 _SK_REGRESSION_MODELS = [
@@ -91,7 +91,7 @@ class MLPPredictorTest(parameterized.TestCase):
     @parameterized.parameters(*_SK_REGRESSION_MODELS)
     def test_regression_logic(self, model_name, expected):
         regressor, regressor_logic = self._build_prediction_logic(
-            model_name, neural_net_predictor.MLPRegressor
+            model_name, multilayer_perceptron_predictor.MLPRegressor
         )
 
         traced_predictor = edsl.trace(regressor_logic)
@@ -160,7 +160,7 @@ class MLPPredictorTest(parameterized.TestCase):
     @parameterized.parameters(*_SK_CLASSIFIER_MODELS)
     def test_classification_logic(self, model_name, expected):
         classifier, classifier_logic = self._build_prediction_logic(
-            model_name, neural_net_predictor.MLPClassifier
+            model_name, multilayer_perceptron_predictor.MLPClassifier
         )
 
         traced_predictor = edsl.trace(classifier_logic)
@@ -209,11 +209,11 @@ class MLPPredictorTest(parameterized.TestCase):
     @parameterized.parameters(
         *zip(
             map(lambda x: x[0], _SK_REGRESSION_MODELS),
-            itertools.repeat(neural_net_predictor.MLPRegressor),
+            itertools.repeat(multilayer_perceptron_predictor.MLPRegressor),
         ),
         *zip(
             map(lambda x: x[0], _SK_CLASSIFIER_MODELS),
-            itertools.repeat(neural_net_predictor.MLPClassifier),
+            itertools.repeat(multilayer_perceptron_predictor.MLPClassifier),
         ),
     )
     def test_serde(self, model_name, predictor_cls):
