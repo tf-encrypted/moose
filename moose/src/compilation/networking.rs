@@ -1,119 +1,123 @@
-use crate::computation::*;
-use petgraph::visit::EdgeRef;
+use crate::{computation::*, host::HostPlacement};
 use std::collections::HashMap;
 
-pub struct NetworkingPass {
-    operations: Vec<Operation>,
+/// Applies the networking pass to the entire computation
+pub fn networking_pass(mut comp: Computation) -> anyhow::Result<Computation> {
+    let graph = comp.as_graph();
+    let mut state = NetworkingPassState::new();
+    // Per src_op cache; allocated here to reuse memory but cleared for each src_op
+    let mut cache: HashMap<HostPlacement, String> = HashMap::new();
+
+    for src_node in graph.node_indices() {
+        let src_idx = graph[src_node].index;
+
+        cache.clear();
+
+        for dst_node in graph.neighbors(src_node) {
+            let dst_idx = graph[dst_node].index;
+
+            let receive_op_name = {
+                let src_op = &comp.operations[src_idx];
+                let dst_op = &comp.operations[dst_idx];
+
+                use Placement::*;
+                match (&src_op.placement, &dst_op.placement) {
+                    // We only operate on edges across different hosts
+                    (Host(src_host), Host(dst_host)) if src_host != dst_host => {
+                        let src_op_name = src_op.name.clone();
+
+                        // Create a new jump, or use an existing if `src_op` has already been sent to `dst_host`
+                        if let Some(receive_op_name) = cache.get(dst_host) {
+                            Some((src_op_name, receive_op_name.clone()))
+                        } else {
+                            let receive_op_name = state.create_networking_jump(src_op, dst_op);
+                            cache.insert(dst_host.clone(), receive_op_name.clone());
+                            Some((src_op_name, receive_op_name))
+                        }
+                    }
+                    _ => {
+                        // No updates needed
+                        None
+                    }
+                }
+            };
+
+            if let Some((src_op_name, receive_op_name)) = receive_op_name {
+                // Update target operation's input to the receive operation's name
+                let dst_op = &mut comp.operations[dst_idx];
+                for input_op_name in &mut dst_op.inputs {
+                    if *input_op_name == src_op_name {
+                        *input_op_name = receive_op_name.clone();
+                    }
+                }
+            };
+        }
+    }
+
+    comp.operations.extend(state.extra_ops);
+    Ok(comp)
+}
+
+struct NetworkingPassState {
     extra_ops: Vec<Operation>,
     counter: std::ops::RangeFrom<usize>,
     rendezvous: std::ops::RangeFrom<usize>,
 }
 
-impl NetworkingPass {
-    /// Create a new context for the Networking pass
-    fn new(comp: &Computation) -> NetworkingPass {
-        NetworkingPass {
-            operations: comp.operations.clone(),
+impl NetworkingPassState {
+    fn new() -> NetworkingPassState {
+        NetworkingPassState {
             extra_ops: Vec::new(),
             counter: 0..,
             rendezvous: 0..,
         }
     }
 
-    /// Applies the networking pass to the entire computation
-    pub fn pass(comp: &Computation) -> anyhow::Result<Option<Computation>> {
-        // We clone the operations to make the changes to them.
-        let mut pass = NetworkingPass::new(comp);
-
-        let graph = comp.as_graph();
-
-        let mut created_cache = HashMap::new();
-        for er in graph.edge_references() {
-            let src_op = &comp.operations[graph[er.source()].index];
-            let dst_op = &comp.operations[graph[er.target()].index];
-            match placement_discrimnator(src_op, dst_op) {
-                // We only operate on edges that jump from a host to a different host
-                (Some(src), Some(dst)) if src != dst => {
-                    // Create a jump or use the existing one, if already passed `src_op` to host `dst`
-                    let receive_op_name = created_cache
-                        .entry((dst, &src_op.name))
-                        .or_insert_with(|| pass.create_networking_jump(src_op, dst_op, src, dst));
-
-                    // Update target operation's input to the receive operation's name
-                    if let Some(input) = pass.operations[graph[er.target()].index]
-                        .inputs
-                        .iter_mut()
-                        .find(|r| *r == &src_op.name)
-                    {
-                        *input = receive_op_name.clone();
-                    }
-                }
-                _ => (),
-            }
-        }
-
-        pass.operations.extend(pass.extra_ops);
-        Ok(Some(Computation {
-            operations: pass.operations,
-        }))
-    }
-
     /// Create operations necessary for a networking jump between two hosts
-    fn create_networking_jump(
-        &mut self,
-        src_op: &Operation,
-        dst_op: &Operation,
-        src: &str,
-        dst: &str,
-    ) -> String {
+    fn create_networking_jump(&mut self, src_op: &Operation, dst_op: &Operation) -> String {
         let index = self.counter.next().unwrap();
 
         let rendezvous_key = RendezvousKey::from(self.rendezvous.next().unwrap() as u128);
 
-        let send_operation = Operation {
+        let receiver = match &dst_op.placement {
+            Placement::Host(plc) => plc.owner.clone(),
+            _ => unimplemented!(), // should never happen
+        };
+
+        let sender = match &src_op.placement {
+            Placement::Host(plc) => plc.owner.clone(),
+            _ => unimplemented!(), // should never happen
+        };
+
+        let send_op = Operation {
             name: format!("send_{}", index),
             kind: SendOp {
                 sig: Signature::unary(src_op.kind.sig().ret(), Ty::HostUnit),
                 rendezvous_key: rendezvous_key.clone(),
-                receiver: Role::from(dst),
+                receiver,
             }
             .into(),
             inputs: vec![src_op.name.clone()],
             placement: src_op.placement.clone(),
         };
-        self.extra_ops.push(send_operation);
+        self.extra_ops.push(send_op);
 
-        let receive_operation = Operation {
-            name: format!("receive_{}", index),
+        let receive_op_name = format!("receive_{}", index);
+        let receive_op = Operation {
+            name: receive_op_name.clone(),
             kind: ReceiveOp {
                 sig: Signature::nullary(src_op.kind.sig().ret()),
                 rendezvous_key,
-                sender: Role::from(src),
+                sender,
             }
             .into(),
             inputs: vec![],
             placement: dst_op.placement.clone(),
         };
-        self.extra_ops.push(receive_operation);
+        self.extra_ops.push(receive_op);
 
-        // Return the name of the receive operation
-        format!("receive_{}", index)
+        receive_op_name
     }
-}
-
-/// The discriminator to find the signature of an edge projected as a jump between hosts
-fn placement_discrimnator<'a>(
-    op1: &'a Operation,
-    op2: &'a Operation,
-) -> (Option<&'a str>, Option<&'a str>) {
-    fn placement(op: &Operation) -> Option<&str> {
-        match &op.placement {
-            Placement::Host(host) => Some(host.owner.0.as_str()),
-            _ => None,
-        }
-    }
-
-    (placement(op1), placement(op2))
 }
 
 #[cfg(test)]
@@ -131,9 +135,7 @@ mod tests {
         dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         mean = Mean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"#;
 
-        let comp = NetworkingPass::pass(&source.try_into()?)?
-            .unwrap()
-            .to_textual();
+        let comp = networking_pass(source.try_into()?)?.to_textual();
         // Networking should not introduce any changes to such a computation
         assert!(comp.contains(
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
@@ -154,9 +156,7 @@ mod tests {
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         mean = Mean{}: (HostFloat32Tensor) -> HostFloat32Tensor (dot) @Host(alice)"#;
-        let comp = NetworkingPass::pass(&source.try_into()?)?
-            .unwrap()
-            .to_textual();
+        let comp = networking_pass(source.try_into()?)?.to_textual();
 
         // Networking should introduce one new networking operation (not 2) for the 2 jumps. And leave the mean unchaged (dot already on the right host)
         assert!(comp.contains(
@@ -177,9 +177,7 @@ mod tests {
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(bob)
         add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(bob)"#;
-        let comp = NetworkingPass::pass(&source.try_into()?)?
-            .unwrap()
-            .to_textual();
+        let comp = networking_pass(source.try_into()?)?.to_textual();
         // Should have one send/receive pair per each variable being sent
         assert!(comp.contains(
             r#"send_0 = Send{rendezvous_key = 00000000000000000000000000000000, receiver = "bob"}: (HostFloat32Tensor) -> HostUnit (x) @Host(alice)"#
@@ -201,9 +199,7 @@ mod tests {
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(bob)
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, charlie)"#;
 
-        let comp = NetworkingPass::pass(&source.try_into()?)?
-            .unwrap()
-            .to_textual();
+        let comp = networking_pass(source.try_into()?)?.to_textual();
         // Networking should not make any changes to the replicated placement (should probably never see it in real life)
         assert!(comp.contains("mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Replicated(alice, bob, charlie)"));
         Ok(())

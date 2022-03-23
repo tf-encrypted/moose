@@ -1,6 +1,6 @@
 use self::deprecated_logical::deprecated_logical_lowering;
 use crate::compilation::lowering::lowering;
-use crate::compilation::networking::NetworkingPass;
+use crate::compilation::networking::networking_pass;
 use crate::compilation::print::print_graph;
 use crate::compilation::pruning::prune_graph;
 use crate::compilation::typing::update_types_one_hop;
@@ -81,9 +81,7 @@ where
         .collect::<anyhow::Result<Vec<Pass>>>()?;
 
     for pass in passes {
-        if let Some(new_computation) = do_pass(&pass, &computation)? {
-            computation = new_computation;
-        }
+        computation = pass.run(computation)?;
     }
     Ok(computation)
 }
@@ -102,21 +100,25 @@ where
     }
 }
 
-fn do_pass(pass: &Pass, comp: &Computation) -> anyhow::Result<Option<Computation>> {
-    match pass {
-        Pass::Networking => NetworkingPass::pass(comp),
-        Pass::Print => print_graph(comp),
-        Pass::Prune => prune_graph(comp),
-        Pass::Lowering => lowering(comp),
-        Pass::Typing => update_types_one_hop(comp),
-        Pass::DeprecatedLogical => deprecated_logical_lowering(comp),
-        Pass::Dump => {
-            println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
-            Ok(None)
+impl Pass {
+    fn run(&self, comp: Computation) -> anyhow::Result<Computation> {
+        match self {
+            Pass::Networking => networking_pass(comp),
+            Pass::Print => print_graph(comp),
+            Pass::Prune => prune_graph(comp),
+            Pass::Lowering => lowering(comp),
+            Pass::Typing => update_types_one_hop(comp),
+            Pass::DeprecatedLogical => deprecated_logical_lowering(comp),
+            Pass::Dump => {
+                println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
+                Ok(comp)
+            }
+            Pass::Toposort => {
+                let comp = comp
+                    .toposort()
+                    .map_err(|e| anyhow::anyhow!("Toposort failed due to {}", e))?;
+                Ok(comp)
+            }
         }
-        Pass::Toposort => comp
-            .toposort()
-            .map(Some)
-            .map_err(|e| anyhow::anyhow!("Toposort failed due to {}", e)),
     }
 }
