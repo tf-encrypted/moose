@@ -12,24 +12,24 @@ from pymoose.computation.base import ValueType
 
 
 @dataclass
-class StandardType(ValueType):
+class LogicalType(ValueType):
     @classmethod
     def dialect(cls):
         return "std"
 
 
 @dataclass
-class UnitType(StandardType):
+class UnitType(LogicalType):
     pass
 
 
 @dataclass
-class UnknownType(StandardType):
+class UnknownType(LogicalType):
     pass
 
 
 @dataclass(init=False)
-class TensorType(StandardType):
+class TensorType(LogicalType):
     dtype: dtypes.DType
 
     def __init__(self, dtype: dtypes.DType):
@@ -40,7 +40,7 @@ class TensorType(StandardType):
 
 
 @dataclass(init=False)
-class AesTensorType(StandardType):
+class AesTensorType(LogicalType):
     dtype: dtypes.DType
 
     def __init__(self, dtype: dtypes.DType):
@@ -54,91 +54,91 @@ class AesTensorType(StandardType):
 
 
 @dataclass
-class AesKeyType(StandardType):
+class AesKeyType(LogicalType):
     pass
 
 
 @dataclass
-class BytesType(StandardType):
+class BytesType(LogicalType):
     pass
 
 
 @dataclass
-class StringType(StandardType):
+class StringType(LogicalType):
     pass
 
 
 @dataclass
-class IntType(StandardType):
+class IntType(LogicalType):
     pass
 
 
 @dataclass
-class FloatType(StandardType):
+class FloatType(LogicalType):
     pass
 
 
 @dataclass
-class ShapeType(StandardType):
+class ShapeType(LogicalType):
     pass
 
 
 @dataclass(init=False)
-class StandardOperation(Operation):
+class LogicalOperation(Operation):
     @classmethod
     def dialect(cls):
         return "std"
 
 
 @dataclass
-class AddNOperation(StandardOperation):
+class AddNOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class IdentityOperation(StandardOperation):
+class IdentityOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class InputOperation(StandardOperation):
+class InputOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class OutputOperation(StandardOperation):
+class OutputOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class DecryptOperation(StandardOperation):
+class DecryptOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class StandardConstant(Value):
+class LogicalConstant(Value):
     @classmethod
     def dialect(cls):
         return "std"
 
 
 @dataclass
-class ShapeConstant(StandardConstant):
+class ShapeConstant(LogicalConstant):
     value: tuple
 
 
 @dataclass
-class StringConstant(StandardConstant):
+class StringConstant(LogicalConstant):
     value: str
 
 
 @dataclass
-class BytesConstant(StandardConstant):
+class BytesConstant(LogicalConstant):
     value: bytes
 
 
 @dataclass
-class TensorConstant(StandardConstant):
+class TensorConstant(LogicalConstant):
     value: np.ndarray
 
     def __hash__(self):
@@ -149,184 +149,184 @@ class TensorConstant(StandardConstant):
 
 
 @dataclass
-class IntConstant(StandardConstant):
+class IntConstant(LogicalConstant):
     value: int
 
 
 @dataclass
-class FloatConstant(StandardConstant):
+class FloatConstant(LogicalConstant):
     value: float
 
 
 @dataclass
-class ConstantOperation(StandardOperation):
+class ConstantOperation(LogicalOperation):
     value: Value
 
 
 @dataclass
-class ConcatenateOperation(StandardOperation):
+class ConcatenateOperation(LogicalOperation):
     axis: int
 
 
 @dataclass
-class MaximumOperation(StandardOperation):
+class MaximumOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class AddOperation(StandardOperation):
+class AddOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class SubOperation(StandardOperation):
+class SubOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class MulOperation(StandardOperation):
+class MulOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class LessOperation(StandardOperation):
+class LessOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class AbsOperation(StandardOperation):
+class AbsOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class CastOperation(StandardOperation):
+class CastOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class DotOperation(StandardOperation):
+class DotOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class DivOperation(StandardOperation):
+class DivOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class InverseOperation(StandardOperation):
+class InverseOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class ExpandDimsOperation(StandardOperation):
+class ExpandDimsOperation(LogicalOperation):
     axis: Tuple[int]
 
 
 @dataclass
-class SqueezeOperation(StandardOperation):
+class SqueezeOperation(LogicalOperation):
     axis: Optional[Union[int, Tuple[int]]]
 
 
 @dataclass
-class OnesOperation(StandardOperation):
+class OnesOperation(LogicalOperation):
     dtype: Optional[Union[float, np.float64, int, np.int64]]
 
 
 @dataclass
-class SumOperation(StandardOperation):
+class SumOperation(LogicalOperation):
     axis: Optional[Union[int, Tuple[int]]]
 
 
 @dataclass
-class MeanOperation(StandardOperation):
+class MeanOperation(LogicalOperation):
     axis: Optional[Union[int, Tuple[int]]]
 
 
 @dataclass
-class ExpOperation(StandardOperation):
+class ExpOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class SigmoidOperation(StandardOperation):
+class SigmoidOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class LogOperation(StandardOperation):
+class LogOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class Log2Operation(StandardOperation):
+class Log2Operation(LogicalOperation):
     pass
 
 
 @dataclass
-class SoftmaxOperation(StandardOperation):
+class SoftmaxOperation(LogicalOperation):
     axis: Optional[Tuple[int]]
     upmost_index: int
 
 
 @dataclass
-class ArgmaxOperation(StandardOperation):
+class ArgmaxOperation(LogicalOperation):
     axis: Optional[Tuple[int]]
     upmost_index: int
 
 
 @dataclass
-class SqrtOperation(StandardOperation):
+class SqrtOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class TransposeOperation(StandardOperation):
+class TransposeOperation(LogicalOperation):
     axes: Optional[Tuple[int]]
 
 
 @dataclass
-class ReshapeOperation(StandardOperation):
+class ReshapeOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class AtLeast2DOperation(StandardOperation):
+class AtLeast2DOperation(LogicalOperation):
     to_column_vector: bool
 
 
 @dataclass
-class ShapeOperation(StandardOperation):
+class ShapeOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class IndexAxisOperation(StandardOperation):
+class IndexAxisOperation(LogicalOperation):
     axis: int
     index: int
 
 
 @dataclass
-class SliceOperation(StandardOperation):
+class SliceOperation(LogicalOperation):
     begin: int
     end: int
 
 
 @dataclass
-class BitwiseOrOperation(StandardOperation):
+class BitwiseOrOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class MuxOperation(StandardOperation):
+class MuxOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class LoadOperation(StandardOperation):
+class LoadOperation(LogicalOperation):
     pass
 
 
 @dataclass
-class SaveOperation(StandardOperation):
+class SaveOperation(LogicalOperation):
     pass

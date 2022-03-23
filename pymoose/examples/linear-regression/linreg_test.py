@@ -9,7 +9,7 @@ from absl.testing import parameterized
 from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose.computation import utils
-from pymoose.computation.standard import StringType
+from pymoose.computation.logical import StringType
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
