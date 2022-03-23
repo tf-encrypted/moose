@@ -1346,6 +1346,7 @@ impl ToTextual for Ty {
     fn to_textual(&self) -> String {
         match self {
             Ty::Tensor(inner) => format!("{}<{}>", self.short_name(), inner.to_textual()),
+            Ty::Shape(inner) => format!("{}<{}>", self.short_name(), inner.short_name()),
             _ => self.short_name().to_string(),
         }
     }

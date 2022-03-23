@@ -1,5 +1,5 @@
 use crate::computation::*;
-use crate::logical::TensorDType;
+use crate::logical::{TensorDType, TensorShape};
 use petgraph::Direction;
 use std::collections::HashMap;
 
@@ -218,6 +218,8 @@ impl Ty {
             Ty::Unknown => Some(*another),
             // TODO: make sure another dtype is also a tensor
             Ty::Tensor(TensorDType::Unknown) => Some(*another),
+            // TODO: make sure another dtype is also a shape
+            Ty::Shape(TensorShape::Unknown) => Some(*another),
             _ => None,
         }
     }
