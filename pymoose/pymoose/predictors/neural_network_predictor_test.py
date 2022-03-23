@@ -13,9 +13,11 @@ from pymoose.computation import utils as comp_utils
 from pymoose.predictors import neural_network_predictor
 from pymoose.predictors import predictor_utils
 
-_TORCH_MODELS = [
+_MODELS = [
     ("pytorch_net_1hidden_layer_sigmoid", [[0.32620516, 0.6737948]]),
     ("pytorch_net_2hidden_layer_sigmoid", [[0.5311462, 0.46885377]]),
+    ("keras_net_1hidden_layer_sigmoid", [[0.7901215, 0.20987843]]),
+    ("keras_net_2hidden_layer_sigmoid", [[0.37569475, 0.6243052]]),
 ]
 
 
@@ -43,7 +45,7 @@ class NNPredictorTest(parameterized.TestCase):
 
         return predictor, predictor_no_aes
 
-    @parameterized.parameters(*_TORCH_MODELS)
+    @parameterized.parameters(*_MODELS)
     def test_regression_logic(self, model_name, expected):
         regressor, regressor_logic = self._build_prediction_logic(
             model_name, neural_network_predictor.NeuralNetwork
@@ -82,7 +84,7 @@ class NNPredictorTest(parameterized.TestCase):
 
     @parameterized.parameters(
         *zip(
-            map(lambda x: x[0], _TORCH_MODELS),
+            map(lambda x: x[0], _MODELS),
             itertools.repeat(neural_network_predictor.NeuralNetwork),
         ),
     )
