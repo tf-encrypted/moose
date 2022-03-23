@@ -5,8 +5,6 @@ from pymoose.computation import utils
 from pymoose.computation.base import Computation
 from pymoose.computation.base import OpSignature
 from pymoose.computation.host import HostPlacement
-from pymoose.computation.mirrored import MirroredPlacement
-from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.logical import AbsOperation
 from pymoose.computation.logical import AddNOperation
 from pymoose.computation.logical import AddOperation
@@ -47,6 +45,8 @@ from pymoose.computation.logical import SumOperation
 from pymoose.computation.logical import TransposeOperation
 from pymoose.computation.logical import UnitType
 from pymoose.computation.logical import UnknownType
+from pymoose.computation.mirrored import MirroredPlacement
+from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.edsl.base import AbsExpression
 from pymoose.edsl.base import AddNExpression
 from pymoose.edsl.base import ArgmaxExpression

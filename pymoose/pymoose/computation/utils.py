@@ -6,9 +6,9 @@ import numpy as np
 
 from pymoose.computation import dtypes
 from pymoose.computation import host as host_dialect
+from pymoose.computation import logical as lgc_dialect
 from pymoose.computation import mirrored as mirrored_dialect
 from pymoose.computation import replicated as rep_dialect
-from pymoose.computation import logical as lgc_dialect
 from pymoose.computation.base import Computation
 from pymoose.computation.base import Operation
 from pymoose.computation.base import OpSignature
