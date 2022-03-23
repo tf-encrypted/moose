@@ -4,6 +4,7 @@ use crate::logical::TensorShape;
 /// The pass replaces the HostShape on the logical level with its Shape<Host> counterpart.
 pub fn deprecated_shape_support(comp: Computation) -> anyhow::Result<Computation> {
     let mut operations = comp.operations.clone();
+    let mut changes_made = false; // A flag to let the SliceOp know if it needs to alter its types as well.
     for op in operations.iter_mut() {
         // Recognize ops that have logical level kernels and may see a shape of a wrong type.
         match op.kind {
@@ -15,6 +16,7 @@ pub fn deprecated_shape_support(comp: Computation) -> anyhow::Result<Computation
                     }),
             }) if *ret_ty == Ty::HostShape => {
                 *ret_ty = Ty::Shape(TensorShape::Host);
+                changes_made = true;
             }
             Operator::Ones(OnesOp {
                 sig:
@@ -24,6 +26,17 @@ pub fn deprecated_shape_support(comp: Computation) -> anyhow::Result<Computation
                     }),
             }) if *arg0_ty == Ty::HostShape => {
                 *arg0_ty = Ty::Shape(TensorShape::Host);
+            }
+            Operator::Slice(SliceOp {
+                sig:
+                    Signature::Unary(UnarySignature {
+                        arg0: Ty::HostShape,
+                        ret: Ty::HostShape,
+                    }),
+                ..
+            }) if changes_made => {
+                *op.kind.sig_mut() =
+                    Signature::unary(Ty::Shape(TensorShape::Host), Ty::Shape(TensorShape::Host));
             }
             _ => {}
         };
