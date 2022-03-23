@@ -5,7 +5,7 @@ from absl.testing import parameterized
 from pymoose import LocalRuntime
 from pymoose import edsl
 from pymoose.computation import utils
-from pymoose.computation.standard import StringType
+from pymoose.computation.logical import StringType
 
 _x_owner = edsl.host_placement(name="x_owner")
 _y_owner = edsl.host_placement(name="y_owner")

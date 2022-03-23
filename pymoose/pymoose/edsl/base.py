@@ -7,19 +7,19 @@ from typing import Union
 import numpy as np
 
 from pymoose.computation import dtypes
-from pymoose.computation.standard import AesKeyType
-from pymoose.computation.standard import AesTensorType
-from pymoose.computation.standard import FloatConstant
-from pymoose.computation.standard import FloatType
-from pymoose.computation.standard import IntConstant
-from pymoose.computation.standard import IntType
-from pymoose.computation.standard import ShapeConstant
-from pymoose.computation.standard import ShapeType
-from pymoose.computation.standard import StringConstant
-from pymoose.computation.standard import StringType
-from pymoose.computation.standard import TensorConstant
-from pymoose.computation.standard import TensorType
-from pymoose.computation.standard import ValueType
+from pymoose.computation.logical import AesKeyType
+from pymoose.computation.logical import AesTensorType
+from pymoose.computation.logical import FloatConstant
+from pymoose.computation.logical import FloatType
+from pymoose.computation.logical import IntConstant
+from pymoose.computation.logical import IntType
+from pymoose.computation.logical import ShapeConstant
+from pymoose.computation.logical import ShapeType
+from pymoose.computation.logical import StringConstant
+from pymoose.computation.logical import StringType
+from pymoose.computation.logical import TensorConstant
+from pymoose.computation.logical import TensorType
+from pymoose.computation.logical import ValueType
 
 CURRENT_PLACEMENT: List = []
 _NUMPY_DTYPES_MAP = {
