@@ -215,7 +215,7 @@ impl SaveOp {
 }
 
 impl AbsOp {
-    pub(crate) fn host_kernel<S: RuntimeSession, T: 'static + Signed>(
+    pub(crate) fn host_kernel<S: RuntimeSession, T: Signed>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
