@@ -3,6 +3,7 @@ use crate::compilation::lowering::lowering;
 use crate::compilation::networking::networking_pass;
 use crate::compilation::print::print_graph;
 use crate::compilation::pruning::prune_graph;
+use crate::compilation::toposort::toposort;
 use crate::compilation::typing::update_types_one_hop;
 use crate::computation::Computation;
 use crate::textual::ToTextual;
@@ -13,6 +14,7 @@ pub mod lowering;
 pub mod networking;
 pub mod print;
 pub mod pruning;
+pub mod toposort;
 pub mod typing;
 
 #[derive(Clone)]
@@ -113,12 +115,7 @@ impl Pass {
                 println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
                 Ok(comp)
             }
-            Pass::Toposort => {
-                let comp = comp
-                    .toposort()
-                    .map_err(|e| anyhow::anyhow!("Toposort failed due to {}", e))?;
-                Ok(comp)
-            }
+            Pass::Toposort => toposort(comp),
         }
     }
 }

@@ -1,5 +1,6 @@
 use crate::computation::PyComputation;
 use moose::compilation::compile;
+use moose::compilation::toposort;
 use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
@@ -18,7 +19,7 @@ fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> Computation {
     let comp: PyComputation = rmp_serde::from_read_ref(&computation).unwrap();
     let rust_comp: Computation = comp.try_into().unwrap();
     // TODO(Morten) we should not call toposort here
-    rust_comp.toposort().unwrap()
+    toposort::toposort(rust_comp).unwrap()
 }
 
 fn pyobj_to_value(py: Python, obj: PyObject) -> PyResult<Value> {
