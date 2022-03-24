@@ -4657,19 +4657,19 @@ macro_rules! modelled_kernel {
         #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
-            <$t0 as crate::computation::SymbolicType>::Type,
-            <$t1 as crate::computation::SymbolicType>::Type,
-            <$t2 as crate::computation::SymbolicType>::Type,
-            <$u as crate::computation::SymbolicType>::Type
+            <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+            <$t1 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+            <$t2 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
         > for $plc {
             fn $trait_fn(
                 &self,
                 sess: &crate::execution::SymbolicSession,
                 $($($attr_id:$attr_ty),*,)?
-                x0: &<$t0 as crate::computation::SymbolicType>::Type,
-                x1: &<$t1 as crate::computation::SymbolicType>::Type,
-                x2: &<$t2 as crate::computation::SymbolicType>::Type
-            ) -> <$u as crate::computation::SymbolicType>::Type {
+                x0: &<$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+                x1: &<$t1 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
+                x2: &<$t2 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
+            ) -> <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type {
                 use crate::computation::{KnownType, TernarySignature};
                 use crate::execution::{Session, SymbolicSession};
                 use std::convert::TryInto;
