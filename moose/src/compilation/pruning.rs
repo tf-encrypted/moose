@@ -1,6 +1,6 @@
 use crate::computation::{Computation, Operator};
-use petgraph::visit::{depth_first_search, DfsEvent};
 use bitvec::prelude::*;
+use petgraph::visit::{depth_first_search, DfsEvent};
 
 /// Prunes the computation from anything not relevant for the output
 pub fn prune_graph(mut comp: Computation) -> anyhow::Result<Computation> {
