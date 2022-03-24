@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.6
+- Memory usage optimizations and reduced cloning
+- Wellformed compiler pass to statically verify a computation with elk: elk compile -p wellformed comp.moose
+- TLS support for gRCP networking
+- PyTorch neural networks support
+- Elk now supports all three computation formats (textual, msgpack, and bincode)
+- Ensures tensors are in “standard layout” (i.e. contiguous & row-major)
+- Added local file storage to moose modules (reading csv and numpy data files supported)
+- start_server convenance method added to gRPC network plugin
+
 ## v0.1.5
 
 - Significant RAM usage improvements throughout the codebase
