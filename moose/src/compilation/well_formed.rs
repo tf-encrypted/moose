@@ -12,7 +12,7 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             if !seen_values.contains(input_op_name) {
                 return Err(crate::Error::MalformedEnvironment(
                     input_op_name.to_string(),
-                ))?;
+                ).into());
             }
         }
         seen_values.insert(&op.name);
