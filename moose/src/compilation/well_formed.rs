@@ -10,9 +10,7 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
         // Make sure computation is in topological order
         for input_op_name in &op.inputs {
             if !seen_values.contains(input_op_name) {
-                return Err(crate::Error::MalformedEnvironment(
-                    input_op_name.to_string(),
-                ).into());
+                return Err(crate::Error::MalformedEnvironment(input_op_name.to_string()).into());
             }
         }
         seen_values.insert(&op.name);
