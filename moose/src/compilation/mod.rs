@@ -115,7 +115,7 @@ impl Pass {
             Pass::WellFormed => well_formed(comp),
             Pass::DeprecatedLogical => deprecated_logical_lowering(comp),
             Pass::Dump => {
-                println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
+                println!("{}", comp.to_textual());
                 Ok(comp)
             }
             Pass::Toposort => {
