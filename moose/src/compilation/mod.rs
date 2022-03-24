@@ -1,4 +1,5 @@
 use self::deprecated_logical::deprecated_logical_lowering;
+use self::deprecated_shape::deprecated_shape_support;
 use crate::compilation::lowering::lowering;
 use crate::compilation::networking::networking_pass;
 use crate::compilation::print::print_graph;
@@ -9,6 +10,7 @@ use crate::textual::ToTextual;
 use std::convert::TryFrom;
 
 pub mod deprecated_logical;
+pub mod deprecated_shape;
 pub mod lowering;
 pub mod networking;
 pub mod print;
@@ -25,6 +27,7 @@ pub enum Pass {
     Typing,
     Dump,
     DeprecatedLogical, // A simple pass to support older Python compiler
+    DeprecatedShape,   // A pre 1.0.7 shape format support (HostShape on the logical level)
 }
 
 impl TryFrom<&str> for Pass {
@@ -39,6 +42,7 @@ impl TryFrom<&str> for Pass {
             "toposort" => Ok(Pass::Toposort),
             "typing" => Ok(Pass::Typing),
             "dump" => Ok(Pass::Dump),
+            "deprecatedShape" => Ok(Pass::DeprecatedShape),
             missing_pass => Err(anyhow::anyhow!("Unknown pass requested: {}", missing_pass)),
         }
     }
@@ -59,8 +63,9 @@ impl TryFrom<&Pass> for Pass {
 }
 
 #[deprecated]
-pub const DEFAULT_PASSES: [Pass; 5] = [
+pub const DEFAULT_PASSES: [Pass; 6] = [
     Pass::Typing,
+    Pass::DeprecatedShape,
     Pass::Lowering,
     Pass::Prune,
     Pass::Networking,
@@ -109,6 +114,7 @@ impl Pass {
             Pass::Lowering => lowering(comp),
             Pass::Typing => update_types_one_hop(comp),
             Pass::DeprecatedLogical => deprecated_logical_lowering(comp),
+            Pass::DeprecatedShape => deprecated_shape_support(comp),
             Pass::Dump => {
                 println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
                 Ok(comp)
