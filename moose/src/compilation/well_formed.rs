@@ -3,6 +3,12 @@ use crate::execution::SymbolicSession;
 use crate::kernels::{DispatchKernel, Kernel};
 use std::collections::HashSet;
 
+/// Perform basic well-formed check of computation with modification.
+///
+/// Note that this check is not completely sound wrt to runtime errors:
+/// - some unsupported operator instantiations are currently only checked at runtime
+/// - some potential ndarray errors cannot currently be caught statically
+/// - computations may only be partially specified, for instance around shapes
 pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
     let mut seen_values: HashSet<&String> = HashSet::with_capacity(comp.operations.len());
 
