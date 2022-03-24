@@ -5,9 +5,7 @@ from pymoose.computation import dtypes
 
 @dataclass
 class ValueType:
-    @classmethod
-    def dialect(cls):
-        return "std"
+    pass
 
 
 @dataclass

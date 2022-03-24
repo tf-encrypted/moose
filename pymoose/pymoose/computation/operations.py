@@ -24,10 +24,6 @@ class Operation:
     signature: OpSignature
 
     @classmethod
-    def dialect(cls):
-        return "std"
-
-    @classmethod
     def identifier(cls):
         return cls.__name__
 

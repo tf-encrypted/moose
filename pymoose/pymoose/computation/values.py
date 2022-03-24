@@ -10,9 +10,7 @@ class Value:
 
 @dataclass
 class Constant(Value):
-    @classmethod
-    def dialect(cls):
-        return "std"
+    pass
 
 
 @dataclass

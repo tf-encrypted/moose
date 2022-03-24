@@ -15,10 +15,6 @@ class HostPlacement(Placement):
     def __hash__(self):
         return hash(self.name)
 
-    @classmethod
-    def dialect(cls):
-        return "host"
-
 
 @dataclass
 class MirroredPlacement(Placement):
@@ -27,10 +23,6 @@ class MirroredPlacement(Placement):
     def __hash__(self):
         return hash(self.name)
 
-    @classmethod
-    def dialect(cls):
-        return "mirrored"
-
 
 @dataclass
 class ReplicatedPlacement(Placement):
@@ -38,7 +30,3 @@ class ReplicatedPlacement(Placement):
 
     def __hash__(self):
         return hash(self.name)
-
-    @classmethod
-    def dialect(cls):
-        return "rep"
