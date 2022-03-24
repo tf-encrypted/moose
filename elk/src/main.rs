@@ -219,36 +219,25 @@ fn output_computation(
     format: &ComputationFormat,
 ) -> anyhow::Result<()> {
     match format {
-        ComputationFormat::Textual => match output {
-            Some(path) => {
+        ComputationFormat::Textual => {
+            if let Some(path) = output {
                 comp.write_textual(path)?;
-                Ok(())
             }
-            None => {
-                let result = comp.to_textual();
-                println!("{}", result);
-                Ok(())
-            }
-        },
+            Ok(())
+        }
         ComputationFormat::Msgpack => {
             let result = comp.to_msgpack()?;
-            match output {
-                Some(path) => {
-                    write(path, result)?;
-                    Ok(())
-                }
-                None => todo!(),
+            if let Some(path) = output {
+                write(path, result)?;
             }
+            Ok(())
         }
         ComputationFormat::Bincode => {
             let result = comp.to_bincode()?;
-            match output {
-                Some(path) => {
-                    write(path, result)?;
-                    Ok(())
-                }
-                None => todo!(),
+            if let Some(path) = output {
+                write(path, result)?;
             }
+            Ok(())
         }
     }
 }

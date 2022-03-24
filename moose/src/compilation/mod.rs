@@ -5,6 +5,7 @@ use crate::compilation::print::print_graph;
 use crate::compilation::pruning::prune_graph;
 use crate::compilation::toposort::toposort;
 use crate::compilation::typing::update_types_one_hop;
+use crate::compilation::well_formed::well_formed;
 use crate::computation::Computation;
 use crate::textual::ToTextual;
 use std::convert::TryFrom;
@@ -16,6 +17,7 @@ pub mod print;
 pub mod pruning;
 pub mod toposort;
 pub mod typing;
+pub mod well_formed;
 
 #[derive(Clone)]
 pub enum Pass {
@@ -25,6 +27,7 @@ pub enum Pass {
     Lowering,
     Toposort,
     Typing,
+    WellFormed,
     Dump,
     DeprecatedLogical, // A simple pass to support older Python compiler
 }
@@ -40,6 +43,7 @@ impl TryFrom<&str> for Pass {
             "lowering" => Ok(Pass::Lowering),
             "toposort" => Ok(Pass::Toposort),
             "typing" => Ok(Pass::Typing),
+            "wellformed" => Ok(Pass::WellFormed),
             "dump" => Ok(Pass::Dump),
             missing_pass => Err(anyhow::anyhow!("Unknown pass requested: {}", missing_pass)),
         }
@@ -110,9 +114,10 @@ impl Pass {
             Pass::Prune => prune_graph(comp),
             Pass::Lowering => lowering(comp),
             Pass::Typing => update_types_one_hop(comp),
+            Pass::WellFormed => well_formed(comp),
             Pass::DeprecatedLogical => deprecated_logical_lowering(comp),
             Pass::Dump => {
-                println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
+                println!("{}", comp.to_textual());
                 Ok(comp)
             }
             Pass::Toposort => toposort(comp),
