@@ -46,7 +46,10 @@ pub(crate) fn update_types_one_hop(mut comp: Computation) -> anyhow::Result<Comp
         };
 
         // Update the existing signature with it.
-        comp.operations[graph[n].index].kind.sig_mut().merge(new_sig)?;
+        comp.operations[graph[n].index]
+            .kind
+            .sig_mut()
+            .merge(new_sig)?;
     }
     Ok(comp)
 }
