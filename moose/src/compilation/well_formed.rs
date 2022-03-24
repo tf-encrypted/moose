@@ -3,7 +3,7 @@ use crate::execution::SymbolicSession;
 use crate::kernels::{DispatchKernel, Kernel};
 use std::collections::HashSet;
 
-/// Perform basic well-formed check of computation with modification.
+/// Perform basic well-formed check of computation without modification.
 ///
 /// Note that this check is not completely sound wrt to runtime errors:
 /// - some unsupported operator instantiations are currently only checked at runtime
