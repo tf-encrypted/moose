@@ -70,7 +70,7 @@ SUPPORTED_TYPES = [
     values.StringConstant,
     values.TensorConstant,
 ]
-TYPES_MAP = {f"{ty.dialect()}_{ty.__name__}": ty for ty in SUPPORTED_TYPES}
+TYPE_NAMES = {f"{ty.__name__}": ty for ty in SUPPORTED_TYPES}
 FIXED_DTYPE_REGEX = re.compile("fixed([0-9]+)_([0-9]+)")
 
 
@@ -92,8 +92,8 @@ def _encode(val):
             "placements": val.placements,
         }
     elif isinstance(val, (ops.Operation, ty.ValueType, plc.Placement, values.Value)):
-        type_name = f"{val.dialect()}_{type(val).__name__}"
-        assert type_name in TYPES_MAP, type_name
+        type_name = f"{type(val).__name__}"
+        assert type_name in TYPE_NAMES, type_name
         d = {field.name: getattr(val, field.name) for field in fields(val)}
         d["__type__"] = type_name
         return d
@@ -147,7 +147,7 @@ def _decode(obj):
             contents = obj["items"]
             return np.array(contents, dtype=dtype).reshape(shape)
         else:
-            ty = TYPES_MAP[obj["__type__"]]
+            ty = TYPE_NAMES[obj["__type__"]]
             del obj["__type__"]
             return ty(**obj)
     return obj
