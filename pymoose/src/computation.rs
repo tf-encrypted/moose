@@ -603,8 +603,8 @@ fn map_type(py_type: &PyValueType, placement: Option<&Placement>) -> anyhow::Res
                 integral_precision,
                 fractional_precision,
             } => Ok(Ty::Tensor(TensorDType::Fixed128 {
-                integral_precision,
-                fractional_precision,
+                integral_precision: *integral_precision,
+                fractional_precision: *fractional_precision,
             })),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
         },
