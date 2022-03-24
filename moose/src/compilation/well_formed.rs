@@ -23,13 +23,11 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
         let plc = &op.placement;
         let _kernel: Kernel<SymbolicSession> = match &op.kind {
             // TODO(Morten) use DispatchKernel::compile for these as well
-            Load(_) | Save(_) => {
+            Load(_) | Save(_) | Send(_) | Receive(_) => {
                 let kernel: Kernel<_> = Box::new(|_, _| unimplemented!());
                 Ok(kernel)
             }
 
-            Send(op) => DispatchKernel::compile(op, plc),
-            Receive(op) => DispatchKernel::compile(op, plc),
             Shape(op) => DispatchKernel::compile(op, plc),
             Broadcast(op) => DispatchKernel::compile(op, plc),
             PrfKeyGen(op) => DispatchKernel::compile(op, plc),
