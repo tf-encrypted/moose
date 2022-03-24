@@ -468,8 +468,18 @@ modelled_kernel! {
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::rep_fixed_kernel),
-        (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_kernel),
-        (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_kernel),
+    ]
+}
+
+pub trait PlacementAbsAsFixedpoint<S: Session, T, O> {
+    fn abs_as_fixedpoint(&self, sess: &S, x: &T) -> O;
+}
+
+modelled_kernel! {
+    PlacementAbsAsFixedpoint::abs_as_fixedpoint, RingFixedpointAbsOp,
+    [
+        (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_ring_kernel),
+        (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_ring_kernel),
     ]
 }
 
