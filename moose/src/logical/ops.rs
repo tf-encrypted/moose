@@ -176,6 +176,76 @@ impl AddOp {
     }
 }
 
+impl AbsOp {
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementAbs<S, Float32T, Float32T>,
+        HostPlacement: PlacementAbs<S, Float64T, Float64T>,
+    {
+        match x {
+            AbstractTensor::Float32(x) => {
+                let result = plc.abs(sess, &x);
+                Ok(AbstractTensor::Float32(result))
+            }
+            AbstractTensor::Float64(x) => {
+                let result = plc.abs(sess, &x);
+                Ok(AbstractTensor::Float64(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing host abs for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+
+    pub(crate) fn rep_logical_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        ReplicatedPlacement: PlacementAbs<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementAbs<S, Fixed128T, Fixed128T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = plc.abs(sess, &x);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = plc.abs(sess, &x);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated abs for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+}
+
 impl AddNOp {
     pub(crate) fn host_logical_kernel<
         S: Session,

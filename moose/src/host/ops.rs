@@ -9,7 +9,7 @@ use ndarray::LinalgScalar;
 use ndarray::Zip;
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack};
-use num_traits::{Float, FromPrimitive, Zero};
+use num_traits::{Float, FromPrimitive, Signed, Zero};
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::Wrapping;
@@ -212,6 +212,22 @@ impl SaveOp {
         // sess.storage.save(&key.0, &x)?;
         // Ok(HostUnit(plc.clone()))
         todo!()
+    }
+}
+
+impl AbsOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: Signed>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        Ok(HostTensor::<T>(
+            x.0.map(|x| T::abs(x)).into_shared(),
+            plc.clone(),
+        ))
     }
 }
 
