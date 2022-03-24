@@ -3989,122 +3989,114 @@ macro_rules! modelled_kernel {
         concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
 
-        // support for SyncSession
-        $(
-            #[cfg(feature = "sync_execute")]
-            impl crate::kernels::TernaryKernel<
-                crate::execution::SyncSession,
-                $plc,
-                $t0,
-                $t1,
-                $t2,
-                $u
-            > for $op
-            {
-                fn compile(
-                    &self,
-                ) -> crate::error::Result<
-                    crate::kernels::TypedTernaryKernel<
-                        crate::execution::SyncSession,
-                        $plc,
-                        $t0,
-                        $t1,
-                        $t2,
-                        $u,
-                    >
-                > {
-                    derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
-                }
-            }
-
-            #[cfg(feature = "sync_execute")]
-            impl $trait<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
-                fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
-                    use crate::computation::{KnownType, TernarySignature};
-                    use crate::execution::{Session, SyncSession};
-                    use std::convert::TryInto;
-
-                    let sig = TernarySignature {
-                        arg0: <$t0 as KnownType<SyncSession>>::TY,
-                        arg1: <$t1 as KnownType<SyncSession>>::TY,
-                        arg2: <$t2 as KnownType<SyncSession>>::TY,
-                        ret: <$u as KnownType<SyncSession>>::TY,
-                    };
-                    let op = $op {
-                        sig: sig.into(),
-                        $($($attr_id),*)?
-                    };
-                    sess.execute(
-                        &op.into(),
-                        &self.into(),
-                        operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
-                    )
-                    .unwrap()
-                    .try_into()
-                    .unwrap()
-                }
-            }
-        )+
-
-        // support for AsyncSession
-        $(
-            #[cfg(feature = "async_execute")]
-            impl crate::kernels::TernaryKernel<
-                crate::execution::AsyncSession,
-                $plc,
-                $t0,
-                $t1,
-                $t2,
-                $u
-            > for $op
-            {
-                fn compile(
-                    &self,
-                ) -> crate::error::Result<
-                    crate::kernels::TypedTernaryKernel<
-                        crate::execution::AsyncSession,
-                        $plc,
-                        $t0,
-                        $t1,
-                        $t2,
-                        $u,
-                    >
-                > {
-                    derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
-                }
-            }
-
-            #[cfg(feature = "async_execute")]
-            impl $trait<
-                crate::execution::AsyncSession,
-                $t0,
-                $t1,
-                $t2,
-                $u
-            > for $plc {
-                #[allow(unused_variables)]
-                fn $trait_fn(
-                    &self,
-                    sess: &crate::execution::AsyncSession,
-                    $($($attr_id:$attr_ty),*,)?
-                    x0: &$t0,
-                    x1: &$t1,
-                    x2: &$t2,
-                ) -> $u {
-                    unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
-                }
-            }
-        )+
-
-        // support for SymbolicSession (based on flavour)
+        // support for SyncSession, AsyncSession, and SymbolicSession (based on flavour)
         $(
             modelled_kernel!(__ternary $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? ($t0, $t1, $t2) -> $u => $($kp)+);
         )+
-
-
     };
 
     (__ternary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(feature = "sync_execute")]
+        impl crate::kernels::TernaryKernel<
+            crate::execution::SyncSession,
+            $plc,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $op
+        {
+            fn compile(
+                &self,
+            ) -> crate::error::Result<
+                crate::kernels::TypedTernaryKernel<
+                    crate::execution::SyncSession,
+                    $plc,
+                    $t0,
+                    $t1,
+                    $t2,
+                    $u,
+                >
+            > {
+                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
+            }
+        }
+
+        #[cfg(feature = "sync_execute")]
+        impl $trait<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
+            fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
+                use crate::computation::{KnownType, TernarySignature};
+                use crate::execution::{Session, SyncSession};
+                use std::convert::TryInto;
+
+                let sig = TernarySignature {
+                    arg0: <$t0 as KnownType<SyncSession>>::TY,
+                    arg1: <$t1 as KnownType<SyncSession>>::TY,
+                    arg2: <$t2 as KnownType<SyncSession>>::TY,
+                    ret: <$u as KnownType<SyncSession>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+                sess.execute(
+                    &op.into(),
+                    &self.into(),
+                    operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
+                )
+                .unwrap()
+                .try_into()
+                .unwrap()
+            }
+        }
+        
+        #[cfg(feature = "async_execute")]
+        impl crate::kernels::TernaryKernel<
+            crate::execution::AsyncSession,
+            $plc,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $op
+        {
+            fn compile(
+                &self,
+            ) -> crate::error::Result<
+                crate::kernels::TypedTernaryKernel<
+                    crate::execution::AsyncSession,
+                    $plc,
+                    $t0,
+                    $t1,
+                    $t2,
+                    $u,
+                >
+            > {
+                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
+            }
+        }
+
+        #[cfg(feature = "async_execute")]
+        impl $trait<
+            crate::execution::AsyncSession,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $plc {
+            #[allow(unused_variables)]
+            fn $trait_fn(
+                &self,
+                sess: &crate::execution::AsyncSession,
+                $($($attr_id:$attr_ty),*,)?
+                x0: &$t0,
+                x1: &$t1,
+                x2: &$t2,
+            ) -> $u {
+                unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
+            }
+        }
+        
         #[cfg(feature = "compile")]
         impl crate::kernels::TernaryKernel<
             crate::execution::SymbolicSession,
@@ -4204,6 +4196,107 @@ macro_rules! modelled_kernel {
     };
 
     (__ternary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(feature = "sync_execute")]
+        impl crate::kernels::TernaryKernel<
+            crate::execution::SyncSession,
+            $plc,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $op
+        {
+            fn compile(
+                &self,
+            ) -> crate::error::Result<
+                crate::kernels::TypedTernaryKernel<
+                    crate::execution::SyncSession,
+                    $plc,
+                    $t0,
+                    $t1,
+                    $t2,
+                    $u,
+                >
+            > {
+                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
+            }
+        }
+
+        #[cfg(feature = "sync_execute")]
+        impl $trait<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
+            fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
+                use crate::computation::{KnownType, TernarySignature};
+                use crate::execution::{Session, SyncSession};
+                use std::convert::TryInto;
+
+                let sig = TernarySignature {
+                    arg0: <$t0 as KnownType<SyncSession>>::TY,
+                    arg1: <$t1 as KnownType<SyncSession>>::TY,
+                    arg2: <$t2 as KnownType<SyncSession>>::TY,
+                    ret: <$u as KnownType<SyncSession>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+                sess.execute(
+                    &op.into(),
+                    &self.into(),
+                    operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
+                )
+                .unwrap()
+                .try_into()
+                .unwrap()
+            }
+        }
+        
+        #[cfg(feature = "async_execute")]
+        impl crate::kernels::TernaryKernel<
+            crate::execution::AsyncSession,
+            $plc,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $op
+        {
+            fn compile(
+                &self,
+            ) -> crate::error::Result<
+                crate::kernels::TypedTernaryKernel<
+                    crate::execution::AsyncSession,
+                    $plc,
+                    $t0,
+                    $t1,
+                    $t2,
+                    $u,
+                >
+            > {
+                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
+            }
+        }
+
+        #[cfg(feature = "async_execute")]
+        impl $trait<
+            crate::execution::AsyncSession,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $plc {
+            #[allow(unused_variables)]
+            fn $trait_fn(
+                &self,
+                sess: &crate::execution::AsyncSession,
+                $($($attr_id:$attr_ty),*,)?
+                x0: &$t0,
+                x1: &$t1,
+                x2: &$t2,
+            ) -> $u {
+                unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
+            }
+        }
+        
         #[cfg(feature = "compile")]
         impl crate::kernels::TernaryKernel<
             crate::execution::SymbolicSession,
@@ -4341,6 +4434,107 @@ macro_rules! modelled_kernel {
     };
 
     (__ternary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(feature = "sync_execute")]
+        impl crate::kernels::TernaryKernel<
+            crate::execution::SyncSession,
+            $plc,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $op
+        {
+            fn compile(
+                &self,
+            ) -> crate::error::Result<
+                crate::kernels::TypedTernaryKernel<
+                    crate::execution::SyncSession,
+                    $plc,
+                    $t0,
+                    $t1,
+                    $t2,
+                    $u,
+                >
+            > {
+                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
+            }
+        }
+
+        #[cfg(feature = "sync_execute")]
+        impl $trait<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
+            fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
+                use crate::computation::{KnownType, TernarySignature};
+                use crate::execution::{Session, SyncSession};
+                use std::convert::TryInto;
+
+                let sig = TernarySignature {
+                    arg0: <$t0 as KnownType<SyncSession>>::TY,
+                    arg1: <$t1 as KnownType<SyncSession>>::TY,
+                    arg2: <$t2 as KnownType<SyncSession>>::TY,
+                    ret: <$u as KnownType<SyncSession>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+                sess.execute(
+                    &op.into(),
+                    &self.into(),
+                    operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
+                )
+                .unwrap()
+                .try_into()
+                .unwrap()
+            }
+        }
+        
+        #[cfg(feature = "async_execute")]
+        impl crate::kernels::TernaryKernel<
+            crate::execution::AsyncSession,
+            $plc,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $op
+        {
+            fn compile(
+                &self,
+            ) -> crate::error::Result<
+                crate::kernels::TypedTernaryKernel<
+                    crate::execution::AsyncSession,
+                    $plc,
+                    $t0,
+                    $t1,
+                    $t2,
+                    $u,
+                >
+            > {
+                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
+            }
+        }
+
+        #[cfg(feature = "async_execute")]
+        impl $trait<
+            crate::execution::AsyncSession,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $plc {
+            #[allow(unused_variables)]
+            fn $trait_fn(
+                &self,
+                sess: &crate::execution::AsyncSession,
+                $($($attr_id:$attr_ty),*,)?
+                x0: &$t0,
+                x1: &$t1,
+                x2: &$t2,
+            ) -> $u {
+                unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
+            }
+        }
+        
         #[cfg(feature = "compile")]
         impl crate::kernels::TernaryKernel<
             crate::execution::SymbolicSession,
@@ -4404,6 +4598,114 @@ macro_rules! modelled_kernel {
     };
 
     (__ternary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(feature = "sync_execute")]
+        impl crate::kernels::TernaryKernel<
+            crate::execution::SyncSession,
+            $plc,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $op
+        {
+            fn compile(
+                &self,
+            ) -> crate::error::Result<
+                crate::kernels::TypedTernaryKernel<
+                    crate::execution::SyncSession,
+                    $plc,
+                    $t0,
+                    $t1,
+                    $t2,
+                    $u,
+                >
+            > {
+                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
+            }
+        }
+
+        #[cfg(feature = "sync_execute")]
+        impl $trait<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
+            fn $trait_fn(
+                &self,
+                sess: &crate::execution::SyncSession,
+                $($($attr_id:$attr_ty),*,)?
+                x0: &$t0,
+                x1: &$t1,
+                x2: &$t2,
+            ) -> $u {
+                use crate::computation::{KnownType, TernarySignature};
+                use crate::execution::{Session, SyncSession};
+                use std::convert::TryInto;
+
+                let sig = TernarySignature {
+                    arg0: <$t0 as KnownType<SyncSession>>::TY,
+                    arg1: <$t1 as KnownType<SyncSession>>::TY,
+                    arg2: <$t2 as KnownType<SyncSession>>::TY,
+                    ret: <$u as KnownType<SyncSession>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+                sess.execute(
+                    &op.into(),
+                    &self.into(),
+                    operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
+                )
+                .unwrap()
+                .try_into()
+                .unwrap()
+            }
+        }
+        
+        #[cfg(feature = "async_execute")]
+        impl crate::kernels::TernaryKernel<
+            crate::execution::AsyncSession,
+            $plc,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $op
+        {
+            fn compile(
+                &self,
+            ) -> crate::error::Result<
+                crate::kernels::TypedTernaryKernel<
+                    crate::execution::AsyncSession,
+                    $plc,
+                    $t0,
+                    $t1,
+                    $t2,
+                    $u,
+                >
+            > {
+                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
+            }
+        }
+
+        #[cfg(feature = "async_execute")]
+        impl $trait<
+            crate::execution::AsyncSession,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $plc {
+            #[allow(unused_variables)]
+            fn $trait_fn(
+                &self,
+                sess: &crate::execution::AsyncSession,
+                $($($attr_id:$attr_ty),*,)?
+                x0: &$t0,
+                x1: &$t1,
+                x2: &$t2,
+            ) -> $u {
+                unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
+            }
+        }
+        
         #[cfg(feature = "compile")]
         impl crate::kernels::TernaryKernel<
             crate::execution::SymbolicSession,
