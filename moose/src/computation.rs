@@ -881,6 +881,7 @@ operators![
     RingFixedpointMean,
     RingFixedpointEncode,
     RingFixedpointDecode,
+    RingFixedpointAbs,
     RingFixedpointArgmax,
     Sample,
     SampleSeeded,
@@ -1344,6 +1345,13 @@ pub struct RingFixedpointDecodeOp {
     pub sig: Signature,
     pub scaling_base: u64,
     pub scaling_exp: u32,
+}
+
+#[derive(
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+)]
+pub struct RingFixedpointAbsOp {
+    pub sig: Signature,
 }
 
 #[derive(
@@ -1935,20 +1943,6 @@ impl NamedComputation {
         }
 
         graph
-    }
-
-    pub fn toposort(&self) -> Result<NamedComputation> {
-        let graph = self.as_graph();
-        let toposort = petgraph::algo::toposort(&graph, None).map_err(|_| {
-            Error::MalformedComputation("cycle detected in the computation graph".into())
-        })?;
-
-        let operations = toposort
-            .iter()
-            .map(|node| self.operations[graph[*node].index].clone())
-            .collect();
-
-        Ok(NamedComputation { operations })
     }
 }
 

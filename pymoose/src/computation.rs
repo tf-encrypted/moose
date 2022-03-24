@@ -15,6 +15,7 @@ use std::convert::{TryFrom, TryInto};
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
 enum PyOperation {
+    AbsOperation(PyAbsOperation),
     AddNOperation(PyAddNOperation),
     IdentityOperation(PyIdentityOperation),
     ConstantOperation(PyConstantOperation),
@@ -170,6 +171,14 @@ impl FromPyOpSignature for Signature {
             map_type(&pysig.return_type)?,
         ))
     }
+}
+
+#[derive(Deserialize, Debug)]
+struct PyAbsOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
 }
 
 #[derive(Deserialize, Debug)]
@@ -685,6 +694,16 @@ impl TryFrom<PyComputation> for Computation {
                 use anyhow::Context;
                 use PyOperation::*;
                 match op {
+                    AbsOperation(op) => Ok(Operation {
+                        kind: AbsOp {
+                            sig: Signature::from_unary(&op.signature, "x")?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     AddNOperation(op) => {
                         let mut inputs: Vec<(&String, &String)> = op.inputs.iter().collect();
                         inputs.sort_by_key(|x| x.0);
