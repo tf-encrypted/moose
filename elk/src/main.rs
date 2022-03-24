@@ -104,13 +104,13 @@ fn main() -> anyhow::Result<()> {
             output_format,
             passes,
         } => {
-            let comp = input_computation(input, input_format)?;
             let passes: Option<Vec<String>> = passes.clone().map(|p| {
                 p.split(',')
                     .filter(|s| !s.is_empty())
                     .map(|s| s.to_string())
                     .collect()
             });
+            let comp = input_computation(input, input_format)?;
             let comp = compile(comp, passes)?;
             output_computation(&comp, output, output_format)?;
         }
