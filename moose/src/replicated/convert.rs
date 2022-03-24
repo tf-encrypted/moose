@@ -158,6 +158,45 @@ impl ShareOp {
 
         Ok(plc.place(sess, RepTensor { shares }))
     }
+
+    pub(crate) fn shape_kernel<S: Session, HostShapeT>(
+        sess: &S,
+        receiver: &ReplicatedPlacement,
+        shape: HostShapeT,
+    ) -> Result<RepShape<HostShapeT>>
+    where
+        HostShapeT: Clone + Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementPlace<S, HostShapeT>,
+    {
+        let source_plc = shape.placement()?;
+        let (h0, h1, h2) = receiver.host_placements();
+        if source_plc == h0 {
+            let sh1 = h1.place(sess, shape.clone());
+            let sh2 = h2.place(sess, shape.clone());
+            Ok(RepShape {
+                shapes: [shape, sh1, sh2],
+            })
+        } else if source_plc == h1 {
+            let sh0 = h0.place(sess, shape.clone());
+            let sh2 = h2.place(sess, shape.clone());
+            Ok(RepShape {
+                shapes: [sh0, shape, sh2],
+            })
+        } else if source_plc == h2 {
+            let sh0 = h0.place(sess, shape.clone());
+            let sh1 = h1.place(sess, shape.clone());
+            Ok(RepShape {
+                shapes: [sh0, sh1, shape],
+            })
+        } else {
+            let sh0 = h0.place(sess, shape.clone());
+            let sh1 = h1.place(sess, shape.clone());
+            let sh2 = h2.place(sess, shape);
+            Ok(RepShape {
+                shapes: [sh0, sh1, sh2],
+            })
+        }
+    }
 }
 
 impl RevealOp {

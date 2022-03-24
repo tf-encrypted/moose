@@ -2,7 +2,7 @@ use super::*;
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{Operands, Session};
-use crate::host::HostPlacement;
+use crate::host::{HostPlacement, SliceInfo};
 use crate::kernels::*;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
@@ -1892,6 +1892,48 @@ impl ShapeOp {
             _ => Err(Error::UnimplementedOperator(
                 "Shape op (Rep) op not supported on ReplicatedPlacement.".to_string(),
             )),
+        }
+    }
+}
+
+impl SliceOp {
+    pub(crate) fn logical_host_shape<S: Session, HostS, RepS>(
+        sess: &S,
+        plc: &HostPlacement,
+        slice: SliceInfo,
+        shape: AbstractShape<HostS, RepS>,
+    ) -> Result<AbstractShape<HostS, RepS>>
+    where
+        HostPlacement: PlacementSlice<S, HostS, HostS>,
+        HostPlacement: PlacementReveal<S, RepS, HostS>,
+    {
+        use AbstractShape::*;
+        match shape {
+            Host(x) => Ok(Host(plc.slice(sess, slice, &x))),
+            Replicated(x) => {
+                let sh = plc.reveal(sess, &x);
+                Ok(Host(plc.slice(sess, slice, &sh)))
+            }
+        }
+    }
+
+    pub(crate) fn logical_rep_shape<S: Session, HostS, RepS>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        slice: SliceInfo,
+        shape: AbstractShape<HostS, RepS>,
+    ) -> Result<AbstractShape<HostS, RepS>>
+    where
+        ReplicatedPlacement: PlacementSlice<S, RepS, RepS>,
+        ReplicatedPlacement: PlacementShare<S, HostS, RepS>,
+    {
+        use AbstractShape::*;
+        match shape {
+            Replicated(x) => Ok(Replicated(plc.slice(sess, slice, &x))),
+            Host(x) => {
+                let sh = plc.share(sess, &x);
+                Ok(Replicated(plc.slice(sess, slice, &sh)))
+            }
         }
     }
 }

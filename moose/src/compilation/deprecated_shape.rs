@@ -3,7 +3,7 @@ use crate::logical::TensorShape;
 
 /// The pass replaces the HostShape on the logical level with its Shape<Host> counterpart.
 pub fn deprecated_shape_support(comp: Computation) -> anyhow::Result<Computation> {
-    let mut operations = comp.operations.clone();
+    let mut operations = comp.operations;
     let mut changes_made = false; // A flag to let the SliceOp know if it needs to alter its types as well.
     for op in operations.iter_mut() {
         // Recognize ops that have logical level kernels and may see a shape of a wrong type.

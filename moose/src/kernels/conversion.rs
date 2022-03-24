@@ -67,6 +67,7 @@ modelled_kernel! {
         (ReplicatedPlacement, (Mirrored3Fixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::fixed_mir_kernel),
         (ReplicatedPlacement, (Mirrored3Ring64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_mir_kernel),
         (ReplicatedPlacement, (Mirrored3Ring128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_mir_kernel),
+        (ReplicatedPlacement, (HostShape) -> ReplicatedShape => [hybrid] Self::shape_kernel),
     ]
 }
 
