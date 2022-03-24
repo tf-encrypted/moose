@@ -7,19 +7,8 @@ from typing import Union
 import numpy as np
 
 from pymoose.computation import dtypes
-from pymoose.computation.logical import AesKeyType
-from pymoose.computation.logical import AesTensorType
-from pymoose.computation.logical import FloatConstant
-from pymoose.computation.logical import FloatType
-from pymoose.computation.logical import IntConstant
-from pymoose.computation.logical import IntType
-from pymoose.computation.logical import ShapeConstant
-from pymoose.computation.logical import ShapeType
-from pymoose.computation.logical import StringConstant
-from pymoose.computation.logical import StringType
-from pymoose.computation.logical import TensorConstant
-from pymoose.computation.logical import TensorType
-from pymoose.computation.logical import ValueType
+from pymoose.computation import types as ty
+from pymoose.computation import values
 
 CURRENT_PLACEMENT: List = []
 _NUMPY_DTYPES_MAP = {
@@ -96,7 +85,7 @@ def get_current_placement():
 class Argument:
     placement: PlacementExpression
     dtype: Optional[dtypes.DType] = None
-    vtype: Optional[ValueType] = None
+    vtype: Optional[ty.ValueType] = None
 
     def __init__(self, placement, dtype=None, vtype=None):
         self.placement = placement
@@ -108,7 +97,7 @@ class Argument:
 class Expression:
     placement: PlacementExpression
     inputs: List
-    vtype: Optional[ValueType]
+    vtype: Optional[ty.ValueType]
 
     def __hash__(self):
         return id(self)
@@ -366,7 +355,7 @@ def add_n(arrays, placement=None):
             f"of type {type(arrays)}."
         )
     input_vtype = arrays[0].vtype
-    if isinstance(input_vtype, TensorType):
+    if isinstance(input_vtype, ty.TensorType):
         expected_vtype = input_vtype
         expected_dtype = input_vtype.dtype
     else:
@@ -397,7 +386,7 @@ def concatenate(arrays, axis=0, placement=None):
             f"of type {type(arrays)}."
         )
     input_vtype = arrays[0].vtype
-    if isinstance(input_vtype, TensorType):
+    if isinstance(input_vtype, ty.TensorType):
         expected_vtype = input_vtype
         expected_dtype = input_vtype.dtype
     else:
@@ -426,7 +415,7 @@ def maximum(arrays, placement=None):
             f"of type {type(arrays)}."
         )
     input_vtype = arrays[0].vtype
-    if isinstance(input_vtype, TensorType):
+    if isinstance(input_vtype, ty.TensorType):
         expected_vtype = input_vtype
         expected_dtype = input_vtype.dtype
     else:
@@ -449,20 +438,20 @@ def decrypt(key, ciphertext, placement=None):
     placement = placement or get_current_placement()
 
     # key expr typecheck
-    if not isinstance(key.vtype, AesKeyType):
+    if not isinstance(key.vtype, ty.AesKeyType):
         raise ValueError(
             "Parameter `key` expected to be of type AesKeyType, found {key.vtype}."
         )
 
     # ciphertext expr typecheck
-    if not isinstance(ciphertext.vtype, AesTensorType):
+    if not isinstance(ciphertext.vtype, ty.AesTensorType):
         raise ValueError(
             "Parameter `ciphertext` expected to be of type AesTensorType, "
             f"found {ciphertext.vtype}."
         )
     # decrypt converts AesTensorType(fixed(i, f)) -> TensorType(fixed(i, f))
     output_dtype = ciphertext.vtype.dtype
-    output_type = TensorType(output_dtype)
+    output_type = ty.TensorType(output_dtype)
 
     return DecryptExpression(
         placement=placement, inputs=[key, ciphertext], vtype=output_type,
@@ -488,20 +477,20 @@ def constant(value, dtype=None, vtype=None, placement=None):
             implicit_const = constant(value, dtype=moose_dtype, placement=placement)
             return cast(implicit_const, dtype, placement)
         elif vtype is None:
-            vtype = TensorType(moose_dtype)
-        value = TensorConstant(value=value)
+            vtype = ty.TensorType(moose_dtype)
+        value = values.TensorConstant(value=value)
     elif isinstance(value, float):
-        value, vtype = _interpret_numeric_value(value, vtype, FloatType())
+        value, vtype = _interpret_numeric_value(value, vtype, ty.FloatType())
     elif isinstance(value, int):
-        value, vtype = _interpret_numeric_value(value, vtype, IntType())
+        value, vtype = _interpret_numeric_value(value, vtype, ty.IntType())
     elif isinstance(value, str):
-        vtype = vtype or StringType()
-        if not isinstance(vtype, StringType):
+        vtype = vtype or ty.StringType()
+        if not isinstance(vtype, ty.StringType):
             raise ValueError(
                 "Constant value of type `str` does not match "
                 f"user-supplied vtype argument `{vtype}`."
             )
-        value = StringConstant(value=value)
+        value = values.StringConstant(value=value)
 
     return ConstantExpression(placement=placement, inputs=[], value=value, vtype=vtype)
 
@@ -564,7 +553,7 @@ def less(lhs, rhs, placement=None):
         op_name="less",
         placement=placement,
         inputs=[lhs, rhs],
-        vtype=TensorType(dtype=dtypes.bool_),
+        vtype=ty.TensorType(dtype=dtypes.bool_),
     )
 
 
@@ -582,7 +571,7 @@ def inverse(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     vtype = x.vtype
-    if not isinstance(vtype, TensorType):
+    if not isinstance(vtype, ty.TensorType):
         raise ValueError(
             "`inverse` operation only supports arguments of type TensorType."
         )
@@ -620,7 +609,7 @@ def squeeze(x, axis=None, placement=None):
 def ones(shape, dtype, placement=None):
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
-    vtype = TensorType(dtype)
+    vtype = ty.TensorType(dtype)
     return OnesExpression(placement=placement, inputs=[shape], dtype=dtype, vtype=vtype)
 
 
@@ -693,7 +682,7 @@ def log2(x, placement=None):
 def shape(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return ShapeExpression(placement=placement, inputs=[x], vtype=ShapeType())
+    return ShapeExpression(placement=placement, inputs=[x], vtype=ty.ShapeType())
 
 
 def index_axis(x, axis, index, placement=None):
@@ -748,7 +737,7 @@ def reshape(x, shape, placement=None):
     assert isinstance(x, Expression)
     if isinstance(shape, (list, tuple)):
         shape = constant(
-            ShapeConstant(value=shape), vtype=ShapeType(), placement=placement
+            values.ShapeConstant(value=shape), vtype=ty.ShapeType(), placement=placement
         )
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
@@ -763,13 +752,13 @@ def abs(x, placement=None):
 
 def mux(selector, x, y, placement=None):
     assert isinstance(selector, Expression)
-    assert isinstance(selector.vtype, TensorType)
+    assert isinstance(selector.vtype, ty.TensorType)
     assert selector.vtype.dtype.is_boolean, selector.vtype.dtype
     assert isinstance(x, Expression)
-    assert isinstance(x.vtype, TensorType), x.vtype
+    assert isinstance(x.vtype, ty.TensorType), x.vtype
     assert x.vtype.dtype.is_fixedpoint, x.vtype.dtype
     assert isinstance(y, Expression)
-    assert isinstance(y.vtype, TensorType), y.vtype
+    assert isinstance(y.vtype, ty.TensorType), y.vtype
     assert y.vtype.dtype.is_fixedpoint, y.vtype.dtype
     placement = placement or get_current_placement()
     assert isinstance(placement, ReplicatedPlacementExpression)
@@ -781,7 +770,7 @@ def cast(x, dtype, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
 
-    if not isinstance(x.vtype, TensorType):
+    if not isinstance(x.vtype, ty.TensorType):
         raise ValueError(
             f"Argument to `cast` operation must be tensor, found {x.vtype}."
         )
@@ -813,7 +802,7 @@ def cast(x, dtype, placement=None):
         return x
 
     return CastExpression(
-        placement=placement, inputs=[x], vtype=TensorType(moose_dtype)
+        placement=placement, inputs=[x], vtype=ty.TensorType(moose_dtype)
     )
 
 
@@ -821,8 +810,8 @@ def load(key, query="", dtype=None, vtype=None, placement=None):
     placement = placement or get_current_placement()
     vtype = _maybe_lift_dtype_to_tensor_vtype(dtype, vtype)
     if isinstance(key, str):
-        key = constant(key, placement=placement, vtype=StringType())
-    elif isinstance(key, Argument) and key.vtype not in [StringType(), None]:
+        key = constant(key, placement=placement, vtype=ty.StringType())
+    elif isinstance(key, Argument) and key.vtype not in [ty.StringType(), None]:
         raise ValueError(
             f"Function 'edsl.load' encountered `key` argument of vtype {key.vtype}; "
             "expected `StringType`."
@@ -834,8 +823,8 @@ def load(key, query="", dtype=None, vtype=None, placement=None):
         )
 
     if isinstance(query, str):
-        query = constant(query, placement=placement, vtype=StringType())
-    elif isinstance(query, Argument) and query.vtype not in [StringType(), None]:
+        query = constant(query, placement=placement, vtype=ty.StringType())
+    elif isinstance(query, Argument) and query.vtype not in [ty.StringType(), None]:
         raise ValueError(
             f"Function 'edsl.load' encountered `query` argument of "
             f"vtype {query.vtype}; expected 'StringType'."
@@ -853,8 +842,8 @@ def save(key, value, placement=None):
     assert isinstance(value, Expression)
     placement = placement or get_current_placement()
     if isinstance(key, str):
-        key = constant(key, placement=placement, vtype=StringType())
-    elif isinstance(key, Argument) and key.vtype not in [StringType(), None]:
+        key = constant(key, placement=placement, vtype=ty.StringType())
+    elif isinstance(key, Argument) and key.vtype not in [ty.StringType(), None]:
         raise ValueError(
             f"Function 'edsl.save' encountered `key` argument of type {key.vtype}; "
             "expected 'StringType'."
@@ -877,7 +866,7 @@ class AbstractComputation:
 
 
 def _check_tensor_type_arg_consistency(dtype, vtype):
-    if isinstance(vtype, TensorType) and vtype.dtype != dtype:
+    if isinstance(vtype, ty.TensorType) and vtype.dtype != dtype:
         raise ValueError(
             f"Inconsistent type information for tensor: dtype {dtype} is "
             f"inconsistent with tensor type {vtype}."
@@ -888,7 +877,7 @@ def _maybe_lift_dtype_to_tensor_vtype(dtype, vtype):
     if dtype is None and vtype is None:
         return
     elif vtype is None and dtype is not None:
-        return TensorType(dtype)
+        return ty.TensorType(dtype)
     elif vtype is not None and dtype is not None:
         _check_tensor_type_arg_consistency(dtype, vtype)
         return vtype
@@ -900,15 +889,15 @@ def _interpret_numeric_value(value, vtype, fallback_vtype):
     assert isinstance(value, (int, float))
     if vtype is None:
         vtype = fallback_vtype
-    if isinstance(vtype, TensorType):
+    if isinstance(vtype, ty.TensorType):
         dtype = vtype.dtype
         if not dtype.is_float and not dtype.is_integer:
             raise TypeError("Cannot interpret constant as dtype {dtype}.")
-        value = TensorConstant(np.array([value], dtype=dtype.numpy_dtype))
-    elif isinstance(vtype, FloatType):
-        value = FloatConstant(value)
-    elif isinstance(vtype, IntType):
-        value = IntConstant(value)
+        value = values.TensorConstant(np.array([value], dtype=dtype.numpy_dtype))
+    elif isinstance(vtype, ty.FloatType):
+        value = values.FloatConstant(value)
+    elif isinstance(vtype, ty.IntType):
+        value = values.IntConstant(value)
     else:
         raise TypeError(
             "Cannot interpret numeric constant as non-numeric type {vtype}."
@@ -917,7 +906,7 @@ def _interpret_numeric_value(value, vtype, fallback_vtype):
 
 
 def _assimilate_arg_vtypes(lhs_vtype, rhs_vtype, fn_name):
-    if isinstance(lhs_vtype, TensorType) and isinstance(rhs_vtype, TensorType):
+    if isinstance(lhs_vtype, ty.TensorType) and isinstance(rhs_vtype, ty.TensorType):
         return _assimilate_arg_dtypes(lhs_vtype, rhs_vtype, fn_name)
     if lhs_vtype != rhs_vtype:
         raise ValueError(

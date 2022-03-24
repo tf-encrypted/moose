@@ -2,51 +2,14 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Dict
 
-
-@dataclass
-class Placement:
-    name: str
-
-    def __hash__(self):
-        return hash(self.name)
-
-
-@dataclass
-class ValueType:
-    pass
-
-
-@dataclass
-class Value:
-    pass
-
-
-@dataclass
-class OpSignature:
-    input_types: Dict[str, ValueType]
-    return_type: ValueType
-
-
-@dataclass(init=False)
-class Operation:
-    name: str
-    inputs: Dict[str, str]
-    placement_name: str
-    signature: OpSignature
-
-    @classmethod
-    def identifier(cls):
-        return cls.__name__
-
-    @property
-    def return_type(self):
-        return self.signature.return_type
+from pymoose.computation import operations as ops
+from pymoose.computation import placements as plc
 
 
 @dataclass
 class Computation:
-    operations: Dict[str, Operation] = field(default_factory=dict)
-    placements: Dict[str, Placement] = field(default_factory=dict)
+    operations: Dict[str, ops.Operation] = field(default_factory=dict)
+    placements: Dict[str, plc.Placement] = field(default_factory=dict)
 
     def find_destinations(self, op):
         destination_ops = []
@@ -63,16 +26,16 @@ class Computation:
         return source_ops
 
     def add(self, component):
-        if isinstance(component, Operation):
+        if isinstance(component, ops.Operation):
             return self.add_operation(component)
-        if isinstance(component, Placement):
+        if isinstance(component, plc.Placement):
             return self.add_placement(component)
         raise NotImplementedError(f"{component}")
 
     def maybe_add(self, component):
-        if isinstance(component, Operation):
+        if isinstance(component, ops.Operation):
             return self.maybe_add_operation(component)
-        if isinstance(component, Placement):
+        if isinstance(component, plc.Placement):
             return self.maybe_add_placement(component)
         raise NotImplementedError(f"{component}")
 
@@ -80,7 +43,7 @@ class Computation:
         return self.placements[name]
 
     def add_placement(self, placement):
-        assert isinstance(placement, Placement)
+        assert isinstance(placement, plc.Placement)
         assert placement.name not in self.placements
         self.placements[placement.name] = placement
         return placement
@@ -98,21 +61,21 @@ class Computation:
         return self.operations[name]
 
     def add_operation(self, op):
-        assert isinstance(op, Operation)
+        assert isinstance(op, ops.Operation)
         assert op.name not in self.operations, op
         assert op.placement_name in self.placements, op.placement_name
         self.operations[op.name] = op
         return op
 
     def maybe_add_operation(self, op):
-        assert isinstance(op, Operation)
+        assert isinstance(op, ops.Operation)
         if op.name in self.operations:
             assert op == self.operations[op.name]
             return op
         return self.add_operation(op)
 
-    def add_operations(self, ops):
-        for op in ops:
+    def add_operations(self, operations):
+        for op in operations:
             self.add_operation(op)
 
     def remove_operation(self, name):

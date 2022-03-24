@@ -4,76 +4,71 @@ from dataclasses import fields
 import msgpack
 import numpy as np
 
+from pymoose.computation import computation as comp_base
 from pymoose.computation import dtypes
-from pymoose.computation import host as host_dialect
-from pymoose.computation import logical as lgc_dialect
-from pymoose.computation import mirrored as mirrored_dialect
-from pymoose.computation import replicated as rep_dialect
-from pymoose.computation.base import Computation
-from pymoose.computation.base import Operation
-from pymoose.computation.base import OpSignature
-from pymoose.computation.base import Placement
-from pymoose.computation.base import Value
-from pymoose.computation.base import ValueType
+from pymoose.computation import operations as ops
+from pymoose.computation import placements as plc
+from pymoose.computation import types as ty
+from pymoose.computation import values
 from pymoose.logger import get_logger
 
 SUPPORTED_TYPES = [
-    host_dialect.HostPlacement,
-    rep_dialect.ReplicatedPlacement,
-    mirrored_dialect.MirroredPlacement,
-    lgc_dialect.AbsOperation,
-    lgc_dialect.AddNOperation,
-    lgc_dialect.AddOperation,
-    lgc_dialect.AesKeyType,
-    lgc_dialect.AesTensorType,
-    lgc_dialect.ArgmaxOperation,
-    lgc_dialect.AtLeast2DOperation,
-    lgc_dialect.BitwiseOrOperation,
-    lgc_dialect.BytesType,
-    lgc_dialect.CastOperation,
-    lgc_dialect.ConcatenateOperation,
-    lgc_dialect.ConstantOperation,
-    lgc_dialect.DecryptOperation,
-    lgc_dialect.DivOperation,
-    lgc_dialect.DotOperation,
-    lgc_dialect.ExpandDimsOperation,
-    lgc_dialect.ExpOperation,
-    lgc_dialect.FloatConstant,
-    lgc_dialect.FloatType,
-    lgc_dialect.IdentityOperation,
-    lgc_dialect.IndexAxisOperation,
-    lgc_dialect.InputOperation,
-    lgc_dialect.IntConstant,
-    lgc_dialect.IntType,
-    lgc_dialect.InverseOperation,
-    lgc_dialect.LessOperation,
-    lgc_dialect.LoadOperation,
-    lgc_dialect.LogOperation,
-    lgc_dialect.Log2Operation,
-    lgc_dialect.MaximumOperation,
-    lgc_dialect.MeanOperation,
-    lgc_dialect.MulOperation,
-    lgc_dialect.MuxOperation,
-    lgc_dialect.OnesOperation,
-    lgc_dialect.OutputOperation,
-    lgc_dialect.SigmoidOperation,
-    lgc_dialect.SoftmaxOperation,
-    lgc_dialect.ReshapeOperation,
-    lgc_dialect.SaveOperation,
-    lgc_dialect.ShapeConstant,
-    lgc_dialect.ShapeOperation,
-    lgc_dialect.ShapeType,
-    lgc_dialect.SliceOperation,
-    lgc_dialect.SqueezeOperation,
-    lgc_dialect.StringConstant,
-    lgc_dialect.StringType,
-    lgc_dialect.SubOperation,
-    lgc_dialect.SumOperation,
-    lgc_dialect.TensorConstant,
-    lgc_dialect.TensorType,
-    lgc_dialect.TransposeOperation,
-    lgc_dialect.UnitType,
-    lgc_dialect.UnknownType,
+    ops.AbsOperation,
+    ops.AddNOperation,
+    ops.AddOperation,
+    ops.ArgmaxOperation,
+    ops.AtLeast2DOperation,
+    ops.BitwiseOrOperation,
+    ops.CastOperation,
+    ops.ConcatenateOperation,
+    ops.ConstantOperation,
+    ops.DecryptOperation,
+    ops.DivOperation,
+    ops.DotOperation,
+    ops.ExpandDimsOperation,
+    ops.ExpOperation,
+    ops.IdentityOperation,
+    ops.IndexAxisOperation,
+    ops.InputOperation,
+    ops.InverseOperation,
+    ops.LessOperation,
+    ops.LoadOperation,
+    ops.LogOperation,
+    ops.Log2Operation,
+    ops.MaximumOperation,
+    ops.MeanOperation,
+    ops.MulOperation,
+    ops.MuxOperation,
+    ops.OnesOperation,
+    ops.OutputOperation,
+    ops.SigmoidOperation,
+    ops.SoftmaxOperation,
+    ops.ReshapeOperation,
+    ops.SaveOperation,
+    ops.ShapeOperation,
+    ops.SliceOperation,
+    ops.SqueezeOperation,
+    ops.SubOperation,
+    ops.SumOperation,
+    ops.TransposeOperation,
+    plc.HostPlacement,
+    plc.ReplicatedPlacement,
+    plc.MirroredPlacement,
+    ty.AesKeyType,
+    ty.AesTensorType,
+    ty.BytesType,
+    ty.FloatType,
+    ty.IntType,
+    ty.ShapeType,
+    ty.StringType,
+    ty.TensorType,
+    ty.UnitType,
+    ty.UnknownType,
+    values.FloatConstant,
+    values.IntConstant,
+    values.ShapeConstant,
+    values.StringConstant,
+    values.TensorConstant,
 ]
 TYPES_MAP = {f"{ty.dialect()}_{ty.__name__}": ty for ty in SUPPORTED_TYPES}
 FIXED_DTYPE_REGEX = re.compile("fixed([0-9]+)_([0-9]+)")
@@ -90,19 +85,19 @@ def deserialize_computation(bytes_stream):
 
 
 def _encode(val):
-    if isinstance(val, Computation):
+    if isinstance(val, comp_base.Computation):
         return {
             "__type__": "Computation",
             "operations": val.operations,
             "placements": val.placements,
         }
-    elif isinstance(val, (Operation, ValueType, Placement, Value)):
+    elif isinstance(val, (ops.Operation, ty.ValueType, plc.Placement, values.Value)):
         type_name = f"{val.dialect()}_{type(val).__name__}"
         assert type_name in TYPES_MAP, type_name
         d = {field.name: getattr(val, field.name) for field in fields(val)}
         d["__type__"] = type_name
         return d
-    elif isinstance(val, OpSignature):
+    elif isinstance(val, ops.OpSignature):
         return {
             "__type__": "OpSignature",
             "input_types": val.input_types,
@@ -125,7 +120,7 @@ def _decode(obj):
     if "__type__" in obj:
         if obj["__type__"] == "Computation":
             del obj["__type__"]
-            return Computation(**obj)
+            return comp_base.Computation(**obj)
         elif obj["__type__"] == "DType":
             dtype_name = obj["name"]
             fixed_match = FIXED_DTYPE_REGEX.match(dtype_name)
@@ -143,7 +138,7 @@ def _decode(obj):
                 dtypes.bool_.name: dtypes.bool_,
             }[dtype_name]
         elif obj["__type__"] == "OpSignature":
-            return OpSignature(
+            return ops.OpSignature(
                 input_types=obj["input_types"], return_type=obj["return_type"],
             )
         elif obj["__type__"] == "ndarray":

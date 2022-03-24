@@ -8,7 +8,6 @@ from absl.testing import parameterized
 from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose.computation import utils
-from pymoose.computation.logical import TensorType
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
@@ -22,8 +21,8 @@ class ReplicatedExample(parameterized.TestCase):
 
         @edsl.computation
         def my_model_comp(
-            x: edsl.Argument(bob, vtype=TensorType(edsl.float64)),
-            w: edsl.Argument(bob, vtype=TensorType(edsl.float64)),
+            x: edsl.Argument(bob, vtype=edsl.TensorType(edsl.float64)),
+            w: edsl.Argument(bob, vtype=edsl.TensorType(edsl.float64)),
         ):
             with bob:
                 x = edsl.cast(x, dtype=edsl.fixed(8, 27))

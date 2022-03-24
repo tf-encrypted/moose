@@ -15,42 +15,42 @@ use std::convert::{TryFrom, TryInto};
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
 enum PyOperation {
-    lgc_AddNOperation(PyAddNOperation),
-    lgc_IdentityOperation(PyIdentityOperation),
-    lgc_ConstantOperation(PyConstantOperation),
-    lgc_AddOperation(PyAddOperation),
-    lgc_SubOperation(PySubOperation),
-    lgc_MulOperation(PyMulOperation),
-    lgc_DotOperation(PyDotOperation),
-    lgc_BitwiseOrOperation(PyBitwiseOrOperation),
-    lgc_LessOperation(PyLessOperation),
-    lgc_MuxOperation(PyMuxOperation),
-    lgc_AtLeast2DOperation(PyAtLeast2DOperation),
-    lgc_ShapeOperation(PyShapeOperation),
-    lgc_IndexAxisOperation(PyIndexAxisOperation),
-    lgc_SliceOperation(PySliceOperation),
-    lgc_OnesOperation(PyOnesOperation),
-    lgc_ConcatenateOperation(PyConcatenateOperation),
-    lgc_MaximumOperation(PyMaximumOperation),
-    lgc_DecryptOperation(PyDecryptOperation),
-    lgc_TransposeOperation(PyTransposeOperation),
-    lgc_ExpandDimsOperation(PyExpandDimsOperation),
-    lgc_ExpOperation(PyExpOperation),
-    lgc_InverseOperation(PyInverseOperation),
-    lgc_MeanOperation(PyMeanOperation),
-    lgc_SigmoidOperation(PySigmoidOperation),
-    lgc_LogOperation(PyLogOperation),
-    lgc_Log2Operation(PyLog2Operation),
-    lgc_SoftmaxOperation(PySoftmaxOperation),
-    lgc_ArgmaxOperation(PyArgmaxOperation),
-    lgc_SqrtOperation(PySqrtOperation),
-    lgc_SumOperation(PySumOperation),
-    lgc_DivOperation(PyDivOperation),
-    lgc_InputOperation(PyInputOperation),
-    lgc_OutputOperation(PyOutputOperation),
-    lgc_SaveOperation(PySaveOperation),
-    lgc_LoadOperation(PyLoadOperation),
-    lgc_CastOperation(PyCastOperation),
+    std_AddNOperation(PyAddNOperation),
+    std_IdentityOperation(PyIdentityOperation),
+    std_ConstantOperation(PyConstantOperation),
+    std_AddOperation(PyAddOperation),
+    std_SubOperation(PySubOperation),
+    std_MulOperation(PyMulOperation),
+    std_DotOperation(PyDotOperation),
+    std_BitwiseOrOperation(PyBitwiseOrOperation),
+    std_LessOperation(PyLessOperation),
+    std_MuxOperation(PyMuxOperation),
+    std_AtLeast2DOperation(PyAtLeast2DOperation),
+    std_ShapeOperation(PyShapeOperation),
+    std_IndexAxisOperation(PyIndexAxisOperation),
+    std_SliceOperation(PySliceOperation),
+    std_OnesOperation(PyOnesOperation),
+    std_ConcatenateOperation(PyConcatenateOperation),
+    std_MaximumOperation(PyMaximumOperation),
+    std_DecryptOperation(PyDecryptOperation),
+    std_TransposeOperation(PyTransposeOperation),
+    std_ExpandDimsOperation(PyExpandDimsOperation),
+    std_ExpOperation(PyExpOperation),
+    std_InverseOperation(PyInverseOperation),
+    std_MeanOperation(PyMeanOperation),
+    std_SigmoidOperation(PySigmoidOperation),
+    std_LogOperation(PyLogOperation),
+    std_Log2Operation(PyLog2Operation),
+    std_SoftmaxOperation(PySoftmaxOperation),
+    std_ArgmaxOperation(PyArgmaxOperation),
+    std_SqrtOperation(PySqrtOperation),
+    std_SumOperation(PySumOperation),
+    std_DivOperation(PyDivOperation),
+    std_InputOperation(PyInputOperation),
+    std_OutputOperation(PyOutputOperation),
+    std_SaveOperation(PySaveOperation),
+    std_LoadOperation(PyLoadOperation),
+    std_CastOperation(PyCastOperation),
 }
 
 #[derive(Deserialize, Debug)]
@@ -59,14 +59,14 @@ enum PyOperation {
 #[allow(clippy::enum_variant_names)]
 #[allow(clippy::upper_case_acronyms)]
 enum PyValueType {
-    lgc_BytesType,
-    lgc_ShapeType,
-    lgc_StringType,
-    lgc_TensorType { dtype: PyDType },
-    lgc_AesKeyType,
-    lgc_AesTensorType { dtype: PyDType },
-    lgc_UnitType,
-    lgc_UnknownType,
+    std_BytesType,
+    std_ShapeType,
+    std_StringType,
+    std_TensorType { dtype: PyDType },
+    std_AesKeyType,
+    std_AesTensorType { dtype: PyDType },
+    std_UnitType,
+    std_UnknownType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -91,9 +91,9 @@ enum PyDType {
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
 enum PyConstant {
-    lgc_ShapeConstant { value: Vec<usize> },
-    lgc_StringConstant { value: String },
-    lgc_TensorConstant { value: PyNdarray },
+    std_ShapeConstant { value: Vec<usize> },
+    std_StringConstant { value: String },
+    std_TensorConstant { value: PyNdarray },
 }
 
 #[derive(Deserialize, Debug)]
@@ -577,11 +577,11 @@ fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result
 
 fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
     match constant_value {
-        PyConstant::lgc_ShapeConstant { value } => {
+        PyConstant::std_ShapeConstant { value } => {
             Ok(RawShape(value.iter().map(|i| *i as usize).collect()).into())
         }
-        PyConstant::lgc_StringConstant { value } => Ok(Constant::String(String::from(value))),
-        PyConstant::lgc_TensorConstant { value } => match value {
+        PyConstant::std_StringConstant { value } => Ok(Constant::String(String::from(value))),
+        PyConstant::std_TensorConstant { value } => match value {
             PyNdarray::float32 {
                 ref items,
                 ref shape,
@@ -627,10 +627,10 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
 
 fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
     match py_type {
-        PyValueType::lgc_ShapeType => Ok(Ty::HostShape),
-        PyValueType::lgc_UnitType => Ok(Ty::HostUnit),
-        PyValueType::lgc_StringType => Ok(Ty::HostString),
-        PyValueType::lgc_TensorType { dtype } => match dtype {
+        PyValueType::std_ShapeType => Ok(Ty::HostShape),
+        PyValueType::std_UnitType => Ok(Ty::HostUnit),
+        PyValueType::std_StringType => Ok(Ty::HostString),
+        PyValueType::std_TensorType { dtype } => match dtype {
             PyDType::float32 => Ok(Ty::Tensor(TensorDType::Float32)),
             PyDType::float64 => Ok(Ty::Tensor(TensorDType::Float64)),
             PyDType::bool_ => Ok(Ty::Tensor(TensorDType::Bool)),
@@ -656,15 +656,15 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
             })),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
         },
-        PyValueType::lgc_AesTensorType { dtype } => match dtype {
+        PyValueType::std_AesTensorType { dtype } => match dtype {
             // TODO we are erasing fixedpoint precision here on purpose
             //  -- but we robably want to avoid this down the road
             PyDType::fixed24_40 => Ok(Ty::AesTensor),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
         },
-        PyValueType::lgc_AesKeyType => Ok(Ty::AesKey),
-        PyValueType::lgc_UnknownType => Ok(Ty::Unknown),
-        PyValueType::lgc_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
+        PyValueType::std_AesKeyType => Ok(Ty::AesKey),
+        PyValueType::std_UnknownType => Ok(Ty::Unknown),
+        PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
     }
 }
 
@@ -685,7 +685,7 @@ impl TryFrom<PyComputation> for Computation {
                 use anyhow::Context;
                 use PyOperation::*;
                 match op {
-                    lgc_AddNOperation(op) => {
+                    std_AddNOperation(op) => {
                         let mut inputs: Vec<(&String, &String)> = op.inputs.iter().collect();
                         inputs.sort_by_key(|x| x.0);
                         let sorted_input_names: Vec<String> =
@@ -700,7 +700,7 @@ impl TryFrom<PyComputation> for Computation {
                             placement: map_placement(&placements, &op.placement_name)?,
                         })
                     }
-                    lgc_IdentityOperation(op) => Ok(Operation {
+                    std_IdentityOperation(op) => Ok(Operation {
                         kind: IdentityOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
@@ -710,7 +710,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_ConstantOperation(op) => Ok(Operation {
+                    std_ConstantOperation(op) => Ok(Operation {
                         kind: ConstantOp {
                             sig: Signature::from_nullary(&op.signature)?,
                             value: map_constant_value(&op.value)?,
@@ -720,7 +720,7 @@ impl TryFrom<PyComputation> for Computation {
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_AddOperation(op) => Ok(Operation {
+                    std_AddOperation(op) => Ok(Operation {
                         kind: AddOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
@@ -731,7 +731,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_SubOperation(op) => Ok(Operation {
+                    std_SubOperation(op) => Ok(Operation {
                         kind: SubOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
@@ -742,7 +742,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_MulOperation(op) => Ok(Operation {
+                    std_MulOperation(op) => Ok(Operation {
                         kind: MulOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
@@ -753,7 +753,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_DotOperation(op) => Ok(Operation {
+                    std_DotOperation(op) => Ok(Operation {
                         kind: DotOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
@@ -764,7 +764,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_LessOperation(op) => Ok(Operation {
+                    std_LessOperation(op) => Ok(Operation {
                         kind: LessThanOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
@@ -775,7 +775,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_BitwiseOrOperation(op) => Ok(Operation {
+                    std_BitwiseOrOperation(op) => Ok(Operation {
                         kind: OrOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
@@ -786,7 +786,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_MuxOperation(op) => Ok(Operation {
+                    std_MuxOperation(op) => Ok(Operation {
                         kind: MuxOp {
                             sig: Signature::from_ternary(&op.signature, "selector", "x", "y")?,
                         }
@@ -796,7 +796,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_AtLeast2DOperation(op) => Ok(Operation {
+                    std_AtLeast2DOperation(op) => Ok(Operation {
                         kind: AtLeast2DOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_unary(&op.signature, "x")?,
@@ -808,7 +808,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_ShapeOperation(op) => Ok(Operation {
+                    std_ShapeOperation(op) => Ok(Operation {
                         kind: ShapeOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
@@ -818,7 +818,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_IndexAxisOperation(op) => Ok(Operation {
+                    std_IndexAxisOperation(op) => Ok(Operation {
                         kind: IndexAxisOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                             axis: op.axis,
@@ -830,7 +830,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_SliceOperation(op) => Ok(Operation {
+                    std_SliceOperation(op) => Ok(Operation {
                         kind: SliceOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                             slice: SliceInfo(vec![SliceInfoElem {
@@ -845,7 +845,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_OnesOperation(op) => Ok(Operation {
+                    std_OnesOperation(op) => Ok(Operation {
                         kind: OnesOp {
                             sig: Signature::from_unary(&op.signature, "shape")?,
                         }
@@ -855,7 +855,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_ExpandDimsOperation(op) => Ok(Operation {
+                    std_ExpandDimsOperation(op) => Ok(Operation {
                         kind: ExpandDimsOp {
                             // assume input type is the same as the output type
                             sig: Signature::from_unary(&op.signature, "x")?,
@@ -867,7 +867,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_ExpOperation(op) => Ok(Operation {
+                    std_ExpOperation(op) => Ok(Operation {
                         kind: ExpOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
@@ -877,7 +877,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_SigmoidOperation(op) => Ok(Operation {
+                    std_SigmoidOperation(op) => Ok(Operation {
                         kind: SigmoidOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
@@ -887,7 +887,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_LogOperation(op) => Ok(Operation {
+                    std_LogOperation(op) => Ok(Operation {
                         kind: LogOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
@@ -897,7 +897,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_Log2Operation(op) => Ok(Operation {
+                    std_Log2Operation(op) => Ok(Operation {
                         kind: Log2Op {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
@@ -907,7 +907,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_SoftmaxOperation(op) => Ok(Operation {
+                    std_SoftmaxOperation(op) => Ok(Operation {
                         kind: SoftmaxOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                             axis: op.axis,
@@ -919,7 +919,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_ArgmaxOperation(op) => Ok(Operation {
+                    std_ArgmaxOperation(op) => Ok(Operation {
                         kind: ArgmaxOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                             axis: op.axis,
@@ -931,7 +931,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_ConcatenateOperation(op) => {
+                    std_ConcatenateOperation(op) => {
                         let mut inputs: Vec<(&String, &String)> = op.inputs.iter().collect();
                         inputs.sort_by_key(|x| x.0);
                         let sorted_input_names: Vec<String> =
@@ -948,7 +948,7 @@ impl TryFrom<PyComputation> for Computation {
                             placement: map_placement(&placements, &op.placement_name)?,
                         })
                     }
-                    lgc_MaximumOperation(op) => {
+                    std_MaximumOperation(op) => {
                         let mut inputs: Vec<(&String, &String)> = op.inputs.iter().collect();
                         inputs.sort_by_key(|x| x.0);
                         let sorted_input_names: Vec<String> =
@@ -964,7 +964,7 @@ impl TryFrom<PyComputation> for Computation {
                             placement: map_placement(&placements, &op.placement_name)?,
                         })
                     }
-                    lgc_DecryptOperation(op) => Ok(Operation {
+                    std_DecryptOperation(op) => Ok(Operation {
                         kind: DecryptOp {
                             sig: Signature::from_binary(&op.signature, "key", "ciphertext")?,
                         }
@@ -974,7 +974,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_TransposeOperation(op) => Ok(Operation {
+                    std_TransposeOperation(op) => Ok(Operation {
                         kind: TransposeOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_unary(&op.signature, "x")?,
@@ -986,7 +986,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
 
-                    lgc_InverseOperation(op) => Ok(Operation {
+                    std_InverseOperation(op) => Ok(Operation {
                         kind: InverseOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_unary(&op.signature, "x")?,
@@ -997,7 +997,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_MeanOperation(op) => Ok(Operation {
+                    std_MeanOperation(op) => Ok(Operation {
                         kind: MeanOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_unary(&op.signature, "x")?,
@@ -1009,7 +1009,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_SqrtOperation(op) => Ok(Operation {
+                    std_SqrtOperation(op) => Ok(Operation {
                         kind: SqrtOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
@@ -1019,7 +1019,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_SumOperation(op) => Ok(Operation {
+                    std_SumOperation(op) => Ok(Operation {
                         kind: SumOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_unary(&op.signature, "x")?,
@@ -1031,7 +1031,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_DivOperation(op) => Ok(Operation {
+                    std_DivOperation(op) => Ok(Operation {
                         kind: DivOp {
                             // we can use output type type to determine input type
                             sig: Signature::from_binary(&op.signature, "lhs", "rhs")?,
@@ -1042,7 +1042,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_InputOperation(op) => Ok(Operation {
+                    std_InputOperation(op) => Ok(Operation {
                         kind: InputOp {
                             sig: Signature::from_nullary(&op.signature)?,
                             arg_name: op.name.clone(),
@@ -1052,7 +1052,7 @@ impl TryFrom<PyComputation> for Computation {
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_OutputOperation(op) => Ok(Operation {
+                    std_OutputOperation(op) => Ok(Operation {
                         kind: OutputOp {
                             sig: Signature::from_unary(&op.signature, "value")?,
                         }
@@ -1062,7 +1062,7 @@ impl TryFrom<PyComputation> for Computation {
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_SaveOperation(op) => Ok(Operation {
+                    std_SaveOperation(op) => Ok(Operation {
                         kind: SaveOp {
                             sig: Signature::from_binary(&op.signature, "key", "value")?,
                         }
@@ -1072,7 +1072,7 @@ impl TryFrom<PyComputation> for Computation {
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_LoadOperation(op) => Ok(Operation {
+                    std_LoadOperation(op) => Ok(Operation {
                         kind: LoadOp {
                             sig: Signature::from_binary(&op.signature, "key", "query")?,
                         }
@@ -1082,7 +1082,7 @@ impl TryFrom<PyComputation> for Computation {
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    lgc_CastOperation(op) => Ok(Operation {
+                    std_CastOperation(op) => Ok(Operation {
                         kind: CastOp {
                             sig: Signature::from_unary(&op.signature, "x")?,
                         }
