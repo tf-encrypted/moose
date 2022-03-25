@@ -349,6 +349,7 @@ impl DispatchKernel<AsyncSession> for Operator {
             Shr(op) => DispatchKernel::compile(op, plc),
             Sample(op) => DispatchKernel::compile(op, plc),
             SampleSeeded(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointAbs(op) => DispatchKernel::compile(op, plc),
             RingFixedpointArgmax(op) => DispatchKernel::compile(op, plc),
             RingFixedpointMean(op) => DispatchKernel::compile(op, plc),
             RingFixedpointEncode(op) => DispatchKernel::compile(op, plc),
@@ -612,9 +613,10 @@ impl AsyncTestRuntime {
                 missing_identities, missing_roles)));
         }
 
+        let session_id = SessionId::random();
         for (own_identity, executor) in self.executors.iter_mut() {
             let moose_session = AsyncSession::new(
-                SessionId::try_from("foobar").unwrap(),
+                session_id.clone(),
                 arguments.clone(),
                 valid_role_assignments.clone(),
                 Arc::clone(&self.networking),

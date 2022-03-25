@@ -55,6 +55,24 @@ def find_parameters_in_model_proto(model_proto, operator_name, enforce=True):
     for operator in model_proto.graph.initializer:
         if operator_name in operator.name:
             parameters.append(operator)
-    if enforce and parameters is None:
+    if enforce and len(parameters) == 0:
         raise ValueError(f"Model proto does not contain operator {operator_name}.")
     return parameters
+
+
+def find_op_types_in_model_proto(model_proto, enforce=True):
+    operations = []
+    for node in model_proto.graph.node:
+        operations.append(node.op_type)
+    if enforce and len(operations) == 0:
+        raise ValueError("Model proto nodes do not contain op_type.")
+    return operations
+
+
+def find_output_in_model_proto(model_proto, enforce=True):
+    output_dim = None
+    output = model_proto.graph.output
+    output_dim = output.type.tensor_type.shape.dim
+    if enforce and output_dim is None:
+        raise ValueError("Model proto does not contain output dimention.")
+    return output_dim

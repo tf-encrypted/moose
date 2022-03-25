@@ -1057,8 +1057,8 @@ mod tests {
         );
     }
 
-    rep_unary_func_test!(test_rep_abs64, abs<u64>);
-    rep_unary_func_test!(test_rep_abs128, abs<u128>);
+    rep_unary_func_test!(test_rep_abs64, abs_as_fixedpoint<u64>);
+    rep_unary_func_test!(test_rep_abs128, abs_as_fixedpoint<u128>);
 
     #[rstest]
     #[case(array![-10_i64 as u64, -100_i64 as u64, -200000_i64 as u64, 0, 1000].into_dyn(), array![10_u64, 100, 200000, 0, 1000].into_dyn())]
