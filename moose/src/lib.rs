@@ -4056,19 +4056,18 @@ macro_rules! modelled_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into()?;
                             // TODO: Do we want to be deriving the kernel inside? Probably not...
-                            let op = self.clone();
 
                             Ok(Box::new(move |sess, operands: Operands<AsyncValue>| {
                                 assert_eq!(operands.len(), 3);
                                 let sess = sess.clone();
                                 let plc = plc.clone();
 
+                                // TODO(Morten) we could move this out of the Box above by making it an Arc inside
                                 let k = {
                                     derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
                                 }?;
 
                                 let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
-                                let op = op.clone(); // Needed for the error message for KernelError
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
                                     let mut operands = futures::future::join_all(operands).await;
@@ -4092,12 +4091,8 @@ macro_rules! modelled_kernel {
                                         .try_into()?;
 
                                     let y: $u = k(&sess, &plc, x0, x1, x2)?;
-                                    if y.placement()? == plc.clone().into() {
-                                        crate::execution::map_send_result(sender.send(y.into()))?;
-                                        Ok(())
-                                    } else {
-                                        Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
-                                    }
+                                    crate::execution::map_send_result(sender.send(y.into()))?;
+                                    Ok(())
                                 });
                                 let mut tasks = tasks.write().unwrap();
                                 tasks.push(task);
@@ -4195,7 +4190,11 @@ macro_rules! modelled_kernel {
                 sess.execute(
                     &op.into(),
                     &self.into(),
-                    operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
+                    operands![
+                        x0.clone().into(),
+                        x1.clone().into(),
+                        x2.clone().into(),
+                    ]
                 )
                 .unwrap()
                 .try_into()
@@ -4254,10 +4253,18 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
-                    .unwrap()
-                    .try_into()
-                    .unwrap()
+                sess.execute(
+                    &op.into(),
+                    &self.into(),
+                    operands![
+                        x0.clone().into(),
+                        x1.clone().into(),
+                        x2.clone().into(),
+                    ]
+                )
+                .unwrap()
+                .try_into()
+                .unwrap()
             }
         }
         
@@ -4334,7 +4341,7 @@ macro_rules! modelled_kernel {
             fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
                 use crate::computation::{KnownType, TernarySignature};
                 use crate::execution::{Session, SyncSession};
-                use std::convert::TryInto;
+                use std::convert::TryFrom;
 
                 let sig = TernarySignature {
                     arg0: <$t0 as KnownType<SyncSession>>::TY,
@@ -4346,14 +4353,17 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(
-                    &op.into(),
+                let val = sess.execute(
+                    &Operator::from(op),
                     &self.into(),
-                    operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
+                    operands![
+                        Value::from(x0.clone()),
+                        Value::from(x1.clone()),
+                        Value::from(x2.clone()),
+                    ],
                 )
-                .unwrap()
-                .try_into()
-                .unwrap()
+                .unwrap();
+                TryFrom::try_from(val).unwrap()
             }
         }
 
