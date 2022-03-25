@@ -1,15 +1,12 @@
 import numpy as np
 from absl.testing import parameterized
 
+from pymoose.computation import computation as comp
 from pymoose.computation import dtypes
-from pymoose.computation import standard as standard_ops
-from pymoose.computation.base import Computation
-from pymoose.computation.base import OpSignature
-from pymoose.computation.host import HostPlacement
-from pymoose.computation.standard import IdentityOperation
-from pymoose.computation.standard import ReshapeOperation
-from pymoose.computation.standard import TensorConstant
-from pymoose.computation.standard import TensorType
+from pymoose.computation import operations as ops
+from pymoose.computation import placements as plc
+from pymoose.computation import types as ty
+from pymoose.computation import values
 from pymoose.edsl import base as edsl
 from pymoose.edsl.tracer import trace
 
@@ -48,12 +45,12 @@ class EdslTest(parameterized.TestCase):
 
         logical_comp = trace(my_comp)
         identity_op = logical_comp.operation("identity_0")
-        assert identity_op == IdentityOperation(
+        assert identity_op == ops.IdentityOperation(
             placement_name="bob",
             name="identity_0",
             inputs={"x": "constant_0"},
-            signature=OpSignature(
-                {"x": TensorType(dtypes.float64)}, TensorType(dtypes.float64),
+            signature=ops.OpSignature(
+                {"x": ty.TensorType(dtypes.float64)}, ty.TensorType(dtypes.float64),
             ),
         )
 
@@ -61,12 +58,7 @@ class EdslTest(parameterized.TestCase):
         {"op": op, "OP": OP, "op_name": op_name}
         for (op, OP, op_name) in zip(
             [edsl.add, edsl.div, edsl.mul, edsl.sub],
-            [
-                standard_ops.AddOperation,
-                standard_ops.DivOperation,
-                standard_ops.MulOperation,
-                standard_ops.SubOperation,
-            ],
+            [ops.AddOperation, ops.DivOperation, ops.MulOperation, ops.SubOperation],
             ["add", "div", "mul", "sub"],
         )
     )
@@ -88,9 +80,12 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0",
             name=f"{op_name}_0",
             inputs={"lhs": "constant_0", "rhs": "constant_1"},
-            signature=OpSignature(
-                {"lhs": TensorType(dtypes.float64), "rhs": TensorType(dtypes.float64)},
-                TensorType(dtypes.float64),
+            signature=ops.OpSignature(
+                {
+                    "lhs": ty.TensorType(dtypes.float64),
+                    "rhs": ty.TensorType(dtypes.float64),
+                },
+                ty.TensorType(dtypes.float64),
             ),
         )
 
@@ -111,17 +106,17 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
         op = concrete_comp.operation("concatenate_0")
-        assert op == standard_ops.ConcatenateOperation(
+        assert op == ops.ConcatenateOperation(
             placement_name="player0",
             name="concatenate_0",
             axis=1,
             inputs={"array0": "constant_0", "array1": "constant_1"},
-            signature=OpSignature(
+            signature=ops.OpSignature(
                 {
-                    "array0": TensorType(dtypes.float32),
-                    "array1": TensorType(dtypes.float32),
+                    "array0": ty.TensorType(dtypes.float32),
+                    "array1": ty.TensorType(dtypes.float32),
                 },
-                TensorType(dtypes.float32),
+                ty.TensorType(dtypes.float32),
             ),
         )
 
@@ -141,16 +136,16 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
         op = concrete_comp.operation("add_n_0")
-        assert op == standard_ops.AddNOperation(
+        assert op == ops.AddNOperation(
             placement_name="player0",
             name="add_n_0",
             inputs={"array0": "constant_0", "array1": "constant_1"},
-            signature=OpSignature(
+            signature=ops.OpSignature(
                 {
-                    "array0": TensorType(dtypes.float32),
-                    "array1": TensorType(dtypes.float32),
+                    "array0": ty.TensorType(dtypes.float32),
+                    "array1": ty.TensorType(dtypes.float32),
                 },
-                TensorType(dtypes.float32),
+                ty.TensorType(dtypes.float32),
             ),
         )
 
@@ -159,22 +154,20 @@ class EdslTest(parameterized.TestCase):
 
         @edsl.computation
         def my_comp():
-            shape = edsl.constant(
-                [2, 2], vtype=standard_ops.ShapeType(), placement=player0
-            )
+            shape = edsl.constant([2, 2], vtype=ty.ShapeType(), placement=player0)
             x0 = edsl.ones(shape, dtype=dtypes.float64, placement=player0)
             return x0
 
         concrete_comp = trace(my_comp)
         op = concrete_comp.operation("ones_0")
-        assert op == standard_ops.OnesOperation(
+        assert op == ops.OnesOperation(
             placement_name="player0",
             name="ones_0",
             dtype=dtypes.float64,
             inputs={"shape": "constant_0"},
-            signature=OpSignature(
-                input_types={"shape": standard_ops.ShapeType()},
-                return_type=TensorType(dtype=dtypes.float64),
+            signature=ops.OpSignature(
+                input_types={"shape": ty.ShapeType()},
+                return_type=ty.TensorType(dtype=dtypes.float64),
             ),
         )
 
@@ -191,21 +184,24 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
         op = concrete_comp.operation("mul_0")
-        assert op == standard_ops.MulOperation(
+        assert op == ops.MulOperation(
             placement_name="player0",
             name="mul_0",
             inputs={"lhs": "constant_0", "rhs": "constant_0"},
-            signature=OpSignature(
-                {"lhs": TensorType(dtypes.float32), "rhs": TensorType(dtypes.float32)},
-                TensorType(dtypes.float32),
+            signature=ops.OpSignature(
+                {
+                    "lhs": ty.TensorType(dtypes.float32),
+                    "rhs": ty.TensorType(dtypes.float32),
+                },
+                ty.TensorType(dtypes.float32),
             ),
         )
 
     @parameterized.parameters(
-        (edsl.sum, standard_ops.SumOperation, "sum", None),
-        (edsl.sum, standard_ops.SumOperation, "sum", 0),
-        (edsl.mean, standard_ops.MeanOperation, "mean", None),
-        (edsl.mean, standard_ops.MeanOperation, "mean", 0),
+        (edsl.sum, ops.SumOperation, "sum", None),
+        (edsl.sum, ops.SumOperation, "sum", 0),
+        (edsl.mean, ops.MeanOperation, "mean", None),
+        (edsl.mean, ops.MeanOperation, "mean", 0),
     )
     def test_reduce_op(self, reduce_op_fn, reduce_op_cls, reduce_op_name, axis):
         player0 = edsl.host_placement(name="player0")
@@ -227,8 +223,8 @@ class EdslTest(parameterized.TestCase):
             name=concrete_op_name,
             axis=axis,
             inputs={"x": "constant_0"},
-            signature=OpSignature(
-                {"x": TensorType(dtypes.float32)}, TensorType(dtypes.float32),
+            signature=ops.OpSignature(
+                {"x": ty.TensorType(dtypes.float32)}, ty.TensorType(dtypes.float32),
             ),
         )
 
@@ -245,13 +241,13 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
         op = concrete_comp.operation("transpose_0")
-        assert op == standard_ops.TransposeOperation(
+        assert op == ops.TransposeOperation(
             placement_name="player0",
             name="transpose_0",
             axes=None,
             inputs={"x": "constant_0"},
-            signature=OpSignature(
-                {"x": TensorType(dtypes.float32)}, TensorType(dtypes.float32),
+            signature=ops.OpSignature(
+                {"x": ty.TensorType(dtypes.float32)}, ty.TensorType(dtypes.float32),
             ),
         )
 
@@ -268,16 +264,16 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
         op = concrete_comp.operation("reshape_0")
-        assert op == ReshapeOperation(
+        assert op == ops.ReshapeOperation(
             placement_name="player0",
             name="reshape_0",
             inputs={"x": "constant_0", "shape": "constant_1"},
-            signature=OpSignature(
+            signature=ops.OpSignature(
                 input_types={
-                    "x": TensorType(dtype=dtypes.float64),
-                    "shape": standard_ops.ShapeType(),
+                    "x": ty.TensorType(dtype=dtypes.float64),
+                    "shape": ty.ShapeType(),
                 },
-                return_type=TensorType(dtype=dtypes.float64),
+                return_type=ty.TensorType(dtype=dtypes.float64),
             ),
         )
 
@@ -294,13 +290,13 @@ class EdslTest(parameterized.TestCase):
         concrete_comp = trace(my_comp)
 
         op = concrete_comp.operation("atleast_2d_0")
-        assert op == standard_ops.AtLeast2DOperation(
+        assert op == ops.AtLeast2DOperation(
             placement_name="player0",
             name="atleast_2d_0",
             inputs={"x": "constant_0"},
             to_column_vector=True,
-            signature=OpSignature(
-                {"x": TensorType(dtypes.float64)}, TensorType(dtypes.float64),
+            signature=ops.OpSignature(
+                {"x": ty.TensorType(dtypes.float64)}, ty.TensorType(dtypes.float64),
             ),
         )
 
@@ -319,13 +315,13 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
         op = concrete_comp.operation("squeeze_0")
-        assert op == standard_ops.SqueezeOperation(
+        assert op == ops.SqueezeOperation(
             placement_name="player0",
             name="squeeze_0",
             inputs={"x": "constant_0"},
             axis=axis,
-            signature=OpSignature(
-                {"x": TensorType(dtypes.int64)}, TensorType(dtypes.int64),
+            signature=ops.OpSignature(
+                {"x": ty.TensorType(dtypes.int64)}, ty.TensorType(dtypes.int64),
             ),
         )
 
@@ -344,14 +340,14 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
         op = concrete_comp.operation("index_axis_0")
-        assert op == standard_ops.IndexAxisOperation(
+        assert op == ops.IndexAxisOperation(
             placement_name="player0",
             name="index_axis_0",
             inputs={"x": "constant_0"},
             axis=1,
             index=0,
-            signature=OpSignature(
-                {"x": TensorType(dtypes.float64)}, TensorType(dtypes.float64),
+            signature=ops.OpSignature(
+                {"x": ty.TensorType(dtypes.float64)}, ty.TensorType(dtypes.float64),
             ),
         )
 
@@ -372,13 +368,13 @@ class EdslTest(parameterized.TestCase):
         op = concrete_comp.operation("expand_dims_0")
         if isinstance(axis, int):
             axis = [axis]
-        assert op == standard_ops.ExpandDimsOperation(
+        assert op == ops.ExpandDimsOperation(
             placement_name="player0",
             name="expand_dims_0",
             inputs={"x": "constant_0"},
             axis=axis,
-            signature=OpSignature(
-                {"x": TensorType(dtypes.float64)}, TensorType(dtypes.float64),
+            signature=ops.OpSignature(
+                {"x": ty.TensorType(dtypes.float64)}, ty.TensorType(dtypes.float64),
             ),
         )
 
@@ -406,17 +402,17 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
         op = concrete_comp.operation("mux_0")
-        assert op == standard_ops.MuxOperation(
+        assert op == ops.MuxOperation(
             placement_name="replicated",
             name="mux_0",
             inputs={"selector": "constant_0", "x": "cast_0", "y": "cast_1"},
-            signature=OpSignature(
+            signature=ops.OpSignature(
                 {
-                    "selector": TensorType(dtypes.bool_),
-                    "x": TensorType(dtypes.fixed(8, 27)),
-                    "y": TensorType(dtypes.fixed(8, 27)),
+                    "selector": ty.TensorType(dtypes.bool_),
+                    "x": ty.TensorType(dtypes.fixed(8, 27)),
+                    "y": ty.TensorType(dtypes.fixed(8, 27)),
                 },
-                TensorType(dtypes.fixed(8, 27)),
+                ty.TensorType(dtypes.fixed(8, 27)),
             ),
         )
 
@@ -430,12 +426,12 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
         constant_op = concrete_comp.operation("constant_0")
-        assert constant_op == standard_ops.ConstantOperation(
+        assert constant_op == ops.ConstantOperation(
             placement_name="player0",
             name="constant_0",
             inputs={},
-            value=TensorConstant(value=[1.0]),
-            signature=OpSignature({}, TensorType(dtypes.float64)),
+            value=values.TensorConstant(value=[1.0]),
+            signature=ops.OpSignature({}, ty.TensorType(dtypes.float64)),
         )
 
     def test_load(self):
@@ -452,13 +448,13 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
         constant_op = concrete_comp.operation("load_0")
-        assert constant_op == standard_ops.LoadOperation(
+        assert constant_op == ops.LoadOperation(
             placement_name="player0",
             name="load_0",
             inputs={"key": "constant_0", "query": "constant_1"},
-            signature=OpSignature(
-                {"key": standard_ops.StringType(), "query": standard_ops.StringType()},
-                TensorType(dtypes.float32),
+            signature=ops.OpSignature(
+                {"key": ty.StringType(), "query": ty.StringType()},
+                ty.TensorType(dtypes.float32),
             ),
         )
 
@@ -477,13 +473,13 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
         constant_op = concrete_comp.operation("load_0")
-        assert constant_op == standard_ops.LoadOperation(
+        assert constant_op == ops.LoadOperation(
             placement_name="player0",
             name="load_0",
             inputs={"key": "constant_0", "query": "constant_1"},
-            signature=OpSignature(
-                {"key": standard_ops.StringType(), "query": standard_ops.StringType()},
-                TensorType(dtypes.float32),
+            signature=ops.OpSignature(
+                {"key": ty.StringType(), "query": ty.StringType()},
+                ty.TensorType(dtypes.float32),
             ),
         )
 
@@ -499,43 +495,44 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
 
-        assert concrete_comp == Computation(
+        assert concrete_comp == comp.Computation(
             operations={
-                "x": standard_ops.InputOperation(
+                "x": ops.InputOperation(
                     placement_name="player0",
                     name="x",
                     inputs={},
-                    signature=OpSignature({}, TensorType(tensor_dtype)),
+                    signature=ops.OpSignature({}, ty.TensorType(tensor_dtype)),
                 ),
-                "constant_0": standard_ops.ConstantOperation(
+                "constant_0": ops.ConstantOperation(
                     placement_name="player0",
                     name="constant_0",
                     inputs={},
-                    value=TensorConstant(value=[1.0]),
-                    signature=OpSignature({}, TensorType(tensor_dtype)),
+                    value=values.TensorConstant(value=[1.0]),
+                    signature=ops.OpSignature({}, ty.TensorType(tensor_dtype)),
                 ),
-                "add_0": standard_ops.AddOperation(
+                "add_0": ops.AddOperation(
                     placement_name="player0",
                     name="add_0",
                     inputs={"lhs": "x", "rhs": "constant_0"},
-                    signature=OpSignature(
+                    signature=ops.OpSignature(
                         {
-                            "lhs": TensorType(tensor_dtype),
-                            "rhs": TensorType(tensor_dtype),
+                            "lhs": ty.TensorType(tensor_dtype),
+                            "rhs": ty.TensorType(tensor_dtype),
                         },
-                        TensorType(tensor_dtype),
+                        ty.TensorType(tensor_dtype),
                     ),
                 ),
-                "output_0": standard_ops.OutputOperation(
+                "output_0": ops.OutputOperation(
                     placement_name="player0",
                     name="output_0",
                     inputs={"value": "add_0"},
-                    signature=OpSignature(
-                        {"value": TensorType(tensor_dtype)}, TensorType(tensor_dtype),
+                    signature=ops.OpSignature(
+                        {"value": ty.TensorType(tensor_dtype)},
+                        ty.TensorType(tensor_dtype),
                     ),
                 ),
             },
-            placements={"player0": HostPlacement(name="player0")},
+            placements={"player0": plc.HostPlacement(name="player0")},
         )
 
     @parameterized.parameters(
@@ -602,12 +599,12 @@ class EdslTest(parameterized.TestCase):
         cast_op = concrete_comp.operation("cast_0")
         if from_dtype is None:
             from_dtype = _npdtype_into_moose_dtype(input_value.dtype)
-        assert cast_op == standard_ops.CastOperation(
+        assert cast_op == ops.CastOperation(
             placement_name="player0",
             name="cast_0",
             inputs={"x": "constant_0"},
-            signature=OpSignature(
-                {"x": TensorType(from_dtype)}, TensorType(into_dtype),
+            signature=ops.OpSignature(
+                {"x": ty.TensorType(from_dtype)}, ty.TensorType(into_dtype),
             ),
         )
 
@@ -635,11 +632,13 @@ class EdslTest(parameterized.TestCase):
         from_dtype = _npdtype_into_moose_dtype(input_value.dtype)
         concrete_comp = trace(my_comp)
         cast_op = concrete_comp.operation("cast_0")
-        assert cast_op == standard_ops.CastOperation(
+        assert cast_op == ops.CastOperation(
             placement_name="player0",
             name="cast_0",
             inputs={"x": "constant_0"},
-            signature=OpSignature({"x": TensorType(from_dtype)}, TensorType(dtype),),
+            signature=ops.OpSignature(
+                {"x": ty.TensorType(from_dtype)}, ty.TensorType(dtype),
+            ),
         )
 
 
