@@ -4648,9 +4648,9 @@ macro_rules! modelled_kernel {
                 x1: &$t1,
                 x2: &$t2,
             ) -> $u {
-                use crate::computation::{KnownType, TernarySignature};
+                use crate::computation::{Operator, KnownType, Signature, TernarySignature};
                 use crate::execution::{Session, SyncSession};
-                use std::convert::TryInto;
+                use std::convert::TryFrom;
 
                 let sig = TernarySignature {
                     arg0: <$t0 as KnownType<SyncSession>>::TY,
@@ -4659,17 +4659,20 @@ macro_rules! modelled_kernel {
                     ret: <$u as KnownType<SyncSession>>::TY,
                 };
                 let op = $op {
-                    sig: sig.into(),
+                    sig: Signature::from(sig),
                     $($($attr_id),*)?
                 };
-                sess.execute(
-                    &op.into(),
-                    &self.into(),
-                    operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
+                let val: Value = sess.execute(
+                    &Operator::from(op),
+                    &Placement::from(self),
+                    operands![
+                        Value::from(x0.clone()),
+                        Value::from(x1.clone()),
+                        Value::from(x2.clone()),
+                    ],
                 )
-                .unwrap()
-                .try_into()
-                .unwrap()
+                .unwrap();
+                TryFrom::try_from(val).unwrap()
             }
         }
 
@@ -4733,9 +4736,9 @@ macro_rules! modelled_kernel {
                 x1: &<$t1 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
                 x2: &<$t2 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
             ) -> <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type {
-                use crate::computation::{KnownType, TernarySignature};
+                use crate::computation::{Operator, Placement, KnownType, Signature, TernarySignature};
                 use crate::execution::{Session, SymbolicSession};
-                use std::convert::TryInto;
+                use std::convert::TryFrom;
 
                 let sig = TernarySignature {
                     arg0: <$t0 as KnownType<SymbolicSession>>::TY,
@@ -4744,17 +4747,20 @@ macro_rules! modelled_kernel {
                     ret: <$u as KnownType<SymbolicSession>>::TY,
                 };
                 let op = $op {
-                    sig: sig.into(),
+                    sig: Signature::from(sig),
                     $($($attr_id),*)?
                 };
-                sess.execute(
-                    &op.into(),
-                    &self.into(),
-                    operands![x0.clone().into(), x1.clone().into(), x2.clone().into()]
+                let val: SymbolicValue = sess.execute(
+                    &Operator::from(op),
+                    &Placement::from(self),
+                    operands![
+                        SymbolicValue::from(x0.clone()),
+                        SymbolicValue::from(x1.clone()),
+                        SymbolicValue::from(x2.clone()),
+                    ]
                 )
-                .unwrap()
-                .try_into()
-                .unwrap()
+                .unwrap();
+                TryFrom::try_from(val).unwrap()
             }
         }
         
