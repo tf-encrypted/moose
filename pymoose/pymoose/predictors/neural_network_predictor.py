@@ -15,7 +15,7 @@ class Activation(Enum):
     SOFTMAX = 3
 
 
-class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
+class NeuralNetwork(aes_predictor.AesPredictor):
     def __init__(self, weights, biases, activations):
         super().__init__()
         self.weights = weights
