@@ -4169,7 +4169,13 @@ macro_rules! modelled_kernel {
 
     (__ternary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
         #[cfg(feature = "sync_execute")]
-        impl $trait<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
+        impl $trait<
+            crate::execution::SyncSession,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $plc {
             fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
                 use crate::computation::{KnownType, TernarySignature};
                 use crate::execution::{Session, SyncSession};
@@ -4369,7 +4375,13 @@ macro_rules! modelled_kernel {
 
     (__ternary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
         #[cfg(feature = "sync_execute")]
-        impl $trait<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
+        impl $trait<
+            crate::execution::SyncSession,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $plc {
             fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
                 use crate::computation::{KnownType, TernarySignature};
                 use crate::execution::{Session, SyncSession};
@@ -4607,7 +4619,13 @@ macro_rules! modelled_kernel {
 
     (__ternary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
         #[cfg(feature = "sync_execute")]
-        impl $trait<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
+        impl $trait<
+            crate::execution::SyncSession,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $plc {
             fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
                 use crate::computation::{KnownType, TernarySignature};
                 use crate::execution::{Session, SyncSession};
