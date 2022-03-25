@@ -100,13 +100,11 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            {
-                crate::error::Result::<crate::kernels::TypedUnaryKernel<_, _, _, _>>::Ok(
-                    Box::new(move |sess, plc, x0| {
-                        $k(sess, plc, $($attr.clone()),+, x0)
-                    })
-                )
-            }
+            crate::error::Result::<crate::kernels::TypedUnaryKernel<_, _, _, _>>::Ok(
+                Box::new(move |sess, plc, x0| {
+                    $k(sess, plc, $($attr.clone()),+, x0)
+                })
+            )
         }
     };
     (binary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
@@ -3995,7 +3993,6 @@ macro_rules! modelled_kernel {
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature};
                 use crate::execution::{SyncSession};
-                use crate::kernels::{TernaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -4009,11 +4006,12 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
+                            let k = {
+                                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            }?;
+
                             let plc: $plc = plc.clone().try_into()?;
                             let op = self.clone();
-
-                            let k = <$op as TernaryKernel<SyncSession, $plc, $t0, $t1, $t2, $u>>::compile(self)?;
-
                             Ok(Box::new(move |sess, mut operands| {
                                 assert_eq!(operands.len(), 3);
                                 let x2: $t2 = operands.pop().unwrap().try_into()?;
@@ -4043,7 +4041,6 @@ macro_rules! modelled_kernel {
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature};
                 use crate::execution::{AsyncSession, AsyncValue};
-                use crate::kernels::{TernaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -4065,7 +4062,11 @@ macro_rules! modelled_kernel {
                                 assert_eq!(operands.len(), 3);
                                 let sess = sess.clone();
                                 let plc = plc.clone();
-                                let k = <$op as TernaryKernel<AsyncSession, $plc, $t0, $t1, $t2, $u>>::compile(&op)?;
+
+                                let k = {
+                                    derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
+                                }?;
+
                                 let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
@@ -4257,58 +4258,6 @@ macro_rules! modelled_kernel {
                     .unwrap()
                     .try_into()
                     .unwrap()
-            }
-        }
-        
-        #[cfg(feature = "sync_execute")]
-        impl crate::kernels::TernaryKernel<
-            crate::execution::SyncSession,
-            $plc,
-            $t0,
-            $t1,
-            $t2,
-            $u
-        > for $op
-        {
-            fn compile(
-                &self,
-            ) -> crate::error::Result<
-                crate::kernels::TypedTernaryKernel<
-                    crate::execution::SyncSession,
-                    $plc,
-                    $t0,
-                    $t1,
-                    $t2,
-                    $u,
-                >
-            > {
-                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
-            }
-        }
-        
-        #[cfg(feature = "async_execute")]
-        impl crate::kernels::TernaryKernel<
-            crate::execution::AsyncSession,
-            $plc,
-            $t0,
-            $t1,
-            $t2,
-            $u
-        > for $op
-        {
-            fn compile(
-                &self,
-            ) -> crate::error::Result<
-                crate::kernels::TypedTernaryKernel<
-                    crate::execution::AsyncSession,
-                    $plc,
-                    $t0,
-                    $t1,
-                    $t2,
-                    $u,
-                >
-            > {
-                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
             }
         }
         
@@ -4513,58 +4462,6 @@ macro_rules! modelled_kernel {
             }
         }
         
-        #[cfg(feature = "sync_execute")]
-        impl crate::kernels::TernaryKernel<
-            crate::execution::SyncSession,
-            $plc,
-            $t0,
-            $t1,
-            $t2,
-            $u
-        > for $op
-        {
-            fn compile(
-                &self,
-            ) -> crate::error::Result<
-                crate::kernels::TypedTernaryKernel<
-                    crate::execution::SyncSession,
-                    $plc,
-                    $t0,
-                    $t1,
-                    $t2,
-                    $u,
-                >
-            > {
-                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
-            }
-        }
-        
-        #[cfg(feature = "async_execute")]
-        impl crate::kernels::TernaryKernel<
-            crate::execution::AsyncSession,
-            $plc,
-            $t0,
-            $t1,
-            $t2,
-            $u
-        > for $op
-        {
-            fn compile(
-                &self,
-            ) -> crate::error::Result<
-                crate::kernels::TypedTernaryKernel<
-                    crate::execution::AsyncSession,
-                    $plc,
-                    $t0,
-                    $t1,
-                    $t2,
-                    $u,
-                >
-            > {
-                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
-            }
-        }
-        
         #[cfg(feature = "compile")]
         impl crate::kernels::TernaryKernel<
             crate::execution::SymbolicSession,
@@ -4599,10 +4496,9 @@ macro_rules! modelled_kernel {
                     // Magic by Morten
                     let op = &op;
 
-                    let k = derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
-
                     match (x0, x1, x2) {
                         (Symbolic::Concrete(v0), Symbolic::Concrete(v1), Symbolic::Concrete(v2)) => {
+                            let k = derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
                             let y = k(sess, plc, v0, v1, v2)?;
                             Ok(Symbolic::Concrete(y))
                         }
@@ -4707,58 +4603,6 @@ macro_rules! modelled_kernel {
                     .unwrap()
                     .try_into()
                     .unwrap()
-            }
-        }
-        
-        #[cfg(feature = "sync_execute")]
-        impl crate::kernels::TernaryKernel<
-            crate::execution::SyncSession,
-            $plc,
-            $t0,
-            $t1,
-            $t2,
-            $u
-        > for $op
-        {
-            fn compile(
-                &self,
-            ) -> crate::error::Result<
-                crate::kernels::TypedTernaryKernel<
-                    crate::execution::SyncSession,
-                    $plc,
-                    $t0,
-                    $t1,
-                    $t2,
-                    $u,
-                >
-            > {
-                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
-            }
-        }
-        
-        #[cfg(feature = "async_execute")]
-        impl crate::kernels::TernaryKernel<
-            crate::execution::AsyncSession,
-            $plc,
-            $t0,
-            $t1,
-            $t2,
-            $u
-        > for $op
-        {
-            fn compile(
-                &self,
-            ) -> crate::error::Result<
-                crate::kernels::TypedTernaryKernel<
-                    crate::execution::AsyncSession,
-                    $plc,
-                    $t0,
-                    $t1,
-                    $t2,
-                    $u,
-                >
-            > {
-                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
             }
         }
         
@@ -4911,58 +4755,6 @@ macro_rules! modelled_kernel {
                 .unwrap()
                 .try_into()
                 .unwrap()
-            }
-        }
-        
-        #[cfg(feature = "sync_execute")]
-        impl crate::kernels::TernaryKernel<
-            crate::execution::SyncSession,
-            $plc,
-            $t0,
-            $t1,
-            $t2,
-            $u
-        > for $op
-        {
-            fn compile(
-                &self,
-            ) -> crate::error::Result<
-                crate::kernels::TypedTernaryKernel<
-                    crate::execution::SyncSession,
-                    $plc,
-                    $t0,
-                    $t1,
-                    $t2,
-                    $u,
-                >
-            > {
-                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
-            }
-        }
-        
-        #[cfg(feature = "async_execute")]
-        impl crate::kernels::TernaryKernel<
-            crate::execution::AsyncSession,
-            $plc,
-            $t0,
-            $t1,
-            $t2,
-            $u
-        > for $op
-        {
-            fn compile(
-                &self,
-            ) -> crate::error::Result<
-                crate::kernels::TypedTernaryKernel<
-                    crate::execution::AsyncSession,
-                    $plc,
-                    $t0,
-                    $t1,
-                    $t2,
-                    $u,
-                >
-            > {
-                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
             }
         }
         
