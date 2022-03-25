@@ -4599,7 +4599,13 @@ macro_rules! modelled_kernel {
 
     (__ternary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
         #[cfg(feature = "sync_execute")]
-        impl $trait<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
+        impl $trait<
+            crate::execution::SyncSession,
+            $t0,
+            $t1,
+            $t2,
+            $u
+        > for $plc {
             fn $trait_fn(
                 &self,
                 sess: &crate::execution::SyncSession,
@@ -4636,21 +4642,44 @@ macro_rules! modelled_kernel {
         #[cfg(feature = "async_execute")]
         impl $trait<
             crate::execution::AsyncSession,
-            $t0,
-            $t1,
-            $t2,
-            $u
+            <$t0 as crate::computation::KnownType<crate::execution::AsyncSession>>::Type,
+            <$t1 as crate::computation::KnownType<crate::execution::AsyncSession>>::Type,
+            <$t2 as crate::computation::KnownType<crate::execution::AsyncSession>>::Type,
+            <$u as crate::computation::KnownType<crate::execution::AsyncSession>>::Type
         > for $plc {
             #[allow(unused_variables)]
             fn $trait_fn(
                 &self,
                 sess: &crate::execution::AsyncSession,
                 $($($attr_id:$attr_ty),*,)?
-                x0: &$t0,
-                x1: &$t1,
-                x2: &$t2,
-            ) -> $u {
+                x0: &<$t0 as crate::computation::KnownType<crate::execution::AsyncSession>>::Type,
+                x1: &<$t1 as crate::computation::KnownType<crate::execution::AsyncSession>>::Type,
+                x2: &<$t2 as crate::computation::KnownType<crate::execution::AsyncSession>>::Type,
+            ) -> <$u as crate::computation::KnownType<crate::execution::AsyncSession>>::Type {
                 unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
+
+                // use crate::computation::{KnownType, TernarySignature};
+                // use crate::execution::{Session, AsyncSession};
+                // use std::convert::TryInto;
+
+                // let sig = TernarySignature {
+                //     arg0: <$t0 as KnownType<AsyncSession>>::TY,
+                //     arg1: <$t1 as KnownType<AsyncSession>>::TY,
+                //     arg2: <$t2 as KnownType<AsyncSession>>::TY,
+                //     ret: <$u as KnownType<AsyncSession>>::TY,
+                // };
+                // let op = $op {
+                //     sig: sig.into(),
+                //     $($($attr_id),*)?
+                // };
+                // sess.execute(
+                //     &op.into(),
+                //     &self.into(),
+                //     operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
+                // )
+                // .unwrap()
+                // .try_into()
+                // .unwrap()
             }
         }
 
