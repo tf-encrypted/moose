@@ -115,6 +115,26 @@ class LinearRegressor(LinearPredictor):
             n_targets = n_targets_ints.i
             coeffs = coeffs.reshape(n_targets, -1)
 
+        coeffs_rank = len(coeffs.shape)
+        if coeffs_rank == 1:
+            n_coeffs = coeffs.shape[0]
+        else:
+            n_coeffs = coeffs.shape[-1]
+
+        # `n_features` arg
+        model_input = model_proto.graph.input[0]
+        input_shape = predictor_utils.find_input_shape(model_input)
+        assert len(input_shape) == 2
+        n_features = input_shape[1].dim_value
+
+        if n_features != n_coeffs:
+            raise ValueError(
+                f"In the ONNX file, the input shape has {n_features} "
+                f"features and there are {n_coeffs} coefficients. Validate "
+                "you set correctly the `initial_types` when converting "
+                "your model to ONNX."
+            )
+
         return cls(coeffs=coeffs, intercepts=intercepts)
 
 
@@ -175,6 +195,21 @@ class LinearClassifier(LinearPredictor):
             classlabels = classlabels_strings.strings
         n_classes = len(classlabels)
         coeffs = coeffs.reshape(n_classes, -1)
+        n_coeffs = coeffs.shape[1]
+
+        # `n_features` arg
+        model_input = model_proto.graph.input[0]
+        input_shape = predictor_utils.find_input_shape(model_input)
+        assert len(input_shape) == 2
+        n_features = input_shape[1].dim_value
+
+        if n_features != n_coeffs:
+            raise ValueError(
+                f"In the ONNX file, the input shape has {n_features} "
+                f"features and there are {n_coeffs} coefficients. Validate "
+                "you set correctly the `initial_types` when converting "
+                "your model to ONNX."
+            )
 
         # parse classifier intercepts
         intercepts_attr = predictor_utils.find_attribute_in_node(
