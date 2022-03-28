@@ -1899,33 +1899,19 @@ impl InverseOp {
 
 impl LoadOp {
     #[allow(clippy::type_complexity)]
-    pub(crate) fn logical_kernel<S: Session>(
+    pub(crate) fn logical_kernel<S: Session, TensorT>(
         sess: &S,
         plc: &HostPlacement,
         key: m!(HostString),
         query: m!(HostString),
-    ) -> Result<
-        AbstractTensor<
-            m!(Fixed64Tensor),
-            m!(Fixed128Tensor),
-            m!(Float32Tensor),
-            m!(Float64Tensor),
-            m!(BooleanTensor),
-            m!(Uint64Tensor),
-        >,
-    >
+    ) -> Result<m!(TensorT)>
     where
         HostString: KnownType<S>,
-        Fixed64Tensor: KnownType<S>,
-        Fixed128Tensor: KnownType<S>,
-        Float32Tensor: KnownType<S>,
-        Float64Tensor: KnownType<S>,
-        BooleanTensor: KnownType<S>,
-        Uint64Tensor: KnownType<S>,
-        HostPlacement: PlacementLoad<S, m!(HostString), m!(HostString), m!(Float64Tensor)>,
+        TensorT: KnownType<S>,
+        HostPlacement: PlacementLoad<S, m!(HostString), m!(HostString), m!(TensorT)>,
     {
         let z = plc.load(sess, &key, &query);
-        Ok(AbstractTensor::Float64(z))
+        Ok(z)
     }
 }
 
