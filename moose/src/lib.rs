@@ -248,7 +248,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -301,7 +301,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -352,7 +352,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -413,7 +413,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -473,7 +473,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -548,7 +548,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -602,7 +602,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -678,7 +678,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -728,7 +728,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -785,7 +785,7 @@ macro_rules! concrete_dispatch_kernel {
                                 Ok(result)
                             }))                        }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -834,7 +834,7 @@ macro_rules! symbolic_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -888,7 +888,7 @@ macro_rules! symbolic_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -942,7 +942,7 @@ macro_rules! symbolic_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -999,7 +999,7 @@ macro_rules! symbolic_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -1048,7 +1048,7 @@ macro_rules! symbolic_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
@@ -3232,13 +3232,19 @@ macro_rules! modelled_kernel {
                             let y = k(sess, plc, v0)?;
                             Ok(y.into())
                         }
-                        _ => match x0 {
+                        Err(e) => match x0 {
                             Symbolic::Symbolic(h0) => {
                                 let h = sess.add_operation(op, &[&h0.op], plc);
                                 Ok(Symbolic::Symbolic(h))
                             }
                             _ => {
-                                Err(crate::error::Error::Unexpected(Some("Expected symbolic value during compilation".to_string())))
+                                Err(crate::error::Error::Unexpected(Some(format!(
+                                    r#"Expected symbolic value during compilation of hybrid kernel.
+                                    Perhaps TryFrom implementation is missing from the kernel's input type?
+                                    Kernel: {:#?}
+                                    Error: {:#?}"#,
+                                    op, e)
+                                )))
                             }
                         }
                     }
@@ -3476,7 +3482,12 @@ macro_rules! modelled_kernel {
                             let h = sess.add_operation(&op, &[&h0.op], plc);
                             Ok(Symbolic::Symbolic(h))
                         }
-                        _ => Err(crate::error::Error::Unexpected(Some("Expected symbolic value during compilation".to_string())))
+                        _ => Err(crate::error::Error::Unexpected(Some(format!(
+                            r#"Expected symbolic value during compilation of runtime kernel, but found concrete value.
+                            Perhaps you meant to declare this as a hybrid kernel?
+                            Kernel: {:#?}"#,
+                            op)
+                        )))
                     }
                 }))
             }

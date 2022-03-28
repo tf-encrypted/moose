@@ -2,7 +2,7 @@ use super::*;
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{Operands, Session};
-use crate::host::HostPlacement;
+use crate::host::{HostPlacement, SliceInfo};
 use crate::kernels::*;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
@@ -1472,32 +1472,32 @@ impl SumOp {
 
 impl OnesOp {
     #[allow(clippy::type_complexity)]
-    pub(crate) fn logical_host_kernel<S: Session>(
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+        HostS,
+        RepS,
+    >(
         sess: &S,
         plc: &HostPlacement,
-        shape: m!(HostShape),
-    ) -> Result<
-        AbstractTensor<
-            m!(Fixed64Tensor),
-            m!(Fixed128Tensor),
-            m!(Float32Tensor),
-            m!(Float64Tensor),
-            m!(BooleanTensor),
-            m!(Uint64Tensor),
-        >,
-    >
+        shape: AbstractShape<HostS, RepS>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
     where
-        HostShape: KnownType<S>,
-        Fixed64Tensor: KnownType<S>,
-        Fixed128Tensor: KnownType<S>,
-        Float32Tensor: KnownType<S>,
-        Float64Tensor: KnownType<S>,
-        BooleanTensor: KnownType<S>,
-        Uint64Tensor: KnownType<S>,
-        HostPlacement: PlacementOnes<S, m!(HostShape), m!(Float64Tensor)>,
+        HostPlacement: PlacementOnes<S, HostS, Float64T>,
+        HostPlacement: PlacementReveal<S, RepS, HostS>,
     {
-        let result = plc.ones(sess, &shape);
-        Ok(AbstractTensor::Float64(result))
+        match shape {
+            AbstractShape::Host(sh) => Ok(AbstractTensor::Float64(plc.ones(sess, &sh))),
+            AbstractShape::Replicated(sh) => {
+                let sh = plc.reveal(sess, &sh);
+                Ok(AbstractTensor::Float64(plc.ones(sess, &sh)))
+            }
+        }
     }
 }
 
@@ -1985,23 +1985,25 @@ impl ShapeOp {
         BoolT,
         Uint64T,
         HostShapeT,
+        RepShapeT,
     >(
         sess: &S,
         plc: &HostPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
-    ) -> Result<HostShapeT>
+    ) -> Result<AbstractShape<HostShapeT, RepShapeT>>
     where
         HostPlacement: PlacementShape<S, Float32T, HostShapeT>,
         HostPlacement: PlacementShape<S, Float64T, HostShapeT>,
         HostPlacement: PlacementShape<S, Fixed64T, HostShapeT>,
         HostPlacement: PlacementShape<S, Fixed128T, HostShapeT>,
     {
+        use AbstractShape::*;
         use AbstractTensor::*;
         match x {
-            Float32(x) => Ok(plc.shape(sess, &x)),
-            Float64(x) => Ok(plc.shape(sess, &x)),
-            Fixed64(x) => Ok(plc.shape(sess, &x)),
-            Fixed128(x) => Ok(plc.shape(sess, &x)),
+            Float32(x) => Ok(Host(plc.shape(sess, &x))),
+            Float64(x) => Ok(Host(plc.shape(sess, &x))),
+            Fixed64(x) => Ok(Host(plc.shape(sess, &x))),
+            Fixed128(x) => Ok(Host(plc.shape(sess, &x))),
             Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(format!(
                 "Shape op (host) is unsupported for {:?}.",
                 x.ty_desc()
@@ -2017,23 +2019,67 @@ impl ShapeOp {
         Float64T,
         BoolT,
         Uint64T,
+        HostShapeT,
         RepShapeT,
     >(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
-    ) -> Result<RepShapeT>
+    ) -> Result<AbstractShape<HostShapeT, RepShapeT>>
     where
         ReplicatedPlacement: PlacementShape<S, Fixed64T, RepShapeT>,
         ReplicatedPlacement: PlacementShape<S, Fixed128T, RepShapeT>,
     {
+        use AbstractShape::*;
         use AbstractTensor::*;
         match x {
-            Fixed64(x) => Ok(plc.shape(sess, &x)),
-            Fixed128(x) => Ok(plc.shape(sess, &x)),
+            Fixed64(x) => Ok(Replicated(plc.shape(sess, &x))),
+            Fixed128(x) => Ok(Replicated(plc.shape(sess, &x))),
             Float32(_) | Float64(_) | Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
                 "Shape op (Rep) op not supported on ReplicatedPlacement.".to_string(),
             )),
+        }
+    }
+}
+
+impl SliceOp {
+    pub(crate) fn logical_host_shape<S: Session, HostS, RepS>(
+        sess: &S,
+        plc: &HostPlacement,
+        slice: SliceInfo,
+        shape: AbstractShape<HostS, RepS>,
+    ) -> Result<AbstractShape<HostS, RepS>>
+    where
+        HostPlacement: PlacementSlice<S, HostS, HostS>,
+        HostPlacement: PlacementReveal<S, RepS, HostS>,
+    {
+        use AbstractShape::*;
+        match shape {
+            Host(x) => Ok(Host(plc.slice(sess, slice, &x))),
+            Replicated(x) => {
+                let sh = plc.reveal(sess, &x);
+                Ok(Host(plc.slice(sess, slice, &sh)))
+            }
+        }
+    }
+
+    pub(crate) fn logical_rep_shape<S: Session, HostS, RepS>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        slice: SliceInfo,
+        shape: AbstractShape<HostS, RepS>,
+    ) -> Result<AbstractShape<HostS, RepS>>
+    where
+        ReplicatedPlacement: PlacementSlice<S, RepS, RepS>,
+        ReplicatedPlacement: PlacementShare<S, HostS, RepS>,
+    {
+        use AbstractShape::*;
+        match shape {
+            Replicated(x) => Ok(Replicated(plc.slice(sess, slice, &x))),
+            Host(x) => {
+                let sh = plc.share(sess, &x);
+                Ok(Replicated(plc.slice(sess, slice, &sh)))
+            }
         }
     }
 }

@@ -10,7 +10,7 @@ use crate::host::{
     HostTensor,
 };
 use crate::integer::AbstractUint64Tensor;
-use crate::logical::AbstractTensor;
+use crate::logical::{AbstractShape, AbstractTensor};
 use crate::mirrored::{Mir3Tensor, MirFixedTensor};
 use crate::replicated::{
     RepAesKey, RepBitArray, RepFixedTensor, RepShape, RepTensor, RepUintTensor,
@@ -30,6 +30,8 @@ pub type Tensor = AbstractTensor<
     BooleanTensor,
     Uint64Tensor,
 >;
+
+pub type Shape = AbstractShape<HostShape, ReplicatedShape>;
 
 moose_type!(Fixed64Tensor = FixedTensor<HostFixed64Tensor, Mirrored3Fixed64Tensor, ReplicatedFixed64Tensor>);
 moose_type!(HostFixed64Tensor = HostFixedTensor<HostRing64Tensor>);
