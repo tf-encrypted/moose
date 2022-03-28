@@ -104,6 +104,13 @@ def _encode(val):
             "return_type": val.return_type,
         }
     elif isinstance(val, dtypes.DType):
+        if FIXED_DTYPE_REGEX.match(val.name):
+            return {
+                "__type__": "DType",
+                "name": "fixed",
+                "integral_precision": val.integral_precision,
+                "fractional_precision": val.fractional_precision,
+            }
         return {"__type__": "DType", "name": val.name}
     elif isinstance(val, np.ndarray):
         return {

@@ -81,10 +81,10 @@ enum PyDType {
     uint32,
     uint64,
     bool_,
-    fixed8_27,
-    fixed14_23,
-    fixed24_40,
-    fixed46_40,
+    fixed {
+        integral_precision: u32,
+        fractional_precision: u32,
+    },
 }
 
 #[derive(Deserialize, Debug)]
@@ -599,28 +599,26 @@ fn map_type(py_type: &PyValueType, placement: Option<&Placement>) -> anyhow::Res
             // PyDType::int32 => Ok(Ty::HostInt32Tensor),
             // PyDType::int64 => Ok(Ty::HostInt64Tensor),
             // PyDType::uint32 => Ok(Ty::HostUint32Tensor),
-            PyDType::fixed14_23 => Ok(Ty::Tensor(TensorDType::Fixed128 {
-                integral_precision: 14,
-                fractional_precision: 23,
-            })),
-            PyDType::fixed8_27 => Ok(Ty::Tensor(TensorDType::Fixed128 {
-                integral_precision: 8,
-                fractional_precision: 27,
-            })),
-            PyDType::fixed24_40 => Ok(Ty::Tensor(TensorDType::Fixed128 {
-                integral_precision: 24,
-                fractional_precision: 40,
-            })),
-            PyDType::fixed46_40 => Ok(Ty::Tensor(TensorDType::Fixed128 {
-                integral_precision: 46,
-                fractional_precision: 40,
+            PyDType::fixed {
+                integral_precision,
+                fractional_precision,
+            } => Ok(Ty::Tensor(TensorDType::Fixed128 {
+                integral_precision: *integral_precision,
+                fractional_precision: *fractional_precision,
             })),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
         },
         PyValueType::AesTensorType { dtype } => match dtype {
+            PyDType::fixed {
+                integral_precision: 24,
+                fractional_precision: 40,
+            } => Ok(Ty::AesTensor),
             // TODO we are erasing fixedpoint precision here on purpose
-            //  -- but we robably want to avoid this down the road
-            PyDType::fixed24_40 => Ok(Ty::AesTensor),
+            //  -- but we pprobably want to support other precisions down the road
+            PyDType::fixed { .. } => Err(anyhow::anyhow!(
+                "Unsupported precision for the fixedpoint AES Tensor '{:?}'",
+                dtype
+            )),
             _ => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", dtype)),
         },
         PyValueType::AesKeyType => Ok(Ty::AesKey),
