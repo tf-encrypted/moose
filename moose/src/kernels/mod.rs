@@ -37,7 +37,7 @@ pub type Kernel<S> =
     Box<dyn Fn(&S, Operands<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send + Sync>;
 
 pub trait DispatchKernel<S: Session> {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<S>>;
+    fn compile(&self, plc: &Placement, op_name: &str) -> Result<Kernel<S>>;
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for

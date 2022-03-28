@@ -215,7 +215,8 @@ macro_rules! concrete_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                _: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
@@ -257,7 +258,8 @@ macro_rules! concrete_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                op_name: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
@@ -276,6 +278,7 @@ macro_rules! concrete_dispatch_kernel {
                             let plc: $plc = plc.clone().try_into()?;
                             // TODO: Do we want to be deriving the kernel inside? Probably not...
                             let op = self.clone();
+                            let op_name = op_name.to_string();
 
                             Ok(Box::new(move |sess, operands: Operands<AsyncValue>| {
                                 assert_eq!(operands.len(), 0);
@@ -284,9 +287,12 @@ macro_rules! concrete_dispatch_kernel {
                                 let k = <$op as NullaryKernel<AsyncSession, $plc, $u>>::compile(&op)?;
                                 let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
+                                let op_name = op_name.clone();
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                    println!("Starting OP {}", op_name);
                                     let y: $u = k(&sess, &plc)?;
+                                    println!("Finished OP {}", op_name);
                                     if y.placement()? == plc.clone().into() {
                                         crate::execution::map_send_result(sender.send(y.into()))?;
                                         Ok(())
@@ -316,7 +322,8 @@ macro_rules! concrete_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                _: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, Value};
@@ -361,7 +368,8 @@ macro_rules! concrete_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                op_name: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature};
@@ -381,6 +389,7 @@ macro_rules! concrete_dispatch_kernel {
                             let plc: $plc = plc.clone().try_into()?;
                             // TODO: Do we want to be deriving the kernel inside? Probably not...
                             let op = self.clone();
+                            let op_name = op_name.to_string();
                             // let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(self, &plc)?;
 
                             Ok(Box::new(move |sess, operands: Operands<AsyncValue>| {
@@ -390,15 +399,19 @@ macro_rules! concrete_dispatch_kernel {
                                 let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(&op)?;
                                 let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
+                                let op_name = op_name.clone();
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                    println!("Awaiting inputs for OP {}", op_name);
                                     let mut operands = futures::future::join_all(operands).await;
+                                    println!("Starting OP {}", op_name);
                                     let x0: $t0 = operands
                                             .pop()
                                             .unwrap()
                                             .map_err(crate::execution::map_receive_error)?
                                             .try_into()?;
                                     let y: $u = k(&sess, &plc, x0)?;
+                                    println!("Finished OP {}", op_name);
                                     if y.placement()? == plc.clone().into() {
                                         crate::execution::map_send_result(sender.send(y.into()))?;
                                         Ok(())
@@ -428,7 +441,8 @@ macro_rules! concrete_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                _: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
@@ -482,7 +496,8 @@ macro_rules! concrete_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                op_name: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
@@ -503,6 +518,7 @@ macro_rules! concrete_dispatch_kernel {
                             let plc: $plc = plc.clone().try_into()?;
                             // TODO: Do we want to be deriving the kernel inside? Probably not...
                             let op = self.clone();
+                            let op_name = op_name.to_string();
 
                             Ok(Box::new(move |sess: &AsyncSession, operands: Operands<AsyncValue>| {
                                 assert_eq!(operands.len(), 2);
@@ -514,11 +530,14 @@ macro_rules! concrete_dispatch_kernel {
                                 let sess = sess.clone();
                                 let plc = plc.clone();
                                 let op = op.clone(); // Needed for the error message for KernelError
+                                let op_name = op_name.clone();
 
                                 let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
 
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                    println!("Awaiting inputs for OP {}", op_name);
                                     let mut operands = futures::future::join_all(operands).await;
+                                    println!("Starting OP {}", op_name);
 
                                     let x1: $t1 = operands
                                             .pop()
@@ -533,7 +552,7 @@ macro_rules! concrete_dispatch_kernel {
                                             .try_into()?;
 
                                     let y: $u = k(&sess, &plc, x0, x1)?;
-
+                                    println!("Finished OP {}", op_name);
                                     if y.placement()? == plc.clone().into() {
                                         crate::execution::map_send_result(sender.send(y.into()))?;
                                         Ok(())
@@ -563,7 +582,8 @@ macro_rules! concrete_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                _: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature};
@@ -611,7 +631,8 @@ macro_rules! concrete_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                op_name: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature};
@@ -633,6 +654,7 @@ macro_rules! concrete_dispatch_kernel {
                             let plc: $plc = plc.clone().try_into()?;
                             // TODO: Do we want to be deriving the kernel inside? Probably not...
                             let op = self.clone();
+                            let op_name = op_name.to_string();
 
                             Ok(Box::new(move |sess, operands: Operands<AsyncValue>| {
                                 assert_eq!(operands.len(), 3);
@@ -641,9 +663,12 @@ macro_rules! concrete_dispatch_kernel {
                                 let k = <$op as TernaryKernel<AsyncSession, $plc, $t0, $t1, $t2, $u>>::compile(&op)?;
                                 let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
+                                let op_name = op_name.clone();
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                    println!("Awaiting inputs for OP {}", op_name);
                                     let mut operands = futures::future::join_all(operands).await;
+                                    println!("Starting OP {}", op_name);
 
                                     let x2: $t2 = operands
                                         .pop()
@@ -664,6 +689,7 @@ macro_rules! concrete_dispatch_kernel {
                                         .try_into()?;
 
                                     let y: $u = k(&sess, &plc, x0, x1, x2)?;
+                                    println!("Finished OP {}", op_name);
                                     if y.placement()? == plc.clone().into() {
                                         crate::execution::map_send_result(sender.send(y.into()))?;
                                         Ok(())
@@ -693,7 +719,8 @@ macro_rules! concrete_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                _: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature, Value};
@@ -737,7 +764,8 @@ macro_rules! concrete_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                op_name: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature};
@@ -757,6 +785,7 @@ macro_rules! concrete_dispatch_kernel {
                             let plc: $plc = plc.clone().try_into()?;
                             // TODO: Do we want to be deriving the kernel inside? Probably not...
                             let op = self.clone();
+                            let op_name = op_name.to_string();
 
                             Ok(Box::new(move |sess, operands: Operands<AsyncValue>| {
                                 let sess = sess.clone();
@@ -764,14 +793,18 @@ macro_rules! concrete_dispatch_kernel {
                                 let k = <$op as VariadicKernel<AsyncSession, $plc, $ts, $u>>::compile(&op)?;
                                 let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
+                                let op_name = op_name.clone();
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                    println!("Awaiting inputs for OP {}", op_name);
                                     // A bit of involved way of going from a vector of futures to a vector of concrete values extracted
                                     let xs = futures::future::join_all(operands).await;
+                                    println!("Starting OP {}", op_name);
                                     let xs: std::result::Result<Operands<crate::computation::Value>, _> = xs.into_iter().collect();
                                     let xs = xs.map_err(crate::execution::map_receive_error)?;
                                     let xs: crate::error::Result<Operands<$ts>> = xs.into_iter().map(|xi| xi.try_into()).collect();
                                     let y: $u = k(&sess, &plc, xs?)?;
+                                    println!("Finished OP {}", op_name);
                                     if y.placement()? == plc.clone().into() {
                                         crate::execution::map_send_result(sender.send(y.into()))?;
                                         Ok(())
@@ -803,7 +836,8 @@ macro_rules! symbolic_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                _: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession>>
             {
                 use crate::computation::{KnownPlacement, Signature, NullarySignature, KnownType};
@@ -849,7 +883,8 @@ macro_rules! symbolic_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                _: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession>>
             {
                 use crate::computation::{KnownPlacement, Signature, UnarySignature, KnownType};
@@ -903,7 +938,8 @@ macro_rules! symbolic_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                _: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession>>
             {
                 use crate::computation::{KnownPlacement, Signature, BinarySignature, KnownType};
@@ -957,7 +993,8 @@ macro_rules! symbolic_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                _: &str,
             ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession>>
             {
                 use crate::computation::{KnownPlacement, Signature, TernarySignature, KnownType};
@@ -1014,7 +1051,8 @@ macro_rules! symbolic_dispatch_kernel {
         impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession> for $op {
             fn compile(
                 &self,
-                plc: &crate::computation::Placement
+                plc: &crate::computation::Placement,
+                _: &str,
             )-> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession>>
             {
                 use crate::computation::{KnownPlacement, Signature, VariadicSignature, KnownType};
@@ -2220,7 +2258,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![])
+                sess.execute("TODO", &op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2273,7 +2311,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![])
+                sess.execute("TODO", &op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2312,7 +2350,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute("TODO", &op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2371,7 +2409,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute("TODO", &op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2403,6 +2441,7 @@ macro_rules! modelled {
                     $($($attr_id),*)?
                 };
                 sess.execute(
+                    "TODO",
                     &op.into(),
                     &self.into(),
                     operands![x0.clone().into(), x1.clone().into()],
@@ -2472,7 +2511,7 @@ macro_rules! modelled {
         //         };
         //         let x0 = Symbolic::Concrete(x0.clone()).into();
         //         let x1 = Symbolic::Concrete(x1.clone()).into();
-        //         sess.execute(&op.into(), &self.into(), operands![x0, x1])
+        //         sess.execute("TODO", &op.into(), &self.into(), operands![x0, x1])
         //             .unwrap()
         //             .try_into()
         //             .unwrap()
@@ -2506,7 +2545,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
+                sess.execute("TODO", &op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2539,6 +2578,7 @@ macro_rules! modelled {
                     $($($attr_id),*)?
                 };
                 sess.execute(
+                    "TODO",
                     &op.into(),
                     &self.into(),
                     operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
@@ -2613,7 +2653,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute("TODO", &op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2652,7 +2692,7 @@ macro_rules! modelled {
                     $($($attr_id),*)?
                 };
                 let vs: Operands<Value> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(&op.into(), &self.into(), vs)
+                sess.execute("TODO", &op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2712,7 +2752,7 @@ macro_rules! modelled {
                     $($($attr_id),*)?
                 };
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(&op.into(), &self.into(), vs)
+                sess.execute("TODO", &op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2769,6 +2809,7 @@ macro_rules! modelled_kernel {
                     };
 
                     let y = sess.execute(
+                        "TODO",
                         &op.into(),
                         &self.into(),
                         operands![],
@@ -2878,7 +2919,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![])
+                sess.execute("TODO", &op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -2943,7 +2984,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let y = sess.execute(&op.into(), &self.into(), operands![]).unwrap();
+                let y = sess.execute("TODO", &op.into(), &self.into(), operands![]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -2975,7 +3016,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
 
-                let y = sess.execute(&op.into(), &self.into(), operands![]).unwrap();
+                let y = sess.execute("TODO", &op.into(), &self.into(), operands![]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -3021,7 +3062,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![])
+                sess.execute("TODO", &op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3078,7 +3119,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![])
+                sess.execute("TODO", &op.into(), &self.into(), operands![])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3136,6 +3177,7 @@ macro_rules! modelled_kernel {
 
                     let x0 = x0.clone().into();
                     let y = sess.execute(
+                        "TODO",
                         &op.into(),
                         &self.into(),
                         operands![x0],
@@ -3276,7 +3318,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute("TODO", &op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3356,7 +3398,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
-                let y = sess.execute(&op.into(), &self.into(), operands![x0]).unwrap();
+                let y = sess.execute("TODO", &op.into(), &self.into(), operands![x0]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -3392,7 +3434,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let x0 = SymbolicValue::from(x0.clone());
-                let y = sess.execute(&op.into(), &self.into(), operands![x0]).unwrap();
+                let y = sess.execute("TODO", &op.into(), &self.into(), operands![x0]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -3443,7 +3485,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute("TODO", &op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3517,7 +3559,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into()])
+                sess.execute("TODO", &op.into(), &self.into(), operands![x0.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3576,6 +3618,7 @@ macro_rules! modelled_kernel {
                         $($($attr_id),*)?
                     };
                     sess.execute(
+                        "TODO",
                         &op.into(),
                         &self.into(),
                         operands![x0.clone().into(), x1.clone().into()],
@@ -3725,7 +3768,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
+                sess.execute("TODO", &op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3813,7 +3856,7 @@ macro_rules! modelled_kernel {
 
                 let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
                 let x1 = SymbolicValue::from(Symbolic::Concrete(x1.clone()));
-                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1]).unwrap();
+                let y = sess.execute("TODO", &op.into(), &self.into(), operands![x0, x1]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -3853,7 +3896,7 @@ macro_rules! modelled_kernel {
 
                 let x0 = SymbolicValue::from(x0.clone());
                 let x1 = SymbolicValue::from(x1.clone());
-                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1]).unwrap();
+                let y = sess.execute("TODO", &op.into(), &self.into(), operands![x0, x1]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -3909,7 +3952,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
+                sess.execute("TODO", &op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -3984,7 +4027,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
+                sess.execute("TODO", &op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4046,6 +4089,7 @@ macro_rules! modelled_kernel {
                         $($($attr_id),*)?
                     };
                     sess.execute(
+                        "TODO",
                         &op.into(),
                         &self.into(),
                         operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
@@ -4206,7 +4250,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute("TODO", &op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4301,7 +4345,7 @@ macro_rules! modelled_kernel {
                 let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
                 let x1 = SymbolicValue::from(Symbolic::Concrete(x1.clone()));
                 let x2 = SymbolicValue::from(Symbolic::Concrete(x2.clone()));
-                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
+                let y = sess.execute("TODO", &op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -4345,7 +4389,7 @@ macro_rules! modelled_kernel {
                 let x0 = SymbolicValue::from(x0.clone());
                 let x1 = SymbolicValue::from(x1.clone());
                 let x2 = SymbolicValue::from(x2.clone());
-                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
+                let y = sess.execute("TODO", &op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -4406,7 +4450,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute("TODO", &op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4487,7 +4531,7 @@ macro_rules! modelled_kernel {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                sess.execute("TODO", &op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4550,7 +4594,7 @@ macro_rules! modelled_kernel {
                         $($($attr_id),*)?
                     };
                     let vs: Operands<Value> = xs.iter().map(|x| x.clone().into()).collect();
-                    sess.execute(&op.into(), &self.into(), vs)
+                    sess.execute("TODO", &op.into(), &self.into(), vs)
                         .unwrap()
                         .try_into()
                         .unwrap()
@@ -4686,7 +4730,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(&op.into(), &self.into(), vs)
+                sess.execute("TODO", &op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4778,7 +4822,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| Symbolic::Concrete(x.clone()).into()).collect();
-                let y = sess.execute(&op.into(), &self.into(), vs).unwrap();
+                let y = sess.execute("TODO", &op.into(), &self.into(), vs).unwrap();
                 let y = Symbolic::try_from(y).unwrap();
                 match y {
                     Symbolic::Concrete(y) => y,
@@ -4814,7 +4858,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                let y = sess.execute(&op.into(), &self.into(), vs).unwrap();
+                let y = sess.execute("TODO", &op.into(), &self.into(), vs).unwrap();
                 Symbolic::try_from(y).unwrap()
             }
         }
@@ -4866,7 +4910,7 @@ macro_rules! modelled_kernel {
                     $($($attr_id),*)?
                 };
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(&op.into(), &self.into(), vs)
+                sess.execute("TODO", &op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()
@@ -4946,7 +4990,7 @@ macro_rules! modelled_kernel {
                 };
 
                 let vs: Operands<SymbolicValue> = xs.iter().map(|x| x.clone().into()).collect();
-                sess.execute(&op.into(), &self.into(), vs)
+                sess.execute("TODO", &op.into(), &self.into(), vs)
                     .unwrap()
                     .try_into()
                     .unwrap()

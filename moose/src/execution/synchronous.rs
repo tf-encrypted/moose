@@ -103,7 +103,7 @@ impl SyncSession {
 }
 
 impl DispatchKernel<SyncSession> for SendOp {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession>> {
+    fn compile(&self, plc: &Placement, _: &str) -> Result<Kernel<SyncSession>> {
         if let Placement::Host(plc) = plc {
             let plc = plc.clone();
             let op = self.clone();
@@ -125,7 +125,7 @@ impl DispatchKernel<SyncSession> for SendOp {
 }
 
 impl DispatchKernel<SyncSession> for ReceiveOp {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession>> {
+    fn compile(&self, plc: &Placement, _: &str) -> Result<Kernel<SyncSession>> {
         if let Placement::Host(_plc) = plc {
             let op = self.clone();
             Ok(Box::new(move |sess, operands| {
@@ -149,11 +149,17 @@ impl DispatchKernel<SyncSession> for ReceiveOp {
 impl Session for SyncSession {
     type Value = Value;
 
-    fn execute(&self, op: &Operator, plc: &Placement, operands: Operands<Value>) -> Result<Value> {
+    fn execute(
+        &self,
+        op_name: &str,
+        op: &Operator,
+        plc: &Placement,
+        operands: Operands<Value>,
+    ) -> Result<Value> {
         use Operator::*;
         let kernel_output = match op {
-            Send(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Receive(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
+            Send(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Receive(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
 
             // TODO(Morten) we should verify type of loaded value
             Load(op) => {
@@ -180,81 +186,81 @@ impl Session for SyncSession {
             }
 
             // The regular kernels
-            Shape(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Broadcast(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            PrfKeyGen(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Xor(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            And(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Or(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            BitExtract(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Sample(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            SampleSeeded(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Shl(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Shr(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            RingFixedpointAbs(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            RingFixedpointArgmax(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            RingFixedpointMean(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            RingFixedpointEncode(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            RingFixedpointDecode(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            RingInject(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Fill(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Share(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Reveal(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            TruncPr(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Msb(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Abs(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            RepToAdt(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            AddN(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Index(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            BitDecompose(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            BitCompose(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            ShlDim(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            AdtToRep(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            DeriveSeed(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Decrypt(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Constant(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Input(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Output(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Sqrt(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            FixedpointEncode(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            FixedpointDecode(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Diag(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            ExpandDims(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Squeeze(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Sign(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Identity(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Cast(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            AtLeast2D(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            IndexAxis(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Slice(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Ones(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Concat(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Reshape(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Transpose(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Dot(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Inverse(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Add(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Sub(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Mul(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Mean(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Neg(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Sum(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Div(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Mux(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Pow2(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Exp(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Sigmoid(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Log2(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Log(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Equal(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            EqualZero(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            LessThan(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            GreaterThan(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Maximum(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Softmax(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Argmax(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Demirror(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Mirror(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
+            Shape(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Broadcast(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            PrfKeyGen(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Xor(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            And(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Or(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            BitExtract(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Sample(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            SampleSeeded(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Shl(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Shr(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            RingFixedpointAbs(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            RingFixedpointArgmax(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            RingFixedpointMean(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            RingFixedpointEncode(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            RingFixedpointDecode(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            RingInject(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Fill(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Share(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Reveal(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            TruncPr(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Msb(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Abs(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            RepToAdt(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            AddN(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Index(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            BitDecompose(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            BitCompose(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            ShlDim(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            AdtToRep(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            DeriveSeed(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Decrypt(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Constant(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Input(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Output(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Sqrt(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            FixedpointEncode(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            FixedpointDecode(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Diag(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            ExpandDims(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Squeeze(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Sign(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Identity(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Cast(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            AtLeast2D(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            IndexAxis(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Slice(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Ones(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Concat(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Reshape(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Transpose(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Dot(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Inverse(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Add(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Sub(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Mul(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Mean(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Neg(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Sum(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Div(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Mux(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Pow2(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Exp(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Sigmoid(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Log2(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Log(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Equal(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            EqualZero(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            LessThan(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            GreaterThan(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Maximum(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Softmax(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Argmax(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Demirror(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
+            Mirror(op) => DispatchKernel::compile(op, plc, op_name)?(self, operands)?,
         };
         Ok(kernel_output)
     }
@@ -317,7 +323,7 @@ impl TestSyncExecutor {
                 .map(|input_name| env.get(input_name).unwrap().clone())
                 .collect();
             let value = session
-                .execute(&op.kind, &op.placement, operands)
+                .execute(op.name.as_str(), &op.kind, &op.placement, operands)
                 .map_err(|e| {
                     Error::Compilation(format!(
                         "SyncSession failed to execute computation due to an error: {:?}",
