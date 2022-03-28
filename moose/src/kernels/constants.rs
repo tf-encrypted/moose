@@ -225,10 +225,10 @@ modelled_kernel! {
             use crate::logical::{AbstractTensor, TensorDType};
             match op.sig.ret() {
                 Ty::Tensor(TensorDType::Float32) => Ok(Box::new(move |sess, plc, shape| {
-                    Self::logical_host_kernel::<_, Float32Tensor, _, _>(sess, plc, shape).map(|t| AbstractTensor::Float32(t))
+                    Self::logical_host_kernel::<_, Float32Tensor, _, _>(sess, plc, shape).map(AbstractTensor::Float32)
                 })),
                 Ty::Tensor(TensorDType::Float64) => Ok(Box::new(move |sess, plc, shape| {
-                    Self::logical_host_kernel::<_, Float64Tensor, _, _>(sess, plc, shape).map(|t| AbstractTensor::Float64(t))
+                    Self::logical_host_kernel::<_, Float64Tensor, _, _>(sess, plc, shape).map(AbstractTensor::Float64)
                 })),
                 other => {
                     return Err(Error::UnimplementedOperator(

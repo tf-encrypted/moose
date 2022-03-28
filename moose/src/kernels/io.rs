@@ -168,10 +168,10 @@ kernel! {
             use crate::logical::{AbstractTensor, TensorDType};
             match op.sig.ret() {
                 Ty::Tensor(TensorDType::Float32) => Ok(Box::new(move |sess, plc, key, query| {
-                    Self::logical_kernel::<_, Float32Tensor>(sess, plc, key, query).map(|t| AbstractTensor::Float32(t))
+                    Self::logical_kernel::<_, Float32Tensor>(sess, plc, key, query).map(AbstractTensor::Float32)
                 })),
                 Ty::Tensor(TensorDType::Float64) => Ok(Box::new(move |sess, plc, key, query| {
-                    Self::logical_kernel::<_, Float64Tensor>(sess, plc, key, query).map(|t| AbstractTensor::Float64(t))
+                    Self::logical_kernel::<_, Float64Tensor>(sess, plc, key, query).map(AbstractTensor::Float64)
                 })),
                 other => {
                     return Err(Error::UnimplementedOperator(
