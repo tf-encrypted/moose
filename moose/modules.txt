@@ -1,4 +1,3 @@
-types
 additive
 boolean
 bristol_fashion
@@ -20,3 +19,4 @@ prng
 replicated
 storage
 textual
+types
