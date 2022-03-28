@@ -6,7 +6,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from pymoose import edsl
-from pymoose.computation.standard import StringType
+from pymoose.computation import types as ty
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
@@ -19,7 +19,7 @@ class ArgmaxExample(parameterized.TestCase):
         rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
         @edsl.computation
-        def my_comp(x_uri: edsl.Argument(placement=bob, vtype=StringType()),):
+        def my_comp(x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),):
             with bob:
                 x = edsl.load(x_uri, dtype=edsl.float64)
                 x_fixed = edsl.cast(x, dtype=edsl.fixed(8, 27))

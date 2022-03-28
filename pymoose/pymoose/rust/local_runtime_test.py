@@ -4,8 +4,8 @@ from absl.testing import parameterized
 
 from pymoose import LocalRuntime
 from pymoose import edsl
+from pymoose.computation import types as ty
 from pymoose.computation import utils
-from pymoose.computation.standard import StringType
 
 _x_owner = edsl.host_placement(name="x_owner")
 _y_owner = edsl.host_placement(name="y_owner")
@@ -14,8 +14,8 @@ _output_owner = edsl.host_placement("output_owner")
 
 @edsl.computation
 def add_full_storage(
-    x_key: edsl.Argument(_x_owner, vtype=StringType()),
-    y_key: edsl.Argument(_y_owner, vtype=StringType()),
+    x_key: edsl.Argument(_x_owner, vtype=ty.StringType()),
+    y_key: edsl.Argument(_y_owner, vtype=ty.StringType()),
 ):
     with _x_owner:
         x = edsl.load(x_key, dtype=edsl.float64)
@@ -29,8 +29,8 @@ def add_full_storage(
 
 @edsl.computation
 def add_input_storage(
-    x_key: edsl.Argument(_x_owner, vtype=StringType()),
-    y_key: edsl.Argument(_y_owner, vtype=StringType()),
+    x_key: edsl.Argument(_x_owner, vtype=ty.StringType()),
+    y_key: edsl.Argument(_y_owner, vtype=ty.StringType()),
 ):
     with _x_owner:
         x = edsl.load(x_key, dtype=edsl.float64)

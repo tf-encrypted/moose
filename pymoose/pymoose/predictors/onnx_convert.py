@@ -6,7 +6,7 @@ from pymoose.predictors import tree_ensemble
 
 
 def from_onnx(model_proto):
-    if model_proto.producer_name == "pytorch":
+    if model_proto.producer_name == "pytorch" or model_proto.producer_name == "tf2onnx":
         model_type = "NeuralNetwork"
     else:
         supported_op_type = [

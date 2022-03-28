@@ -23,10 +23,10 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     @classmethod
     def from_onnx(cls, model_proto):
         weights_data = predictor_utils.find_parameters_in_model_proto(
-            model_proto, "coefficient", enforce=False
+            model_proto, ["coefficient"], enforce=False
         )
         biases_data = predictor_utils.find_parameters_in_model_proto(
-            model_proto, "intercepts", enforce=False
+            model_proto, ["intercepts"], enforce=False
         )
         weights = []
         for weight in weights_data:
