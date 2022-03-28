@@ -65,6 +65,12 @@ ci-ready: fmt lint test-ci
 .PHONY: ci-clean-check
 ci-clean-check: clean ci-ready
 
+# Cargo Release docs:
+# https://github.com/crate-ci/cargo-release/blob/master/docs/reference.md
 .PHONY: release
 release: ci-ready
 	cargo release --workspace --no-publish --execute
+
+.PHONY: release
+release-minor: ci-ready
+	cargo release --workspace --no-publish --execute minor
