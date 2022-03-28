@@ -614,7 +614,7 @@ fn map_type(py_type: &PyValueType, placement: Option<&Placement>) -> anyhow::Res
                 fractional_precision: 40,
             } => Ok(Ty::AesTensor),
             // TODO we are erasing fixedpoint precision here on purpose
-            //  -- but we robably want to avoid this down the road
+            //  -- but we pprobably want to support other precisions down the road
             PyDType::fixed { .. } => Err(anyhow::anyhow!(
                 "Unsupported precision for the fixedpoint AES Tensor '{:?}'",
                 dtype
