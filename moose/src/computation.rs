@@ -182,6 +182,10 @@ pub trait KnownType<S: Session> {
     const TY: Ty;
 }
 
+pub trait SessionType<S: Session> {
+    type Canonical;
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointConstant {
     pub value: f64,
@@ -455,6 +459,10 @@ macro_rules! values {
                 type Type = $val;
                 const TY: Ty = Ty::$val$(($inner::$default))?;
             }
+
+            impl SessionType<crate::execution::SyncSession> for $val {
+                type Canonical = $val;
+            }
         )+
 
         #[cfg(feature = "compile")]
@@ -504,6 +512,10 @@ macro_rules! values {
                 type Type = <$val as SymbolicType>::Type;
                 const TY: Ty = Ty::$val$(($inner::$default))?;
             }
+
+            impl SessionType<crate::execution::SymbolicSession> for <$val as SymbolicType>::Type {
+                type Canonical = $val;
+            }
         )+
 
         $(
@@ -511,6 +523,10 @@ macro_rules! values {
             impl KnownType<crate::execution::AsyncSession> for $val {
                 type Type = $val;
                 const TY: Ty = Ty::$val$(($inner::$default))?;
+            }
+
+            impl SessionType<crate::execution::AsyncSession> for $val {
+                type Canonical = $val;
             }
         )+
 
