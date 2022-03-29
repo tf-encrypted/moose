@@ -513,6 +513,7 @@ macro_rules! values {
                 const TY: Ty = Ty::$val$(($inner::$default))?;
             }
 
+            #[cfg(feature = "compile")]
             impl SessionType<crate::execution::SymbolicSession> for <$val as SymbolicType>::Type {
                 type Canonical = $val;
             }
@@ -525,6 +526,7 @@ macro_rules! values {
                 const TY: Ty = Ty::$val$(($inner::$default))?;
             }
 
+            #[cfg(feature = "async_execute")]
             impl SessionType<crate::execution::AsyncSession> for $val {
                 type Canonical = $val;
             }
