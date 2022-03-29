@@ -4206,14 +4206,20 @@ macro_rules! modelled_kernel {
             }
         }
 
-        impl<S, T0, T1, T2, U> $trait<S, T0, T1, T2, U> for crate::host::HostPlacement
+        impl<P, S, T0, T1, T2, U> $trait<S, T0, T1, T2, U> for P
         where
             S: crate::execution::Session,
             // S: paste! {[< $trait Valid >] <Self, T0, T1, T2, U>,
             S: PlacementMuxValid<Self, T0, T1, T2, U>,
+            T0: Clone,
+            T1: Clone,
+            T2: Clone,
             S::Value: From<T0>,
             S::Value: From<T1>,
             S::Value: From<T2>,
+            S::Value: std::convert::TryInto<U>,
+            <S::Value as std::convert::TryInto<U>>::Error: std::fmt::Debug,
+            for<'l> crate::computation::Placement: From<&'l P>,
         {
             fn $trait_fn(
                 &self,
@@ -4226,13 +4232,12 @@ macro_rules! modelled_kernel {
             {
                 use crate::execution::Session;
                 use std::convert::TryInto;
-
                 let sig = S::sig();
                 let op = $op {
                     sig,
                     $($($attr_id),*)?
                 };
-                sess.execute(
+                let res = sess.execute(
                     &crate::computation::Operator::from(op),
                     &crate::computation::Placement::from(self),
                     operands![
@@ -4241,52 +4246,50 @@ macro_rules! modelled_kernel {
                         S::Value::from(x2.clone()),
                     ]
                 )
-                .unwrap()
-                .try_into()
-                .unwrap()
+                .unwrap();
+                res.try_into().unwrap()
             }
         }
 
-        impl<S, T0, T1, T2, U> $trait<S, T0, T1, T2, U> for crate::replicated::ReplicatedPlacement
-        where
-            S: crate::execution::Session,
-            // S: paste! {[< $trait Valid >] <Self, T0, T1, T2, U>,
-            S: PlacementMuxValid<Self, T0, T1, T2, U>,
-            S::Value: From<T0>,
-            S::Value: From<T1>,
-            S::Value: From<T2>,
-        {
-            fn $trait_fn(
-                &self,
-                sess: &S,
-                // $($($attr_id:$attr_ty),*,)?
-                x0: &T0,
-                x1: &T1,
-                x2: &T2
-            ) -> U
-            {
-                use crate::execution::Session;
-                use std::convert::TryInto;
-
-                let sig = S::sig();
-                let op = $op {
-                    sig,
-                    $($($attr_id),*)?
-                };
-                sess.execute(
-                    &crate::computation::Operator::from(op),
-                    &crate::computation::Placement::from(self),
-                    operands![
-                        S::Value::from(x0.clone()),
-                        S::Value::from(x1.clone()),
-                        S::Value::from(x2.clone()),
-                    ]
-                )
-                .unwrap()
-                .try_into()
-                .unwrap()
-            }
-        }
+        // impl<S, T0, T1, T2, U> $trait<S, T0, T1, T2, U> for crate::replicated::ReplicatedPlacement
+        // where
+        //     S: crate::execution::Session,
+        //     // S: paste! {[< $trait Valid >] <Self, T0, T1, T2, U>,
+        //     S: PlacementMuxValid<Self, T0, T1, T2, U>,
+        //     S::Value: From<T0>,
+        //     S::Value: From<T1>,
+        //     S::Value: From<T2>,
+        // {
+        //     fn $trait_fn(
+        //         &self,
+        //         sess: &S,
+        //         // $($($attr_id:$attr_ty),*,)?
+        //         x0: &T0,
+        //         x1: &T1,
+        //         x2: &T2
+        //     ) -> U
+        //     {
+        //         use crate::execution::Session;
+        //         use std::convert::TryInto;
+        //         let sig = S::sig();
+        //         let op = $op {
+        //             sig,
+        //             $($($attr_id),*)?
+        //         };
+        //         sess.execute(
+        //             &crate::computation::Operator::from(op),
+        //             &crate::computation::Placement::from(self),
+        //             operands![
+        //                 S::Value::from(x0.clone()),
+        //                 S::Value::from(x1.clone()),
+        //                 S::Value::from(x2.clone()),
+        //             ]
+        //         )
+        //         .unwrap()
+        //         .try_into()
+        //         .unwrap()
+        //     }
+        // }
 
         $(
             // impl paste! {[<$trait Valid>]}<
