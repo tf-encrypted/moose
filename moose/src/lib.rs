@@ -4209,6 +4209,9 @@ macro_rules! modelled_kernel {
             S: crate::execution::Session,
             // S: paste! {[< $trait Valid >] <Self, T0, T1, T2, U>,
             S: PlacementMuxValid<Self, T0, T1, T2, U>,
+            S::Value: From<T0>,
+            S::Value: From<T1>,
+            S::Value: From<T2>,
         {
             fn $trait_fn(
                 &self,
@@ -4247,6 +4250,9 @@ macro_rules! modelled_kernel {
             S: crate::execution::Session,
             // S: paste! {[< $trait Valid >] <Self, T0, T1, T2, U>,
             S: PlacementMuxValid<Self, T0, T1, T2, U>,
+            S::Value: From<T0>,
+            S::Value: From<T1>,
+            S::Value: From<T2>,
         {
             fn $trait_fn(
                 &self,
