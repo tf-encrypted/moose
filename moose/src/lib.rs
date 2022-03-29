@@ -4161,7 +4161,10 @@ macro_rules! modelled_kernel {
         //     pub trait [<$trait Valid>] <P, X0, X1, X2, Y> {}
         // }
 
-        pub trait PlacementMuxValid<P, X0, X1, X2, Y> {}
+        pub trait PlacementMuxValid<P, X0, X1, X2, Y> {
+            // TODO maybe this could be const/lazy instead
+            fn sig() -> crate::computation::Signature;
+        }
 
         impl<P, X0, X1, X2, Y> PlacementMuxValid<P, X0, X1, X2, Y> for crate::execution::AsyncSession
         where
@@ -4176,7 +4179,11 @@ macro_rules! modelled_kernel {
                 <X2 as crate::computation::SessionType<Self>>::Canonical,
                 <Y as crate::computation::SessionType<Self>>::Canonical,
             >,
-        {}
+        {
+            fn sig() -> crate::computation::Signature {
+                crate::execution::SyncSession::sig()
+            }
+        }
 
         impl<P, X0, X1, X2, Y> PlacementMuxValid<P, X0, X1, X2, Y> for crate::execution::SymbolicSession
         where
@@ -4191,17 +4198,17 @@ macro_rules! modelled_kernel {
                 <X2 as crate::computation::SessionType<Self>>::Canonical,
                 <Y as crate::computation::SessionType<Self>>::Canonical,
             >,
-        {}
+        {
+            fn sig() -> crate::computation::Signature {
+                crate::execution::SyncSession::sig()
+            }
+        }
 
         impl<S, T0, T1, T2, U> $trait<S, T0, T1, T2, U> for crate::host::HostPlacement
         where
             S: crate::execution::Session,
             // S: paste! {[< $trait Valid >] <Self, T0, T1, T2, U>,
             S: PlacementMuxValid<Self, T0, T1, T2, U>,
-            T0: KnownType<S>,
-            T1: KnownType<S>,
-            T2: KnownType<S>,
-            U: KnownType<S>,
         {
             fn $trait_fn(
                 &self,
@@ -4212,18 +4219,12 @@ macro_rules! modelled_kernel {
                 x2: &T2
             ) -> U
             {
-                use crate::computation::{KnownType, TernarySignature};
                 use crate::execution::Session;
                 use std::convert::TryInto;
 
-                let sig = TernarySignature {
-                    arg0: <T0 as KnownType<S>>::TY,
-                    arg1: <T1 as KnownType<S>>::TY,
-                    arg2: <T2 as KnownType<S>>::TY,
-                    ret: <U as KnownType<S>>::TY,
-                };
+                let sig = S::sig();
                 let op = $op {
-                    sig: sig.into(),
+                    sig,
                     $($($attr_id),*)?
                 };
                 sess.execute(
@@ -4244,12 +4245,8 @@ macro_rules! modelled_kernel {
         impl<S, T0, T1, T2, U> $trait<S, T0, T1, T2, U> for crate::replicated::ReplicatedPlacement
         where
             S: crate::execution::Session,
-            // S: paste!{[< $trait Valid >]} <Self, T0, T1, T2, U>,
+            // S: paste!{ [<$trait Valid>] } <Self, T0, T1, T2, U>,
             S: PlacementMuxValid<Self, T0, T1, T2, U>,
-            T0: KnownType<S>,
-            T1: KnownType<S>,
-            T2: KnownType<S>,
-            U: KnownType<S>,
         {
             fn $trait_fn(
                 &self,
@@ -4260,18 +4257,12 @@ macro_rules! modelled_kernel {
                 x2: &T2
             ) -> U
             {
-                use crate::computation::{KnownType, TernarySignature};
                 use crate::execution::Session;
                 use std::convert::TryInto;
 
-                let sig = TernarySignature {
-                    arg0: <T0 as KnownType<S>>::TY,
-                    arg1: <T1 as KnownType<S>>::TY,
-                    arg2: <T2 as KnownType<S>>::TY,
-                    ret: <U as KnownType<S>>::TY,
-                };
+                let sig = S::sig();
                 let op = $op {
-                    sig: sig.into(),
+                    sig,
                     $($($attr_id),*)?
                 };
                 sess.execute(
@@ -4303,7 +4294,16 @@ macro_rules! modelled_kernel {
             $t1,
             $t2,
             $u,
-        > for crate::execution::SyncSession {}
+        > for crate::execution::SyncSession {
+            fn sig() -> crate::computation::Signature {
+                crate::computation::Signature::ternary(
+                    <$t0 as KnownType<Self>>::TY,
+                    <$t1 as KnownType<Self>>::TY,
+                    <$t2 as KnownType<Self>>::TY,
+                    <$u as KnownType<Self>>::TY,
+                )
+            }
+        }
 
         #[cfg(feature = "compile")]
         impl crate::kernels::TernaryKernel<
@@ -4373,7 +4373,16 @@ macro_rules! modelled_kernel {
             $t1,
             $t2,
             $u,
-        > for crate::execution::SyncSession {}
+        > for crate::execution::SyncSession {
+            fn sig() -> crate::computation::Signature {
+                crate::computation::Signature::ternary(
+                    <$t0 as KnownType<Self>>::TY,
+                    <$t1 as KnownType<Self>>::TY,
+                    <$t2 as KnownType<Self>>::TY,
+                    <$u as KnownType<Self>>::TY,
+                )
+            }
+        }
         
         #[cfg(feature = "compile")]
         impl $trait<
@@ -4477,7 +4486,16 @@ macro_rules! modelled_kernel {
             $t1,
             $t2,
             $u,
-        > for crate::execution::SyncSession {}
+        > for crate::execution::SyncSession {
+            fn sig() -> crate::computation::Signature {
+                crate::computation::Signature::ternary(
+                    <$t0 as KnownType<Self>>::TY,
+                    <$t1 as KnownType<Self>>::TY,
+                    <$t2 as KnownType<Self>>::TY,
+                    <$u as KnownType<Self>>::TY,
+                )
+            }
+        }
 
         #[cfg(feature = "compile")]
         impl crate::kernels::TernaryKernel<
@@ -4511,7 +4529,16 @@ macro_rules! modelled_kernel {
             $t1,
             $t2,
             $u,
-        > for crate::execution::SyncSession {}
+        > for crate::execution::SyncSession {
+            fn sig() -> crate::computation::Signature {
+                crate::computation::Signature::ternary(
+                    <$t0 as KnownType<Self>>::TY,
+                    <$t1 as KnownType<Self>>::TY,
+                    <$t2 as KnownType<Self>>::TY,
+                    <$u as KnownType<Self>>::TY,
+                )
+            }
+        }
         
         #[cfg(feature = "compile")]
         impl crate::kernels::TernaryKernel<
