@@ -4166,6 +4166,7 @@ macro_rules! modelled_kernel {
             fn sig() -> crate::computation::Signature;
         }
 
+        // #[cfg(feature = "async_execute")]
         // impl<P, X0, X1, X2, Y> PlacementMuxValid<P, X0, X1, X2, Y> for crate::execution::AsyncSession
         // where
         //     X0: crate::computation::SessionType<Self>,
@@ -4185,6 +4186,7 @@ macro_rules! modelled_kernel {
         //     }
         // }
 
+        #[cfg(feature = "compile")]
         impl<P, X0, X1, X2, Y> PlacementMuxValid<P, X0, X1, X2, Y> for crate::execution::SymbolicSession
         where
             X0: crate::computation::SessionType<Self>,
