@@ -54,14 +54,14 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         input_shape = predictor_utils.find_input_shape(model_input)
         assert len(input_shape) == 2
         n_features = input_shape[1].dim_value
-        
-        first_layer_weight_shape = weights[0].shape
 
-        if n_features != first_layer_weight_shape[0]:
+        first_layer_weights_shape = weights[0].shape
+
+        if n_features != first_layer_weights_shape[0]:
             raise ValueError(
                 f"In the ONNX file, the input shape has {n_features} "
                 "features and the shape of the weights for the first "
-                f"layer is: {first_layer_weight_shape}. Validate you set "
+                f"layer is: {first_layer_weights_shape}. Validate you set "
                 "correctly the `initial_types` when converting "
                 "your model to ONNX."
             )

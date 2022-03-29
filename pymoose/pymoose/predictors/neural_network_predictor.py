@@ -140,4 +140,22 @@ class NeuralNetwork(aes_predictor.AesPredictor):
             biases = biases[::-1]
             # TF Keras weights need to be transposed
             weights = [item.T for item in weights]
+
+        # `n_features` arg
+        model_input = model_proto.graph.input[0]
+        input_shape = predictor_utils.find_input_shape(model_input)
+        assert len(input_shape) == 2
+        n_features = input_shape[1].dim_value
+
+        first_layer_weights_shape = weights[0].shape
+
+        if n_features != first_layer_weights_shape[0]:
+            raise ValueError(
+                f"In the ONNX file, the input shape has {n_features} "
+                "features and the shape of the weights for the first "
+                f"layer is: {first_layer_weights_shape}. Validate you set "
+                "correctly the `initial_types` when converting "
+                "your model to ONNX."
+            )
+
         return cls(weights, biases, activations)
