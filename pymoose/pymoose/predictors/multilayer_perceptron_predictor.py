@@ -37,7 +37,7 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
                     "MLP coefficients must be of type FLOATS, found other."
                 )
             weight = np.asarray(weight.float_data)
-            weight = weight.reshape(dimentions).T
+            weight = weight.reshape(dimentions)
             weights.append(weight)
         biases = []
         for bias in biases_data:
@@ -66,7 +66,7 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
 
     def apply_layer(self, input, num_hidden_layers, i, fixedpoint_dtype):
         w = self.fixedpoint_constant(
-            self.weights[i].T, plc=self.mirrored, dtype=fixedpoint_dtype
+            self.weights[i], plc=self.mirrored, dtype=fixedpoint_dtype
         )
         b = self.fixedpoint_constant(
             self.biases[i], plc=self.mirrored, dtype=fixedpoint_dtype
