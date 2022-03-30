@@ -5,8 +5,6 @@ import torch.onnx
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-import tensorflow as tf
-import tf2onnx
 import pathlib
 import itertools
 import pathlib
@@ -43,19 +41,14 @@ model.eval()
 dummy_input = torch.tensor([[ 0.4595, -0.8661,  1.7674,  1.9377,  0.3077, -0.8155,  0.3508,  0.2848,
          -1.8987,  0.3189]])
 
-print(dummy_input)
 input_names = [ "net_input" ]
 output_names = [ "net_output" ]
 
-
-
 expected = model.forward(dummy_input).detach()
 expected_result = np.array(expected)
-print(expected_result)
 
 torch.onnx.export(model, dummy_input, "pytorch_relu.onnx")
 onnx_proto = onnx.load("pytorch_relu.onnx")
-print(onnx_proto)
 
 
 def _build_prediction_logic(onnx_proto):
@@ -82,13 +75,12 @@ runtime = testing.LocalMooseRuntime(storage_mapping=storage)
 role_assignment = {plc.name: plc.name for plc in net.host_placements}
 
 
-dummy_input = np.array([[ 0.4595, -0.8661,  1.7674,  1.9377,  0.3077, -0.8155,  0.3508,  0.2848,
-         -1.8987,  0.3189]], dtype=np.float64)
+x_input = dummy_input.type(torch.double).numpy()
 
 result_dict = runtime.evaluate_computation(
     computation=traced_predictor,
     role_assignment=role_assignment,
-    arguments={"x": dummy_input},
+    arguments={"x": x_input},
 )
 actual_result = list(result_dict.values())[0]
 

@@ -55,7 +55,6 @@ class NeuralNetwork(aes_predictor.AesPredictor):
         else:
             raise ValueError("Invalid or unsupported activation function")
 
-        print(activation_output)
         return activation_output
 
     def neural_predictor_fn(self, x, fixedpoint_dtype):
@@ -63,7 +62,6 @@ class NeuralNetwork(aes_predictor.AesPredictor):
         for i in range(num_layers):
             x = self.apply_layer(x, i, fixedpoint_dtype)
             x = self.activation_fn(x, i)
-            print("x1", x)
 
         return x
 
