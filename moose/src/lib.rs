@@ -4184,23 +4184,25 @@ macro_rules! modelled_kernel {
         //     }
         // }
 
-        #[cfg(feature = "compile")]
-        impl<P, X0, X1, X2, Y> PlacementMuxValid<P, X0, X1, X2, Y> for crate::execution::SymbolicSession
-        where
-            X0: crate::computation::SessionType<Self>,
-            X1: crate::computation::SessionType<Self>,
-            X2: crate::computation::SessionType<Self>,
-            Y: crate::computation::SessionType<Self>,
-            crate::execution::SyncSession: PlacementMuxValid<
-                P,
-                <X0 as crate::computation::SessionType<Self>>::Canonical,
-                <X1 as crate::computation::SessionType<Self>>::Canonical,
-                <X2 as crate::computation::SessionType<Self>>::Canonical,
-                <Y as crate::computation::SessionType<Self>>::Canonical,
-            >,
-        {
-            fn sig() -> crate::computation::Signature {
-                crate::execution::SyncSession::sig()
+        paste::paste! {
+            #[cfg(feature = "compile")]
+            impl<P, X0, X1, X2, Y> [< $trait Valid >] <P, X0, X1, X2, Y> for crate::execution::SymbolicSession
+            where
+                X0: crate::computation::SessionType<Self>,
+                X1: crate::computation::SessionType<Self>,
+                X2: crate::computation::SessionType<Self>,
+                Y: crate::computation::SessionType<Self>,
+                crate::execution::SyncSession: [< $trait Valid >] <
+                    P,
+                    <X0 as crate::computation::SessionType<Self>>::Canonical,
+                    <X1 as crate::computation::SessionType<Self>>::Canonical,
+                    <X2 as crate::computation::SessionType<Self>>::Canonical,
+                    <Y as crate::computation::SessionType<Self>>::Canonical,
+                >,
+            {
+                fn sig() -> crate::computation::Signature {
+                    crate::execution::SyncSession::sig()
+                }
             }
         }
 
