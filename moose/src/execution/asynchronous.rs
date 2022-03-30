@@ -13,6 +13,7 @@ use std::convert::TryFrom;
 use std::sync::{Arc, RwLock};
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
+use futures::stream::FuturesUnordered;
 
 pub type AsyncSender = oneshot::Sender<Value>;
 
@@ -51,7 +52,9 @@ pub(crate) fn map_receive_error<T>(_: T) -> Error {
 }
 
 pub struct AsyncSessionHandle {
-    pub tasks: Arc<RwLock<Vec<crate::execution::AsyncTask>>>,
+    // pub tasks: Arc<RwLock<Vec<crate::execution::AsyncTask>>>,
+    // pub tasks: Arc<RwLock<Vec<tokio::task::JoinHandle<Result<()>>>>>,
+    pub tasks: Arc<RwLock<FuturesUnordered<AsyncTask>>>,
 }
 
 impl AsyncSessionHandle {
@@ -63,7 +66,7 @@ impl AsyncSessionHandle {
 
     pub async fn join_on_first_error(self) -> anyhow::Result<()> {
         use crate::error::Error::{OperandUnavailable, ResultUnused};
-        // use futures::StreamExt;
+        use futures::StreamExt;
 
         let mut tasks_guard = self.tasks.write().unwrap();
         // TODO (lvorona): should really find a way to use FuturesUnordered here
@@ -71,10 +74,19 @@ impl AsyncSessionHandle {
         //     .into_iter()
         //     .collect::<futures::stream::FuturesUnordered<_>>();
 
-        let mut tasks = tasks_guard.iter_mut();
+        // let mut tasks = tasks_guard.iter_mut();
+        // let _results = (*tasks_guard).into_future().await;
 
-        while let Some(x) = tasks.next() {
-            let x = x.await;
+        // for r in results {
+        //     if let Some(x) = r {
+                
+        //     }
+
+        // };
+
+        while let Some(x) = tasks_guard.next().await {
+            // let x = x.await;
+            println!("Got some result {:?}", x);
             match x {
                 Ok(Ok(_)) => {
                     continue;
@@ -87,9 +99,10 @@ impl AsyncSessionHandle {
                         OperandUnavailable => continue,
                         ResultUnused => continue,
                         _ => {
-                            for task in tasks {
-                                task.abort();
-                            }
+                            // TODO: Do we still need manual abort?
+                            // for task in tasks {
+                            //     task.abort();
+                            // }
                             return Err(anyhow::Error::from(e));
                         }
                     }
@@ -98,9 +111,10 @@ impl AsyncSessionHandle {
                     if e.is_cancelled() {
                         continue;
                     } else if e.is_panic() {
-                        for task in tasks {
-                            task.abort();
-                        }
+                        // TODO: Do we still need manual abort?
+                        // for task in tasks {
+                        //     task.abort();
+                        // }
                         return Err(anyhow::Error::from(e));
                     }
                 }
@@ -118,7 +132,7 @@ pub struct AsyncSession {
     pub role_assignments: Arc<HashMap<Role, Identity>>,
     pub networking: AsyncNetworkingImpl,
     pub storage: AsyncStorageImpl,
-    pub tasks: Arc<RwLock<Vec<crate::execution::AsyncTask>>>,
+    pub tasks: Arc<RwLock<FuturesUnordered<crate::execution::AsyncTask>>>,
 }
 
 impl AsyncSession {
@@ -178,7 +192,7 @@ impl AsyncSession {
             map_send_result(sender.send(value))?;
             Ok(())
         });
-        let mut tasks = self.tasks.write().unwrap();
+        let tasks = self.tasks.read().unwrap();
         tasks.push(task);
 
         Ok(receiver)
@@ -216,7 +230,7 @@ impl AsyncSession {
             map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let mut tasks = self.tasks.write().unwrap();
+        let tasks = self.tasks.read().unwrap();
         tasks.push(task);
 
         Ok(receiver)
@@ -244,7 +258,7 @@ impl AsyncSession {
             map_send_result(sender.send(value))?;
             Ok(())
         });
-        let mut tasks = self.tasks.write().unwrap();
+        let tasks = self.tasks.read().unwrap();
         tasks.push(task);
 
         Ok(receiver)
@@ -279,7 +293,7 @@ impl AsyncSession {
             map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let mut tasks = self.tasks.write().unwrap();
+        let tasks = self.tasks.read().unwrap();
         tasks.push(task);
 
         Ok(receiver)

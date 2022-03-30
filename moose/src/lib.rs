@@ -294,7 +294,7 @@ macro_rules! concrete_dispatch_kernel {
                                         Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
                                     }
                                 });
-                                let mut tasks = tasks.write().unwrap();
+                                let tasks = tasks.read().unwrap();
                                 tasks.push(task);
 
                                 Ok(result)
@@ -406,7 +406,7 @@ macro_rules! concrete_dispatch_kernel {
                                         Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
                                     }
                                 });
-                                let mut tasks = tasks.write().unwrap();
+                                let tasks = tasks.read().unwrap();
                                 tasks.push(task);
 
                                 Ok(result)
@@ -541,7 +541,7 @@ macro_rules! concrete_dispatch_kernel {
                                         Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
                                     }
                                 });
-                                let mut tasks = tasks.write().unwrap();
+                                let tasks = tasks.read().unwrap();
                                 tasks.push(task);
 
                                 Ok(result)
@@ -671,7 +671,7 @@ macro_rules! concrete_dispatch_kernel {
                                         Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
                                     }
                                 });
-                                let mut tasks = tasks.write().unwrap();
+                                let tasks = tasks.read().unwrap();
                                 tasks.push(task);
 
                                 Ok(result)
@@ -779,7 +779,7 @@ macro_rules! concrete_dispatch_kernel {
                                         Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
                                     }
                                 });
-                                let mut tasks = tasks.write().unwrap();
+                                let tasks = tasks.read().unwrap();
                                 tasks.push(task);
 
                                 Ok(result)
