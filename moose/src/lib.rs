@@ -4158,36 +4158,17 @@ macro_rules! modelled_kernel {
         }
 
         paste::paste! {
-            pub trait [<$trait Valid>] <P, X0, X1, X2, Y> {
+            pub(crate) trait [<$trait Valid>] <P, X0, X1, X2, Y> {
                 // TODO maybe this could be const/lazy instead
                 fn sig() -> crate::computation::Signature;
             }
         }
 
-        // #[cfg(feature = "async_execute")]
-        // impl<P, X0, X1, X2, Y> PlacementMuxValid<P, X0, X1, X2, Y> for crate::execution::AsyncSession
-        // where
-        //     X0: crate::computation::SessionType<Self>,
-        //     X1: crate::computation::SessionType<Self>,
-        //     X2: crate::computation::SessionType<Self>,
-        //     Y: crate::computation::SessionType<Self>,
-        //     crate::execution::SyncSession: PlacementMuxValid<
-        //         P,
-        //         <X0 as crate::computation::SessionType<Self>>::Canonical,
-        //         <X1 as crate::computation::SessionType<Self>>::Canonical,
-        //         <X2 as crate::computation::SessionType<Self>>::Canonical,
-        //         <Y as crate::computation::SessionType<Self>>::Canonical,
-        //     >,
-        // {
-        //     fn sig() -> crate::computation::Signature {
-        //         crate::execution::SyncSession::sig()
-        //     }
-        // }
-
         paste::paste! {
             #[cfg(feature = "compile")]
-            impl<P, X0, X1, X2, Y> [< $trait Valid >] <P, X0, X1, X2, Y> for crate::execution::SymbolicSession
+            impl<S, P, X0, X1, X2, Y> [< $trait Valid >] <P, X0, X1, X2, Y> for S
             where
+                S: crate::execution::Session,
                 X0: crate::computation::SessionType<Self>,
                 X1: crate::computation::SessionType<Self>,
                 X2: crate::computation::SessionType<Self>,
@@ -4224,15 +4205,14 @@ macro_rules! modelled_kernel {
                 fn $trait_fn(
                     &self,
                     sess: &S,
-                    // $($($attr_id:$attr_ty),*,)?
+                    $($($attr_id:$attr_ty),*)?
                     x0: &T0,
                     x1: &T1,
                     x2: &T2
                 ) -> U
                 {
-                    use crate::execution::Session;
                     use std::convert::TryInto;
-                    // TODO(Morten) get signature from actual values, ie x0.ty()
+                    // TODO(Morten) get signature from actual values? ie x0.ty()
                     let sig = S::sig();
                     let op = $op {
                         sig,

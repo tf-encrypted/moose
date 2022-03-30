@@ -460,9 +460,9 @@ macro_rules! values {
                 const TY: Ty = Ty::$val$(($inner::$default))?;
             }
 
-            impl SessionType<crate::execution::SyncSession> for $val {
-                type Canonical = $val;
-            }
+            // impl SessionType<crate::execution::SyncSession> for $val {
+            //     type Canonical = $val;
+            // }
         )+
 
         #[cfg(feature = "compile")]
