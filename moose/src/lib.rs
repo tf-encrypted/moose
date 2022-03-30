@@ -4157,13 +4157,11 @@ macro_rules! modelled_kernel {
             }
         }
 
-        // paste! {
-        //     pub trait [<$trait Valid>] <P, X0, X1, X2, Y> {}
-        // }
-
-        pub trait PlacementMuxValid<P, X0, X1, X2, Y> {
-            // TODO maybe this could be const/lazy instead
-            fn sig() -> crate::computation::Signature;
+        paste::paste! {
+            pub trait [<$trait Valid>] <P, X0, X1, X2, Y> {
+                // TODO maybe this could be const/lazy instead
+                fn sig() -> crate::computation::Signature;
+            }
         }
 
         // #[cfg(feature = "async_execute")]
@@ -4206,107 +4204,70 @@ macro_rules! modelled_kernel {
             }
         }
 
-        impl<P, S, T0, T1, T2, U> $trait<S, T0, T1, T2, U> for P
-        where
-            S: crate::execution::Session,
-            // S: paste! {[< $trait Valid >] <Self, T0, T1, T2, U>,
-            S: PlacementMuxValid<Self, T0, T1, T2, U>,
-            T0: Clone,
-            T1: Clone,
-            T2: Clone,
-            S::Value: From<T0>,
-            S::Value: From<T1>,
-            S::Value: From<T2>,
-            S::Value: std::convert::TryInto<U>,
-            <S::Value as std::convert::TryInto<U>>::Error: std::fmt::Debug,
-            for<'l> crate::computation::Placement: From<&'l P>,
-        {
-            fn $trait_fn(
-                &self,
-                sess: &S,
-                // $($($attr_id:$attr_ty),*,)?
-                x0: &T0,
-                x1: &T1,
-                x2: &T2
-            ) -> U
+        paste::paste! {
+            impl<P, S, T0, T1, T2, U> $trait<S, T0, T1, T2, U> for P
+            where
+                S: crate::execution::Session,
+                S: [< $trait Valid >] <P, T0, T1, T2, U>,
+                T0: Clone,
+                T1: Clone,
+                T2: Clone,
+                S::Value: From<T0>,
+                S::Value: From<T1>,
+                S::Value: From<T2>,
+                S::Value: std::convert::TryInto<U>,
+                <S::Value as std::convert::TryInto<U>>::Error: std::fmt::Debug,
+                for<'l> crate::computation::Placement: From<&'l P>,
             {
-                use crate::execution::Session;
-                use std::convert::TryInto;
-                let sig = S::sig();
-                let op = $op {
-                    sig,
-                    $($($attr_id),*)?
-                };
-                let res = sess.execute(
-                    &crate::computation::Operator::from(op),
-                    &crate::computation::Placement::from(self),
-                    operands![
-                        S::Value::from(x0.clone()),
-                        S::Value::from(x1.clone()),
-                        S::Value::from(x2.clone()),
-                    ]
-                )
-                .unwrap();
-                res.try_into().unwrap()
+                fn $trait_fn(
+                    &self,
+                    sess: &S,
+                    // $($($attr_id:$attr_ty),*,)?
+                    x0: &T0,
+                    x1: &T1,
+                    x2: &T2
+                ) -> U
+                {
+                    use crate::execution::Session;
+                    use std::convert::TryInto;
+                    // TODO(Morten) get signature from actual values, ie x0.ty()
+                    let sig = S::sig();
+                    let op = $op {
+                        sig,
+                        $($($attr_id),*)?
+                    };
+                    let res = sess.execute(
+                        &crate::computation::Operator::from(op),
+                        &crate::computation::Placement::from(self),
+                        operands![
+                            S::Value::from(x0.clone()),
+                            S::Value::from(x1.clone()),
+                            S::Value::from(x2.clone()),
+                        ]
+                    )
+                    .unwrap();
+                    res.try_into().unwrap()
+                }
             }
         }
 
-        // impl<S, T0, T1, T2, U> $trait<S, T0, T1, T2, U> for crate::replicated::ReplicatedPlacement
-        // where
-        //     S: crate::execution::Session,
-        //     // S: paste! {[< $trait Valid >] <Self, T0, T1, T2, U>,
-        //     S: PlacementMuxValid<Self, T0, T1, T2, U>,
-        //     S::Value: From<T0>,
-        //     S::Value: From<T1>,
-        //     S::Value: From<T2>,
-        // {
-        //     fn $trait_fn(
-        //         &self,
-        //         sess: &S,
-        //         // $($($attr_id:$attr_ty),*,)?
-        //         x0: &T0,
-        //         x1: &T1,
-        //         x2: &T2
-        //     ) -> U
-        //     {
-        //         use crate::execution::Session;
-        //         use std::convert::TryInto;
-        //         let sig = S::sig();
-        //         let op = $op {
-        //             sig,
-        //             $($($attr_id),*)?
-        //         };
-        //         sess.execute(
-        //             &crate::computation::Operator::from(op),
-        //             &crate::computation::Placement::from(self),
-        //             operands![
-        //                 S::Value::from(x0.clone()),
-        //                 S::Value::from(x1.clone()),
-        //                 S::Value::from(x2.clone()),
-        //             ]
-        //         )
-        //         .unwrap()
-        //         .try_into()
-        //         .unwrap()
-        //     }
-        // }
-
         $(
-            // impl paste! {[<$trait Valid>]}<
-            impl PlacementMuxValid<
-                $plc,
-                $t0,
-                $t1,
-                $t2,
-                $u,
-            > for crate::execution::SyncSession {
-                fn sig() -> crate::computation::Signature {
-                    crate::computation::Signature::ternary(
-                        <$t0 as KnownType<Self>>::TY,
-                        <$t1 as KnownType<Self>>::TY,
-                        <$t2 as KnownType<Self>>::TY,
-                        <$u as KnownType<Self>>::TY,
-                    )
+            paste::paste! {
+                impl [<$trait Valid>] <
+                    $plc,
+                    $t0,
+                    $t1,
+                    $t2,
+                    $u,
+                > for crate::execution::SyncSession {
+                    fn sig() -> crate::computation::Signature {
+                        crate::computation::Signature::ternary(
+                            <$t0 as KnownType<Self>>::TY,
+                            <$t1 as KnownType<Self>>::TY,
+                            <$t2 as KnownType<Self>>::TY,
+                            <$u as KnownType<Self>>::TY,
+                        )
+                    }
                 }
             }
         )+
