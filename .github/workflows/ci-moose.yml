@@ -27,7 +27,7 @@ jobs:
 
       - name: Install build dependencies.
         run: |
-          sudo apt install make clang libpython3.8-dev
+          sudo apt install -y make clang libpython3.8-dev
 
       - uses: Swatinem/rust-cache@v1
 
