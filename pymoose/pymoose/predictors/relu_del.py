@@ -42,6 +42,7 @@ model.eval()
 
 dummy_input = torch.tensor([[ 0.4595, -0.8661,  1.7674,  1.9377,  0.3077, -0.8155,  0.3508,  0.2848,
          -1.8987,  0.3189]])
+
 print(dummy_input)
 input_names = [ "net_input" ]
 output_names = [ "net_output" ]
@@ -80,10 +81,14 @@ storage = {plc.name: {} for plc in net.host_placements}
 runtime = testing.LocalMooseRuntime(storage_mapping=storage)
 role_assignment = {plc.name: plc.name for plc in net.host_placements}
 
+
+dummy_input = np.array([[ 0.4595, -0.8661,  1.7674,  1.9377,  0.3077, -0.8155,  0.3508,  0.2848,
+         -1.8987,  0.3189]], dtype=np.float64)
+
 result_dict = runtime.evaluate_computation(
     computation=traced_predictor,
     role_assignment=role_assignment,
-    arguments={"x": dummy_input.numpy()},
+    arguments={"x": dummy_input},
 )
 actual_result = list(result_dict.values())[0]
 
