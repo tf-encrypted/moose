@@ -62,7 +62,6 @@ class NeuralNetwork(aes_predictor.AesPredictor):
         num_layers = len(self.weights)
         for i in range(num_layers):
             x = self.apply_layer(x, i, fixedpoint_dtype)
-            print("x1", x)
             x = self.activation_fn(x, i)
             print("x1", x)
 
