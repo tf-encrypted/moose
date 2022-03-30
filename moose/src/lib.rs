@@ -4164,9 +4164,24 @@ macro_rules! modelled_kernel {
             }
         }
 
+        $(
+            paste::paste! {
+                impl [<$trait Valid>] <$plc, $t0, $t1, $t2, $u> for crate::execution::SyncSession {
+                    fn sig() -> crate::computation::Signature {
+                        crate::computation::Signature::ternary(
+                            <$t0 as KnownType<Self>>::TY,
+                            <$t1 as KnownType<Self>>::TY,
+                            <$t2 as KnownType<Self>>::TY,
+                            <$u as KnownType<Self>>::TY,
+                        )
+                    }
+                }
+            }
+        )+
+
         paste::paste! {
             #[cfg(feature = "compile")]
-            impl<S, P, X0, X1, X2, Y> [< $trait Valid >] <P, X0, X1, X2, Y> for S
+            impl<S, P, X0, X1, X2, Y> [<$trait Valid>] <P, X0, X1, X2, Y> for S
             where
                 S: crate::execution::Session,
                 X0: crate::computation::SessionType<Self>,
@@ -4191,7 +4206,7 @@ macro_rules! modelled_kernel {
             impl<P, S, T0, T1, T2, U> $trait<S, T0, T1, T2, U> for P
             where
                 S: crate::execution::Session,
-                S: [< $trait Valid >] <P, T0, T1, T2, U>,
+                S: [<$trait Valid>] <P, T0, T1, T2, U>,
                 T0: Clone,
                 T1: Clone,
                 T2: Clone,
@@ -4232,27 +4247,6 @@ macro_rules! modelled_kernel {
                 }
             }
         }
-
-        $(
-            paste::paste! {
-                impl [<$trait Valid>] <
-                    $plc,
-                    $t0,
-                    $t1,
-                    $t2,
-                    $u,
-                > for crate::execution::SyncSession {
-                    fn sig() -> crate::computation::Signature {
-                        crate::computation::Signature::ternary(
-                            <$t0 as KnownType<Self>>::TY,
-                            <$t1 as KnownType<Self>>::TY,
-                            <$t2 as KnownType<Self>>::TY,
-                            <$u as KnownType<Self>>::TY,
-                        )
-                    }
-                }
-            }
-        )+
 
         // support for SyncSession, AsyncSession, and SymbolicSession (based on flavour)
         $(
