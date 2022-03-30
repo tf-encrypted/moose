@@ -149,7 +149,7 @@ impl DispatchKernel<SyncSession> for ReceiveOp {
 impl Session for SyncSession {
     type Value = Value;
 
-    fn execute(&self, op: &Operator, plc: &Placement, operands: Operands<Value>) -> Result<Value> {
+    fn execute(&self, op: &Operator, plc: &Placement, mut operands: Operands<Value>) -> Result<Value> {
         use Operator::*;
         let kernel_output = match op {
             Send(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
@@ -240,7 +240,19 @@ impl Session for SyncSession {
             Neg(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
             Sum(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
             Div(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            Mux(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
+            Mux(op) => {
+                use crate::kernels::{NgDispatchKernel, NgKernel};
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Ternary { flavor: _, closure } => {
+                        assert_eq!(operands.len(), 3);
+                        let x2 = operands.pop().unwrap();
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(self, plc, x0, x1, x2)?
+                    }
+                }
+            }
             Pow2(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
             Exp(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
             Sigmoid(op) => DispatchKernel::compile(op, plc)?(self, operands)?,

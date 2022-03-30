@@ -40,6 +40,35 @@ pub trait DispatchKernel<S: Session> {
     fn compile(&self, plc: &Placement) -> Result<Kernel<S>>;
 }
 
+pub enum NgKernelFlavor {
+    Runtime,
+    Concrete,
+    Transparent,
+    Hybrid,
+}
+
+pub type NgTernaryKernel<S> =
+    Box<
+        dyn Fn(
+            &S,
+            &Placement, // TODO get rid of this?
+            <S as Session>::Value,
+            <S as Session>::Value,
+            <S as Session>::Value,
+        ) -> Result<<S as Session>::Value>
+    >;
+
+pub enum NgKernel<S: Session> {
+    Ternary { 
+        flavor: NgKernelFlavor,
+        closure: NgTernaryKernel<S>,
+    }
+}
+
+pub trait NgDispatchKernel<S: Session> {
+    fn compile(&self, plc: &Placement) -> Result<NgKernel<S>>;
+}
+
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
 // function kernels then we could consider returning an enum over
 // fn.. and Box<dyn Fn...> in the traits below instead

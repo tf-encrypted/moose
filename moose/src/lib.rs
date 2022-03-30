@@ -195,6 +195,216 @@ macro_rules! derive_runtime_kernel {
     };
 }
 
+macro_rules! ng_derive_runtime_kernel {
+    // (nullary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
+    //     {
+    //         let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedNullaryKernel<_, _, _>> = &|$op| $kf;
+    //         kf($self)
+    //     }
+    // };
+    // (unary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
+    //     {
+    //         let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedUnaryKernel<_, _, _, _>> = &|$op| $kf;
+    //         kf($self)
+    //     }
+    // };
+    // (binary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
+    //     {
+    //         let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedBinaryKernel<_, _, _, _, _>> = &|$op| $kf;
+    //         kf($self)
+    //     }
+    // };
+    // (ternary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
+    //     {
+    //         let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedTernaryKernel<_, _, _, _, _, _> = &|$op| $kf;
+    //         kf($self)
+    //     }
+    // };
+    // (variadic, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
+    //     {
+    //         let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedVariadicKernel<_, _, _, _>> = &|$op| $kf;
+    //         kf($self)
+    //     }
+    // };
+
+    // (nullary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
+    //     {
+    //         $(
+    //         let $attr = $self.$attr.clone();
+    //             // The following block applies the optional Constant type restriction to the attribute and unwraps it
+    //             $(
+    //                 let $attr = match $attr {
+    //                     Constant::$prim_ty(v) => v,
+    //                     _ => return Err(crate::error::Error::TypeMismatch{
+    //                         expected: stringify!($prim_ty).to_string(),
+    //                         found: $attr.ty(),
+    //                     })
+    //                 };
+    //             )?
+    //         )+
+    //         crate::error::Result::<crate::kernels::TypedNullaryKernel<_, _, _>>::Ok(Box::new(move |sess, plc| {
+    //             $k(sess, plc, $($attr.clone()),+)
+    //         }))
+    //     }
+    // };
+    // (unary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
+    //     {
+    //         $(
+    //         let $attr = $self.$attr.clone();
+    //             // The following block applies the optional Constant type restriction to the attribute and unwraps it
+    //             $(
+    //                 let $attr = match $attr {
+    //                     Constant::$prim_ty(v) => v,
+    //                     _ => return Err(crate::error::Error::TypeMismatch{
+    //                         expected: stringify!($prim_ty).to_string(),
+    //                         found: $attr.ty(),
+    //                     })
+    //                 };
+    //             )?
+    //         )+
+    //         crate::error::Result::<crate::kernels::TypedUnaryKernel<_, _, _, _>>::Ok(
+    //             Box::new(move |sess, plc, x0| {
+    //                 $k(sess, plc, $($attr.clone()),+, x0)
+    //             })
+    //         )
+    //     }
+    // };
+    // (binary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
+    //     {
+    //         $(
+    //         let $attr = $self.$attr.clone();
+    //             // The following block applies the optional Constant type restriction to the attribute and unwraps it
+    //             $(
+    //                 let $attr = match $attr {
+    //                     Constant::$prim_ty(v) => v,
+    //                     _ => return Err(crate::error::Error::TypeMismatch{
+    //                         expected: stringify!($prim_ty).to_string(),
+    //                         found: $attr.ty(),
+    //                     })
+    //                 };
+    //             )?
+    //         )+
+    //         crate::error::Result::<crate::kernels::TypedBinaryKernel<_, _, _, _, _>>::Ok(
+    //             Box::new(move |sess, plc, x0, x1| {
+    //                 $k(sess, plc, $($attr.clone()),+, x0, x1)
+    //             })
+    //         )
+    //     }
+    // };
+    // (ternary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
+    //     {
+    //         $(
+    //         let $attr = $self.$attr.clone();
+    //             // The following block applies the optional Constant type restriction to the attribute and unwraps it
+    //             $(
+    //                 let $attr = match $attr {
+    //                     Constant::$prim_ty(v) => v,
+    //                     _ => return Err(crate::error::Error::TypeMismatch{
+    //                         expected: stringify!($prim_ty).to_string(),
+    //                         found: $attr.ty(),
+    //                     })
+    //                 };
+    //             )?
+    //         )+
+    //         crate::error::Result::<crate::kernels::TypedTernaryKernel<_, _, _, _, _, _>>::Ok(Box::new(move |sess, plc, x0, x1, x2| {
+    //             $k(sess, plc, $($attr.clone()),+), x0, x1, x2
+    //         }))
+    //     }
+    // };
+    // (variadic, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
+    //     {
+    //         $(
+    //             let $attr = $self.$attr.clone();
+    //                 // The following block applies the optional Constant type restriction to the attribute and unwraps it
+    //                 $(
+    //                     let $attr = match $attr {
+    //                         Constant::$prim_ty(v) => v,
+    //                         _ => return Err(crate::error::Error::TypeMismatch{
+    //                             expected: stringify!($prim_ty).to_string(),
+    //                             found: $attr.ty(),
+    //                         })
+    //                     };
+    //                 )?
+    //             )+
+    //             {
+    //                 crate::error::Result::<crate::kernels::TypedVariadicKernel<_, _, _, _>>::Ok(
+    //                     Box::new(move |sess, plc, xs| {
+    //                         $k(sess, plc, $($attr.clone()),+, &xs)
+    //                     })
+    //                 )
+    //             }
+    //     }
+    // };
+
+    // (nullary, $k:expr, $self:ident) => {
+    //     crate::error::Result::<crate::kernels::TypedNullaryKernel<_, _, _>>::Ok(Box::new($k))
+    // };
+    // (unary, $k:expr, $self:ident) => {
+    //     crate::error::Result::<crate::kernels::TypedUnaryKernel<_, _, _, _>>::Ok(Box::new($k))
+    // };
+    // (binary, $k:expr, $self:ident) => {
+    //     crate::error::Result::<crate::kernels::TypedBinaryKernel<_, _, _, _, _>>::Ok(Box::new($k))
+    // };
+    (sync ternary $flavour:tt, $plc:ty, $k:expr, $self:ident) => {
+        let closure = Box::new(
+            move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
+                let plc: $plc = plc.clone().try_into()?;
+                let x0: $t0 = x0.try_into()?;
+                let x1: $t1 = x1.try_into()?;
+                let x2: $t2 = x2.try_into()?;
+                
+                let y: $u = $k(sess, &plc, x0, x1, x2)?;
+                Ok(y.into())
+            }
+        );
+        Ok(NgKernel::Ternary {
+            flavor: NgKernelFlavor::Runtime,
+            closure,
+        })
+    };
+    // (sync ternary concrete, $plc:ty, $k:expr, $self:ident) => {
+    //     let closure = Box::new(
+    //         move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
+    //             let plc: $plc = plc.clone().try_into()?;
+    //             let x0: $t0 = x0.try_into()?;
+    //             let x1: $t1 = x1.try_into()?;
+    //             let x2: $t2 = x2.try_into()?;
+                
+    //             let y: $u = $k(sess, &plc, x0, x1, x2)?;
+    //             Ok(y.into())
+    //         }
+    //     );
+    //     Ok(NgKernel::Ternary {
+    //         flavor: NgKernelFlavor::Concrete,
+    //         closure,
+    //     })
+    // };
+    // (sync ternary hybrid, $plc:ty, $k:expr, $self:ident) => {
+    //     let closure = Box::new(
+    //         move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
+    //             let plc: $plc = plc.clone().try_into()?;
+    //             let x0: $t0 = x0.try_into()?;
+    //             let x1: $t1 = x1.try_into()?;
+    //             let x2: $t2 = x2.try_into()?;
+                
+    //             let y: $u = $k(sess, &plc, x0, x1, x2)?;
+    //             Ok(y.into())
+    //         }
+    //     );
+    //     Ok(NgKernel::Ternary {
+    //         flavor: NgKernelFlavor::Hybrid,
+    //         closure,
+    //     })
+    // };
+    // (variadic, $k:expr, $self:ident) => {
+    //     crate::error::Result::<crate::kernels::TypedVariadicKernel<_, _, _, _>>::Ok(
+    //         Box::new(move |sess, plc, xs| {
+    //             $k(sess, plc, &xs)
+    //         })
+    //     )
+    // };
+}
+
 #[allow(unused_macros)]
 macro_rules! operands {
     ($($content:tt)*) => {
@@ -3995,6 +4205,83 @@ macro_rules! modelled_kernel {
     */
 
     ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
+        impl crate::kernels::NgDispatchKernel<crate::execution::SyncSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SyncSession>> {
+                use crate::computation::Value;
+                use crate::execution::SyncSession;
+                use crate::kernels::{NgTernaryKernel, NgKernel, NgKernelFlavor};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Ternary(TernarySignature{
+                                arg0: <$t0 as KnownType<SyncSession>>::TY,
+                                arg1: <$t1 as KnownType<SyncSession>>::TY,
+                                arg2: <$t2 as KnownType<SyncSession>>::TY,
+                                ret: <$u as KnownType<SyncSession>>::TY,
+                            })
+                        ) => {
+                            ng_derive_runtime_kernel![ternary $flavour, $plc, $(attributes[$($attr_id),+])? $($kp)+, self]
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                }
+            }
+        }
+
+        // impl crate::kernels::NgDispatchKernel<crate::execution::SymbolicSession> for $op {
+        //     fn compile(
+        //         &self,
+        //         plc: &crate::computation::Placement
+        //     ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SymbolicSession>> {
+        //         use crate::computation::SymbolicValue;
+        //         use crate::execution::SymbolicSession;
+        //         use crate::kernels::{NgTernaryKernel, NgKernel, NgKernelFlavor};
+        //         use std::convert::TryInto;
+
+        //         match (plc.ty(), self.sig.flatten()) {
+        //             $(
+        //                 (
+        //                     <$plc>::TY,
+        //                     Signature::Ternary(TernarySignature{
+        //                         arg0: <$t0 as KnownType<SymbolicSession>>::TY,
+        //                         arg1: <$t1 as KnownType<SymbolicSession>>::TY,
+        //                         arg2: <$t2 as KnownType<SymbolicSession>>::TY,
+        //                         ret: <$u as KnownType<SymbolicSession>>::TY,
+        //                     })
+        //                 ) => {
+        //                     let k = {
+        //                         derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
+        //                     }?;
+
+        //                     let closure: NgTernaryKernel<_> = Box::new(
+        //                         move |sess: &SymbolicSession, plc: &Placement, x0: SymbolicValue, x1: SymbolicValue, x2: SymbolicValue| {
+        //                             let plc: $plc = plc.clone().try_into()?;
+        //                             let x0: $t0 = x0.try_into()?;
+        //                             let x1: $t1 = x1.try_into()?;
+        //                             let x2: $t2 = x2.try_into()?;
+                                    
+        //                             let y: $u = k(sess, &plc, x0, x1, x2)?;
+        //                             Ok(y.into())
+        //                         }
+        //                     );
+
+        //                     Ok(NgKernel::Ternary {
+        //                         flavor: NgKernelFlavor::Runtime,
+        //                         closure,
+        //                     })
+        //                 }
+        //             )+
+        //             _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+        //         }
+        //     }
+        // }
+        
         #[cfg(feature = "sync_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
