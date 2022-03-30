@@ -295,6 +295,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             BitExtract(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Sample(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             SampleSeeded(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            RingFixedpointAbs(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             RingFixedpointArgmax(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             RingFixedpointEncode(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             RingFixedpointDecode(op) => DispatchKernel::compile(op, plc)?(sess, operands),
@@ -383,7 +384,7 @@ impl SymbolicExecutor {
                     .execute(&op.kind, &op.placement, operands)
                     .map_err(|e| {
                         Error::Compilation(format!(
-                            "SymbolicSession failed to lower computation due to an error: {:?}",
+                            "SymbolicSession failed to lower computation due to an error: {}",
                             e,
                         ))
                     })?;

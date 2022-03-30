@@ -1,13 +1,14 @@
 use crate::computation::{Computation, Operator};
+use bitvec::prelude::*;
 use petgraph::visit::{depth_first_search, DfsEvent};
 
 /// Prunes the computation from anything not relevant for the output
-pub fn prune_graph(comp: Computation) -> anyhow::Result<Computation> {
+pub fn prune_graph(mut comp: Computation) -> anyhow::Result<Computation> {
     // Need to reverse the graph, because we will be traversing it from the outputs
     let mut graph = comp.as_graph();
     graph.reverse();
     // Operations to keep
-    let mut keep = Vec::with_capacity(comp.operations.len());
+    let mut keep: BitVec<u8, Lsb0> = BitVec::repeat(false, comp.operations.len());
     // Identify all the output nodes
     let outputs = graph
         .node_indices()
@@ -16,12 +17,15 @@ pub fn prune_graph(comp: Computation) -> anyhow::Result<Computation> {
     // Perform a DFS
     depth_first_search(&graph, outputs, |event| {
         if let DfsEvent::Discover(visited, _) = event {
-            keep.push(comp.operations[graph[visited].index].clone());
+            keep.set(graph[visited].index, true);
         };
     });
 
-    // Construct a new computation. NB: we did not toposort it.
-    Ok(Computation { operations: keep })
+    let mut iter = keep.iter();
+    // only keep the operations that were visited by DFS
+    comp.operations.retain(|_| *iter.next().unwrap());
+
+    Ok(comp)
 }
 
 #[cfg(test)]

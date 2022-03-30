@@ -9,7 +9,6 @@ from absl.testing import parameterized
 from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose.computation import utils
-from pymoose.computation.standard import StringType
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
@@ -60,11 +59,11 @@ class LinearRegressionExample(parameterized.TestCase):
 
         @edsl.computation
         def my_comp(
-            x_uri: edsl.Argument(placement=x_owner, vtype=StringType()),
-            y_uri: edsl.Argument(placement=y_owner, vtype=StringType()),
-            w_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
-            metric_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
-            rsquared_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
+            x_uri: edsl.Argument(placement=x_owner, vtype=edsl.StringType()),
+            y_uri: edsl.Argument(placement=y_owner, vtype=edsl.StringType()),
+            w_uri: edsl.Argument(placement=model_owner, vtype=edsl.StringType()),
+            metric_uri: edsl.Argument(placement=model_owner, vtype=edsl.StringType()),
+            rsquared_uri: edsl.Argument(placement=model_owner, vtype=edsl.StringType()),
         ):
             with x_owner:
                 X = edsl.atleast_2d(

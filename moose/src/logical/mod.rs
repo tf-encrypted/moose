@@ -6,7 +6,6 @@ use crate::computation::{PartiallySymbolicType, SymbolicType};
 use crate::error::Result;
 #[cfg(feature = "compile")]
 use crate::execution::symbolic::Symbolic;
-use crate::host::HostShape;
 use crate::types::*;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -14,11 +13,6 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
 mod ops;
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum Shape {
-    Host(HostShape),
-}
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Copy, Clone, Debug, Display)]
 pub enum TensorDType {
@@ -39,6 +33,15 @@ pub enum TensorDType {
     Unknown,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Copy, Clone, Debug, Display)]
+pub enum TensorShape {
+    Host,
+    Replicated,
+    Additive,
+    Mirrored,
+    Unknown,
+}
+
 impl HasShortName for TensorDType {
     fn short_name(&self) -> &str {
         match self {
@@ -53,6 +56,18 @@ impl HasShortName for TensorDType {
     }
 }
 
+impl HasShortName for TensorShape {
+    fn short_name(&self) -> &str {
+        match self {
+            TensorShape::Host => "Host",
+            TensorShape::Replicated => "Replicated",
+            TensorShape::Additive => "Additive",
+            TensorShape::Mirrored => "Mirrored",
+            TensorShape::Unknown => "Unknown",
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T> {
     Fixed64(Fixed64T),
@@ -61,6 +76,12 @@ pub enum AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>
     Float64(Float64T),
     Bool(BoolT),
     Uint64(Uint64T),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum AbstractShape<HostS, RepS> {
+    Host(HostS),
+    Replicated(RepS),
 }
 
 impl<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>
@@ -155,6 +176,55 @@ where
     fn try_from(
         v: Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>,
     ) -> std::result::Result<Self, ()> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(()),
+        }
+    }
+}
+
+#[cfg(feature = "compile")]
+impl PartiallySymbolicType for Shape {
+    type Type =
+        AbstractShape<<HostShape as SymbolicType>::Type, <ReplicatedShape as SymbolicType>::Type>;
+}
+
+impl<HostS, RepS> Placed for AbstractShape<HostS, RepS>
+where
+    HostS: Placed,
+    HostS::Placement: Into<Placement>,
+    RepS: Placed,
+    RepS::Placement: Into<Placement>,
+{
+    type Placement = Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        match self {
+            AbstractShape::Host(sh) => Ok(sh.placement()?.into()),
+            AbstractShape::Replicated(sh) => Ok(sh.placement()?.into()),
+        }
+    }
+}
+
+#[cfg(feature = "compile")]
+impl<HostS, RepS> From<AbstractShape<HostS, RepS>> for Symbolic<AbstractShape<HostS, RepS>>
+where
+    HostS: Placed<Placement = Placement>,
+    RepS: Placed<Placement = Placement>,
+{
+    fn from(x: AbstractShape<HostS, RepS>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+#[cfg(feature = "compile")]
+impl<HostS, RepS> TryFrom<Symbolic<AbstractShape<HostS, RepS>>> for AbstractShape<HostS, RepS>
+where
+    HostS: Placed<Placement = Placement>,
+    RepS: Placed<Placement = Placement>,
+{
+    type Error = ();
+    fn try_from(v: Symbolic<AbstractShape<HostS, RepS>>) -> std::result::Result<Self, ()> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(()),

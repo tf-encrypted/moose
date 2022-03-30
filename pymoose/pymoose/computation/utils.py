@@ -4,78 +4,73 @@ from dataclasses import fields
 import msgpack
 import numpy as np
 
+from pymoose.computation import computation as comp_base
 from pymoose.computation import dtypes
-from pymoose.computation import host as host_dialect
-from pymoose.computation import mirrored as mirrored_dialect
-from pymoose.computation import replicated as rep_dialect
-from pymoose.computation import standard as std_dialect
-from pymoose.computation.base import Computation
-from pymoose.computation.base import Operation
-from pymoose.computation.base import OpSignature
-from pymoose.computation.base import Placement
-from pymoose.computation.base import Value
-from pymoose.computation.base import ValueType
+from pymoose.computation import operations as ops
+from pymoose.computation import placements as plc
+from pymoose.computation import types as ty
+from pymoose.computation import values
 from pymoose.logger import get_logger
 
 SUPPORTED_TYPES = [
-    host_dialect.HostPlacement,
-    rep_dialect.ReplicatedPlacement,
-    mirrored_dialect.MirroredPlacement,
-    std_dialect.AbsOperation,
-    std_dialect.AddNOperation,
-    std_dialect.AddOperation,
-    std_dialect.AesKeyType,
-    std_dialect.AesTensorType,
-    std_dialect.ArgmaxOperation,
-    std_dialect.AtLeast2DOperation,
-    std_dialect.BitwiseOrOperation,
-    std_dialect.BytesType,
-    std_dialect.CastOperation,
-    std_dialect.ConcatenateOperation,
-    std_dialect.ConstantOperation,
-    std_dialect.DecryptOperation,
-    std_dialect.DivOperation,
-    std_dialect.DotOperation,
-    std_dialect.ExpandDimsOperation,
-    std_dialect.ExpOperation,
-    std_dialect.FloatConstant,
-    std_dialect.FloatType,
-    std_dialect.IdentityOperation,
-    std_dialect.IndexAxisOperation,
-    std_dialect.InputOperation,
-    std_dialect.IntConstant,
-    std_dialect.IntType,
-    std_dialect.InverseOperation,
-    std_dialect.LessOperation,
-    std_dialect.LoadOperation,
-    std_dialect.LogOperation,
-    std_dialect.Log2Operation,
-    std_dialect.MaximumOperation,
-    std_dialect.MeanOperation,
-    std_dialect.MulOperation,
-    std_dialect.MuxOperation,
-    std_dialect.OnesOperation,
-    std_dialect.OutputOperation,
-    std_dialect.SigmoidOperation,
-    std_dialect.SoftmaxOperation,
-    std_dialect.ReshapeOperation,
-    std_dialect.SaveOperation,
-    std_dialect.ShapeConstant,
-    std_dialect.ShapeOperation,
-    std_dialect.ShapeType,
-    std_dialect.SliceOperation,
-    std_dialect.SqueezeOperation,
-    std_dialect.StringConstant,
-    std_dialect.StringType,
-    std_dialect.SubOperation,
-    std_dialect.SumOperation,
-    std_dialect.TensorConstant,
-    std_dialect.TensorType,
-    std_dialect.TransposeOperation,
-    std_dialect.UnitType,
-    std_dialect.UnknownType,
+    ops.AbsOperation,
+    ops.AddNOperation,
+    ops.AddOperation,
+    ops.ArgmaxOperation,
+    ops.AtLeast2DOperation,
+    ops.BitwiseOrOperation,
+    ops.CastOperation,
+    ops.ConcatenateOperation,
+    ops.ConstantOperation,
+    ops.DecryptOperation,
+    ops.DivOperation,
+    ops.DotOperation,
+    ops.ExpandDimsOperation,
+    ops.ExpOperation,
+    ops.IdentityOperation,
+    ops.IndexAxisOperation,
+    ops.InputOperation,
+    ops.InverseOperation,
+    ops.LessOperation,
+    ops.LoadOperation,
+    ops.LogOperation,
+    ops.Log2Operation,
+    ops.MaximumOperation,
+    ops.MeanOperation,
+    ops.MulOperation,
+    ops.MuxOperation,
+    ops.OnesOperation,
+    ops.OutputOperation,
+    ops.SigmoidOperation,
+    ops.SoftmaxOperation,
+    ops.ReshapeOperation,
+    ops.SaveOperation,
+    ops.ShapeOperation,
+    ops.SliceOperation,
+    ops.SqueezeOperation,
+    ops.SubOperation,
+    ops.SumOperation,
+    ops.TransposeOperation,
+    plc.HostPlacement,
+    plc.ReplicatedPlacement,
+    plc.MirroredPlacement,
+    ty.AesKeyType,
+    ty.AesTensorType,
+    ty.BytesType,
+    ty.FloatType,
+    ty.IntType,
+    ty.ShapeType,
+    ty.StringType,
+    ty.TensorType,
+    ty.UnitType,
+    ty.UnknownType,
+    values.FloatConstant,
+    values.IntConstant,
+    values.ShapeConstant,
+    values.StringConstant,
+    values.TensorConstant,
 ]
-TYPES_MAP = {f"{ty.dialect()}_{ty.__name__}": ty for ty in SUPPORTED_TYPES}
+TYPE_NAMES = {f"{ty.__name__}": ty for ty in SUPPORTED_TYPES}
 FIXED_DTYPE_REGEX = re.compile("fixed([0-9]+)_([0-9]+)")
 
 
@@ -90,25 +85,32 @@ def deserialize_computation(bytes_stream):
 
 
 def _encode(val):
-    if isinstance(val, Computation):
+    if isinstance(val, comp_base.Computation):
         return {
             "__type__": "Computation",
             "operations": val.operations,
             "placements": val.placements,
         }
-    elif isinstance(val, (Operation, ValueType, Placement, Value)):
-        type_name = f"{val.dialect()}_{type(val).__name__}"
-        assert type_name in TYPES_MAP, type_name
+    elif isinstance(val, (ops.Operation, ty.ValueType, plc.Placement, values.Value)):
+        type_name = f"{type(val).__name__}"
+        assert type_name in TYPE_NAMES, type_name
         d = {field.name: getattr(val, field.name) for field in fields(val)}
         d["__type__"] = type_name
         return d
-    elif isinstance(val, OpSignature):
+    elif isinstance(val, ops.OpSignature):
         return {
             "__type__": "OpSignature",
             "input_types": val.input_types,
             "return_type": val.return_type,
         }
     elif isinstance(val, dtypes.DType):
+        if FIXED_DTYPE_REGEX.match(val.name):
+            return {
+                "__type__": "DType",
+                "name": "fixed",
+                "integral_precision": val.integral_precision,
+                "fractional_precision": val.fractional_precision,
+            }
         return {"__type__": "DType", "name": val.name}
     elif isinstance(val, np.ndarray):
         return {
@@ -125,7 +127,7 @@ def _decode(obj):
     if "__type__" in obj:
         if obj["__type__"] == "Computation":
             del obj["__type__"]
-            return Computation(**obj)
+            return comp_base.Computation(**obj)
         elif obj["__type__"] == "DType":
             dtype_name = obj["name"]
             fixed_match = FIXED_DTYPE_REGEX.match(dtype_name)
@@ -143,7 +145,7 @@ def _decode(obj):
                 dtypes.bool_.name: dtypes.bool_,
             }[dtype_name]
         elif obj["__type__"] == "OpSignature":
-            return OpSignature(
+            return ops.OpSignature(
                 input_types=obj["input_types"], return_type=obj["return_type"],
             )
         elif obj["__type__"] == "ndarray":
@@ -152,7 +154,7 @@ def _decode(obj):
             contents = obj["items"]
             return np.array(contents, dtype=dtype).reshape(shape)
         else:
-            ty = TYPES_MAP[obj["__type__"]]
+            ty = TYPE_NAMES[obj["__type__"]]
             del obj["__type__"]
             return ty(**obj)
     return obj

@@ -1,4 +1,3 @@
-import abc
 import struct
 from enum import Enum
 
@@ -15,7 +14,7 @@ class Activation(Enum):
     SOFTMAX = 3
 
 
-class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
+class NeuralNetwork(aes_predictor.AesPredictor):
     def __init__(self, weights, biases, activations):
         super().__init__()
         self.weights = weights
@@ -85,15 +84,26 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
                 activations.append(Activation.SIGMOID)
             elif operations[i] == "Softmax":
                 activations.append(Activation.SOFTMAX)
+            # PyTorch
             if i > 0:
                 if operations[i] == "Gemm" and operations[i - 1] == "Gemm":
                     activations.append(Activation.IDENTITY)
+            # TF Keras
+            if i > 2:
+                if (
+                    operations[i] == "Add"
+                    and operations[i - 1] == "MatMul"
+                    and operations[i - 2] == "Add"
+                    and operations[i - 3] == "MatMul"
+                ):
+                    activations.append(Activation.IDENTITY)
 
+        # PyTorch: weight, bias; TF Keras: MatMul, BiasAdd
         weights_data = predictor_utils.find_parameters_in_model_proto(
-            model_proto, "weight", enforce=False
+            model_proto, ["weight", "MatMul"], enforce=False
         )
         biases_data = predictor_utils.find_parameters_in_model_proto(
-            model_proto, "bias", enforce=False
+            model_proto, ["bias", "BiasAdd"], enforce=False
         )
         weights = []
         for weight in weights_data:
@@ -123,4 +133,11 @@ class NeuralNetwork(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
             bias = np.asarray(bias)
             biases.append(bias)
 
+        # TF Keras onnx graph stores weights and biases in reversed order
+        # I.e.: from last to first layer
+        if "tf" in model_proto.producer_name:
+            weights = weights[::-1]
+            biases = biases[::-1]
+            # TF Keras weights need to be transposed
+            weights = [item.T for item in weights]
         return cls(weights, biases, activations)

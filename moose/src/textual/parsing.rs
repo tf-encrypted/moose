@@ -475,12 +475,21 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Ty, E> {
     let (i, type_name) = alphanumeric1(input)?;
-    let (i, inner) = opt(tuple((tag("<"), parse_tensor_dtype, tag(">"))))(i)?;
-    let inner = inner.map(|t| t.1);
+    let (i, inner) = opt(delimited(tag("<"), is_not(">"), tag(">")))(i)?;
     let result = Ty::from_name(type_name, inner);
     match result {
-        Some(ty) => Ok((i, ty)),
+        Ok(ty) => Ok((i, ty)),
         _ => Err(Error(make_error(input, ErrorKind::Tag))),
+    }
+}
+
+impl TryFrom<&str> for TensorDType {
+    type Error = anyhow::Error;
+
+    fn try_from(source: &str) -> anyhow::Result<TensorDType> {
+        parse_tensor_dtype(source)
+            .map(|(_, v)| v)
+            .map_err(|e| friendly_error("Failed to parse TensorDType", source, e))
     }
 }
 
@@ -519,6 +528,36 @@ fn parse_tensor_dtype<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
                     fractional_precision: t.3,
                 },
             ),
+        ),
+    ))(input)
+}
+
+impl TryFrom<&str> for TensorShape {
+    type Error = anyhow::Error;
+
+    fn try_from(source: &str) -> anyhow::Result<TensorShape> {
+        parse_tensor_shape(source)
+            .map(|(_, v)| v)
+            .map_err(|e| friendly_error("Failed to parse TensorShape", source, e))
+    }
+}
+
+fn parse_tensor_shape<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, TensorShape, E> {
+    alt((
+        value(TensorShape::Host, tag(TensorShape::Host.short_name())),
+        value(
+            TensorShape::Replicated,
+            tag(TensorShape::Replicated.short_name()),
+        ),
+        value(
+            TensorShape::Additive,
+            tag(TensorShape::Additive.short_name()),
+        ),
+        value(
+            TensorShape::Mirrored,
+            tag(TensorShape::Mirrored.short_name()),
         ),
     ))(input)
 }
@@ -1169,6 +1208,7 @@ impl ToTextual for Operator {
             Diag(op) => op.to_textual(),
             ShlDim(op) => op.to_textual(),
             Sign(op) => op.to_textual(),
+            RingFixedpointAbs(op) => op.to_textual(),
             RingFixedpointArgmax(op) => op.to_textual(),
             RingFixedpointEncode(op) => op.to_textual(),
             RingFixedpointDecode(op) => op.to_textual(),
@@ -1307,6 +1347,7 @@ impl ToTextual for Ty {
     fn to_textual(&self) -> String {
         match self {
             Ty::Tensor(inner) => format!("{}<{}>", self.short_name(), inner.to_textual()),
+            Ty::Shape(inner) => format!("{}<{}>", self.short_name(), inner.short_name()),
             _ => self.short_name().to_string(),
         }
     }
@@ -1393,11 +1434,14 @@ impl ToTextual for Value {
                 x.tensor.0,
                 x.tensor.1
             ),
-            Value::HostBitArray64(_) | Value::Tensor(_) | Value::HostBitArray128(_) => {
+            Value::Tensor(_)
+            | Value::Shape(_)
+            | Value::HostBitArray64(_)
+            | Value::HostBitArray128(_)
+            | Value::HostBitArray224(_)
+            | Value::HostBitArray256(_) => {
                 unimplemented!()
             }
-            Value::HostBitArray224(_) => unimplemented!(),
-            Value::HostBitArray256(_) => unimplemented!(),
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)
             | Value::Fixed128Tensor(_)

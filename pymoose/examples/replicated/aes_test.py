@@ -9,8 +9,6 @@ from absl.testing import parameterized
 from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose.computation import utils
-from pymoose.computation.standard import AesKeyType
-from pymoose.computation.standard import AesTensorType
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
@@ -26,8 +24,10 @@ class ReplicatedExample(parameterized.TestCase):
 
         @edsl.computation
         def my_aes_comp(
-            key: edsl.Argument(rep, vtype=AesKeyType()),
-            ciphertext: edsl.Argument(alice, vtype=AesTensorType(edsl.fixed(24, 40))),
+            key: edsl.Argument(rep, vtype=edsl.AesKeyType()),
+            ciphertext: edsl.Argument(
+                alice, vtype=edsl.AesTensorType(edsl.fixed(24, 40))
+            ),
         ):
             with decryptor:
                 data = edsl.decrypt(key, ciphertext)

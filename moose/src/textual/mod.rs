@@ -6,7 +6,7 @@ use crate::host::{
     ArcArrayD, FromRaw, HostPlacement, RawPrfKey, RawSeed, RawShape, SliceInfo, SliceInfoElem,
     SyncKey,
 };
-use crate::logical::TensorDType;
+use crate::logical::{TensorDType, TensorShape};
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
 use crate::types::*;

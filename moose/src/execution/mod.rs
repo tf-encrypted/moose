@@ -193,10 +193,19 @@ mod tests {
         )?;
 
         let seed: HostSeed = (outputs.get("output").unwrap().clone()).try_into()?;
-        assert_eq!(
-            seed.0,
-            RawSeed([79, 203, 243, 208, 77, 199, 116, 216, 2, 206, 173, 36, 20, 204, 200, 146])
-        );
+        if run_async {
+            // Async session uses a random session id, so we can not predict the output.
+            // But at least it should not be empty
+            assert_ne!(
+                seed.0,
+                RawSeed([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+            );
+        } else {
+            assert_eq!(
+                seed.0,
+                RawSeed([79, 203, 243, 208, 77, 199, 116, 216, 2, 206, 173, 36, 20, 204, 200, 146])
+            );
+        }
         Ok(())
     }
 
@@ -1174,48 +1183,5 @@ mod tests {
         } else {
             panic!("expected session already exists error")
         }
-    }
-
-    #[cfg(feature = "async_execute")]
-    fn _run_new_async_computation_test(
-        computation: Computation,
-        storage_mapping: HashMap<String, HashMap<String, Value>>,
-        role_assignments: HashMap<String, String>,
-        arguments: HashMap<String, Value>,
-    ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
-        let valid_role_assignments = role_assignments
-            .into_iter()
-            .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
-            .collect::<HashMap<Role, Identity>>();
-        let mut executor = AsyncTestRuntime::new(storage_mapping);
-        let outputs =
-            executor.evaluate_computation(&computation, valid_role_assignments, arguments)?;
-        Ok(outputs)
-    }
-
-    #[cfg(feature = "async_execute")]
-    #[test]
-    fn test_new_async_session() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"key = Constant{value=HostPrfKey(00000000000000000000000000000000)}: () -> HostPrfKey @Host(alice)
-        seed = DeriveSeed {sync_key = [1, 2, 3]}: (HostPrfKey) -> HostSeed (key) @Host(alice)
-        output = Output: (HostSeed) -> HostSeed (seed) @Host(alice)"#;
-        let arguments: HashMap<String, Value> = hashmap!();
-        let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_new_async_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-        )?;
-
-        let seed: HostSeed = (outputs.get("output").unwrap().clone()).try_into()?;
-        assert_eq!(
-            seed.0,
-            RawSeed([79, 203, 243, 208, 77, 199, 116, 216, 2, 206, 173, 36, 20, 204, 200, 146])
-        );
-        Ok(())
     }
 }

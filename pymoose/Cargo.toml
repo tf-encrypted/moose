@@ -1,6 +1,6 @@
 [package]
 name = "pymoose"
-version = "0.1.6-beta.1"
+version = "0.2.0-beta"
 license = "MIT/Apache-2.0"
 authors = [""]
 description = ""

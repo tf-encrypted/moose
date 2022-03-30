@@ -266,10 +266,10 @@ impl AbsOp {
         x: RepFixedTensor<RepRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
-        ReplicatedPlacement: PlacementAbs<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementAbsAsFixedpoint<S, RepRingT, RepRingT>,
     {
         Ok(RepFixedTensor {
-            tensor: plc.abs(sess, &x.tensor),
+            tensor: plc.abs_as_fixedpoint(sess, &x.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
         })
