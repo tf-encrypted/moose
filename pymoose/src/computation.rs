@@ -685,6 +685,7 @@ fn map_signature_variadic(
 impl TryFrom<PyComputation> for Computation {
     type Error = anyhow::Error;
     fn try_from(python_computation: PyComputation) -> anyhow::Result<Computation> {
+        println!("HEY IM IN TRYFROM<PyComputation> for Computation");
         let placements: HashMap<String, Placement> = python_computation
             .placements
             .iter()

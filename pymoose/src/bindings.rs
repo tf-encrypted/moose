@@ -16,9 +16,12 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 
 fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> Computation {
+    println!("hey I'm unpacking the msgpack into PyComputation");
     let comp: PyComputation = rmp_serde::from_read_ref(&computation).unwrap();
+    println!("hey I'm trying to convert PyComputation into Computation");
     let rust_comp: Computation = comp.try_into().unwrap();
     // TODO(Morten) we should not call toposort here
+    println!("hey I'm trying to toposort the Computation");
     toposort::toposort(rust_comp).unwrap()
 }
 
@@ -166,9 +169,12 @@ impl LocalRuntime {
         arguments: HashMap<String, PyObject>,
         compiler_passes: Option<Vec<String>>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
+        println!("hey I'm converting creating the comp graph in rust from pybytes!");
         let computation = create_computation_graph_from_py_bytes(computation);
+        println!("hey the comp is in rust! gonna compile it now");
         let computation = compile(computation, compiler_passes)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        println!("hey the comp has been compiled! gonna evaluate it now");
         self.evaluate_compiled_computation(py, &computation, role_assignments, arguments)
     }
 

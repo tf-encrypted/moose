@@ -19,7 +19,7 @@ pub mod toposort;
 pub mod typing;
 pub mod well_formed;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Pass {
     Networking,
     Print,
@@ -90,6 +90,7 @@ where
 
     for pass in passes {
         computation = pass.run(computation)?;
+        println!("HEY: I compiled {:?}!", pass);
     }
     Ok(computation)
 }
