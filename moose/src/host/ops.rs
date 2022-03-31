@@ -77,7 +77,7 @@ impl InputOp {
         arg_name: String,
     ) -> Result<O>
     where
-        O: TryFrom<Value, Error = Error> + Debug,
+        O: TryFrom<Value, Error = Error>,
         HostPlacement: PlacementPlace<S, O>,
     {
         let value = sess

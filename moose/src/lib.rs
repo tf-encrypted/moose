@@ -285,8 +285,7 @@ macro_rules! concrete_dispatch_kernel {
                                 let op = op.clone(); // Needed for the error message for KernelError
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
-                                    let res = k(&sess, &plc);
-                                    let y: $u = res?;
+                                    let y: $u = k(&sess, &plc)?;
                                     if y.placement()? == plc.clone().into() {
                                         crate::execution::map_send_result(sender.send(y.into()))?;
                                         Ok(())
