@@ -284,20 +284,20 @@ macro_rules! concrete_dispatch_kernel {
                                 let k = <$op as NullaryKernel<AsyncSession, $plc, $u>>::compile(&op)?;
                                 let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
                                 let op = op.clone(); // Needed for the error message for KernelError
-                                // let tasks = std::sync::Arc::clone(&sess.tasks);
+                                let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
-                                    Err(crate::error::Error::KernelError(format!("Just goiing to error out on {:?}", op)))
-                                    // let res = k(&sess, &plc);
-                                    // println!("Got result in a kernel {:?}", res);
-                                    // let y: $u = res?;
-                                    // if y.placement()? == plc.clone().into() {
-                                    //     crate::execution::map_send_result(sender.send(y.into()))?;
-                                    //     Ok(())
-                                    // } else {
-                                    //     Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
-                                    // }
+                                    // Err(crate::error::Error::KernelError(format!("Just goiing to error out on {:?}", op)))
+                                    let res = k(&sess, &plc);
+                                    println!("Got result in a kernel {:?}", res);
+                                    let y: $u = res?;
+                                    if y.placement()? == plc.clone().into() {
+                                        crate::execution::map_send_result(sender.send(y.into()))?;
+                                        Ok(())
+                                    } else {
+                                        Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                    }
                                 });
-                                let tasks = sess.tasks.read().unwrap();
+                                let tasks = tasks.read().unwrap();
                                 tasks.push(task);
 
                                 Ok(result)

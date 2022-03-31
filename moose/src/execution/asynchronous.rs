@@ -8,12 +8,13 @@ use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
 use crate::storage::{AsyncStorage, LocalAsyncStorage};
 use futures::future::{Map, Shared};
+use futures::stream::FuturesUnordered;
+use futures::StreamExt;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::sync::{Arc, RwLock};
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
-use futures::stream::FuturesUnordered;
 
 pub type AsyncSender = oneshot::Sender<Value>;
 
@@ -68,7 +69,6 @@ impl AsyncSessionHandle {
 
     pub async fn join_on_first_error(self) -> anyhow::Result<()> {
         use crate::error::Error::{OperandUnavailable, ResultUnused};
-        use futures::StreamExt;
 
         let mut tasks_guard = self.tasks.write().unwrap();
         // TODO (lvorona): should really find a way to use FuturesUnordered here
@@ -81,7 +81,7 @@ impl AsyncSessionHandle {
 
         // for r in results {
         //     if let Some(x) = r {
-                
+
         //     }
 
         // };
@@ -110,23 +110,38 @@ impl AsyncSessionHandle {
         // while let Some(x) = errors.next().await {
         // }
 
-        let len = tasks_guard.len();
+        // let len = tasks_guard.len();
+        // let mut error_count = 0;
 
         // for i in 0..len {
-        //     let x = tasks_guard.select_next_some().await;
+        //     let x = tokio::task::unconstrained(tasks_guard.select_next_some()).await;
         //     println!("Got some result for op {}/{}  {:?}", i, len, x);
-        //     match x {
-        //         Ok(Ok(_)) => {
-        //             continue;
-        //         }
-        //         Ok(Err(e)) => {
-        //             match e {
-        //                 // OperandUnavailable and ResultUnused are typically not root causes.
-        //                 // Wait to get an error that would indicate the root cause of the problem,
-        //                 // and return it instead.
-        //                 OperandUnavailable => continue,
-        //                 ResultUnused => continue,
-        //                 _ => {
+        //     error_count = error_count + 1;
+        //     if error_count > 130 {
+        //         match x {
+        //             Ok(Ok(_)) => {
+        //                 continue;
+        //             }
+        //             Ok(Err(e)) => {
+        //                 match e {
+        //                     // OperandUnavailable and ResultUnused are typically not root causes.
+        //                     // Wait to get an error that would indicate the root cause of the problem,
+        //                     // and return it instead.
+        //                     OperandUnavailable => continue,
+        //                     ResultUnused => continue,
+        //                     _ => {
+        //                         // TODO: Do we still need manual abort?
+        //                         // for task in tasks {
+        //                         //     task.abort();
+        //                         // }
+        //                         return Err(anyhow::Error::from(e));
+        //                     }
+        //                 }
+        //             }
+        //             Err(e) => {
+        //                 if e.is_cancelled() {
+        //                     continue;
+        //                 } else if e.is_panic() {
         //                     // TODO: Do we still need manual abort?
         //                     // for task in tasks {
         //                     //     task.abort();
@@ -135,27 +150,19 @@ impl AsyncSessionHandle {
         //                 }
         //             }
         //         }
-        //         Err(e) => {
-        //             if e.is_cancelled() {
-        //                 continue;
-        //             } else if e.is_panic() {
-        //                 // TODO: Do we still need manual abort?
-        //                 // for task in tasks {
-        //                 //     task.abort();
-        //                 // }
-        //                 return Err(anyhow::Error::from(e));
-        //             }
-        //         }
         //     }
 
         // }
 
-        let mut stream = tasks_guard.by_ref().enumerate();
+        // let mut stream = tasks_guard.by_ref().enumerate();
 
-        // while let Some(x) = tasks_guard.next().await {
-        while let Some((i, x)) = stream.next().await {
+        // while let Some(x) = tokio::task::unconstrained(tasks_guard.next()).await {
+        while let Some(x) = tasks_guard.next().await {
+            // while let Some((i, x)) = stream.next().await {
             // let x = x.await;
-            println!("Got some result for op {}/{}  {:?}", i, len, x);
+            // println!("Got some result for op {}/{}  {:?}", error_count, len, x);
+            // error_count = error_count + 1;
+            // if error_count > 130 {
             match x {
                 Ok(Ok(_)) => {
                     continue;
@@ -188,6 +195,7 @@ impl AsyncSessionHandle {
                     }
                 }
             }
+            // }
         }
 
         // let mut i = 0;
@@ -232,9 +240,9 @@ impl AsyncSessionHandle {
     }
 }
 
+use futures::task::Context;
 use std::future::Future;
 use std::pin::Pin;
-use futures::task::Context;
 use std::task::Poll;
 impl Future for AsyncSessionHandle {
     type Output = anyhow::Result<()>;
@@ -292,8 +300,8 @@ impl Future for AsyncSessionHandle {
                 match f_state {
                     Poll::Pending => {
                         pending_count = pending_count + 1;
-                        continue
-                    },
+                        continue;
+                    }
                     Poll::Ready(x) => {
                         completed[i] = true;
                         completed_count = completed_count + 1;
@@ -323,23 +331,24 @@ impl Future for AsyncSessionHandle {
                                 }
                             }
                         }
-
                     }
                 }
             }
             if pending_count == 0 {
                 println!("Returning ready");
-                return Poll::Ready(Ok(()))
+                return Poll::Ready(Ok(()));
             } else {
                 if prev_completed != completed_count {
-                    println!("Out of {} futures completed {} and pending {}", len, completed_count, pending_count);
+                    println!(
+                        "Out of {} futures completed {} and pending {}",
+                        len, completed_count, pending_count
+                    );
                 }
                 prev_completed = completed_count;
             }
         }
     }
 }
-
 
 /// Session object for asynchronous execution.
 #[derive(Clone)]
@@ -869,13 +878,26 @@ impl AsyncTestRuntime {
             session_handles.push(AsyncSessionHandle::for_session(&moose_session))
         }
 
-        for handle in session_handles {
-            // let result = rt.block_on(handle.join_on_first_error());
-            let result = rt.block_on(handle);
+        let mut futures = FuturesUnordered::new();
+        for h in session_handles {
+            futures.push(h.join_on_first_error());
+        }
+        while let Some(result) = rt.block_on(futures.next()) {
             if let Err(e) = result {
                 return Err(Error::TestRuntime(e.to_string()));
             }
         }
+        // let results = rt.block_on(futures::future::join_all(
+        //     session_handles.iter().map(|h| h.join_on_first_error()),
+        // ));
+        // // for handle in session_handles {
+        // //     let result = rt.block_on(handle.join_on_first_error());
+        // for result in results {
+        //     // let result = rt.block_on(handle);
+        //     if let Err(e) = result {
+        //         return Err(Error::TestRuntime(e.to_string()));
+        //     }
+        // }
 
         let outputs = rt.block_on(async {
             let mut outputs: HashMap<String, Value> = HashMap::new();
