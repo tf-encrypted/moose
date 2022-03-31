@@ -55,12 +55,14 @@ pub struct AsyncSessionHandle {
     // pub tasks: Arc<RwLock<Vec<crate::execution::AsyncTask>>>,
     // pub tasks: Arc<RwLock<Vec<tokio::task::JoinHandle<Result<()>>>>>,
     pub tasks: Arc<RwLock<FuturesUnordered<AsyncTask>>>,
+    completed: RwLock<Vec<bool>>,
 }
 
 impl AsyncSessionHandle {
     pub fn for_session(session: &AsyncSession) -> Self {
         AsyncSessionHandle {
             tasks: Arc::clone(&session.tasks),
+            completed: RwLock::new(vec![]),
         }
     }
 
@@ -84,9 +86,76 @@ impl AsyncSessionHandle {
 
         // };
 
-        while let Some(x) = tasks_guard.next().await {
+        // let err = tasks_guard.by_ref().any(|x| async move {
+        //     println!("Got some result {:?}", x);
+        //     match x {
+        //         Ok(Ok(_)) => false,
+        //         Ok(Err(e)) => true,
+        //         Err(e) => true,
+        //     }
+        // }).await;
+        // if err {
+        //     panic!("Errored!");
+        // }
+
+        // let mut errors = tasks_guard.by_ref().scan(0, |state, x| {
+        //     println!("Got some result {:?}", x);
+        //     match x {
+        //         Ok(Ok(_)) => futures::future::ready(Some(x)),
+        //         Ok(Err(e)) => futures::future::ready(None),
+        //         Err(e) => futures::future::ready(None),
+        //     }
+        // });
+
+        // while let Some(x) = errors.next().await {
+        // }
+
+        let len = tasks_guard.len();
+
+        // for i in 0..len {
+        //     let x = tasks_guard.select_next_some().await;
+        //     println!("Got some result for op {}/{}  {:?}", i, len, x);
+        //     match x {
+        //         Ok(Ok(_)) => {
+        //             continue;
+        //         }
+        //         Ok(Err(e)) => {
+        //             match e {
+        //                 // OperandUnavailable and ResultUnused are typically not root causes.
+        //                 // Wait to get an error that would indicate the root cause of the problem,
+        //                 // and return it instead.
+        //                 OperandUnavailable => continue,
+        //                 ResultUnused => continue,
+        //                 _ => {
+        //                     // TODO: Do we still need manual abort?
+        //                     // for task in tasks {
+        //                     //     task.abort();
+        //                     // }
+        //                     return Err(anyhow::Error::from(e));
+        //                 }
+        //             }
+        //         }
+        //         Err(e) => {
+        //             if e.is_cancelled() {
+        //                 continue;
+        //             } else if e.is_panic() {
+        //                 // TODO: Do we still need manual abort?
+        //                 // for task in tasks {
+        //                 //     task.abort();
+        //                 // }
+        //                 return Err(anyhow::Error::from(e));
+        //             }
+        //         }
+        //     }
+
+        // }
+
+        let mut stream = tasks_guard.by_ref().enumerate();
+
+        // while let Some(x) = tasks_guard.next().await {
+        while let Some((i, x)) = stream.next().await {
             // let x = x.await;
-            println!("Got some result {:?}", x);
+            println!("Got some result for op {}/{}  {:?}", i, len, x);
             match x {
                 Ok(Ok(_)) => {
                     continue;
@@ -120,9 +189,144 @@ impl AsyncSessionHandle {
                 }
             }
         }
+
+        // let mut i = 0;
+        // for task in tasks_guard.iter_mut() {
+        //     let x = task.await;
+        //     println!("Got some result for op {}/{}  {:?}", i, len, x);
+        //     i = i + 1;
+        //     match x {
+        //         Ok(Ok(_)) => {
+        //             continue;
+        //         }
+        //         Ok(Err(e)) => {
+        //             match e {
+        //                 // OperandUnavailable and ResultUnused are typically not root causes.
+        //                 // Wait to get an error that would indicate the root cause of the problem,
+        //                 // and return it instead.
+        //                 OperandUnavailable => continue,
+        //                 ResultUnused => continue,
+        //                 _ => {
+        //                     // TODO: Do we still need manual abort?
+        //                     // for task in tasks {
+        //                     //     task.abort();
+        //                     // }
+        //                     return Err(anyhow::Error::from(e));
+        //                 }
+        //             }
+        //         }
+        //         Err(e) => {
+        //             if e.is_cancelled() {
+        //                 continue;
+        //             } else if e.is_panic() {
+        //                 // TODO: Do we still need manual abort?
+        //                 // for task in tasks {
+        //                 //     task.abort();
+        //                 // }
+        //                 return Err(anyhow::Error::from(e));
+        //             }
+        //         }
+        //     }
+        // }
         Ok(())
     }
 }
+
+use std::future::Future;
+use std::pin::Pin;
+use futures::task::Context;
+use std::task::Poll;
+impl Future for AsyncSessionHandle {
+    type Output = anyhow::Result<()>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        use crate::error::Error::{OperandUnavailable, ResultUnused};
+        let mut tasks_guard = self.tasks.write().unwrap();
+        let mut completed = self.completed.write().unwrap();
+        let len = tasks_guard.len();
+        // use futures::StreamExt;
+        // while let Poll::Ready(Some(x)) = tasks_guard.poll_next_unpin(cx) {
+        //     println!("Got some result for op {:?}", x);
+        //     match x {
+        //         Ok(Ok(_)) => {
+        //             continue;
+        //         }
+        //         Ok(Err(e)) => {
+        //             match e {
+        //                 // OperandUnavailable and ResultUnused are typically not root causes.
+        //                 // Wait to get an error that would indicate the root cause of the problem,
+        //                 // and return it instead.
+        //                 OperandUnavailable => continue,
+        //                 ResultUnused => continue,
+        //                 _ => {
+        //                     return Poll::Ready(Err(anyhow::Error::from(e)));
+        //                 }
+        //             }
+        //         }
+        //         Err(e) => {
+        //             if e.is_cancelled() {
+        //                 continue;
+        //             } else if e.is_panic() {
+        //                 return Poll::Ready(Err(anyhow::Error::from(e)));
+        //             }
+        //         }
+        //     }
+        // };
+
+        // Never yielding busy-loop implementation
+        loop {
+            println!("Polling futures");
+            for (i, task) in tasks_guard.iter_mut().enumerate() {
+                if completed.len() <= i {
+                    completed.push(false);
+                }
+                if completed[i] {
+                    continue;
+                }
+                let f_state = Pin::new(task).poll(cx);
+                // println!("State of a task: {:?}", f_state);
+                match f_state {
+                    Poll::Pending => continue,
+                    Poll::Ready(x) => {
+                        completed[i] = true;
+
+                        println!("Got some result for op {}/{} {:?}", i, len, x);
+                        match x {
+                            Ok(Ok(_)) => {
+                                continue;
+                            }
+                            Ok(Err(e)) => {
+                                match e {
+                                    // OperandUnavailable and ResultUnused are typically not root causes.
+                                    // Wait to get an error that would indicate the root cause of the problem,
+                                    // and return it instead.
+                                    OperandUnavailable => continue,
+                                    ResultUnused => continue,
+                                    _ => {
+                                        return Poll::Ready(Err(anyhow::Error::from(e)));
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                if e.is_cancelled() {
+                                    continue;
+                                } else if e.is_panic() {
+                                    return Poll::Ready(Err(anyhow::Error::from(e)));
+                                }
+                            }
+                        }
+
+                    }
+                }
+            }
+            if completed.iter().all(|x| *x) {
+                println!("Returning ready");
+                return Poll::Ready(Ok(()))
+            }
+        }
+    }
+}
+
 
 /// Session object for asynchronous execution.
 #[derive(Clone)]
@@ -653,7 +857,8 @@ impl AsyncTestRuntime {
         }
 
         for handle in session_handles {
-            let result = rt.block_on(handle.join_on_first_error());
+            // let result = rt.block_on(handle.join_on_first_error());
+            let result = rt.block_on(handle);
             if let Err(e) = result {
                 return Err(Error::TestRuntime(e.to_string()));
             }
