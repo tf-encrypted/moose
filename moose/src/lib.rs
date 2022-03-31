@@ -345,7 +345,7 @@ macro_rules! ng_derive_runtime_kernel {
     // (binary, $k:expr, $self:ident) => {
     //     crate::error::Result::<crate::kernels::TypedBinaryKernel<_, _, _, _, _>>::Ok(Box::new($k))
     // };
-    (sync ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $self:ident) => {
+    (sync ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $op:ident) => {
         Ok(NgKernel::Ternary {
             flavor: NgKernelFlavor::Runtime,
             closure: Box::new(
@@ -354,15 +354,15 @@ macro_rules! ng_derive_runtime_kernel {
                     let x0: $t0 = x0.try_into()?;
                     let x1: $t1 = x1.try_into()?;
                     let x2: $t2 = x2.try_into()?;
-                    
+
                     let y: $u = $k(sess, &plc, x0, x1, x2)?;
                     Ok(y.into())
-                }
-            )
+                },
+            ),
         })
     };
 
-    (sync ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $self:ident) => {
+    (sync ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $op:ident) => {
         Ok(NgKernel::Ternary {
             flavor: NgKernelFlavor::Concrete,
             closure: Box::new(
@@ -371,15 +371,15 @@ macro_rules! ng_derive_runtime_kernel {
                     let x0: $t0 = x0.try_into()?;
                     let x1: $t1 = x1.try_into()?;
                     let x2: $t2 = x2.try_into()?;
-                    
+
                     let y: $u = $k(sess, &plc, x0, x1, x2)?;
                     Ok(y.into())
-                }
-            )
+                },
+            ),
         })
     };
 
-    (sync ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $self:ident) => {
+    (sync ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $op:ident) => {
         Ok(NgKernel::Ternary {
             flavor: NgKernelFlavor::Hybrid,
             closure: Box::new(
@@ -388,115 +388,150 @@ macro_rules! ng_derive_runtime_kernel {
                     let x0: $t0 = x0.try_into()?;
                     let x1: $t1 = x1.try_into()?;
                     let x2: $t2 = x2.try_into()?;
-                    
+
                     let y: $u = $k(sess, &plc, x0, x1, x2)?;
                     Ok(y.into())
-                }
-            )
+                },
+            ),
         })
     };
 
-    (symbolic ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $self:ident) => {
+    (symbolic ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $op:ident) => {
         Ok(NgKernel::Ternary {
             flavor: NgKernelFlavor::Runtime,
             closure: Box::new(
-                move |sess: &SymbolicSession, plc: &Placement, x0: SymbolicValue, x1: SymbolicValue, x2: SymbolicValue| {
-                    // let plc: $plc = plc.clone().try_into()?;
-                    // let x0: $t0 = x0.try_into()?;
-                    // let x1: $t1 = x1.try_into()?;
-                    // let x2: $t2 = x2.try_into()?;
-                    
-                    // let y: $u = $k(sess, &plc, x0, x1, x2)?;
-                    // Ok(y.into())
-                    unimplemented!()
-                }
-            )
+                move |sess: &SymbolicSession,
+                      plc: &Placement,
+                      v0: SymbolicValue,
+                      v1: SymbolicValue,
+                      v2: SymbolicValue| {
+                    use crate::execution::symbolic::Symbolic;
+
+                    let plc: $plc = plc.clone().try_into()?;
+                    let v0: <$t0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
+                    let v1: <$t1 as SymbolicType>::Type = SymbolicValue::try_into(v1)?;
+                    let v2: <$t2 as SymbolicType>::Type = SymbolicValue::try_into(v2)?;
+
+                    match (v0, v1, v2) {
+                        (
+                            Symbolic::Symbolic(x0),
+                            Symbolic::Symbolic(x1),
+                            Symbolic::Symbolic(x2),
+                        ) => {
+                            let h = sess.add_operation(&$op, &[&x0.op, &x1.op, &x2.op], &plc);
+                            let h: <$u as SymbolicType>::Type = Symbolic::Symbolic(h);
+                            Ok(SymbolicValue::from(h))
+                        }
+                        _ => unimplemented!(),
+                    }
+                },
+            ),
         })
     };
 
-    (symbolic ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $self:ident) => {
+    (symbolic ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $op:ident) => {
         Ok(NgKernel::Ternary {
             flavor: NgKernelFlavor::Concrete,
             closure: Box::new(
-                move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue, v1: SymbolicValue, v2: SymbolicValue| {
-                    use crate::execution::symbolic::{Symbolic};
+                move |sess: &SymbolicSession,
+                      plc: &Placement,
+                      v0: SymbolicValue,
+                      v1: SymbolicValue,
+                      v2: SymbolicValue| {
+                    use crate::execution::symbolic::Symbolic;
 
                     let plc: $plc = plc.clone().try_into()?;
-                    let v0: Symbolic<_> = v0.try_into()?;
-                    let v1: Symbolic<_> = v1.try_into()?;
-                    let v2: Symbolic<_> = v2.try_into()?;
+                    let v0: <$t0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
+                    let v1: <$t1 as SymbolicType>::Type = SymbolicValue::try_into(v1)?;
+                    let v2: <$t2 as SymbolicType>::Type = SymbolicValue::try_into(v2)?;
 
                     match (v0, v1, v2) {
-                        (Symbolic::Concrete(x0), Symbolic::Concrete(x1), Symbolic::Concrete(x2)) => {
+                        (
+                            Symbolic::Concrete(x0),
+                            Symbolic::Concrete(x1),
+                            Symbolic::Concrete(x2),
+                        ) => {
                             let y = $k(sess, &plc, x0, x1, x2)?;
                             Ok(SymbolicValue::from(Symbolic::Concrete(y)))
                         }
-                        _ => unimplemented!()
+                        _ => unimplemented!(),
                     }
-                }
-            )
+                },
+            ),
         })
     };
 
-    (symbolic ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $self:ident) => {
+    (symbolic ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $op:ident) => {
         Ok(NgKernel::Ternary {
             flavor: NgKernelFlavor::Hybrid,
             closure: Box::new(
-                move |sess: &SymbolicSession, plc: &Placement, x0: SymbolicValue, x1: SymbolicValue, x2: SymbolicValue| {
-                    // let plc: $plc = plc.clone().try_into()?;
-                    // let x0: $t0 = x0.try_into()?;
-                    // let x1: $t1 = x1.try_into()?;
-                    // let x2: $t2 = x2.try_into()?;
-                    
-                    // let y: $u = $k(sess, &plc, x0, x1, x2)?;
-                    // Ok(y.into())
-                    unimplemented!()
-                }
-            )
-        })
-    };
+                move |sess: &SymbolicSession,
+                      plc: &Placement,
+                      v0: SymbolicValue,
+                      v1: SymbolicValue,
+                      v2: SymbolicValue| {
+                    let plc: $plc = plc.clone().try_into()?;
+                    let v0: <$t0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
+                    let v0 = v0.try_into();
 
-    // (sync ternary concrete, $plc:ty, $k:expr, $self:ident) => {
-    //     let closure = Box::new(
-    //         move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
-    //             let plc: $plc = plc.clone().try_into()?;
-    //             let x0: $t0 = x0.try_into()?;
-    //             let x1: $t1 = x1.try_into()?;
-    //             let x2: $t2 = x2.try_into()?;
-                
-    //             let y: $u = $k(sess, &plc, x0, x1, x2)?;
-    //             Ok(y.into())
-    //         }
-    //     );
-    //     Ok(NgKernel::Ternary {
-    //         flavor: NgKernelFlavor::Concrete,
-    //         closure,
-    //     })
-    // };
-    // (sync ternary hybrid, $plc:ty, $k:expr, $self:ident) => {
-    //     let closure = Box::new(
-    //         move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
-    //             let plc: $plc = plc.clone().try_into()?;
-    //             let x0: $t0 = x0.try_into()?;
-    //             let x1: $t1 = x1.try_into()?;
-    //             let x2: $t2 = x2.try_into()?;
-                
-    //             let y: $u = $k(sess, &plc, x0, x1, x2)?;
-    //             Ok(y.into())
-    //         }
-    //     );
-    //     Ok(NgKernel::Ternary {
-    //         flavor: NgKernelFlavor::Hybrid,
-    //         closure,
-    //     })
-    // };
-    // (variadic, $k:expr, $self:ident) => {
-    //     crate::error::Result::<crate::kernels::TypedVariadicKernel<_, _, _, _>>::Ok(
-    //         Box::new(move |sess, plc, xs| {
-    //             $k(sess, plc, &xs)
-    //         })
-    //     )
-    // };
+                    let v1: <$t1 as SymbolicType>::Type = SymbolicValue::try_into(v1)?;
+                    let v1 = v1.try_into();
+
+                    let v2: <$t2 as SymbolicType>::Type = SymbolicValue::try_into(v2)?;
+                    let v2 = v2.try_into();
+
+                    match (v0, v1, v2) {
+                        (Ok(x0), Ok(x1), Ok(x2)) => {
+                            let y = $k(sess, &plc, x0, x1, x2)?;
+                            let y: <$u as SymbolicType>::Type = y.into();
+                            Ok(SymbolicValue::from(y))
+                        }
+                        _ => unimplemented!(),
+                    }
+                },
+            ),
+        })
+    }; // (sync ternary concrete, $plc:ty, $k:expr, $self:ident) => {
+       //     let closure = Box::new(
+       //         move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
+       //             let plc: $plc = plc.clone().try_into()?;
+       //             let x0: $t0 = x0.try_into()?;
+       //             let x1: $t1 = x1.try_into()?;
+       //             let x2: $t2 = x2.try_into()?;
+
+       //             let y: $u = $k(sess, &plc, x0, x1, x2)?;
+       //             Ok(y.into())
+       //         }
+       //     );
+       //     Ok(NgKernel::Ternary {
+       //         flavor: NgKernelFlavor::Concrete,
+       //         closure,
+       //     })
+       // };
+       // (sync ternary hybrid, $plc:ty, $k:expr, $self:ident) => {
+       //     let closure = Box::new(
+       //         move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
+       //             let plc: $plc = plc.clone().try_into()?;
+       //             let x0: $t0 = x0.try_into()?;
+       //             let x1: $t1 = x1.try_into()?;
+       //             let x2: $t2 = x2.try_into()?;
+
+       //             let y: $u = $k(sess, &plc, x0, x1, x2)?;
+       //             Ok(y.into())
+       //         }
+       //     );
+       //     Ok(NgKernel::Ternary {
+       //         flavor: NgKernelFlavor::Hybrid,
+       //         closure,
+       //     })
+       // };
+       // (variadic, $k:expr, $self:ident) => {
+       //     crate::error::Result::<crate::kernels::TypedVariadicKernel<_, _, _, _>>::Ok(
+       //         Box::new(move |sess, plc, xs| {
+       //             $k(sess, plc, &xs)
+       //         })
+       //     )
+       // };
 }
 
 #[allow(unused_macros)]
@@ -4349,14 +4384,15 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SymbolicSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![symbolic ternary $flavour $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            let op = self.clone();
+                            ng_derive_runtime_kernel![symbolic ternary $flavour $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, op]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
                 }
             }
         }
-        
+
         #[cfg(feature = "sync_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
@@ -4478,7 +4514,7 @@ macro_rules! modelled_kernel {
                 }
             }
         }
-        
+
         #[cfg(feature = "compile")]
         impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession> for $op {
             fn compile(

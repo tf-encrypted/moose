@@ -47,22 +47,21 @@ pub enum NgKernelFlavor {
     Hybrid,
 }
 
-pub type NgTernaryKernel<S> =
-    Box<
-        dyn Fn(
-            &S,
-            &Placement, // TODO get rid of this?
-            <S as Session>::Value,
-            <S as Session>::Value,
-            <S as Session>::Value,
-        ) -> Result<<S as Session>::Value>
-    >;
+pub type NgTernaryKernel<S> = Box<
+    dyn Fn(
+        &S,
+        &Placement, // TODO get rid of this?
+        <S as Session>::Value,
+        <S as Session>::Value,
+        <S as Session>::Value,
+    ) -> Result<<S as Session>::Value>,
+>;
 
 pub enum NgKernel<S: Session> {
-    Ternary { 
+    Ternary {
         flavor: NgKernelFlavor,
         closure: NgTernaryKernel<S>,
-    }
+    },
 }
 
 pub trait NgDispatchKernel<S: Session> {

@@ -149,7 +149,12 @@ impl DispatchKernel<SyncSession> for ReceiveOp {
 impl Session for SyncSession {
     type Value = Value;
 
-    fn execute(&self, op: &Operator, plc: &Placement, mut operands: Operands<Value>) -> Result<Value> {
+    fn execute(
+        &self,
+        op: &Operator,
+        plc: &Placement,
+        mut operands: Operands<Value>,
+    ) -> Result<Value> {
         use Operator::*;
         let kernel_output = match op {
             Send(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
