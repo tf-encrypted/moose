@@ -274,21 +274,29 @@ impl Future for AsyncSessionHandle {
         // };
 
         // Never yielding busy-loop implementation
+        let mut prev_completed = 0;
         loop {
-            println!("Polling futures");
+            // println!("Polling futures");
+            let mut completed_count = 0;
+            let mut pending_count = 0;
             for (i, task) in tasks_guard.iter_mut().enumerate() {
                 if completed.len() <= i {
                     completed.push(false);
                 }
                 if completed[i] {
+                    completed_count = completed_count + 1;
                     continue;
                 }
                 let f_state = Pin::new(task).poll(cx);
                 // println!("State of a task: {:?}", f_state);
                 match f_state {
-                    Poll::Pending => continue,
+                    Poll::Pending => {
+                        pending_count = pending_count + 1;
+                        continue
+                    },
                     Poll::Ready(x) => {
                         completed[i] = true;
+                        completed_count = completed_count + 1;
 
                         println!("Got some result for op {}/{} {:?}", i, len, x);
                         match x {
@@ -319,9 +327,14 @@ impl Future for AsyncSessionHandle {
                     }
                 }
             }
-            if completed.iter().all(|x| *x) {
+            if pending_count == 0 {
                 println!("Returning ready");
                 return Poll::Ready(Ok(()))
+            } else {
+                if prev_completed != completed_count {
+                    println!("Out of {} futures completed {} and pending {}", len, completed_count, pending_count);
+                }
+                prev_completed = completed_count;
             }
         }
     }
