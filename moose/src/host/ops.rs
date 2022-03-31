@@ -80,13 +80,10 @@ impl InputOp {
         O: TryFrom<Value, Error = Error> + Debug,
         HostPlacement: PlacementPlace<S, O>,
     {
-        println!("Trying to input an argument with name {}", arg_name);
         let value = sess
             .find_argument(&arg_name)
             .ok_or_else(|| Error::MissingArgument(arg_name.clone()))?;
-        println!("Found an argument {:?}", value);
         let value = plc.place(sess, value.try_into()?);
-        println!("Converted an argument to {:?}", value);
         Ok(value)
     }
 

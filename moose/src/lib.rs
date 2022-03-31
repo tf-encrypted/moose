@@ -238,7 +238,6 @@ macro_rules! concrete_dispatch_kernel {
 
                             Ok(Box::new(move |sess, operands: Operands<crate::computation::Value>| {
                                 assert_eq!(operands.len(), 0);
-
                                 let y: $u = k(sess, &plc)?;
                                 if y.placement()? == plc.clone().into() {
                                     Ok(y.into())
@@ -286,9 +285,7 @@ macro_rules! concrete_dispatch_kernel {
                                 let op = op.clone(); // Needed for the error message for KernelError
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
-                                    // Err(crate::error::Error::KernelError(format!("Just goiing to error out on {:?}", op)))
                                     let res = k(&sess, &plc);
-                                    println!("Got result in a kernel {:?}", res);
                                     let y: $u = res?;
                                     if y.placement()? == plc.clone().into() {
                                         crate::execution::map_send_result(sender.send(y.into()))?;
