@@ -51,6 +51,7 @@ SUPPORTED_TYPES = [
     ops.SubOperation,
     ops.SumOperation,
     ops.TransposeOperation,
+    ops.ZerosOperation,
     plc.HostPlacement,
     plc.ReplicatedPlacement,
     plc.MirroredPlacement,

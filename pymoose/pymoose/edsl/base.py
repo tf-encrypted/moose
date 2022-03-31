@@ -96,7 +96,7 @@ class Argument:
 @dataclass
 class Expression:
     placement: PlacementExpression
-    inputs: List
+    inputs: List["Expression"]
     vtype: Optional[ty.ValueType]
 
     def __hash__(self):
@@ -177,8 +177,12 @@ class SqueezeExpression(Expression):
 
 @dataclass
 class OnesExpression(Expression):
-    dtype: dtypes.DType
+    def __hash__(self):
+        return id(self)
 
+
+@dataclass
+class ZerosExpression(Expression):
     def __hash__(self):
         return id(self)
 
@@ -349,6 +353,7 @@ class MuxExpression(Expression):
 
 def add_n(arrays, placement=None):
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     if not isinstance(arrays, (tuple, list)):
         raise ValueError(
             "Inputs to `add_n` must be array-like, found argument "
@@ -375,11 +380,13 @@ def add_n(arrays, placement=None):
 
 def identity(x, placement=None):
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return IdentityExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def concatenate(arrays, axis=0, placement=None):
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     if not isinstance(arrays, (tuple, list)):
         raise ValueError(
             "Inputs to `concatenate` must be array-like, found argument "
@@ -409,6 +416,7 @@ def concatenate(arrays, axis=0, placement=None):
 
 def maximum(arrays, placement=None):
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     if not isinstance(arrays, (tuple, list)):
         raise ValueError(
             "Inputs to `concatenate` must be array-like, found argument "
@@ -436,6 +444,7 @@ def maximum(arrays, placement=None):
 
 def decrypt(key, ciphertext, placement=None):
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
 
     # key expr typecheck
     if not isinstance(key.vtype, ty.AesKeyType):
@@ -460,6 +469,7 @@ def decrypt(key, ciphertext, placement=None):
 
 def constant(value, dtype=None, vtype=None, placement=None):
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     vtype = _maybe_lift_dtype_to_tensor_vtype(dtype, vtype)
 
     if isinstance(value, np.ndarray):
@@ -499,6 +509,7 @@ def add(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "add")
     return BinaryOpExpression(
         op_name="add", placement=placement, inputs=[lhs, rhs], vtype=vtype
@@ -509,6 +520,7 @@ def sub(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "sub")
     return BinaryOpExpression(
         op_name="sub", placement=placement, inputs=[lhs, rhs], vtype=vtype
@@ -519,6 +531,7 @@ def mul(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "mul")
     return BinaryOpExpression(
         op_name="mul", placement=placement, inputs=[lhs, rhs], vtype=vtype
@@ -529,6 +542,7 @@ def dot(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "dot")
     return BinaryOpExpression(
         op_name="dot", placement=placement, inputs=[lhs, rhs], vtype=vtype
@@ -539,6 +553,7 @@ def div(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "div")
     return BinaryOpExpression(
         op_name="div", placement=placement, inputs=[lhs, rhs], vtype=vtype
@@ -549,6 +564,7 @@ def less(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return BinaryOpExpression(
         op_name="less",
         placement=placement,
@@ -561,6 +577,7 @@ def logical_or(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "or")
     return BinaryOpExpression(
         op_name="or", placement=placement, inputs=[lhs, rhs], vtype=vtype
@@ -570,6 +587,7 @@ def logical_or(lhs, rhs, placement=None):
 def inverse(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     vtype = x.vtype
     if not isinstance(vtype, ty.TensorType):
         raise ValueError(
@@ -595,6 +613,7 @@ def expand_dims(x, axis, placement=None):
     elif isinstance(axis, int):
         axis = [axis]
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return ExpandDimsExpression(
         placement=placement, inputs=[x], axis=axis, vtype=x.vtype
     )
@@ -603,49 +622,65 @@ def expand_dims(x, axis, placement=None):
 def squeeze(x, axis=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return SqueezeExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
 
 
 def ones(shape, dtype, placement=None):
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     vtype = ty.TensorType(dtype)
-    return OnesExpression(placement=placement, inputs=[shape], dtype=dtype, vtype=vtype)
+    return OnesExpression(placement=placement, inputs=[shape], vtype=vtype)
+
+
+def zeros(shape, dtype, placement=None):
+    assert isinstance(shape, Expression)
+    placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
+    vtype = ty.TensorType(dtype)
+    return ZerosExpression(placement=placement, inputs=[shape], dtype=dtype, vtype=vtype)
 
 
 def square(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return mul(x, x, placement=placement)
 
 
 def sum(x, axis=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return SumExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
 
 
 def mean(x, axis=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return MeanExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
 
 
 def exp(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return ExpExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def sigmoid(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return SigmoidExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def softmax(x, axis, upmost_index, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return SoftmaxExpression(
         placement=placement,
         inputs=[x],
@@ -658,6 +693,7 @@ def softmax(x, axis, upmost_index, placement=None):
 def argmax(x, axis, upmost_index, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return ArgmaxExpression(
         placement=placement,
         inputs=[x],
@@ -670,18 +706,21 @@ def argmax(x, axis, upmost_index, placement=None):
 def log(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return LogExpression(placement=placement, inputs=[x], vtype=x.vtype,)
 
 
 def log2(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return Log2Expression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def shape(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return ShapeExpression(placement=placement, inputs=[x], vtype=ty.ShapeType())
 
 
@@ -699,6 +738,7 @@ def index_axis(x, axis, index, placement=None):
         )
 
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return IndexAxisExpression(
         placement=placement, inputs=[x], axis=axis, index=index, vtype=x.vtype
     )
@@ -709,6 +749,7 @@ def slice(x, begin, end, placement=None):
     assert isinstance(begin, int)
     assert isinstance(end, int)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return SliceExpression(
         placement=placement, inputs=[x], begin=begin, end=end, vtype=x.vtype
     )
@@ -717,6 +758,7 @@ def slice(x, begin, end, placement=None):
 def transpose(x, axes=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return TransposeExpression(
         placement=placement, inputs=[x], axes=axes, vtype=x.vtype
     )
@@ -725,6 +767,7 @@ def transpose(x, axes=None, placement=None):
 def atleast_2d(x, to_column_vector=False, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return AtLeast2DExpression(
         placement=placement,
         inputs=[x],
@@ -741,12 +784,14 @@ def reshape(x, shape, placement=None):
         )
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return ReshapeExpression(placement=placement, inputs=[x, shape], vtype=x.vtype)
 
 
 def abs(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     return AbsExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
@@ -761,6 +806,7 @@ def mux(selector, x, y, placement=None):
     assert isinstance(y.vtype, ty.TensorType), y.vtype
     assert y.vtype.dtype.is_fixedpoint, y.vtype.dtype
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     assert isinstance(placement, ReplicatedPlacementExpression)
     vtype = _assimilate_arg_vtypes(x.vtype, y.vtype, "mux")
     return MuxExpression(placement=placement, inputs=[selector, x, y], vtype=vtype)
@@ -769,6 +815,7 @@ def mux(selector, x, y, placement=None):
 def cast(x, dtype, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
 
     if not isinstance(x.vtype, ty.TensorType):
         raise ValueError(
@@ -808,6 +855,7 @@ def cast(x, dtype, placement=None):
 
 def load(key, query="", dtype=None, vtype=None, placement=None):
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     vtype = _maybe_lift_dtype_to_tensor_vtype(dtype, vtype)
     if isinstance(key, str):
         key = constant(key, placement=placement, vtype=ty.StringType())
@@ -841,6 +889,7 @@ def load(key, query="", dtype=None, vtype=None, placement=None):
 def save(key, value, placement=None):
     assert isinstance(value, Expression)
     placement = placement or get_current_placement()
+    assert isinstance(placement, PlacementExpression)
     if isinstance(key, str):
         key = constant(key, placement=placement, vtype=ty.StringType())
     elif isinstance(key, Argument) and key.vtype not in [ty.StringType(), None]:

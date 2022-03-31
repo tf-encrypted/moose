@@ -129,7 +129,11 @@ class SqueezeOperation(Operation):
 
 @dataclass
 class OnesOperation(Operation):
-    dtype: Optional[Union[float, np.float64, int, np.int64]]
+    pass
+
+@dataclass
+class ZerosOperation(Operation):
+    pass
 
 
 @dataclass

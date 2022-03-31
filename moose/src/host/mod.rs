@@ -184,6 +184,10 @@ impl<S: Session, T> PlacementPlace<S, HostTensor<T>> for HostPlacement {
     }
 }
 
+impl<T> TensorLike for HostTensor<T> {
+    type Scalar = T;
+}
+
 impl<T> HostTensor<T>
 where
     T: LinalgScalar,

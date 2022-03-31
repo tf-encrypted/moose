@@ -390,13 +390,28 @@ impl DotOp {
 }
 
 impl OnesOp {
-    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
-        _sess: &S,
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
+        sess: &S,
         plc: &HostPlacement,
         shape: HostShape,
-    ) -> Result<HostTensor<T>> {
-        let raw_shape = shape.0;
-        Ok(HostTensor(ArcArrayD::ones(raw_shape.0), plc.clone()))
+    ) -> Result<HostTensor<T>> 
+    where
+        HostPlacement: PlacementOnes<S, HostShape, HostTensor<T>>
+    {
+        Ok(plc.ones(sess, &shape))
+    }
+}
+
+impl ZerosOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
+        sess: &S,
+        plc: &HostPlacement,
+        shape: HostShape,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementZeros<S, HostShape, HostTensor<T>>
+    {
+        Ok(plc.zeros(sess, &shape))
     }
 }
 

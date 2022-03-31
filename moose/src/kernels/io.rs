@@ -124,7 +124,7 @@ kernel! {
         (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [runtime] Self::non_placing_kernel),
         (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::non_placing_kernel),
         (HostPlacement, (Tensor) -> Tensor => [concrete] Self::logical_kernel),
-        (HostPlacement, (BooleanTensor) -> BooleanTensor => [hybrid] Self::bool_kernel),
+        (HostPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::bool_kernel),
         (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_kernel),
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_kernel),
     ]

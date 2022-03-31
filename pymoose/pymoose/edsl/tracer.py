@@ -494,6 +494,23 @@ class AstTracer:
             )
         )
 
+    def visit_ZerosExpression(self, zeros_expression):
+        assert isinstance(zeros_expression, expr.ZerosExpression)
+        (shape_expression,) = zeros_expression.inputs
+        shape_operation = self.visit(shape_expression)
+        placement = self.visit_placement_expression(zeros_expression.placement)
+        return self.computation.add_operation(
+            ops.ZerosOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("zeros"),
+                inputs={"shape": shape_operation.name},
+                signature=ops.OpSignature(
+                    input_types={"shape": shape_operation.return_type},
+                    return_type=zeros_expression.vtype,
+                ),
+            )
+        )
+
     def visit_SumExpression(self, sum_expression):
         assert isinstance(sum_expression, expr.SumExpression)
         (x_expression,) = sum_expression.inputs

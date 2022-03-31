@@ -201,6 +201,39 @@ where
     }
 }
 
+modelled_kernel! {
+    PlacementZeros::zeros, ZerosOp,
+    [
+        (HostPlacement, (Shape) -> Tensor => [concrete] custom |op| {
+            use crate::logical::{AbstractTensor, TensorDType};
+            match op.sig.ret() {
+                Ty::Tensor(TensorDType::Float32) => Ok(Box::new(move |sess, plc, shape| {
+                    Self::logical_host_kernel::<_, Float32Tensor, _, _>(sess, plc, shape).map(AbstractTensor::Float32)
+                })),
+                Ty::Tensor(TensorDType::Float64) => Ok(Box::new(move |sess, plc, shape| {
+                    Self::logical_host_kernel::<_, Float64Tensor, _, _>(sess, plc, shape).map(AbstractTensor::Float64)
+                })),
+                other => {
+                    return Err(Error::UnimplementedOperator(
+                        format!("Cannot build ones of type {:?}", other)))
+                },
+            }
+        }),
+        // We do not support the ReplicatedPlacement: PlacementFill yet, hence we do not support Ones.
+        // Also, logical Tensor can only hold Host tensors at the moment.
+        // (ReplicatedPlacement, (HostShape) -> Tensor => [hybrid] Self::logical_rep_kernel),
+        (HostPlacement, (HostShape) -> Float32Tensor => [hybrid] Self::host_float_kernel),
+        (HostPlacement, (HostShape) -> Float64Tensor => [hybrid] Self::host_float_kernel),
+        (HostPlacement, (HostShape) -> HostFloat32Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostFloat64Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostInt8Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostInt16Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostInt32Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostInt64Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostShape) -> HostUint64Tensor => [runtime] Self::host_kernel),
+    ]
+}
+
 pub trait PlacementOnes<S: Session, ShapeT, O> {
     fn ones(&self, sess: &S, shape: &ShapeT) -> O;
 }
