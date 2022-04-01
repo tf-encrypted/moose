@@ -2616,31 +2616,31 @@ mod tests {
                         [
                             Symbolic::Symbolic(SymbolicHandle {
                                 op: format!("{}{}", name, &"00"),
-                                plc: alice.clone(),
+                                plc: Placement::from(alice),
                             }),
                             Symbolic::Symbolic(SymbolicHandle {
                                 op: format!("{}{}", name, &"01"),
-                                plc: alice.clone(),
+                                plc: Placement::from(alice),
                             }),
                         ],
                         [
                             Symbolic::Symbolic(SymbolicHandle {
                                 op: format!("{}{}", name, &"10"),
-                                plc: bob.clone(),
+                                plc: Placement::from(bob),
                             }),
                             Symbolic::Symbolic(SymbolicHandle {
                                 op: format!("{}{}", name, &"11"),
-                                plc: bob.clone(),
+                                plc: Placement::from(bob),
                             }),
                         ],
                         [
                             Symbolic::Symbolic(SymbolicHandle {
                                 op: format!("{}{}", name, &"20"),
-                                plc: carole.clone(),
+                                plc: Placement::from(carole),
                             }),
                             Symbolic::Symbolic(SymbolicHandle {
                                 op: format!("{}{}", name, &"21"),
-                                plc: carole.clone(),
+                                plc: Placement::from(carole),
                             }),
                         ],
                     ],

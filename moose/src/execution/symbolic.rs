@@ -14,6 +14,7 @@ use crate::replicated::{RepSetup, ReplicatedPlacement};
 use crate::{MirroredCounterpart, Ring, TensorLike, Underlying};
 use parking_lot::RwLock;
 use std::collections::HashMap;
+use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
 
 /// Wrapper for values used in `SymbolicSession`s
@@ -22,7 +23,7 @@ pub enum Symbolic<T: Placed> {
     /// The value is really symbolic
     ///
     /// It exists only as a handle to an operation.
-    Symbolic(SymbolicHandle<T::Placement>),
+    Symbolic(SymbolicHandle),
 
     /// The value is actually not symbolic
     ///
@@ -47,7 +48,7 @@ impl<T: Placed> Symbolic<T> {
         }
     }
 
-    pub(crate) fn symbolic_handle(&self) -> Option<&SymbolicHandle<T::Placement>> {
+    pub(crate) fn symbolic_handle(&self) -> Option<&SymbolicHandle> {
         match self {
             Symbolic::Symbolic(h) => Some(h),
             Symbolic::Concrete(_) => None,
@@ -85,22 +86,27 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct SymbolicHandle<P> {
+pub struct SymbolicHandle {
     pub op: String,
     // NOTE if we had a handle to the graph we
     // could perhaps derive the placement instead
-    pub plc: P,
+    pub plc: Placement,
 }
 
 impl<T: Placed> Placed for Symbolic<T>
 where
     T::Placement: Clone,
+    T::Placement: TryFrom<Placement>,
 {
     type Placement = T::Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
         match self {
-            Symbolic::Symbolic(x) => Ok(x.plc.clone()),
+            Symbolic::Symbolic(x) => {
+                // let plc: Placement = x.plc.clone();
+                // plc.try_into()
+                unimplemented!()
+            }
             Symbolic::Concrete(x) => x.placement(),
         }
     }
@@ -109,6 +115,8 @@ where
 impl<S: Session, T, P> PlacementPlace<S, Symbolic<T>> for P
 where
     T: Placed<Placement = P>,
+    P: TryFrom<Placement>,
+    for<'p> Placement: From<&'p T::Placement>,
     P: PlacementPlace<S, T>,
     P: Clone + PartialEq,
 {
@@ -126,7 +134,7 @@ where
                         // TODO insert `Place` ops here?
                         Symbolic::Symbolic(SymbolicHandle {
                             op,
-                            plc: self.clone(),
+                            plc: Placement::from(self),
                         })
                     }
                 }
@@ -158,16 +166,16 @@ impl Default for SymbolicSession {
 
 impl SymbolicSession {
     /// Add operation to the session's underlying computation
-    pub(crate) fn add_operation<'s, O, P, Q>(
+    pub(crate) fn add_operation<'s, O, P>(
         &'s self,
         operator: &O,
         operands: &[&str],
         plc: &P,
-    ) -> SymbolicHandle<Q>
+    ) -> SymbolicHandle
     where
         O: Into<Operator> + Clone,
-        P: Into<Placement> + Clone,
-        P: Into<Q>,
+        P: Clone,
+        Placement: From<P>,
     {
         let mut state = self.state.write();
         let op_name: String = format!("op_{}", state.ops.len());
@@ -175,13 +183,13 @@ impl SymbolicSession {
             name: op_name.clone(),
             kind: operator.clone().into(),
             inputs: operands.iter().map(|op| op.to_string()).collect(),
-            placement: plc.clone().into(),
+            placement: Placement::from(plc.clone()),
         };
         state.ops.push(op);
 
         SymbolicHandle {
             op: op_name,
-            plc: plc.clone().into(),
+            plc: Placement::from(plc.clone()),
         }
     }
 
@@ -267,6 +275,15 @@ pub(crate) trait SymbolicStrategy {
 #[derive(Clone, Copy, Debug)]
 struct DefaultSymbolicStrategy;
 
+pub(crate) fn ternary_symbolic_kernel<U: Placed>(sess: &SymbolicSession, op: &Operator, plc: &Placement, x0: SymbolicValue, x1: SymbolicValue, x2: SymbolicValue) -> SymbolicValue {
+    let h0 = x0.symbolic_handle().unwrap();
+    let h1 = x1.symbolic_handle().unwrap();
+    let h2 = x2.symbolic_handle().unwrap();
+
+    let h = sess.add_operation(&op.clone(), &[&h0.op, &h1.op, &h2.op], plc);
+    Ok(SymbolicValue::from(Symbolic::<U>::Symbolic(h)))
+}
+
 impl SymbolicStrategy for DefaultSymbolicStrategy {
     fn execute(
         &self,
@@ -310,15 +327,31 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Msb(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Abs(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Mux(op) => {
-                use crate::kernels::{NgDispatchKernel, NgKernel};
+                use crate::kernels::{NgDispatchKernel, NgKernel, NgKernelFlavor};
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
-                    NgKernel::Ternary { flavor: _, closure } => {
+                    NgKernel::Ternary { flavor, closure } => {
                         assert_eq!(operands.len(), 3);
-                        let x2 = operands.pop().unwrap();
-                        let x1 = operands.pop().unwrap();
-                        let x0 = operands.pop().unwrap();
-                        closure(sess, plc, x0, x1, x2)
+                        let x2: SymbolicValue = operands.pop().unwrap();
+                        let x1: SymbolicValue = operands.pop().unwrap();
+                        let x0: SymbolicValue = operands.pop().unwrap();
+                        match flavor {
+                            NgKernelFlavor::Concrete => {
+                                if x0.is_concrete() && x1.is_concrete() && x2.is_concrete() {
+                                    closure(sess, plc, x0, x1, x2)
+                                } else if x0.is_symbolic() && x1.is_symbolic() && x2.is_symbolic() {
+                                    let h0 = x0.symbolic_handle().unwrap();
+                                    let h1 = x1.symbolic_handle().unwrap();
+                                    let h2 = x2.symbolic_handle().unwrap();
+
+                                    let h = sess.add_operation(&op.clone(), &[&h0.op, &h1.op, &h2.op], plc);
+                                    Ok(SymbolicValue::from(Symbolic::Symbolic(h)))
+                                } else {
+                                    unimplemented!()
+                                }
+                            }
+                            _ => unimplemented!()
+                        }
                     }
                 }
             }

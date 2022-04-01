@@ -478,7 +478,38 @@ macro_rules! values {
         #[derive(PartialEq, Clone, Debug)]
         #[allow(clippy::large_enum_variant)]
         pub enum SymbolicValue {
-            $($val(Box<<$val as SymbolicType>::Type>),)+
+            $(
+                $val(Box<<$val as SymbolicType>::Type>),
+            )+
+        }
+
+        impl SymbolicValue {
+            pub(crate) fn is_concrete(&self) -> bool {
+                use SymbolicValue::*;
+                match self {
+                    $(
+                        $val(val) => val.is_concrete(),
+                    )+
+                }
+            }
+
+            pub(crate) fn is_symbolic(&self) -> bool {
+                use SymbolicValue::*;
+                match self {
+                    $(
+                        $val(val) => val.is_symbolic(),
+                    )+
+                }
+            }
+
+            pub(crate) fn symbolic_handle(&self) -> Option<&crate::execution::symbolic::SymbolicHandle> {
+                use SymbolicValue::*;
+                match self {
+                    $(
+                        $val(val) => val.symbolic_handle(),
+                    )+
+                }
+            }
         }
 
         #[cfg(feature = "compile")]

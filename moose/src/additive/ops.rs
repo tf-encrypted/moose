@@ -344,13 +344,13 @@ mod tests {
         let x: <AdditiveRing64Tensor as KnownType<SymbolicSession>>::Type =
             Symbolic::Symbolic(SymbolicHandle {
                 op: "x".into(),
-                plc: adt.clone(),
+                plc: Placement::from(adt),
             });
 
         let y: <AdditiveRing64Tensor as KnownType<SymbolicSession>>::Type =
             Symbolic::Symbolic(SymbolicHandle {
                 op: "x".into(),
-                plc: adt.clone(),
+                plc: Placement::from(adt),
             });
 
         let sess = SymbolicSession::default();
@@ -388,11 +388,11 @@ mod tests {
                 shares: [
                     Symbolic::Symbolic(SymbolicHandle {
                         op: "x0".into(),
-                        plc: alice.clone(),
+                        plc: Placement::from(alice),
                     }),
                     Symbolic::Symbolic(SymbolicHandle {
                         op: "x1".into(),
-                        plc: bob.clone(),
+                        plc: Placement::from(bob),
                     }),
                 ],
             });
@@ -402,11 +402,11 @@ mod tests {
                 shares: [
                     Symbolic::Symbolic(SymbolicHandle {
                         op: "y0".into(),
-                        plc: alice,
+                        plc: Placement::from(alice),
                     }),
                     Symbolic::Symbolic(SymbolicHandle {
                         op: "y1".into(),
-                        plc: bob,
+                        plc: Placement::from(bob),
                     }),
                 ],
             });
