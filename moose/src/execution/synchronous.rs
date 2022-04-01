@@ -249,7 +249,7 @@ impl Session for SyncSession {
                 use crate::kernels::{NgDispatchKernel, NgKernel};
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
-                    NgKernel::Ternary { flavor: _, closure } => {
+                    NgKernel::Ternary { closure } => {
                         assert_eq!(operands.len(), 3);
                         let x2 = operands.pop().unwrap();
                         let x1 = operands.pop().unwrap();

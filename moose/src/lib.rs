@@ -195,6 +195,77 @@ macro_rules! derive_runtime_kernel {
     };
 }
 
+pub(crate) fn symbolic_ternary_runtime<T0, T1, T2, U, P>(
+    op: crate::computation::Operator,
+) -> Result<crate::kernels::NgKernel<crate::execution::SymbolicSession>>
+where
+    P: From<computation::Placement> + Clone,
+
+    T0: crate::computation::PartiallySymbolicType,
+    T1: crate::computation::PartiallySymbolicType,
+    T2: crate::computation::PartiallySymbolicType,
+    U: crate::computation::PartiallySymbolicType,
+
+    <T0 as crate::computation::PartiallySymbolicType>::Type: crate::computation::Placed,
+    <T1 as crate::computation::PartiallySymbolicType>::Type: crate::computation::Placed,
+    <T2 as crate::computation::PartiallySymbolicType>::Type: crate::computation::Placed,
+    <U as crate::computation::PartiallySymbolicType>::Type: crate::computation::Placed,
+
+    crate::computation::SymbolicValue: std::convert::TryInto<
+        crate::execution::symbolic::Symbolic<
+            <T0 as crate::computation::PartiallySymbolicType>::Type,
+        >,
+        Error = crate::Error,
+    >,
+    crate::computation::SymbolicValue: std::convert::TryInto<
+        crate::execution::symbolic::Symbolic<
+            <T1 as crate::computation::PartiallySymbolicType>::Type,
+        >,
+        Error = crate::Error,
+    >,
+    crate::computation::SymbolicValue: std::convert::TryInto<
+        crate::execution::symbolic::Symbolic<
+            <T2 as crate::computation::PartiallySymbolicType>::Type,
+        >,
+        Error = crate::Error,
+    >,
+    crate::computation::SymbolicValue: From<<U as crate::computation::SymbolicType>::Type>,
+    <<U as computation::PartiallySymbolicType>::Type as computation::Placed>::Placement:
+        From<computation::Placement>,
+    // <<U as computation::PartiallySymbolicType>::Type as computation::Placed>::Placement: From<computation::Placement>
+{
+    Ok(crate::kernels::NgKernel::Ternary {
+        closure: Box::new(
+            move |sess: &crate::execution::SymbolicSession,
+                  plc: &crate::computation::Placement,
+                  v0: crate::computation::SymbolicValue,
+                  v1: crate::computation::SymbolicValue,
+                  v2: crate::computation::SymbolicValue| {
+                use crate::computation::{SymbolicType, SymbolicValue};
+                use crate::execution::symbolic::Symbolic;
+                use std::convert::TryInto;
+
+                // TODO check type of plc against type P (to be) provided by macro
+                let v0: <T0 as SymbolicType>::Type =
+                    crate::computation::SymbolicValue::try_into(v0)?;
+                let v1: <T1 as SymbolicType>::Type =
+                    crate::computation::SymbolicValue::try_into(v1)?;
+                let v2: <T2 as SymbolicType>::Type =
+                    crate::computation::SymbolicValue::try_into(v2)?;
+
+                match (v0, v1, v2) {
+                    (Symbolic::Symbolic(x0), Symbolic::Symbolic(x1), Symbolic::Symbolic(x2)) => {
+                        let h = sess.add_operation(&op, &[&x0.op, &x1.op, &x2.op], plc);
+                        let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
+                        Ok(SymbolicValue::from(h))
+                    }
+                    _ => unimplemented!(),
+                }
+            },
+        ),
+    })
+}
+
 macro_rules! ng_derive_runtime_kernel {
     // (nullary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
     //     {
@@ -345,9 +416,8 @@ macro_rules! ng_derive_runtime_kernel {
     // (binary, $k:expr, $self:ident) => {
     //     crate::error::Result::<crate::kernels::TypedBinaryKernel<_, _, _, _, _>>::Ok(Box::new($k))
     // };
-    (sync ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $op:ident) => {
+    (sync ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         Ok(NgKernel::Ternary {
-            flavor: NgKernelFlavor::Runtime,
             closure: Box::new(
                 move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
                     let plc: $plc = plc.clone().try_into()?;
@@ -362,9 +432,8 @@ macro_rules! ng_derive_runtime_kernel {
         })
     };
 
-    (sync ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $op:ident) => {
+    (sync ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         Ok(NgKernel::Ternary {
-            flavor: NgKernelFlavor::Concrete,
             closure: Box::new(
                 move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
                     let plc: $plc = plc.clone().try_into()?;
@@ -379,9 +448,8 @@ macro_rules! ng_derive_runtime_kernel {
         })
     };
 
-    (sync ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $op:ident) => {
+    (sync ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         Ok(NgKernel::Ternary {
-            flavor: NgKernelFlavor::Hybrid,
             closure: Box::new(
                 move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
                     let plc: $plc = plc.clone().try_into()?;
@@ -396,42 +464,12 @@ macro_rules! ng_derive_runtime_kernel {
         })
     };
 
-    (symbolic ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $op:ident) => {
-        Ok(NgKernel::Ternary {
-            flavor: NgKernelFlavor::Runtime,
-            closure: Box::new(
-                move |sess: &SymbolicSession,
-                      plc: &Placement,
-                      v0: SymbolicValue,
-                      v1: SymbolicValue,
-                      v2: SymbolicValue| {
-                    use crate::execution::symbolic::Symbolic;
-
-                    let plc: $plc = plc.clone().try_into()?;
-                    let v0: <$t0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
-                    let v1: <$t1 as SymbolicType>::Type = SymbolicValue::try_into(v1)?;
-                    let v2: <$t2 as SymbolicType>::Type = SymbolicValue::try_into(v2)?;
-
-                    match (v0, v1, v2) {
-                        (
-                            Symbolic::Symbolic(x0),
-                            Symbolic::Symbolic(x1),
-                            Symbolic::Symbolic(x2),
-                        ) => {
-                            let h = sess.add_operation(&$op, &[&x0.op, &x1.op, &x2.op], &plc);
-                            let h: <$u as SymbolicType>::Type = Symbolic::Symbolic(h);
-                            Ok(SymbolicValue::from(h))
-                        }
-                        _ => unimplemented!(),
-                    }
-                },
-            ),
-        })
+    (symbolic ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::symbolic_ternary_runtime::<$t0, $t1, $t2, $u, $plc>(Operator::from($op))
     };
 
-    (symbolic ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $op:ident) => {
+    (symbolic ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         Ok(NgKernel::Ternary {
-            flavor: NgKernelFlavor::Concrete,
             closure: Box::new(
                 move |sess: &SymbolicSession,
                       plc: &Placement,
@@ -472,9 +510,8 @@ macro_rules! ng_derive_runtime_kernel {
         })
     };
 
-    (symbolic ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:expr, $op:ident) => {
+    (symbolic ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         Ok(NgKernel::Ternary {
-            flavor: NgKernelFlavor::Hybrid,
             closure: Box::new(
                 move |sess: &SymbolicSession,
                       plc: &Placement,
@@ -4331,7 +4368,7 @@ macro_rules! modelled_kernel {
             ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SyncSession>> {
                 use crate::computation::Value;
                 use crate::execution::SyncSession;
-                use crate::kernels::{NgKernel, NgKernelFlavor};
+                use crate::kernels::NgKernel;
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -4360,7 +4397,7 @@ macro_rules! modelled_kernel {
             ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SymbolicSession>> {
                 use crate::computation::SymbolicValue;
                 use crate::execution::SymbolicSession;
-                use crate::kernels::{NgKernel, NgKernelFlavor};
+                use crate::kernels::{NgKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {

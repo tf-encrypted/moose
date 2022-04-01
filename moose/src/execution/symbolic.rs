@@ -14,8 +14,10 @@ use crate::replicated::{RepSetup, ReplicatedPlacement};
 use crate::{MirroredCounterpart, Ring, TensorLike, Underlying};
 use parking_lot::RwLock;
 use std::collections::HashMap;
+use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
 
+/// Wrapper for values used in `SymbolicSession`s
 /// Wrapper for values used in `SymbolicSession`s
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
@@ -267,6 +269,15 @@ pub(crate) trait SymbolicStrategy {
 #[derive(Clone, Copy, Debug)]
 struct DefaultSymbolicStrategy;
 
+// pub(crate) fn ternary_symbolic_kernel<U: Placed>(sess: &SymbolicSession, op: &Operator, plc: &Placement, x0: SymbolicValue, x1: SymbolicValue, x2: SymbolicValue) -> SymbolicValue {
+//     let h0 = x0.symbolic_handle().unwrap();
+//     let h1 = x1.symbolic_handle().unwrap();
+//     let h2 = x2.symbolic_handle().unwrap();
+
+//     let h = sess.add_operation(&op.clone(), &[&h0.op, &h1.op, &h2.op], plc);
+//     Ok(SymbolicValue::from(Symbolic::<U>::Symbolic(h)))
+// }
+
 impl SymbolicStrategy for DefaultSymbolicStrategy {
     fn execute(
         &self,
@@ -313,12 +324,14 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
                 use crate::kernels::{NgDispatchKernel, NgKernel};
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
-                    NgKernel::Ternary { flavor: _, closure } => {
+                    NgKernel::Ternary { closure } => {
                         assert_eq!(operands.len(), 3);
-                        let x2 = operands.pop().unwrap();
-                        let x1 = operands.pop().unwrap();
-                        let x0 = operands.pop().unwrap();
-                        closure(sess, plc, x0, x1, x2)
+                        let x2: SymbolicValue = operands.pop().unwrap();
+                        let x1: SymbolicValue = operands.pop().unwrap();
+                        let x0: SymbolicValue = operands.pop().unwrap();
+
+                        let y = closure(sess, plc, x0, x1, x2);
+                        y
                     }
                 }
             }

@@ -40,13 +40,6 @@ pub trait DispatchKernel<S: Session> {
     fn compile(&self, plc: &Placement) -> Result<Kernel<S>>;
 }
 
-pub enum NgKernelFlavor {
-    Runtime,
-    Concrete,
-    Transparent,
-    Hybrid,
-}
-
 pub type NgTernaryKernel<S> = Box<
     dyn Fn(
         &S,
@@ -58,10 +51,7 @@ pub type NgTernaryKernel<S> = Box<
 >;
 
 pub enum NgKernel<S: Session> {
-    Ternary {
-        flavor: NgKernelFlavor,
-        closure: NgTernaryKernel<S>,
-    },
+    Ternary { closure: NgTernaryKernel<S> },
 }
 
 pub trait NgDispatchKernel<S: Session> {
