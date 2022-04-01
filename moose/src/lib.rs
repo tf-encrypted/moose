@@ -454,7 +454,18 @@ macro_rules! ng_derive_runtime_kernel {
                             let y = $k(sess, &plc, x0, x1, x2)?;
                             Ok(SymbolicValue::from(Symbolic::Concrete(y)))
                         }
-                        _ => unimplemented!(),
+                        (
+                            Symbolic::Symbolic(h0),
+                            Symbolic::Symbolic(h1),
+                            Symbolic::Symbolic(h2),
+                        ) => {
+                            let h = sess.add_operation(&$op, &[&h0.op, &h1.op, &h2.op], &plc);
+                            let h: <$u as SymbolicType>::Type = Symbolic::Symbolic(h);
+                            Ok(SymbolicValue::from(h))
+                        }
+                        _ => Err(crate::error::Error::Unexpected(Some(
+                            "Mixed symbolic and concrete value during compilation".to_string(),
+                        ))),
                     }
                 },
             ),
@@ -470,61 +481,40 @@ macro_rules! ng_derive_runtime_kernel {
                       v0: SymbolicValue,
                       v1: SymbolicValue,
                       v2: SymbolicValue| {
+                    use crate::execution::symbolic::Symbolic;
                     let plc: $plc = plc.clone().try_into()?;
-                    let v0: <$t0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
-                    let v0 = v0.try_into();
 
-                    let v1: <$t1 as SymbolicType>::Type = SymbolicValue::try_into(v1)?;
-                    let v1 = v1.try_into();
+                    let vs0: <$t0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
+                    let vs1: <$t1 as SymbolicType>::Type = SymbolicValue::try_into(v1)?;
+                    let vs2: <$t2 as SymbolicType>::Type = SymbolicValue::try_into(v2)?;
 
-                    let v2: <$t2 as SymbolicType>::Type = SymbolicValue::try_into(v2)?;
-                    let v2 = v2.try_into();
+                    let v0 = vs0.clone().try_into();
+                    let v1 = vs1.clone().try_into();
+                    let v2 = vs2.clone().try_into();
 
                     match (v0, v1, v2) {
-                        (Ok(x0), Ok(x1), Ok(x2)) => {
-                            let y = $k(sess, &plc, x0, x1, x2)?;
+                        (Ok(v0), Ok(v1), Ok(v2)) => {
+                            let y = $k(sess, &plc, v0, v1, v2)?;
                             let y: <$u as SymbolicType>::Type = y.into();
                             Ok(SymbolicValue::from(y))
                         }
-                        _ => unimplemented!(),
+                        _ => match (vs0, vs1, vs2) {
+                            (
+                                Symbolic::Symbolic(h0),
+                                Symbolic::Symbolic(h1),
+                                Symbolic::Symbolic(h2),
+                            ) => {
+                                let h = sess.add_operation(&$op, &[&h0.op, &h1.op, &h2.op], &plc);
+                                let h: <$u as SymbolicType>::Type = Symbolic::Symbolic(h);
+                                Ok(SymbolicValue::from(h))
+                            }
+                            _ => unimplemented!(),
+                        },
                     }
                 },
             ),
         })
-    }; // (sync ternary concrete, $plc:ty, $k:expr, $self:ident) => {
-       //     let closure = Box::new(
-       //         move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
-       //             let plc: $plc = plc.clone().try_into()?;
-       //             let x0: $t0 = x0.try_into()?;
-       //             let x1: $t1 = x1.try_into()?;
-       //             let x2: $t2 = x2.try_into()?;
-
-       //             let y: $u = $k(sess, &plc, x0, x1, x2)?;
-       //             Ok(y.into())
-       //         }
-       //     );
-       //     Ok(NgKernel::Ternary {
-       //         flavor: NgKernelFlavor::Concrete,
-       //         closure,
-       //     })
-       // };
-       // (sync ternary hybrid, $plc:ty, $k:expr, $self:ident) => {
-       //     let closure = Box::new(
-       //         move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
-       //             let plc: $plc = plc.clone().try_into()?;
-       //             let x0: $t0 = x0.try_into()?;
-       //             let x1: $t1 = x1.try_into()?;
-       //             let x2: $t2 = x2.try_into()?;
-
-       //             let y: $u = $k(sess, &plc, x0, x1, x2)?;
-       //             Ok(y.into())
-       //         }
-       //     );
-       //     Ok(NgKernel::Ternary {
-       //         flavor: NgKernelFlavor::Hybrid,
-       //         closure,
-       //     })
-       // };
+    }; // };
        // (variadic, $k:expr, $self:ident) => {
        //     crate::error::Result::<crate::kernels::TypedVariadicKernel<_, _, _, _>>::Ok(
        //         Box::new(move |sess, plc, xs| {
@@ -4724,52 +4714,7 @@ macro_rules! modelled_kernel {
             }
         }
     };
-
     (__ternary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
-        #[cfg(feature = "compile")]
-        impl $trait<
-            crate::execution::SymbolicSession,
-            <$t0 as crate::computation::PartiallySymbolicType>::Type,
-            <$t1 as crate::computation::PartiallySymbolicType>::Type,
-            <$t2 as crate::computation::PartiallySymbolicType>::Type,
-            <$u as crate::computation::PartiallySymbolicType>::Type
-        > for $plc {
-            fn $trait_fn(
-                &self,
-                sess: &crate::execution::SymbolicSession,
-                $($($attr_id:$attr_ty),*,)?
-                x0: &<$t0 as crate::computation::PartiallySymbolicType>::Type,
-                x1: &<$t1 as crate::computation::PartiallySymbolicType>::Type,
-                x2: &<$t2 as crate::computation::PartiallySymbolicType>::Type
-            ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
-                use crate::computation::{KnownType, TernarySignature, SymbolicValue};
-                use crate::execution::{Session};
-                use crate::execution::symbolic::{SymbolicSession, Symbolic};
-                use std::convert::TryFrom;
-
-                let sig = TernarySignature {
-                    arg0: <$t0 as KnownType<SymbolicSession>>::TY,
-                    arg1: <$t1 as KnownType<SymbolicSession>>::TY,
-                    arg2: <$t2 as KnownType<SymbolicSession>>::TY,
-                    ret: <$u as KnownType<SymbolicSession>>::TY,
-                };
-                let op = $op {
-                    sig: sig.into(),
-                    $($($attr_id),*)?
-                };
-
-                let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
-                let x1 = SymbolicValue::from(Symbolic::Concrete(x1.clone()));
-                let x2 = SymbolicValue::from(Symbolic::Concrete(x2.clone()));
-                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
-                let y = Symbolic::try_from(y).unwrap();
-                match y {
-                    Symbolic::Concrete(y) => y,
-                    Symbolic::Symbolic(_) => panic!(), // ok since this is concrete flavour
-                }
-            }
-        }
-
         #[cfg(feature = "compile")]
         impl crate::kernels::TernaryKernel<
             crate::execution::SymbolicSession,

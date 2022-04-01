@@ -273,7 +273,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
         sess: &SymbolicSession,
         op: &Operator,
         plc: &Placement,
-        operands: Operands<SymbolicValue>,
+        mut operands: Operands<SymbolicValue>,
     ) -> Result<SymbolicValue> {
         use Operator::*;
         match op {
@@ -309,7 +309,19 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Shr(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Msb(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Abs(op) => DispatchKernel::compile(op, plc)?(sess, operands),
-            Mux(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Mux(op) => {
+                use crate::kernels::{NgDispatchKernel, NgKernel};
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Ternary { flavor: _, closure } => {
+                        assert_eq!(operands.len(), 3);
+                        let x2 = operands.pop().unwrap();
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1, x2)
+                    }
+                }
+            }
             Maximum(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Softmax(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Argmax(op) => DispatchKernel::compile(op, plc)?(sess, operands),
