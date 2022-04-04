@@ -272,7 +272,7 @@ mod kernel_helpers {
         T0: PartiallySymbolicType,
         T1: PartiallySymbolicType,
         T2: PartiallySymbolicType,
-        U: PartiallySymbolicType,
+        U: PartiallySymbolicType, // TODO use SymbolicType here?
 
         <T0 as PartiallySymbolicType>::Type: Placed + 'static,
         <T1 as PartiallySymbolicType>::Type: Placed + 'static,
@@ -319,6 +319,87 @@ mod kernel_helpers {
                         _ => Err(crate::error::Error::Unexpected(Some(
                             "Mixed symbolic and concrete value during compilation".to_string(),
                         ))),
+                    }
+                },
+            ),
+        })
+    }
+
+    pub(crate) fn symbolic_ternary_hybrid<T0, T1, T2, U, X0, X1, X2, Y, P>(
+        op: Operator,
+        kf: fn(
+            &SymbolicSession,
+            &P,
+            X0,
+            X1,
+            X2,
+        ) -> Result<Y>
+    ) -> Result<NgKernel<SymbolicSession>> where
+        P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
+        Placement: From<P>,
+
+        T0: PartiallySymbolicType,
+        T1: PartiallySymbolicType,
+        T2: PartiallySymbolicType,
+        U: PartiallySymbolicType,
+
+        Symbolic<<T0 as PartiallySymbolicType>::Type>: Clone + TryInto<X0, Error = crate::Error>,
+        Symbolic<<T1 as PartiallySymbolicType>::Type>: Clone + TryInto<X1, Error = crate::Error>,
+        Symbolic<<T2 as PartiallySymbolicType>::Type>: Clone + TryInto<X2, Error = crate::Error>,
+        Y: Into<<U as SymbolicType>::Type>,
+
+        X0: 'static,
+        X1: 'static,
+        X2: 'static,
+        Y: 'static,
+
+        <T0 as PartiallySymbolicType>::Type: Placed + 'static,
+        <T1 as PartiallySymbolicType>::Type: Placed + 'static,
+        <T2 as PartiallySymbolicType>::Type: Placed + 'static,
+        <U as PartiallySymbolicType>::Type: Placed + 'static,
+        // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
+        <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
+
+        SymbolicValue: TryInto<<T0 as SymbolicType>::Type, Error = crate::Error>,
+        SymbolicValue: TryInto<<T1 as SymbolicType>::Type, Error = crate::Error>,
+        SymbolicValue: TryInto<<T2 as SymbolicType>::Type, Error = crate::Error>,
+        SymbolicValue: From<<U as SymbolicType>::Type>,
+    {
+        Ok(NgKernel::Ternary {
+            closure: Box::new(
+                move |sess: &SymbolicSession,
+                      plc: &Placement,
+                      v0: SymbolicValue,
+                      v1: SymbolicValue,
+                      v2: SymbolicValue| {
+                    let plc = P::try_from(plc.clone())?;
+
+                    let vs0: Symbolic<<T0 as PartiallySymbolicType>::Type> = SymbolicValue::try_into(v0)?;
+                    let vs1: Symbolic<<T1 as PartiallySymbolicType>::Type> = SymbolicValue::try_into(v1)?;
+                    let vs2: Symbolic<<T2 as PartiallySymbolicType>::Type> = SymbolicValue::try_into(v2)?;
+
+                    let v0 = vs0.clone().try_into();
+                    let v1 = vs1.clone().try_into();
+                    let v2 = vs2.clone().try_into();
+
+                    match (v0, v1, v2) {
+                        (Ok(v0), Ok(v1), Ok(v2)) => {
+                            let y = kf(sess, &plc, v0, v1, v2)?;
+                            let y: <U as SymbolicType>::Type = y.into();
+                            Ok(SymbolicValue::from(y))
+                        }
+                        _ => match (vs0, vs1, vs2) {
+                            (
+                                Symbolic::Symbolic(h0),
+                                Symbolic::Symbolic(h1),
+                                Symbolic::Symbolic(h2),
+                            ) => {
+                                let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc);
+                                let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
+                                Ok(SymbolicValue::from(h))
+                            }
+                            _ => unimplemented!(),
+                        },
                     }
                 },
             ),
