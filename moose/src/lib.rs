@@ -343,9 +343,9 @@ mod kernel_helpers {
         T2: PartiallySymbolicType,
         U: PartiallySymbolicType,
 
-        Symbolic<<T0 as PartiallySymbolicType>::Type>: Clone + TryInto<X0, Error = crate::Error>,
-        Symbolic<<T1 as PartiallySymbolicType>::Type>: Clone + TryInto<X1, Error = crate::Error>,
-        Symbolic<<T2 as PartiallySymbolicType>::Type>: Clone + TryInto<X2, Error = crate::Error>,
+        Symbolic<<T0 as PartiallySymbolicType>::Type>: Clone + TryInto<X0>,
+        Symbolic<<T1 as PartiallySymbolicType>::Type>: Clone + TryInto<X1>,
+        Symbolic<<T2 as PartiallySymbolicType>::Type>: Clone + TryInto<X2>,
         Y: Into<<U as SymbolicType>::Type>,
 
         X0: 'static,
@@ -619,46 +619,10 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        Ok(NgKernel::Ternary {
-            closure: Box::new(
-                move |sess: &SymbolicSession,
-                      plc: &Placement,
-                      v0: SymbolicValue,
-                      v1: SymbolicValue,
-                      v2: SymbolicValue| {
-                    use crate::execution::symbolic::Symbolic;
-                    let plc: $plc = plc.clone().try_into()?;
-
-                    let vs0: <$t0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
-                    let vs1: <$t1 as SymbolicType>::Type = SymbolicValue::try_into(v1)?;
-                    let vs2: <$t2 as SymbolicType>::Type = SymbolicValue::try_into(v2)?;
-
-                    let v0 = vs0.clone().try_into();
-                    let v1 = vs1.clone().try_into();
-                    let v2 = vs2.clone().try_into();
-
-                    match (v0, v1, v2) {
-                        (Ok(v0), Ok(v1), Ok(v2)) => {
-                            let y = $k(sess, &plc, v0, v1, v2)?;
-                            let y: <$u as SymbolicType>::Type = y.into();
-                            Ok(SymbolicValue::from(y))
-                        }
-                        _ => match (vs0, vs1, vs2) {
-                            (
-                                Symbolic::Symbolic(h0),
-                                Symbolic::Symbolic(h1),
-                                Symbolic::Symbolic(h2),
-                            ) => {
-                                let h = sess.add_operation(&$op, &[&h0.op, &h1.op, &h2.op], &plc);
-                                let h: <$u as SymbolicType>::Type = Symbolic::Symbolic(h);
-                                Ok(SymbolicValue::from(h))
-                            }
-                            _ => unimplemented!(),
-                        },
-                    }
-                },
-            ),
-        })
+        crate::kernel_helpers::symbolic_ternary_hybrid::<$t0, $t1, $t2, $u, _, _, _, _, $plc>(
+            Operator::from($op),
+            $k,
+        )
     }; // };
        // (variadic, $k:expr, $self:ident) => {
        //     crate::error::Result::<crate::kernels::TypedVariadicKernel<_, _, _, _>>::Ok(
