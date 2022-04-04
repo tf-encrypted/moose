@@ -208,8 +208,7 @@ mod kernel_helpers {
         op: Operator,
     ) -> Result<NgKernel<SymbolicSession>>
     where
-        P: Clone,
-        P: std::convert::TryFrom<Placement, Error = crate::Error>,
+        P: Clone + TryFrom<Placement, Error = crate::Error>,
         Placement: From<P>,
 
         T0: PartiallySymbolicType,
@@ -256,8 +255,76 @@ mod kernel_helpers {
             ),
         })
     }
+
+    pub(crate) fn symbolic_ternary_concrete<T0, T1, T2, U, P>(
+        op: Operator,
+        kf: fn(
+            &SymbolicSession,
+            &P,
+            <T0 as PartiallySymbolicType>::Type,
+            <T1 as PartiallySymbolicType>::Type,
+            <T2 as PartiallySymbolicType>::Type,
+        ) -> Result<<U as PartiallySymbolicType>::Type>
+    ) -> Result<NgKernel<SymbolicSession>>
+    where
+        P: Clone + TryFrom<Placement, Error = crate::Error>,
+        Placement: From<P>,
+
+        T0: PartiallySymbolicType,
+        T1: PartiallySymbolicType,
+        T2: PartiallySymbolicType,
+        U: PartiallySymbolicType,
+
+        <T0 as PartiallySymbolicType>::Type: Placed,
+        <T1 as PartiallySymbolicType>::Type: Placed,
+        <T2 as PartiallySymbolicType>::Type: Placed,
+        <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
+
+        SymbolicValue: TryInto<Symbolic<<T0 as PartiallySymbolicType>::Type>, Error = crate::Error>,
+        SymbolicValue: TryInto<Symbolic<<T1 as PartiallySymbolicType>::Type>, Error = crate::Error>,
+        SymbolicValue: TryInto<Symbolic<<T2 as PartiallySymbolicType>::Type>, Error = crate::Error>,
+        SymbolicValue: From<<U as SymbolicType>::Type>,
+    {
+        Ok(NgKernel::Ternary {
+            closure: Box::new(
+                move |sess: &SymbolicSession,
+                      plc: &Placement,
+                      v0: SymbolicValue,
+                      v1: SymbolicValue,
+                      v2: SymbolicValue| {
+                    let plc = P::try_from(plc.clone())?;
+                    let v0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
+                    let v1: <T1 as SymbolicType>::Type = SymbolicValue::try_into(v1)?;
+                    let v2: <T2 as SymbolicType>::Type = SymbolicValue::try_into(v2)?;
+
+                    match (v0, v1, v2) {
+                        (
+                            Symbolic::Concrete(x0),
+                            Symbolic::Concrete(x1),
+                            Symbolic::Concrete(x2),
+                        ) => {
+                            unimplemented!()
+                            // let y = kf(sess, &plc, x0, x1, x2)?;
+                            // Ok(SymbolicValue::from(Symbolic::Concrete(y)))
+                        }
+                        (
+                            Symbolic::Symbolic(h0),
+                            Symbolic::Symbolic(h1),
+                            Symbolic::Symbolic(h2),
+                        ) => {
+                            let h: SymbolicHandle<P> = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc);
+                            let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
+                            Ok(SymbolicValue::from(h))
+                        }
+                        _ => Err(crate::error::Error::Unexpected(Some(
+                            "Mixed symbolic and concrete value during compilation".to_string(),
+                        ))),
+                    }
+                },
+            ),
+        })
+    }
 }
-use kernel_helpers::symbolic_ternary_runtime;
 
 macro_rules! ng_derive_runtime_kernel {
     // (nullary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
@@ -458,49 +525,16 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::symbolic_ternary_runtime::<$t0, $t1, $t2, $u, $plc>(Operator::from($op))
+        crate::kernel_helpers::symbolic_ternary_runtime::<$t0, $t1, $t2, $u, $plc>(Operator::from(
+            $op,
+        ))
     };
 
     (symbolic ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        Ok(NgKernel::Ternary {
-            closure: Box::new(
-                move |sess: &SymbolicSession,
-                      plc: &Placement,
-                      v0: SymbolicValue,
-                      v1: SymbolicValue,
-                      v2: SymbolicValue| {
-                    use crate::execution::symbolic::Symbolic;
-
-                    let plc: $plc = plc.clone().try_into()?;
-                    let v0: <$t0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
-                    let v1: <$t1 as SymbolicType>::Type = SymbolicValue::try_into(v1)?;
-                    let v2: <$t2 as SymbolicType>::Type = SymbolicValue::try_into(v2)?;
-
-                    match (v0, v1, v2) {
-                        (
-                            Symbolic::Concrete(x0),
-                            Symbolic::Concrete(x1),
-                            Symbolic::Concrete(x2),
-                        ) => {
-                            let y = $k(sess, &plc, x0, x1, x2)?;
-                            Ok(SymbolicValue::from(Symbolic::Concrete(y)))
-                        }
-                        (
-                            Symbolic::Symbolic(h0),
-                            Symbolic::Symbolic(h1),
-                            Symbolic::Symbolic(h2),
-                        ) => {
-                            let h = sess.add_operation(&$op, &[&h0.op, &h1.op, &h2.op], &plc);
-                            let h: <$u as SymbolicType>::Type = Symbolic::Symbolic(h);
-                            Ok(SymbolicValue::from(h))
-                        }
-                        _ => Err(crate::error::Error::Unexpected(Some(
-                            "Mixed symbolic and concrete value during compilation".to_string(),
-                        ))),
-                    }
-                },
-            ),
-        })
+        crate::kernel_helpers::symbolic_ternary_concrete::<$t0, $t1, $t2, $u, $plc>(
+            Operator::from($op),
+            $k,
+        )
     };
 
     (symbolic ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
