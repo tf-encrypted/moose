@@ -18,6 +18,13 @@ default = [
     "sync_execute",
     "async_execute",
 ]
+full = [
+    "blas",
+    "msgpack",
+    "compile",
+    "sync_execute",
+    "async_execute",
+]
 blas = ["ndarray-linalg"]
 msgpack = ["rmp-serde"]
 compile = []
