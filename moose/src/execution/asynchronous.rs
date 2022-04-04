@@ -14,9 +14,9 @@ use std::sync::{Arc, RwLock};
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
-pub type AsyncSender = oneshot::Sender<Value>;
+type AsyncSender = oneshot::Sender<Value>;
 
-pub type AsyncReceiver = Shared<
+type AsyncReceiver = Shared<
     Map<
         oneshot::Receiver<Value>,
         fn(anyhow::Result<Value, oneshot::error::RecvError>) -> anyhow::Result<Value, ()>,
@@ -286,7 +286,7 @@ impl AsyncSession {
     }
 }
 
-pub(crate) type AsyncValue = crate::execution::AsyncReceiver;
+pub type AsyncValue = AsyncReceiver;
 
 pub(crate) fn new_async_value() -> (AsyncSender, AsyncReceiver) {
     // TODO(Morten) make second attempt at inlining
@@ -488,7 +488,7 @@ impl AsyncExecutor {
         role_assignment: &RoleAssignment,
         own_identity: &Identity,
         session: &AsyncSession,
-    ) -> Result<HashMap<String, AsyncReceiver>> {
+    ) -> Result<HashMap<String, AsyncValue>> {
         if !self.session_ids.insert(session.session_id.clone()) {
             return Err(Error::SessionAlreadyExists(format!(
                 "{}",
@@ -526,7 +526,7 @@ impl AsyncExecutor {
             .collect::<Vec<_>>();
 
         let mut env: HashMap<String, AsyncValue> = HashMap::with_capacity(own_operations.len());
-        let mut outputs: HashMap<String, AsyncReceiver> = HashMap::default();
+        let mut outputs: HashMap<String, AsyncValue> = HashMap::default();
 
         for op in own_operations {
             let operands = op
@@ -596,7 +596,7 @@ impl AsyncTestRuntime {
         arguments: HashMap<String, Value>,
     ) -> Result<HashMap<String, Value>> {
         let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
-        let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
+        let mut output_futures: HashMap<String, AsyncValue> = HashMap::new();
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
 
