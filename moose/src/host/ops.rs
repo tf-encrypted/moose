@@ -1043,9 +1043,9 @@ impl InverseOp {
         _plc: &HostPlacement,
         _x: HostTensor<T>,
     ) -> Result<HostTensor<T>> {
-        Err(Error::UnimplementedOperator(format!(
-            "Please enable 'blas' feature"
-        )))
+        Err(Error::UnimplementedOperator(
+            "Please enable 'blas' feature".to_string(),
+        ))
     }
 }
 
