@@ -14,7 +14,6 @@ use crate::replicated::{RepSetup, ReplicatedPlacement};
 use crate::{MirroredCounterpart, Ring, TensorLike, Underlying};
 use parking_lot::RwLock;
 use std::collections::HashMap;
-use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
 
 /// Wrapper for values used in `SymbolicSession`s

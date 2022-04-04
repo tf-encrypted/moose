@@ -1,6 +1,6 @@
 use crate::computation::{Computation, Operator};
 use crate::execution::SymbolicSession;
-use crate::kernels::{DispatchKernel, Kernel, NgDispatchKernel};
+use crate::kernels::{DispatchKernel, NgDispatchKernel};
 use crate::Error;
 use std::collections::HashSet;
 
