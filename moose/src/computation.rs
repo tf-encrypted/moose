@@ -18,7 +18,6 @@ use petgraph::Graph;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
-use std::fs::File;
 use std::fs::OpenOptions;
 use std::hash::{Hash, Hasher};
 use std::io::prelude::*;
@@ -1807,11 +1806,13 @@ pub struct OperationIndex {
 }
 
 impl NamedComputation {
+    #[cfg(feature = "msgpack")]
     #[tracing::instrument(skip(bytes))]
     pub fn from_msgpack<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
         rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[cfg(feature = "msgpack")]
     #[tracing::instrument(skip(self))]
     pub fn to_msgpack(&self) -> Result<Vec<u8>> {
         rmp_serde::to_vec(self).map_err(|e| Error::SerializationError(e.to_string()))
@@ -1856,19 +1857,22 @@ impl NamedComputation {
         bincode::serialize(self).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[cfg(feature = "msgpack")]
     #[deprecated]
     pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
         Self::from_msgpack(&bytes)
     }
 
+    #[cfg(feature = "msgpack")]
     #[deprecated]
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         self.to_msgpack()
     }
 
+    #[cfg(feature = "msgpack")]
     pub fn from_disk<P: AsRef<Path>>(path: P) -> Result<Self> {
         let p = path.as_ref();
-        let f = File::open(p).map_err(|e| {
+        let f = std::fs::File::open(p).map_err(|e| {
             Error::Unexpected(Some(format!(
                 "File not found error for path {0}. Original: {1}.",
                 p.display(),
@@ -1878,6 +1882,7 @@ impl NamedComputation {
         rmp_serde::decode::from_read(f).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
+    #[cfg(feature = "msgpack")]
     pub fn to_disk<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let mut file_buffer =
             File::create(path).map_err(|e| Error::SerializationError(e.to_string()))?;
@@ -1986,6 +1991,7 @@ mod tests {
         assert_eq!(*session_id.as_bytes(), expected);
     }
 
+    #[cfg(feature = "msgpack")]
     #[test]
     fn test_binary_roundtrip() {
         use std::convert::TryInto;

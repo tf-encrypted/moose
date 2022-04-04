@@ -11,8 +11,15 @@ categories = ["", ""]
 edition = "2018"
 
 [features]
-default = ["blas", "compile", "sync_execute", "async_execute"]
+default = [
+    "blas",
+    "msgpack",
+    "compile",
+    "sync_execute",
+    "async_execute",
+]
 blas = ["ndarray-linalg"]
+msgpack = ["rmp-serde"]
 compile = []
 sync_execute = []
 async_execute = []
@@ -44,7 +51,7 @@ paste = "~1.0"
 petgraph = "~0.6"
 rand = { version = "~0.8", features = ["std", "std_rng"] }
 rayon = "~1.5"
-rmp-serde = "~1.0"
+rmp-serde = { version = "~1.0", optional = true }
 serde = { version="~1.0", features=["derive", "rc"] }
 static_assertions = "~1.1"
 thiserror = "~1.0"

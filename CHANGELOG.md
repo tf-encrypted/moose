@@ -1,6 +1,11 @@
 # Changelog
 
+## v0.2.0
+
+- MsgPack support is now optional via the `msgpack` feature (enabled by default)
+
 ## v0.1.6
+
 - Memory usage optimizations and reduced cloning
 - Wellformed compiler pass to statically verify a computation with elk: elk compile -p wellformed comp.moose
 - TLS support for gRCP networking
