@@ -1885,7 +1885,7 @@ impl NamedComputation {
     #[cfg(feature = "msgpack")]
     pub fn to_disk<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let mut file_buffer =
-            File::create(path).map_err(|e| Error::SerializationError(e.to_string()))?;
+            std::fs::File::create(path).map_err(|e| Error::SerializationError(e.to_string()))?;
         rmp_serde::encode::write(&mut file_buffer, self)
             .map_err(|e| Error::SerializationError(e.to_string()))?;
         Ok(())
