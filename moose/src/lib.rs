@@ -244,8 +244,7 @@ mod kernel_helpers {
                             Symbolic::Symbolic(x1),
                             Symbolic::Symbolic(x2),
                         ) => {
-                            let h: SymbolicHandle<P> =
-                                sess.add_operation(&op, &[&x0.op, &x1.op, &x2.op], &plc);
+                            let h = sess.add_operation(&op, &[&x0.op, &x1.op, &x2.op], &plc);
                             let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
                             Ok(SymbolicValue::from(h))
                         }
@@ -278,7 +277,9 @@ mod kernel_helpers {
         <T0 as PartiallySymbolicType>::Type: Placed,
         <T1 as PartiallySymbolicType>::Type: Placed,
         <T2 as PartiallySymbolicType>::Type: Placed,
-        <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
+        <U as PartiallySymbolicType>::Type: Placed,
+        // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
+        <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
 
         SymbolicValue: TryInto<Symbolic<<T0 as PartiallySymbolicType>::Type>, Error = crate::Error>,
         SymbolicValue: TryInto<Symbolic<<T1 as PartiallySymbolicType>::Type>, Error = crate::Error>,
@@ -312,7 +313,7 @@ mod kernel_helpers {
                             Symbolic::Symbolic(h1),
                             Symbolic::Symbolic(h2),
                         ) => {
-                            let h: SymbolicHandle<P> = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc);
+                            let h = sess.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc);
                             let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
                             Ok(SymbolicValue::from(h))
                         }
