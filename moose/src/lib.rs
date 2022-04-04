@@ -263,7 +263,7 @@ mod kernel_helpers {
             <T0 as PartiallySymbolicType>::Type,
             <T1 as PartiallySymbolicType>::Type,
             <T2 as PartiallySymbolicType>::Type,
-        ) -> Result<<U as PartiallySymbolicType>::Type>
+        ) -> Result<<U as PartiallySymbolicType>::Type>,
     ) -> Result<NgKernel<SymbolicSession>>
     where
         P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
@@ -327,14 +327,9 @@ mod kernel_helpers {
 
     pub(crate) fn symbolic_ternary_hybrid<T0, T1, T2, U, X0, X1, X2, Y, P>(
         op: Operator,
-        kf: fn(
-            &SymbolicSession,
-            &P,
-            X0,
-            X1,
-            X2,
-        ) -> Result<Y>
-    ) -> Result<NgKernel<SymbolicSession>> where
+        kf: fn(&SymbolicSession, &P, X0, X1, X2) -> Result<Y>,
+    ) -> Result<NgKernel<SymbolicSession>>
+    where
         P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
         Placement: From<P>,
 
@@ -374,9 +369,12 @@ mod kernel_helpers {
                       v2: SymbolicValue| {
                     let plc = P::try_from(plc.clone())?;
 
-                    let vs0: Symbolic<<T0 as PartiallySymbolicType>::Type> = SymbolicValue::try_into(v0)?;
-                    let vs1: Symbolic<<T1 as PartiallySymbolicType>::Type> = SymbolicValue::try_into(v1)?;
-                    let vs2: Symbolic<<T2 as PartiallySymbolicType>::Type> = SymbolicValue::try_into(v2)?;
+                    let vs0: Symbolic<<T0 as PartiallySymbolicType>::Type> =
+                        SymbolicValue::try_into(v0)?;
+                    let vs1: Symbolic<<T1 as PartiallySymbolicType>::Type> =
+                        SymbolicValue::try_into(v1)?;
+                    let vs2: Symbolic<<T2 as PartiallySymbolicType>::Type> =
+                        SymbolicValue::try_into(v2)?;
 
                     let v0 = vs0.clone().try_into();
                     let v1 = vs1.clone().try_into();
@@ -623,8 +621,7 @@ macro_rules! ng_derive_runtime_kernel {
             Operator::from($op),
             $k,
         )
-    };
-     // };
+    }; // };
        // (variadic, $k:expr, $self:ident) => {
        //     crate::error::Result::<crate::kernels::TypedVariadicKernel<_, _, _, _>>::Ok(
        //         Box::new(move |sess, plc, xs| {
