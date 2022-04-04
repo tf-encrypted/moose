@@ -38,7 +38,6 @@ class NeuralNetwork(aes_predictor.AesPredictor):
         activation = self.activations[i]
         if activation == Activation.SIGMOID:
             activation_output = edsl.sigmoid(z)
-
         elif activation == Activation.RELU:
             z_shape = edsl.shape(z)
             with self.bob:
