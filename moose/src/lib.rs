@@ -266,7 +266,7 @@ mod kernel_helpers {
         ) -> Result<<U as PartiallySymbolicType>::Type>
     ) -> Result<NgKernel<SymbolicSession>>
     where
-        P: Clone + TryFrom<Placement, Error = crate::Error>,
+        P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
         Placement: From<P>,
 
         T0: PartiallySymbolicType,
@@ -274,10 +274,10 @@ mod kernel_helpers {
         T2: PartiallySymbolicType,
         U: PartiallySymbolicType,
 
-        <T0 as PartiallySymbolicType>::Type: Placed,
-        <T1 as PartiallySymbolicType>::Type: Placed,
-        <T2 as PartiallySymbolicType>::Type: Placed,
-        <U as PartiallySymbolicType>::Type: Placed,
+        <T0 as PartiallySymbolicType>::Type: Placed + 'static,
+        <T1 as PartiallySymbolicType>::Type: Placed + 'static,
+        <T2 as PartiallySymbolicType>::Type: Placed + 'static,
+        <U as PartiallySymbolicType>::Type: Placed + 'static,
         // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
         <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
 
@@ -304,9 +304,8 @@ mod kernel_helpers {
                             Symbolic::Concrete(x1),
                             Symbolic::Concrete(x2),
                         ) => {
-                            unimplemented!()
-                            // let y = kf(sess, &plc, x0, x1, x2)?;
-                            // Ok(SymbolicValue::from(Symbolic::Concrete(y)))
+                            let y = kf(sess, &plc, x0, x1, x2)?;
+                            Ok(SymbolicValue::from(Symbolic::Concrete(y)))
                         }
                         (
                             Symbolic::Symbolic(h0),
