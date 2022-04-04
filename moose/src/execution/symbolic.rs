@@ -167,17 +167,18 @@ impl SymbolicSession {
         plc: &P,
     ) -> SymbolicHandle<Q>
     where
-        O: Into<Operator> + Clone,
-        P: Into<Placement> + Clone,
-        P: Into<Q>,
+        O: Clone,
+        Operator: From<O>,
+        P: Clone + Into<Q>,
+        Placement: From<P>,
     {
         let mut state = self.state.write();
         let op_name: String = format!("op_{}", state.ops.len());
         let op = Operation {
             name: op_name.clone(),
-            kind: operator.clone().into(),
+            kind: Operator::from(operator.clone()),
             inputs: operands.iter().map(|op| op.to_string()).collect(),
-            placement: plc.clone().into(),
+            placement: Placement::from(plc.clone()),
         };
         state.ops.push(op);
 
