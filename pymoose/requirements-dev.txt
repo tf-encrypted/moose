@@ -39,7 +39,7 @@ numpy==1.22.3
     # via
     #   -r pymoose/requirements.in
     #   onnx
-onnx==1.11.0
+onnx==1.10.2
     # via -r pymoose/requirements.in
 packaging==21.3
     # via pytest
@@ -63,12 +63,16 @@ pytest==7.1.1
     # via -r pymoose/requirements.in
 semantic-version==2.9.0
     # via setuptools-rust
-setuptools-rust==1.2.0
+setuptools-rust==0.12.1
     # via -r pymoose/requirements.in
 six==1.16.0
-    # via absl-py
+    # via
+    #   absl-py
+    #   onnx
 testfixtures==6.18.5
     # via flake8-isort
+toml==0.10.2
+    # via setuptools-rust
 tomli==2.0.1
     # via
     #   black
@@ -78,8 +82,7 @@ typing-extensions==4.1.1
     # via
     #   black
     #   onnx
-    #   setuptools-rust
-wheel==0.37.1
+wheel==0.36.2
     # via -r pymoose/requirements.in
 
 # The following packages are considered to be unsafe in a requirements file:
