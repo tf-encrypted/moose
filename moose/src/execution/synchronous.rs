@@ -103,6 +103,7 @@ impl SyncSession {
 }
 
 impl DispatchKernel<SyncSession> for SendOp {
+    #[cfg(not(feature = "test_direct_execute"))]
     fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession>> {
         if let Placement::Host(plc) = plc {
             let plc = plc.clone();
@@ -122,9 +123,29 @@ impl DispatchKernel<SyncSession> for SendOp {
             unimplemented!()
         }
     }
+
+    #[cfg(feature = "test_direct_execute")]
+    fn execute(&self, plc: &Placement, sess: &SyncSession, operands: Operands<Value>) -> Result<Value> {
+        if let Placement::Host(plc) = plc {
+            let plc = plc.clone();
+            let op = self.clone();
+            assert_eq!(operands.len(), 1);
+            let x = operands.get(0).unwrap();
+            sess.networking.send(
+                x,
+                sess.find_role_assignment(&op.receiver)?,
+                &op.rendezvous_key,
+                &sess.session_id,
+            )?;
+            Ok(HostUnit(plc.clone()).into())
+        } else {
+            unimplemented!()
+        }
+    }
 }
 
 impl DispatchKernel<SyncSession> for ReceiveOp {
+    #[cfg(not(feature = "test_direct_execute"))]
     fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession>> {
         if let Placement::Host(_plc) = plc {
             let op = self.clone();
@@ -137,6 +158,25 @@ impl DispatchKernel<SyncSession> for ReceiveOp {
                     &sess.session_id,
                 )
             }))
+        } else {
+            Err(Error::UnimplementedOperator(format!(
+                "ReceiveOp is not implemented for placement {:?}",
+                plc
+            )))
+        }
+    }
+
+    #[cfg(feature = "test_direct_execute")]
+    fn execute(&self, plc: &Placement, sess: &SyncSession, operands: Operands<Value>) -> Result<Value> {
+        if let Placement::Host(_plc) = plc {
+            let op = self.clone();
+            assert_eq!(operands.len(), 0);
+            // TODO(Morten) we should verify type of received value
+            sess.networking.receive(
+                sess.find_role_assignment(&op.sender)?,
+                &op.rendezvous_key,
+                &sess.session_id,
+            )
         } else {
             Err(Error::UnimplementedOperator(format!(
                 "ReceiveOp is not implemented for placement {:?}",

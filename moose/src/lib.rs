@@ -213,6 +213,7 @@ macro_rules! concrete_dispatch_kernel {
     ($op:ty, [$( ($plc:ty, () -> $u:ty), )+]) => {
         #[cfg(feature = "sync_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -295,6 +296,7 @@ macro_rules! concrete_dispatch_kernel {
 
         #[cfg(feature = "async_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -405,6 +407,7 @@ macro_rules! concrete_dispatch_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
         #[cfg(feature = "sync_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -493,6 +496,7 @@ macro_rules! concrete_dispatch_kernel {
 
         #[cfg(feature = "async_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -619,6 +623,7 @@ macro_rules! concrete_dispatch_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty), )+]) => {
         #[cfg(feature = "sync_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -724,6 +729,7 @@ macro_rules! concrete_dispatch_kernel {
 
         #[cfg(feature = "async_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -878,6 +884,7 @@ macro_rules! concrete_dispatch_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty), )+]) => {
         #[cfg(feature = "sync_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -972,6 +979,7 @@ macro_rules! concrete_dispatch_kernel {
 
         #[cfg(feature = "async_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -1128,6 +1136,7 @@ macro_rules! concrete_dispatch_kernel {
     ($op:ty, [$( ($plc:ty, vec[$ts:ty] -> $u:ty), )+]) => {
         #[cfg(feature = "sync_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -1214,6 +1223,7 @@ macro_rules! concrete_dispatch_kernel {
 
         #[cfg(feature = "async_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -1336,6 +1346,7 @@ macro_rules! symbolic_dispatch_kernel {
     ($op:ty, [$( ($plc:ty, () -> $u:ty), )+]) => {
         #[cfg(feature = "compile")]
         impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -1420,6 +1431,7 @@ macro_rules! symbolic_dispatch_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
         #[cfg(feature = "compile")]
         impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -1520,6 +1532,7 @@ macro_rules! symbolic_dispatch_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty), )+]) => {
         #[cfg(feature = "compile")]
         impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -1620,6 +1633,7 @@ macro_rules! symbolic_dispatch_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty), )+]) => {
         #[cfg(feature = "compile")]
         impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
@@ -1726,6 +1740,7 @@ macro_rules! symbolic_dispatch_kernel {
     ($op:ty, [$( ($plc:ty, vec[$ts:ty] -> $u:ty), )+]) => {
         #[cfg(feature = "compile")]
         impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession> for $op {
+            #[cfg(not(feature = "test_direct_execute"))]
             fn compile(
                 &self,
                 plc: &crate::computation::Placement

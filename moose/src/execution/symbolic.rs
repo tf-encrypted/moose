@@ -239,7 +239,15 @@ impl SetupGeneration<ReplicatedPlacement> for SymbolicSession {
 }
 
 impl DispatchKernel<SymbolicSession> for SendOp {
+    #[cfg(not(feature = "test_direct_execute"))]
     fn compile(&self, _plc: &Placement) -> Result<Kernel<SymbolicSession>> {
+        Err(Error::Compilation(
+            "SendOp not supported on symbolic sessions".to_string(),
+        ))
+    }
+
+    #[cfg(feature = "test_direct_execute")]
+    fn execute(&self, _plc: &Placement, _sess: &SymbolicSession, operands: Operands<SymbolicValue>) -> Result<SymbolicValue> {
         Err(Error::Compilation(
             "SendOp not supported on symbolic sessions".to_string(),
         ))
@@ -247,7 +255,15 @@ impl DispatchKernel<SymbolicSession> for SendOp {
 }
 
 impl DispatchKernel<SymbolicSession> for ReceiveOp {
+    #[cfg(not(feature = "test_direct_execute"))]
     fn compile(&self, _plc: &Placement) -> Result<Kernel<SymbolicSession>> {
+        Err(Error::Compilation(
+            "ReceiveOp not supported on symbolic sessions".to_string(),
+        ))
+    }
+
+    #[cfg(feature = "test_direct_execute")]
+    fn execute(&self, _plc: &Placement, _sess: &SymbolicSession, operands: Operands<SymbolicValue>) -> Result<SymbolicValue> {
         Err(Error::Compilation(
             "ReceiveOp not supported on symbolic sessions".to_string(),
         ))

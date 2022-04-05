@@ -9,6 +9,7 @@ use std::collections::HashSet;
 /// - some unsupported operator instantiations are currently only checked at runtime
 /// - some potential ndarray errors cannot currently be caught statically
 /// - computations may only be partially specified, for instance around shapes
+#[cfg(not(feature = "test_direct_execute"))]
 pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
     let mut seen_values: HashSet<&String> = HashSet::with_capacity(comp.operations.len());
 
@@ -111,4 +112,9 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
     }
 
     Ok(comp)
+}
+
+#[cfg(feature = "test_direct_execute")]
+pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
+    unimplemented!()
 }

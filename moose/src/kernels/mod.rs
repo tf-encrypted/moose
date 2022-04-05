@@ -37,12 +37,17 @@ pub type Kernel<S> =
     Box<dyn Fn(&S, Operands<<S as Session>::Value>) -> Result<<S as Session>::Value> + Send + Sync>;
 
 pub trait DispatchKernel<S: Session> {
+    #[cfg(not(feature = "test_direct_execute"))]
     fn compile(&self, plc: &Placement) -> Result<Kernel<S>>;
 
+    #[cfg(not(feature = "test_direct_execute"))]
     fn execute(&self, plc: &Placement, sess: &S, operands: Operands<S::Value>) -> Result<S::Value> {
         let kernel = Self::compile(self, plc)?;
         kernel(sess, operands)
     }
+
+    #[cfg(feature = "test_direct_execute")]
+    fn execute(&self, plc: &Placement, sess: &S, operands: Operands<S::Value>) -> Result<S::Value>;
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for

@@ -301,6 +301,7 @@ pub(crate) fn new_async_value() -> (AsyncSender, AsyncReceiver) {
 }
 
 impl DispatchKernel<AsyncSession> for SendOp {
+    #[cfg(not(feature = "test_direct_execute"))]
     fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession>> {
         if let Placement::Host(plc) = plc {
             let plc = plc.clone();
@@ -312,9 +313,21 @@ impl DispatchKernel<AsyncSession> for SendOp {
             unimplemented!()
         }
     }
+
+    #[cfg(feature = "test_direct_execute")]
+    fn execute(&self, plc: &Placement, sess: &AsyncSession, operands: Operands<AsyncValue>) -> Result<AsyncValue> {
+        if let Placement::Host(plc) = plc {
+            let plc = plc.clone();
+            let op = self.clone();
+            sess.networking_send(op.clone(), &plc, operands)
+        } else {
+            unimplemented!()
+        }
+    }
 }
 
 impl DispatchKernel<AsyncSession> for ReceiveOp {
+    #[cfg(not(feature = "test_direct_execute"))]
     fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession>> {
         if let Placement::Host(plc) = plc {
             let plc = plc.clone();
@@ -326,9 +339,21 @@ impl DispatchKernel<AsyncSession> for ReceiveOp {
             unimplemented!()
         }
     }
+
+    #[cfg(feature = "test_direct_execute")]
+    fn execute(&self, plc: &Placement, sess: &AsyncSession, operands: Operands<AsyncValue>) -> Result<AsyncValue> {
+        if let Placement::Host(plc) = plc {
+            let plc = plc.clone();
+            let op = self.clone();
+            sess.networking_receive(op.clone(), &plc, operands)
+        } else {
+            unimplemented!()
+        }
+    }
 }
 
 impl DispatchKernel<AsyncSession> for Operator {
+    #[cfg(not(feature = "test_direct_execute"))]
     fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession>> {
         use Operator::*;
         match self {
@@ -415,6 +440,7 @@ impl DispatchKernel<AsyncSession> for Operator {
         }
     }
 
+    #[cfg(feature = "test_direct_execute")]
     fn execute(
         &self,
         plc: &Placement,
