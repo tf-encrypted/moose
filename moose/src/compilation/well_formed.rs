@@ -32,7 +32,7 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
 
             Shape(op) => DispatchKernel::<SymbolicSession>::compile(op, plc).err(),
             Broadcast(op) => DispatchKernel::<SymbolicSession>::compile(op, plc).err(),
-            PrfKeyGen(op) => DispatchKernel::<SymbolicSession>::compile(op, plc).err(),
+            PrfKeyGen(op) => NgDispatchKernel::<SymbolicSession>::compile(op, plc).err(),
             Xor(op) => DispatchKernel::<SymbolicSession>::compile(op, plc).err(),
             And(op) => DispatchKernel::<SymbolicSession>::compile(op, plc).err(),
             Or(op) => DispatchKernel::<SymbolicSession>::compile(op, plc).err(),

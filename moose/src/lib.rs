@@ -476,6 +476,36 @@ mod kernel_helpers {
 
 macro_rules! ng_derive_runtime_kernel {
 
+    /* Nullary */
+
+    (sync nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+        {
+            $(
+            let $attr = $attributes.clone();
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Constant::$prim_ty(v) => v,
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
+                    };
+                )?
+            )+
+
+            let k = |sess, plc| $k(sess, plc, $($attr.clone()),+);
+
+            Ok(NgKernel::Nullary {
+                closure: Box::new(move |sess: &SyncSession, plc: &Placement| {
+                    let plc: $plc = plc.clone().try_into()?;
+                    let y: $u = k(sess, &plc)?;
+                    Ok(y.into())
+                }),
+            })
+        }
+    };
+
     (sync nullary runtime $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
         Ok(NgKernel::Nullary {
             closure: Box::new(move |sess: &SyncSession, plc: &Placement| {
@@ -486,51 +516,58 @@ macro_rules! ng_derive_runtime_kernel {
         })
     };
 
-
-    (sync nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
-        let k = |sess, plc| {
-            $k(
-                sess,
-                plc,
-                $attributes.clone()
-            )
-        };
-
-        Ok(NgKernel::Nullary {
-            closure: Box::new(move |sess: &SyncSession, plc: &Placement| {
-                let plc: $plc = plc.clone().try_into()?;
-               let y: $u = k(sess, &plc)?;
-                Ok(y.into())
-            }),
-        })
-    };
-
-    (symbolic nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+]  $k:path, $op:ident) => {
-        crate::kernel_helpers::symbolic_unary_runtime::<$u, $plc>(Operator::from($op))
+    (symbolic nullary runtime $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
+        crate::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op))
     };
 
     (symbolic nullary concrete $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+]  $k:path, $op:ident) => {
-        let k = |sess, plc| {
-            $k(
-                sess,
-                plc,
-                $attributes.clone()
-            )
-        };
-        crate::kernel_helpers::symbolic_unary_concrete::<$u, $plc>(
-            Operator::from($op),
-            k,
-        )
+        {
+            $(
+            let $attr = $attributes.clone();
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Constant::$prim_ty(v) => v,
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
+                    };
+                )?
+            )+
+            let k = |sess, plc| $k(sess, plc, $($attr.clone()),+);
+            crate::kernel_helpers::symbolic_unary_concrete::<$u, $plc>(Operator::from($op), k)
+        }
+    };
+
+    (symbolic nullary concrete $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
+        crate::kernel_helpers::symbolic_unary_concrete::<$u, $plc>(Operator::from($op), k)
     };
 
     (symbolic nullary hybrid $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? $k:path, $op:ident) => {
-        crate::kernel_helpers::symbolic_unary_hybrid::<$u, $plc>(
-            Operator::from($op),
-            $k,
-        )
+        {
+            $(
+            let $attr = $attributes.clone();
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Constant::$prim_ty(v) => v,
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
+                    };
+                )?
+            )+
+            let k = |sess, plc| $k(sess, plc, $($attr.clone()),+);
+            crate::kernel_helpers::symbolic_unary_hybrid::<$u, $plc>(Operator::from($op), $k)
+        }
     };
 
-
+    (symbolic nullary hybrid $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
+        let k = |sess, plc| $k(sess, plc, $attributes.clone());
+        crate::kernel_helpers::symbolic_nullary_hybrid::<$u, $plc>(Operator::from($op), k)
+    };
 
     (sync ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         Ok(NgKernel::Ternary {
@@ -581,9 +618,9 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::kernel_helpers::symbolic_ternary_runtime::<$t0, $t1, $t2, $u, $plc>(
-            Operator::from($op),
-        )
+        crate::kernel_helpers::symbolic_ternary_runtime::<$t0, $t1, $t2, $u, $plc>(Operator::from(
+            $op,
+        ))
     };
 
     (symbolic ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
@@ -598,14 +635,7 @@ macro_rules! ng_derive_runtime_kernel {
             Operator::from($op),
             $k,
         )
-    }; // };
-       // (variadic, $k:expr, $self:ident) => {
-       //     crate::error::Result::<crate::kernels::TypedVariadicKernel<_, _, _, _>>::Ok(
-       //         Box::new(move |sess, plc, xs| {
-       //             $k(sess, plc, &xs)
-       //         })
-       //     )
-       // };
+    };
 }
 
 #[allow(unused_macros)]
@@ -3140,9 +3170,6 @@ macro_rules! modelled_kernel {
     */
 
     ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
-        concrete_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
-        symbolic_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
-
         #[cfg(feature = "sync_execute")]
         impl crate::kernels::NgDispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
@@ -3170,29 +3197,54 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(feature = "compile")]
+        impl crate::kernels::NgDispatchKernel<crate::execution::SymbolicSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SymbolicSession>> {
+                use crate::execution::SymbolicSession;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Nullary(NullarySignature{
+                                ret: <$u as KnownType<SymbolicSession>>::TY,
+                            })
+                        ) => {
+                            let op = self.clone();
+                            ng_derive_runtime_kernel![symbolic nullary $flavour $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, op]
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                }
+            }
+        }
+
 
 
         // support for SyncSession
         $(
-            #[cfg(feature = "sync_execute")]
-            impl crate::kernels::NullaryKernel<
-                crate::execution::SyncSession,
-                $plc,
-                $u
-            > for $op
-            {
-                fn compile(
-                    &self,
-                ) -> crate::error::Result<
-                    crate::kernels::TypedNullaryKernel<
-                        crate::execution::SyncSession,
-                        $plc,
-                        $u,
-                    >
-                > {
-                    derive_runtime_kernel![nullary, $(attributes[$($attr_id),+])? $($kp)+, self]
-                }
-            }
+            // #[cfg(feature = "sync_execute")]
+            // impl crate::kernels::NullaryKernel<
+            //     crate::execution::SyncSession,
+            //     $plc,
+            //     $u
+            // > for $op
+            // {
+            //     fn compile(
+            //         &self,
+            //     ) -> crate::error::Result<
+            //         crate::kernels::TypedNullaryKernel<
+            //             crate::execution::SyncSession,
+            //             $plc,
+            //             $u,
+            //         >
+            //     > {
+            //         derive_runtime_kernel![nullary, $(attributes[$($attr_id),+])? $($kp)+, self]
+            //     }
+            // }
 
             #[cfg(feature = "sync_execute")]
             impl $trait<crate::execution::SyncSession, $u> for $plc {
@@ -3265,39 +3317,6 @@ macro_rules! modelled_kernel {
 
     (__nullary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => $($kp:tt)+) => {
         #[cfg(feature = "compile")]
-        impl crate::kernels::NullaryKernel<
-            crate::execution::SymbolicSession,
-            $plc,
-            <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        > for $op
-        {
-            fn compile(&self) -> crate::error::Result<
-                TypedNullaryKernel<
-                    crate::execution::SymbolicSession,
-                    $plc,
-                    <$u as KnownType<crate::execution::SymbolicSession>>::Type,
-                >
-            > {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession};
-                use std::convert::TryInto;
-
-                let op = self.clone();
-                Ok(Box::new(move |
-                    sess: &SymbolicSession,
-                    plc: &$plc,
-                | {
-                    // TODO derive k outside box (using self instead of op)
-                    // Magic by Morten
-                    let op = &op;
-
-                    let k = derive_runtime_kernel![nullary, $(attributes[$($attr_id),+])? $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
-                    let y = k(sess, plc)?;
-                    Ok(y.into())
-                }))
-            }
-        }
-
-        #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -3328,39 +3347,6 @@ macro_rules! modelled_kernel {
     };
 
     (__nullary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => $($kp:tt)+) => {
-        #[cfg(feature = "compile")]
-        impl crate::kernels::NullaryKernel<
-            crate::execution::SymbolicSession,
-            $plc,
-            <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        > for $op
-        {
-            fn compile(&self) -> crate::error::Result<
-                crate::kernels::TypedNullaryKernel<
-                    crate::execution::SymbolicSession,
-                    $plc,
-                    <$u as KnownType<crate::execution::SymbolicSession>>::Type,
-                >
-            > {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession};
-
-                let op = self.clone();
-                Ok(Box::new(move |
-                    sess: &SymbolicSession,
-                    plc: &$plc,
-                | {
-                    #[allow(unused_variables)]
-                    // TODO derive k outside box (using self instead of op)
-                    // Magic by Morten
-                    let op = &op;
-
-                    let k = derive_runtime_kernel![nullary, $(attributes[$($attr_id),+])? $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
-                    let y = k(sess, plc)?;
-                    Ok(Symbolic::Concrete(y))
-                }))
-            }
-        }
-
         #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
@@ -3471,33 +3457,6 @@ macro_rules! modelled_kernel {
     };
 
     (__nullary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => $($kp:tt)+) => {
-        #[cfg(feature = "compile")]
-        impl crate::kernels::NullaryKernel<
-            crate::execution::SymbolicSession,
-            $plc,
-            <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        > for $op
-        {
-            fn compile(&self) -> crate::error::Result<
-                crate::kernels::TypedNullaryKernel<
-                    crate::execution::SymbolicSession,
-                    $plc,
-                    <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-                >
-            > {
-                use crate::execution::symbolic::{SymbolicSession, Symbolic};
-
-                let op = self.clone();
-                Ok(Box::new(move |
-                    sess: &SymbolicSession,
-                    plc: &$plc
-                | {
-                    let h = sess.add_operation(&op, &[], plc);
-                    Ok(Symbolic::Symbolic(h))
-                }))
-            }
-        }
-
         #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,

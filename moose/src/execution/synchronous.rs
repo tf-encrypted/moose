@@ -191,9 +191,7 @@ impl Session for SyncSession {
                 use crate::kernels::{NgDispatchKernel, NgKernel};
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
-                    NgKernel::Nullary { closure } => {
-                        closure(self, plc)?
-                    }
+                    NgKernel::Nullary { closure } => closure(self, plc)?,
                     _ => {
                         return Err(Error::Compilation(
                             "PrfKeyGen should be an unary kernel".to_string(),

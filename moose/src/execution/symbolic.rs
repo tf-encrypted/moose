@@ -299,8 +299,19 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Broadcast(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Fill(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             PrfKeyGen(op) => {
-                DispatchKernel::compile(op, plc)?(sess, operands)
-            }
+                use crate::kernels::{NgDispatchKernel, NgKernel};
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Nullary { closure } => {
+                        closure(sess, plc)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(
+                            "PrfKeyGen should be an unary kernel".to_string(),
+                        ))
+                    }
+                }
+            },
             Decrypt(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Xor(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             And(op) => DispatchKernel::compile(op, plc)?(sess, operands),
