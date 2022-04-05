@@ -28,7 +28,9 @@ class ReplicatedExample(parameterized.TestCase):
 
         return my_int_comp
 
-    @parameterized.parameters(([1, 3, 2, 3],),)
+    @parameterized.parameters(
+        ([1, 3, 2, 3],),
+    )
     def test_int_example_execute(self, x):
         x_arg = np.array(x, dtype=np.uint64)
         int_comp = self._setup_int64_comp(x_arg)

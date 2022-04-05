@@ -16,7 +16,11 @@ class LocalMooseRuntime(LocalRuntime):
         return LocalRuntime.__new__(LocalMooseRuntime, storage_mapping=storage_mapping)
 
     def evaluate_computation(
-        self, computation, role_assignment, arguments=None, compiler_passes=None,
+        self,
+        computation,
+        role_assignment,
+        arguments=None,
+        compiler_passes=None,
     ):
         if arguments is None:
             arguments = {}
