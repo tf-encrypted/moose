@@ -25,6 +25,7 @@ _SK_REGRESSION_MODELS = [
         "MLP_regressor_2hidden_layers_2target_identity",
         [[550.57188666, 431.31144628], [57.07484159, 128.76424831]],
     ),
+    ("MPL_regressor_1hidden_layers_1target_relu", [32.55903733, 16.92872095]),
 ]
 _SK_CLASSIFIER_MODELS = [
     ("MLP_classifier_1hidden_layers_2classes_logistic", [0.60823407, 0.39176593]),
@@ -58,6 +59,21 @@ _SK_CLASSIFIER_MODELS = [
             0.07976163,
             0.05626911,
             0.01489627,
+        ],
+    ),
+    (
+        "MPL_classfier_1hidden_layers_10classes_relu",
+        [
+            0.18669855,
+            0.01198506,
+            0.02292363,
+            0.04383366,
+            0.4636751,
+            0.08422828,
+            0.0207348,
+            0.07604881,
+            0.0196595,
+            0.07021261,
         ],
     ),
 ]
