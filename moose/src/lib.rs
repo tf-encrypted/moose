@@ -569,6 +569,53 @@ macro_rules! ng_derive_runtime_kernel {
         crate::kernel_helpers::symbolic_nullary_hybrid::<$u, $plc>(Operator::from($op), k)
     };
 
+    (sync unary runtime $(attributes[$($_attrs:tt)*])? custom |$k:path|) => {
+        Ok(NgKernel::Unary {
+            closure: $kf,
+        })
+    };
+
+
+    (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+        {
+            $(
+            let $attr = $op.$attr.clone();
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Constant::$prim_ty(v) => v,
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
+                    };
+                )?
+            )+
+
+            let k = |sess, plc, x0| $k(sess, plc, $($attr.clone()),+, x0);
+
+            Ok(NgKernel::Unary {
+                closure: Box::new(move |sess: &SyncSession, plc: &Placement, x0: Value| {
+                    let plc: $plc = plc.clone().try_into()?;
+                    let x0: $t0 = x0.try_into()?;
+                    let y: $u = k(sess, &plc, x0)?;
+                    Ok(y.into())
+                }),
+            })
+        }
+    };
+
+    (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
+        Ok(NgKernel::Unary {
+            closure: Box::new(move |sess: &SyncSession, plc: &Placement, x0: Value| {
+                let plc: $plc = plc.clone().try_into()?;
+                let x0: $t0 = x0.try_into()?;
+                let y: $u = $k(sess, &plc, x0)?;
+                Ok(y.into())
+            }),
+        })
+    };
+
     (sync ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         Ok(NgKernel::Ternary {
             closure: Box::new(
@@ -3494,6 +3541,34 @@ macro_rules! modelled_kernel {
         concrete_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
 
+        #[cfg(feature = "sync_execute")]
+        impl crate::kernels::NgDispatchKernel<crate::execution::SyncSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SyncSession>> {
+                use crate::computation::Value;
+                use crate::execution::SyncSession;
+                use crate::kernels::NgKernel;
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Unary(UnarySignature{
+                                arg0: <$t0 as KnownType<SyncSession>>::TY,
+                                ret: <$u as KnownType<SyncSession>>::TY,
+                            })
+                        ) => {
+                            ng_derive_runtime_kernel![sync unary runtime $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                }
+            }
+        }
+
         // support for SyncSession
         $(
             #[cfg(feature = "sync_execute")]
@@ -3517,6 +3592,7 @@ macro_rules! modelled_kernel {
                     derive_runtime_kernel![unary, $(attributes[$($attr_id),+])? $($kp)+, self]
                 }
             }
+
 
             #[cfg(feature = "sync_execute")]
             impl $trait<crate::execution::SyncSession, $t0, $u> for $plc {

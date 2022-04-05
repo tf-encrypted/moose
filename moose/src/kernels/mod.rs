@@ -57,8 +57,17 @@ pub type NgNullaryKernel<S> = Box<
     ) -> Result<<S as Session>::Value>,
 >;
 
+pub type NgUnaryKernel<S> = Box<
+    dyn Fn(
+        &S,
+        &Placement, // TODO get rid of this?
+        <S as Session>::Value,
+    ) -> Result<<S as Session>::Value>,
+>;
+
 pub enum NgKernel<S: Session> {
     Nullary { closure: NgNullaryKernel<S> },
+    Unary { closure: NgUnaryKernel<S> },
     Ternary { closure: NgTernaryKernel<S> },
 }
 
