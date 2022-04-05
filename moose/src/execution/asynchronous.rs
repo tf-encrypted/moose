@@ -53,22 +53,15 @@ pub(crate) fn map_receive_error<T>(_: T) -> Error {
 }
 
 pub struct AsyncSessionHandle {
-    pub tasks: Arc<Mutex<FuturesUnordered<AsyncTask>>>,
+    pub tasks: FuturesUnordered<AsyncTask>,
 }
 
 impl AsyncSessionHandle {
-    pub fn for_session(session: &AsyncSession) -> Self {
-        AsyncSessionHandle {
-            tasks: Arc::clone(&session.tasks),
-        }
-    }
-
-    pub async fn join_on_first_error(self) -> anyhow::Result<()> {
+    pub async fn join_on_first_error(mut self) -> anyhow::Result<()> {
         use crate::error::Error::{OperandUnavailable, ResultUnused};
 
-        let mut tasks_guard = self.tasks.lock().unwrap();
         let mut maybe_error = None;
-        while let Some(x) = tasks_guard.next().await {
+        while let Some(x) = self.tasks.next().await {
             match x {
                 Ok(Ok(_)) => {
                     continue;
@@ -98,7 +91,7 @@ impl AsyncSessionHandle {
         }
 
         if let Some(e) = maybe_error {
-            for task in tasks_guard.iter_mut() {
+            for task in self.tasks.iter_mut() {
                 task.abort();
             }
             e
@@ -135,6 +128,13 @@ impl AsyncSession {
             storage,
             tasks: Default::default(),
         }
+    }
+
+    /// Consumes self and return a handle with the tasks crated in the session.
+    pub fn into_handle(self) -> AsyncSessionHandle {
+        let mut tasks_guard = self.tasks.lock().unwrap();
+        let tasks = std::mem::replace(&mut *tasks_guard, FuturesUnordered::new());
+        AsyncSessionHandle { tasks }
     }
 }
 
@@ -633,7 +633,7 @@ impl AsyncTestRuntime {
                 output_futures.insert(output_name, output_future);
             }
 
-            session_handles.push(AsyncSessionHandle::for_session(&moose_session))
+            session_handles.push(moose_session.into_handle())
         }
 
         let mut futures: FuturesUnordered<_> = session_handles
