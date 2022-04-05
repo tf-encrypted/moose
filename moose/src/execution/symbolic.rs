@@ -298,7 +298,9 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Shape(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Broadcast(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Fill(op) => DispatchKernel::compile(op, plc)?(sess, operands),
-            PrfKeyGen(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            PrfKeyGen(op) => {
+                DispatchKernel::compile(op, plc)?(sess, operands)
+            }
             Decrypt(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Xor(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             And(op) => DispatchKernel::compile(op, plc)?(sess, operands),
@@ -333,6 +335,9 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
                         let y = closure(sess, plc, x0, x1, x2);
                         y
                     }
+                    _ => Err(Error::Compilation(
+                        "MuxOp should be a ternary kernel".to_string(),
+                    )),
                 }
             }
             Maximum(op) => DispatchKernel::compile(op, plc)?(sess, operands),

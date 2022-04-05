@@ -204,6 +204,75 @@ mod kernel_helpers {
     use crate::kernels::NgKernel;
     use std::convert::{TryFrom, TryInto};
 
+    pub(crate) fn symbolic_nullary_runtime<U, P>(op: Operator) -> Result<NgKernel<SymbolicSession>>
+    where
+        P: Clone + TryFrom<Placement, Error = crate::Error>,
+        Placement: From<P>,
+
+        U: PartiallySymbolicType,
+        <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
+        SymbolicValue: From<<U as SymbolicType>::Type>,
+    {
+        Ok(crate::kernels::NgKernel::Nullary {
+            closure: Box::new(
+                move |sess: &crate::execution::SymbolicSession,
+                      plc: &crate::computation::Placement| {
+                    let plc = P::try_from(plc.clone())?;
+                    let h = sess.add_operation(&op, &[], &plc);
+                    let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
+                    Ok(SymbolicValue::from(h))
+                },
+            ),
+        })
+    }
+
+    pub(crate) fn symbolic_nullary_concrete<U, P>(
+        op: Operator,
+        kf: fn(&SymbolicSession, &P) -> Result<<U as PartiallySymbolicType>::Type>,
+    ) -> Result<NgKernel<SymbolicSession>>
+    where
+        P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
+        Placement: From<P>,
+        U: PartiallySymbolicType, // TODO use SymbolicType here?
+        <U as PartiallySymbolicType>::Type: Placed + 'static,
+        // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
+        <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
+        SymbolicValue: From<<U as SymbolicType>::Type>,
+    {
+        Ok(NgKernel::Nullary {
+            closure: Box::new(move |sess: &SymbolicSession, plc: &Placement| {
+                let plc = P::try_from(plc.clone())?;
+                let y = kf(sess, &plc)?;
+                Ok(SymbolicValue::from(Symbolic::Concrete(y)))
+            }),
+        })
+    }
+
+    pub(crate) fn symbolic_nullary_hybrid<U, Y, P>(
+        op: Operator,
+        kf: fn(&SymbolicSession, &P) -> Result<Y>,
+    ) -> Result<NgKernel<SymbolicSession>>
+    where
+        P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
+        Placement: From<P>,
+        U: PartiallySymbolicType,
+        Y: Into<<U as SymbolicType>::Type>,
+        Y: 'static,
+        <U as PartiallySymbolicType>::Type: Placed + 'static,
+        // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
+        <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
+        SymbolicValue: From<<U as SymbolicType>::Type>,
+    {
+        Ok(NgKernel::Nullary {
+            closure: Box::new(move |sess: &SymbolicSession, plc: &Placement| {
+                let plc = P::try_from(plc.clone())?;
+                let y = kf(sess, &plc)?;
+                let y: <U as SymbolicType>::Type = y.into();
+                Ok(SymbolicValue::from(y))
+            }),
+        })
+    }
+
     pub(crate) fn symbolic_ternary_runtime<T0, T1, T2, U, P>(
         op: Operator,
     ) -> Result<NgKernel<SymbolicSession>>
@@ -406,17 +475,62 @@ mod kernel_helpers {
 }
 
 macro_rules! ng_derive_runtime_kernel {
-    (sync unary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        Ok(NgKernel::Unary {
-            closure: Box::new(move |sess: &SyncSession, plc: &Placement, x0: Value| {
-                let plc: $plc = plc.clone().try_into()?;
-                let x0: $t0 = x0.try_into()?;
 
-                let y: $u = $k(sess, &plc, x0)?;
+    (sync nullary runtime $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
+        Ok(NgKernel::Nullary {
+            closure: Box::new(move |sess: &SyncSession, plc: &Placement| {
+                let plc: $plc = plc.clone().try_into()?;
+                let y: $u = $k(sess, &plc)?;
                 Ok(y.into())
             }),
         })
     };
+
+
+    (sync nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+        let k = |sess, plc| {
+            $k(
+                sess,
+                plc,
+                $attributes.clone()
+            )
+        };
+
+        Ok(NgKernel::Nullary {
+            closure: Box::new(move |sess: &SyncSession, plc: &Placement| {
+                let plc: $plc = plc.clone().try_into()?;
+               let y: $u = k(sess, &plc)?;
+                Ok(y.into())
+            }),
+        })
+    };
+
+    (symbolic nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+]  $k:path, $op:ident) => {
+        crate::kernel_helpers::symbolic_unary_runtime::<$u, $plc>(Operator::from($op))
+    };
+
+    (symbolic nullary concrete $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+]  $k:path, $op:ident) => {
+        let k = |sess, plc| {
+            $k(
+                sess,
+                plc,
+                $attributes.clone()
+            )
+        };
+        crate::kernel_helpers::symbolic_unary_concrete::<$u, $plc>(
+            Operator::from($op),
+            k,
+        )
+    };
+
+    (symbolic nullary hybrid $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? $k:path, $op:ident) => {
+        crate::kernel_helpers::symbolic_unary_hybrid::<$u, $plc>(
+            Operator::from($op),
+            $k,
+        )
+    };
+
+
 
     (sync ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         Ok(NgKernel::Ternary {
@@ -467,9 +581,9 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::kernel_helpers::symbolic_ternary_runtime::<$t0, $t1, $t2, $u, $plc>(Operator::from(
-            $op,
-        ))
+        crate::kernel_helpers::symbolic_ternary_runtime::<$t0, $t1, $t2, $u, $plc>(
+            Operator::from($op),
+        )
     };
 
     (symbolic ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
@@ -609,6 +723,7 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
+
         #[cfg(feature = "sync_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
@@ -3027,6 +3142,35 @@ macro_rules! modelled_kernel {
     ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
         concrete_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
+
+        #[cfg(feature = "sync_execute")]
+        impl crate::kernels::NgDispatchKernel<crate::execution::SyncSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SyncSession>> {
+                use crate::computation::Value;
+                use crate::execution::SyncSession;
+                use crate::kernels::NgKernel;
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Nullary(NullarySignature {
+                                ret: <$u as KnownType<SyncSession>>::TY,
+                            })
+                        ) => {
+                            ng_derive_runtime_kernel![sync nullary $flavour $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                }
+            }
+        }
+
+
 
         // support for SyncSession
         $(

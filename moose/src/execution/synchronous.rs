@@ -187,7 +187,20 @@ impl Session for SyncSession {
             // The regular kernels
             Shape(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
             Broadcast(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
-            PrfKeyGen(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
+            PrfKeyGen(op) => {
+                use crate::kernels::{NgDispatchKernel, NgKernel};
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Nullary { closure } => {
+                        closure(self, plc)?
+                    }
+                    _ => {
+                        return Err(Error::Compilation(
+                            "PrfKeyGen should be an unary kernel".to_string(),
+                        ))
+                    }
+                }
+            }
             Xor(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
             And(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
             Or(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
@@ -255,6 +268,11 @@ impl Session for SyncSession {
                         let x1 = operands.pop().unwrap();
                         let x0 = operands.pop().unwrap();
                         closure(self, plc, x0, x1, x2)?
+                    }
+                    _ => {
+                        return Err(Error::Compilation(
+                            "MuxOp should be a ternary kernel".to_string(),
+                        ))
                     }
                 }
             }
