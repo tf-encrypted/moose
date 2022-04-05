@@ -414,6 +414,92 @@ impl DispatchKernel<AsyncSession> for Operator {
             Diag(op) => DispatchKernel::compile(op, plc),
         }
     }
+
+    fn execute(&self, plc: &Placement, sess: &AsyncSession, operands: Operands<AsyncValue>) -> Result<AsyncValue> {
+        use Operator::*;
+        match self {
+            // these must be handled elsewhere by AsyncSession
+            Load(_) | Save(_) => unimplemented!(),
+
+            Send(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Receive(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Shape(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Broadcast(op) => DispatchKernel::execute(op, plc, sess, operands),
+            PrfKeyGen(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Xor(op) => DispatchKernel::execute(op, plc, sess, operands),
+            And(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Or(op) => DispatchKernel::execute(op, plc, sess, operands),
+            BitExtract(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Shl(op) => DispatchKernel::execute(op, plc, sess, operands),
+            ShlDim(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Shr(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Sample(op) => DispatchKernel::execute(op, plc, sess, operands),
+            SampleSeeded(op) => DispatchKernel::execute(op, plc, sess, operands),
+            RingFixedpointAbs(op) => DispatchKernel::execute(op, plc, sess, operands),
+            RingFixedpointArgmax(op) => DispatchKernel::execute(op, plc, sess, operands),
+            RingFixedpointMean(op) => DispatchKernel::execute(op, plc, sess, operands),
+            RingFixedpointEncode(op) => DispatchKernel::execute(op, plc, sess, operands),
+            RingFixedpointDecode(op) => DispatchKernel::execute(op, plc, sess, operands),
+            RingInject(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Fill(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Share(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Reveal(op) => DispatchKernel::execute(op, plc, sess, operands),
+            TruncPr(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Msb(op) => DispatchKernel::execute(op, plc, sess, operands),
+            RepToAdt(op) => DispatchKernel::execute(op, plc, sess, operands),
+            BitDecompose(op) => DispatchKernel::execute(op, plc, sess, operands),
+            BitCompose(op) => DispatchKernel::execute(op, plc, sess, operands),
+            AdtToRep(op) => DispatchKernel::execute(op, plc, sess, operands),
+            DeriveSeed(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Constant(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Input(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Output(op) => DispatchKernel::execute(op, plc, sess, operands),
+            AtLeast2D(op) => DispatchKernel::execute(op, plc, sess, operands),
+            FixedpointEncode(op) => DispatchKernel::execute(op, plc, sess, operands),
+            FixedpointDecode(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Sign(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Transpose(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Squeeze(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Identity(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Cast(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Reshape(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Slice(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Ones(op) => DispatchKernel::execute(op, plc, sess, operands),
+            ExpandDims(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Concat(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Dot(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Inverse(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Add(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Sub(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Mul(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Mean(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Sum(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Div(op) => DispatchKernel::execute(op, plc, sess, operands),
+            AddN(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Exp(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Pow2(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Neg(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Log(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Log2(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Equal(op) => DispatchKernel::execute(op, plc, sess, operands),
+            EqualZero(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Mux(op) => DispatchKernel::execute(op, plc, sess, operands),
+            LessThan(op) => DispatchKernel::execute(op, plc, sess, operands),
+            GreaterThan(op) => DispatchKernel::execute(op, plc, sess, operands),
+            IndexAxis(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Index(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Sigmoid(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Maximum(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Softmax(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Argmax(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Demirror(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Mirror(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Decrypt(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Sqrt(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Abs(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Diag(op) => DispatchKernel::execute(op, plc, sess, operands),
+        }
+    }
 }
 
 impl Session for AsyncSession {
@@ -444,8 +530,7 @@ impl Session for AsyncSession {
             }
             // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
             op => {
-                let kernel = DispatchKernel::compile(op, plc)?;
-                kernel(self, operands)
+                DispatchKernel::execute(op, plc, self, operands)
             }
         }
     }
