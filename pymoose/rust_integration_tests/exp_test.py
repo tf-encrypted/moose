@@ -34,7 +34,9 @@ class ReplicatedExample(parameterized.TestCase):
         return my_exp_comp
 
     @parameterized.parameters(
-        ([1, 0, 2, 3],), ([-1, 0, -2, -3.5],), ([-4.132, 0, -2, -3.5],),
+        ([1, 0, 2, 3],),
+        ([-1, 0, -2, -3.5],),
+        ([-4.132, 0, -2, -3.5],),
     )
     def test_exp_example_execute(self, x):
         x_arg = np.array(x, dtype=np.float64)

@@ -19,7 +19,9 @@ class SoftmaxExample(parameterized.TestCase):
         rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
         @edsl.computation
-        def my_comp(x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),):
+        def my_comp(
+            x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+        ):
             with bob:
                 x = edsl.load(x_uri, dtype=edsl.float64)
                 x_fixed = edsl.cast(x, dtype=edsl.fixed(8, 27))

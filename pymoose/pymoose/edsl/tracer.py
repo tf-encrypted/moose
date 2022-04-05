@@ -141,7 +141,10 @@ class AstTracer:
                 placement_name=placement.name,
                 name=argument_expression.arg_name,
                 inputs={},
-                signature=ops.OpSignature(input_types={}, return_type=output_type,),
+                signature=ops.OpSignature(
+                    input_types={},
+                    return_type=output_type,
+                ),
             )
         )
 
@@ -181,7 +184,8 @@ class AstTracer:
                 axis=concatenate_expression.axis,
                 inputs=array_inputs,
                 signature=ops.OpSignature(
-                    input_types=array_types, return_type=concatenate_expression.vtype,
+                    input_types=array_types,
+                    return_type=concatenate_expression.vtype,
                 ),
             )
         )
@@ -201,7 +205,8 @@ class AstTracer:
                 name=self.get_fresh_name("maximum"),
                 inputs=array_inputs,
                 signature=ops.OpSignature(
-                    input_types=array_types, return_type=maximum_expression.vtype,
+                    input_types=array_types,
+                    return_type=maximum_expression.vtype,
                 ),
             )
         )

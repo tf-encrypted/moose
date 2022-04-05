@@ -454,7 +454,9 @@ def decrypt(key, ciphertext, placement=None):
     output_type = ty.TensorType(output_dtype)
 
     return DecryptExpression(
-        placement=placement, inputs=[key, ciphertext], vtype=output_type,
+        placement=placement,
+        inputs=[key, ciphertext],
+        vtype=output_type,
     )
 
 
@@ -670,7 +672,11 @@ def argmax(x, axis, upmost_index, placement=None):
 def log(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return LogExpression(placement=placement, inputs=[x], vtype=x.vtype,)
+    return LogExpression(
+        placement=placement,
+        inputs=[x],
+        vtype=x.vtype,
+    )
 
 
 def log2(x, placement=None):

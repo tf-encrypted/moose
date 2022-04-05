@@ -242,7 +242,11 @@ class LinearClassifier(LinearPredictor):
                 "LinearClassifier."
             )
 
-        return cls(coeffs=coeffs, intercepts=intercepts, post_transform=post_transform,)
+        return cls(
+            coeffs=coeffs,
+            intercepts=intercepts,
+            post_transform=post_transform,
+        )
 
     def post_transform(self, y):
         return self._post_transform(y)
