@@ -12,7 +12,7 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
@@ -53,7 +53,7 @@ pub(crate) fn map_receive_error<T>(_: T) -> Error {
 }
 
 pub struct AsyncSessionHandle {
-    pub tasks: Arc<RwLock<FuturesUnordered<AsyncTask>>>,
+    pub tasks: Arc<Mutex<FuturesUnordered<AsyncTask>>>,
 }
 
 impl AsyncSessionHandle {
@@ -66,7 +66,7 @@ impl AsyncSessionHandle {
     pub async fn join_on_first_error(self) -> anyhow::Result<()> {
         use crate::error::Error::{OperandUnavailable, ResultUnused};
 
-        let mut tasks_guard = self.tasks.write().unwrap();
+        let mut tasks_guard = self.tasks.lock().unwrap();
         let mut maybe_error = None;
         while let Some(x) = tasks_guard.next().await {
             match x {
@@ -116,7 +116,7 @@ pub struct AsyncSession {
     pub role_assignments: Arc<HashMap<Role, Identity>>,
     pub networking: AsyncNetworkingImpl,
     pub storage: AsyncStorageImpl,
-    pub tasks: Arc<RwLock<FuturesUnordered<crate::execution::AsyncTask>>>,
+    pub tasks: Arc<Mutex<FuturesUnordered<crate::execution::AsyncTask>>>,
 }
 
 impl AsyncSession {
@@ -176,7 +176,7 @@ impl AsyncSession {
             map_send_result(sender.send(value))?;
             Ok(())
         });
-        let tasks = self.tasks.read().unwrap();
+        let tasks = self.tasks.lock().unwrap();
         tasks.push(task);
 
         Ok(receiver)
@@ -214,7 +214,7 @@ impl AsyncSession {
             map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let tasks = self.tasks.read().unwrap();
+        let tasks = self.tasks.lock().unwrap();
         tasks.push(task);
 
         Ok(receiver)
@@ -242,7 +242,7 @@ impl AsyncSession {
             map_send_result(sender.send(value))?;
             Ok(())
         });
-        let tasks = self.tasks.read().unwrap();
+        let tasks = self.tasks.lock().unwrap();
         tasks.push(task);
 
         Ok(receiver)
@@ -277,7 +277,7 @@ impl AsyncSession {
             map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let tasks = self.tasks.read().unwrap();
+        let tasks = self.tasks.lock().unwrap();
         tasks.push(task);
 
         Ok(receiver)
