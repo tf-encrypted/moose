@@ -251,6 +251,46 @@ macro_rules! concrete_dispatch_kernel {
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::SyncSession,
+                operands: crate::execution::Operands<crate::computation::Value>,
+            ) -> crate::error::Result<crate::computation::Value>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
+                use crate::execution::{SyncSession};
+                use crate::kernels::{NullaryKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Nullary(NullarySignature{
+                                ret: <$u as KnownType<SyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+                            let op = self.clone();
+
+                            let k = <$op as NullaryKernel<SyncSession, $plc, $u>>::compile(self)?;
+
+                            assert_eq!(operands.len(), 0);
+
+                            let y: $u = k(sess, &plc)?;
+                            if y.placement()? == plc.clone().into() {
+                                Ok(y.into())
+                            } else {
+                                Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                            }
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
         }
 
         #[cfg(feature = "async_execute")]
@@ -304,6 +344,57 @@ macro_rules! concrete_dispatch_kernel {
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::AsyncSession,
+                operands: crate::execution::Operands<crate::execution::AsyncValue>,
+            ) -> crate::error::Result<crate::execution::AsyncValue>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
+                use crate::execution::{AsyncSession};
+                use crate::kernels::{NullaryKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Nullary(NullarySignature {
+                                ret: <$u as KnownType<AsyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+                            // TODO: Do we want to be deriving the kernel inside? Probably not...
+                            let op = self.clone();
+
+                            assert_eq!(operands.len(), 0);
+                            let sess = sess.clone();
+                            let plc = plc.clone();
+                            let k = <$op as NullaryKernel<AsyncSession, $plc, $u>>::compile(&op)?;
+                            let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
+                            let op = op.clone(); // Needed for the error message for KernelError
+                            let tasks = std::sync::Arc::clone(&sess.tasks);
+                            let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                let y: $u = k(&sess, &plc)?;
+                                if y.placement()? == plc.clone().into() {
+                                    crate::execution::map_send_result(sender.send(y.into()))?;
+                                    Ok(())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
+                            });
+                            let mut tasks = tasks.write().unwrap();
+                            tasks.push(task);
+
+                            Ok(result)
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
         }
     };
 
@@ -350,6 +441,49 @@ macro_rules! concrete_dispatch_kernel {
                                     Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
                                 }
                             }))
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::SyncSession,
+                mut operands: crate::execution::Operands<crate::computation::Value>,
+            ) -> crate::error::Result<crate::computation::Value>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature};
+                use crate::execution::{SyncSession};
+                use crate::kernels::{UnaryKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Unary(UnarySignature {
+                                arg0: <$t0 as KnownType<SyncSession>>::TY,
+                                ret: <$u as KnownType<SyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+
+                            let k = <$op as UnaryKernel<SyncSession, $plc, $t0, $u>>::compile(self)?;
+                            let op = self.clone();
+
+                            assert_eq!(operands.len(), 1);
+
+                            let x0: $t0 = operands.pop().unwrap().try_into()?;
+
+                            let y: $u = k(sess, &plc, x0)?;
+                            if y.placement()? == plc.clone().into() {
+                                Ok(y.into())
+                            } else {
+                                Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                            }
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
@@ -416,6 +550,65 @@ macro_rules! concrete_dispatch_kernel {
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::AsyncSession,
+                operands: crate::execution::Operands<crate::execution::AsyncValue>,
+            ) -> crate::error::Result<crate::execution::AsyncValue>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature};
+                use crate::execution::{AsyncSession};
+                use crate::kernels::{UnaryKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Unary(UnarySignature {
+                                arg0: <$t0 as KnownType<AsyncSession>>::TY,
+                                ret: <$u as KnownType<AsyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+                            // TODO: Do we want to be deriving the kernel inside? Probably not...
+                            let op = self.clone();
+                            // let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(self, &plc)?;
+
+                            assert_eq!(operands.len(), 1);
+                            let sess = sess.clone();
+                            let plc = plc.clone();
+                            let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(&op)?;
+                            let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
+                            let op = op.clone(); // Needed for the error message for KernelError
+                            let tasks = std::sync::Arc::clone(&sess.tasks);
+                            let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                let mut operands = futures::future::join_all(operands).await;
+                                let x0: $t0 = operands
+                                        .pop()
+                                        .unwrap()
+                                        .map_err(crate::execution::map_receive_error)?
+                                        .try_into()?;
+                                let y: $u = k(&sess, &plc, x0)?;
+                                if y.placement()? == plc.clone().into() {
+                                    crate::execution::map_send_result(sender.send(y.into()))?;
+                                    Ok(())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
+                            });
+                            let mut tasks = tasks.write().unwrap();
+                            tasks.push(task);
+
+                            Ok(result)
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
         }
     };
 
@@ -471,6 +664,57 @@ macro_rules! concrete_dispatch_kernel {
                                     Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
                                 }
                             }))
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::SyncSession,
+                mut operands: crate::execution::Operands<crate::computation::Value>,
+            ) -> crate::error::Result<crate::computation::Value>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
+                use crate::execution::{SyncSession};
+                use crate::kernels::{BinaryKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Binary(BinarySignature{
+                                arg0: <$t0 as KnownType<SyncSession>>::TY,
+                                arg1: <$t1 as KnownType<SyncSession>>::TY,
+                                ret: <$u as KnownType<SyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+                            let op = self.clone();
+
+                            let k = <$op as BinaryKernel<
+                                SyncSession,
+                                $plc,
+                                $t0,
+                                $t1,
+                                $u
+                            >>::compile(self)?;
+
+                            assert_eq!(operands.len(), 2);
+
+                            let x1: $t1 = operands.pop().unwrap().try_into()?;
+                            let x0: $t0 = operands.pop().unwrap().try_into()?;
+
+                            let y: $u = k(sess, &plc, x0, x1)?;
+                            if y.placement()? == plc.clone().into() {
+                                Ok(y.into())
+                            } else {
+                                Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                            }
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
@@ -551,6 +795,79 @@ macro_rules! concrete_dispatch_kernel {
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::AsyncSession,
+                operands: crate::execution::Operands<crate::execution::AsyncValue>,
+            ) -> crate::error::Result<crate::execution::AsyncValue>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
+                use crate::execution::{AsyncSession};
+                use crate::kernels::{BinaryKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Binary(BinarySignature {
+                                arg0: <$t0 as KnownType<AsyncSession>>::TY,
+                                arg1: <$t1 as KnownType<AsyncSession>>::TY,
+                                ret: <$u as KnownType<AsyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+                            // TODO: Do we want to be deriving the kernel inside? Probably not...
+                            let op = self.clone();
+
+                            assert_eq!(operands.len(), 2);
+
+                            let k = <$op as BinaryKernel<AsyncSession, $plc, $t0, $t1, $u>>::compile(&op)?;
+
+                            let tasks = std::sync::Arc::clone(&sess.tasks);
+
+                            let sess = sess.clone();
+                            let plc = plc.clone();
+                            let op = op.clone(); // Needed for the error message for KernelError
+
+                            let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
+
+                            let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                let mut operands = futures::future::join_all(operands).await;
+
+                                let x1: $t1 = operands
+                                        .pop()
+                                        .unwrap()
+                                        .map_err(crate::execution::map_receive_error)?
+                                        .try_into()?;
+
+                                let x0: $t0 = operands
+                                        .pop()
+                                        .unwrap()
+                                        .map_err(crate::execution::map_receive_error)?
+                                        .try_into()?;
+
+                                let y: $u = k(&sess, &plc, x0, x1)?;
+
+                                if y.placement()? == plc.clone().into() {
+                                    crate::execution::map_send_result(sender.send(y.into()))?;
+                                    Ok(())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
+                            });
+                            let mut tasks = tasks.write().unwrap();
+                            tasks.push(task);
+
+                            Ok(result)
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
         }
     };
 
@@ -600,6 +917,52 @@ macro_rules! concrete_dispatch_kernel {
                                     Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
                                 }
                             }))
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::SyncSession,
+                mut operands: crate::execution::Operands<crate::computation::Value>,
+            ) -> crate::error::Result<crate::computation::Value>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature};
+                use crate::execution::{SyncSession};
+                use crate::kernels::{TernaryKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Ternary(TernarySignature{
+                                arg0: <$t0 as KnownType<SyncSession>>::TY,
+                                arg1: <$t1 as KnownType<SyncSession>>::TY,
+                                arg2: <$t2 as KnownType<SyncSession>>::TY,
+                                ret: <$u as KnownType<SyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+                            let op = self.clone();
+
+                            let k = <$op as TernaryKernel<SyncSession, $plc, $t0, $t1, $t2, $u>>::compile(self)?;
+
+                            assert_eq!(operands.len(), 3);
+                            let x2: $t2 = operands.pop().unwrap().try_into()?;
+                            let x1: $t1 = operands.pop().unwrap().try_into()?;
+                            let x0: $t0 = operands.pop().unwrap().try_into()?;
+
+                            let y: $u = k(sess, &plc, x0, x1, x2)?;
+                            if y.placement()? == plc.clone().into() {
+                                Ok(y.into())
+                            } else {
+                                Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                            }
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
@@ -681,6 +1044,80 @@ macro_rules! concrete_dispatch_kernel {
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::AsyncSession,
+                operands: crate::execution::Operands<crate::execution::AsyncValue>,
+            ) -> crate::error::Result<crate::execution::AsyncValue>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature};
+                use crate::execution::{AsyncSession};
+                use crate::kernels::{TernaryKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Ternary(TernarySignature {
+                                arg0: <$t0 as KnownType<AsyncSession>>::TY,
+                                arg1: <$t1 as KnownType<AsyncSession>>::TY,
+                                arg2: <$t2 as KnownType<AsyncSession>>::TY,
+                                ret: <$u as KnownType<AsyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+                            // TODO: Do we want to be deriving the kernel inside? Probably not...
+                            let op = self.clone();
+
+                            assert_eq!(operands.len(), 3);
+                            let sess = sess.clone();
+                            let plc = plc.clone();
+                            let k = <$op as TernaryKernel<AsyncSession, $plc, $t0, $t1, $t2, $u>>::compile(&op)?;
+                            let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
+                            let op = op.clone(); // Needed for the error message for KernelError
+                            let tasks = std::sync::Arc::clone(&sess.tasks);
+                            let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                let mut operands = futures::future::join_all(operands).await;
+
+                                let x2: $t2 = operands
+                                    .pop()
+                                    .unwrap()
+                                    .map_err(crate::execution::map_receive_error)?
+                                    .try_into()?;
+
+                                let x1: $t1 = operands
+                                    .pop()
+                                    .unwrap()
+                                    .map_err(crate::execution::map_receive_error)?
+                                    .try_into()?;
+
+                                let x0: $t0 = operands
+                                    .pop()
+                                    .unwrap()
+                                    .map_err(crate::execution::map_receive_error)?
+                                    .try_into()?;
+
+                                let y: $u = k(&sess, &plc, x0, x1, x2)?;
+                                if y.placement()? == plc.clone().into() {
+                                    crate::execution::map_send_result(sender.send(y.into()))?;
+                                    Ok(())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
+                            });
+                            let mut tasks = tasks.write().unwrap();
+                            tasks.push(task);
+
+                            Ok(result)
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
         }
     };
 
@@ -726,6 +1163,48 @@ macro_rules! concrete_dispatch_kernel {
                                     Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
                                 }
                             }))
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::SyncSession,
+                operands: crate::execution::Operands<crate::computation::Value>,
+            ) -> crate::error::Result<crate::computation::Value>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature};
+                use crate::execution::{SyncSession};
+                use crate::kernels::{VariadicKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Variadic(VariadicSignature {
+                                args: <$ts as KnownType<SyncSession>>::TY,
+                                ret: <$u as KnownType<SyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into().unwrap();
+                            let op = self.clone();
+
+                            let k = <$op as VariadicKernel<SyncSession, $plc, $ts, $u>>::compile(self)?;
+
+                            let xs: crate::error::Result<Operands<$ts>> = operands.into_iter().map(|xi| xi.try_into()).collect();
+
+                            let y: $u = k(sess, &plc, xs?)?;
+                            debug_assert_eq!(y.placement()?, plc.clone().into());
+                            if y.placement()? == plc.clone().into() {
+                                Ok(y.into())
+                            } else {
+                                Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                            }
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
@@ -788,6 +1267,62 @@ macro_rules! concrete_dispatch_kernel {
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::AsyncSession,
+                operands: crate::execution::Operands<crate::execution::AsyncValue>,
+            ) -> crate::error::Result<crate::execution::AsyncValue>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, VariadicSignature};
+                use crate::execution::{AsyncSession, Operands};
+                use crate::kernels::{VariadicKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Variadic(VariadicSignature {
+                                args: <$ts as KnownType<AsyncSession>>::TY,
+                                ret: <$u as KnownType<AsyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+                            // TODO: Do we want to be deriving the kernel inside? Probably not...
+                            let op = self.clone();
+
+                            let sess = sess.clone();
+                            let plc = plc.clone();
+                            let k = <$op as VariadicKernel<AsyncSession, $plc, $ts, $u>>::compile(&op)?;
+                            let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
+                            let op = op.clone(); // Needed for the error message for KernelError
+                            let tasks = std::sync::Arc::clone(&sess.tasks);
+                            let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                // A bit of involved way of going from a vector of futures to a vector of concrete values extracted
+                                let xs = futures::future::join_all(operands).await;
+                                let xs: std::result::Result<Operands<crate::computation::Value>, _> = xs.into_iter().collect();
+                                let xs = xs.map_err(crate::execution::map_receive_error)?;
+                                let xs: crate::error::Result<Operands<$ts>> = xs.into_iter().map(|xi| xi.try_into()).collect();
+                                let y: $u = k(&sess, &plc, xs?)?;
+                                if y.placement()? == plc.clone().into() {
+                                    crate::execution::map_send_result(sender.send(y.into()))?;
+                                    Ok(())
+                                } else {
+                                    Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                }
+                            });
+                            let mut tasks = tasks.write().unwrap();
+                            tasks.push(task);
+
+                            Ok(result)
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
         }
     };
 }
@@ -832,6 +1367,44 @@ macro_rules! symbolic_dispatch_kernel {
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc)?;
                                 Ok(y.into())
                             }))
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::SymbolicSession,
+                operands: crate::execution::Operands<crate::computation::SymbolicValue>,
+            ) -> crate::error::Result<crate::computation::SymbolicValue>
+            {
+                use crate::computation::{KnownPlacement, Signature, NullarySignature, KnownType};
+                use crate::kernels::NullaryKernel;
+                use crate::execution::SymbolicSession;
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Nullary(NullarySignature {
+                                ret: <$u as KnownType<SymbolicSession>>::TY,
+                            })
+                        ) => {
+                            let k = <$op as NullaryKernel<
+                                SymbolicSession,
+                                $plc,
+                                <$u as KnownType<SymbolicSession>>::Type,
+                            >>::compile(self)?;
+
+                            let plc: $plc = plc.clone().try_into()?;
+                            assert_eq!(operands.len(), 0);
+
+                            let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc)?;
+                            Ok(y.into())
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
@@ -891,6 +1464,52 @@ macro_rules! symbolic_dispatch_kernel {
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::SymbolicSession,
+                mut operands: crate::execution::Operands<crate::computation::SymbolicValue>,
+            ) -> crate::error::Result<crate::computation::SymbolicValue>
+            {
+                use crate::computation::{KnownPlacement, Signature, UnarySignature, KnownType};
+                use crate::kernels::{UnaryKernel};
+                use crate::execution::SymbolicSession;
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Unary(UnarySignature {
+                                arg0: <$t0 as KnownType<SymbolicSession>>::TY,
+                                ret: <$u as KnownType<SymbolicSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+
+                            let k = <$op as UnaryKernel<
+                                SymbolicSession,
+                                $plc,
+                                <$t0 as KnownType<SymbolicSession>>::Type,
+                                <$u as KnownType<SymbolicSession>>::Type,
+                            >>::compile(self)?;
+
+                            assert_eq!(operands.len(), 1);
+
+                            let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands
+                                .pop()
+                                .unwrap()
+                                .try_into()?;
+
+                            let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0)?;
+                            Ok(y.into())
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
         }
     };
 
@@ -940,6 +1559,52 @@ macro_rules! symbolic_dispatch_kernel {
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0, x1)?;
                                 Ok(y.into())
                             }))
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::SymbolicSession,
+                mut operands: crate::execution::Operands<crate::computation::SymbolicValue>,
+            ) -> crate::error::Result<crate::computation::SymbolicValue>
+            {
+                use crate::computation::{KnownPlacement, Signature, BinarySignature, KnownType};
+                use crate::kernels::{BinaryKernel};
+                use crate::execution::SymbolicSession;
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Binary(BinarySignature {
+                                arg0: <$t0 as KnownType<SymbolicSession>>::TY,
+                                arg1: <$t1 as KnownType<SymbolicSession>>::TY,
+                                ret: <$u as KnownType<SymbolicSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+
+                            let k = <$op as BinaryKernel<
+                                SymbolicSession,
+                                $plc,
+                                <$t0 as KnownType<SymbolicSession>>::Type,
+                                <$t1 as KnownType<SymbolicSession>>::Type,
+                                <$u as KnownType<SymbolicSession>>::Type,
+                            >>::compile(self)?;
+
+                            assert_eq!(operands.len(), 2);
+
+                            let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.pop().unwrap().try_into()?;
+                            let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.pop().unwrap().try_into()?;
+
+                            let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0, x1)?;
+                            Ok(y.into())
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
@@ -1002,6 +1667,55 @@ macro_rules! symbolic_dispatch_kernel {
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::SymbolicSession,
+                mut operands: crate::execution::Operands<crate::computation::SymbolicValue>,
+            ) -> crate::error::Result<crate::computation::SymbolicValue>
+            {
+                use crate::computation::{KnownPlacement, Signature, TernarySignature, KnownType};
+                use crate::kernels::{TernaryKernel};
+                use crate::execution::SymbolicSession;
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Ternary(TernarySignature {
+                                arg0: <$t0 as KnownType<SymbolicSession>>::TY,
+                                arg1: <$t1 as KnownType<SymbolicSession>>::TY,
+                                arg2: <$t2 as KnownType<SymbolicSession>>::TY,
+                                ret: <$u as KnownType<SymbolicSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+
+                            let k = <$op as TernaryKernel<
+                                SymbolicSession,
+                                $plc,
+                                <$t0 as KnownType<SymbolicSession>>::Type,
+                                <$t1 as KnownType<SymbolicSession>>::Type,
+                                <$t2 as KnownType<SymbolicSession>>::Type,
+                                <$u as KnownType<SymbolicSession>>::Type,
+                            >>::compile(self)?;
+
+                            assert_eq!(operands.len(), 3);
+
+                            let x2: <$t2 as KnownType<SymbolicSession>>::Type = operands.pop().unwrap().try_into()?;
+                            let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.pop().unwrap().try_into()?;
+                            let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.pop().unwrap().try_into()?;
+
+                            let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0, x1, x2)?;
+                            Ok(y.into())
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
         }
     };
 
@@ -1046,6 +1760,47 @@ macro_rules! symbolic_dispatch_kernel {
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, xs)?;
                                 Ok(y.into())
                             }))
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
+
+            #[cfg(feature = "test_direct_execute")]
+            fn execute(
+                &self,
+                plc: &crate::computation::Placement,
+                sess: &crate::execution::SymbolicSession,
+                operands: crate::execution::Operands<crate::computation::SymbolicValue>,
+            )-> crate::error::Result<crate::computation::SymbolicValue>
+            {
+                use crate::computation::{KnownPlacement, Signature, VariadicSignature, KnownType};
+                use crate::kernels::{VariadicKernel};
+                use crate::execution::{SymbolicSession, Operands};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Variadic(VariadicSignature {
+                                args: <$ts as KnownType<SymbolicSession>>::TY,
+                                ret: <$u as KnownType<SymbolicSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+
+                            let k = <$op as VariadicKernel<
+                                SymbolicSession,
+                                $plc,
+                                <$ts as KnownType<SymbolicSession>>::Type,
+                                <$u as KnownType<SymbolicSession>>::Type,
+                            >>::compile(self)?;
+
+                            let xs: Operands<<$ts as KnownType<SymbolicSession>>::Type> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
+
+                            let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, xs)?;
+                            Ok(y.into())
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
