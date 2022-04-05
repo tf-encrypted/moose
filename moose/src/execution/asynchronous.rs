@@ -415,7 +415,12 @@ impl DispatchKernel<AsyncSession> for Operator {
         }
     }
 
-    fn execute(&self, plc: &Placement, sess: &AsyncSession, operands: Operands<AsyncValue>) -> Result<AsyncValue> {
+    fn execute(
+        &self,
+        plc: &Placement,
+        sess: &AsyncSession,
+        operands: Operands<AsyncValue>,
+    ) -> Result<AsyncValue> {
         use Operator::*;
         match self {
             // these must be handled elsewhere by AsyncSession
@@ -529,9 +534,7 @@ impl Session for AsyncSession {
                 }
             }
             // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
-            op => {
-                DispatchKernel::execute(op, plc, self, operands)
-            }
+            op => DispatchKernel::execute(op, plc, self, operands),
         }
     }
 }
