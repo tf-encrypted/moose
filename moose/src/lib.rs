@@ -198,9 +198,10 @@ macro_rules! derive_runtime_kernel {
 mod kernel_helpers {
     use super::*;
     use crate::computation::{
-        Operator, PartiallySymbolicType, Placed, Placement, SymbolicType, SymbolicValue,
+        Operator, PartiallySymbolicType, Placed, Placement, SymbolicType, SymbolicValue, Value,
     };
     use crate::execution::symbolic::{Symbolic, SymbolicSession};
+    use crate::execution::SyncSession;
     use crate::kernels::NgKernel;
     use std::convert::{TryFrom, TryInto};
 
@@ -269,6 +270,54 @@ mod kernel_helpers {
                 let y = kf(sess, &plc)?;
                 let y: <U as SymbolicType>::Type = y.into();
                 Ok(SymbolicValue::from(y))
+            }),
+        })
+    }
+
+    // TODO(Morten) can we merge sync_unary_box and sync_unary_fn and still
+    // be certain that we only get two copies? What are the correct trait bounds?
+
+    pub(crate) fn sync_unary_box<T0, U, P>(
+        op: Operator,
+        kf: Box<dyn Fn(&SyncSession, &P, T0) -> Result<U>>,
+    ) -> Result<NgKernel<SyncSession>>
+    where
+        T0: 'static,
+        U: 'static,
+        P: 'static,
+
+        Placement: TryInto<P, Error = crate::Error>,
+        Value: TryInto<T0, Error = crate::Error>,
+        Value: From<U>,
+    {
+        Ok(NgKernel::Unary {
+            closure: Box::new(move |sess: &SyncSession, plc: &Placement, v0: Value| {
+                let plc: P = Placement::try_into(plc.clone())?;
+                let x0: T0 = Value::try_into(v0)?;
+                let y = kf(sess, &plc, x0)?;
+                Ok(Value::from(y))
+            }),
+        })
+    }
+
+    pub(crate) fn sync_unary_fn<T0, U, P>(
+        op: Operator,
+        kf: fn(&SyncSession, &P, T0) -> Result<U>,
+    ) -> Result<NgKernel<SyncSession>>
+    where
+        T0: 'static,
+        U: 'static,
+        P: 'static,
+        Placement: TryInto<P, Error = crate::Error>,
+        Value: TryInto<T0, Error = crate::Error>,
+        Value: From<U>,
+    {
+        Ok(NgKernel::Unary {
+            closure: Box::new(move |sess: &SyncSession, plc: &Placement, v0: Value| {
+                let plc: P = Placement::try_into(plc.clone())?;
+                let x0: T0 = Value::try_into(v0)?;
+                let y = kf(sess, &plc, x0)?;
+                Ok(Value::from(y))
             }),
         })
     }
@@ -520,7 +569,7 @@ macro_rules! ng_derive_runtime_kernel {
         crate::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op))
     };
 
-    (symbolic nullary concrete $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+]  $k:path, $op:ident) => {
+    (symbolic nullary concrete $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
         {
             $(
             let $attr = $attributes.clone();
@@ -569,17 +618,30 @@ macro_rules! ng_derive_runtime_kernel {
         crate::kernel_helpers::symbolic_nullary_hybrid::<$u, $plc>(Operator::from($op), k)
     };
 
-    (sync unary runtime $(attributes[$($_attrs:tt)*])? custom |$k:path|) => {
-        Ok(NgKernel::Unary {
-            closure: $kf,
-        })
+    (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+        {
+            let kf: &dyn Fn(&Self) -> crate::error::Result<
+                crate::kernels::TypedUnaryKernel<
+                    crate::execution::SyncSession,
+                    $plc,
+                    $t0,
+                    $u,
+                >
+            > = &|$op_ke| $ke;
+            let k: crate::kernels::TypedUnaryKernel<
+                crate::execution::SyncSession,
+                $plc,
+                $t0,
+                $u,
+            > = kf(&$op)?;
+            crate::kernel_helpers::sync_unary_box::<$t0, $u, $plc>(Operator::from($op), k)
+        }
     };
 
-
-    (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $self:ident) => {
         {
             $(
-            let $attr = $op.$attr.clone();
+                let $attr = $self.$attr.clone();
                 // The following block applies the optional Constant type restriction to the attribute and unwraps it
                 $(
                     let $attr = match $attr {
@@ -592,13 +654,11 @@ macro_rules! ng_derive_runtime_kernel {
                 )?
             )+
 
-            let k = |sess, plc, x0| $k(sess, plc, $($attr.clone()),+, x0);
-
             Ok(NgKernel::Unary {
                 closure: Box::new(move |sess: &SyncSession, plc: &Placement, x0: Value| {
                     let plc: $plc = plc.clone().try_into()?;
                     let x0: $t0 = x0.try_into()?;
-                    let y: $u = k(sess, &plc, x0)?;
+                    let y: $u = $k(sess, &plc, $($attr.clone()),+, x0)?;
                     Ok(y.into())
                 }),
             })
@@ -617,38 +677,6 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (sync ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        Ok(NgKernel::Ternary {
-            closure: Box::new(
-                move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
-                    let plc: $plc = plc.clone().try_into()?;
-                    let x0: $t0 = x0.try_into()?;
-                    let x1: $t1 = x1.try_into()?;
-                    let x2: $t2 = x2.try_into()?;
-
-                    let y: $u = $k(sess, &plc, x0, x1, x2)?;
-                    Ok(y.into())
-                },
-            ),
-        })
-    };
-
-    (sync ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        Ok(NgKernel::Ternary {
-            closure: Box::new(
-                move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
-                    let plc: $plc = plc.clone().try_into()?;
-                    let x0: $t0 = x0.try_into()?;
-                    let x1: $t1 = x1.try_into()?;
-                    let x2: $t2 = x2.try_into()?;
-
-                    let y: $u = $k(sess, &plc, x0, x1, x2)?;
-                    Ok(y.into())
-                },
-            ),
-        })
-    };
-
-    (sync ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         Ok(NgKernel::Ternary {
             closure: Box::new(
                 move |sess: &SyncSession, plc: &Placement, x0: Value, x1: Value, x2: Value| {
@@ -3561,7 +3589,8 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![sync unary runtime $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            let op = self.clone();
+                            ng_derive_runtime_kernel![sync unary runtime $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, op]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -4495,7 +4524,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![sync ternary $flavour $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            ng_derive_runtime_kernel![sync ternary runtime $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
