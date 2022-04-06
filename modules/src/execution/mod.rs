@@ -87,7 +87,7 @@ impl ExecutionContext {
             }
         }
 
-        let handle = session.into_handle();
+        let handle = session.into_handle()?;
         Ok((handle, outputs))
     }
 
@@ -163,7 +163,7 @@ impl ExecutionContext {
             }
         }
 
-        let handle = session.into_handle();
+        let handle = session.into_handle()?;
         Ok((handle, outputs))
     }
 }

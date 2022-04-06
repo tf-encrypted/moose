@@ -86,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         &moose_session,
     )?;
 
-    let moose_session_handle = moose_session.into_handle();
+    let moose_session_handle = moose_session.into_handle()?;
     tracing::info!("joining on tasks");
     moose_session_handle.join_on_first_error().await?;
 
