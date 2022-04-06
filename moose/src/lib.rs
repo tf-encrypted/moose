@@ -3768,29 +3768,6 @@ macro_rules! modelled_kernel {
         // support for SyncSession
         $(
             #[cfg(feature = "sync_execute")]
-            impl crate::kernels::UnaryKernel<
-                crate::execution::SyncSession,
-                $plc,
-                $t0,
-                $u
-            > for $op
-            {
-                fn compile(
-                    &self,
-                ) -> crate::error::Result<
-                    crate::kernels::TypedUnaryKernel<
-                        crate::execution::SyncSession,
-                        $plc,
-                        $t0,
-                        $u,
-                    >
-                > {
-                    derive_runtime_kernel![unary, $(attributes[$($attr_id),+])? $($kp)+, self]
-                }
-            }
-
-
-            #[cfg(feature = "sync_execute")]
             impl $trait<crate::execution::SyncSession, $t0, $u> for $plc {
                 fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty,)*)? x0: &$t0) -> $u {
                     use crate::computation::{KnownType, UnarySignature};
