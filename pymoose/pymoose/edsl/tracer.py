@@ -141,10 +141,7 @@ class AstTracer:
                 placement_name=placement.name,
                 name=argument_expression.arg_name,
                 inputs={},
-                signature=ops.OpSignature(
-                    input_types={},
-                    return_type=output_type,
-                ),
+                signature=ops.OpSignature(input_types={}, return_type=output_type,),
             )
         )
 
@@ -184,8 +181,7 @@ class AstTracer:
                 axis=concatenate_expression.axis,
                 inputs=array_inputs,
                 signature=ops.OpSignature(
-                    input_types=array_types,
-                    return_type=concatenate_expression.vtype,
+                    input_types=array_types, return_type=concatenate_expression.vtype,
                 ),
             )
         )
@@ -205,8 +201,7 @@ class AstTracer:
                 name=self.get_fresh_name("maximum"),
                 inputs=array_inputs,
                 signature=ops.OpSignature(
-                    input_types=array_types,
-                    return_type=maximum_expression.vtype,
+                    input_types=array_types, return_type=maximum_expression.vtype,
                 ),
             )
         )
@@ -485,16 +480,31 @@ class AstTracer:
         (shape_expression,) = ones_expression.inputs
         shape_operation = self.visit(shape_expression)
         placement = self.visit_placement_expression(ones_expression.placement)
-        dtype = ones_expression.dtype
         return self.computation.add_operation(
             ops.OnesOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("ones"),
-                dtype=dtype,
                 inputs={"shape": shape_operation.name},
                 signature=ops.OpSignature(
                     input_types={"shape": shape_operation.return_type},
                     return_type=ones_expression.vtype,
+                ),
+            )
+        )
+
+    def visit_ZerosExpression(self, zeros_expression):
+        assert isinstance(zeros_expression, expr.ZerosExpression)
+        (shape_expression,) = zeros_expression.inputs
+        shape_operation = self.visit(shape_expression)
+        placement = self.visit_placement_expression(zeros_expression.placement)
+        return self.computation.add_operation(
+            ops.ZerosOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("zeros"),
+                inputs={"shape": shape_operation.name},
+                signature=ops.OpSignature(
+                    input_types={"shape": shape_operation.return_type},
+                    return_type=zeros_expression.vtype,
                 ),
             )
         )

@@ -228,6 +228,7 @@ impl Session for SyncSession {
             IndexAxis(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
             Slice(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
             Ones(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
+            Zeros(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
             Concat(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
             Reshape(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
             Transpose(op) => DispatchKernel::compile(op, plc)?(self, operands)?,

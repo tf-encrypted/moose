@@ -74,6 +74,7 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             Reshape(op) => DispatchKernel::compile(op, plc),
             Slice(op) => DispatchKernel::compile(op, plc),
             Ones(op) => DispatchKernel::compile(op, plc),
+            Zeros(op) => DispatchKernel::compile(op, plc),
             ExpandDims(op) => DispatchKernel::compile(op, plc),
             Concat(op) => DispatchKernel::compile(op, plc),
             Dot(op) => DispatchKernel::compile(op, plc),

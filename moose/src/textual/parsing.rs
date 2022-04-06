@@ -1188,6 +1188,7 @@ impl ToTextual for Operator {
             IndexAxis(op) => op.to_textual(),
             Slice(op) => op.to_textual(),
             Ones(op) => op.to_textual(),
+            Zeros(op) => op.to_textual(),
             ExpandDims(op) => op.to_textual(),
             Concat(op) => op.to_textual(),
             Reshape(op) => op.to_textual(),
