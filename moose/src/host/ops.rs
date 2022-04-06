@@ -400,6 +400,17 @@ impl OnesOp {
     }
 }
 
+impl ZerosOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
+        _sess: &S,
+        plc: &HostPlacement,
+        shape: HostShape,
+    ) -> Result<HostTensor<T>> {
+        let raw_shape = shape.0;
+        Ok(HostTensor(ArcArrayD::zeros(raw_shape.0), plc.clone()))
+    }
+}
+
 impl ShapeOp {
     pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
