@@ -322,6 +322,90 @@ mod kernel_helpers {
         })
     }
 
+    pub(crate) fn symbolic_unary_runtime<T0, U, P>(
+        op: Operator,
+    ) -> Result<NgKernel<SymbolicSession>>
+    where
+        P: Clone + TryFrom<Placement, Error = crate::Error>,
+        Placement: From<P>,
+
+        T0: PartiallySymbolicType,
+        U: PartiallySymbolicType,
+
+        <T0 as PartiallySymbolicType>::Type: Placed,
+        <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
+
+        SymbolicValue: TryInto<Symbolic<<T0 as PartiallySymbolicType>::Type>, Error = crate::Error>,
+        SymbolicValue: From<<U as SymbolicType>::Type>,
+    {
+        Ok(crate::kernels::NgKernel::Unary {
+            closure: Box::new(
+                move |sess: &crate::execution::SymbolicSession,
+                      plc: &crate::computation::Placement,
+                      v0: crate::computation::SymbolicValue| {
+                    let plc = P::try_from(plc.clone())?;
+                    let v0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
+
+                    match v0 {
+                        Symbolic::Symbolic(x0) => {
+                            let h = sess.add_operation(&op, &[&x0.op], &plc);
+                            let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
+                            Ok(SymbolicValue::from(h))
+                        }
+                        _ => unimplemented!(),
+                    }
+                },
+            ),
+        })
+    }
+
+    pub(crate) fn symbolic_unary_concrete<T0, U, P>(
+        op: Operator,
+        kf: fn(
+            &SymbolicSession,
+            &P,
+            <T0 as PartiallySymbolicType>::Type,
+        ) -> Result<<U as PartiallySymbolicType>::Type>,
+    ) -> Result<NgKernel<SymbolicSession>>
+    where
+        P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
+        Placement: From<P>,
+
+        T0: PartiallySymbolicType,
+        U: PartiallySymbolicType, // TODO use SymbolicType here?
+
+        <T0 as PartiallySymbolicType>::Type: Placed + 'static,
+        <U as PartiallySymbolicType>::Type: Placed + 'static,
+        // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
+        <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
+        SymbolicValue: TryInto<Symbolic<<T0 as PartiallySymbolicType>::Type>, Error = crate::Error>,
+        SymbolicValue: From<<U as SymbolicType>::Type>,
+    {
+        Ok(NgKernel::Unary {
+            closure: Box::new(
+                move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
+                    let plc = P::try_from(plc.clone())?;
+                    let v0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
+
+                    match v0 {
+                        Symbolic::Concrete(x0) => {
+                            let y = kf(sess, &plc, x0)?;
+                            Ok(SymbolicValue::from(Symbolic::Concrete(y)))
+                        }
+                        Symbolic::Symbolic(h0) => {
+                            let h = sess.add_operation(&op, &[&h0.op], &plc);
+                            let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
+                            Ok(SymbolicValue::from(h))
+                        }
+                        _ => Err(crate::error::Error::Unexpected(Some(
+                            "Mixed symbolic and concrete value during compilation".to_string(),
+                        ))),
+                    }
+                },
+            ),
+        })
+    }
+
     pub(crate) fn symbolic_ternary_runtime<T0, T1, T2, U, P>(
         op: Operator,
     ) -> Result<NgKernel<SymbolicSession>>
@@ -675,6 +759,84 @@ macro_rules! ng_derive_runtime_kernel {
             }),
         })
     };
+
+
+    (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+        crate::kernel_helpers::symbolic_unary_runtime_box::<$t0, $u, $plc>(Operator::from($op))
+    };
+
+    (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $self:ident) => {
+        crate::kernel_helpers::symbolic_unary_runtime::<$t0, $u, $plc>(Operator::from(
+            $self,
+        ))
+    };
+
+    (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::kernel_helpers::symbolic_unary_runtime::<$t0, $u, $plc>(Operator::from(
+            $op,
+        ))
+    };
+
+
+    (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+        {
+            unimplemented!()
+        }
+    };
+
+    (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $self:ident) => {
+        {
+            unimplemented!()
+        }
+    };
+
+
+    (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::kernel_helpers::symbolic_unary_concrete::<$t0, $u, $plc>(
+            Operator::from($op),
+            $k,
+        )
+    };
+
+    (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+        {
+            unimplemented!()
+        }
+    };
+
+    (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $self:ident) => {
+        {
+            unimplemented!()
+        }
+    };
+
+    (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
+        {
+            unimplemented!()
+        }
+    };
+
+
+
+
+    (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+        {
+            unimplemented!()
+        }
+    };
+
+    (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $self:ident) => {
+        {
+            unimplemented!()
+        }
+    };
+
+    (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
+        {
+            unimplemented!()
+        }
+    };
+
 
     (sync ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         Ok(NgKernel::Ternary {
@@ -3251,7 +3413,6 @@ macro_rules! modelled_kernel {
                 &self,
                 plc: &crate::computation::Placement
             ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SyncSession>> {
-                use crate::computation::Value;
                 use crate::execution::SyncSession;
                 use crate::kernels::NgKernel;
                 use std::convert::TryInto;
@@ -3301,26 +3462,6 @@ macro_rules! modelled_kernel {
 
         // support for SyncSession
         $(
-            // #[cfg(feature = "sync_execute")]
-            // impl crate::kernels::NullaryKernel<
-            //     crate::execution::SyncSession,
-            //     $plc,
-            //     $u
-            // > for $op
-            // {
-            //     fn compile(
-            //         &self,
-            //     ) -> crate::error::Result<
-            //         crate::kernels::TypedNullaryKernel<
-            //             crate::execution::SyncSession,
-            //             $plc,
-            //             $u,
-            //         >
-            //     > {
-            //         derive_runtime_kernel![nullary, $(attributes[$($attr_id),+])? $($kp)+, self]
-            //     }
-            // }
-
             #[cfg(feature = "sync_execute")]
             impl $trait<crate::execution::SyncSession, $u> for $plc {
                 fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty,)*)?) -> $u {
@@ -3566,7 +3707,6 @@ macro_rules! modelled_kernel {
     */
 
     ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
-        concrete_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
 
         #[cfg(feature = "sync_execute")]
@@ -3597,6 +3737,33 @@ macro_rules! modelled_kernel {
                 }
             }
         }
+
+        #[cfg(feature = "compile")]
+        impl crate::kernels::NgDispatchKernel<crate::execution::SymbolicSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SymbolicSession>> {
+                use crate::execution::SymbolicSession;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Unary(UnarySignature{
+                                arg0: <$t0 as KnownType<SymbolicSession>>::TY,
+                                ret: <$u as KnownType<SymbolicSession>>::TY,
+                            })
+                        ) => {
+                            let op = self.clone();
+                            ng_derive_runtime_kernel![symbolic unary $flavour $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, op]
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                }
+            }
+        }
+
 
         // support for SyncSession
         $(
