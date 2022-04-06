@@ -109,7 +109,7 @@ pub struct AsyncSession {
     pub role_assignments: Arc<HashMap<Role, Identity>>,
     pub networking: AsyncNetworkingImpl,
     pub storage: AsyncStorageImpl,
-    pub tasks: Arc<Mutex<FuturesUnordered<crate::execution::AsyncTask>>>,
+    pub tasks: Arc<Mutex<Option<FuturesUnordered<AsyncTask>>>>,
 }
 
 impl AsyncSession {
@@ -126,15 +126,52 @@ impl AsyncSession {
             role_assignments: Arc::new(role_assignments),
             networking,
             storage,
-            tasks: Default::default(),
+            tasks: Arc::new(Mutex::new(Some(Default::default()))),
         }
     }
 
+    /// Adds a task into the specified collection of tasks.
+    ///
+    /// The collection is usually a `&sess.tasks`. This is an assoicated function instead of a method due to
+    /// the fact that the current kernels move the cloned session into the created task. To avoid cloning the
+    /// entire session, this function expects just a reference to an Arc-cloned session's tasks.
+    pub fn add_task(
+        session_tasks: &Arc<Mutex<Option<FuturesUnordered<AsyncTask>>>>,
+        task: AsyncTask,
+    ) -> Result<()> {
+        let tasks_guard = session_tasks.lock().map_err(|e| {
+            Error::MalformedEnvironment(format!(
+                "Failed to obtain a lock to the tasks in the session. {}",
+                e
+            ))
+        })?;
+        tasks_guard
+            .as_ref()
+            .map(|tasks| tasks.push(task))
+            .ok_or_else(|| {
+                Error::MalformedEnvironment(
+                    "Impossible to add a task. Session has been already converted into a handle"
+                        .to_string(),
+                )
+            })
+    }
+
     /// Consumes self and return a handle with the tasks crated in the session.
-    pub fn into_handle(self) -> AsyncSessionHandle {
-        let mut tasks_guard = self.tasks.lock().unwrap();
-        let tasks = std::mem::replace(&mut *tasks_guard, FuturesUnordered::new());
-        AsyncSessionHandle { tasks }
+    ///
+    /// Errors if the session has been already converted into a handle.
+    pub fn into_handle(self) -> Result<AsyncSessionHandle> {
+        let mut tasks_guard = self.tasks.lock().map_err(|e| {
+            Error::MalformedEnvironment(format!(
+                "Failed to obtain a lock to the tasks in the session. {}",
+                e
+            ))
+        })?;
+        let tasks = tasks_guard.take().ok_or_else(|| {
+            Error::MalformedEnvironment(
+                "Session has been already converted into a handle".to_string(),
+            )
+        })?;
+        Ok(AsyncSessionHandle { tasks })
     }
 }
 
@@ -176,8 +213,7 @@ impl AsyncSession {
             map_send_result(sender.send(value))?;
             Ok(())
         });
-        let tasks = self.tasks.lock().unwrap();
-        tasks.push(task);
+        Self::add_task(&self.tasks, task)?;
 
         Ok(receiver)
     }
@@ -214,8 +250,7 @@ impl AsyncSession {
             map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let tasks = self.tasks.lock().unwrap();
-        tasks.push(task);
+        Self::add_task(&self.tasks, task)?;
 
         Ok(receiver)
     }
@@ -242,8 +277,7 @@ impl AsyncSession {
             map_send_result(sender.send(value))?;
             Ok(())
         });
-        let tasks = self.tasks.lock().unwrap();
-        tasks.push(task);
+        Self::add_task(&self.tasks, task)?;
 
         Ok(receiver)
     }
@@ -277,8 +311,7 @@ impl AsyncSession {
             map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let tasks = self.tasks.lock().unwrap();
-        tasks.push(task);
+        Self::add_task(&self.tasks, task)?;
 
         Ok(receiver)
     }
@@ -633,7 +666,7 @@ impl AsyncTestRuntime {
                 output_futures.insert(output_name, output_future);
             }
 
-            session_handles.push(moose_session.into_handle())
+            session_handles.push(moose_session.into_handle()?)
         }
 
         let mut futures: FuturesUnordered<_> = session_handles
