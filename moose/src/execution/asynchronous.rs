@@ -53,7 +53,7 @@ pub(crate) fn map_receive_error<T>(_: T) -> Error {
 }
 
 pub struct AsyncSessionHandle {
-    pub tasks: FuturesUnordered<AsyncTask>,
+    tasks: FuturesUnordered<AsyncTask>,
 }
 
 impl AsyncSessionHandle {
@@ -132,10 +132,10 @@ impl AsyncSession {
 
     /// Adds a task into the specified collection of tasks.
     ///
-    /// The collection is usually a `&sess.tasks`. This is an assoicated function instead of a method due to
+    /// The collection is usually a `&sess.tasks`. This is an associated function instead of a method due to
     /// the fact that the current kernels move the cloned session into the created task. To avoid cloning the
     /// entire session, this function expects just a reference to an Arc-cloned session's tasks.
-    pub fn add_task(
+    pub(crate) fn add_task(
         session_tasks: &Arc<Mutex<Option<FuturesUnordered<AsyncTask>>>>,
         task: AsyncTask,
     ) -> Result<()> {
