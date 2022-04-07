@@ -50,7 +50,8 @@ class EdslTest(parameterized.TestCase):
             name="identity_0",
             inputs={"x": "constant_0"},
             signature=ops.OpSignature(
-                {"x": ty.TensorType(dtypes.float64)}, ty.TensorType(dtypes.float64),
+                {"x": ty.TensorType(dtypes.float64)},
+                ty.TensorType(dtypes.float64),
             ),
         )
 
@@ -244,7 +245,8 @@ class EdslTest(parameterized.TestCase):
             axis=axis,
             inputs={"x": "constant_0"},
             signature=ops.OpSignature(
-                {"x": ty.TensorType(dtypes.float32)}, ty.TensorType(dtypes.float32),
+                {"x": ty.TensorType(dtypes.float32)},
+                ty.TensorType(dtypes.float32),
             ),
         )
 
@@ -267,7 +269,8 @@ class EdslTest(parameterized.TestCase):
             axes=None,
             inputs={"x": "constant_0"},
             signature=ops.OpSignature(
-                {"x": ty.TensorType(dtypes.float32)}, ty.TensorType(dtypes.float32),
+                {"x": ty.TensorType(dtypes.float32)},
+                ty.TensorType(dtypes.float32),
             ),
         )
 
@@ -297,7 +300,9 @@ class EdslTest(parameterized.TestCase):
             ),
         )
 
-    @parameterized.parameters((np.array(1), np.array([[1]])),)
+    @parameterized.parameters(
+        (np.array(1), np.array([[1]])),
+    )
     def test_atleast_2d(self, x, expected):
         player0 = edsl.host_placement(name="player0")
 
@@ -316,7 +321,8 @@ class EdslTest(parameterized.TestCase):
             inputs={"x": "constant_0"},
             to_column_vector=True,
             signature=ops.OpSignature(
-                {"x": ty.TensorType(dtypes.float64)}, ty.TensorType(dtypes.float64),
+                {"x": ty.TensorType(dtypes.float64)},
+                ty.TensorType(dtypes.float64),
             ),
         )
 
@@ -341,7 +347,8 @@ class EdslTest(parameterized.TestCase):
             inputs={"x": "constant_0"},
             axis=axis,
             signature=ops.OpSignature(
-                {"x": ty.TensorType(dtypes.int64)}, ty.TensorType(dtypes.int64),
+                {"x": ty.TensorType(dtypes.int64)},
+                ty.TensorType(dtypes.int64),
             ),
         )
 
@@ -367,7 +374,8 @@ class EdslTest(parameterized.TestCase):
             axis=1,
             index=0,
             signature=ops.OpSignature(
-                {"x": ty.TensorType(dtypes.float64)}, ty.TensorType(dtypes.float64),
+                {"x": ty.TensorType(dtypes.float64)},
+                ty.TensorType(dtypes.float64),
             ),
         )
 
@@ -394,7 +402,8 @@ class EdslTest(parameterized.TestCase):
             inputs={"x": "constant_0"},
             axis=axis,
             signature=ops.OpSignature(
-                {"x": ty.TensorType(dtypes.float64)}, ty.TensorType(dtypes.float64),
+                {"x": ty.TensorType(dtypes.float64)},
+                ty.TensorType(dtypes.float64),
             ),
         )
 
@@ -624,7 +633,8 @@ class EdslTest(parameterized.TestCase):
             name="cast_0",
             inputs={"x": "constant_0"},
             signature=ops.OpSignature(
-                {"x": ty.TensorType(from_dtype)}, ty.TensorType(into_dtype),
+                {"x": ty.TensorType(from_dtype)},
+                ty.TensorType(into_dtype),
             ),
         )
 
@@ -657,7 +667,8 @@ class EdslTest(parameterized.TestCase):
             name="cast_0",
             inputs={"x": "constant_0"},
             signature=ops.OpSignature(
-                {"x": ty.TensorType(from_dtype)}, ty.TensorType(dtype),
+                {"x": ty.TensorType(from_dtype)},
+                ty.TensorType(dtype),
             ),
         )
 
