@@ -163,7 +163,27 @@ class EdslTest(parameterized.TestCase):
         assert op == ops.OnesOperation(
             placement_name="player0",
             name="ones_0",
-            dtype=dtypes.float64,
+            inputs={"shape": "constant_0"},
+            signature=ops.OpSignature(
+                input_types={"shape": ty.ShapeType()},
+                return_type=ty.TensorType(dtype=dtypes.float64),
+            ),
+        )
+
+    def test_zeros(self):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            shape = edsl.constant([2, 2], vtype=ty.ShapeType(), placement=player0)
+            x0 = edsl.zeros(shape, dtype=dtypes.float64, placement=player0)
+            return x0
+
+        concrete_comp = trace(my_comp)
+        op = concrete_comp.operation("zeros_0")
+        assert op == ops.ZerosOperation(
+            placement_name="player0",
+            name="zeros_0",
             inputs={"shape": "constant_0"},
             signature=ops.OpSignature(
                 input_types={"shape": ty.ShapeType()},

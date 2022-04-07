@@ -11,6 +11,7 @@ from pymoose.predictors import predictor_utils
 class Activation(Enum):
     IDENTITY = 1
     SIGMOID = 2
+    RELU = 3
 
 
 class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
@@ -72,6 +73,8 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         )
         if activation_str == "Sigmoid":
             activation = Activation.SIGMOID
+        elif activation_str == "Relu":
+            activation = Activation.RELU
         else:
             activation = Activation.IDENTITY
 
@@ -95,13 +98,14 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     def activation_fn(self, z):
         if self.activation == Activation.SIGMOID:
             activation_output = edsl.sigmoid(z)
-        # There is a bug in edsl.shape
-        #  Relu code:
-        #     y_1_shape = edsl.slice(edsl.shape(x), begin=0, end=1)
-        #     ones = edsl.ones(y_1_shape, dtype=edsl.float64)
-        #     ones = edsl.cast(ones, dtype=fixedpoint_dtype)
-        #     zeros = edsl.sub(ones, ones)
-        #     activation_output = edsl.maximum([zeros, y_1])
+        elif self.activation == Activation.RELU:
+            z_shape = edsl.shape(z)
+            with self.bob:
+                ones_1 = edsl.ones(z_shape, dtype=predictor_utils.DEFAULT_FLOAT_DTYPE)
+                ones_2 = edsl.ones(z_shape, dtype=predictor_utils.DEFAULT_FLOAT_DTYPE)
+                zeros = edsl.sub(ones_1, ones_2)
+                zeros = edsl.cast(zeros, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
+            activation_output = edsl.maximum([zeros, z])
         elif self.activation == Activation.IDENTITY:
             activation_output = z
         else:

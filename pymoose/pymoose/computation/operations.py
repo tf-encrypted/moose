@@ -4,8 +4,6 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-import numpy as np
-
 from pymoose.computation import types as ty
 from pymoose.computation import values
 
@@ -129,7 +127,12 @@ class SqueezeOperation(Operation):
 
 @dataclass
 class OnesOperation(Operation):
-    dtype: Optional[Union[float, np.float64, int, np.int64]]
+    pass
+
+
+@dataclass
+class ZerosOperation(Operation):
+    pass
 
 
 @dataclass

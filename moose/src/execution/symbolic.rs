@@ -340,6 +340,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             IndexAxis(op) => DispatchKernel::execute(op, plc, sess, operands),
             Slice(op) => DispatchKernel::execute(op, plc, sess, operands),
             Ones(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Zeros(op) => DispatchKernel::execute(op, plc, sess, operands),
             ExpandDims(op) => DispatchKernel::execute(op, plc, sess, operands),
             Concat(op) => DispatchKernel::execute(op, plc, sess, operands),
             Reshape(op) => DispatchKernel::execute(op, plc, sess, operands),

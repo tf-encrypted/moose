@@ -40,6 +40,7 @@ SUPPORTED_TYPES = [
     ops.MulOperation,
     ops.MuxOperation,
     ops.OnesOperation,
+    ops.ZerosOperation,
     ops.OutputOperation,
     ops.SigmoidOperation,
     ops.SoftmaxOperation,

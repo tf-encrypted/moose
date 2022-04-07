@@ -870,6 +870,7 @@ operators![
     IndexAxis,
     Slice,
     Ones,
+    Zeros,
     ExpandDims,
     Concat,
     Reshape,
@@ -1047,6 +1048,13 @@ pub struct SliceOp {
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct OnesOp {
+    pub sig: Signature,
+}
+
+#[derive(
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+)]
+pub struct ZerosOp {
     pub sig: Signature,
 }
 

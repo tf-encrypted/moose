@@ -96,7 +96,7 @@ class Argument:
 @dataclass
 class Expression:
     placement: PlacementExpression
-    inputs: List
+    inputs: List["Expression"]
     vtype: Optional[ty.ValueType]
 
     def __hash__(self):
@@ -177,8 +177,12 @@ class SqueezeExpression(Expression):
 
 @dataclass
 class OnesExpression(Expression):
-    dtype: dtypes.DType
+    def __hash__(self):
+        return id(self)
 
+
+@dataclass
+class ZerosExpression(Expression):
     def __hash__(self):
         return id(self)
 
@@ -610,7 +614,14 @@ def ones(shape, dtype, placement=None):
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
     vtype = ty.TensorType(dtype)
-    return OnesExpression(placement=placement, inputs=[shape], dtype=dtype, vtype=vtype)
+    return OnesExpression(placement=placement, inputs=[shape], vtype=vtype)
+
+
+def zeros(shape, dtype, placement=None):
+    assert isinstance(shape, Expression)
+    placement = placement or get_current_placement()
+    vtype = ty.TensorType(dtype)
+    return ZerosExpression(placement=placement, inputs=[shape], vtype=vtype)
 
 
 def square(x, placement=None):
