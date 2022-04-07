@@ -314,6 +314,20 @@ impl OnesOp {
     }
 }
 
+impl ZerosOp {
+    pub(crate) fn host_float_kernel<S: Session, HostFloatT, MirroredT, HostS>(
+        sess: &S,
+        plc: &HostPlacement,
+        shape: HostS,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementZeros<S, HostS, HostFloatT>,
+    {
+        let z = plc.zeros(sess, &shape);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
 impl IndexAxisOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
