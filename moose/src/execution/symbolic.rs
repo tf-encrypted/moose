@@ -247,7 +247,12 @@ impl DispatchKernel<SymbolicSession> for SendOp {
     }
 
     #[cfg(feature = "test_direct_execute")]
-    fn execute(&self, _plc: &Placement, _sess: &SymbolicSession, operands: Operands<SymbolicValue>) -> Result<SymbolicValue> {
+    fn execute(
+        &self,
+        _plc: &Placement,
+        _sess: &SymbolicSession,
+        operands: Operands<SymbolicValue>,
+    ) -> Result<SymbolicValue> {
         Err(Error::Compilation(
             "SendOp not supported on symbolic sessions".to_string(),
         ))
@@ -263,7 +268,12 @@ impl DispatchKernel<SymbolicSession> for ReceiveOp {
     }
 
     #[cfg(feature = "test_direct_execute")]
-    fn execute(&self, _plc: &Placement, _sess: &SymbolicSession, operands: Operands<SymbolicValue>) -> Result<SymbolicValue> {
+    fn execute(
+        &self,
+        _plc: &Placement,
+        _sess: &SymbolicSession,
+        operands: Operands<SymbolicValue>,
+    ) -> Result<SymbolicValue> {
         Err(Error::Compilation(
             "ReceiveOp not supported on symbolic sessions".to_string(),
         ))

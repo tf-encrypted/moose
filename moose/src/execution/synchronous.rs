@@ -125,7 +125,12 @@ impl DispatchKernel<SyncSession> for SendOp {
     }
 
     #[cfg(feature = "test_direct_execute")]
-    fn execute(&self, plc: &Placement, sess: &SyncSession, operands: Operands<Value>) -> Result<Value> {
+    fn execute(
+        &self,
+        plc: &Placement,
+        sess: &SyncSession,
+        operands: Operands<Value>,
+    ) -> Result<Value> {
         if let Placement::Host(plc) = plc {
             let plc = plc.clone();
             let op = self.clone();
@@ -167,7 +172,12 @@ impl DispatchKernel<SyncSession> for ReceiveOp {
     }
 
     #[cfg(feature = "test_direct_execute")]
-    fn execute(&self, plc: &Placement, sess: &SyncSession, operands: Operands<Value>) -> Result<Value> {
+    fn execute(
+        &self,
+        plc: &Placement,
+        sess: &SyncSession,
+        operands: Operands<Value>,
+    ) -> Result<Value> {
         if let Placement::Host(_plc) = plc {
             let op = self.clone();
             assert_eq!(operands.len(), 0);

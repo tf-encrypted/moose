@@ -315,7 +315,12 @@ impl DispatchKernel<AsyncSession> for SendOp {
     }
 
     #[cfg(feature = "test_direct_execute")]
-    fn execute(&self, plc: &Placement, sess: &AsyncSession, operands: Operands<AsyncValue>) -> Result<AsyncValue> {
+    fn execute(
+        &self,
+        plc: &Placement,
+        sess: &AsyncSession,
+        operands: Operands<AsyncValue>,
+    ) -> Result<AsyncValue> {
         if let Placement::Host(plc) = plc {
             let plc = plc.clone();
             let op = self.clone();
@@ -341,7 +346,12 @@ impl DispatchKernel<AsyncSession> for ReceiveOp {
     }
 
     #[cfg(feature = "test_direct_execute")]
-    fn execute(&self, plc: &Placement, sess: &AsyncSession, operands: Operands<AsyncValue>) -> Result<AsyncValue> {
+    fn execute(
+        &self,
+        plc: &Placement,
+        sess: &AsyncSession,
+        operands: Operands<AsyncValue>,
+    ) -> Result<AsyncValue> {
         if let Placement::Host(plc) = plc {
             let plc = plc.clone();
             let op = self.clone();
