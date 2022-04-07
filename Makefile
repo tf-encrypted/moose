@@ -6,6 +6,12 @@ build:
 pydep:
 	pip install -r pymoose/requirements-dev.txt
 
+.PHONY: pydep-upgrade
+pydep-upgrade:
+	pip install -U pip-tools
+	pip-compile --output-file=pymoose/requirements-dev.txt pymoose/requirements.in
+	pip install -r pymoose/requirements-dev.txt
+
 .PHONY: pylib-release
 pylib-release:
 	cd pymoose && python setup.py install
