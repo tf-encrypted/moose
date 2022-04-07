@@ -278,7 +278,7 @@ mod kernel_helpers {
     // be certain that we only get two copies? What are the correct trait bounds?
 
     pub(crate) fn sync_unary_box<T0, U, P>(
-        op: Operator,
+        _op: Operator,
         kf: Box<dyn Fn(&SyncSession, &P, T0) -> Result<U>>,
     ) -> Result<NgKernel<SyncSession>>
     where
@@ -301,7 +301,7 @@ mod kernel_helpers {
     }
 
     pub(crate) fn sync_unary_fn<T0, U, P>(
-        op: Operator,
+        _op: Operator,
         kf: fn(&SyncSession, &P, T0) -> Result<U>,
     ) -> Result<NgKernel<SyncSession>>
     where
@@ -359,7 +359,56 @@ mod kernel_helpers {
         })
     }
 
-    pub(crate) fn symbolic_unary_concrete<T0, U, P>(
+    pub(crate) fn symbolic_unary_concrete_box<T0, U, P>(
+        op: Operator,
+        kf: Box<
+            dyn Fn(
+                &SymbolicSession,
+                &P,
+                <T0 as PartiallySymbolicType>::Type,
+            ) -> Result<<U as PartiallySymbolicType>::Type>,
+        >,
+    ) -> Result<NgKernel<SymbolicSession>>
+    where
+        P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
+        Placement: From<P>,
+
+        T0: PartiallySymbolicType,
+        U: PartiallySymbolicType, // TODO use SymbolicType here?
+
+        <T0 as PartiallySymbolicType>::Type: Placed + 'static,
+        <U as PartiallySymbolicType>::Type: Placed + 'static,
+        // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
+        <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
+        SymbolicValue: TryInto<Symbolic<<T0 as PartiallySymbolicType>::Type>, Error = crate::Error>,
+        SymbolicValue: From<<U as SymbolicType>::Type>,
+    {
+        Ok(NgKernel::Unary {
+            closure: Box::new(
+                move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
+                    let plc = P::try_from(plc.clone())?;
+                    let v0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
+
+                    match v0 {
+                        Symbolic::Concrete(x0) => {
+                            let y = kf(sess, &plc, x0)?;
+                            Ok(SymbolicValue::from(Symbolic::Concrete(y)))
+                        }
+                        Symbolic::Symbolic(h0) => {
+                            let h = sess.add_operation(&op, &[&h0.op], &plc);
+                            let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
+                            Ok(SymbolicValue::from(h))
+                        }
+                        _ => Err(crate::error::Error::Unexpected(Some(
+                            "Mixed symbolic and concrete value during compilation".to_string(),
+                        ))),
+                    }
+                },
+            ),
+        })
+    }
+
+    pub(crate) fn symbolic_unary_concrete_fn<T0, U, P>(
         op: Operator,
         kf: fn(
             &SymbolicSession,
@@ -400,6 +449,195 @@ mod kernel_helpers {
                         _ => Err(crate::error::Error::Unexpected(Some(
                             "Mixed symbolic and concrete value during compilation".to_string(),
                         ))),
+                    }
+                },
+            ),
+        })
+    }
+    // v = SymbolicValue::RepTensor(Symbolic<RepTensor>::Concrete(x))
+
+    // concrete:
+    //     y: (concrete) = kf(x)
+    //     SymbolicValue::from(Symbolic::Concrete(y))
+
+    // transparent:
+    //     y: Symbolic = kf(Symbolic::Concrete(x))
+    //     SymbolicValue::from(y)
+
+    pub(crate) fn symbolic_unary_transparent_box<T0, U, P>(
+        op: Operator,
+        kf: Box<
+            dyn Fn(
+                &SymbolicSession,
+                &P,
+                <T0 as SymbolicType>::Type,
+            ) -> Result<<U as SymbolicType>::Type>,
+        >,
+    ) -> Result<NgKernel<SymbolicSession>>
+    where
+        P: 'static,
+        Placement: TryInto<P, Error = crate::Error>,
+
+        T0: PartiallySymbolicType,
+        <T0 as PartiallySymbolicType>::Type: Placed,
+        <T0 as PartiallySymbolicType>::Type: 'static,
+        SymbolicValue: TryInto<<T0 as SymbolicType>::Type, Error = crate::Error>,
+
+        U: PartiallySymbolicType,
+        <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
+        <U as PartiallySymbolicType>::Type: 'static,
+        SymbolicValue: From<<U as SymbolicType>::Type>,
+    {
+        Ok(NgKernel::Unary {
+            closure: Box::new(
+                move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
+                    let plc: P = Placement::try_into(plc.clone())?;
+                    let x0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
+                    let y: <U as SymbolicType>::Type = kf(sess, &plc, x0)?;
+                    Ok(SymbolicValue::from(y))
+                },
+            ),
+        })
+    }
+
+    pub(crate) fn symbolic_unary_transparent_fn<T0, U, P>(
+        op: Operator,
+        kf: fn(
+            &SymbolicSession,
+            &P,
+            <T0 as SymbolicType>::Type,
+        ) -> Result<<U as SymbolicType>::Type>,
+    ) -> Result<NgKernel<SymbolicSession>>
+    where
+        P: 'static,
+        Placement: TryInto<P, Error = crate::Error>,
+
+        T0: PartiallySymbolicType,
+        <T0 as PartiallySymbolicType>::Type: Placed,
+        <T0 as PartiallySymbolicType>::Type: 'static,
+        SymbolicValue: TryInto<<T0 as SymbolicType>::Type, Error = crate::Error>,
+
+        U: PartiallySymbolicType,
+        <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
+        <U as PartiallySymbolicType>::Type: 'static,
+        SymbolicValue: From<<U as SymbolicType>::Type>,
+    {
+        Ok(NgKernel::Unary {
+            closure: Box::new(
+                move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
+                    let plc: P = Placement::try_into(plc.clone())?;
+                    let x0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
+                    let y: <U as SymbolicType>::Type = kf(sess, &plc, x0)?;
+                    Ok(SymbolicValue::from(y))
+                },
+            ),
+        })
+    }
+
+    pub(crate) fn symbolic_unary_hybrid_fn<T0, U, X0, Y, P>(
+        op: Operator,
+        kf: fn(&SymbolicSession, &P, X0) -> Result<Y>,
+    ) -> Result<NgKernel<SymbolicSession>>
+    where
+        P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
+        Placement: From<P>,
+
+        T0: PartiallySymbolicType,
+        U: PartiallySymbolicType,
+
+        Symbolic<<T0 as PartiallySymbolicType>::Type>: Clone + TryInto<X0>,
+        Y: Into<<U as SymbolicType>::Type>,
+
+        X0: 'static,
+        Y: 'static,
+
+        <T0 as PartiallySymbolicType>::Type: Placed + 'static,
+        <U as PartiallySymbolicType>::Type: Placed + 'static,
+        // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
+        <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
+
+        SymbolicValue: TryInto<<T0 as SymbolicType>::Type, Error = crate::Error>,
+        SymbolicValue: From<<U as SymbolicType>::Type>,
+    {
+        Ok(NgKernel::Unary {
+            closure: Box::new(
+                move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
+                    let plc = P::try_from(plc.clone())?;
+
+                    let vs0: Symbolic<<T0 as PartiallySymbolicType>::Type> =
+                        SymbolicValue::try_into(v0)?;
+
+                    let v0 = vs0.clone().try_into();
+
+                    match v0 {
+                        Ok(v0) => {
+                            let y = kf(sess, &plc, v0)?;
+                            let y: <U as SymbolicType>::Type = y.into();
+                            Ok(SymbolicValue::from(y))
+                        }
+                        _ => match vs0 {
+                            Symbolic::Symbolic(h0) => {
+                                let h = sess.add_operation(&op, &[&h0.op], &plc);
+                                let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
+                                Ok(SymbolicValue::from(h))
+                            }
+                            _ => unimplemented!(),
+                        },
+                    }
+                },
+            ),
+        })
+    }
+
+    pub(crate) fn symbolic_unary_hybrid_box<T0, U, X0, Y, P>(
+        op: Operator,
+        kf: Box<dyn Fn(&SymbolicSession, &P, X0) -> Result<Y>>,
+    ) -> Result<NgKernel<SymbolicSession>>
+    where
+        P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
+        Placement: From<P>,
+
+        T0: PartiallySymbolicType,
+        U: PartiallySymbolicType,
+
+        Symbolic<<T0 as PartiallySymbolicType>::Type>: Clone + TryInto<X0>,
+        Y: Into<<U as SymbolicType>::Type>,
+
+        X0: 'static,
+        Y: 'static,
+
+        <T0 as PartiallySymbolicType>::Type: Placed + 'static,
+        <U as PartiallySymbolicType>::Type: Placed + 'static,
+        // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
+        <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
+
+        SymbolicValue: TryInto<<T0 as SymbolicType>::Type, Error = crate::Error>,
+        SymbolicValue: From<<U as SymbolicType>::Type>,
+    {
+        Ok(NgKernel::Unary {
+            closure: Box::new(
+                move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
+                    let plc = P::try_from(plc.clone())?;
+
+                    let vs0: Symbolic<<T0 as PartiallySymbolicType>::Type> =
+                        SymbolicValue::try_into(v0)?;
+
+                    let v0 = vs0.clone().try_into();
+
+                    match v0 {
+                        Ok(v0) => {
+                            let y = kf(sess, &plc, v0)?;
+                            let y: <U as SymbolicType>::Type = y.into();
+                            Ok(SymbolicValue::from(y))
+                        }
+                        _ => match vs0 {
+                            Symbolic::Symbolic(h0) => {
+                                let h = sess.add_operation(&op, &[&h0.op], &plc);
+                                let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
+                                Ok(SymbolicValue::from(h))
+                            }
+                            _ => unimplemented!(),
+                        },
                     }
                 },
             ),
@@ -669,12 +907,12 @@ macro_rules! ng_derive_runtime_kernel {
                 )?
             )+
             let k = |sess, plc| $k(sess, plc, $($attr.clone()),+);
-            crate::kernel_helpers::symbolic_unary_concrete::<$u, $plc>(Operator::from($op), k)
+            crate::kernel_helpers::symbolic_nullary_concrete::<$u, $plc>(Operator::from($op), k)
         }
     };
 
     (symbolic nullary concrete $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-        crate::kernel_helpers::symbolic_unary_concrete::<$u, $plc>(Operator::from($op), k)
+        crate::kernel_helpers::symbolic_nullary_concrete::<$u, $plc>(Operator::from($op), k)
     };
 
     (symbolic nullary hybrid $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? $k:path, $op:ident) => {
@@ -722,10 +960,10 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $self:ident) => {
+    (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
         {
             $(
-                let $attr = $self.$attr.clone();
+                let $attr = $op.$attr.clone();
                 // The following block applies the optional Constant type restriction to the attribute and unwraps it
                 $(
                     let $attr = match $attr {
@@ -737,105 +975,193 @@ macro_rules! ng_derive_runtime_kernel {
                     };
                 )?
             )+
-
-            Ok(NgKernel::Unary {
-                closure: Box::new(move |sess: &SyncSession, plc: &Placement, x0: Value| {
-                    let plc: $plc = plc.clone().try_into()?;
-                    let x0: $t0 = x0.try_into()?;
-                    let y: $u = $k(sess, &plc, $($attr.clone()),+, x0)?;
-                    Ok(y.into())
-                }),
-            })
+            let k: crate::kernels::TypedUnaryKernel<
+                crate::execution::SyncSession,
+                $plc,
+                $t0,
+                $u,
+            > = Box::new(move |sess, plc, x0| {
+                $k(sess, &plc, $($attr.clone()),+, x0)
+            });
+            crate::kernel_helpers::sync_unary_box::<$t0, $u, $plc>(Operator::from($op), k)
         }
     };
 
     (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        Ok(NgKernel::Unary {
-            closure: Box::new(move |sess: &SyncSession, plc: &Placement, x0: Value| {
-                let plc: $plc = plc.clone().try_into()?;
-                let x0: $t0 = x0.try_into()?;
-                let y: $u = $k(sess, &plc, x0)?;
-                Ok(y.into())
-            }),
-        })
+        crate::kernel_helpers::sync_unary_fn::<$t0, $u, $plc>(Operator::from($op), $k)
     };
-
 
     (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
         crate::kernel_helpers::symbolic_unary_runtime_box::<$t0, $u, $plc>(Operator::from($op))
     };
 
-    (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $self:ident) => {
-        crate::kernel_helpers::symbolic_unary_runtime::<$t0, $u, $plc>(Operator::from(
-            $self,
-        ))
+    (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+        crate::kernel_helpers::symbolic_unary_runtime::<$t0, $u, $plc>(Operator::from($op))
     };
 
     (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::kernel_helpers::symbolic_unary_runtime::<$t0, $u, $plc>(Operator::from(
-            $op,
-        ))
+        crate::kernel_helpers::symbolic_unary_runtime::<$t0, $u, $plc>(Operator::from($op))
     };
 
 
     (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
         {
-            unimplemented!()
+            let kf: &dyn Fn(&Self) -> crate::error::Result<
+                crate::kernels::TypedUnaryKernel<
+                    crate::execution::SymbolicSession,
+                    _,
+                    _,
+                    _,
+                >
+            > = &|$op_ke| $ke;
+            let k: crate::kernels::TypedUnaryKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+                _,
+            > = kf(&$op)?;
+            crate::kernel_helpers::symbolic_unary_concrete_box::<$t0, $u, $plc>(Operator::from($op), k)
         }
     };
 
-    (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $self:ident) => {
+    (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
         {
-            unimplemented!()
+            $(
+                let $attr = $op.$attr.clone();
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Constant::$prim_ty(v) => v,
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
+                    };
+                )?
+            )+
+            let k: crate::kernels::TypedUnaryKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+                _,
+            > = Box::new(move |sess, plc, x0| {
+                $k(sess, &plc, $($attr.clone()),+, x0)
+            });
+            crate::kernel_helpers::symbolic_unary_concrete_box::<$t0, $u, $plc>(Operator::from($op), k)
         }
     };
 
 
     (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::kernel_helpers::symbolic_unary_concrete::<$t0, $u, $plc>(
-            Operator::from($op),
-            $k,
-        )
+        crate::kernel_helpers::symbolic_unary_concrete_fn::<$t0, $u, $plc>(Operator::from($op), $k)
     };
 
     (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
         {
-            unimplemented!()
+            let kf: &dyn Fn(&Self) -> crate::error::Result<
+                crate::kernels::TypedUnaryKernel<
+                    crate::execution::SymbolicSession,
+                    _,
+                    _,
+                    _,
+                >
+            > = &|$op_ke| $ke;
+            let k: crate::kernels::TypedUnaryKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+                _,
+            > = kf(&$op)?;
+            crate::kernel_helpers::symbolic_unary_transparent_box::<$t0, $u, $plc>(Operator::from($op), k)
         }
     };
 
-    (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $self:ident) => {
+    (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
         {
-            unimplemented!()
+            $(
+                let $attr = $op.$attr.clone();
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Constant::$prim_ty(v) => v,
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
+                    };
+                )?
+            )+
+            let k: crate::kernels::TypedUnaryKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+                _,
+            > = Box::new(move |sess, plc, x0| {
+                $k(sess, &plc, $($attr.clone()),+, x0)
+            });
+            crate::kernel_helpers::symbolic_unary_transparent_box::<$t0, $u, $plc>(Operator::from($op), k)
         }
     };
 
     (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
         {
-            unimplemented!()
+            crate::kernel_helpers::symbolic_unary_transparent_fn::<$t0, $u, $plc>(Operator::from($op), $k)
         }
     };
-
-
-
 
     (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
         {
-            unimplemented!()
+            let kf: &dyn Fn(&Self) -> crate::error::Result<
+                crate::kernels::TypedUnaryKernel<
+                    crate::execution::SymbolicSession,
+                    _,
+                    _,
+                    _,
+                >
+            > = &|$op_ke| $ke;
+            let k: crate::kernels::TypedUnaryKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+                _,
+            > = kf(&$op)?;
+            crate::kernel_helpers::symbolic_unary_hybrid_box::<$t0, $u, _, _, $plc>(Operator::from($op), k)
         }
     };
 
-    (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $self:ident) => {
+    (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
         {
-            unimplemented!()
+            $(
+                let $attr = $op.$attr.clone();
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Constant::$prim_ty(v) => v,
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
+                    };
+                )?
+            )+
+            let k: crate::kernels::TypedUnaryKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+                _,
+            > = Box::new(move |sess, plc, x0| {
+                $k(sess, &plc, $($attr.clone()),+, x0)
+            });
+            crate::kernel_helpers::symbolic_unary_hybrid_box::<$t0, $u, _, _, $plc>(Operator::from($op), k)
         }
     };
 
     (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
         {
-            unimplemented!()
+            crate::kernel_helpers::symbolic_unary_hybrid_fn::<$t0, $u, _, _, $plc>(Operator::from($op), $k)
         }
     };
+
 
 
     (sync ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {

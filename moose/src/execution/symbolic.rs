@@ -10,6 +10,7 @@ use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::HostPrfKey;
 use crate::kernels::{DispatchKernel, Kernel, PlacementPlace};
+use crate::kernels::{NgDispatchKernel, NgKernel};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
 use crate::{MirroredCounterpart, Ring, TensorLike, Underlying};
 use parking_lot::RwLock;
@@ -299,7 +300,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Broadcast(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Fill(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             PrfKeyGen(op) => {
-                use crate::kernels::{NgDispatchKernel, NgKernel};
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
                     NgKernel::Nullary { closure } => closure(sess, plc),
@@ -314,7 +314,24 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Xor(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             And(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Or(op) => DispatchKernel::compile(op, plc)?(sess, operands),
-            BitExtract(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            BitExtract(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Unary { closure } => {
+                        assert_eq!(operands.len(), 1);
+                        let x0: SymbolicValue = operands.pop().unwrap();
+
+                        let y = closure(sess, plc, x0);
+                        y
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             Sample(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             SampleSeeded(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             RingFixedpointAbs(op) => DispatchKernel::compile(op, plc)?(sess, operands),
@@ -332,7 +349,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Msb(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Abs(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             Mux(op) => {
-                use crate::kernels::{NgDispatchKernel, NgKernel};
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
                     NgKernel::Ternary { closure } => {
