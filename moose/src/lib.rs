@@ -228,7 +228,7 @@ mod kernel_helpers {
     }
 
     pub(crate) fn symbolic_nullary_concrete<U, P>(
-        op: Operator,
+        _op: Operator,
         kf: fn(&SymbolicSession, &P) -> Result<<U as PartiallySymbolicType>::Type>,
     ) -> Result<NgKernel<SymbolicSession>>
     where
@@ -250,7 +250,7 @@ mod kernel_helpers {
     }
 
     pub(crate) fn symbolic_nullary_hybrid<U, Y, P>(
-        op: Operator,
+        _op: Operator,
         kf: fn(&SymbolicSession, &P) -> Result<Y>,
     ) -> Result<NgKernel<SymbolicSession>>
     where
@@ -399,9 +399,6 @@ mod kernel_helpers {
                             let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
                             Ok(SymbolicValue::from(h))
                         }
-                        _ => Err(crate::error::Error::Unexpected(Some(
-                            "Mixed symbolic and concrete value during compilation".to_string(),
-                        ))),
                     }
                 },
             ),
@@ -446,9 +443,6 @@ mod kernel_helpers {
                             let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
                             Ok(SymbolicValue::from(h))
                         }
-                        _ => Err(crate::error::Error::Unexpected(Some(
-                            "Mixed symbolic and concrete value during compilation".to_string(),
-                        ))),
                     }
                 },
             ),
@@ -465,7 +459,7 @@ mod kernel_helpers {
     //     SymbolicValue::from(y)
 
     pub(crate) fn symbolic_unary_transparent_box<T0, U, P>(
-        op: Operator,
+        _op: Operator,
         kf: Box<
             dyn Fn(
                 &SymbolicSession,
@@ -501,7 +495,7 @@ mod kernel_helpers {
     }
 
     pub(crate) fn symbolic_unary_transparent_fn<T0, U, P>(
-        op: Operator,
+        _op: Operator,
         kf: fn(
             &SymbolicSession,
             &P,
