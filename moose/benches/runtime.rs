@@ -9,14 +9,14 @@ use moose::{
 };
 
 fn runtime_simple_computation(c: &mut Criterion) {
-    let source = r#"x = Input {arg_name = "x"}: () -> Int64Tensor @Host(alice)
-    y = Input {arg_name = "y"}: () -> Int64Tensor @Host(alice)
-    z = Add: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(alice)
-    output = Output: (Int64Tensor) -> Int64Tensor (z) @Host(alice)
+    let source = r#"x = Input {arg_name = "x"}: () -> HostInt64Tensor @Host(alice)
+    y = Input {arg_name = "y"}: () -> HostInt64Tensor @Host(alice)
+    z = Add: (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor (x, y) @Host(alice)
+    output = Output: (HostInt64Tensor) -> HostInt64Tensor (z) @Host(alice)
     "#;
     let computation: Computation = source.try_into().unwrap();
-    let x: Value = "Int64Tensor([5]) @Host(alice)".try_into().unwrap();
-    let y: Value = "Int64Tensor([10]) @Host(alice)".try_into().unwrap();
+    let x: Value = "HostInt64Tensor([5]) @Host(alice)".try_into().unwrap();
+    let y: Value = "HostInt64Tensor([10]) @Host(alice)".try_into().unwrap();
     let arguments: HashMap<String, Value> = hashmap!("x".to_string() => x, "y".to_string()=> y);
     let storage_mapping: HashMap<String, HashMap<String, Value>> =
         hashmap!("alice".to_string() => hashmap!());
@@ -38,10 +38,10 @@ fn runtime_simple_computation(c: &mut Criterion) {
 
 fn runtime_two_hosts(c: &mut Criterion) {
     let source = r#"
-    x0 = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(alice)
-    x1 = Constant{value=Float32Tensor([[1.0, 0.0], [0.0, 1.0]])}: () -> Float32Tensor @Host(bob)
-    res = Dot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x0, x1) @Host(alice)
-    output = Output: (Float32Tensor) -> Float32Tensor (res) @Host(alice)
+    x0 = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
+    x1 = Constant{value=HostFloat32Tensor([[1.0, 0.0], [0.0, 1.0]])}: () -> HostFloat32Tensor @Host(bob)
+    res = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x0, x1) @Host(alice)
+    output = Output: (HostFloat32Tensor) -> HostFloat32Tensor (res) @Host(alice)
     "#;
     let computation: Computation = source.try_into().unwrap();
     let computation = compile(computation, Some(vec![Pass::Networking, Pass::Toposort])).unwrap();
