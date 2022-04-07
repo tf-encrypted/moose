@@ -58,9 +58,9 @@ RET ret
 
 // Calling a named subcomputation
 zeroes = RepFill{value = 0}(shape)
-bit_0 = Execute {name = "single_bit_compose"} {i = 0} (x, zeroes)
-bit_1 = Execute {name = "single_bit_compose"} {i = 1} (x, bit_1)
-bit_2 = Execute {name = "single_bit_compose"} {i = 2} (x, bit_2)
+bit_0 = Execute {name = "single_bit_compose", i = 0} (x, zeroes)
+bit_1 = Execute {name = "single_bit_compose", i = 1} (x, bit_1)
+bit_2 = Execute {name = "single_bit_compose", i = 2} (x, bit_2)
 
 ```
 
