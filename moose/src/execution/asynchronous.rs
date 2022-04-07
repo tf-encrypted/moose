@@ -12,7 +12,7 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
@@ -53,22 +53,15 @@ pub(crate) fn map_receive_error<T>(_: T) -> Error {
 }
 
 pub struct AsyncSessionHandle {
-    pub tasks: Arc<RwLock<FuturesUnordered<AsyncTask>>>,
+    tasks: FuturesUnordered<AsyncTask>,
 }
 
 impl AsyncSessionHandle {
-    pub fn for_session(session: &AsyncSession) -> Self {
-        AsyncSessionHandle {
-            tasks: Arc::clone(&session.tasks),
-        }
-    }
-
-    pub async fn join_on_first_error(self) -> anyhow::Result<()> {
+    pub async fn join_on_first_error(mut self) -> anyhow::Result<()> {
         use crate::error::Error::{OperandUnavailable, ResultUnused};
 
-        let mut tasks_guard = self.tasks.write().unwrap();
         let mut maybe_error = None;
-        while let Some(x) = tasks_guard.next().await {
+        while let Some(x) = self.tasks.next().await {
             match x {
                 Ok(Ok(_)) => {
                     continue;
@@ -98,7 +91,7 @@ impl AsyncSessionHandle {
         }
 
         if let Some(e) = maybe_error {
-            for task in tasks_guard.iter_mut() {
+            for task in self.tasks.iter_mut() {
                 task.abort();
             }
             e
@@ -116,7 +109,7 @@ pub struct AsyncSession {
     pub role_assignments: Arc<HashMap<Role, Identity>>,
     pub networking: AsyncNetworkingImpl,
     pub storage: AsyncStorageImpl,
-    pub tasks: Arc<RwLock<FuturesUnordered<crate::execution::AsyncTask>>>,
+    pub tasks: Arc<Mutex<Option<FuturesUnordered<AsyncTask>>>>,
 }
 
 impl AsyncSession {
@@ -133,8 +126,52 @@ impl AsyncSession {
             role_assignments: Arc::new(role_assignments),
             networking,
             storage,
-            tasks: Default::default(),
+            tasks: Arc::new(Mutex::new(Some(Default::default()))),
         }
+    }
+
+    /// Adds a task into the specified collection of tasks.
+    ///
+    /// The collection is usually a `&sess.tasks`. This is an associated function instead of a method due to
+    /// the fact that the current kernels move the cloned session into the created task. To avoid cloning the
+    /// entire session, this function expects just a reference to an Arc-cloned session's tasks.
+    pub(crate) fn add_task(
+        session_tasks: &Arc<Mutex<Option<FuturesUnordered<AsyncTask>>>>,
+        task: AsyncTask,
+    ) -> Result<()> {
+        let tasks_guard = session_tasks.lock().map_err(|e| {
+            Error::MalformedEnvironment(format!(
+                "Failed to obtain a lock to the tasks in the session. {}",
+                e
+            ))
+        })?;
+        tasks_guard
+            .as_ref()
+            .map(|tasks| tasks.push(task))
+            .ok_or_else(|| {
+                Error::MalformedEnvironment(
+                    "Impossible to add a task. Session has been already converted into a handle"
+                        .to_string(),
+                )
+            })
+    }
+
+    /// Consumes self and return a handle with the tasks crated in the session.
+    ///
+    /// Errors if the session has been already converted into a handle.
+    pub fn into_handle(self) -> Result<AsyncSessionHandle> {
+        let mut tasks_guard = self.tasks.lock().map_err(|e| {
+            Error::MalformedEnvironment(format!(
+                "Failed to obtain a lock to the tasks in the session. {}",
+                e
+            ))
+        })?;
+        let tasks = tasks_guard.take().ok_or_else(|| {
+            Error::MalformedEnvironment(
+                "Session has been already converted into a handle".to_string(),
+            )
+        })?;
+        Ok(AsyncSessionHandle { tasks })
     }
 }
 
@@ -176,8 +213,7 @@ impl AsyncSession {
             map_send_result(sender.send(value))?;
             Ok(())
         });
-        let tasks = self.tasks.read().unwrap();
-        tasks.push(task);
+        Self::add_task(&self.tasks, task)?;
 
         Ok(receiver)
     }
@@ -214,8 +250,7 @@ impl AsyncSession {
             map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let tasks = self.tasks.read().unwrap();
-        tasks.push(task);
+        Self::add_task(&self.tasks, task)?;
 
         Ok(receiver)
     }
@@ -242,8 +277,7 @@ impl AsyncSession {
             map_send_result(sender.send(value))?;
             Ok(())
         });
-        let tasks = self.tasks.read().unwrap();
-        tasks.push(task);
+        Self::add_task(&self.tasks, task)?;
 
         Ok(receiver)
     }
@@ -277,8 +311,7 @@ impl AsyncSession {
             map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let tasks = self.tasks.read().unwrap();
-        tasks.push(task);
+        Self::add_task(&self.tasks, task)?;
 
         Ok(receiver)
     }
@@ -631,7 +664,7 @@ impl AsyncTestRuntime {
                 output_futures.insert(output_name, output_future);
             }
 
-            session_handles.push(AsyncSessionHandle::for_session(&moose_session))
+            session_handles.push(moose_session.into_handle()?)
         }
 
         let mut futures: FuturesUnordered<_> = session_handles

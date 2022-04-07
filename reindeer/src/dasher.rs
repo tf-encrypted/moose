@@ -105,7 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
-    let session_handle = AsyncSessionHandle::for_session(&session);
+    let session_handle = session.into_handle()?;
     session_handle.join_on_first_error().await?;
 
     Ok(())
