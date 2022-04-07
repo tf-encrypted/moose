@@ -4027,8 +4027,6 @@ macro_rules! modelled_kernel {
     */
 
     ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
-        symbolic_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
-
         #[cfg(feature = "sync_execute")]
         impl crate::kernels::NgDispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
@@ -4164,64 +4162,6 @@ macro_rules! modelled_kernel {
 
     (__unary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
         #[cfg(feature = "compile")]
-        impl crate::kernels::UnaryKernel<
-            crate::execution::SymbolicSession,
-            $plc,
-            <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-            <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        > for $op
-        {
-            fn compile(&self) -> crate::error::Result<
-                crate::kernels::TypedUnaryKernel<
-                    crate::execution::SymbolicSession,
-                    $plc,
-                    <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-                    <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-                >
-            > {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession};
-                use std::convert::TryInto;
-
-                let op = self.clone();
-                Ok(Box::new(move |
-                    sess: &SymbolicSession,
-                    plc: &$plc,
-                    x0: <$t0 as crate::computation::KnownType<SymbolicSession>>::Type,
-                | {
-                    // TODO derive k outside box (using self instead of op)
-                    // Magic by Morten
-                    let op = &op;
-
-                    let k = derive_runtime_kernel![unary, $(attributes[$($attr_id),+])? $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
-
-                    let v0 = x0.clone().try_into();
-
-                    match v0 {
-                        Ok(v0) => {
-                            let y = k(sess, plc, v0)?;
-                            Ok(y.into())
-                        }
-                        Err(e) => match x0 {
-                            Symbolic::Symbolic(h0) => {
-                                let h = sess.add_operation(op, &[&h0.op], plc);
-                                Ok(Symbolic::Symbolic(h))
-                            }
-                            _ => {
-                                Err(crate::error::Error::Unexpected(Some(format!(
-                                    r#"Expected symbolic value during compilation of hybrid kernel.
-                                    Perhaps TryFrom implementation is missing from the kernel's input type?
-                                    Kernel: {:#?}
-                                    Error: {:#?}"#,
-                                    op, e)
-                                )))
-                            }
-                        }
-                    }
-                }))
-            }
-        }
-
-        #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -4254,50 +4194,6 @@ macro_rules! modelled_kernel {
     };
 
     (__unary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
-        #[cfg(feature = "compile")]
-        impl crate::kernels::UnaryKernel<
-            crate::execution::SymbolicSession,
-            $plc,
-            <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-            <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        > for $op
-        {
-            fn compile(&self) -> crate::error::Result<
-                crate::kernels::TypedUnaryKernel<
-                    crate::execution::SymbolicSession,
-                    $plc,
-                    <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-                    <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-                >
-            > {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession};
-
-                let op = self.clone();
-                Ok(Box::new(move |
-                    sess: &SymbolicSession,
-                    plc: &$plc,
-                    x0: <$t0 as crate::computation::KnownType<SymbolicSession>>::Type,
-                | {
-                    // TODO derive k outside box (using self instead of op)
-                    // Magic by Morten
-                    let op = &op;
-
-                    let k = derive_runtime_kernel![unary, $(attributes[$($attr_id),+])? $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
-
-                    match x0 {
-                        Symbolic::Concrete(v0) => {
-                            let y = k(sess, plc, v0)?;
-                            Ok(Symbolic::Concrete(y))
-                        }
-                        Symbolic::Symbolic(h0) => {
-                            let h = sess.add_operation(op, &[&h0.op], plc);
-                            Ok(Symbolic::Symbolic(h))
-                        }
-                    }
-                }))
-            }
-        }
-
         #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
@@ -4369,26 +4265,6 @@ macro_rules! modelled_kernel {
 
     (__unary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
         #[cfg(feature = "compile")]
-        impl crate::kernels::UnaryKernel<
-            crate::execution::SymbolicSession,
-            $plc,
-            <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-            <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        > for $op
-        {
-            fn compile(&self) -> crate::error::Result<
-                crate::kernels::TypedUnaryKernel<
-                    crate::execution::SymbolicSession,
-                    $plc,
-                    <$t0 as KnownType<crate::execution::SymbolicSession>>::Type,
-                    <$u as KnownType<crate::execution::SymbolicSession>>::Type,
-                >
-            > {
-                derive_runtime_kernel![unary, $(attributes[$($attr_id),+])? $($kp)+, self]
-            }
-        }
-
-        #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -4421,47 +4297,6 @@ macro_rules! modelled_kernel {
     };
 
     (__unary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => $($kp:tt)+) => {
-        #[cfg(feature = "compile")]
-        impl crate::kernels::UnaryKernel<
-            crate::execution::SymbolicSession,
-            $plc,
-            <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-            <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        > for $op
-        {
-            fn compile(&self) -> crate::error::Result<
-                crate::kernels::TypedUnaryKernel<
-                    crate::execution::SymbolicSession,
-                    $plc,
-                    <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-                    <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-                >
-            > {
-                use crate::computation::{KnownType};
-                use crate::execution::symbolic::{SymbolicSession, Symbolic};
-
-                let op = self.clone();
-                Ok(Box::new(move |
-                    sess: &SymbolicSession,
-                    plc: &$plc,
-                    x0: <$t0 as KnownType<SymbolicSession>>::Type
-                | {
-                    match x0 {
-                        Symbolic::Symbolic(h0) => {
-                            let h = sess.add_operation(&op, &[&h0.op], plc);
-                            Ok(Symbolic::Symbolic(h))
-                        }
-                        _ => Err(crate::error::Error::Unexpected(Some(format!(
-                            r#"Expected symbolic value during compilation of runtime kernel, but found concrete value.
-                            Perhaps you meant to declare this as a hybrid kernel?
-                            Kernel: {:#?}"#,
-                            op)
-                        )))
-                    }
-                }))
-            }
-        }
-
         #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
