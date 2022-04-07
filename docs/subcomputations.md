@@ -46,26 +46,21 @@ impl BitComposeOp {
 }
 ```
 
-Textual format will be something like
+Textual format corresponding to the computation above will be something like
 
 ```
 // Defining a named subcomputation
-SUB single_bit_compose {i: Ring128} (x: Tensor<Fixed128(24, 40)>)
+SUB single_bit_compose {i: Ring128} (x: RepBitTensor, acc: RepRingTensor128)
     y = RepIndex{index = i}(x)
-    ret = RepRingIject{index = i}(y)
+    injected = RepRingIject{index = i}(y)
+    ret = RepAdd(acc, injected)
 RET ret
 
 // Calling a named subcomputation
 zeroes = RepFill{value = 0}(shape)
-
-bit_0 = Execute {name = "single_bit_compose"} {i = 0} (x)
-add_0 = RepAdd(zeroes, bit_0)
-
-bit_1 = Execute {name = "single_bit_compose"} {i = 1} (x)
-add_1 = RepAdd(add_0, bit_1)
-
-bit_2 = Execute {name = "single_bit_compose"} {i = 2} (x)
-add_2 = RepAdd(add_1, bit_2)
+bit_0 = Execute {name = "single_bit_compose"} {i = 0} (x, zeroes)
+bit_1 = Execute {name = "single_bit_compose"} {i = 1} (x, bit_1)
+bit_2 = Execute {name = "single_bit_compose"} {i = 2} (x, bit_2)
 
 ```
 
