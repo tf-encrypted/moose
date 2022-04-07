@@ -55,7 +55,7 @@ SUB single_bit_compose {i: Ring128} (x: Tensor<Fixed128(24, 40)>)
     ret = RepRingIject{index = i}(y)
 RET ret
 
-// Calling a named subcomputations
+// Calling a named subcomputation
 zeroes = RepFill{value = 0}(shape)
 
 bit_0 = Execute {name = "single_bit_compose"} {i = 0} (x)
@@ -65,7 +65,7 @@ bit_1 = Execute {name = "single_bit_compose"} {i = 1} (x)
 add_1 = RepAdd(add_0, bit_1)
 
 bit_2 = Execute {name = "single_bit_compose"} {i = 2} (x)
-add_2 = RepAdd(add_2, bit_2)
+add_2 = RepAdd(add_1, bit_2)
 
 ```
 
