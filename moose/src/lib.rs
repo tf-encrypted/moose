@@ -4995,8 +4995,6 @@ macro_rules! modelled_kernel {
     */
 
     ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
-        symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
-
         #[cfg(feature = "sync_execute")]
         impl crate::kernels::NgDispatchKernel<crate::execution::SyncSession> for $op {
             fn compile(
@@ -5053,30 +5051,6 @@ macro_rules! modelled_kernel {
 
         // support for SyncSession
         $(
-            #[cfg(feature = "sync_execute")]
-            impl crate::kernels::BinaryKernel<
-                crate::execution::SyncSession,
-                $plc,
-                $t0,
-                $t1,
-                $u
-            > for $op
-            {
-                fn compile(
-                    &self,
-                ) -> crate::error::Result<
-                    crate::kernels::TypedBinaryKernel<
-                        crate::execution::SyncSession,
-                        $plc,
-                        $t0,
-                        $t1,
-                        $u,
-                    >
-                > {
-                    derive_runtime_kernel![binary, $(attributes[$($attr_id),+])? $($kp)+, self]
-                }
-            }
-
             #[cfg(feature = "sync_execute")]
             impl $trait<crate::execution::SyncSession, $t0, $t1, $u> for $plc {
                 fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
@@ -5160,62 +5134,6 @@ macro_rules! modelled_kernel {
     };
 
     (__binary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
-        #[cfg(feature = "compile")]
-        impl crate::kernels::BinaryKernel<
-            crate::execution::SymbolicSession,
-            $plc,
-            <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-            <$t1 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-            <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        > for $op
-        {
-            fn compile(&self) -> crate::error::Result<
-                crate::kernels::TypedBinaryKernel<
-                    crate::execution::SymbolicSession,
-                    $plc,
-                    <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-                    <$t1 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-                    <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-                >
-            > {
-                use crate::execution::symbolic::{Symbolic, SymbolicSession};
-                use std::convert::TryInto;
-
-                let op = self.clone();
-                Ok(Box::new(move |
-                    sess: &SymbolicSession,
-                    plc: &$plc,
-                    x0: <$t0 as crate::computation::KnownType<SymbolicSession>>::Type,
-                    x1: <$t1 as crate::computation::KnownType<SymbolicSession>>::Type,
-                | {
-                    // TODO derive k outside box (using self instead of op)
-                    // Magic by Morten
-                    let op = &op;
-
-                    let k = derive_runtime_kernel![binary, $(attributes[$($attr_id),+])? $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
-
-                    let v0 = x0.clone().try_into();
-                    let v1 = x1.clone().try_into();
-
-                    match (v0, v1) {
-                        (Ok(v0), Ok(v1)) => {
-                            let y = k(sess, plc, v0, v1)?;
-                            Ok(y.into())
-                        }
-                        _ => match (x0, x1) {
-                            (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                                let h = sess.add_operation(op, &[&h0.op, &h1.op], plc);
-                                Ok(Symbolic::Symbolic(h))
-                            }
-                            _ => {
-                                Err(crate::error::Error::Unexpected(Some("Mixed symbolic and concrete value during compilation".to_string())))
-                            }
-                        }
-                    }
-                }))
-            }
-        }
-
         #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,

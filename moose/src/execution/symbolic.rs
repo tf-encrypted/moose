@@ -342,7 +342,23 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
                     }
                 }
             }
-            Broadcast(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Broadcast(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             Fill(op) => DispatchKernel::compile(op, plc)?(sess, operands),
             PrfKeyGen(op) => {
                 let kernel = NgDispatchKernel::compile(op, plc)?;
@@ -355,10 +371,74 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
                     }
                 }
             }
-            Decrypt(op) => DispatchKernel::compile(op, plc)?(sess, operands),
-            Xor(op) => DispatchKernel::compile(op, plc)?(sess, operands),
-            And(op) => DispatchKernel::compile(op, plc)?(sess, operands),
-            Or(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Decrypt(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
+            Xor(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
+            And(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
+            Or(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             BitExtract(op) => {
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
@@ -393,7 +473,23 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
                     }
                 }
             }
-            SampleSeeded(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            SampleSeeded(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             RingFixedpointAbs(op) => {
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
@@ -909,7 +1005,23 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
                     }
                 }
             }
-            Equal(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Equal(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             EqualZero(op) => {
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
@@ -926,8 +1038,40 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
                     }
                 }
             }
-            LessThan(op) => DispatchKernel::compile(op, plc)?(sess, operands),
-            GreaterThan(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            LessThan(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
+            GreaterThan(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             FixedpointEncode(op) => {
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
@@ -1057,7 +1201,23 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
                 }
             }
             Concat(op) => DispatchKernel::compile(op, plc)?(sess, operands),
-            Reshape(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Reshape(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             Squeeze(op) => {
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
@@ -1106,11 +1266,91 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
                     }
                 }
             }
-            Add(op) => DispatchKernel::compile(op, plc)?(sess, operands),
-            Sub(op) => DispatchKernel::compile(op, plc)?(sess, operands),
-            Mul(op) => DispatchKernel::compile(op, plc)?(sess, operands),
-            Div(op) => DispatchKernel::compile(op, plc)?(sess, operands),
-            Dot(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Add(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
+            Sub(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
+            Mul(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
+            Div(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
+            Dot(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Binary { closure } => {
+                        assert_eq!(operands.len(), 2);
+                        let x1 = operands.pop().unwrap();
+                        let x0 = operands.pop().unwrap();
+                        closure(sess, plc, x0, x1)
+                    }
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             Mean(op) => {
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
