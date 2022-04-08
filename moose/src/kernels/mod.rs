@@ -40,16 +40,6 @@ pub trait DispatchKernel<S: Session> {
     fn compile(&self, plc: &Placement) -> Result<Kernel<S>>;
 }
 
-pub type NgTernaryKernel<S> = Box<
-    dyn Fn(
-        &S,
-        &Placement, // TODO get rid of this?
-        <S as Session>::Value,
-        <S as Session>::Value,
-        <S as Session>::Value,
-    ) -> Result<<S as Session>::Value>,
->;
-
 pub type NgNullaryKernel<S> = Box<
     dyn Fn(
         &S,
@@ -65,9 +55,29 @@ pub type NgUnaryKernel<S> = Box<
     ) -> Result<<S as Session>::Value>,
 >;
 
+pub type NgBinaryKernel<S> = Box<
+    dyn Fn(
+        &S,
+        &Placement, // TODO get rid of this?
+        <S as Session>::Value,
+        <S as Session>::Value,
+    ) -> Result<<S as Session>::Value>,
+>;
+
+pub type NgTernaryKernel<S> = Box<
+    dyn Fn(
+        &S,
+        &Placement, // TODO get rid of this?
+        <S as Session>::Value,
+        <S as Session>::Value,
+        <S as Session>::Value,
+    ) -> Result<<S as Session>::Value>,
+>;
+
 pub enum NgKernel<S: Session> {
     Nullary { closure: NgNullaryKernel<S> },
     Unary { closure: NgUnaryKernel<S> },
+    Binary { closure: NgBinaryKernel<S> },
     Ternary { closure: NgTernaryKernel<S> },
 }
 
