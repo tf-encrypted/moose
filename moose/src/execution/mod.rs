@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+pub mod kernel_helpers;
+
 #[cfg(feature = "async_execute")]
 pub mod asynchronous;
 #[cfg(feature = "compile")]
