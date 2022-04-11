@@ -3436,6 +3436,62 @@ macro_rules! modelled_kernel {
             }
         )+
 
+
+        #[cfg(feature = "async_execute")]
+        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
+                use crate::execution::{AsyncSession, AsyncValue, Operands};
+                use crate::kernels::{NullaryKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Nullary(NullarySignature {
+                                ret: <$u as KnownType<AsyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+                            // TODO: Do we want to be deriving the kernel inside? Probably not...
+                            let op = self.clone();
+
+                            Ok(Box::new(move |sess, operands: Operands<AsyncValue>| {
+                                assert_eq!(operands.len(), 0);
+                                let sess = sess.clone();
+                                let plc = plc.clone();
+                                let k = <$op as NullaryKernel<AsyncSession, $plc, $u>>::compile(&op)?;
+                                let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
+                                let op = op.clone(); // Needed for the error message for KernelError
+                                let tasks = std::sync::Arc::clone(&sess.tasks);
+                                let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                    let y: $u = k(&sess, &plc)?;
+                                    if y.placement()? == plc.clone().into() {
+                                        crate::execution::map_send_result(sender.send(y.into()))?;
+                                        Ok(())
+                                    } else {
+                                        Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                    }
+                                });
+                                let mut tasks = tasks.write().unwrap();
+                                tasks.push(task);
+
+                                Ok(result)
+                            }))
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
+        }
+
+
+
         // support for SymbolicSession (based on flavour)
         $(
             modelled_kernel!(__nullary $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? () -> $u => $($kp)+);
@@ -3536,24 +3592,6 @@ macro_rules! modelled_kernel {
     };
 
     (__nullary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => $($kp:tt)+) => {
-        #[cfg(feature = "compile")]
-        impl crate::kernels::NullaryKernel<
-            crate::execution::SymbolicSession,
-            $plc,
-            <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        > for $op
-        {
-            fn compile(&self) -> crate::error::Result<
-                crate::kernels::TypedNullaryKernel<
-                    crate::execution::SymbolicSession,
-                    $plc,
-                    <<$u as KnownType<crate::execution::SymbolicSession>>::Type>,
-                >
-            > {
-                derive_runtime_kernel![nullary, $(attributes[$($attr_id),+])? $($kp)+, self]
-            }
-        }
-
         #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
@@ -3670,7 +3708,6 @@ macro_rules! modelled_kernel {
             }
         }
 
-
         // support for SyncSession
         $(
             #[cfg(feature = "sync_execute")]
@@ -3742,6 +3779,66 @@ macro_rules! modelled_kernel {
             }
         )+
 
+        #[cfg(feature = "async_execute")]
+        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature};
+                use crate::execution::{AsyncSession, AsyncValue};
+                use crate::kernels::{UnaryKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Unary(UnarySignature {
+                                arg0: <$t0 as KnownType<AsyncSession>>::TY,
+                                ret: <$u as KnownType<AsyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+                            // TODO: Do we want to be deriving the kernel inside? Probably not...
+                            let op = self.clone();
+                            // let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(self, &plc)?;
+
+                            Ok(Box::new(move |sess, operands: Operands<AsyncValue>| {
+                                assert_eq!(operands.len(), 1);
+                                let sess = sess.clone();
+                                let plc = plc.clone();
+                                let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(&op)?;
+                                let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
+                                let op = op.clone(); // Needed for the error message for KernelError
+                                let tasks = std::sync::Arc::clone(&sess.tasks);
+                                let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                    let mut operands = futures::future::join_all(operands).await;
+                                    let x0: $t0 = operands
+                                            .pop()
+                                            .unwrap()
+                                            .map_err(crate::execution::map_receive_error)?
+                                            .try_into()?;
+                                    let y: $u = k(&sess, &plc, x0)?;
+                                    if y.placement()? == plc.clone().into() {
+                                        crate::execution::map_send_result(sender.send(y.into()))?;
+                                        Ok(())
+                                    } else {
+                                        Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                    }
+                                });
+                                let mut tasks = tasks.write().unwrap();
+                                tasks.push(task);
+
+                                Ok(result)
+                            }))
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
+        }
         // support for SymbolicSession (based on flavour)
         $(
             modelled_kernel!(__unary $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? ($t0) -> $u => $($kp)+);
@@ -4052,6 +4149,81 @@ macro_rules! modelled_kernel {
             }
         )+
 
+        #[cfg(feature = "async_execute")]
+        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
+            {
+                use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
+                use crate::execution::{AsyncSession, AsyncValue, Operands};
+                use crate::kernels::{BinaryKernel};
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Binary(BinarySignature {
+                                arg0: <$t0 as KnownType<AsyncSession>>::TY,
+                                arg1: <$t1 as KnownType<AsyncSession>>::TY,
+                                ret: <$u as KnownType<AsyncSession>>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into()?;
+                            // TODO: Do we want to be deriving the kernel inside? Probably not...
+                            let op = self.clone();
+
+                            Ok(Box::new(move |sess: &AsyncSession, operands: Operands<AsyncValue>| {
+                                assert_eq!(operands.len(), 2);
+
+                                let k = <$op as BinaryKernel<AsyncSession, $plc, $t0, $t1, $u>>::compile(&op)?;
+
+                                let tasks = std::sync::Arc::clone(&sess.tasks);
+
+                                let sess = sess.clone();
+                                let plc = plc.clone();
+                                let op = op.clone(); // Needed for the error message for KernelError
+
+                                let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
+
+                                let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                                    let mut operands = futures::future::join_all(operands).await;
+
+                                    let x1: $t1 = operands
+                                            .pop()
+                                            .unwrap()
+                                            .map_err(crate::execution::map_receive_error)?
+                                            .try_into()?;
+
+                                    let x0: $t0 = operands
+                                            .pop()
+                                            .unwrap()
+                                            .map_err(crate::execution::map_receive_error)?
+                                            .try_into()?;
+
+                                    let y: $u = k(&sess, &plc, x0, x1)?;
+
+                                    if y.placement()? == plc.clone().into() {
+                                        crate::execution::map_send_result(sender.send(y.into()))?;
+                                        Ok(())
+                                    } else {
+                                        Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                    }
+                                });
+                                let mut tasks = tasks.write().unwrap();
+                                tasks.push(task);
+
+                                Ok(result)
+                            }))
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
+                }
+            }
+        }
+
         // support for SymbolicSession (based on flavour)
         $(
             modelled_kernel!(__binary $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? ($t0, $t1) -> $u => $($kp)+);
@@ -4309,6 +4481,89 @@ macro_rules! modelled_kernel {
             }
         }
 
+
+        // support for SyncSession
+        $(
+            #[cfg(feature = "sync_execute")]
+            impl $trait<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
+                fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
+                    use crate::computation::{KnownType, TernarySignature};
+                    use crate::execution::{Session, SyncSession};
+                    use std::convert::TryInto;
+
+                    let sig = TernarySignature {
+                        arg0: <$t0 as KnownType<SyncSession>>::TY,
+                        arg1: <$t1 as KnownType<SyncSession>>::TY,
+                        arg2: <$t2 as KnownType<SyncSession>>::TY,
+                        ret: <$u as KnownType<SyncSession>>::TY,
+                    };
+                    let op = $op {
+                        sig: sig.into(),
+                        $($($attr_id),*)?
+                    };
+                    sess.execute(
+                        &op.into(),
+                        &self.into(),
+                        operands![x0.clone().into(), x1.clone().into(), x2.clone().into()],
+                    )
+                    .unwrap()
+                    .try_into()
+                    .unwrap()
+                }
+            }
+        )+
+
+        // support for AsyncSession
+        $(
+            #[cfg(feature = "async_execute")]
+            impl crate::kernels::TernaryKernel<
+                crate::execution::AsyncSession,
+                $plc,
+                $t0,
+                $t1,
+                $t2,
+                $u
+            > for $op
+            {
+                fn compile(
+                    &self,
+                ) -> crate::error::Result<
+                    crate::kernels::TypedTernaryKernel<
+                        crate::execution::AsyncSession,
+                        $plc,
+                        $t0,
+                        $t1,
+                        $t2,
+                        $u,
+                    >
+                > {
+                    derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
+                }
+            }
+
+            #[cfg(feature = "async_execute")]
+            impl $trait<
+                crate::execution::AsyncSession,
+                $t0,
+                $t1,
+                $t2,
+                $u
+            > for $plc {
+                #[allow(unused_variables)]
+                fn $trait_fn(
+                    &self,
+                    sess: &crate::execution::AsyncSession,
+                    $($($attr_id:$attr_ty),*,)?
+                    x0: &$t0,
+                    x1: &$t1,
+                    x2: &$t2,
+                ) -> $u {
+                    unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
+                }
+            }
+        )+
+
+
         #[cfg(feature = "async_execute")]
         impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
             fn compile(
@@ -4318,6 +4573,7 @@ macro_rules! modelled_kernel {
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature};
                 use crate::execution::{AsyncSession, AsyncValue};
+                use crate::kernels::{TernaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -4333,18 +4589,15 @@ macro_rules! modelled_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into()?;
                             // TODO: Do we want to be deriving the kernel inside? Probably not...
+                            let op = self.clone();
 
                             Ok(Box::new(move |sess, operands: Operands<AsyncValue>| {
                                 assert_eq!(operands.len(), 3);
                                 let sess = sess.clone();
                                 let plc = plc.clone();
-
-                                // TODO(Morten) we could move this out of the Box above by making it an Arc inside
-                                let k = {
-                                    derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
-                                }?;
-
+                                let k = <$op as TernaryKernel<AsyncSession, $plc, $t0, $t1, $t2, $u>>::compile(&op)?;
                                 let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
+                                let op = op.clone(); // Needed for the error message for KernelError
                                 let tasks = std::sync::Arc::clone(&sess.tasks);
                                 let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
                                     let mut operands = futures::future::join_all(operands).await;
@@ -4368,8 +4621,12 @@ macro_rules! modelled_kernel {
                                         .try_into()?;
 
                                     let y: $u = k(&sess, &plc, x0, x1, x2)?;
-                                    crate::execution::map_send_result(sender.send(y.into()))?;
-                                    Ok(())
+                                    if y.placement()? == plc.clone().into() {
+                                        crate::execution::map_send_result(sender.send(y.into()))?;
+                                        Ok(())
+                                    } else {
+                                        Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
+                                    }
                                 });
                                 let mut tasks = tasks.write().unwrap();
                                 tasks.push(task);
@@ -4378,101 +4635,12 @@ macro_rules! modelled_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
                 }
             }
         }
 
-        paste::paste! {
-            pub(crate) trait [<$trait Valid>] <P, X0, X1, X2, Y> {
-                // TODO maybe this could be const/lazy instead
-                fn sig() -> crate::computation::Signature;
-            }
-        }
 
-        $(
-            paste::paste! {
-                impl [<$trait Valid>] <$plc, $t0, $t1, $t2, $u> for crate::execution::SyncSession {
-                    fn sig() -> crate::computation::Signature {
-                        crate::computation::Signature::ternary(
-                            <$t0 as KnownType<Self>>::TY,
-                            <$t1 as KnownType<Self>>::TY,
-                            <$t2 as KnownType<Self>>::TY,
-                            <$u as KnownType<Self>>::TY,
-                        )
-                    }
-                }
-            }
-        )+
-
-        paste::paste! {
-            #[cfg(feature = "compile")]
-            impl<S, P, X0, X1, X2, Y> [<$trait Valid>] <P, X0, X1, X2, Y> for S
-            where
-                S: crate::execution::Session,
-                X0: crate::computation::SessionType<Self>,
-                X1: crate::computation::SessionType<Self>,
-                X2: crate::computation::SessionType<Self>,
-                Y: crate::computation::SessionType<Self>,
-                crate::execution::SyncSession: [< $trait Valid >] <
-                    P,
-                    <X0 as crate::computation::SessionType<Self>>::Canonical,
-                    <X1 as crate::computation::SessionType<Self>>::Canonical,
-                    <X2 as crate::computation::SessionType<Self>>::Canonical,
-                    <Y as crate::computation::SessionType<Self>>::Canonical,
-                >,
-            {
-                fn sig() -> crate::computation::Signature {
-                    crate::execution::SyncSession::sig()
-                }
-            }
-        }
-
-        paste::paste! {
-            impl<P, S, T0, T1, T2, U> $trait<S, T0, T1, T2, U> for P
-            where
-                S: crate::execution::Session,
-                S: [<$trait Valid>] <P, T0, T1, T2, U>,
-                T0: Clone,
-                T1: Clone,
-                T2: Clone,
-                S::Value: From<T0>,
-                S::Value: From<T1>,
-                S::Value: From<T2>,
-                S::Value: std::convert::TryInto<U>,
-                <S::Value as std::convert::TryInto<U>>::Error: std::fmt::Debug,
-                for<'l> crate::computation::Placement: From<&'l P>,
-            {
-                fn $trait_fn(
-                    &self,
-                    sess: &S,
-                    $($($attr_id:$attr_ty),*)?
-                    x0: &T0,
-                    x1: &T1,
-                    x2: &T2
-                ) -> U
-                {
-                    use std::convert::TryInto;
-                    // TODO(Morten) get signature from actual values? ie x0.ty()
-                    let sig = S::sig();
-                    let op = $op {
-                        sig,
-                        $($($attr_id),*)?
-                    };
-                    let res = sess.execute(
-                        &crate::computation::Operator::from(op),
-                        &crate::computation::Placement::from(self),
-                        operands![
-                            S::Value::from(x0.clone()),
-                            S::Value::from(x1.clone()),
-                            S::Value::from(x2.clone()),
-                        ]
-                    )
-                    .unwrap();
-                    res.try_into().unwrap()
-                }
-            }
-        }
 
         // support for SyncSession, AsyncSession, and SymbolicSession (based on flavour)
         $(
@@ -4481,17 +4649,208 @@ macro_rules! modelled_kernel {
     };
 
     (__ternary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(feature = "compile")]
+        impl $trait<
+            crate::execution::SymbolicSession,
+            <$t0 as crate::computation::SymbolicType>::Type,
+            <$t1 as crate::computation::SymbolicType>::Type,
+            <$t2 as crate::computation::SymbolicType>::Type,
+            <$u as crate::computation::SymbolicType>::Type
+        > for $plc {
+            fn $trait_fn(
+                &self,
+                sess: &crate::execution::SymbolicSession,
+                $($($attr_id:$attr_ty),*,)?
+                x0: &<$t0 as crate::computation::SymbolicType>::Type,
+                x1: &<$t1 as crate::computation::SymbolicType>::Type,
+                x2: &<$t2 as crate::computation::SymbolicType>::Type
+            ) -> <$u as crate::computation::SymbolicType>::Type {
+                use crate::computation::{KnownType, TernarySignature};
+                use crate::execution::{Session, SymbolicSession};
+                use std::convert::TryInto;
 
+                let sig = TernarySignature {
+                    arg0: <$t0 as KnownType<SymbolicSession>>::TY,
+                    arg1: <$t1 as KnownType<SymbolicSession>>::TY,
+                    arg2: <$t2 as KnownType<SymbolicSession>>::TY,
+                    ret: <$u as KnownType<SymbolicSession>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                    .unwrap()
+                    .try_into()
+                    .unwrap()
+            }
+        }
     };
 
     (__ternary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
 
+                #[cfg(feature = "compile")]
+        impl $trait<
+            crate::execution::SymbolicSession,
+            <$t0 as crate::computation::PartiallySymbolicType>::Type,
+            <$t1 as crate::computation::PartiallySymbolicType>::Type,
+            <$t2 as crate::computation::PartiallySymbolicType>::Type,
+            <$u as crate::computation::PartiallySymbolicType>::Type
+        > for $plc {
+            fn $trait_fn(
+                &self,
+                sess: &crate::execution::SymbolicSession,
+                $($($attr_id:$attr_ty),*,)?
+                x0: &<$t0 as crate::computation::PartiallySymbolicType>::Type,
+                x1: &<$t1 as crate::computation::PartiallySymbolicType>::Type,
+                x2: &<$t2 as crate::computation::PartiallySymbolicType>::Type
+            ) -> <$u as crate::computation::PartiallySymbolicType>::Type {
+                use crate::computation::{KnownType, TernarySignature, SymbolicValue};
+                use crate::execution::{Session};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
+                use std::convert::TryFrom;
+
+                let sig = TernarySignature {
+                    arg0: <$t0 as KnownType<SymbolicSession>>::TY,
+                    arg1: <$t1 as KnownType<SymbolicSession>>::TY,
+                    arg2: <$t2 as KnownType<SymbolicSession>>::TY,
+                    ret: <$u as KnownType<SymbolicSession>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+
+                let x0 = SymbolicValue::from(Symbolic::Concrete(x0.clone()));
+                let x1 = SymbolicValue::from(Symbolic::Concrete(x1.clone()));
+                let x2 = SymbolicValue::from(Symbolic::Concrete(x2.clone()));
+                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
+                let y = Symbolic::try_from(y).unwrap();
+                match y {
+                    Symbolic::Concrete(y) => y,
+                    Symbolic::Symbolic(_) => panic!(), // ok since this is concrete flavour
+                }
+            }
+        }
+
+        #[cfg(feature = "compile")]
+        impl $trait<
+            crate::execution::SymbolicSession,
+            <$t0 as crate::computation::SymbolicType>::Type,
+            <$t1 as crate::computation::SymbolicType>::Type,
+            <$t2 as crate::computation::SymbolicType>::Type,
+            <$u as crate::computation::SymbolicType>::Type
+        > for $plc {
+            fn $trait_fn(
+                &self,
+                sess: &crate::execution::SymbolicSession,
+                $($($attr_id:$attr_ty),*,)?
+                x0: &<$t0 as crate::computation::SymbolicType>::Type,
+                x1: &<$t1 as crate::computation::SymbolicType>::Type,
+                x2: &<$t2 as crate::computation::SymbolicType>::Type
+            ) -> <$u as crate::computation::SymbolicType>::Type {
+                use crate::computation::{KnownType, TernarySignature, SymbolicValue};
+                use crate::execution::{Session};
+                use crate::execution::symbolic::{SymbolicSession, Symbolic};
+                use std::convert::TryFrom;
+
+                let sig = TernarySignature {
+                    arg0: <$t0 as KnownType<SymbolicSession>>::TY,
+                    arg1: <$t1 as KnownType<SymbolicSession>>::TY,
+                    arg2: <$t2 as KnownType<SymbolicSession>>::TY,
+                    ret: <$u as KnownType<SymbolicSession>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+
+                let x0 = SymbolicValue::from(x0.clone());
+                let x1 = SymbolicValue::from(x1.clone());
+                let x2 = SymbolicValue::from(x2.clone());
+                let y = sess.execute(&op.into(), &self.into(), operands![x0, x1, x2]).unwrap();
+                Symbolic::try_from(y).unwrap()
+            }
+        }
+
     };
 
     (__ternary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
+        #[cfg(feature = "compile")]
+        impl $trait<
+            crate::execution::SymbolicSession,
+            <$t0 as crate::computation::SymbolicType>::Type,
+            <$t1 as crate::computation::SymbolicType>::Type,
+            <$t2 as crate::computation::SymbolicType>::Type,
+            <$u as crate::computation::SymbolicType>::Type
+        > for $plc {
+            fn $trait_fn(
+                &self,
+                sess: &crate::execution::SymbolicSession,
+                $($($attr_id:$attr_ty),*,)?
+                x0: &<$t0 as crate::computation::SymbolicType>::Type,
+                x1: &<$t1 as crate::computation::SymbolicType>::Type,
+                x2: &<$t2 as crate::computation::SymbolicType>::Type
+            ) -> <$u as crate::computation::SymbolicType>::Type {
+                use crate::computation::{KnownType, TernarySignature};
+                use crate::execution::{Session, SymbolicSession};
+                use std::convert::TryInto;
+
+                let sig = TernarySignature {
+                    arg0: <$t0 as KnownType<SymbolicSession>>::TY,
+                    arg1: <$t1 as KnownType<SymbolicSession>>::TY,
+                    arg2: <$t2 as KnownType<SymbolicSession>>::TY,
+                    ret: <$u as KnownType<SymbolicSession>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                    .unwrap()
+                    .try_into()
+                    .unwrap()
+            }
+        }
     };
 
     (__ternary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
+                #[cfg(feature = "compile")]
+        impl $trait<
+            crate::execution::SymbolicSession,
+            <$t0 as crate::computation::SymbolicType>::Type,
+            <$t1 as crate::computation::SymbolicType>::Type,
+            <$t2 as crate::computation::SymbolicType>::Type,
+            <$u as crate::computation::SymbolicType>::Type
+        > for $plc {
+            fn $trait_fn(
+                &self,
+                sess: &crate::execution::SymbolicSession,
+                $($($attr_id:$attr_ty),*,)?
+                x0: &<$t0 as crate::computation::SymbolicType>::Type,
+                x1: &<$t1 as crate::computation::SymbolicType>::Type,
+                x2: &<$t2 as crate::computation::SymbolicType>::Type
+            ) -> <$u as crate::computation::SymbolicType>::Type {
+                use crate::computation::{KnownType, TernarySignature};
+                use crate::execution::{Session, SymbolicSession};
+                use std::convert::TryInto;
+
+                let sig = TernarySignature {
+                    arg0: <$t0 as KnownType<SymbolicSession>>::TY,
+                    arg1: <$t1 as KnownType<SymbolicSession>>::TY,
+                    arg2: <$t1 as KnownType<SymbolicSession>>::TY,
+                    ret: <$u as KnownType<SymbolicSession>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+                sess.execute(&op.into(), &self.into(), operands![x0.clone().into(), x1.clone().into(), x2.clone().into()])
+                    .unwrap()
+                    .try_into()
+                    .unwrap()
+            }
+        }
 
     };
 

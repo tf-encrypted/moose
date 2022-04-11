@@ -7,10 +7,11 @@ use crate::execution::SyncSession;
 use crate::kernels::NgKernel;
 use std::convert::{TryFrom, TryInto};
 
-
 #[allow(dead_code)]
-pub(crate) fn sync_nullary_fn<U, P>(_op: &Operator,
- kf: fn(&SyncSession, &P) -> Result<U>) -> Result<NgKernel<SyncSession>>
+pub(crate) fn sync_nullary_fn<U, P>(
+    _op: &Operator,
+    kf: fn(&SyncSession, &P) -> Result<U>,
+) -> Result<NgKernel<SyncSession>>
 where
     U: 'static,
     P: 'static,
@@ -937,7 +938,11 @@ where
 {
     Ok(NgKernel::Ternary {
         closure: Box::new(
-            move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue, v1: SymbolicValue, v2: SymbolicValue| {
+            move |sess: &SymbolicSession,
+                  plc: &Placement,
+                  v0: SymbolicValue,
+                  v1: SymbolicValue,
+                  v2: SymbolicValue| {
                 let plc: P = Placement::try_into(plc.clone())?;
                 let x0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
                 let x1: <T1 as SymbolicType>::Type = SymbolicValue::try_into(v1)?;
@@ -948,6 +953,3 @@ where
         ),
     })
 }
-
-
-
