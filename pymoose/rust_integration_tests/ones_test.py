@@ -39,14 +39,14 @@ class HostExample(parameterized.TestCase):
     def test_ones_example_execute(self, x, ones_op, np_ones):
         dtype = edsl.float64
         x_arg = np.array(x, dtype=np.float64)
-        exp_comp = self._setup_ones_comp(dtype, x_arg, ones_op)
-        traced_exp_comp = edsl.trace(exp_comp)
+        ones_comp = self._setup_ones_comp(dtype, x_arg, ones_op)
+        traced_ones_comp = edsl.trace(ones_comp)
         storage = {
             "bob": {},
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_exp_comp,
+            computation=traced_ones_comp,
             role_assignment={"bob": "bob"},
             arguments={},
         )
@@ -55,7 +55,7 @@ class HostExample(parameterized.TestCase):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Log example")
+    parser = argparse.ArgumentParser(description="Ones example")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
