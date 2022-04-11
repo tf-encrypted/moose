@@ -54,6 +54,7 @@ from pymoose.edsl.base import squeeze
 from pymoose.edsl.base import sub
 from pymoose.edsl.base import sum
 from pymoose.edsl.base import transpose
+from pymoose.edsl.base import zeros
 from pymoose.edsl.tracer import trace
 from pymoose.edsl.tracer import trace_and_compile
 
@@ -98,6 +99,7 @@ __all__ = [
     mux,
     mean,
     ones,
+    zeros,
     replicated_placement,
     reshape,
     ring64,
