@@ -28,53 +28,6 @@ where
     })
 }
 
-pub(crate) fn symbolic_nullary_concrete<U, P>(
-    _op: Operator,
-    kf: fn(&SymbolicSession, &P) -> Result<<U as PartiallySymbolicType>::Type>,
-) -> Result<NgKernel<SymbolicSession>>
-where
-    P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
-    Placement: From<P>,
-    U: PartiallySymbolicType, // TODO use SymbolicType here?
-    <U as PartiallySymbolicType>::Type: Placed + 'static,
-    // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
-    <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
-    SymbolicValue: From<<U as SymbolicType>::Type>,
-{
-    Ok(NgKernel::Nullary {
-        closure: Box::new(move |sess: &SymbolicSession, plc: &Placement| {
-            let plc = P::try_from(plc.clone())?;
-            let y = kf(sess, &plc)?;
-            Ok(SymbolicValue::from(Symbolic::Concrete(y)))
-        }),
-    })
-}
-
-pub(crate) fn symbolic_nullary_hybrid<U, Y, P>(
-    _op: Operator,
-    kf: fn(&SymbolicSession, &P) -> Result<Y>,
-) -> Result<NgKernel<SymbolicSession>>
-where
-    P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
-    Placement: From<P>,
-    U: PartiallySymbolicType,
-    Y: Into<<U as SymbolicType>::Type>,
-    Y: 'static,
-    <U as PartiallySymbolicType>::Type: Placed + 'static,
-    // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
-    <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
-    SymbolicValue: From<<U as SymbolicType>::Type>,
-{
-    Ok(NgKernel::Nullary {
-        closure: Box::new(move |sess: &SymbolicSession, plc: &Placement| {
-            let plc = P::try_from(plc.clone())?;
-            let y = kf(sess, &plc)?;
-            let y: <U as SymbolicType>::Type = y.into();
-            Ok(SymbolicValue::from(y))
-        }),
-    })
-}
-
 // TODO(Morten) can we merge sync_unary_box and sync_unary_fn and still
 // be certain that we only get two copies? What are the correct trait bounds?
 
