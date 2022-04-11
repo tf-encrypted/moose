@@ -776,6 +776,11 @@ macro_rules! ng_derive_runtime_kernel {
         )
     };
 
+    (symbolic ternary transparent $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic_ternary_transparent_fn::<$t0, $t1, $t2, $u, $plc>(Operator::from($op), $k)
+    };
+
+
     (symbolic ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::symbolic_ternary_hybrid::<$t0, $t1, $t2, $u, _, _, _, _, $plc>(
             Operator::from($op),
@@ -3366,8 +3371,6 @@ macro_rules! modelled_kernel {
             }
         }
 
-
-
         // support for SyncSession
         $(
             #[cfg(feature = "sync_execute")]
@@ -4486,29 +4489,6 @@ macro_rules! modelled_kernel {
     };
 
     (__ternary transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
-        #[cfg(feature = "compile")]
-        impl crate::kernels::TernaryKernel<
-            crate::execution::SymbolicSession,
-            $plc,
-            <$t0 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-            <$t1 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-            <$t2 as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-            <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        > for $op
-        {
-            fn compile(&self) -> crate::error::Result<
-                crate::kernels::TypedTernaryKernel<
-                    crate::execution::SymbolicSession,
-                    $plc,
-                    <$t0 as KnownType<crate::execution::SymbolicSession>>::Type,
-                    <$t1 as KnownType<crate::execution::SymbolicSession>>::Type,
-                    <$t2 as KnownType<crate::execution::SymbolicSession>>::Type,
-                    <$u as KnownType<crate::execution::SymbolicSession>>::Type,
-                >
-            > {
-                derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
-            }
-        }
     };
 
     (__ternary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
