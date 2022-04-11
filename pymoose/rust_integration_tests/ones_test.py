@@ -30,13 +30,14 @@ class HostExample(parameterized.TestCase):
         ([1.32, 10.42, 2.321, 3.5913], edsl.ones, np.ones),
         ([4.132, 1.932, 2, 4.5321], edsl.ones, np.ones),
         ([1, 2, 4, 8, 4.5, 10.5], edsl.ones, np.ones),
-        ([[1.0, 2.0], [4.0, 23.3124], [42.954, 4.5], [10.5, 13.4219]],
+        (
+            [[1.0, 2.0], [4.0, 23.3124], [42.954, 4.5], [10.5, 13.4219]],
             edsl.ones,
             np.ones,
         ),
     )
-    def test_ones_example_execute(self, x, ones_op, np_ones):  
-        dtype=edsl.float64
+    def test_ones_example_execute(self, x, ones_op, np_ones):
+        dtype = edsl.float64
         x_arg = np.array(x, dtype=np.float64)
         exp_comp = self._setup_ones_comp(dtype, x_arg, ones_op)
         traced_exp_comp = edsl.trace(exp_comp)
