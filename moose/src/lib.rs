@@ -3323,7 +3323,6 @@ macro_rules! modelled_kernel {
                 plc: &crate::computation::Placement
             ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SyncSession>> {
                 use crate::execution::SyncSession;
-                use crate::kernels::NgKernel;
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig.flatten()) {

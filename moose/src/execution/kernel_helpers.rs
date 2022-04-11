@@ -7,6 +7,24 @@ use crate::execution::SyncSession;
 use crate::kernels::NgKernel;
 use std::convert::{TryFrom, TryInto};
 
+// pub(crate) fn sync_nullary_fn<U, P>(_op: &Operator,
+//  kf: fn(&SyncSession, &P) -> Result<U>) -> Result<NgKernel<SyncSession>>
+// where
+//     U: 'static,
+//     P: 'static,
+
+//     Placement: TryInto<P, Error = crate::Error>,
+//     Value: From<U>,
+// {
+//     Ok(NgKernel::Nullary {
+//         closure: Box::new(move |sess: &SyncSession, plc: &Placement| {
+//             let plc: P = Placement::try_into(plc.clone())?;
+//             let y = kf(sess, &plc)?;
+//             Ok(Value::from(y))
+//         }),
+//     })
+// }
+
 pub(crate) fn symbolic_nullary_runtime<U, P>(op: Operator) -> Result<NgKernel<SymbolicSession>>
 where
     P: Clone + TryFrom<Placement, Error = crate::Error>,
@@ -589,49 +607,6 @@ where
     })
 }
 
-pub(crate) fn symbolic_binary_transparent_box<T0, T1, U, P>(
-    _op: Operator,
-    kf: Box<
-        dyn Fn(
-            &SymbolicSession,
-            &P,
-            <T0 as SymbolicType>::Type,
-            <T1 as SymbolicType>::Type,
-        ) -> Result<<U as SymbolicType>::Type>,
-    >,
-) -> Result<NgKernel<SymbolicSession>>
-where
-    P: 'static,
-    Placement: TryInto<P, Error = crate::Error>,
-
-    T0: PartiallySymbolicType,
-    <T0 as PartiallySymbolicType>::Type: Placed,
-    <T0 as PartiallySymbolicType>::Type: 'static,
-    SymbolicValue: TryInto<<T0 as SymbolicType>::Type, Error = crate::Error>,
-
-    T1: PartiallySymbolicType,
-    <T1 as PartiallySymbolicType>::Type: Placed,
-    <T1 as PartiallySymbolicType>::Type: 'static,
-    SymbolicValue: TryInto<<T1 as SymbolicType>::Type, Error = crate::Error>,
-
-    U: PartiallySymbolicType,
-    <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
-    <U as PartiallySymbolicType>::Type: 'static,
-    SymbolicValue: From<<U as SymbolicType>::Type>,
-{
-    Ok(NgKernel::Binary {
-        closure: Box::new(
-            move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue, v1: SymbolicValue| {
-                let plc: P = Placement::try_into(plc.clone())?;
-                let x0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
-                let x1: <T1 as SymbolicType>::Type = SymbolicValue::try_into(v1)?;
-                let y: <U as SymbolicType>::Type = kf(sess, &plc, x0, x1)?;
-                Ok(SymbolicValue::from(y))
-            },
-        ),
-    })
-}
-
 pub(crate) fn symbolic_binary_transparent_fn<T0, T1, U, P>(
     _op: Operator,
     kf: fn(
@@ -668,69 +643,6 @@ where
                 let x1: <T1 as SymbolicType>::Type = SymbolicValue::try_into(v1)?;
                 let y: <U as SymbolicType>::Type = kf(sess, &plc, x0, x1)?;
                 Ok(SymbolicValue::from(y))
-            },
-        ),
-    })
-}
-
-pub(crate) fn symbolic_binary_hybrid_box<T0, T1, U, X0, X1, Y, P>(
-    op: Operator,
-    kf: Box<fn(&SymbolicSession, &P, X0, X1) -> Result<Y>>,
-) -> Result<NgKernel<SymbolicSession>>
-where
-    P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
-    Placement: From<P>,
-
-    T0: PartiallySymbolicType,
-    T1: PartiallySymbolicType,
-    U: PartiallySymbolicType,
-
-    Symbolic<<T0 as PartiallySymbolicType>::Type>: Clone + TryInto<X0>,
-    Symbolic<<T1 as PartiallySymbolicType>::Type>: Clone + TryInto<X1>,
-    Y: Into<<U as SymbolicType>::Type>,
-
-    X0: 'static,
-    X1: 'static,
-    Y: 'static,
-
-    <T0 as PartiallySymbolicType>::Type: Placed + 'static,
-    <T1 as PartiallySymbolicType>::Type: Placed + 'static,
-    <U as PartiallySymbolicType>::Type: Placed + 'static,
-    // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
-    <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
-
-    SymbolicValue: TryInto<<T0 as SymbolicType>::Type, Error = crate::Error>,
-    SymbolicValue: TryInto<<T1 as SymbolicType>::Type, Error = crate::Error>,
-    SymbolicValue: From<<U as SymbolicType>::Type>,
-{
-    Ok(NgKernel::Binary {
-        closure: Box::new(
-            move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue, v1: SymbolicValue| {
-                let plc = P::try_from(plc.clone())?;
-
-                let vs0: Symbolic<<T0 as PartiallySymbolicType>::Type> =
-                    SymbolicValue::try_into(v0)?;
-                let vs1: Symbolic<<T1 as PartiallySymbolicType>::Type> =
-                    SymbolicValue::try_into(v1)?;
-
-                let v0 = vs0.clone().try_into();
-                let v1 = vs1.clone().try_into();
-
-                match (v0, v1) {
-                    (Ok(v0), Ok(v1)) => {
-                        let y = kf(sess, &plc, v0, v1)?;
-                        let y: <U as SymbolicType>::Type = y.into();
-                        Ok(SymbolicValue::from(y))
-                    }
-                    _ => match (vs0, vs1) {
-                        (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                            let h = sess.add_operation(&op, &[&h0.op, &h1.op], &plc);
-                            let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
-                            Ok(SymbolicValue::from(h))
-                        }
-                        _ => unimplemented!(),
-                    },
-                }
             },
         ),
     })
