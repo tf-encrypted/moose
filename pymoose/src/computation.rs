@@ -249,7 +249,6 @@ struct PyOnesOperation {
     inputs: Inputs,
     placement_name: String,
     signature: PyOpSignature,
-    // dtype: Option<PyNdArray>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -258,7 +257,6 @@ struct PyZerosOperation {
     inputs: Inputs,
     placement_name: String,
     signature: PyOpSignature,
-    // dtype: Option<PyNdArray>,
 }
 
 #[derive(Deserialize, Debug)]
