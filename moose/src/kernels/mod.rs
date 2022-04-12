@@ -40,49 +40,49 @@ pub trait DispatchKernel<S: Session> {
     fn compile(&self, plc: &Placement) -> Result<Kernel<S>>;
 }
 
-pub type NgNullaryKernel<S> = Box<
+pub type NgNullaryKernel<S, V> = Box<
     dyn Fn(
         &S,
         &Placement, // TODO get rid of this?
-    ) -> Result<<S as Session>::Value>,
+    ) -> Result<V>,
 >;
 
-pub type NgUnaryKernel<S> = Box<
+pub type NgUnaryKernel<S, V> = Box<
     dyn Fn(
         &S,
         &Placement, // TODO get rid of this?
-        <S as Session>::Value,
-    ) -> Result<<S as Session>::Value>,
+        V,
+    ) -> Result<V>,
 >;
 
-pub type NgBinaryKernel<S> = Box<
+pub type NgBinaryKernel<S, V> = Box<
     dyn Fn(
         &S,
         &Placement, // TODO get rid of this?
-        <S as Session>::Value,
-        <S as Session>::Value,
-    ) -> Result<<S as Session>::Value>,
+        V,
+        V,
+    ) -> Result<V>,
 >;
 
-pub type NgTernaryKernel<S> = Box<
+pub type NgTernaryKernel<S, V> = Box<
     dyn Fn(
         &S,
         &Placement, // TODO get rid of this?
-        <S as Session>::Value,
-        <S as Session>::Value,
-        <S as Session>::Value,
-    ) -> Result<<S as Session>::Value>,
+        V,
+        V,
+        V,
+    ) -> Result<V>,
 >;
 
-pub enum NgKernel<S: Session> {
-    Nullary { closure: NgNullaryKernel<S> },
-    Unary { closure: NgUnaryKernel<S> },
-    Binary { closure: NgBinaryKernel<S> },
-    Ternary { closure: NgTernaryKernel<S> },
+pub enum NgKernel<S: Session, V> {
+    Nullary { closure: NgNullaryKernel<S, V> },
+    Unary { closure: NgUnaryKernel<S, V> },
+    Binary { closure: NgBinaryKernel<S, V> },
+    Ternary { closure: NgTernaryKernel<S, V> },
 }
 
-pub trait NgDispatchKernel<S: Session> {
-    fn compile(&self, plc: &Placement) -> Result<NgKernel<S>>;
+pub trait NgDispatchKernel<S: Session, V> {
+    fn compile(&self, plc: &Placement) -> Result<NgKernel<S, V>>;
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for

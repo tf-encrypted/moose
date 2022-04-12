@@ -4,6 +4,7 @@ use crate::error::{Error, Result};
 use crate::execution::{Identity, Operands};
 use crate::host::{HostPlacement, HostPrfKey, HostString};
 use crate::kernels::{DispatchKernel, Kernel};
+use crate::kernels::{NgDispatchKernel, NgKernel};
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
 use crate::storage::{AsyncStorage, LocalAsyncStorage};
