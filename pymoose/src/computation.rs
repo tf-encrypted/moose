@@ -31,6 +31,7 @@ enum PyOperation {
     IndexAxisOperation(PyIndexAxisOperation),
     SliceOperation(PySliceOperation),
     OnesOperation(PyOnesOperation),
+    ZerosOperation(PyZerosOperation),
     ConcatenateOperation(PyConcatenateOperation),
     MaximumOperation(PyMaximumOperation),
     DecryptOperation(PyDecryptOperation),
@@ -248,7 +249,14 @@ struct PyOnesOperation {
     inputs: Inputs,
     placement_name: String,
     signature: PyOpSignature,
-    // dtype: Option<PyNdArray>,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyZerosOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
 }
 
 #[derive(Deserialize, Debug)]
@@ -940,6 +948,21 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     OnesOperation(op) => Ok(Operation {
                         kind: OnesOp {
+                            sig: map_signature(
+                                &op.signature,
+                                &placements,
+                                &op.placement_name,
+                                &["shape"],
+                            )?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["shape"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    ZerosOperation(op) => Ok(Operation {
+                        kind: ZerosOp {
                             sig: map_signature(
                                 &op.signature,
                                 &placements,
