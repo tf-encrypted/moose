@@ -49,19 +49,23 @@ pub type NgNullaryKernel<S, V> = Box<
 
 pub type NgUnaryKernel<S, V> = Box<
     dyn Fn(
-        &S,
-        &Placement, // TODO get rid of this?
-        V,
-    ) -> Result<V>,
+            &S,
+            &Placement, // TODO get rid of this?
+            V,
+        ) -> Result<V>
+        + Send
+        + Sync,
 >;
 
 pub type NgBinaryKernel<S, V> = Box<
     dyn Fn(
-        &S,
-        &Placement, // TODO get rid of this?
-        V,
-        V,
-    ) -> Result<V>,
+            &S,
+            &Placement, // TODO get rid of this?
+            V,
+            V,
+        ) -> Result<V>
+        + Send
+        + Sync,
 >;
 
 pub type NgTernaryKernel<S, V> = Box<

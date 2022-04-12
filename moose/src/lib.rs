@@ -306,7 +306,7 @@ macro_rules! ng_derive_runtime_kernel {
                 $t0,
                 $u,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::sync_unary_box::<$t0, $u, $plc>(Operator::from($op), k)
+            crate::execution::kernel_helpers::unary_box::<crate::execution::SyncSession, $t0, $u, $plc>(Operator::from($op), k)
         }
     };
 
@@ -333,12 +333,63 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, x0| {
                 $k(sess, &plc, $($attr.clone()),+, x0)
             });
-            crate::execution::kernel_helpers::sync_unary_box::<$t0, $u, $plc>(Operator::from($op), k)
+            crate::execution::kernel_helpers::unary_box::<crate::execution::SyncSession, $t0, $u, $plc>(Operator::from($op), k)
         }
     };
 
     (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::sync_unary_fn::<SyncSession, $t0, $u, $plc>(Operator::from($op), $k)
+        crate::execution::kernel_helpers::unary_fn::<crate::execution::SyncSession, $t0, $u, $plc>(Operator::from($op), $k)
+    };
+
+    (async unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+        {
+            let kf: &dyn Fn(&Self) -> crate::error::Result<
+                crate::kernels::TypedUnaryKernel<
+                    crate::execution::AsyncSession,
+                    $plc,
+                    $t0,
+                    $u,
+                >
+            > = &|$op_ke| $ke;
+            let k: crate::kernels::TypedUnaryKernel<
+                crate::execution::AsyncSession,
+                $plc,
+                $t0,
+                $u,
+            > = kf(&$op)?;
+            crate::execution::kernel_helpers::unary_box::<crate::execution::AsyncSession, $t0, $u, $plc>(Operator::from($op), k)
+        }
+    };
+
+    (async unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+        {
+            $(
+                let $attr = $op.$attr.clone();
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Constant::$prim_ty(v) => v,
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
+                    };
+                )?
+            )+
+            let k: crate::kernels::TypedUnaryKernel<
+                crate::execution::AsyncSession,
+                $plc,
+                $t0,
+                $u,
+            > = Box::new(move |sess, plc, x0| {
+                $k(sess, &plc, $($attr.clone()),+, x0)
+            });
+            crate::execution::kernel_helpers::unary_box::<crate::execution::AsyncSession, $t0, $u, $plc>(Operator::from($op), k)
+        }
+    };
+
+    (async unary runtime $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::unary_fn::<crate::execution::AsyncSession, $t0, $u, $plc>(Operator::from($op), $k)
     };
 
     (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
@@ -531,7 +582,7 @@ macro_rules! ng_derive_runtime_kernel {
                 $t1,
                 $u,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::sync_binary_box::<$t0, $t1, $u, $plc>(Operator::from($op), k)
+            crate::execution::kernel_helpers::binary_box::<crate::execution::SyncSession, $t0, $t1, $u, $plc>(Operator::from($op), k)
         }
     };
 
@@ -559,14 +610,67 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, x0, x1| {
                 $k(sess, &plc, $($attr.clone()),+, x0, x1)
             });
-            crate::execution::kernel_helpers::sync_binary_box::<$t0, $t1, $u, $plc>(Operator::from($op), k)
+            crate::execution::kernel_helpers::binary_box::<crate::execution::SyncSession, $t0, $t1, $u, $plc>(Operator::from($op), k)
         }
     };
 
     (sync binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::sync_binary_fn::<$t0, $t1, $u, $plc>(Operator::from($op), $k)
+        crate::execution::kernel_helpers::binary_fn::<crate::execution::SyncSession, $t0, $t1, $u, $plc>(Operator::from($op), $k)
     };
 
+    (async binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+        {
+            let kf: &dyn Fn(&Self) -> crate::error::Result<
+                crate::kernels::TypedBinaryKernel<
+                    crate::execution::AsyncSession,
+                    $plc,
+                    $t0,
+                    $t1,
+                    $u,
+                >
+            > = &|$op_ke| $ke;
+            let k: crate::kernels::TypedBinaryKernel<
+                crate::execution::AsyncSession,
+                $plc,
+                $t0,
+                $t1,
+                $u,
+            > = kf(&$op)?;
+            crate::execution::kernel_helpers::binary_box::<crate::execution::AsyncSession, $t0, $t1, $u, $plc>(Operator::from($op), k)
+        }
+    };
+
+    (async binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+        {
+            $(
+                let $attr = $op.$attr.clone();
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Constant::$prim_ty(v) => v,
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
+                    };
+                )?
+            )+
+            let k: crate::kernels::TypedBinaryKernel<
+                crate::execution::AsyncSession,
+                $plc,
+                $t0,
+                $t1,
+                $u,
+            > = Box::new(move |sess, plc, x0, x1| {
+                $k(sess, &plc, $($attr.clone()),+, x0, x1)
+            });
+            crate::execution::kernel_helpers::binary_box::<crate::execution::AsyncSession, $t0, $t1, $u, $plc>(Operator::from($op), k)
+        }
+    };
+
+    (async binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::binary_fn::<crate::execution::AsyncSession, $t0, $t1, $u, $plc>(Operator::from($op), $k)
+    };
 
     (symbolic binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
         crate::execution::kernel_helpers::symbolic_binary_runtime::<$t0, $t1, $u, $plc>(Operator::from($op))
@@ -3712,6 +3816,32 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(feature = "async_execute")]
+        impl crate::kernels::NgDispatchKernel<crate::execution::AsyncSession, crate::computation::Value> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::AsyncSession, crate::computation::Value>> {
+                use crate::execution::AsyncSession;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Unary(UnarySignature{
+                                arg0: <$t0 as KnownType<AsyncSession>>::TY,
+                                ret: <$u as KnownType<AsyncSession>>::TY,
+                            })
+                        ) => {
+                            let op = self.clone();
+                            ng_derive_runtime_kernel![async unary runtime $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, op]
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                }
+            }
+        }
+
         // support for SyncSession
         $(
             #[cfg(feature = "sync_execute")]
@@ -3783,66 +3913,6 @@ macro_rules! modelled_kernel {
             }
         )+
 
-        #[cfg(feature = "async_execute")]
-        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
-            fn compile(
-                &self,
-                plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
-            {
-                use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature};
-                use crate::execution::{AsyncSession, AsyncValue};
-                use crate::kernels::{UnaryKernel};
-                use std::convert::TryInto;
-
-                match (plc.ty(), self.sig.flatten()) {
-                    $(
-                        (
-                            <$plc>::TY,
-                            Signature::Unary(UnarySignature {
-                                arg0: <$t0 as KnownType<AsyncSession>>::TY,
-                                ret: <$u as KnownType<AsyncSession>>::TY,
-                            })
-                        ) => {
-                            let plc: $plc = plc.clone().try_into()?;
-                            // TODO: Do we want to be deriving the kernel inside? Probably not...
-                            let op = self.clone();
-                            // let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(self, &plc)?;
-
-                            Ok(Box::new(move |sess, operands: Operands<AsyncValue>| {
-                                assert_eq!(operands.len(), 1);
-                                let sess = sess.clone();
-                                let plc = plc.clone();
-                                let k = <$op as UnaryKernel<AsyncSession, $plc, $t0, $u>>::compile(&op)?;
-                                let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
-                                let op = op.clone(); // Needed for the error message for KernelError
-                                let tasks = std::sync::Arc::clone(&sess.tasks);
-                                let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
-                                    let mut operands = futures::future::join_all(operands).await;
-                                    let x0: $t0 = operands
-                                            .pop()
-                                            .unwrap()
-                                            .map_err(crate::execution::map_receive_error)?
-                                            .try_into()?;
-                                    let y: $u = k(&sess, &plc, x0)?;
-                                    if y.placement()? == plc.clone().into() {
-                                        crate::execution::map_send_result(sender.send(y.into()))?;
-                                        Ok(())
-                                    } else {
-                                        Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
-                                    }
-                                });
-                                let mut tasks = tasks.write().unwrap();
-                                tasks.push(task);
-
-                                Ok(result)
-                            }))
-                        }
-                    )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
-                }
-            }
-        }
         // support for SymbolicSession (based on flavour)
         $(
             modelled_kernel!(__unary $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? ($t0) -> $u => $($kp)+);
@@ -4077,6 +4147,33 @@ macro_rules! modelled_kernel {
             }
         }
 
+        #[cfg(feature = "async_execute")]
+        impl crate::kernels::NgDispatchKernel<crate::execution::AsyncSession, crate::computation::Value> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::AsyncSession, crate::computation::Value>> {
+                use crate::execution::AsyncSession;
+
+                match (plc.ty(), self.sig.flatten()) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Binary(BinarySignature{
+                                arg0: <$t0 as KnownType<AsyncSession>>::TY,
+                                arg1: <$t1 as KnownType<AsyncSession>>::TY,
+                                ret: <$u as KnownType<AsyncSession>>::TY,
+                            })
+                        ) => {
+                            let op = self.clone();
+                            ng_derive_runtime_kernel![async binary runtime $plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, op]
+                        }
+                    )+
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
+                }
+            }
+        }
+
         // support for SyncSession
         $(
             #[cfg(feature = "sync_execute")]
@@ -4152,81 +4249,6 @@ macro_rules! modelled_kernel {
                 }
             }
         )+
-
-        #[cfg(feature = "async_execute")]
-        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession> for $op {
-            fn compile(
-                &self,
-                plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession>>
-            {
-                use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
-                use crate::execution::{AsyncSession, AsyncValue, Operands};
-                use crate::kernels::{BinaryKernel};
-                use std::convert::TryInto;
-
-                match (plc.ty(), self.sig.flatten()) {
-                    $(
-                        (
-                            <$plc>::TY,
-                            Signature::Binary(BinarySignature {
-                                arg0: <$t0 as KnownType<AsyncSession>>::TY,
-                                arg1: <$t1 as KnownType<AsyncSession>>::TY,
-                                ret: <$u as KnownType<AsyncSession>>::TY,
-                            })
-                        ) => {
-                            let plc: $plc = plc.clone().try_into()?;
-                            // TODO: Do we want to be deriving the kernel inside? Probably not...
-                            let op = self.clone();
-
-                            Ok(Box::new(move |sess: &AsyncSession, operands: Operands<AsyncValue>| {
-                                assert_eq!(operands.len(), 2);
-
-                                let k = <$op as BinaryKernel<AsyncSession, $plc, $t0, $t1, $u>>::compile(&op)?;
-
-                                let tasks = std::sync::Arc::clone(&sess.tasks);
-
-                                let sess = sess.clone();
-                                let plc = plc.clone();
-                                let op = op.clone(); // Needed for the error message for KernelError
-
-                                let (sender, result) = crate::execution::asynchronous::new_async_value(); // This creates a channel
-
-                                let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
-                                    let mut operands = futures::future::join_all(operands).await;
-
-                                    let x1: $t1 = operands
-                                            .pop()
-                                            .unwrap()
-                                            .map_err(crate::execution::map_receive_error)?
-                                            .try_into()?;
-
-                                    let x0: $t0 = operands
-                                            .pop()
-                                            .unwrap()
-                                            .map_err(crate::execution::map_receive_error)?
-                                            .try_into()?;
-
-                                    let y: $u = k(&sess, &plc, x0, x1)?;
-
-                                    if y.placement()? == plc.clone().into() {
-                                        crate::execution::map_send_result(sender.send(y.into()))?;
-                                        Ok(())
-                                    } else {
-                                        Err(crate::error::Error::KernelError(format!("Placement mismatch after running {:?}. Expected {:?} got {:?}", op, plc, y.placement())))
-                                    }
-                                });
-                                let mut tasks = tasks.write().unwrap();
-                                tasks.push(task);
-
-                                Ok(result)
-                            }))
-                        }
-                    )+
-                    _ => Err(crate::error::Error::UnimplementedOperator(format!("Failed to dispatch kernel {:?}", self)))
-                }
-            }
-        }
 
         // support for SymbolicSession (based on flavour)
         $(

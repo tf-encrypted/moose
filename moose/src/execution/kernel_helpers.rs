@@ -52,11 +52,14 @@ where
 // TODO(Morten) can we merge sync_unary_box and sync_unary_fn and still
 // be certain that we only get two copies? What are the correct trait bounds?
 
-pub(crate) fn sync_unary_box<T0, U, P>(
+pub(crate) fn unary_box<S, T0, U, P>(
     _op: Operator,
-    kf: Box<dyn Fn(&SyncSession, &P, T0) -> Result<U>>,
-) -> Result<NgKernel<SyncSession, Value>>
+    kf: Box<dyn Fn(&S, &P, T0) -> Result<U> + Send + Sync>,
+) -> Result<NgKernel<S, Value>>
 where
+    S: Session + 'static,
+    S: 'static,
+
     T0: 'static,
     U: 'static,
     P: 'static,
@@ -66,7 +69,7 @@ where
     Value: From<U>,
 {
     Ok(NgKernel::Unary {
-        closure: Box::new(move |sess: &SyncSession, plc: &Placement, v0: Value| {
+        closure: Box::new(move |sess: &S, plc: &Placement, v0: Value| {
             let plc: P = Placement::try_into(plc.clone())?;
             let x0: T0 = Value::try_into(v0)?;
             let y = kf(sess, &plc, x0)?;
@@ -75,16 +78,16 @@ where
     })
 }
 
-pub(crate) fn sync_unary_fn<S, T0, U, P>(
+pub(crate) fn unary_fn<S, T0, U, P>(
     _op: Operator,
     kf: fn(&S, &P, T0) -> Result<U>,
-) -> Result<NgKernel<S, S::Value>>
+) -> Result<NgKernel<S, Value>>
 where
-    S: Session<Value = Value>,
+    S: Session + 'static,
+
     T0: 'static,
     U: 'static,
     P: 'static,
-    S: 'static,
     Placement: TryInto<P, Error = crate::Error>,
     Value: TryInto<T0, Error = crate::Error>,
     Value: From<U>,
@@ -138,10 +141,12 @@ pub(crate) fn symbolic_unary_concrete_box<T0, U, P>(
     op: Operator,
     kf: Box<
         dyn Fn(
-            &SymbolicSession,
-            &P,
-            <T0 as PartiallySymbolicType>::Type,
-        ) -> Result<<U as PartiallySymbolicType>::Type>,
+                &SymbolicSession,
+                &P,
+                <T0 as PartiallySymbolicType>::Type,
+            ) -> Result<<U as PartiallySymbolicType>::Type>
+            + Send
+            + Sync,
     >,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
@@ -237,10 +242,12 @@ pub(crate) fn symbolic_unary_transparent_box<T0, U, P>(
     _op: Operator,
     kf: Box<
         dyn Fn(
-            &SymbolicSession,
-            &P,
-            <T0 as SymbolicType>::Type,
-        ) -> Result<<U as SymbolicType>::Type>,
+                &SymbolicSession,
+                &P,
+                <T0 as SymbolicType>::Type,
+            ) -> Result<<U as SymbolicType>::Type>
+            + Send
+            + Sync,
     >,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
@@ -356,7 +363,7 @@ where
 
 pub(crate) fn symbolic_unary_hybrid_box<T0, U, X0, Y, P>(
     op: Operator,
-    kf: Box<dyn Fn(&SymbolicSession, &P, X0) -> Result<Y>>,
+    kf: Box<dyn Fn(&SymbolicSession, &P, X0) -> Result<Y> + Send + Sync>,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
     P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
@@ -409,41 +416,46 @@ where
     })
 }
 
-pub(crate) fn sync_binary_box<T0, T1, U, P>(
+pub(crate) fn binary_box<S, T0, T1, U, P>(
     _op: Operator,
-    kf: Box<dyn Fn(&SyncSession, &P, T0, T1) -> Result<U>>,
-) -> Result<NgKernel<SyncSession, Value>>
+    kf: Box<dyn Fn(&S, &P, T0, T1) -> Result<U> + Send + Sync>,
+) -> Result<NgKernel<S, Value>>
 where
+    S: Session,
+    S: 'static,
+
     T0: 'static,
     T1: 'static,
+
     U: 'static,
     P: 'static,
-
     Placement: TryInto<P, Error = crate::Error>,
     Value: TryInto<T0, Error = crate::Error>,
     Value: TryInto<T1, Error = crate::Error>,
     Value: From<U>,
 {
     Ok(NgKernel::Binary {
-        closure: Box::new(
-            move |sess: &SyncSession, plc: &Placement, v0: Value, v1: Value| {
-                let plc: P = Placement::try_into(plc.clone())?;
-                let x0: T0 = Value::try_into(v0)?;
-                let x1: T1 = Value::try_into(v1)?;
-                let y = kf(sess, &plc, x0, x1)?;
-                Ok(Value::from(y))
-            },
-        ),
+        closure: Box::new(move |sess: &S, plc: &Placement, v0: Value, v1: Value| {
+            let plc: P = Placement::try_into(plc.clone())?;
+            let x0: T0 = Value::try_into(v0)?;
+            let x1: T1 = Value::try_into(v1)?;
+            let y = kf(sess, &plc, x0, x1)?;
+            Ok(Value::from(y))
+        }),
     })
 }
 
-pub(crate) fn sync_binary_fn<T0, T1, U, P>(
+pub(crate) fn binary_fn<S, T0, T1, U, P>(
     _op: Operator,
-    kf: fn(&SyncSession, &P, T0, T1) -> Result<U>,
-) -> Result<NgKernel<SyncSession, Value>>
+    kf: fn(&S, &P, T0, T1) -> Result<U>,
+) -> Result<NgKernel<S, Value>>
 where
+    S: Session,
+    S: 'static,
+
     T0: 'static,
     T1: 'static,
+
     U: 'static,
     P: 'static,
     Placement: TryInto<P, Error = crate::Error>,
@@ -452,15 +464,13 @@ where
     Value: From<U>,
 {
     Ok(NgKernel::Binary {
-        closure: Box::new(
-            move |sess: &SyncSession, plc: &Placement, v0: Value, v1: Value| {
-                let plc: P = Placement::try_into(plc.clone())?;
-                let x0: T0 = Value::try_into(v0)?;
-                let x1: T1 = Value::try_into(v1)?;
-                let y = kf(sess, &plc, x0, x1)?;
-                Ok(Value::from(y))
-            },
-        ),
+        closure: Box::new(move |sess: &S, plc: &Placement, v0: Value, v1: Value| {
+            let plc: P = Placement::try_into(plc.clone())?;
+            let x0: T0 = Value::try_into(v0)?;
+            let x1: T1 = Value::try_into(v1)?;
+            let y = kf(sess, &plc, x0, x1)?;
+            Ok(Value::from(y))
+        }),
     })
 }
 
@@ -510,11 +520,13 @@ pub(crate) fn symbolic_binary_concrete_box<T0, T1, U, P>(
     op: Operator,
     kf: Box<
         dyn Fn(
-            &SymbolicSession,
-            &P,
-            <T0 as PartiallySymbolicType>::Type,
-            <T1 as PartiallySymbolicType>::Type,
-        ) -> Result<<U as PartiallySymbolicType>::Type>,
+                &SymbolicSession,
+                &P,
+                <T0 as PartiallySymbolicType>::Type,
+                <T1 as PartiallySymbolicType>::Type,
+            ) -> Result<<U as PartiallySymbolicType>::Type>
+            + Send
+            + Sync,
     >,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
