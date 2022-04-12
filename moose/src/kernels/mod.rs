@@ -66,12 +66,14 @@ pub type NgBinaryKernel<S, V> = Box<
 
 pub type NgTernaryKernel<S, V> = Box<
     dyn Fn(
-        &S,
-        &Placement, // TODO get rid of this?
-        V,
-        V,
-        V,
-    ) -> Result<V> + Send + Sync,
+            &S,
+            &Placement, // TODO get rid of this?
+            V,
+            V,
+            V,
+        ) -> Result<V>
+        + Send
+        + Sync,
 >;
 
 pub enum NgKernel<S: Session, V> {

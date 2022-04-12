@@ -335,6 +335,7 @@ impl DispatchKernel<AsyncSession> for Operator {
         match self {
             // these must be handled elsewhere by AsyncSession
             Load(_) | Save(_) => unimplemented!(),
+            Mux(_) => unimplemented!(),
 
             Send(op) => DispatchKernel::compile(op, plc),
             Receive(op) => DispatchKernel::compile(op, plc),
@@ -398,7 +399,6 @@ impl DispatchKernel<AsyncSession> for Operator {
             Log2(op) => DispatchKernel::compile(op, plc),
             Equal(op) => DispatchKernel::compile(op, plc),
             EqualZero(op) => DispatchKernel::compile(op, plc),
-            Mux(op) => DispatchKernel::compile(op, plc),
             LessThan(op) => DispatchKernel::compile(op, plc),
             GreaterThan(op) => DispatchKernel::compile(op, plc),
             IndexAxis(op) => DispatchKernel::compile(op, plc),
@@ -458,17 +458,27 @@ impl Session for AsyncSession {
                 let sess = self.clone();
                 let plc = plc.clone();
 
-                let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
-                    assert_eq!(operands.len(), 3);
-                    let mut operands = futures::future::join_all(operands).await;
-                    let x2: Value = operands.pop().unwrap().map_err(crate::execution::map_receive_error)?;
-                    let x1: Value = operands.pop().unwrap().map_err(crate::execution::map_receive_error)?;
-                    let x0: Value = operands.pop().unwrap().map_err(crate::execution::map_receive_error)?;
+                let task: tokio::task::JoinHandle<crate::error::Result<()>> =
+                    tokio::spawn(async move {
+                        assert_eq!(operands.len(), 3);
+                        let mut operands = futures::future::join_all(operands).await;
+                        let x2: Value = operands
+                            .pop()
+                            .unwrap()
+                            .map_err(crate::execution::map_receive_error)?;
+                        let x1: Value = operands
+                            .pop()
+                            .unwrap()
+                            .map_err(crate::execution::map_receive_error)?;
+                        let x0: Value = operands
+                            .pop()
+                            .unwrap()
+                            .map_err(crate::execution::map_receive_error)?;
 
-                    let y: Value = closure(&sess, &plc, x0, x1, x2)?;
-                    crate::execution::map_send_result(sender.send(y))?;
-                    Ok(())
-                });
+                        let y: Value = closure(&sess, &plc, x0, x1, x2)?;
+                        crate::execution::map_send_result(sender.send(y))?;
+                        Ok(())
+                    });
                 let mut tasks = tasks.write().unwrap();
                 tasks.push(task);
 

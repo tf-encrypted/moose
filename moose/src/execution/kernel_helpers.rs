@@ -2,9 +2,8 @@ use crate::computation::{
     Operator, PartiallySymbolicType, Placed, Placement, SymbolicType, SymbolicValue, Value,
 };
 use crate::error::Result;
-use crate::execution::asynchronous::AsyncValue;
 use crate::execution::symbolic::{Symbolic, SymbolicSession};
-use crate::execution::{AsyncSession, Session, SyncSession};
+use crate::execution::{Session, SyncSession};
 use crate::kernels::NgKernel;
 use std::convert::{TryFrom, TryInto};
 
