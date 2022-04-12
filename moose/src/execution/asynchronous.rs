@@ -427,27 +427,56 @@ impl Session for AsyncSession {
     ) -> Result<Self::Value> {
         use Operator::*;
         use Placement::*;
-        match op {
+        let kernel: NgKernel<AsyncSession, _> = match op {
             // The kernels that are doing funny things to the async context, such as awaiting for more than their inputs.
             Load(op) => {
                 if let Host(plc) = plc {
-                    self.storage_load(op, plc, operands)
+                    return self.storage_load(op, plc, operands);
                 } else {
                     unimplemented!()
                 }
             }
             Save(_) => {
                 if let Host(plc) = plc {
-                    self.storage_save(plc, operands)
+                    return self.storage_save(plc, operands);
                 } else {
                     unimplemented!()
                 }
             }
+            Mux(op) => NgDispatchKernel::compile(op, plc),
             // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
             op => {
                 let kernel = DispatchKernel::compile(op, plc)?;
-                kernel(self, operands)
+                return kernel(self, operands);
             }
+        }?;
+        match kernel {
+            NgKernel::Ternary { closure } => {
+                let (sender, receiver) = crate::execution::asynchronous::new_async_value();
+
+                let tasks = std::sync::Arc::clone(&self.tasks);
+                let sess = self.clone();
+                let plc = plc.clone();
+
+                let task: tokio::task::JoinHandle<crate::error::Result<()>> = tokio::spawn(async move {
+                    assert_eq!(operands.len(), 3);
+                    let mut operands = futures::future::join_all(operands).await;
+                    let x2: Value = operands.pop().unwrap().map_err(crate::execution::map_receive_error)?;
+                    let x1: Value = operands.pop().unwrap().map_err(crate::execution::map_receive_error)?;
+                    let x0: Value = operands.pop().unwrap().map_err(crate::execution::map_receive_error)?;
+
+                    let y: Value = closure(&sess, &plc, x0, x1, x2)?;
+                    crate::execution::map_send_result(sender.send(y))?;
+                    Ok(())
+                });
+                let mut tasks = tasks.write().unwrap();
+                tasks.push(task);
+
+                Ok(receiver)
+            }
+            _ => Err(Error::Compilation(
+                "MuxOp should be a ternary kernel".to_string(),
+            )),
         }
     }
 }

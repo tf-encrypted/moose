@@ -71,7 +71,7 @@ pub type NgTernaryKernel<S, V> = Box<
         V,
         V,
         V,
-    ) -> Result<V>,
+    ) -> Result<V> + Send + Sync,
 >;
 
 pub enum NgKernel<S: Session, V> {
