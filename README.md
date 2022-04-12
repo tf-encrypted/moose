@@ -1,20 +1,20 @@
 # Moose
 
-Moose is a framework for secure multi-party computation, written in Rust.
+Moose is a distributed dataflow framework for encrypted machine learning and data processing. It is written primarily in Rust and includes a compiler, runtime, and Python eDSL and bindings.
 
-Moose includes an API, a compiler, and a runtime. It’s designed to be secure, fast, scalable, and extensible. Moose is production ready and secure by default.
+Computations are expressed using either the Python eDSL or by programming against the Rust API. These _logical computations_ are compiled to _physical computations_ that in turn can be executed using the runtime. Each operation in the dataflow graphs are pinned to a _placement_ which represent either a physical host or one of several kinds of virtual execution units, including some backed by secure multi-party computation (MPC) protocols.
 
-### Components
-- `The Moose API` is an easy to use method of expressing a program of mathematical operations (addition, matrix multiplication, comparison, etc) which may contain inputs from one or more parties. Moose programs can be written in Python ([PyMoose](/pymoose)) or directly in Rust ([examples](/moose/examples)).
-- `The Moose Compiler` builds, type checks, and optimizes the operations into a distributed data flow graph (we call this encrypted data flow).
-- `The Moose Runtime` securely and efficiently executes the graph across a network of (potentially untrusted) compute clusters while protecting the secrecy of the inputs.
+Components:
 
-Moose contains the mathematical primitives to compose machine learning and deep learning models (see [PyCape](https://github.com/capeprivacy/pycape)).
+([PyMoose](./pymoose))
+
+It’s designed to be secure, fast, and extensible. Moose is production ready and secure by default.
+
+Moose contains the mathematical primitives to compose machine learning and deep learning models.
 
 Moose is designed to support many different secure multi-party computation protocols. Initially, replicated secret sharing is supported. Contributions of additional protocols are welcome.
 
-### Community
-Moose is a community driven, open source project. Moose was created at Cape, where it continues to be actively developed.
+Moose is a community driven, open source project created at [Cape](https://capeprivacy.com) as an evolution of [TF Encrypted](https://github.com/tf-encrypted/tf-encrypted).
 
 ## Installation
 
@@ -93,7 +93,6 @@ When doing local development we suggest using `make test` command. The
 `make-ci` command is used mostly for ci purposes and runs a smaller range of test cases. For
 a more extensive test suite we recommend using `make test-long` command.
 
-
 ### Releasing
 
 Follow these steps to release a new version:
@@ -125,30 +124,31 @@ Once your PR has been merged to `main`:
 If needed then tags on GitHub can be deleted using `git push --delete origin {tag-name}`
 
 ### Rust Development
+
 You will need a working [installation of Rust](https://www.rust-lang.org/learn/get-started) to compile and test this project.
 
 We compile and test against the stable toolchain so make sure to either set the stable toolchain as the default using `rustup default stable`.
 
 We require code to be formatted according to `cargo fmt` so make sure to run this command before submitted your work. You should also run `cargo clippy` to lint your code.
 
-To ease your development we encourage you to install the following extra cargo commands:
+To ease your development we encourage you to install the following cargo subcommands:
 
-- [`cargo watch`](https://crates.io/crates/cargo-watchcargo-watch) will type check your code on every save;  `cargo watch --exec test` will run all tests on every save.
+- [`install-update`](https://crates.io/crates/cargo-update) to keep cargo subcommands up-to-date.
 
-- [`cargo outdated`](https://crates.io/crates/cargo-outdated) checks if your dependencies are up to date.
+- [`watch`](https://crates.io/crates/cargo-watchcargo-watch) to type check your code on every save;  `cargo watch --exec test` will run all tests on every save.
 
-- [`cargo audit`](https://crates.io/crates/cargo-audit) checks if any vulnerabilities have been detected for your current dependencies.
+- [`outdated`](https://crates.io/crates/cargo-outdated) to check if your dependencies are up to date.
 
-- [`cargo deny`](https://github.com/EmbarkStudios/cargo-deny) checks security advisories and licence conflicts.
+- [`audit`](https://crates.io/crates/cargo-audit) to check if any vulnerabilities have been detected for your current dependencies.
 
-- [`cargo release`](https://crates.io/crates/cargo-release) automates the release cycle, including bumping versions.
+- [`deny`](https://github.com/EmbarkStudios/cargo-deny) to check for security advisories and license conflicts.
 
-- [`cargo udeps`](https://crates.io/crates/cargo-udeps) to list unused dependencies.
+- [`release`](https://crates.io/crates/cargo-release) to automate the release cycle, including bumping versions.
 
-- [`cargo expand`](https://github.com/dtolnay/cargo-expand) to dump what macros expand into.
+- [`udeps`](https://crates.io/crates/cargo-udeps) to list unused dependencies.
 
-- [`cargo llvm-lines`](cargo install cargo-llvm-lines) to inspect code bloat.
+- [`expand`](https://github.com/dtolnay/cargo-expand) to dump what macros expand into.
+
+- [`llvm-lines`](https://github.com/dtolnay/cargo-llvm-lines) to inspect code bloat.
 
 [Tokio Console](https://tokio.rs/blog/2021-12-announcing-tokio-console) is also interesting.
-
-To keep all of these up-to-date once installed, we recommend using [`cargo-update`](https://crates.io/crates/cargo-update).
