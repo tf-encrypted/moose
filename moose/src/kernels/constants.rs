@@ -1,4 +1,5 @@
 use super::*;
+use crate::host::{RawPrfKey, RawSeed, RawShape};
 use crate::TensorLike;
 
 pub trait PlacementFill<S: Session, ShapeT, O> {
@@ -316,25 +317,39 @@ modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Con
 modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
 modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Tensor, ConstantOp);
 
+// TODO(Morten) Since other work is updating the kernel macros I did not want to change
+// any of these right now to match the need for individual `attributes[value: T]`.
+// If we want we can get rid of `unwrapper` in the near future by updating the macros.
+
+macro_rules! unwrapper {
+    ($op:ident, $t:ident, $k:path) => {{
+        let value: $t = match &$op.value {
+            Constant::$t(v) => Ok(v.clone()),
+            _ => Err(crate::error::Error::UnimplementedOperator("".to_string())),
+        }?;
+        Ok(Box::new(move |sess, plc| $k(sess, plc, value.clone())))
+    }};
+}
+
 kernel! {
     ConstantOp, [
-        (HostPlacement, () -> HostRing64Tensor => [runtime] attributes[value: HostRing64Tensor] Self::kernel),
-        (HostPlacement, () -> HostRing128Tensor => [runtime] attributes[value: HostRing128Tensor] Self::kernel),
-        (HostPlacement, () -> HostFloat32Tensor => [runtime] attributes[value: HostFloat32Tensor] Self::kernel),
-        (HostPlacement, () -> HostFloat64Tensor => [runtime] attributes[value: HostFloat64Tensor] Self::kernel),
-        (HostPlacement, () -> HostInt8Tensor => [runtime] attributes[value: HostInt8Tensor] Self::kernel),
-        (HostPlacement, () -> HostInt16Tensor => [runtime] attributes[value: HostInt16Tensor] Self::kernel),
-        (HostPlacement, () -> HostInt32Tensor => [runtime] attributes[value: HostInt32Tensor] Self::kernel),
-        (HostPlacement, () -> HostInt64Tensor => [runtime] attributes[value: HostInt64Tensor] Self::kernel),
-        (HostPlacement, () -> HostUint8Tensor => [runtime] attributes[value: HostUint8Tensor] Self::kernel),
-        (HostPlacement, () -> HostUint16Tensor => [runtime] attributes[value: HostUint16Tensor] Self::kernel),
-        (HostPlacement, () -> HostUint32Tensor => [runtime] attributes[value: HostUint32Tensor] Self::kernel),
-        (HostPlacement, () -> HostUint64Tensor => [runtime] attributes[value: HostUint64Tensor] Self::kernel),
-        (HostPlacement, () -> HostBitTensor => [runtime] attributes[value: HostBitTensor] Self::kernel),
-        (HostPlacement, () -> HostString => [runtime] attributes[value: String] Self::string_kernel),
-        (HostPlacement, () -> HostShape => [runtime] attributes[value: RawShape] Self::shape_kernel),
-        (HostPlacement, () -> HostPrfKey => [runtime] attributes[value: RawPrfKey] Self::prf_key_kernel),
-        (HostPlacement, () -> HostSeed => [runtime] attributes[value: RawSeed] Self::seed_kernel),
+        (HostPlacement, () -> HostRing64Tensor => [runtime] attributes[value] custom |op| unwrapper!(op, HostRing64Tensor, Self::kernel)),
+        (HostPlacement, () -> HostRing128Tensor => [runtime] attributes[value] custom |op| unwrapper!(op, HostRing128Tensor, Self::kernel)),
+        (HostPlacement, () -> HostFloat32Tensor => [runtime] attributes[value] custom |op| unwrapper!(op, HostFloat32Tensor, Self::kernel)),
+        (HostPlacement, () -> HostFloat64Tensor => [runtime] attributes[value] custom |op| unwrapper!(op, HostFloat64Tensor, Self::kernel)),
+        (HostPlacement, () -> HostInt8Tensor => [runtime] attributes[value] custom |op| unwrapper!(op, HostInt8Tensor, Self::kernel)),
+        (HostPlacement, () -> HostInt16Tensor => [runtime] attributes[value] custom |op| unwrapper!(op, HostInt16Tensor, Self::kernel)),
+        (HostPlacement, () -> HostInt32Tensor => [runtime] attributes[value] custom |op| unwrapper!(op, HostInt32Tensor, Self::kernel)),
+        (HostPlacement, () -> HostInt64Tensor => [runtime] attributes[value] custom |op| unwrapper!(op, HostInt64Tensor, Self::kernel)),
+        (HostPlacement, () -> HostUint8Tensor => [runtime] attributes[value] custom |op| unwrapper!(op, HostUint8Tensor, Self::kernel)),
+        (HostPlacement, () -> HostUint16Tensor => [runtime] attributes[value] custom |op| unwrapper!(op, HostUint16Tensor, Self::kernel)),
+        (HostPlacement, () -> HostUint32Tensor => [runtime] attributes[value] custom |op| unwrapper!(op, HostUint32Tensor, Self::kernel)),
+        (HostPlacement, () -> HostUint64Tensor => [runtime] attributes[value] custom |op| unwrapper!(op, HostUint64Tensor, Self::kernel)),
+        (HostPlacement, () -> HostBitTensor => [runtime] attributes[value] custom |op| unwrapper!(op, HostBitTensor, Self::kernel)),
+        (HostPlacement, () -> HostString => [runtime] attributes[value] custom |op| unwrapper!(op, String, Self::string_kernel)),
+        (HostPlacement, () -> HostShape => [runtime] attributes[value] custom |op| unwrapper!(op, RawShape, Self::shape_kernel)),
+        (HostPlacement, () -> HostPrfKey => [runtime] attributes[value] custom |op| unwrapper!(op, RawPrfKey, Self::prf_key_kernel)),
+        (HostPlacement, () -> HostSeed => [runtime] attributes[value] custom |op| unwrapper!(op, RawSeed, Self::seed_kernel)),
         (HostPlacement, () -> Tensor => [concrete] attributes[sig, value] Self::logical_kernel),
         (HostPlacement, () -> Float32Tensor => [concrete] attributes[value] Self::float_kernel),
         (HostPlacement, () -> Float64Tensor => [concrete] attributes[value] Self::float_kernel),
