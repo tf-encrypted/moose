@@ -5,31 +5,35 @@ pub trait PlacementFill<S: Session, ShapeT, O> {
     fn fill(&self, sess: &S, value: Constant, shape: &ShapeT) -> O;
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostBitTensor, FillOp);
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing64Tensor, FillOp);
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing128Tensor, FillOp);
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> AdditiveRing64Tensor, FillOp);
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> AdditiveRing128Tensor, FillOp);
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (AdditiveShape) -> AdditiveRing64Tensor, FillOp);
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (AdditiveShape) -> AdditiveRing128Tensor, FillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing64Tensor, FillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedRing128Tensor, FillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, FillOp);
-modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Ring64Tensor, FillOp);
-modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Ring128Tensor, FillOp);
-modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3BitTensor, FillOp);
-modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed64Tensor, FillOp);
-modelled!(PlacementFill::fill, Mirrored3Placement, attributes[value: Constant] (ReplicatedShape) -> Mirrored3Fixed128Tensor, FillOp);
-
-kernel! {
-    FillOp,
+modelled_kernel! {
+    PlacementFill::fill, FillOp{value: Constant},
     [
-        (HostPlacement, (HostShape) -> HostRing64Tensor => [runtime] attributes[value: Ring64] Self::host_ring64_kernel),
-        (HostPlacement, (HostShape) -> HostRing128Tensor => [runtime] attributes[value: Ring128] Self::host_ring128_kernel),
-        (AdditivePlacement, (HostShape) -> AdditiveRing64Tensor => [hybrid] attributes[value] Self::adt_host_kernel),
-        (AdditivePlacement, (HostShape) -> AdditiveRing128Tensor => [hybrid] attributes[value] Self::adt_host_kernel),
-        (AdditivePlacement, (AdditiveShape) -> AdditiveRing64Tensor => [concrete] attributes[value] Self::adt_adt_kernel),
-        (AdditivePlacement, (AdditiveShape) -> AdditiveRing128Tensor => [concrete] attributes[value] Self::adt_adt_kernel),
+        (HostPlacement, (HostShape) -> HostRing64Tensor => [runtime] custom |op| {
+            let value = match op.value {
+                Constant::Ring64(v) => v,
+                _ => return Err(Error::KernelError(
+                    "Cannot fill HostRing64Tensor with non-Ring64 value.".to_string(),
+                ))
+            };
+            Ok(Box::new(move |sess, host, shape| {
+                Self::host_ring64_kernel(sess, host, value, shape)
+            }))
+        }),
+        (HostPlacement, (HostShape) -> HostRing128Tensor => [runtime] custom |op| {
+            let value = match op.value {
+                Constant::Ring128(v) => v,
+                _ => return Err(Error::KernelError(
+                    "Cannot fill HostRing64Tensor with non-Ring128 value.".to_string(),
+                ))
+            };
+            Ok(Box::new(move |sess, host, shape| {
+                Self::host_ring128_kernel(sess, host, value, shape)
+            }))
+        }),
+        (AdditivePlacement, (HostShape) -> AdditiveRing64Tensor => [hybrid] Self::adt_host_kernel),
+        (AdditivePlacement, (HostShape) -> AdditiveRing128Tensor => [hybrid] Self::adt_host_kernel),
+        (AdditivePlacement, (AdditiveShape) -> AdditiveRing64Tensor => [concrete] Self::adt_adt_kernel),
+        (AdditivePlacement, (AdditiveShape) -> AdditiveRing128Tensor => [concrete] Self::adt_adt_kernel),
         (HostPlacement, (HostShape) -> HostBitTensor => [runtime] custom |op| {
             use std::convert::TryInto;
             let value: u8 = match op.value {
