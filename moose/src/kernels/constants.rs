@@ -290,60 +290,58 @@ pub trait PlacementConstant<S: Session, O> {
     fn constant(&self, sess: &S, value: Constant) -> O;
 }
 
-macro_rules! constant_kernels {
-    ($($val:ident),+) => {
-        $(
-            modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> $val, ConstantOp);
-        )+
-        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostString, ConstantOp);
-        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostShape, ConstantOp);
-        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostPrfKey, ConstantOp);
-        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostSeed, ConstantOp);
-        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Tensor, ConstantOp);
-        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
-        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
-        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Uint64Tensor, ConstantOp);
-        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> BooleanTensor, ConstantOp);
-        modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
-        modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
-        modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostRing64Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostRing128Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostFloat32Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostFloat64Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostInt8Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostInt16Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostInt32Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostInt64Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostUint8Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostUint16Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostUint32Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostUint64Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostBitTensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostString, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostShape, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostPrfKey, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> HostSeed, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Uint64Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> BooleanTensor, ConstantOp);
+modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float32Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
+modelled!(PlacementConstant::constant, Mirrored3Placement, attributes[value: Constant] () -> Tensor, ConstantOp);
 
-
-        kernel! {
-            ConstantOp, [
-                $(
-                    (HostPlacement, () -> $val => [runtime] attributes[value: $val] Self::kernel),
-                )+
-                (HostPlacement, () -> HostString => [runtime] attributes[value: String] Self::string_kernel),
-                (HostPlacement, () -> HostShape => [runtime] attributes[value: RawShape] Self::shape_kernel),
-                (HostPlacement, () -> HostPrfKey => [runtime] attributes[value: RawPrfKey] Self::prf_key_kernel),
-                (HostPlacement, () -> HostSeed => [runtime] attributes[value: RawSeed] Self::seed_kernel),
-                (HostPlacement, () -> Tensor => [concrete] attributes[sig, value] Self::logical_kernel),
-                (HostPlacement, () -> Float32Tensor => [concrete] attributes[value] Self::float_kernel),
-                (HostPlacement, () -> Float64Tensor => [concrete] attributes[value] Self::float_kernel),
-                (HostPlacement, () -> Uint64Tensor => [concrete] attributes[value] Self::u64_kernel),
-                (HostPlacement, () -> BooleanTensor => [concrete] attributes[value] Self::bool_kernel),
-                (Mirrored3Placement, () -> Tensor => [concrete] attributes[sig, value] Self::mir3_logical_kernel),
-                (Mirrored3Placement, () -> Float32Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
-                (Mirrored3Placement, () -> Float64Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
-
-            ]
-        }
-    };
+kernel! {
+    ConstantOp, [
+        (HostPlacement, () -> HostRing64Tensor => [runtime] attributes[value: HostRing64Tensor] Self::kernel),
+        (HostPlacement, () -> HostRing128Tensor => [runtime] attributes[value: HostRing128Tensor] Self::kernel),
+        (HostPlacement, () -> HostFloat32Tensor => [runtime] attributes[value: HostFloat32Tensor] Self::kernel),
+        (HostPlacement, () -> HostFloat64Tensor => [runtime] attributes[value: HostFloat64Tensor] Self::kernel),
+        (HostPlacement, () -> HostInt8Tensor => [runtime] attributes[value: HostInt8Tensor] Self::kernel),
+        (HostPlacement, () -> HostInt16Tensor => [runtime] attributes[value: HostInt16Tensor] Self::kernel),
+        (HostPlacement, () -> HostInt32Tensor => [runtime] attributes[value: HostInt32Tensor] Self::kernel),
+        (HostPlacement, () -> HostInt64Tensor => [runtime] attributes[value: HostInt64Tensor] Self::kernel),
+        (HostPlacement, () -> HostUint8Tensor => [runtime] attributes[value: HostUint8Tensor] Self::kernel),
+        (HostPlacement, () -> HostUint16Tensor => [runtime] attributes[value: HostUint16Tensor] Self::kernel),
+        (HostPlacement, () -> HostUint32Tensor => [runtime] attributes[value: HostUint32Tensor] Self::kernel),
+        (HostPlacement, () -> HostUint64Tensor => [runtime] attributes[value: HostUint64Tensor] Self::kernel),
+        (HostPlacement, () -> HostBitTensor => [runtime] attributes[value: HostBitTensor] Self::kernel),
+        (HostPlacement, () -> HostString => [runtime] attributes[value: String] Self::string_kernel),
+        (HostPlacement, () -> HostShape => [runtime] attributes[value: RawShape] Self::shape_kernel),
+        (HostPlacement, () -> HostPrfKey => [runtime] attributes[value: RawPrfKey] Self::prf_key_kernel),
+        (HostPlacement, () -> HostSeed => [runtime] attributes[value: RawSeed] Self::seed_kernel),
+        (HostPlacement, () -> Tensor => [concrete] attributes[sig, value] Self::logical_kernel),
+        (HostPlacement, () -> Float32Tensor => [concrete] attributes[value] Self::float_kernel),
+        (HostPlacement, () -> Float64Tensor => [concrete] attributes[value] Self::float_kernel),
+        (HostPlacement, () -> Uint64Tensor => [concrete] attributes[value] Self::u64_kernel),
+        (HostPlacement, () -> BooleanTensor => [concrete] attributes[value] Self::bool_kernel),
+        (Mirrored3Placement, () -> Tensor => [concrete] attributes[sig, value] Self::mir3_logical_kernel),
+        (Mirrored3Placement, () -> Float32Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
+        (Mirrored3Placement, () -> Float64Tensor => [concrete] attributes[value] Self::mir3_float_kernel),
+    ]
 }
-
-constant_kernels![
-    HostRing64Tensor,
-    HostRing128Tensor,
-    HostFloat32Tensor,
-    HostFloat64Tensor,
-    HostInt8Tensor,
-    HostInt16Tensor,
-    HostInt32Tensor,
-    HostInt64Tensor,
-    HostUint8Tensor,
-    HostUint16Tensor,
-    HostUint32Tensor,
-    HostUint64Tensor,
-    HostBitTensor
-];
