@@ -5,7 +5,6 @@ use crate::computation::*;
 use crate::error::Error;
 use crate::error::Result;
 use crate::execution::{Operands, Session};
-use crate::for_all_values;
 use crate::host::HostPlacement;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
