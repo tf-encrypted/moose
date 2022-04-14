@@ -15,8 +15,29 @@ modelled_kernel! {
     ]
 }
 
-modelled_alias!(PlacementAdd::add, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => PlacementXor::xor); // add = xor in Z2
-modelled_alias!(PlacementSub::sub, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => PlacementXor::xor); // sub = xor in Z2
+// add = xor in Z2
+impl<S: Session> PlacementAdd<S, m!(HostBitTensor), m!(HostBitTensor), m!(HostBitTensor)>
+    for HostPlacement
+where
+    HostBitTensor: KnownType<S>,
+    HostPlacement: PlacementXor<S, m!(HostBitTensor), m!(HostBitTensor), m!(HostBitTensor)>,
+{
+    fn add(&self, sess: &S, x0: &m!(HostBitTensor), x1: &m!(HostBitTensor)) -> m!(HostBitTensor) {
+        self.xor(sess, x0, x1)
+    }
+}
+
+// sub = xor in Z2
+impl<S: Session> PlacementSub<S, m!(HostBitTensor), m!(HostBitTensor), m!(HostBitTensor)>
+    for HostPlacement
+where
+    HostBitTensor: KnownType<S>,
+    HostPlacement: PlacementXor<S, m!(HostBitTensor), m!(HostBitTensor), m!(HostBitTensor)>,
+{
+    fn sub(&self, sess: &S, x0: &m!(HostBitTensor), x1: &m!(HostBitTensor)) -> m!(HostBitTensor) {
+        self.xor(sess, x0, x1)
+    }
+}
 
 /// Logical-and
 pub trait PlacementAnd<S: Session, T, U, O> {
@@ -33,7 +54,17 @@ modelled_kernel! {
     ]
 }
 
-modelled_alias!(PlacementMul::mul, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => PlacementAnd::and); // mul = and in Z2
+// mul = and in Z2
+impl<S: Session> PlacementMul<S, m!(HostBitTensor), m!(HostBitTensor), m!(HostBitTensor)>
+    for HostPlacement
+where
+    HostBitTensor: KnownType<S>,
+    HostPlacement: PlacementAnd<S, m!(HostBitTensor), m!(HostBitTensor), m!(HostBitTensor)>,
+{
+    fn mul(&self, sess: &S, x0: &m!(HostBitTensor), x1: &m!(HostBitTensor)) -> m!(HostBitTensor) {
+        self.and(sess, x0, x1)
+    }
+}
 
 /// Logical-or
 pub trait PlacementOr<S: Session, T, U, O> {
