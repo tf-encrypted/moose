@@ -326,10 +326,10 @@ modelled_kernel! {
         (HostPlacement, () -> HostPrfKey => [runtime] custom |op| unwrapper!(op, RawPrfKey, Self::prf_key_kernel)),
         (HostPlacement, () -> HostSeed => [runtime] custom |op| unwrapper!(op, RawSeed, Self::seed_kernel)),
         (HostPlacement, () -> Tensor => [concrete] custom |op| {
-            let sig = op.sig.clone();
+            let sig = op.sig;
             let value = op.value.clone();
             Ok(Box::new(move |sess, plc| {
-                Self::logical_kernel(sess, plc, sig.clone(), value.clone())
+                Self::logical_kernel(sess, plc, sig, value.clone())
             }))
         }),
         (HostPlacement, () -> Float32Tensor => [concrete] Self::float_kernel),
@@ -337,10 +337,10 @@ modelled_kernel! {
         (HostPlacement, () -> Uint64Tensor => [concrete] Self::u64_kernel),
         (HostPlacement, () -> BooleanTensor => [concrete] Self::bool_kernel),
         (Mirrored3Placement, () -> Tensor => [concrete] custom |op| {
-            let sig = op.sig.clone();
+            let sig = op.sig;
             let value = op.value.clone();
             Ok(Box::new(move |sess, plc| {
-                Self::mir3_logical_kernel(sess, plc, sig.clone(), value.clone())
+                Self::mir3_logical_kernel(sess, plc, sig, value.clone())
             }))
         }),
         (Mirrored3Placement, () -> Float32Tensor => [concrete] Self::mir3_float_kernel),

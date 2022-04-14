@@ -33,7 +33,7 @@ impl ConstantOp {
         plc: &HostPlacement,
         value: String,
     ) -> Result<HostString> {
-        Ok(HostString(value.clone(), plc.clone()))
+        Ok(HostString(value, plc.clone()))
     }
 }
 
@@ -43,7 +43,7 @@ impl ConstantOp {
         plc: &HostPlacement,
         value: RawShape,
     ) -> Result<HostShape> {
-        Ok(HostShape(value.clone(), plc.clone()))
+        Ok(HostShape(value, plc.clone()))
     }
 }
 
@@ -53,7 +53,7 @@ impl ConstantOp {
         plc: &HostPlacement,
         value: RawPrfKey,
     ) -> Result<HostPrfKey> {
-        Ok(HostPrfKey(value.clone(), plc.clone()))
+        Ok(HostPrfKey(value, plc.clone()))
     }
 }
 
@@ -63,7 +63,7 @@ impl ConstantOp {
         plc: &HostPlacement,
         value: RawSeed,
     ) -> Result<HostSeed> {
-        Ok(HostSeed(value.clone(), plc.clone()))
+        Ok(HostSeed(value, plc.clone()))
     }
 }
 
@@ -1075,9 +1075,9 @@ impl InverseOp {
         _plc: &HostPlacement,
         _x: HostTensor<T>,
     ) -> Result<HostTensor<T>> {
-        Err(Error::UnimplementedOperator(format!(
-            "Please enable 'blas' feature"
-        )))
+        Err(Error::UnimplementedOperator(
+            "Please enable 'blas' feature".to_string(),
+        ))
     }
 }
 

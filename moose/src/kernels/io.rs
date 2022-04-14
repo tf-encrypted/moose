@@ -39,10 +39,10 @@ modelled_kernel! {
         (HostPlacement, () -> HostFixed64Tensor => [runtime] Self::missing_kernel),
         (HostPlacement, () -> HostFixed128Tensor => [runtime] Self::missing_kernel),
         (HostPlacement, () -> Tensor => [concrete] custom |op| {
-            let sig = op.sig.clone();
+            let sig = op.sig;
             let arg_name = op.arg_name.clone();
             Ok(Box::new(move |sess, plc| {
-                Self::logical_kernel(sess, plc, sig.clone(), arg_name.clone())
+                Self::logical_kernel(sess, plc, sig, arg_name.clone())
             }))
         }),
         (HostPlacement, () -> Float32Tensor => [concrete] Self::float_kernel),
@@ -52,27 +52,27 @@ modelled_kernel! {
         (HostPlacement, () -> AesTensor => [concrete] Self::aestensor),
         (HostPlacement, () -> Fixed128AesTensor => [concrete] Self::fixed_aestensor),
         (HostPlacement, () -> HostFixed128AesTensor => [concrete] custom |op| {
-            let sig = op.sig.clone();
+            let sig = op.sig;
             let arg_name = op.arg_name.clone();
             Ok(Box::new(move |sess, plc| {
-                Self::host_fixed_aestensor(sess, plc, sig.clone(), arg_name.clone())
+                Self::host_fixed_aestensor(sess, plc, sig, arg_name.clone())
             }))
         }),
         (ReplicatedPlacement, () -> ReplicatedBitTensor => [concrete] Self::replicated_ring_kernel),
         (ReplicatedPlacement, () -> ReplicatedRing64Tensor => [concrete] Self::replicated_ring_kernel),
         (ReplicatedPlacement, () -> ReplicatedRing128Tensor => [concrete] Self::replicated_ring_kernel),
         (ReplicatedPlacement, () -> ReplicatedFixed64Tensor => [concrete] custom |op| {
-            let sig = op.sig.clone();
+            let sig = op.sig;
             let arg_name = op.arg_name.clone();
             Ok(Box::new(move |sess, plc| {
-                Self::replicated_fixed_kernel(sess, plc, sig.clone(), arg_name.clone())
+                Self::replicated_fixed_kernel(sess, plc, sig, arg_name.clone())
             }))
         }),
         (ReplicatedPlacement, () -> ReplicatedFixed128Tensor => [concrete] custom |op| {
-            let sig = op.sig.clone();
+            let sig = op.sig;
             let arg_name = op.arg_name.clone();
             Ok(Box::new(move |sess, plc| {
-                Self::replicated_fixed_kernel(sess, plc, sig.clone(), arg_name.clone())
+                Self::replicated_fixed_kernel(sess, plc, sig, arg_name.clone())
             }))
         }),
         (ReplicatedPlacement, () -> ReplicatedBitArray64 => [concrete] Self::replicated_bitarray64),
