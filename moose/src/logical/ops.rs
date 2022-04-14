@@ -1470,6 +1470,53 @@ impl SumOp {
     }
 }
 
+impl ReLUOp {
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementSum<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementSum<S, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementSum<S, Float32T, Float32T>,
+        HostPlacement: PlacementSum<S, Float64T, Float64T>,
+    {
+        unimplemented!()
+        // use AbstractTensor::*;
+        // match x {
+        //     Fixed64(x) => {
+        //         let z = plc.sum(sess, axis, &x);
+        //         Ok(Fixed64(z))
+        //     }
+        //     Fixed128(x) => {
+        //         let z = plc.sum(sess, axis, &x);
+        //         Ok(Fixed128(z))
+        //     }
+        //     Float32(x) => {
+        //         let z = plc.sum(sess, axis, &x);
+        //         Ok(Float32(z))
+        //     }
+        //     Float64(x) => {
+        //         let z = plc.sum(sess, axis, &x);
+        //         Ok(Float64(z))
+        //     }
+        //     Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(format!(
+        //         "Sum op (Host) is unsupported for {:?}.",
+        //         x.ty_desc()
+        //     ))),
+        // }
+    }
+}
+
 impl OnesOp {
     #[allow(clippy::type_complexity)]
     pub(crate) fn logical_host_kernel<S: Session, TensorT, HostS, RepS>(

@@ -1228,6 +1228,7 @@ impl ToTextual for Operator {
             Share(op) => op.to_textual(),
             Reveal(op) => op.to_textual(),
             AddN(op) => op.to_textual(),
+            ReLU(op) => op.to_textual(),
             TruncPr(op) => op.to_textual(),
             AdtToRep(op) => op.to_textual(),
             Abs(op) => op.to_textual(),

@@ -893,6 +893,7 @@ operators![
     Fill,
     Msb,
     AddN,
+    ReLU,
     TruncPr,
     RepToAdt,
     Index,
@@ -1396,6 +1397,13 @@ pub struct RevealOp {
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct AddNOp {
+    pub sig: Signature,
+}
+
+#[derive(
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+)]
+pub struct ReLUOp {
     pub sig: Signature,
 }
 

@@ -205,6 +205,7 @@ impl Session for SyncSession {
             Abs(op) => DispatchKernel::execute(op, plc, self, operands)?,
             RepToAdt(op) => DispatchKernel::execute(op, plc, self, operands)?,
             AddN(op) => DispatchKernel::execute(op, plc, self, operands)?,
+            ReLU(op) => DispatchKernel::execute(op, plc, self, operands)?,
             Index(op) => DispatchKernel::execute(op, plc, self, operands)?,
             BitDecompose(op) => DispatchKernel::execute(op, plc, self, operands)?,
             BitCompose(op) => DispatchKernel::execute(op, plc, self, operands)?,

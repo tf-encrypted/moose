@@ -305,6 +305,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Reveal(op) => DispatchKernel::execute(op, plc, sess, operands),
             TruncPr(op) => DispatchKernel::execute(op, plc, sess, operands),
             AddN(op) => DispatchKernel::execute(op, plc, sess, operands),
+            ReLU(op) => DispatchKernel::execute(op, plc, sess, operands),
             Shl(op) => DispatchKernel::execute(op, plc, sess, operands),
             Shr(op) => DispatchKernel::execute(op, plc, sess, operands),
             Msb(op) => DispatchKernel::execute(op, plc, sess, operands),

@@ -422,6 +422,7 @@ impl DispatchKernel<AsyncSession> for Operator {
             Sum(op) => DispatchKernel::compile(op, plc),
             Div(op) => DispatchKernel::compile(op, plc),
             AddN(op) => DispatchKernel::compile(op, plc),
+            ReLU(op) => DispatchKernel::compile(op, plc),
             Exp(op) => DispatchKernel::compile(op, plc),
             Pow2(op) => DispatchKernel::compile(op, plc),
             Neg(op) => DispatchKernel::compile(op, plc),

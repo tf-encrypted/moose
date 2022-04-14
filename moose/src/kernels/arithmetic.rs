@@ -299,6 +299,18 @@ modelled_kernel! {
     ]
 }
 
+/// ReLU
+pub trait PlacementReLU<S: Session, T, O> {
+    fn relu(&self, sess: &S, x: &T) -> O;
+}
+
+modelled_kernel! {
+    PlacementReLU::relu, ReLUOp,
+    [
+        (HostPlacement, (Tensor) -> Tensor => [concrete] Self::logical_host_kernel),
+    ]
+}
+
 /// Sum along axis
 pub trait PlacementSum<S: Session, T, O> {
     fn sum(&self, sess: &S, axis: Option<usize>, x: &T) -> O;
