@@ -5008,9 +5008,6 @@ macro_rules! modelled_kernel {
         }
 
 
-
-
-
         // // support for SyncSession
         $(
             #[cfg(feature = "sync_execute")]

@@ -42,9 +42,11 @@ pub trait DispatchKernel<S: Session> {
 
 pub type NgNullaryKernel<S, V> = Box<
     dyn Fn(
-        &S,
-        &Placement, // TODO get rid of this?
-    ) -> Result<V> + Send + Sync,
+            &S,
+            &Placement, // TODO get rid of this?
+        ) -> Result<V>
+        + Send
+        + Sync,
 >;
 
 pub type NgUnaryKernel<S, V> = Box<
