@@ -450,6 +450,48 @@ impl Session for AsyncSession {
             }
         }?;
         match kernel {
+            NgKernel::Nullary { closure } => {
+                let (sender, receiver) = crate::execution::asynchronous::new_async_value();
+
+                let tasks = std::sync::Arc::clone(&self.tasks);
+                let sess = self.clone();
+                let plc = plc.clone();
+
+                let task: tokio::task::JoinHandle<crate::error::Result<()>> =
+                    tokio::spawn(async move {
+                        assert_eq!(operands.len(), 0);
+                        let y: Value = closure(&sess, &plc)?;
+                        crate::execution::map_send_result(sender.send(y))?;
+                        Ok(())
+                    });
+                let mut tasks = tasks.write().unwrap();
+                tasks.push(task);
+                Ok(receiver)
+            }
+            NgKernel::Unary { closure } => {
+                let (sender, receiver) = crate::execution::asynchronous::new_async_value();
+
+                let tasks = std::sync::Arc::clone(&self.tasks);
+                let sess = self.clone();
+                let plc = plc.clone();
+
+                let task: tokio::task::JoinHandle<crate::error::Result<()>> =
+                    tokio::spawn(async move {
+                        assert_eq!(operands.len(), 1);
+                        let mut operands = futures::future::join_all(operands).await;
+                        let x0: Value = operands
+                            .pop()
+                            .unwrap()
+                            .map_err(crate::execution::map_receive_error)?;
+
+                        let y: Value = closure(&sess, &plc, x0)?;
+                        crate::execution::map_send_result(sender.send(y))?;
+                        Ok(())
+                    });
+                let mut tasks = tasks.write().unwrap();
+                tasks.push(task);
+                Ok(receiver)
+            }
             NgKernel::Binary { closure } => {
                 let (sender, receiver) = crate::execution::asynchronous::new_async_value();
 
@@ -520,7 +562,7 @@ impl Session for AsyncSession {
 
                 let task: tokio::task::JoinHandle<crate::error::Result<()>> =
                     tokio::spawn(async move {
-                        let mut operands = futures::future::join_all(operands).await;
+                        let operands = futures::future::join_all(operands).await;
                         let xs: std::result::Result<Operands<Value>, _> =
                             operands.into_iter().collect();
                         let xs = xs.map_err(crate::execution::map_receive_error)?;
@@ -534,9 +576,6 @@ impl Session for AsyncSession {
 
                 Ok(receiver)
             }
-            _ => Err(Error::Compilation(
-                "MuxOp should be a ternary kernel".to_string(),
-            )),
         }
     }
 }

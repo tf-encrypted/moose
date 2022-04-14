@@ -1091,10 +1091,8 @@ where
 
                 let kernel_vals: Vec<_> = ts_vals
                     .iter()
-                    .filter_map(|xi| match xi {
-                        Symbolic::Symbolic(v) => Some(v.op.as_str()),
-                        _ => None,
-                    })
+                    .filter_map(Symbolic::symbolic_handle)
+                    .map(|v| v.op.as_str())
                     .collect();
 
                 if kernel_vals.len() == vs.len() {
@@ -1201,10 +1199,8 @@ where
                 } else {
                     let handles: Vec<_> = ts_vals
                         .iter()
-                        .filter_map(|xi| match xi {
-                            Symbolic::Symbolic(v) => Some(v.op.as_str()),
-                            _ => None,
-                        })
+                        .filter_map(Symbolic::symbolic_handle)
+                        .map(|v| v.op.as_str())
                         .collect();
                     if handles.len() == vs.len() {
                         // success; we can record in graph
