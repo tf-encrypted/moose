@@ -32,6 +32,7 @@ mod misc;
 mod ops;
 mod setup;
 mod softmax;
+mod sqrt;
 mod zero_share;
 pub use self::aes::RepAesKey;
 pub use self::fixedpoint::RepFixedTensor;
