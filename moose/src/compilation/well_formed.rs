@@ -127,7 +127,9 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             ExpandDims(op) => {
                 NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
             }
-            Concat(op) => DispatchKernel::<SymbolicSession>::compile(op, plc).err(),
+            Concat(op) => {
+                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
+            }
             Dot(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
             Inverse(op) => {
                 NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
@@ -138,7 +140,7 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             Mean(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
             Sum(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
             Div(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            AddN(op) => DispatchKernel::<SymbolicSession>::compile(op, plc).err(),
+            AddN(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
             Exp(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
             Pow2(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
             Neg(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
@@ -162,7 +164,9 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             Sigmoid(op) => {
                 NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
             }
-            Maximum(op) => DispatchKernel::<SymbolicSession>::compile(op, plc).err(),
+            Maximum(op) => {
+                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
+            }
             Softmax(op) => {
                 NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
             }

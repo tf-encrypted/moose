@@ -557,7 +557,18 @@ impl Session for SyncSession {
                     }
                 }
             }
-            AddN(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
+            AddN(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Variadic { closure } => closure(self, plc, operands)?,
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             Index(op) => {
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
@@ -882,7 +893,18 @@ impl Session for SyncSession {
                     }
                 }
             }
-            Concat(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
+            Concat(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Variadic { closure } => closure(self, plc, operands)?,
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             Reshape(op) => {
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
@@ -1229,7 +1251,18 @@ impl Session for SyncSession {
                     }
                 }
             }
-            Maximum(op) => DispatchKernel::compile(op, plc)?(self, operands)?,
+            Maximum(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Variadic { closure } => closure(self, plc, operands)?,
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             Softmax(op) => {
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {

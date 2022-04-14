@@ -634,7 +634,18 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
                     }
                 }
             }
-            AddN(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            AddN(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Variadic { closure } => closure(sess, plc, operands),
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             Shl(op) => {
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
@@ -716,7 +727,18 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
                     )),
                 }
             }
-            Maximum(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Maximum(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Variadic { closure } => closure(sess, plc, operands),
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             Softmax(op) => {
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {
@@ -1200,7 +1222,18 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
                     }
                 }
             }
-            Concat(op) => DispatchKernel::compile(op, plc)?(sess, operands),
+            Concat(op) => {
+                let kernel = NgDispatchKernel::compile(op, plc)?;
+                match kernel {
+                    NgKernel::Variadic { closure } => closure(sess, plc, operands),
+                    _ => {
+                        return Err(Error::Compilation(format!(
+                            "Should have gotten an unary kernel for {:?}",
+                            op
+                        )))
+                    }
+                }
+            }
             Reshape(op) => {
                 let kernel = NgDispatchKernel::compile(op, plc)?;
                 match kernel {

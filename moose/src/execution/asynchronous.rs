@@ -342,9 +342,6 @@ impl DispatchKernel<AsyncSession> for Operator {
             Constant(op) => DispatchKernel::compile(op, plc),
             Input(op) => DispatchKernel::compile(op, plc),
             Output(op) => DispatchKernel::compile(op, plc),
-            Concat(op) => DispatchKernel::compile(op, plc),
-            AddN(op) => DispatchKernel::compile(op, plc),
-            Maximum(op) => DispatchKernel::compile(op, plc),
             _ => unimplemented!(),
         }
     }
@@ -379,6 +376,7 @@ impl Session for AsyncSession {
             Abs(op) => NgDispatchKernel::compile(op, plc),
             Add(op) => NgDispatchKernel::compile(op, plc),
             AdtToRep(op) => NgDispatchKernel::compile(op, plc),
+            AddN(op) => NgDispatchKernel::compile(op, plc),
             And(op) => NgDispatchKernel::compile(op, plc),
             Argmax(op) => NgDispatchKernel::compile(op, plc),
             AtLeast2D(op) => NgDispatchKernel::compile(op, plc),
@@ -387,6 +385,7 @@ impl Session for AsyncSession {
             BitExtract(op) => NgDispatchKernel::compile(op, plc),
             Broadcast(op) => NgDispatchKernel::compile(op, plc),
             Cast(op) => NgDispatchKernel::compile(op, plc),
+            Concat(op) => NgDispatchKernel::compile(op, plc),
             Decrypt(op) => NgDispatchKernel::compile(op, plc),
             Demirror(op) => NgDispatchKernel::compile(op, plc),
             DeriveSeed(op) => NgDispatchKernel::compile(op, plc),
@@ -407,6 +406,7 @@ impl Session for AsyncSession {
             LessThan(op) => NgDispatchKernel::compile(op, plc),
             Log(op) => NgDispatchKernel::compile(op, plc),
             Log2(op) => NgDispatchKernel::compile(op, plc),
+            Maximum(op) => NgDispatchKernel::compile(op, plc),
             Mean(op) => NgDispatchKernel::compile(op, plc),
             Mirror(op) => NgDispatchKernel::compile(op, plc),
             Msb(op) => NgDispatchKernel::compile(op, plc),
@@ -503,6 +503,29 @@ impl Session for AsyncSession {
                             .map_err(crate::execution::map_receive_error)?;
 
                         let y: Value = closure(&sess, &plc, x0, x1, x2)?;
+                        crate::execution::map_send_result(sender.send(y))?;
+                        Ok(())
+                    });
+                let mut tasks = tasks.write().unwrap();
+                tasks.push(task);
+
+                Ok(receiver)
+            }
+            NgKernel::Variadic { closure } => {
+                let (sender, receiver) = crate::execution::asynchronous::new_async_value();
+
+                let tasks = std::sync::Arc::clone(&self.tasks);
+                let sess = self.clone();
+                let plc = plc.clone();
+
+                let task: tokio::task::JoinHandle<crate::error::Result<()>> =
+                    tokio::spawn(async move {
+                        let mut operands = futures::future::join_all(operands).await;
+                        let xs: std::result::Result<Operands<Value>, _> =
+                            operands.into_iter().collect();
+                        let xs = xs.map_err(crate::execution::map_receive_error)?;
+
+                        let y: Value = closure(&sess, &plc, xs)?;
                         crate::execution::map_send_result(sender.send(y))?;
                         Ok(())
                     });

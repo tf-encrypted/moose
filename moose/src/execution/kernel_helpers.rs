@@ -3,6 +3,7 @@ use crate::computation::{
 };
 use crate::error::Result;
 use crate::execution::symbolic::{Symbolic, SymbolicSession};
+use crate::execution::Operands;
 use crate::execution::{Session, SyncSession};
 use crate::kernels::NgKernel;
 use std::convert::{TryFrom, TryInto};
@@ -998,6 +999,295 @@ where
                 let x2: <T2 as SymbolicType>::Type = SymbolicValue::try_into(v2)?;
                 let y: <U as SymbolicType>::Type = kf(sess, &plc, x0, x1, x2)?;
                 Ok(SymbolicValue::from(y))
+            },
+        ),
+    })
+}
+
+pub(crate) fn variadic_box<S, TS, U, P>(
+    _op: Operator,
+    kf: Box<dyn Fn(&S, &P, &[TS]) -> Result<U> + Send + Sync>,
+) -> Result<NgKernel<S, Value>>
+where
+    S: Session,
+    S: 'static,
+
+    TS: 'static,
+    U: 'static,
+    P: 'static,
+    Placement: TryInto<P, Error = crate::Error>,
+    Value: TryInto<TS, Error = crate::Error>,
+    Value: From<U>,
+{
+    Ok(NgKernel::Variadic {
+        closure: Box::new(move |sess: &S, plc: &Placement, vs: Operands<Value>| {
+            let plc: P = Placement::try_into(plc.clone())?;
+            let xs: Operands<TS> = vs
+                .into_iter()
+                .map(|xi| Value::try_into(xi.clone()))
+                .collect::<Result<_>>()?;
+
+            let y = kf(sess, &plc, &xs)?;
+
+            Ok(Value::from(y))
+        }),
+    })
+}
+
+pub(crate) fn variadic_fn<S, TS, U, P>(
+    _op: Operator,
+    kf: fn(&S, &P, &[TS]) -> Result<U>,
+) -> Result<NgKernel<S, Value>>
+where
+    S: Session,
+    S: 'static,
+
+    TS: 'static,
+    U: 'static,
+    P: 'static,
+    Placement: TryInto<P, Error = crate::Error>,
+    Value: TryInto<TS, Error = crate::Error>,
+    Value: From<U>,
+{
+    Ok(NgKernel::Variadic {
+        closure: Box::new(move |sess: &S, plc: &Placement, vs: Operands<Value>| {
+            let plc: P = Placement::try_into(plc.clone())?;
+            let xs: Operands<TS> = vs
+                .into_iter()
+                .map(|xi| Value::try_into(xi.clone()))
+                .collect::<Result<_>>()?;
+
+            let y = kf(sess, &plc, &xs)?;
+
+            Ok(Value::from(y))
+        }),
+    })
+}
+
+pub(crate) fn symbolic_variadic_runtime<TS, U, P>(
+    op: Operator,
+) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+where
+    P: Clone + TryFrom<Placement, Error = crate::Error>,
+    Placement: From<P>,
+
+    TS: PartiallySymbolicType,
+    U: PartiallySymbolicType,
+
+    <TS as PartiallySymbolicType>::Type: Placed,
+    <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
+
+    SymbolicValue: TryInto<Symbolic<<TS as PartiallySymbolicType>::Type>, Error = crate::Error>,
+    SymbolicValue: From<<U as SymbolicType>::Type>,
+{
+    Ok(crate::kernels::NgKernel::Variadic {
+        closure: Box::new(
+            move |sess: &SymbolicSession, plc: &Placement, vs: Operands<SymbolicValue>| {
+                let plc = P::try_from(plc.clone())?;
+                let ts_vals: Operands<<TS as SymbolicType>::Type> = vs
+                    .iter()
+                    .map(|xi| SymbolicValue::try_into(xi.clone()))
+                    .collect::<Result<_>>()?;
+
+                let kernel_vals: Vec<_> = ts_vals
+                    .iter()
+                    .filter_map(|xi| match xi {
+                        Symbolic::Symbolic(v) => Some(v.op.as_str()),
+                        _ => None,
+                    })
+                    .collect();
+
+                if kernel_vals.len() == vs.len() {
+                    let h = sess.add_operation(&op, &kernel_vals, &plc);
+                    let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
+                    Ok(SymbolicValue::from(h))
+                } else {
+                    unimplemented!()
+                }
+            },
+        ),
+    })
+}
+
+pub(crate) fn symbolic_variadic_transparent_fn<TS, U, P>(
+    _op: Operator,
+    kf: fn(
+        &SymbolicSession,
+        &P,
+        &[<TS as SymbolicType>::Type],
+    ) -> Result<<U as SymbolicType>::Type>,
+) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+where
+    P: 'static,
+    Placement: TryInto<P, Error = crate::Error>,
+
+    TS: PartiallySymbolicType,
+    <TS as PartiallySymbolicType>::Type: Placed,
+    <TS as PartiallySymbolicType>::Type: 'static,
+    SymbolicValue: TryInto<<TS as SymbolicType>::Type, Error = crate::Error>,
+
+    U: PartiallySymbolicType,
+    <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
+    <U as PartiallySymbolicType>::Type: 'static,
+    SymbolicValue: From<<U as SymbolicType>::Type>,
+{
+    Ok(NgKernel::Variadic {
+        closure: Box::new(
+            move |sess: &SymbolicSession, plc: &Placement, vs: Operands<SymbolicValue>| {
+                let plc: P = Placement::try_into(plc.clone())?;
+                let ts_vals: Vec<<TS as SymbolicType>::Type> = vs
+                    .iter()
+                    .map(|xi| {
+                        let x: Result<<TS as SymbolicType>::Type> =
+                            SymbolicValue::try_into(xi.clone());
+                        x
+                    })
+                    .collect::<Result<_>>()?;
+
+                let y: <U as SymbolicType>::Type = kf(sess, &plc, &ts_vals)?;
+                Ok(SymbolicValue::from(y))
+            },
+        ),
+    })
+}
+
+pub(crate) fn symbolic_variadic_concrete_fn<TS, U, P>(
+    op: Operator,
+    kf: fn(
+        &SymbolicSession,
+        &P,
+        &[<TS as PartiallySymbolicType>::Type],
+    ) -> Result<<U as PartiallySymbolicType>::Type>,
+) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+where
+    P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
+    Placement: From<P>,
+
+    TS: PartiallySymbolicType + Clone,
+    U: PartiallySymbolicType, // TODO use SymbolicType here?
+
+    <TS as PartiallySymbolicType>::Type: Placed + 'static + Clone,
+    <U as PartiallySymbolicType>::Type: Placed + 'static,
+    // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
+    <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
+    SymbolicValue: TryInto<Symbolic<<TS as PartiallySymbolicType>::Type>, Error = crate::Error>,
+    SymbolicValue: From<<U as SymbolicType>::Type>,
+{
+    Ok(NgKernel::Variadic {
+        closure: Box::new(
+            move |sess: &SymbolicSession, plc: &Placement, vs: Operands<SymbolicValue>| {
+                let plc = P::try_from(plc.clone())?;
+
+                let ts_vals: Vec<<TS as SymbolicType>::Type> = vs
+                    .iter()
+                    .map(|xi| {
+                        let x: Result<<TS as SymbolicType>::Type> =
+                            SymbolicValue::try_into(xi.clone());
+                        x
+                    })
+                    .collect::<Result<_>>()?;
+
+                let kernel_vals: Operands<_> = ts_vals
+                    .iter()
+                    .filter_map(|xi| match xi {
+                        Symbolic::Concrete(v) => Some(v.clone()),
+                        Symbolic::Symbolic(_) => None,
+                    })
+                    .collect();
+
+                if kernel_vals.len() == vs.len() {
+                    let y = kf(sess, &plc, kernel_vals.as_slice())?;
+                    Ok(SymbolicValue::from(Symbolic::Concrete(y)))
+                } else {
+                    let handles: Vec<_> = ts_vals
+                        .iter()
+                        .filter_map(|xi| match xi {
+                            Symbolic::Symbolic(v) => Some(v.op.as_str()),
+                            _ => None,
+                        })
+                        .collect();
+                    if handles.len() == vs.len() {
+                        // success; we can record in graph
+                        let h = sess.add_operation(&op, &handles, &plc);
+                        let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
+                        Ok(SymbolicValue::from(h))
+                    } else {
+                        Err(crate::error::Error::Unexpected(Some("Variadic concrete flavor found mixed symbolic and concrete value during compilation.".to_string())))
+                    }
+                }
+            },
+        ),
+    })
+}
+
+pub(crate) fn symbolic_variadic_concrete_box<TS, U, P>(
+    op: Operator,
+    kf: Box<
+        dyn Fn(
+                &SymbolicSession,
+                &P,
+                &[<TS as PartiallySymbolicType>::Type],
+            ) -> Result<<U as PartiallySymbolicType>::Type>
+            + Send
+            + Sync,
+    >,
+) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+where
+    P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
+    Placement: From<P>,
+
+    TS: PartiallySymbolicType + Clone,
+    U: PartiallySymbolicType, // TODO use SymbolicType here?
+
+    <TS as PartiallySymbolicType>::Type: Placed + 'static + Clone,
+    <U as PartiallySymbolicType>::Type: Placed + 'static,
+    // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
+    <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
+    SymbolicValue: TryInto<Symbolic<<TS as PartiallySymbolicType>::Type>, Error = crate::Error>,
+    SymbolicValue: From<<U as SymbolicType>::Type>,
+{
+    Ok(NgKernel::Variadic {
+        closure: Box::new(
+            move |sess: &SymbolicSession, plc: &Placement, vs: Operands<SymbolicValue>| {
+                let plc = P::try_from(plc.clone())?;
+
+                let ts_vals: Vec<<TS as SymbolicType>::Type> = vs
+                    .iter()
+                    .map(|xi| {
+                        let x: Result<<TS as SymbolicType>::Type> =
+                            SymbolicValue::try_into(xi.clone());
+                        x
+                    })
+                    .collect::<Result<_>>()?;
+
+                let kernel_vals: Operands<_> = ts_vals
+                    .iter()
+                    .filter_map(|xi| match xi {
+                        Symbolic::Concrete(v) => Some(v.clone()),
+                        Symbolic::Symbolic(_) => None,
+                    })
+                    .collect();
+
+                if kernel_vals.len() == vs.len() {
+                    let y = kf(sess, &plc, kernel_vals.as_slice())?;
+                    Ok(SymbolicValue::from(Symbolic::Concrete(y)))
+                } else {
+                    let handles: Vec<_> = ts_vals
+                        .iter()
+                        .filter_map(|xi| match xi {
+                            Symbolic::Symbolic(v) => Some(v.op.as_str()),
+                            _ => None,
+                        })
+                        .collect();
+                    if handles.len() == vs.len() {
+                        // success; we can record in graph
+                        let h = sess.add_operation(&op, &handles, &plc);
+                        let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
+                        Ok(SymbolicValue::from(h))
+                    } else {
+                        Err(crate::error::Error::Unexpected(Some("Variadic concrete flavor found mixed symbolic and concrete value during compilation.".to_string())))
+                    }
+                }
             },
         ),
     })

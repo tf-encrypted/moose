@@ -80,11 +80,22 @@ pub type NgTernaryKernel<S, V> = Box<
         + Sync,
 >;
 
+pub type NgVariadicKernel<S, V> = Box<
+    dyn Fn(
+            &S,
+            &Placement, // TODO get rid of this?
+            Vec<V>,
+        ) -> Result<V>
+        + Send
+        + Sync,
+>;
+
 pub enum NgKernel<S: Session, V> {
     Nullary { closure: NgNullaryKernel<S, V> },
     Unary { closure: NgUnaryKernel<S, V> },
     Binary { closure: NgBinaryKernel<S, V> },
     Ternary { closure: NgTernaryKernel<S, V> },
+    Variadic { closure: NgVariadicKernel<S, V> },
 }
 
 pub trait NgDispatchKernel<S: Session, V> {
@@ -123,6 +134,9 @@ pub(crate) trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
 
 pub(crate) type TypedVariadicKernel<S, P, XS, Y> =
     Box<dyn Fn(&S, &P, Operands<XS>) -> Result<Y> + Send + Sync>;
+
+pub(crate) type TypedVariadicKernelSlice<S, P, XS, Y> =
+    Box<dyn Fn(&S, &P, &[XS]) -> Result<Y> + Send + Sync>;
 
 pub(crate) trait VariadicKernel<S: Session, P, XS, Y> {
     fn compile(&self) -> Result<TypedVariadicKernel<S, P, XS, Y>>;
