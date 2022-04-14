@@ -49,6 +49,7 @@ from pymoose.edsl.base import shape
 from pymoose.edsl.base import sigmoid
 from pymoose.edsl.base import slice
 from pymoose.edsl.base import softmax
+from pymoose.edsl.base import sqrt
 from pymoose.edsl.base import square
 from pymoose.edsl.base import squeeze
 from pymoose.edsl.base import sub
@@ -112,6 +113,7 @@ __all__ = [
     sigmoid,
     sub,
     sum,
+    sqrt,
     uint64,
     TensorType,
     transpose,
