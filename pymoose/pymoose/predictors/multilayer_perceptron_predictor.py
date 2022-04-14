@@ -101,9 +101,7 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         elif self.activation == Activation.RELU:
             z_shape = edsl.shape(z)
             with self.bob:
-                ones_1 = edsl.ones(z_shape, dtype=predictor_utils.DEFAULT_FLOAT_DTYPE)
-                ones_2 = edsl.ones(z_shape, dtype=predictor_utils.DEFAULT_FLOAT_DTYPE)
-                zeros = edsl.sub(ones_1, ones_2)
+                zeros = edsl.zeros(z_shape, dtype=predictor_utils.DEFAULT_FLOAT_DTYPE)
                 zeros = edsl.cast(zeros, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
             activation_output = edsl.maximum([zeros, z])
         elif self.activation == Activation.IDENTITY:
