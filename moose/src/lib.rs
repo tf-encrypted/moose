@@ -173,8 +173,7 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic nullary hybrid $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-        let k = |sess, plc| $k(sess, plc, $attributes.clone());
-        crate::execution::kernel_helpers::symbolic_nullary_hybrid::<$u, $plc>(Operator::from($op), k)
+        crate::execution::kernel_helpers::symbolic_nullary_hybrid::<$u, $plc>(Operator::from($op), $k)
     };
 
     (async nullary runtime $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
@@ -438,9 +437,7 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        {
-            crate::execution::kernel_helpers::symbolic_unary_transparent_fn::<$t0, $u, $plc>(Operator::from($op), $k)
-        }
+        crate::execution::kernel_helpers::symbolic_unary_transparent_fn::<$t0, $u, $plc>(Operator::from($op), $k)
     };
 
     (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
@@ -491,14 +488,12 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        {
-            crate::execution::kernel_helpers::symbolic_unary_hybrid_fn::<$t0, $u, _, _, $plc>(Operator::from($op), $k)
-        }
+        crate::execution::kernel_helpers::symbolic_unary_hybrid_fn::<$t0, $u, _, _, $plc>(Operator::from($op), $k)
     };
 
     /* Binary */
 
-    (sync binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+    (sync binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<
                 crate::kernels::TypedBinaryKernel<
@@ -552,7 +547,7 @@ macro_rules! ng_derive_runtime_kernel {
         crate::execution::kernel_helpers::binary_fn::<crate::execution::SyncSession, $t0, $t1, $u, $plc>(Operator::from($op), $k)
     };
 
-    (async binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+    (async binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<
                 crate::kernels::TypedBinaryKernel<
@@ -606,7 +601,7 @@ macro_rules! ng_derive_runtime_kernel {
         crate::execution::kernel_helpers::binary_fn::<crate::execution::AsyncSession, $t0, $t1, $u, $plc>(Operator::from($op), $k)
     };
 
-    (symbolic binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+    (symbolic binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {
         crate::execution::kernel_helpers::symbolic_binary_runtime::<$t0, $t1, $u, $plc>(Operator::from($op))
     };
 
@@ -618,7 +613,7 @@ macro_rules! ng_derive_runtime_kernel {
         crate::execution::kernel_helpers::symbolic_binary_runtime::<$t0, $t1, $u, $plc>(Operator::from($op))
     };
 
-    (symbolic binary concrete $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+    (symbolic binary concrete $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<
                 crate::kernels::TypedBinaryKernel<
@@ -672,7 +667,7 @@ macro_rules! ng_derive_runtime_kernel {
         crate::execution::kernel_helpers::symbolic_binary_concrete_fn::<$t0, $t1, $u, $plc>(Operator::from($op), $k)
     };
 
-    (symbolic binary transparent $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+    (symbolic binary transparent $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<
                 crate::kernels::TypedBinaryKernel<
@@ -726,7 +721,7 @@ macro_rules! ng_derive_runtime_kernel {
         crate::execution::kernel_helpers::symbolic_binary_transparent_fn::<$t0, $t1, $u, $plc>(Operator::from($op), $k)
     };
 
-    (symbolic binary hybrid $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+    (symbolic binary hybrid $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<
                 crate::kernels::TypedBinaryKernel<
@@ -777,9 +772,7 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic binary hybrid $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
-        {
-            crate::execution::kernel_helpers::symbolic_binary_hybrid_fn::<$t0, $t1, $u, _, _, _, $plc>(Operator::from($op), $k)
-        }
+        crate::execution::kernel_helpers::symbolic_binary_hybrid_fn::<$t0, $t1, $u, _, _, _, $plc>(Operator::from($op), $k)
     };
 
     /* Ternary */
@@ -818,31 +811,32 @@ macro_rules! ng_derive_runtime_kernel {
 
     /* Variadic */
 
-    (sync variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty,  attributes[$($attr:ident$(: $prim_ty:ident)?),+]  $k:path, $op:ident) => {
-    {
-        $(
-            let $attr = $op.$attr.clone();
-            // The following block applies the optional Constant type restriction to the attribute and unwraps it
+    (sync variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+        {
             $(
-                let $attr = match $attr {
-                    Constant::$prim_ty(v) => v,
-                    _ => return Err(crate::error::Error::TypeMismatch{
-                        expected: stringify!($prim_ty).to_string(),
-                        found: $attr.ty(),
-                    })
-                };
-            )?
-        )+
-        let k: crate::kernels::TypedVariadicKernelSlice<
-            crate::execution::SyncSession,
-            $plc,
-            $ts,
-            $u,
-        > = Box::new(move |sess, plc, ts| {
-            $k(sess, &plc, $($attr.clone()),+, ts)
-        });
-        crate::execution::kernel_helpers::variadic_box::<crate::execution::SyncSession, $ts, $u, $plc>(Operator::from($op), k)
-    }};
+                let $attr = $op.$attr.clone();
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Constant::$prim_ty(v) => v,
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
+                    };
+                )?
+            )+
+            let k: crate::kernels::TypedVariadicKernelSlice<
+                crate::execution::SyncSession,
+                $plc,
+                $ts,
+                $u,
+            > = Box::new(move |sess, plc, ts| {
+                $k(sess, &plc, $($attr.clone()),+, ts)
+            });
+            crate::execution::kernel_helpers::variadic_box::<crate::execution::SyncSession, $ts, $u, $plc>(Operator::from($op), k)
+        }
+    };
 
     (sync variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::variadic_fn::<crate::execution::SyncSession, $ts, $u, $plc>(Operator::from($op), $k)
@@ -857,9 +851,7 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic variadic transparent $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
-        {
-            crate::execution::kernel_helpers::symbolic_variadic_transparent_fn::<$ts, $u, $plc>(Operator::from($op), $k)
-        }
+        crate::execution::kernel_helpers::symbolic_variadic_transparent_fn::<$ts, $u, $plc>(Operator::from($op), $k)
     };
 
     (symbolic variadic concrete $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
