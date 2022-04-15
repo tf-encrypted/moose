@@ -1,4 +1,4 @@
-use crate::computation::{Computation, Operator, SymbolicValue};
+use crate::computation::{Computation, Operator};
 use crate::execution::SymbolicSession;
 use crate::kernels::NgDispatchKernel;
 use crate::Error;
@@ -30,166 +30,90 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             // TODO(Morten) use DispatchKernel::compile for these as well
             Load(_) | Save(_) | Send(_) | Receive(_) => None,
 
-            Shape(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Broadcast(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            PrfKeyGen(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Xor(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            And(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Or(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            BitExtract(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Shl(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            ShlDim(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Shr(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Sample(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            SampleSeeded(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            RingFixedpointAbs(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
+            Shape(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Broadcast(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            PrfKeyGen(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Xor(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            And(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Or(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            BitExtract(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Shl(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            ShlDim(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Shr(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Sample(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            SampleSeeded(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            RingFixedpointAbs(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             RingFixedpointArgmax(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
+                NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err()
             }
             RingFixedpointMean(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
+                NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err()
             }
             RingFixedpointEncode(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
+                NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err()
             }
             RingFixedpointDecode(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
+                NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err()
             }
-            RingInject(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Fill(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Share(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Reveal(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            TruncPr(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Msb(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            RepToAdt(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            BitDecompose(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            BitCompose(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            AdtToRep(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            DeriveSeed(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Constant(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Input(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Output(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            AtLeast2D(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            FixedpointEncode(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            FixedpointDecode(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Sign(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Transpose(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Squeeze(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Identity(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Cast(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Reshape(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Slice(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Ones(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            ExpandDims(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Concat(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Dot(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Inverse(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Add(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Sub(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Mul(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Mean(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Sum(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Div(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            AddN(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Exp(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Pow2(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Neg(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Log(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Log2(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Equal(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            EqualZero(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Mux(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            LessThan(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            GreaterThan(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            IndexAxis(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Index(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Sigmoid(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Maximum(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Softmax(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Argmax(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Demirror(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Mirror(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Decrypt(op) => {
-                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
-            }
-            Sqrt(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Abs(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Diag(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Zeros(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
+            RingInject(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Fill(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Share(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Reveal(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            TruncPr(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Msb(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            RepToAdt(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            BitDecompose(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            BitCompose(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            AdtToRep(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            DeriveSeed(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Constant(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Input(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Output(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            AtLeast2D(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            FixedpointEncode(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            FixedpointDecode(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Sign(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Transpose(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Squeeze(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Identity(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Cast(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Reshape(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Slice(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Ones(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            ExpandDims(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Concat(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Dot(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Inverse(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Add(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Sub(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Mul(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Mean(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Sum(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Div(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            AddN(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Exp(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Pow2(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Neg(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Log(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Log2(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Equal(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            EqualZero(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Mux(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            LessThan(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            GreaterThan(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            IndexAxis(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Index(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Sigmoid(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Maximum(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Softmax(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Argmax(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Demirror(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Mirror(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Decrypt(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Sqrt(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Abs(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Diag(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Zeros(op) => NgDispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
         };
         if let Some(e) = compile_error {
             return Err(e.into());
