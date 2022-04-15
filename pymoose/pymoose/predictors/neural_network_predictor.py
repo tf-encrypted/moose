@@ -12,6 +12,7 @@ class Activation(Enum):
     IDENTITY = 1
     SIGMOID = 2
     SOFTMAX = 3
+    RELU = 4
 
 
 class NeuralNetwork(aes_predictor.AesPredictor):
@@ -37,19 +38,19 @@ class NeuralNetwork(aes_predictor.AesPredictor):
         activation = self.activations[i]
         if activation == Activation.SIGMOID:
             activation_output = edsl.sigmoid(z)
-        # There is a bug in edsl.shape
-        #  Relu code:
-        #     y_1_shape = edsl.slice(edsl.shape(x), begin=0, end=1)
-        #     ones = edsl.ones(y_1_shape, dtype=edsl.float64)
-        #     ones = edsl.cast(ones, dtype=fixedpoint_dtype)
-        #     zeros = edsl.sub(ones, ones)
-        #     activation_output = edsl.maximum([zeros, y_1])
+        elif activation == Activation.RELU:
+            z_shape = edsl.shape(z)
+            with self.bob:
+                zeros = edsl.zeros(z_shape, dtype=predictor_utils.DEFAULT_FLOAT_DTYPE)
+                zeros = edsl.cast(zeros, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
+            activation_output = edsl.maximum([zeros, z])
         elif activation == Activation.SOFTMAX:
             activation_output = edsl.softmax(z, axis=1, upmost_index=self.n_classes)
         elif activation == Activation.IDENTITY:
             activation_output = z
         else:
             raise ValueError("Invalid or unsupported activation function")
+
         return activation_output
 
     def neural_predictor_fn(self, x, fixedpoint_dtype):
@@ -57,6 +58,7 @@ class NeuralNetwork(aes_predictor.AesPredictor):
         for i in range(num_layers):
             x = self.apply_layer(x, i, fixedpoint_dtype)
             x = self.activation_fn(x, i)
+
         return x
 
     def predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
@@ -84,6 +86,8 @@ class NeuralNetwork(aes_predictor.AesPredictor):
                 activations.append(Activation.SIGMOID)
             elif operations[i] == "Softmax":
                 activations.append(Activation.SOFTMAX)
+            elif operations[i] == "Relu":
+                activations.append(Activation.RELU)
             # PyTorch
             if i > 0:
                 if operations[i] == "Gemm" and operations[i - 1] == "Gemm":
@@ -140,4 +144,22 @@ class NeuralNetwork(aes_predictor.AesPredictor):
             biases = biases[::-1]
             # TF Keras weights need to be transposed
             weights = [item.T for item in weights]
+
+        # `n_features` arg
+        model_input = model_proto.graph.input[0]
+        input_shape = predictor_utils.find_input_shape(model_input)
+        assert len(input_shape) == 2
+        n_features = input_shape[1].dim_value
+
+        first_layer_weights_shape = weights[0].shape
+
+        if n_features != first_layer_weights_shape[0]:
+            raise ValueError(
+                f"In the ONNX file, the input shape has {n_features} "
+                "features and the shape of the weights for the first "
+                f"layer is: {first_layer_weights_shape}. Validate you set "
+                "correctly the `initial_types` when converting "
+                "your model to ONNX."
+            )
+
         return cls(weights, biases, activations)

@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.2.0
+- Use random session id on calls to AsyncTestRuntime via python bindings.
+- Switch to FuturesUnordered for more efficient wait on computation completion
+- Support arbitrary fixedpoint precision pairs from python bindings
+- More complete support of tensor types kernels
+- AsyncSession is now Send (can be sent between threads)
+- Enable use of Shape values on non-Host placement types
+- Add ZerosOp on a host placement (create a vector of zeros of a given shape)
+- Add Tensorflow Keras support
+- Add ReLU activation function (for multilayer perceptron and NN)
+
 ## v0.1.6
 - Memory usage optimizations and reduced cloning
 - Wellformed compiler pass to statically verify a computation with elk: elk compile -p wellformed comp.moose

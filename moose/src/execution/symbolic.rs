@@ -274,15 +274,9 @@ impl DispatchKernel<SymbolicSession> for Operator {
     fn compile(&self, plc: &Placement) -> Result<Kernel<SymbolicSession>> {
         use Operator::*;
         match self {
-            Load(op) => DispatchKernel::compile(op, plc),
-            Save(op) => DispatchKernel::compile(op, plc),
-            Send(op) => DispatchKernel::compile(op, plc),
             Receive(op) => DispatchKernel::compile(op, plc),
-            Fill(op) => DispatchKernel::compile(op, plc),
-            Constant(op) => DispatchKernel::compile(op, plc),
-            Input(op) => DispatchKernel::compile(op, plc),
-            Output(op) => DispatchKernel::compile(op, plc),
-            _ => unimplemented!(),
+            Send(op) => DispatchKernel::compile(op, plc),
+           _ => unimplemented!(),
         }
     }
 }
@@ -310,6 +304,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Broadcast(op) => NgDispatchKernel::compile(op, plc),
             Cast(op) => NgDispatchKernel::compile(op, plc),
             Concat(op) => NgDispatchKernel::compile(op, plc),
+            Constant(op) => NgDispatchKernel::compile(op, plc),
             Decrypt(op) => NgDispatchKernel::compile(op, plc),
             Demirror(op) => NgDispatchKernel::compile(op, plc),
             DeriveSeed(op) => NgDispatchKernel::compile(op, plc),
@@ -320,14 +315,17 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             EqualZero(op) => NgDispatchKernel::compile(op, plc),
             Exp(op) => NgDispatchKernel::compile(op, plc),
             ExpandDims(op) => NgDispatchKernel::compile(op, plc),
+            Fill(op) => NgDispatchKernel::compile(op, plc),
             FixedpointDecode(op) => NgDispatchKernel::compile(op, plc),
             FixedpointEncode(op) => NgDispatchKernel::compile(op, plc),
             GreaterThan(op) => NgDispatchKernel::compile(op, plc),
             Identity(op) => NgDispatchKernel::compile(op, plc),
             Index(op) => NgDispatchKernel::compile(op, plc),
             IndexAxis(op) => NgDispatchKernel::compile(op, plc),
+            Input(op) => NgDispatchKernel::compile(op, plc),
             Inverse(op) => NgDispatchKernel::compile(op, plc),
             LessThan(op) => NgDispatchKernel::compile(op, plc),
+            Load(op) => NgDispatchKernel::compile(op, plc),
             Log(op) => NgDispatchKernel::compile(op, plc),
             Log2(op) => NgDispatchKernel::compile(op, plc),
             Maximum(op) => NgDispatchKernel::compile(op, plc),
@@ -352,6 +350,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             RingInject(op) => NgDispatchKernel::compile(op, plc),
             Sample(op) => NgDispatchKernel::compile(op, plc),
             SampleSeeded(op) => NgDispatchKernel::compile(op, plc),
+            Save(op) => NgDispatchKernel::compile(op, plc),
             Shape(op) => NgDispatchKernel::compile(op, plc),
             Share(op) => NgDispatchKernel::compile(op, plc),
             Shl(op) => NgDispatchKernel::compile(op, plc),
@@ -367,7 +366,9 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Sum(op) => NgDispatchKernel::compile(op, plc),
             Transpose(op) => NgDispatchKernel::compile(op, plc),
             TruncPr(op) => NgDispatchKernel::compile(op, plc),
+            Output(op) => NgDispatchKernel::compile(op, plc),
             Xor(op) => NgDispatchKernel::compile(op, plc),
+            Zeros(op) => NgDispatchKernel::compile(op, plc),
             // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
             op => {
                 let kernel = DispatchKernel::compile(op, plc)?;

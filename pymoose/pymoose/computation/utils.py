@@ -40,6 +40,7 @@ SUPPORTED_TYPES = [
     ops.MulOperation,
     ops.MuxOperation,
     ops.OnesOperation,
+    ops.ZerosOperation,
     ops.OutputOperation,
     ops.SigmoidOperation,
     ops.SoftmaxOperation,
@@ -146,7 +147,8 @@ def _decode(obj):
             }[dtype_name]
         elif obj["__type__"] == "OpSignature":
             return ops.OpSignature(
-                input_types=obj["input_types"], return_type=obj["return_type"],
+                input_types=obj["input_types"],
+                return_type=obj["return_type"],
             )
         elif obj["__type__"] == "ndarray":
             dtype = obj["dtype"]

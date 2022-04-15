@@ -11,6 +11,7 @@ from pymoose.predictors import predictor_utils
 class Activation(Enum):
     IDENTITY = 1
     SIGMOID = 2
+    RELU = 3
 
 
 class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
@@ -37,7 +38,7 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
                     "MLP coefficients must be of type FLOATS, found other."
                 )
             weight = np.asarray(weight.float_data)
-            weight = weight.reshape(dimentions).T
+            weight = weight.reshape(dimentions)
             weights.append(weight)
         biases = []
         for bias in biases_data:
@@ -49,12 +50,31 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
             bias = np.asarray(bias.float_data)
             biases.append(bias)
 
+        # `n_features` arg
+        model_input = model_proto.graph.input[0]
+        input_shape = predictor_utils.find_input_shape(model_input)
+        assert len(input_shape) == 2
+        n_features = input_shape[1].dim_value
+
+        first_layer_weights_shape = weights[0].shape
+
+        if n_features != first_layer_weights_shape[0]:
+            raise ValueError(
+                f"In the ONNX file, the input shape has {n_features} "
+                "features and the shape of the weights for the first "
+                f"layer is: {first_layer_weights_shape}. Validate you set "
+                "correctly the `initial_types` when converting "
+                "your model to ONNX."
+            )
+
         # parse activation function
         activation_str = predictor_utils.find_activation_in_model_proto(
             model_proto, "next_activations", enforce=False
         )
         if activation_str == "Sigmoid":
             activation = Activation.SIGMOID
+        elif activation_str == "Relu":
+            activation = Activation.RELU
         else:
             activation = Activation.IDENTITY
 
@@ -66,7 +86,7 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
 
     def apply_layer(self, input, num_hidden_layers, i, fixedpoint_dtype):
         w = self.fixedpoint_constant(
-            self.weights[i].T, plc=self.mirrored, dtype=fixedpoint_dtype
+            self.weights[i], plc=self.mirrored, dtype=fixedpoint_dtype
         )
         b = self.fixedpoint_constant(
             self.biases[i], plc=self.mirrored, dtype=fixedpoint_dtype
@@ -78,13 +98,12 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     def activation_fn(self, z):
         if self.activation == Activation.SIGMOID:
             activation_output = edsl.sigmoid(z)
-        # There is a bug in edsl.shape
-        #  Relu code:
-        #     y_1_shape = edsl.slice(edsl.shape(x), begin=0, end=1)
-        #     ones = edsl.ones(y_1_shape, dtype=edsl.float64)
-        #     ones = edsl.cast(ones, dtype=fixedpoint_dtype)
-        #     zeros = edsl.sub(ones, ones)
-        #     activation_output = edsl.maximum([zeros, y_1])
+        elif self.activation == Activation.RELU:
+            z_shape = edsl.shape(z)
+            with self.bob:
+                zeros = edsl.zeros(z_shape, dtype=predictor_utils.DEFAULT_FLOAT_DTYPE)
+                zeros = edsl.cast(zeros, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
+            activation_output = edsl.maximum([zeros, z])
         elif self.activation == Activation.IDENTITY:
             activation_output = z
         else:

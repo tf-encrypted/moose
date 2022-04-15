@@ -153,11 +153,7 @@ impl DispatchKernel<SyncSession> for Operator {
         match self {
             Send(op) => DispatchKernel::compile(op, plc),
             Receive(op) => DispatchKernel::compile(op, plc),
-            Fill(op) => DispatchKernel::compile(op, plc),
-            Constant(op) => DispatchKernel::compile(op, plc),
-            Input(op) => DispatchKernel::compile(op, plc),
-            Output(op) => DispatchKernel::compile(op, plc),
-            _ => unimplemented!(),
+           _ => unimplemented!(),
         }
     }
 }
@@ -197,6 +193,7 @@ impl Session for SyncSession {
                 };
                 return Ok(HostUnit(host.clone()).into());
             }
+
             Abs(op) => NgDispatchKernel::compile(op, plc),
             Add(op) => NgDispatchKernel::compile(op, plc),
             AdtToRep(op) => NgDispatchKernel::compile(op, plc),
@@ -210,6 +207,7 @@ impl Session for SyncSession {
             Broadcast(op) => NgDispatchKernel::compile(op, plc),
             Cast(op) => NgDispatchKernel::compile(op, plc),
             Concat(op) => NgDispatchKernel::compile(op, plc),
+            Constant(op) => NgDispatchKernel::compile(op, plc),
             Decrypt(op) => NgDispatchKernel::compile(op, plc),
             Demirror(op) => NgDispatchKernel::compile(op, plc),
             DeriveSeed(op) => NgDispatchKernel::compile(op, plc),
@@ -220,12 +218,14 @@ impl Session for SyncSession {
             EqualZero(op) => NgDispatchKernel::compile(op, plc),
             Exp(op) => NgDispatchKernel::compile(op, plc),
             ExpandDims(op) => NgDispatchKernel::compile(op, plc),
+            Fill(op) => NgDispatchKernel::compile(op, plc),
             FixedpointDecode(op) => NgDispatchKernel::compile(op, plc),
             FixedpointEncode(op) => NgDispatchKernel::compile(op, plc),
             GreaterThan(op) => NgDispatchKernel::compile(op, plc),
             Identity(op) => NgDispatchKernel::compile(op, plc),
             Index(op) => NgDispatchKernel::compile(op, plc),
             IndexAxis(op) => NgDispatchKernel::compile(op, plc),
+            Input(op) => NgDispatchKernel::compile(op, plc),
             Inverse(op) => NgDispatchKernel::compile(op, plc),
             LessThan(op) => NgDispatchKernel::compile(op, plc),
             Log(op) => NgDispatchKernel::compile(op, plc),
@@ -267,7 +267,9 @@ impl Session for SyncSession {
             Sum(op) => NgDispatchKernel::compile(op, plc),
             Transpose(op) => NgDispatchKernel::compile(op, plc),
             TruncPr(op) => NgDispatchKernel::compile(op, plc),
+            Output(op) => NgDispatchKernel::compile(op, plc),
             Xor(op) => NgDispatchKernel::compile(op, plc),
+            Zeros(op) => NgDispatchKernel::compile(op, plc),
             // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
             op => {
                 let kernel = DispatchKernel::compile(op, plc)?;

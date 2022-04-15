@@ -9,17 +9,17 @@ use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
 use crate::storage::{AsyncStorage, LocalAsyncStorage};
 use futures::future::{Map, Shared};
+use futures::stream::FuturesUnordered;
+use futures::StreamExt;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
-pub type AsyncValue = crate::execution::AsyncReceiver;
+type AsyncSender = oneshot::Sender<Value>;
 
-pub(crate) type AsyncSender = oneshot::Sender<Value>;
-
-pub(crate) type AsyncReceiver = Shared<
+type AsyncReceiver = Shared<
     Map<
         oneshot::Receiver<Value>,
         fn(anyhow::Result<Value, oneshot::error::RecvError>) -> anyhow::Result<Value, ()>,
@@ -54,30 +54,15 @@ pub(crate) fn map_receive_error<T>(_: T) -> Error {
 }
 
 pub struct AsyncSessionHandle {
-    pub(crate) tasks: Arc<RwLock<Vec<crate::execution::AsyncTask>>>,
+    tasks: FuturesUnordered<AsyncTask>,
 }
 
 impl AsyncSessionHandle {
-    pub fn for_session(session: &AsyncSession) -> Self {
-        AsyncSessionHandle {
-            tasks: Arc::clone(&session.tasks),
-        }
-    }
-
-    pub async fn join_on_first_error(self) -> anyhow::Result<()> {
+    pub async fn join_on_first_error(mut self) -> anyhow::Result<()> {
         use crate::error::Error::{OperandUnavailable, ResultUnused};
-        // use futures::StreamExt;
 
-        let mut tasks_guard = self.tasks.write().unwrap();
-        // TODO (lvorona): should really find a way to use FuturesUnordered here
-        // let mut tasks = (*tasks_guard)
-        //     .into_iter()
-        //     .collect::<futures::stream::FuturesUnordered<_>>();
-
-        let mut tasks = tasks_guard.iter_mut();
-
-        while let Some(x) = tasks.next() {
-            let x = x.await;
+        let mut maybe_error = None;
+        while let Some(x) = self.tasks.next().await {
             match x {
                 Ok(Ok(_)) => {
                     continue;
@@ -90,10 +75,8 @@ impl AsyncSessionHandle {
                         OperandUnavailable => continue,
                         ResultUnused => continue,
                         _ => {
-                            for task in tasks {
-                                task.abort();
-                            }
-                            return Err(anyhow::Error::from(e));
+                            maybe_error = Some(Err(anyhow::Error::from(e)));
+                            break;
                         }
                     }
                 }
@@ -101,15 +84,21 @@ impl AsyncSessionHandle {
                     if e.is_cancelled() {
                         continue;
                     } else if e.is_panic() {
-                        for task in tasks {
-                            task.abort();
-                        }
-                        return Err(anyhow::Error::from(e));
+                        maybe_error = Some(Err(anyhow::Error::from(e)));
+                        break;
                     }
                 }
             }
         }
-        Ok(())
+
+        if let Some(e) = maybe_error {
+            for task in self.tasks.iter_mut() {
+                task.abort();
+            }
+            e
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -121,7 +110,7 @@ pub struct AsyncSession {
     pub role_assignments: Arc<HashMap<Role, Identity>>,
     pub networking: AsyncNetworkingImpl,
     pub storage: AsyncStorageImpl,
-    pub(crate) tasks: Arc<RwLock<Vec<crate::execution::AsyncTask>>>,
+    pub tasks: Arc<Mutex<Option<FuturesUnordered<AsyncTask>>>>,
 }
 
 impl AsyncSession {
@@ -138,8 +127,52 @@ impl AsyncSession {
             role_assignments: Arc::new(role_assignments),
             networking,
             storage,
-            tasks: Default::default(),
+            tasks: Arc::new(Mutex::new(Some(Default::default()))),
         }
+    }
+
+    /// Adds a task into the specified collection of tasks.
+    ///
+    /// The collection is usually a `&sess.tasks`. This is an associated function instead of a method due to
+    /// the fact that the current kernels move the cloned session into the created task. To avoid cloning the
+    /// entire session, this function expects just a reference to an Arc-cloned session's tasks.
+    pub(crate) fn add_task(
+        session_tasks: &Arc<Mutex<Option<FuturesUnordered<AsyncTask>>>>,
+        task: AsyncTask,
+    ) -> Result<()> {
+        let tasks_guard = session_tasks.lock().map_err(|e| {
+            Error::MalformedEnvironment(format!(
+                "Failed to obtain a lock to the tasks in the session. {}",
+                e
+            ))
+        })?;
+        tasks_guard
+            .as_ref()
+            .map(|tasks| tasks.push(task))
+            .ok_or_else(|| {
+                Error::MalformedEnvironment(
+                    "Impossible to add a task. Session has been already converted into a handle"
+                        .to_string(),
+                )
+            })
+    }
+
+    /// Consumes self and return a handle with the tasks crated in the session.
+    ///
+    /// Errors if the session has been already converted into a handle.
+    pub fn into_handle(self) -> Result<AsyncSessionHandle> {
+        let mut tasks_guard = self.tasks.lock().map_err(|e| {
+            Error::MalformedEnvironment(format!(
+                "Failed to obtain a lock to the tasks in the session. {}",
+                e
+            ))
+        })?;
+        let tasks = tasks_guard.take().ok_or_else(|| {
+            Error::MalformedEnvironment(
+                "Session has been already converted into a handle".to_string(),
+            )
+        })?;
+        Ok(AsyncSessionHandle { tasks })
     }
 }
 
@@ -181,8 +214,7 @@ impl AsyncSession {
             map_send_result(sender.send(value))?;
             Ok(())
         });
-        let mut tasks = self.tasks.write().unwrap();
-        tasks.push(task);
+        Self::add_task(&self.tasks, task)?;
 
         Ok(receiver)
     }
@@ -219,8 +251,7 @@ impl AsyncSession {
             map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let mut tasks = self.tasks.write().unwrap();
-        tasks.push(task);
+        Self::add_task(&self.tasks, task)?;
 
         Ok(receiver)
     }
@@ -247,8 +278,7 @@ impl AsyncSession {
             map_send_result(sender.send(value))?;
             Ok(())
         });
-        let mut tasks = self.tasks.write().unwrap();
-        tasks.push(task);
+        Self::add_task(&self.tasks, task)?;
 
         Ok(receiver)
     }
@@ -282,12 +312,13 @@ impl AsyncSession {
             map_send_result(sender.send(result.into()))?;
             Ok(())
         });
-        let mut tasks = self.tasks.write().unwrap();
-        tasks.push(task);
+        Self::add_task(&self.tasks, task)?;
 
         Ok(receiver)
     }
 }
+
+pub type AsyncValue = AsyncReceiver;
 
 pub(crate) fn new_async_value() -> (AsyncSender, AsyncReceiver) {
     // TODO(Morten) make second attempt at inlining
@@ -336,11 +367,7 @@ impl DispatchKernel<AsyncSession> for Operator {
             // these must be handled elsewhere by AsyncSession
             Send(op) => DispatchKernel::compile(op, plc),
             Receive(op) => DispatchKernel::compile(op, plc),
-            Fill(op) => DispatchKernel::compile(op, plc),
-            Constant(op) => DispatchKernel::compile(op, plc),
-            Input(op) => DispatchKernel::compile(op, plc),
-            Output(op) => DispatchKernel::compile(op, plc),
-            _ => unimplemented!(),
+           _ => unimplemented!(),
         }
     }
 }
@@ -371,6 +398,7 @@ impl Session for AsyncSession {
                     unimplemented!()
                 }
             }
+
             Abs(op) => NgDispatchKernel::compile(op, plc),
             Add(op) => NgDispatchKernel::compile(op, plc),
             AdtToRep(op) => NgDispatchKernel::compile(op, plc),
@@ -384,6 +412,7 @@ impl Session for AsyncSession {
             Broadcast(op) => NgDispatchKernel::compile(op, plc),
             Cast(op) => NgDispatchKernel::compile(op, plc),
             Concat(op) => NgDispatchKernel::compile(op, plc),
+            Constant(op) => NgDispatchKernel::compile(op, plc),
             Decrypt(op) => NgDispatchKernel::compile(op, plc),
             Demirror(op) => NgDispatchKernel::compile(op, plc),
             DeriveSeed(op) => NgDispatchKernel::compile(op, plc),
@@ -394,12 +423,14 @@ impl Session for AsyncSession {
             EqualZero(op) => NgDispatchKernel::compile(op, plc),
             Exp(op) => NgDispatchKernel::compile(op, plc),
             ExpandDims(op) => NgDispatchKernel::compile(op, plc),
+            Fill(op) => NgDispatchKernel::compile(op, plc),
             FixedpointDecode(op) => NgDispatchKernel::compile(op, plc),
             FixedpointEncode(op) => NgDispatchKernel::compile(op, plc),
             GreaterThan(op) => NgDispatchKernel::compile(op, plc),
             Identity(op) => NgDispatchKernel::compile(op, plc),
             Index(op) => NgDispatchKernel::compile(op, plc),
             IndexAxis(op) => NgDispatchKernel::compile(op, plc),
+            Input(op) => NgDispatchKernel::compile(op, plc),
             Inverse(op) => NgDispatchKernel::compile(op, plc),
             LessThan(op) => NgDispatchKernel::compile(op, plc),
             Log(op) => NgDispatchKernel::compile(op, plc),
@@ -441,6 +472,7 @@ impl Session for AsyncSession {
             Sum(op) => NgDispatchKernel::compile(op, plc),
             Transpose(op) => NgDispatchKernel::compile(op, plc),
             TruncPr(op) => NgDispatchKernel::compile(op, plc),
+            Output(op) => NgDispatchKernel::compile(op, plc),
             Xor(op) => NgDispatchKernel::compile(op, plc),
             // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
             op => {
@@ -452,7 +484,6 @@ impl Session for AsyncSession {
             NgKernel::Nullary { closure } => {
                 let (sender, receiver) = crate::execution::asynchronous::new_async_value();
 
-                let tasks = std::sync::Arc::clone(&self.tasks);
                 let sess = self.clone();
                 let plc = plc.clone();
 
@@ -463,14 +494,12 @@ impl Session for AsyncSession {
                         crate::execution::map_send_result(sender.send(y))?;
                         Ok(())
                     });
-                let mut tasks = tasks.write().unwrap();
-                tasks.push(task);
+                Self::add_task(&self.tasks, task)?;
                 Ok(receiver)
             }
             NgKernel::Unary { closure } => {
                 let (sender, receiver) = crate::execution::asynchronous::new_async_value();
 
-                let tasks = std::sync::Arc::clone(&self.tasks);
                 let sess = self.clone();
                 let plc = plc.clone();
 
@@ -487,14 +516,12 @@ impl Session for AsyncSession {
                         crate::execution::map_send_result(sender.send(y))?;
                         Ok(())
                     });
-                let mut tasks = tasks.write().unwrap();
-                tasks.push(task);
+                Self::add_task(&self.tasks, task)?;
                 Ok(receiver)
             }
             NgKernel::Binary { closure } => {
                 let (sender, receiver) = crate::execution::asynchronous::new_async_value();
 
-                let tasks = std::sync::Arc::clone(&self.tasks);
                 let sess = self.clone();
                 let plc = plc.clone();
 
@@ -515,14 +542,12 @@ impl Session for AsyncSession {
                         crate::execution::map_send_result(sender.send(y))?;
                         Ok(())
                     });
-                let mut tasks = tasks.write().unwrap();
-                tasks.push(task);
+                Self::add_task(&self.tasks, task)?;
                 Ok(receiver)
             }
             NgKernel::Ternary { closure } => {
                 let (sender, receiver) = crate::execution::asynchronous::new_async_value();
 
-                let tasks = std::sync::Arc::clone(&self.tasks);
                 let sess = self.clone();
                 let plc = plc.clone();
 
@@ -547,15 +572,12 @@ impl Session for AsyncSession {
                         crate::execution::map_send_result(sender.send(y))?;
                         Ok(())
                     });
-                let mut tasks = tasks.write().unwrap();
-                tasks.push(task);
-
+                Self::add_task(&self.tasks, task)?;
                 Ok(receiver)
             }
             NgKernel::Variadic { closure } => {
                 let (sender, receiver) = crate::execution::asynchronous::new_async_value();
 
-                let tasks = std::sync::Arc::clone(&self.tasks);
                 let sess = self.clone();
                 let plc = plc.clone();
 
@@ -570,9 +592,7 @@ impl Session for AsyncSession {
                         crate::execution::map_send_result(sender.send(y))?;
                         Ok(())
                     });
-                let mut tasks = tasks.write().unwrap();
-                tasks.push(task);
-
+                Self::add_task(&self.tasks, task)?;
                 Ok(receiver)
             }
         }
@@ -763,11 +783,14 @@ impl AsyncTestRuntime {
                 output_futures.insert(output_name, output_future);
             }
 
-            session_handles.push(AsyncSessionHandle::for_session(&moose_session))
+            session_handles.push(moose_session.into_handle()?)
         }
 
-        for handle in session_handles {
-            let result = rt.block_on(handle.join_on_first_error());
+        let mut futures: FuturesUnordered<_> = session_handles
+            .into_iter()
+            .map(|h| h.join_on_first_error())
+            .collect();
+        while let Some(result) = rt.block_on(futures.next()) {
             if let Err(e) = result {
                 return Err(Error::TestRuntime(e.to_string()));
             }

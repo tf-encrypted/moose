@@ -18,6 +18,7 @@ _MODELS = [
     ("pytorch_net_2hidden_layer_sigmoid", [[0.5311462, 0.46885377]]),
     ("keras_net_1hidden_layer_sigmoid", [[0.7901215, 0.20987843]]),
     ("keras_net_2hidden_layer_sigmoid", [[0.37569475, 0.6243052]]),
+    ("pytorch_net_1hidden_layer_relu", [[0.53269005, 0.46730995]]),
 ]
 
 

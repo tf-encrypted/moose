@@ -152,7 +152,8 @@ class TreeEnsembleTest(parameterized.TestCase):
     @parameterized.parameters(
         *zip(_REGRESSOR_MODELS, itertools.repeat(tree_ensemble.TreeEnsembleRegressor)),
         *zip(
-            _CLASSIFIER_MODELS, itertools.repeat(tree_ensemble.TreeEnsembleClassifier),
+            _CLASSIFIER_MODELS,
+            itertools.repeat(tree_ensemble.TreeEnsembleClassifier),
         ),
     )
     def test_tree_ensemble_logic(self, test_case, predictor_cls):

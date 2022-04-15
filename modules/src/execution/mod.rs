@@ -87,7 +87,7 @@ impl ExecutionContext {
             }
         }
 
-        let handle = AsyncSessionHandle::for_session(&session);
+        let handle = session.into_handle()?;
         Ok((handle, outputs))
     }
 
@@ -163,7 +163,7 @@ impl ExecutionContext {
             }
         }
 
-        let handle = AsyncSessionHandle::for_session(&session);
+        let handle = session.into_handle()?;
         Ok((handle, outputs))
     }
 }

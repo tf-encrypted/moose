@@ -1,0 +1,13 @@
+absl-py
+black
+flake8-black
+flake8-isort
+flake8
+isort
+msgpack
+numpy
+onnx~=1.10.0
+pip~=21.2
+pytest
+setuptools-rust~=0.12.1
+wheel~=0.36.2

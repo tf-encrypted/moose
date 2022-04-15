@@ -606,34 +606,6 @@ values![
     AesTensor,
 ];
 
-// A macros to define something common for all the possible values
-#[macro_export]
-macro_rules! for_all_values {( $($rules:tt)* ) => (
-    macro_rules! __emit__ { $($rules)* }
-    __emit__! {
-        HostString,
-        HostUnit,
-        HostShape,
-        HostSeed,
-        HostPrfKey,
-        HostBitTensor,
-        HostRing64Tensor,
-        HostRing128Tensor,
-        HostFloat32Tensor,
-        HostFloat64Tensor,
-        HostInt8Tensor,
-        HostInt16Tensor,
-        HostInt32Tensor,
-        HostInt64Tensor,
-        HostUint8Tensor,
-        HostUint16Tensor,
-        HostUint32Tensor,
-        HostUint64Tensor,
-        HostFixed64Tensor,
-        HostFixed128Tensor
-    }
-)}
-
 // HostUnit is still special. Placed unit is just a host placement.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostUnit(pub HostPlacement);
@@ -888,6 +860,7 @@ operators![
     IndexAxis,
     Slice,
     Ones,
+    Zeros,
     ExpandDims,
     Concat,
     Reshape,
@@ -1065,6 +1038,13 @@ pub struct SliceOp {
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct OnesOp {
+    pub sig: Signature,
+}
+
+#[derive(
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+)]
+pub struct ZerosOp {
     pub sig: Signature,
 }
 

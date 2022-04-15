@@ -1,6 +1,6 @@
 use crate::computation::{Computation, Operator, SymbolicValue};
 use crate::execution::SymbolicSession;
-use crate::kernels::{DispatchKernel, NgDispatchKernel};
+use crate::kernels::{NgDispatchKernel};
 use crate::Error;
 use std::collections::HashSet;
 
@@ -72,7 +72,7 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             RingInject(op) => {
                 NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
             }
-            Fill(op) => DispatchKernel::<SymbolicSession>::compile(op, plc).err(),
+            Fill(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
             Share(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
             Reveal(op) => {
                 NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
@@ -96,9 +96,13 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             DeriveSeed(op) => {
                 NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
             }
-            Constant(op) => DispatchKernel::<SymbolicSession>::compile(op, plc).err(),
-            Input(op) => DispatchKernel::<SymbolicSession>::compile(op, plc).err(),
-            Output(op) => DispatchKernel::<SymbolicSession>::compile(op, plc).err(),
+            Constant(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
+            Input(op) => {
+                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
+            }
+            Output(op) => {
+                NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
+            }
             AtLeast2D(op) => {
                 NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
             }
@@ -185,6 +189,7 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             Sqrt(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
             Abs(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
             Diag(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
+            Zeros(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
         };
         if let Some(e) = compile_error {
             return Err(e.into());

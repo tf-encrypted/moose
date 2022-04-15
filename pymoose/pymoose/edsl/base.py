@@ -96,7 +96,7 @@ class Argument:
 @dataclass
 class Expression:
     placement: PlacementExpression
-    inputs: List
+    inputs: List["Expression"]
     vtype: Optional[ty.ValueType]
 
     def __hash__(self):
@@ -177,8 +177,12 @@ class SqueezeExpression(Expression):
 
 @dataclass
 class OnesExpression(Expression):
-    dtype: dtypes.DType
+    def __hash__(self):
+        return id(self)
 
+
+@dataclass
+class ZerosExpression(Expression):
     def __hash__(self):
         return id(self)
 
@@ -454,7 +458,9 @@ def decrypt(key, ciphertext, placement=None):
     output_type = ty.TensorType(output_dtype)
 
     return DecryptExpression(
-        placement=placement, inputs=[key, ciphertext], vtype=output_type,
+        placement=placement,
+        inputs=[key, ciphertext],
+        vtype=output_type,
     )
 
 
@@ -610,7 +616,14 @@ def ones(shape, dtype, placement=None):
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
     vtype = ty.TensorType(dtype)
-    return OnesExpression(placement=placement, inputs=[shape], dtype=dtype, vtype=vtype)
+    return OnesExpression(placement=placement, inputs=[shape], vtype=vtype)
+
+
+def zeros(shape, dtype, placement=None):
+    assert isinstance(shape, Expression)
+    placement = placement or get_current_placement()
+    vtype = ty.TensorType(dtype)
+    return ZerosExpression(placement=placement, inputs=[shape], vtype=vtype)
 
 
 def square(x, placement=None):
@@ -670,7 +683,11 @@ def argmax(x, axis, upmost_index, placement=None):
 def log(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return LogExpression(placement=placement, inputs=[x], vtype=x.vtype,)
+    return LogExpression(
+        placement=placement,
+        inputs=[x],
+        vtype=x.vtype,
+    )
 
 
 def log2(x, placement=None):

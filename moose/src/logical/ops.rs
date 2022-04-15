@@ -1492,6 +1492,28 @@ impl OnesOp {
     }
 }
 
+impl ZerosOp {
+    #[allow(clippy::type_complexity)]
+    pub(crate) fn logical_host_kernel<S: Session, TensorT, HostS, RepS>(
+        sess: &S,
+        plc: &HostPlacement,
+        shape: AbstractShape<HostS, RepS>,
+    ) -> Result<m!(TensorT)>
+    where
+        TensorT: KnownType<S>,
+        HostPlacement: PlacementZeros<S, HostS, m!(TensorT)>,
+        HostPlacement: PlacementReveal<S, RepS, HostS>,
+    {
+        match shape {
+            AbstractShape::Host(sh) => Ok(plc.zeros(sess, &sh)),
+            AbstractShape::Replicated(sh) => {
+                let sh = plc.reveal(sess, &sh);
+                Ok(plc.zeros(sess, &sh))
+            }
+        }
+    }
+}
+
 impl ExpandDimsOp {
     pub(crate) fn logical_host_kernel<
         S: Session,

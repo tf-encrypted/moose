@@ -5,7 +5,6 @@ use crate::computation::*;
 use crate::error::Error;
 use crate::error::Result;
 use crate::execution::{Operands, Session};
-use crate::for_all_values;
 use crate::host::HostPlacement;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
@@ -38,6 +37,11 @@ pub type Kernel<S> =
 
 pub trait DispatchKernel<S: Session> {
     fn compile(&self, plc: &Placement) -> Result<Kernel<S>>;
+
+    fn execute(&self, plc: &Placement, sess: &S, operands: Operands<S::Value>) -> Result<S::Value> {
+        let kernel = Self::compile(self, plc)?;
+        kernel(sess, operands)
+    }
 }
 
 pub type NgNullaryKernel<S, V> = Box<
