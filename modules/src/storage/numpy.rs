@@ -2,7 +2,7 @@ use moose::error::Error;
 use moose::prelude::*;
 use moose::Result;
 use ndarray::ArrayD;
-use ndarray_npy::read_npy;
+use ndarray_npy::{read_npy, write_npy};
 use std::fs::File;
 use std::io::Read;
 
@@ -98,6 +98,67 @@ pub(crate) async fn read_numpy(
             Ok(value)
         }
     }
+}
+
+#[allow(dead_code)]
+pub(crate) async fn write_numpy(filename: &str, data: &Value) -> Result<()> {
+    match data {
+        Value::HostFloat64Tensor(t) => {
+            write_npy(filename, &t.0).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write moose value to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+        }
+        Value::HostFloat32Tensor(t) => {
+            write_npy(filename, &t.0).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write moose value to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+        }
+        Value::HostUint32Tensor(t) => {
+            write_npy(filename, &t.0).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write moose value to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+        }
+        Value::HostUint64Tensor(t) => {
+            write_npy(filename, &t.0).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write moose value to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+        }
+        Value::HostInt32Tensor(t) => {
+            write_npy(filename, &t.0).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write moose value to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+        }
+        Value::HostInt64Tensor(t) => {
+            write_npy(filename, &t.0).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write moose value to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+        }
+        _ => {
+            return Err(Error::Storage(format!(
+                "cannot write unsupported tensor to numpy file: {}",
+                filename
+            )))
+        }
+    }
+    Ok(())
 }
 
 fn match_char(got: u8, expected: char) -> Result<()> {
@@ -274,6 +335,28 @@ mod tests {
         file.write_all(&raw_bytes).unwrap();
 
         let plc = HostPlacement::from("host");
+        let data = read_numpy(&filename, &plc, None).await.unwrap();
+        assert_eq!(data, expected);
+    }
+
+    #[tokio::test]
+    async fn test_write_numpy() {
+        let plc = HostPlacement::from("host");
+        let tensor: HostFloat64Tensor = plc.from_raw(array![
+            [[2.3, 4.0, 5.0], [6.0, 7.0, 12.0]],
+            [[8.0, 9.0, 14.0], [10.0, 11.0, 16.0]]
+        ]);
+        let expected = Value::from(tensor);
+
+        let file = NamedTempFile::new().expect("trying to create tempfile");
+        let path = file.path();
+        let filename = path
+            .to_str()
+            .expect("trying to get path from temp file")
+            .to_string();
+
+        write_numpy(&filename, &expected).await.unwrap();
+
         let data = read_numpy(&filename, &plc, None).await.unwrap();
         assert_eq!(data, expected);
     }
