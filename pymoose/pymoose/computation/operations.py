@@ -154,6 +154,9 @@ class ExpOperation(Operation):
 class SigmoidOperation(Operation):
     pass
 
+@dataclass
+class ReluOperation(Operation):
+    pass
 
 @dataclass
 class LogOperation(Operation):
