@@ -9,8 +9,7 @@ use super::{Operands, Session, SetupGeneration};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::HostPrfKey;
-use crate::kernels::{DispatchKernel, Kernel, PlacementPlace};
-use crate::kernels::{NgDispatchKernel, NgKernel};
+use crate::kernels::{NgDispatchKernel, NgKernel, PlacementPlace};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
 use crate::{MirroredCounterpart, Ring, TensorLike, Underlying};
 use parking_lot::RwLock;
@@ -241,16 +240,16 @@ impl SetupGeneration<ReplicatedPlacement> for SymbolicSession {
     }
 }
 
-impl DispatchKernel<SymbolicSession> for SendOp {
-    fn compile(&self, _plc: &Placement) -> Result<Kernel<SymbolicSession>> {
+impl NgDispatchKernel<SymbolicSession, SymbolicValue> for SendOp {
+    fn compile(&self, _plc: &Placement) -> Result<NgKernel<SymbolicSession, SymbolicValue>> {
         Err(Error::Compilation(
             "SendOp not supported on symbolic sessions".to_string(),
         ))
     }
 }
 
-impl DispatchKernel<SymbolicSession> for ReceiveOp {
-    fn compile(&self, _plc: &Placement) -> Result<Kernel<SymbolicSession>> {
+impl NgDispatchKernel<SymbolicSession, SymbolicValue> for ReceiveOp {
+    fn compile(&self, _plc: &Placement) -> Result<NgKernel<SymbolicSession, SymbolicValue>> {
         Err(Error::Compilation(
             "ReceiveOp not supported on symbolic sessions".to_string(),
         ))
@@ -270,27 +269,12 @@ pub(crate) trait SymbolicStrategy {
 #[derive(Clone, Copy, Debug)]
 struct DefaultSymbolicStrategy;
 
-impl DispatchKernel<SymbolicSession> for Operator {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<SymbolicSession>> {
+impl NgDispatchKernel<SymbolicSession, SymbolicValue> for Operator {
+    fn compile(&self, plc: &Placement) -> Result<NgKernel<SymbolicSession, SymbolicValue>> {
         use Operator::*;
         match self {
-            Receive(op) => DispatchKernel::compile(op, plc),
-            Send(op) => DispatchKernel::compile(op, plc),
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl SymbolicStrategy for DefaultSymbolicStrategy {
-    fn execute(
-        &self,
-        sess: &SymbolicSession,
-        op: &Operator,
-        plc: &Placement,
-        mut operands: Operands<SymbolicValue>,
-    ) -> Result<SymbolicValue> {
-        use Operator::*;
-        let kernel: NgKernel<SymbolicSession, _> = match op {
+            Receive(op) => NgDispatchKernel::compile(op, plc),
+            Send(op) => NgDispatchKernel::compile(op, plc),
             Abs(op) => NgDispatchKernel::compile(op, plc),
             Add(op) => NgDispatchKernel::compile(op, plc),
             AdtToRep(op) => NgDispatchKernel::compile(op, plc),
@@ -369,12 +353,19 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Output(op) => NgDispatchKernel::compile(op, plc),
             Xor(op) => NgDispatchKernel::compile(op, plc),
             Zeros(op) => NgDispatchKernel::compile(op, plc),
-            // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
-            op => {
-                let kernel = DispatchKernel::compile(op, plc)?;
-                return kernel(sess, operands);
-            }
-        }?;
+        }
+    }
+}
+
+impl SymbolicStrategy for DefaultSymbolicStrategy {
+    fn execute(
+        &self,
+        sess: &SymbolicSession,
+        op: &Operator,
+        plc: &Placement,
+        mut operands: Operands<SymbolicValue>,
+    ) -> Result<SymbolicValue> {
+        let kernel: NgKernel<SymbolicSession, _> = NgDispatchKernel::compile(op, plc)?;
         match kernel {
             NgKernel::Nullary { closure } => {
                 assert_eq!(operands.len(), 0);
