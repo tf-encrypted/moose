@@ -4,7 +4,6 @@ use super::{Identity, Operands, RuntimeSession, Session, SetupGeneration};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::*;
-use crate::kernels::{DispatchKernel, Kernel};
 use crate::kernels::{NgDispatchKernel, NgKernel};
 use crate::networking::{LocalSyncNetworking, SyncNetworking};
 use crate::replicated::*;
@@ -103,41 +102,42 @@ impl SyncSession {
     }
 }
 
-impl DispatchKernel<SyncSession> for SendOp {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession>> {
+impl NgDispatchKernel<SyncSession, Value> for SendOp {
+    fn compile(&self, plc: &Placement) -> Result<NgKernel<SyncSession, Value>> {
         if let Placement::Host(plc) = plc {
             let plc = plc.clone();
             let op = self.clone();
-            Ok(Box::new(move |sess, operands| {
-                assert_eq!(operands.len(), 1);
-                let x = operands.get(0).unwrap();
-                sess.networking.send(
-                    x,
-                    sess.find_role_assignment(&op.receiver)?,
-                    &op.rendezvous_key,
-                    &sess.session_id,
-                )?;
-                Ok(HostUnit(plc.clone()).into())
-            }))
+            Ok(NgKernel::Unary {
+                closure: Box::new(move |sess, _plc, x| {
+                    sess.networking.send(
+                        &x,
+                        sess.find_role_assignment(&op.receiver)?,
+                        &op.rendezvous_key,
+                        &sess.session_id,
+                    )?;
+                    Ok(HostUnit(plc.clone()).into())
+                }),
+            })
         } else {
             unimplemented!()
         }
     }
 }
 
-impl DispatchKernel<SyncSession> for ReceiveOp {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession>> {
+impl NgDispatchKernel<SyncSession, Value> for ReceiveOp {
+    fn compile(&self, plc: &Placement) -> Result<NgKernel<SyncSession, Value>> {
         if let Placement::Host(_plc) = plc {
             let op = self.clone();
-            Ok(Box::new(move |sess, operands| {
-                assert_eq!(operands.len(), 0);
-                // TODO(Morten) we should verify type of received value
-                sess.networking.receive(
-                    sess.find_role_assignment(&op.sender)?,
-                    &op.rendezvous_key,
-                    &sess.session_id,
-                )
-            }))
+            Ok(NgKernel::Nullary {
+                closure: Box::new(move |sess, _plc| {
+                    // TODO(Morten) we should verify type of received value
+                    sess.networking.receive(
+                        sess.find_role_assignment(&op.sender)?,
+                        &op.rendezvous_key,
+                        &sess.session_id,
+                    )
+                }),
+            })
         } else {
             Err(Error::UnimplementedOperator(format!(
                 "ReceiveOp is not implemented for placement {:?}",
@@ -147,52 +147,14 @@ impl DispatchKernel<SyncSession> for ReceiveOp {
     }
 }
 
-impl DispatchKernel<SyncSession> for Operator {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession>> {
+impl NgDispatchKernel<SyncSession, Value> for Operator {
+    fn compile(&self, plc: &Placement) -> Result<NgKernel<SyncSession, Value>> {
         use Operator::*;
         match self {
-            Send(op) => DispatchKernel::compile(op, plc),
-            Receive(op) => DispatchKernel::compile(op, plc),
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl Session for SyncSession {
-    type Value = Value;
-
-    fn execute(
-        &self,
-        op: &Operator,
-        plc: &Placement,
-        mut operands: Operands<Value>,
-    ) -> Result<Value> {
-        use Operator::*;
-        let kernel: NgKernel<SyncSession, _> = match op {
-            // TODO(Morten) we should verify type of loaded value
-            Load(op) => {
-                use std::convert::TryInto;
-                assert_eq!(operands.len(), 2);
-                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
-                let query: HostString = operands.get(1).unwrap().clone().try_into()?;
-                return self
-                    .storage
-                    .load(&key.0, &self.session_id, Some(op.sig.ret()), &query.0);
-            }
-            Save(_) => {
-                use std::convert::TryInto;
-                assert_eq!(operands.len(), 2);
-                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
-                let x = operands.get(1).unwrap().clone();
-                self.storage.save(&key.0, &self.session_id, &x)?;
-                let host = match plc {
-                    Placement::Host(host) => host,
-                    _ => unimplemented!(
-                        "SyncSession does not support running Save on non-host placements yet"
-                    ),
-                };
-                return Ok(HostUnit(host.clone()).into());
-            }
+            Load(_) => unimplemented!(),
+            Save(_) => unimplemented!(),
+            Send(op) => NgDispatchKernel::compile(op, plc),
+            Receive(op) => NgDispatchKernel::compile(op, plc),
 
             Abs(op) => NgDispatchKernel::compile(op, plc),
             Add(op) => NgDispatchKernel::compile(op, plc),
@@ -270,11 +232,45 @@ impl Session for SyncSession {
             Output(op) => NgDispatchKernel::compile(op, plc),
             Xor(op) => NgDispatchKernel::compile(op, plc),
             Zeros(op) => NgDispatchKernel::compile(op, plc),
-            // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
-            op => {
-                let kernel = DispatchKernel::compile(op, plc)?;
-                return kernel(self, operands);
+        }
+    }
+}
+
+impl Session for SyncSession {
+    type Value = Value;
+
+    fn execute(
+        &self,
+        op: &Operator,
+        plc: &Placement,
+        mut operands: Operands<Value>,
+    ) -> Result<Value> {
+        let kernel: NgKernel<SyncSession, _> = match op {
+            Operator::Load(op) => {
+                use std::convert::TryInto;
+                assert_eq!(operands.len(), 2);
+                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
+                let query: HostString = operands.get(1).unwrap().clone().try_into()?;
+                // TODO(Morten) we should verify type of loaded value
+                return self
+                    .storage
+                    .load(&key.0, &self.session_id, Some(op.sig.ret()), &query.0);
             }
+            Operator::Save(_) => {
+                use std::convert::TryInto;
+                assert_eq!(operands.len(), 2);
+                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
+                let x = operands.get(1).unwrap().clone();
+                self.storage.save(&key.0, &self.session_id, &x)?;
+                let host = match plc {
+                    Placement::Host(host) => host,
+                    _ => unimplemented!(
+                        "SyncSession does not support running Save on non-host placements yet"
+                    ),
+                };
+                return Ok(HostUnit(host.clone()).into());
+            }
+            op => NgDispatchKernel::compile(op, plc),
         }?;
         match kernel {
             NgKernel::Nullary { closure } => {
