@@ -4,16 +4,16 @@ use crate::computation::{
 use crate::error::Result;
 use crate::execution::symbolic::{Symbolic, SymbolicSession};
 use crate::execution::Operands;
-use crate::execution::{Session, SyncSession};
+use crate::execution::Session;
 use crate::kernels::NgKernel;
 use std::convert::{TryFrom, TryInto};
 
-#[allow(dead_code)]
-pub(crate) fn sync_nullary_fn<U, P>(
-    _op: &Operator,
-    kf: fn(&SyncSession, &P) -> Result<U>,
-) -> Result<NgKernel<SyncSession, Value>>
+pub(crate) fn nullary_fn<S, U, P>(
+    _op: Operator,
+    kf: fn(&S, &P) -> Result<U>,
+) -> Result<NgKernel<S, Value>>
 where
+    S: Session + 'static,
     U: 'static,
     P: 'static,
 
@@ -21,7 +21,7 @@ where
     Value: From<U>,
 {
     Ok(NgKernel::Nullary {
-        closure: Box::new(move |sess: &SyncSession, plc: &Placement| {
+        closure: Box::new(move |sess: &S, plc: &Placement| {
             let plc: P = Placement::try_into(plc.clone())?;
             let y = kf(sess, &plc)?;
             Ok(Value::from(y))
@@ -59,7 +59,6 @@ pub(crate) fn unary_box<S, T0, U, P>(
 ) -> Result<NgKernel<S, Value>>
 where
     S: Session + 'static,
-    S: 'static,
 
     T0: 'static,
     U: 'static,

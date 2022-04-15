@@ -240,6 +240,7 @@ impl Session for SyncSession {
             Ones(op) => NgDispatchKernel::compile(op, plc),
             Or(op) => NgDispatchKernel::compile(op, plc),
             Pow2(op) => NgDispatchKernel::compile(op, plc),
+            PrfKeyGen(op) => NgDispatchKernel::compile(op, plc),
             Reshape(op) => NgDispatchKernel::compile(op, plc),
             Reveal(op) => NgDispatchKernel::compile(op, plc),
             RepToAdt(op) => NgDispatchKernel::compile(op, plc),

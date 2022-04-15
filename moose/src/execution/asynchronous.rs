@@ -334,10 +334,8 @@ impl DispatchKernel<AsyncSession> for Operator {
         use Operator::*;
         match self {
             // these must be handled elsewhere by AsyncSession
-            Load(_) | Save(_) => unimplemented!(),
             Send(op) => DispatchKernel::compile(op, plc),
             Receive(op) => DispatchKernel::compile(op, plc),
-            PrfKeyGen(op) => DispatchKernel::compile(op, plc),
             Fill(op) => DispatchKernel::compile(op, plc),
             Constant(op) => DispatchKernel::compile(op, plc),
             Input(op) => DispatchKernel::compile(op, plc),
@@ -416,6 +414,7 @@ impl Session for AsyncSession {
             Ones(op) => NgDispatchKernel::compile(op, plc),
             Or(op) => NgDispatchKernel::compile(op, plc),
             Pow2(op) => NgDispatchKernel::compile(op, plc),
+            PrfKeyGen(op) => NgDispatchKernel::compile(op, plc),
             Reshape(op) => NgDispatchKernel::compile(op, plc),
             Reveal(op) => NgDispatchKernel::compile(op, plc),
             RepToAdt(op) => NgDispatchKernel::compile(op, plc),
