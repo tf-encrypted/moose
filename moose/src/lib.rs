@@ -5045,28 +5045,6 @@ macro_rules! modelled_kernel {
         // support for AsyncSession
 
         $(
-            // #[cfg(feature = "async_execute")]
-            // impl crate::kernels::VariadicKernel<
-            //     crate::execution::AsyncSession,
-            //     $plc,
-            //     $ts,
-            //     $u
-            // > for $op
-            // {
-            //     fn compile(
-            //         &self,
-            //     ) -> crate::error::Result<
-            //         crate::kernels::TypedVariadicKernel<
-            //             crate::execution::AsyncSession,
-            //             $plc,
-            //             $ts,
-            //             $u,
-            //         >
-            //     > {
-            //         derive_runtime_kernel![variadic, $($kp)+, self]
-            //     }
-            // }
-
             #[cfg(feature = "async_execute")]
             impl $trait<
                 crate::execution::AsyncSession,
@@ -5092,60 +5070,6 @@ macro_rules! modelled_kernel {
     };
 
     (__variadic hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
-        // #[cfg(feature = "compile")]
-        // impl crate::kernels::VariadicKernel<
-        //     crate::execution::SymbolicSession,
-        //     $plc,
-        //     <$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-        //     <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        // > for $op
-        // {
-        //     fn compile(&self) -> crate::error::Result<
-        //         crate::kernels::TypedVariadicKernel<
-        //             crate::execution::SymbolicSession,
-        //             $plc,
-        //             <$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-        //             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-        //         >
-        //     > {
-        //         use crate::execution::Operands;
-        //         use crate::execution::symbolic::{Symbolic, SymbolicSession};
-        //         use std::convert::TryInto;
-
-        //         let op = self.clone();
-
-        //         Ok(Box::new(move |
-        //             sess: &SymbolicSession,
-        //             plc: &$plc,
-        //             xs: Operands<<$ts as KnownType<SymbolicSession>>::Type>,
-        //         | {
-        //             // TODO derive k outside box (using self instead of op)
-        //             // Magic by Morten
-        //             let op = &op;
-
-        //             let k = derive_runtime_kernel![variadic, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
-
-        //             // attempt to convert operands to match kernel
-        //             let kernel_vals: Operands<_> = xs.iter().cloned().filter_map(|x| x.try_into().ok()).collect();
-        //             if kernel_vals.len() == xs.len() {
-        //                 // success; we can apply kernel
-        //                 let y = k(sess, plc, kernel_vals)?;
-        //                 Ok(y.into())
-        //             } else {
-        //                 // operands did not match kernel so record in graph instead
-        //                 let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
-        //                 if handles.len() == xs.len() {
-        //                     // success; we can record in graph
-        //                     let h = sess.add_operation(op, &handles, plc);
-        //                     Ok(Symbolic::Symbolic(h))
-        //                 } else {
-        //                     Err(crate::error::Error::Unexpected(Some("Variadic hybrid kernel flavor found mixed symbolic and concrete values during compilation.".to_string())))
-        //                 }
-        //             }
-        //         }))
-        //     }
-        // }
-
         #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
@@ -5180,62 +5104,6 @@ macro_rules! modelled_kernel {
     };
 
     (__variadic concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
-        // #[cfg(feature = "compile")]
-        // impl crate::kernels::VariadicKernel<
-        //     crate::execution::SymbolicSession,
-        //     $plc,
-        //     <$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-        //     <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        // > for $op
-        // {
-        //     fn compile(&self) -> crate::error::Result<
-        //         crate::kernels::TypedVariadicKernel<
-        //             crate::execution::SymbolicSession,
-        //             $plc,
-        //             <$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-        //             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-        //         >
-        //     > {
-        //         use crate::execution::Operands;
-        //         use crate::execution::symbolic::{Symbolic, SymbolicSession};
-
-        //         let op = self.clone();
-
-        //         Ok(Box::new(move |
-        //             sess: &SymbolicSession,
-        //             plc: &$plc,
-        //             xs: Operands<<$ts as KnownType<SymbolicSession>>::Type>,
-        //         | {
-        //             // TODO derive k outside box (using self instead of op)
-        //             // Magic by Morten
-        //             let op = &op;
-
-        //             let k = derive_runtime_kernel![variadic, $($kp)+, op].unwrap();  // TODO: replace unwrap (easier with self)
-
-        //             // attempt to convert operands to match kernel
-        //             let kernel_vals: Operands<_> = xs.iter().cloned().filter_map(|x| match x {
-        //                 Symbolic::Concrete(v) => Some(v),
-        //                 Symbolic::Symbolic(_) => None,
-        //             }).collect();
-        //             if kernel_vals.len() == xs.len() {
-        //                 // success; we can apply kernel
-        //                 let y = k(sess, plc, kernel_vals)?;
-        //                 Ok(Symbolic::Concrete(y))
-        //             } else {
-        //                 // operands did not match kernel so record in graph instead
-        //                 let handles: Vec<_> = xs.iter().filter_map(Symbolic::symbolic_handle).map(|h| h.op.as_str()).collect();
-        //                 if handles.len() == xs.len() {
-        //                     // success; we can record in graph
-        //                     let h = sess.add_operation(op, &handles, plc);
-        //                     Ok(Symbolic::Symbolic(h))
-        //                 } else {
-        //                     Err(crate::error::Error::Unexpected(Some("Variadic concrete flavor found mixed symbolic and concrete value during compilation.".to_string())))
-        //                 }
-        //             }
-        //         }))
-        //     }
-        // }
-
         #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
@@ -5306,26 +5174,6 @@ macro_rules! modelled_kernel {
     };
 
     (__variadic transparent, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
-        // #[cfg(feature = "compile")]
-        // impl crate::kernels::VariadicKernel<
-        //     crate::execution::SymbolicSession,
-        //     $plc,
-        //     <$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-        //     <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        // > for $op
-        // {
-        //     fn compile(&self) -> crate::error::Result<
-        //         crate::kernels::TypedVariadicKernel<
-        //             crate::execution::SymbolicSession,
-        //             $plc,
-        //             <$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-        //             <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-        //         >
-        //     > {
-        //         derive_runtime_kernel![variadic, $($kp)+, self]
-        //     }
-        // }
-
         #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
