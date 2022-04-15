@@ -55,20 +55,10 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (sync nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (sync nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedNullaryKernel<
                 crate::execution::SyncSession,
@@ -90,7 +80,7 @@ macro_rules! ng_derive_runtime_kernel {
         crate::execution::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op))
     };
 
-    (symbolic nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (symbolic nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         crate::execution::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op))
     };
 
@@ -116,20 +106,10 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (symbolic nullary concrete $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (symbolic nullary concrete $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedNullaryKernel<
                 crate::execution::SymbolicSession,
@@ -194,20 +174,10 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (async nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (async nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedNullaryKernel<
                 crate::execution::AsyncSession,
@@ -244,20 +214,10 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedUnaryKernel<
                 crate::execution::SyncSession,
@@ -295,20 +255,10 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (async unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (async unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedUnaryKernel<
                 crate::execution::AsyncSession,
@@ -330,7 +280,7 @@ macro_rules! ng_derive_runtime_kernel {
         crate::execution::kernel_helpers::symbolic_unary_runtime::<$t0, $u, $plc>(Operator::from($op))
     };
 
-    (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         crate::execution::kernel_helpers::symbolic_unary_runtime::<$t0, $u, $plc>(Operator::from($op))
     };
 
@@ -358,20 +308,10 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedUnaryKernel<
                 crate::execution::SymbolicSession,
@@ -409,20 +349,10 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedUnaryKernel<
                 crate::execution::SymbolicSession,
@@ -460,20 +390,10 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedUnaryKernel<
                 crate::execution::SymbolicSession,
@@ -569,20 +489,10 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (async binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (async binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedBinaryKernel<
                 crate::execution::AsyncSession,
@@ -689,20 +599,10 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (symbolic binary transparent $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (symbolic binary transparent $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedBinaryKernel<
                 crate::execution::SymbolicSession,
@@ -743,20 +643,10 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (symbolic binary hybrid $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (symbolic binary hybrid $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedBinaryKernel<
                 crate::execution::SymbolicSession,
@@ -811,20 +701,10 @@ macro_rules! ng_derive_runtime_kernel {
 
     /* Variadic */
 
-    (sync variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (sync variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedVariadicKernelSlice<
                 crate::execution::SyncSession,
@@ -842,7 +722,7 @@ macro_rules! ng_derive_runtime_kernel {
         crate::execution::kernel_helpers::variadic_fn::<crate::execution::SyncSession, $ts, $u, $plc>(Operator::from($op), $k)
     };
 
-    (symbolic variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (symbolic variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         crate::execution::kernel_helpers::symbolic_variadic_runtime::<$ts, $u, $plc>(Operator::from($op))
     };
 
@@ -854,20 +734,10 @@ macro_rules! ng_derive_runtime_kernel {
         crate::execution::kernel_helpers::symbolic_variadic_transparent_fn::<$ts, $u, $plc>(Operator::from($op), $k)
     };
 
-    (symbolic variadic concrete $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (symbolic variadic concrete $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedVariadicKernelSlice<
                 crate::execution::SymbolicSession,
@@ -885,20 +755,10 @@ macro_rules! ng_derive_runtime_kernel {
         crate::execution::kernel_helpers::symbolic_variadic_concrete_fn::<$ts, $u, $plc>(Operator::from($op), $k)
     };
 
-    (async variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+    (async variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
             )+
             let k: crate::kernels::TypedVariadicKernelSlice<
                 crate::execution::AsyncSession,
