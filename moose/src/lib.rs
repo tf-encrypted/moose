@@ -37,7 +37,6 @@ macro_rules! ng_derive_runtime_kernel {
 
     /* Nullary */
 
-
     (sync nullary runtime $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<
@@ -99,8 +98,6 @@ macro_rules! ng_derive_runtime_kernel {
         crate::execution::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op))
     };
 
-
-
     (symbolic nullary concrete $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<
@@ -118,7 +115,6 @@ macro_rules! ng_derive_runtime_kernel {
             crate::execution::kernel_helpers::symbolic_nullary_concrete_box::<$u, $plc>(Operator::from($op), k)
         }
     };
-
 
     (symbolic nullary concrete $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
         {
@@ -199,7 +195,6 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-
     (async nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
         {
             $(
@@ -226,11 +221,9 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-
     (async nullary runtime $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::nullary_fn::<crate::execution::AsyncSession, $u, $plc>(Operator::from($op), $k)
     };
-
 
     (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
         {
@@ -863,13 +856,11 @@ macro_rules! ng_derive_runtime_kernel {
         crate::execution::kernel_helpers::symbolic_variadic_runtime::<$ts, $u, $plc>(Operator::from($op))
     };
 
-
     (symbolic variadic transparent $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
         {
             crate::execution::kernel_helpers::symbolic_variadic_transparent_fn::<$ts, $u, $plc>(Operator::from($op), $k)
         }
     };
-
 
     (symbolic variadic concrete $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
         {
@@ -932,7 +923,6 @@ macro_rules! ng_derive_runtime_kernel {
     (async variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::variadic_fn::<crate::execution::AsyncSession, $ts, $u, $plc>(Operator::from($op), $k)
     };
-
 }
 
 #[allow(unused_macros)]
