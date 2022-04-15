@@ -3,7 +3,6 @@ use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{Identity, Operands};
 use crate::host::{HostPlacement, HostPrfKey, HostString};
-use crate::kernels::{DispatchKernel, Kernel};
 use crate::kernels::{NgDispatchKernel, NgKernel};
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
@@ -258,12 +257,13 @@ impl AsyncSession {
 
     fn networking_receive(
         &self,
-        op: ReceiveOp,
+        op: &ReceiveOp,
         _plc: &HostPlacement,
         operands: Operands<AsyncValue>,
     ) -> Result<AsyncValue> {
         assert_eq!(operands.len(), 0);
         let sess = self.clone();
+        let op = op.clone();
 
         let (sender, receiver) = new_async_value();
         let task = tokio::spawn(async move {
@@ -285,13 +285,14 @@ impl AsyncSession {
 
     fn networking_send(
         &self,
-        op: SendOp,
+        op: &SendOp,
         plc: &HostPlacement,
         operands: Operands<AsyncValue>,
     ) -> Result<AsyncValue> {
         assert_eq!(operands.len(), 1);
 
         let sess = self.clone(); // TODO(Morten) avoid
+        let op = op.clone();
         let plc = plc.clone();
 
         let (sender, receiver) = new_async_value();
@@ -332,72 +333,15 @@ pub(crate) fn new_async_value() -> (AsyncSender, AsyncReceiver) {
     (sender, shared_receiver)
 }
 
-impl DispatchKernel<AsyncSession> for SendOp {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession>> {
-        if let Placement::Host(plc) = plc {
-            let plc = plc.clone();
-            let op = self.clone();
-            Ok(Box::new(move |sess, operands| {
-                sess.networking_send(op.clone(), &plc, operands)
-            }))
-        } else {
-            unimplemented!()
-        }
-    }
-}
-
-impl DispatchKernel<AsyncSession> for ReceiveOp {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession>> {
-        if let Placement::Host(plc) = plc {
-            let plc = plc.clone();
-            let op = self.clone();
-            Ok(Box::new(move |sess, operands| {
-                sess.networking_receive(op.clone(), &plc, operands)
-            }))
-        } else {
-            unimplemented!()
-        }
-    }
-}
-
-impl DispatchKernel<AsyncSession> for Operator {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession>> {
+impl NgDispatchKernel<AsyncSession, Value> for Operator {
+    fn compile(&self, plc: &Placement) -> Result<NgKernel<AsyncSession, Value>> {
         use Operator::*;
         match self {
-            // these must be handled elsewhere by AsyncSession
-            Send(op) => DispatchKernel::compile(op, plc),
-            Receive(op) => DispatchKernel::compile(op, plc),
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl Session for AsyncSession {
-    type Value = AsyncValue;
-    fn execute(
-        &self,
-        op: &Operator,
-        plc: &Placement,
-        operands: Operands<Self::Value>,
-    ) -> Result<Self::Value> {
-        use Operator::*;
-        use Placement::*;
-        let kernel: NgKernel<AsyncSession, _> = match op {
-            // The kernels that are doing funny things to the async context, such as awaiting for more than their inputs.
-            Load(op) => {
-                if let Host(plc) = plc {
-                    return self.storage_load(op, plc, operands);
-                } else {
-                    unimplemented!()
-                }
-            }
-            Save(_) => {
-                if let Host(plc) = plc {
-                    return self.storage_save(plc, operands);
-                } else {
-                    unimplemented!()
-                }
-            }
+            // These must be handled elsewhere
+            Load(_) => unimplemented!(),
+            Save(_) => unimplemented!(),
+            Send(_) => unimplemented!(),
+            Receive(_) => unimplemented!(),
 
             Abs(op) => NgDispatchKernel::compile(op, plc),
             Add(op) => NgDispatchKernel::compile(op, plc),
@@ -474,11 +418,54 @@ impl Session for AsyncSession {
             TruncPr(op) => NgDispatchKernel::compile(op, plc),
             Output(op) => NgDispatchKernel::compile(op, plc),
             Xor(op) => NgDispatchKernel::compile(op, plc),
-            // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
-            op => {
-                let kernel = DispatchKernel::compile(op, plc)?;
-                return kernel(self, operands);
+            Zeros(op) => NgDispatchKernel::compile(op, plc),
+        }
+    }
+}
+
+impl Session for AsyncSession {
+    type Value = AsyncValue;
+    fn execute(
+        &self,
+        op: &Operator,
+        plc: &Placement,
+        operands: Operands<Self::Value>,
+    ) -> Result<Self::Value> {
+        use Operator::*;
+        use Placement::*;
+        let kernel: NgKernel<AsyncSession, _> = match op {
+            // The kernels that take advantage of the async context.
+            Load(op) => {
+                if let Host(plc) = plc {
+                    return self.storage_load(op, plc, operands);
+                } else {
+                    unimplemented!()
+                }
             }
+            Save(_) => {
+                if let Host(plc) = plc {
+                    return self.storage_save(plc, operands);
+                } else {
+                    unimplemented!()
+                }
+            }
+            Send(op) => {
+                if let Host(plc) = plc {
+                    return self.networking_send(op, plc, operands);
+                } else {
+                    unimplemented!()
+                }
+            }
+            Receive(op) => {
+                if let Host(plc) = plc {
+                    return self.networking_receive(op, plc, operands);
+                } else {
+                    unimplemented!()
+                }
+            }
+
+            // The kernels that only does compute.
+            op => NgDispatchKernel::compile(op, plc),
         }?;
         match kernel {
             NgKernel::Nullary { closure } => {
