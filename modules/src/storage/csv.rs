@@ -142,27 +142,46 @@ where
             let ncols = shape[1];
             let chunks = array
                 .as_slice()
-                .ok_or_else(|| Error::Storage("could not take slice from array".to_string()))
-                .unwrap()
+                .ok_or_else(|| Error::Storage("could not take slice from array".to_string()))?
                 .chunks(ncols);
 
             let header = (0..ncols)
                 .map(|i| format!("col_{}", i))
                 .collect::<Vec<String>>();
-            writer.write_record(&header).unwrap();
+            writer.write_record(&header).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write record to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
             for row in chunks {
                 let row_vec: Vec<String> = row.iter().map(|item| item.to_string()).collect();
-                writer.write_record(row_vec).unwrap();
+                writer.write_record(row_vec).map_err(|e| {
+                    Error::Storage(format!(
+                        "failed to write record to file: '{}': {}",
+                        filename, e
+                    ))
+                })?
             }
             Ok(())
         }
         1 => {
-            let array1: ArcArray<T, Ix1> = array.clone().into_dimensionality::<Ix1>().unwrap();
             let header = vec!["col_0"];
-            writer.write_record(&header).unwrap();
-            for row in array1.iter() {
+            writer.write_record(&header).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write record to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+
+            for row in array.iter() {
                 let str_row = row.to_string();
-                writer.write_record(&[str_row]).unwrap();
+                writer.write_record(&[str_row]).map_err(|e| {
+                    Error::Storage(format!(
+                        "failed to write record to file: '{}': {}",
+                        filename, e
+                    ))
+                })?;
             }
             Ok(())
         }
