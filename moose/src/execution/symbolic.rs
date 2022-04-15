@@ -17,7 +17,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Wrapper for values used in `SymbolicSession`s
-/// Wrapper for values used in `SymbolicSession`s
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
     /// The value is really symbolic
