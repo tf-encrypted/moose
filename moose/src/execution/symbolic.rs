@@ -276,7 +276,7 @@ impl DispatchKernel<SymbolicSession> for Operator {
         match self {
             Receive(op) => DispatchKernel::compile(op, plc),
             Send(op) => DispatchKernel::compile(op, plc),
-           _ => unimplemented!(),
+            _ => unimplemented!(),
         }
     }
 }

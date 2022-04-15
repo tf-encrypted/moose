@@ -367,7 +367,7 @@ impl DispatchKernel<AsyncSession> for Operator {
             // these must be handled elsewhere by AsyncSession
             Send(op) => DispatchKernel::compile(op, plc),
             Receive(op) => DispatchKernel::compile(op, plc),
-           _ => unimplemented!(),
+            _ => unimplemented!(),
         }
     }
 }

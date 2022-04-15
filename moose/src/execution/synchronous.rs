@@ -153,7 +153,7 @@ impl DispatchKernel<SyncSession> for Operator {
         match self {
             Send(op) => DispatchKernel::compile(op, plc),
             Receive(op) => DispatchKernel::compile(op, plc),
-           _ => unimplemented!(),
+            _ => unimplemented!(),
         }
     }
 }

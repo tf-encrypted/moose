@@ -74,12 +74,7 @@ where
 pub(crate) fn symbolic_nullary_concrete_box<U, P>(
     _op: Operator,
     kf: Box<
-        dyn Fn(
-                &SymbolicSession,
-                &P,
-            ) -> Result<<U as PartiallySymbolicType>::Type>
-            + Send
-            + Sync,
+        dyn Fn(&SymbolicSession, &P) -> Result<<U as PartiallySymbolicType>::Type> + Send + Sync,
     >,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
@@ -92,17 +87,13 @@ where
     SymbolicValue: From<<U as SymbolicType>::Type>,
 {
     Ok(NgKernel::Nullary {
-        closure: Box::new(
-            move |sess: &SymbolicSession, plc: &Placement| {
-                let plc = P::try_from(plc.clone())?;
-                let y = kf(sess, &plc)?;
-                Ok(SymbolicValue::from(Symbolic::Concrete(y)))
-            },
-        ),
+        closure: Box::new(move |sess: &SymbolicSession, plc: &Placement| {
+            let plc = P::try_from(plc.clone())?;
+            let y = kf(sess, &plc)?;
+            Ok(SymbolicValue::from(Symbolic::Concrete(y)))
+        }),
     })
 }
-
-
 
 // TODO(Morten) can we merge sync_unary_box and sync_unary_fn and still
 // be certain that we only get two copies? What are the correct trait bounds?
@@ -844,8 +835,6 @@ where
         ),
     })
 }
-
-
 
 pub(crate) fn ternary_fn<S, T0, T1, T2, U, P>(
     _op: Operator,

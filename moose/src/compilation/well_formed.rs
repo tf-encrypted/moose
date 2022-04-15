@@ -1,6 +1,6 @@
 use crate::computation::{Computation, Operator, SymbolicValue};
 use crate::execution::SymbolicSession;
-use crate::kernels::{NgDispatchKernel};
+use crate::kernels::NgDispatchKernel;
 use crate::Error;
 use std::collections::HashSet;
 
@@ -96,10 +96,10 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             DeriveSeed(op) => {
                 NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
             }
-            Constant(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
-            Input(op) => {
+            Constant(op) => {
                 NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
             }
+            Input(op) => NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err(),
             Output(op) => {
                 NgDispatchKernel::<SymbolicSession, SymbolicValue>::compile(op, plc).err()
             }
