@@ -2,9 +2,8 @@
 
 use crate::additive::AdditivePlacement;
 use crate::computation::*;
-use crate::error::Error;
-use crate::error::Result;
-use crate::execution::{Operands, Session};
+use crate::error::{Error, Result};
+use crate::execution::Session;
 use crate::host::HostPlacement;
 use crate::mirrored::Mirrored3Placement;
 use crate::replicated::ReplicatedPlacement;
@@ -102,69 +101,13 @@ pub trait NgDispatchKernel<S: Session, V> {
 
 pub(crate) type TypedNullaryKernel<S, P, Y> = Box<dyn Fn(&S, &P) -> Result<Y> + Send + Sync>;
 
-pub(crate) trait NullaryKernel<S: Session, P, Y> {
-    fn compile(&self) -> Result<TypedNullaryKernel<S, P, Y>>;
-}
-
 pub(crate) type TypedUnaryKernel<S, P, X0, Y> = Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send + Sync>;
-
-pub(crate) trait UnaryKernel<S: Session, P, X0, Y> {
-    fn compile(&self) -> Result<TypedUnaryKernel<S, P, X0, Y>>;
-}
 
 pub(crate) type TypedBinaryKernel<S, P, X0, X1, Y> =
     Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send + Sync>;
 
-pub(crate) trait BinaryKernel<S: Session, P, X0, X1, Y> {
-    fn compile(&self) -> Result<TypedBinaryKernel<S, P, X0, X1, Y>>;
-}
-
-pub(crate) type TypedTernaryKernel<S, P, X0, X1, X2, Y> =
-    Box<dyn Fn(&S, &P, X0, X1, X2) -> Result<Y> + Send + Sync>;
-
-pub(crate) trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
-    fn compile(&self) -> Result<TypedTernaryKernel<S, P, X0, X1, X2, Y>>;
-}
-
-pub(crate) type TypedVariadicKernel<S, P, XS, Y> =
-    Box<dyn Fn(&S, &P, Operands<XS>) -> Result<Y> + Send + Sync>;
-
 pub(crate) type TypedVariadicKernelSlice<S, P, XS, Y> =
     Box<dyn Fn(&S, &P, &[XS]) -> Result<Y> + Send + Sync>;
-
-pub(crate) trait VariadicKernel<S: Session, P, XS, Y> {
-    fn compile(&self) -> Result<TypedVariadicKernel<S, P, XS, Y>>;
-}
-
-pub(crate) trait NullaryKernelCheck<S: Session, P, Y>
-where
-    Self: NullaryKernel<S, P, Y>,
-{
-}
-
-pub(crate) trait UnaryKernelCheck<S: Session, P, X0, Y>
-where
-    Self: UnaryKernel<S, P, X0, Y>,
-{
-}
-
-pub(crate) trait BinaryKernelCheck<S: Session, P, X0, X1, Y>
-where
-    Self: BinaryKernel<S, P, X0, X1, Y>,
-{
-}
-
-pub(crate) trait TernaryKernelCheck<S: Session, P, X0, X1, X2, Y>
-where
-    Self: TernaryKernel<S, P, X0, X1, X2, Y>,
-{
-}
-
-pub(crate) trait VariadicKernelCheck<S: Session, P, XS, Y>
-where
-    Self: VariadicKernel<S, P, XS, Y>,
-{
-}
 
 pub trait PlacementKeyGen<S: Session, KeyT> {
     fn gen_key(&self, sess: &S) -> KeyT;

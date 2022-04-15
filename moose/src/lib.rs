@@ -33,168 +33,6 @@ macro_rules! m {
     };
 }
 
-macro_rules! derive_runtime_kernel {
-    (nullary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
-        {
-            let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedNullaryKernel<_, _, _>> = &|$op| $kf;
-            kf($self)
-        }
-    };
-    (unary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
-        {
-            let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedUnaryKernel<_, _, _, _>> = &|$op| $kf;
-            kf($self)
-        }
-    };
-    (binary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
-        {
-            let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedBinaryKernel<_, _, _, _, _>> = &|$op| $kf;
-            kf($self)
-        }
-    };
-    (ternary, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
-        {
-            let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedTernaryKernel<_, _, _, _, _, _> = &|$op| $kf;
-            kf($self)
-        }
-    };
-    (variadic, $(attributes[$($_attrs:tt)*])? custom |$op:ident| $kf:expr, $self:ident) => {
-        {
-            let kf: &dyn Fn(&Self) -> crate::error::Result<crate::kernels::TypedVariadicKernel<_, _, _, _>> = &|$op| $kf;
-            kf($self)
-        }
-    };
-
-    (nullary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
-        {
-            $(
-            let $attr = $self.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
-            )+
-            crate::error::Result::<crate::kernels::TypedNullaryKernel<_, _, _>>::Ok(Box::new(move |sess, plc| {
-                $k(sess, plc, $($attr.clone()),+)
-            }))
-        }
-    };
-    (unary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
-        {
-            $(
-            let $attr = $self.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
-            )+
-            crate::error::Result::<crate::kernels::TypedUnaryKernel<_, _, _, _>>::Ok(
-                Box::new(move |sess, plc, x0| {
-                    $k(sess, plc, $($attr.clone()),+, x0)
-                })
-            )
-        }
-    };
-    (binary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
-        {
-            $(
-            let $attr = $self.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
-            )+
-            crate::error::Result::<crate::kernels::TypedBinaryKernel<_, _, _, _, _>>::Ok(
-                Box::new(move |sess, plc, x0, x1| {
-                    $k(sess, plc, $($attr.clone()),+, x0, x1)
-                })
-            )
-        }
-    };
-    (ternary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
-        {
-            $(
-            let $attr = $self.$attr.clone();
-                // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                $(
-                    let $attr = match $attr {
-                        Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::TypeMismatch{
-                            expected: stringify!($prim_ty).to_string(),
-                            found: $attr.ty(),
-                        })
-                    };
-                )?
-            )+
-            crate::error::Result::<crate::kernels::TypedTernaryKernel<_, _, _, _, _, _>>::Ok(Box::new(move |sess, plc, x0, x1, x2| {
-                $k(sess, plc, $($attr.clone()),+), x0, x1, x2
-            }))
-        }
-    };
-    (variadic, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
-        {
-            $(
-                let $attr = $self.$attr.clone();
-                    // The following block applies the optional Constant type restriction to the attribute and unwraps it
-                    $(
-                        let $attr = match $attr {
-                            Constant::$prim_ty(v) => v,
-                            _ => return Err(crate::error::Error::TypeMismatch{
-                                expected: stringify!($prim_ty).to_string(),
-                                found: $attr.ty(),
-                            })
-                        };
-                    )?
-                )+
-                {
-                    crate::error::Result::<crate::kernels::TypedVariadicKernel<_, _, _, _>>::Ok(
-                        Box::new(move |sess, plc, xs| {
-                            $k(sess, plc, $($attr.clone()),+, &xs)
-                        })
-                    )
-                }
-        }
-    };
-
-    (nullary, $k:expr, $self:ident) => {
-        crate::error::Result::<crate::kernels::TypedNullaryKernel<_, _, _>>::Ok(Box::new($k))
-    };
-    (unary, $k:expr, $self:ident) => {
-        crate::error::Result::<crate::kernels::TypedUnaryKernel<_, _, _, _>>::Ok(Box::new($k))
-    };
-    (binary, $k:expr, $self:ident) => {
-        crate::error::Result::<crate::kernels::TypedBinaryKernel<_, _, _, _, _>>::Ok(Box::new($k))
-    };
-    (ternary, $k:expr, $self:ident) => {
-        crate::error::Result::<crate::kernels::TypedTernaryKernel<_, _, _, _, _, _>>::Ok(Box::new($k))
-    };
-    (variadic, $k:expr, $self:ident) => {
-        crate::error::Result::<crate::kernels::TypedVariadicKernel<_, _, _, _>>::Ok(
-            Box::new(move |sess, plc, xs| {
-                $k(sess, plc, &xs)
-            })
-        )
-    };
-}
-
 macro_rules! ng_derive_runtime_kernel {
 
     /* Nullary */
@@ -1252,7 +1090,7 @@ macro_rules! modelled_kernel {
                     unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
                 }
             }
-        
+
             // trait implementations of SymbolicSession (which are based on flavour)
             modelled_kernel!(__nullary $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? () -> $u => $($kp)+);
         )+
@@ -1541,7 +1379,7 @@ macro_rules! modelled_kernel {
                     unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
                 }
             }
-        
+
             // trait implementations of SymbolicSession (which are based on flavour)
             modelled_kernel!(__unary $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? ($t0) -> $u => $($kp)+);
         )+
@@ -2513,7 +2351,7 @@ macro_rules! modelled_kernel {
                         .unwrap()
                 }
             }
-        
+
             #[cfg(feature = "async_execute")]
             impl $trait<
                 crate::execution::AsyncSession,
