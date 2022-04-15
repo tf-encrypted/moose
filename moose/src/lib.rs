@@ -1157,7 +1157,6 @@ macro_rules! modelled_kernel {
             }
         }
 
-
         #[cfg(feature = "compile")]
         impl crate::kernels::NgDispatchKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue> for $op {
             fn compile(
@@ -1183,7 +1182,6 @@ macro_rules! modelled_kernel {
             }
         }
 
-
         #[cfg(feature = "async_execute")]
         impl crate::kernels::NgDispatchKernel<crate::execution::AsyncSession, crate::computation::Value> for $op {
             fn compile(
@@ -1207,11 +1205,18 @@ macro_rules! modelled_kernel {
                 }
             }
         }
-        // support for SyncSession
+
         $(
             #[cfg(feature = "sync_execute")]
-            impl $trait<crate::execution::SyncSession, $u> for $plc {
-                fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty,)*)?) -> $u {
+            impl $trait<
+                crate::execution::SyncSession,
+                $u
+            > for $plc {
+                fn $trait_fn(
+                    &self,
+                    sess: &crate::execution::SyncSession,
+                    $($($attr_id:$attr_ty,)*)?
+                ) -> $u {
                     use crate::computation::{KnownType, NullarySignature};
                     use crate::execution::{Session, SyncSession};
                     use std::convert::TryInto;
@@ -1232,10 +1237,7 @@ macro_rules! modelled_kernel {
                     y.try_into().unwrap()
                 }
             }
-        )+
 
-        // support for AsyncSession
-        $(
             #[cfg(feature = "async_execute")]
             impl $trait<
                 crate::execution::AsyncSession,
@@ -1250,10 +1252,8 @@ macro_rules! modelled_kernel {
                     unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
                 }
             }
-        )+
-
-        // support for SymbolicSession (based on flavour)
-        $(
+        
+            // trait implementations of SymbolicSession (which are based on flavour)
             modelled_kernel!(__nullary $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? () -> $u => $($kp)+);
         )+
     };
@@ -1494,10 +1494,13 @@ macro_rules! modelled_kernel {
             }
         }
 
-        // support for SyncSession
         $(
             #[cfg(feature = "sync_execute")]
-            impl $trait<crate::execution::SyncSession, $t0, $u> for $plc {
+            impl $trait<
+                crate::execution::SyncSession,
+                $t0,
+                $u
+            > for $plc {
                 fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty,)*)? x0: &$t0) -> $u {
                     use crate::computation::{KnownType, UnarySignature};
                     use crate::execution::{Session, SyncSession};
@@ -1521,31 +1524,6 @@ macro_rules! modelled_kernel {
                     y.try_into().unwrap()
                 }
             }
-        )+
-
-        // support for AsyncSession
-        $(
-            #[cfg(feature = "async_execute")]
-            impl crate::kernels::UnaryKernel<
-                crate::execution::AsyncSession,
-                $plc,
-                $t0,
-                $u
-            > for $op
-            {
-                fn compile(
-                    &self,
-                ) -> crate::error::Result<
-                    crate::kernels::TypedUnaryKernel<
-                        crate::execution::AsyncSession,
-                        $plc,
-                        $t0,
-                        $u,
-                    >
-                > {
-                    derive_runtime_kernel![unary, $(attributes[$($attr_id),+])? $($kp)+, self]
-                }
-            }
 
             #[cfg(feature = "async_execute")]
             impl $trait<
@@ -1563,10 +1541,8 @@ macro_rules! modelled_kernel {
                     unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
                 }
             }
-        )+
-
-        // support for SymbolicSession (based on flavour)
-        $(
+        
+            // trait implementations of SymbolicSession (which are based on flavour)
             modelled_kernel!(__unary $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? ($t0) -> $u => $($kp)+);
         )+
     };
@@ -1826,10 +1802,14 @@ macro_rules! modelled_kernel {
             }
         }
 
-        // support for SyncSession
         $(
             #[cfg(feature = "sync_execute")]
-            impl $trait<crate::execution::SyncSession, $t0, $t1, $u> for $plc {
+            impl $trait<
+                crate::execution::SyncSession,
+                $t0,
+                $t1,
+                $u
+            > for $plc {
                 fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
                     use crate::computation::{KnownType, BinarySignature};
                     use crate::execution::{Session, SyncSession};
@@ -1854,33 +1834,6 @@ macro_rules! modelled_kernel {
                     .unwrap()
                 }
             }
-        )+
-
-        // support for AsyncSession
-        $(
-            #[cfg(feature = "async_execute")]
-            impl crate::kernels::BinaryKernel<
-                crate::execution::AsyncSession,
-                $plc,
-                $t0,
-                $t1,
-                $u
-            > for $op
-            {
-                fn compile(
-                    &self,
-                ) -> crate::error::Result<
-                    crate::kernels::TypedBinaryKernel<
-                        crate::execution::AsyncSession,
-                        $plc,
-                        $t0,
-                        $t1,
-                        $u,
-                    >
-                > {
-                    derive_runtime_kernel![binary, $(attributes[$($attr_id),+])? $($kp)+, self]
-                }
-            }
 
             #[cfg(feature = "async_execute")]
             impl $trait<
@@ -1900,14 +1853,10 @@ macro_rules! modelled_kernel {
                     unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
                 }
             }
-        )+
 
-        // support for SymbolicSession (based on flavour)
-        $(
+            // trait implementations of SymbolicSession (which are based on flavour)
             modelled_kernel!(__binary $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? ($t0, $t1) -> $u => $($kp)+);
         )+
-
-
     };
 
     (__binary hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+) => {
@@ -2185,11 +2134,15 @@ macro_rules! modelled_kernel {
             }
         }
 
-
-        // support for SyncSession
         $(
             #[cfg(feature = "sync_execute")]
-            impl $trait<crate::execution::SyncSession, $t0, $t1, $t2, $u> for $plc {
+            impl $trait<
+                crate::execution::SyncSession,
+                $t0,
+                $t1,
+                $t2,
+                $u
+            > for $plc {
                 fn $trait_fn(&self, sess: &crate::execution::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
                     use crate::computation::{KnownType, TernarySignature};
                     use crate::execution::{Session, SyncSession};
@@ -2215,35 +2168,6 @@ macro_rules! modelled_kernel {
                     .unwrap()
                 }
             }
-        )+
-
-        // support for AsyncSession
-        $(
-            #[cfg(feature = "async_execute")]
-            impl crate::kernels::TernaryKernel<
-                crate::execution::AsyncSession,
-                $plc,
-                $t0,
-                $t1,
-                $t2,
-                $u
-            > for $op
-            {
-                fn compile(
-                    &self,
-                ) -> crate::error::Result<
-                    crate::kernels::TypedTernaryKernel<
-                        crate::execution::AsyncSession,
-                        $plc,
-                        $t0,
-                        $t1,
-                        $t2,
-                        $u,
-                    >
-                > {
-                    derive_runtime_kernel![ternary, $(attributes[$($attr_id),+])? $($kp)+, self]
-                }
-            }
 
             #[cfg(feature = "async_execute")]
             impl $trait<
@@ -2265,10 +2189,8 @@ macro_rules! modelled_kernel {
                     unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
                 }
             }
-        )+
 
-        // support for SyncSession, AsyncSession, and SymbolicSession (based on flavour)
-        $(
+            // trait implementations of SymbolicSession (which are based on flavour)
             modelled_kernel!(__ternary $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? ($t0, $t1, $t2) -> $u => $($kp)+);
         )+
     };
@@ -2313,7 +2235,6 @@ macro_rules! modelled_kernel {
     };
 
     (__ternary concrete, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
-
         #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
@@ -2440,7 +2361,7 @@ macro_rules! modelled_kernel {
     };
 
     (__ternary runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+) => {
-                #[cfg(feature = "compile")]
+        #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
             <$t0 as crate::computation::SymbolicType>::Type,
@@ -2482,7 +2403,6 @@ macro_rules! modelled_kernel {
     // Variadic
 
     ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? vec[$ts:ty] -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
-
         #[cfg(feature = "sync_execute")]
         impl crate::kernels::NgDispatchKernel<crate::execution::SyncSession, crate::computation::Value> for $op {
             fn compile(
@@ -2561,8 +2481,6 @@ macro_rules! modelled_kernel {
             }
         }
 
-
-        // // support for SyncSession
         $(
             #[cfg(feature = "sync_execute")]
             impl $trait<
@@ -2595,10 +2513,7 @@ macro_rules! modelled_kernel {
                         .unwrap()
                 }
             }
-        )+
-        // support for AsyncSession
-
-        $(
+        
             #[cfg(feature = "async_execute")]
             impl $trait<
                 crate::execution::AsyncSession,
@@ -2615,12 +2530,10 @@ macro_rules! modelled_kernel {
                     unimplemented!("Async session should not be called via a trait call. Use AsyncSession::execute of a compiled computation instead")
                 }
             }
-        )+
 
-        $(
+            // trait implementations of SymbolicSession (which are based on flavour)
             modelled_kernel!(__variadic $flavour, $trait, $trait_fn, $op, $plc, $([$($attr_id:$attr_ty),*])? vec[$ts] -> $u => $($kp)+);
         )+
-
     };
 
     (__variadic hybrid, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
@@ -2762,51 +2675,6 @@ macro_rules! modelled_kernel {
     };
 
     (__variadic runtime, $trait:ident, $trait_fn:ident, $op:ident, $plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? vec[$ts:ty] -> $u:ty => $($kp:tt)+) => {
-        #[cfg(feature = "compile")]
-        impl crate::kernels::VariadicKernel<
-            crate::execution::SymbolicSession,
-            $plc,
-            <$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-            <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type
-        > for $op
-        {
-            fn compile(&self) -> crate::error::Result<
-                crate::kernels::TypedVariadicKernel<
-                    crate::execution::SymbolicSession,
-                    $plc,
-                    <$ts as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-                    <$u as crate::computation::KnownType<crate::execution::SymbolicSession>>::Type,
-                >
-            > {
-                use crate::computation::{KnownType};
-                use crate::execution::Operands;
-                use crate::execution::symbolic::{SymbolicSession, Symbolic};
-
-                let op = self.clone();
-                Ok(Box::new(move |
-                    sess: &SymbolicSession,
-                    plc: &$plc,
-                    xs: Operands<<$ts as KnownType<SymbolicSession>>::Type>
-                | {
-                    let res: Vec<&str> = xs.iter().filter_map(|x| {
-                        match x {
-                            Symbolic::Symbolic(h0) => {
-                                Some(&h0.op[..])
-                            }
-                            _ => None
-                        }
-                    }).collect();
-
-                    if res.len() == xs.len() {
-                        let h = sess.add_operation(&op, &res, plc);
-                        return Ok(Symbolic::Symbolic(h));
-                    }
-
-                    Err(crate::error::Error::Unexpected(Some(format!("Variadic runtime kernel found non-Symbolic arguments for {:?}", op))))
-                }))
-            }
-        }
-
         #[cfg(feature = "compile")]
         impl $trait<
             crate::execution::SymbolicSession,
