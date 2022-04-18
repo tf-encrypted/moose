@@ -2041,6 +2041,45 @@ impl ShapeOp {
     }
 }
 
+impl ReshapeOp {
+    pub(crate) fn host_logical_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+        HostS,
+        RepS,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+        shape: AbstractShape<HostS, RepS>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementReshape<S, Float32T, HostS, Float32T>,
+        HostPlacement: PlacementReshape<S, Float64T, HostS, Float64T>,
+        HostPlacement: PlacementReveal<S, RepS, HostS>,
+    {
+        let sh = match shape {
+            AbstractShape::Host(sh) => sh,
+            AbstractShape::Replicated(sh) => plc.reveal(sess, &sh),
+        };
+
+        use AbstractTensor::*;
+        match x {
+            Float32(x) => Ok(Float32(plc.reshape(sess, &x, &sh))),
+            Float64(x) => Ok(Float64(plc.reshape(sess, &x, &sh))),
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Save op (host) is unsupported for {:?}.",
+                x.ty_desc()
+            ))),
+        }
+    }
+}
+
 impl SliceOp {
     pub(crate) fn logical_host_shape<S: Session, HostS, RepS>(
         sess: &S,

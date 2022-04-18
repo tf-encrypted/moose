@@ -185,6 +185,9 @@ pub trait PlacementReshape<S: Session, T, ShapeT, O> {
 modelled_kernel! {
     PlacementReshape::reshape, ReshapeOp,
     [
+        (HostPlacement, (Tensor, Shape) -> Tensor => [concrete] Self::host_logical_kernel),
+        (HostPlacement, (Float32Tensor, HostShape) -> Float32Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor, HostShape) -> Float64Tensor => [hybrid] Self::float_host_kernel),
         (HostPlacement, (HostRing64Tensor, HostShape) -> HostRing64Tensor => [runtime] Self::host_ring_kernel),
         (HostPlacement, (HostRing128Tensor, HostShape) -> HostRing128Tensor => [runtime] Self::host_ring_kernel),
         (HostPlacement, (HostBitTensor, HostShape) -> HostBitTensor => [runtime] Self::host_bit_kernel),
