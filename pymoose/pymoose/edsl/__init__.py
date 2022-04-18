@@ -47,7 +47,6 @@ from pymoose.edsl.base import reshape
 from pymoose.edsl.base import save
 from pymoose.edsl.base import shape
 from pymoose.edsl.base import sigmoid
-from pymoose.edsl.base import relu
 from pymoose.edsl.base import slice
 from pymoose.edsl.base import softmax
 from pymoose.edsl.base import square
@@ -111,7 +110,6 @@ __all__ = [
     square,
     squeeze,
     sigmoid,
-    relu,
     sub,
     sum,
     uint64,

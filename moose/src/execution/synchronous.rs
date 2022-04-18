@@ -192,6 +192,7 @@ impl Session for SyncSession {
             Shl(op) => DispatchKernel::execute(op, plc, self, operands)?,
             Shr(op) => DispatchKernel::execute(op, plc, self, operands)?,
             RingFixedpointAbs(op) => DispatchKernel::execute(op, plc, self, operands)?,
+            RingFixedpointRelu(op) => DispatchKernel::execute(op, plc, self, operands)?,
             RingFixedpointArgmax(op) => DispatchKernel::execute(op, plc, self, operands)?,
             RingFixedpointMean(op) => DispatchKernel::execute(op, plc, self, operands)?,
             RingFixedpointEncode(op) => DispatchKernel::execute(op, plc, self, operands)?,

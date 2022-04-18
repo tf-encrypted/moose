@@ -866,6 +866,7 @@ operators![
     RingFixedpointEncode,
     RingFixedpointDecode,
     RingFixedpointAbs,
+    RingFixedpointRelu,
     RingFixedpointArgmax,
     Sample,
     SampleSeeded,
@@ -1342,6 +1343,13 @@ pub struct RingFixedpointDecodeOp {
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct RingFixedpointAbsOp {
+    pub sig: Signature,
+}
+
+#[derive(
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+)]
+pub struct RingFixedpointReluOp {
     pub sig: Signature,
 }
 

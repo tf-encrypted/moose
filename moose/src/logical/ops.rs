@@ -2301,6 +2301,41 @@ impl SigmoidOp {
     }
 }
 
+// impl ReluOp {
+//     pub(crate) fn logical_kernel<
+//         S: Session,
+//         Fixed64T,
+//         Fixed128T,
+//         Float32T,
+//         Float64T,
+//         BoolT,
+//         Uint64T,
+//     >(
+//         sess: &S,
+//         plc: &ReplicatedPlacement,
+//         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+//     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+//     where
+//         ReplicatedPlacement: PlacementRelu<S, Fixed64T, Fixed64T>,
+//         ReplicatedPlacement: PlacementRelu<S, Fixed128T, Fixed128T>,
+//     {
+//         use AbstractTensor::*;
+//         match x {
+//             Fixed64(x) => {
+//                 let result = plc.relu(sess, &x);
+//                 Ok(Fixed64(result))
+//             }
+//             Fixed128(x) => {
+//                 let result = plc.relu(sess, &x);
+//                 Ok(Fixed128(result))
+//             }
+//             Float32(_) | Float64(_) | Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
+//                 format!("Missing replicated relu for {:?}", &x.ty_desc(),),
+//             )),
+//         }
+//     }
+// }
+
 impl LogOp {
     pub(crate) fn logical_rep_kernel<
         S: Session,

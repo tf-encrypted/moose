@@ -372,6 +372,9 @@ modelled_kernel! {
     ]
 }
 
+
+
+
 /// Mean
 pub trait PlacementMean<S: Session, T, O> {
     fn mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
@@ -477,6 +480,18 @@ pub trait PlacementAbsAsFixedpoint<S: Session, T, O> {
 
 modelled_kernel! {
     PlacementAbsAsFixedpoint::abs_as_fixedpoint, RingFixedpointAbsOp,
+    [
+        (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_ring_kernel),
+        (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_ring_kernel),
+    ]
+}
+
+pub trait PlacementReluAsFixedpoint<S: Session, T, O> {
+    fn relu_as_fixedpoint(&self, sess: &S, x: &T) -> O;
+}
+
+modelled_kernel! {
+    PlacementReluAsFixedpoint::relu_as_fixedpoint, RingFixedpointReluOp,
     [
         (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_ring_kernel),
         (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_ring_kernel),

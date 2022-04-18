@@ -45,6 +45,7 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             Sample(op) => DispatchKernel::compile(op, plc),
             SampleSeeded(op) => DispatchKernel::compile(op, plc),
             RingFixedpointAbs(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointRelu(op) => DispatchKernel::compile(op, plc),
             RingFixedpointArgmax(op) => DispatchKernel::compile(op, plc),
             RingFixedpointMean(op) => DispatchKernel::compile(op, plc),
             RingFixedpointEncode(op) => DispatchKernel::compile(op, plc),

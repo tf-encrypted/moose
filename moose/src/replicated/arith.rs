@@ -673,6 +673,25 @@ impl RingFixedpointAbsOp {
     }
 }
 
+impl RingFixedpointReluOp {
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, ShapeT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepRingT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
+        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
+        ReplicatedPlacement: PlacementMux<S, RepRingT, RepRingT, RepRingT, RepRingT>,
+    {
+        let sign_bit = rep.msb(sess, &x);
+        let zeros = rep.fill(sess, 0_u8.into(), &rep.shape(sess, &x));
+
+        Ok(rep.mux(sess, &sign_bit, &zeros, &x))
+    }
+}
+
 impl SigmoidOp {
     pub(crate) fn rep_rep_kernel<S: Session, RepFixedT, ShapeT, RepRingT, RepBitT>(
         sess: &S,
