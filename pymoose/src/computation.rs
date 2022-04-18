@@ -27,6 +27,7 @@ enum PyOperation {
     LessOperation(PyLessOperation),
     MuxOperation(PyMuxOperation),
     AtLeast2DOperation(PyAtLeast2DOperation),
+    ReshapeOperation(PyReshapeOperation),
     ShapeOperation(PyShapeOperation),
     IndexAxisOperation(PyIndexAxisOperation),
     SliceOperation(PySliceOperation),
@@ -231,6 +232,14 @@ struct PyIndexAxisOperation {
     signature: PyOpSignature,
     axis: usize,
     index: usize,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyReshapeOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
 }
 
 #[derive(Deserialize, Debug)]
@@ -890,6 +899,21 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    ReshapeOperation(op) => Ok(Operation {
+                        kind: ReshapeOp {
+                            sig: map_signature(
+                                &op.signature,
+                                &placements,
+                                &op.placement_name,
+                                &["x", "shape"],
+                            )?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x", "shape"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
