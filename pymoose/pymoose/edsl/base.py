@@ -650,6 +650,12 @@ def exp(x, placement=None):
     return ExpExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
+def sqrt(x, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return SqrtExpression(placement=placement, inputs=[x], vtype=x.vtype)
+
+
 def sigmoid(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()

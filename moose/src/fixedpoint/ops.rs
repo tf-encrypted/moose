@@ -1501,6 +1501,27 @@ impl ExpOp {
     }
 }
 
+impl SqrtOp {
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementSqrt<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let z = plc.sqrt(sess, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+}
+
 impl SigmoidOp {
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
@@ -2860,6 +2881,9 @@ mod tests {
     rep_approx_unary_fixed_test!(test_rep_exp_fixed64, exp<i64, u64>, 10, 10, 0.1);
     rep_approx_unary_fixed_test!(test_rep_exp_fixed128, exp<i128, u128>, 20, 20, 0.001);
 
+    rep_approx_unary_fixed_test!(test_rep_sqrt_fixed64, sqrt<i64, u64>, 10, 10, 0.1);
+    rep_approx_unary_fixed_test!(test_rep_sqrt_fixed128, sqrt<i128, u128>, 20, 20, 0.001);
+
     #[test]
     fn test_exp2_64() {
         let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
@@ -2886,6 +2910,24 @@ mod tests {
         let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
         let y_targets: Vec<_> = x.iter().map(|item| item.exp()).collect();
         test_rep_exp_fixed128(x, y_targets);
+    }
+
+    #[test]
+    fn test_sqrt_64() {
+        let x = array![0.001, 0.01, 0.1, 1f64, 2., 3., 4., 10., 20., 30., 40., 50., 100., 1000.]
+            .into_dyn();
+        let y_targets: Vec<_> = x.iter().map(|item| item.sqrt()).collect();
+        test_rep_sqrt_fixed64(x, y_targets);
+    }
+
+    #[test]
+    fn test_sqrt_128() {
+        let x = array![
+            0.001, 0.01, 0.1, 1f64, 2., 3., 4., 10., 50., 100., 1000., 10000., 100000., 500000.
+        ]
+        .into_dyn();
+        let y_targets: Vec<_> = x.iter().map(|item| item.sqrt()).collect();
+        test_rep_sqrt_fixed128(x, y_targets);
     }
 
     rep_approx_unary_fixed_test!(test_rep_sigmoid_fixed64, sigmoid<i64, u64>, 10, 10, 0.1);
