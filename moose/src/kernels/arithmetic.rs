@@ -372,9 +372,6 @@ modelled_kernel! {
     ]
 }
 
-
-
-
 /// Mean
 pub trait PlacementMean<S: Session, T, O> {
     fn mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;

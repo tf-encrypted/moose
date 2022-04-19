@@ -9,7 +9,7 @@ use ndarray::LinalgScalar;
 use ndarray::Zip;
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack};
-use num_traits::{Float, FromPrimitive, Signed, Zero};
+use num_traits::{clamp_min, Float, FromPrimitive, Signed, Zero};
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::Wrapping;
@@ -253,7 +253,7 @@ impl AbsOp {
 }
 
 impl ReluOp {
-    pub(crate) fn host_kernel<S: RuntimeSession, T>(
+    pub(crate) fn host_kernel<S: RuntimeSession, T: Clone + Signed + PartialOrd>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -261,12 +261,10 @@ impl ReluOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        // Ok(HostTensor::<T>(
-        //     x.0.map(|x| plc.relu(_sess, x)).into_shared(),
-        //     plc.clone(),
-        // ))
-
-        Ok(plc.relu(_sess, &x))
+        Ok(HostTensor::<T>(
+            x.0.mapv(|x| clamp_min(x.clone(), T::zero())).into_shared(),
+            plc.clone(),
+        ))
     }
 }
 
