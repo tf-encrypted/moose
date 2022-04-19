@@ -2914,9 +2914,8 @@ mod tests {
 
     #[test]
     fn test_sqrt_64() {
-        let x =
-            array![0.001, 0.01, 0.1, 1f64, 2., 3., 4., 10., 20., 30., 40., 50., 100., 1000., 2000.]
-                .into_dyn();
+        let x = array![0.001, 0.01, 0.1, 1f64, 2., 3., 4., 10., 20., 30., 40., 50., 100., 1000.]
+            .into_dyn();
         let y_targets: Vec<_> = x.iter().map(|item| item.sqrt()).collect();
         test_rep_sqrt_fixed64(x, y_targets);
     }
@@ -2924,7 +2923,7 @@ mod tests {
     #[test]
     fn test_sqrt_128() {
         let x = array![
-            0.001, 0.01, 0.1, 1f64, 2., 3., 4., 10., 50., 100., 1000., 10000., 100000., 1000000.
+            0.001, 0.01, 0.1, 1f64, 2., 3., 4., 10., 50., 100., 1000., 10000., 100000., 500000.
         ]
         .into_dyn();
         let y_targets: Vec<_> = x.iter().map(|item| item.sqrt()).collect();
