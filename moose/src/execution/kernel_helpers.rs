@@ -9,7 +9,6 @@ use crate::kernels::NgKernel;
 use std::convert::{TryFrom, TryInto};
 
 pub(crate) fn nullary_fn<S, U, P>(
-    _op: Operator,
     kf: fn(&S, &P) -> Result<U>,
 ) -> Result<NgKernel<S, Value>>
 where
@@ -30,7 +29,6 @@ where
 }
 
 pub(crate) fn nullary_box<S, U, P>(
-    _op: Operator,
     kf: Box<dyn Fn(&S, &P) -> Result<U> + Send + Sync>,
 ) -> Result<NgKernel<S, Value>>
 where

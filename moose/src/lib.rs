@@ -51,7 +51,7 @@ macro_rules! ng_derive_runtime_kernel {
                 $plc,
                 $u,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::nullary_box::<crate::execution::SyncSession, $u, $plc>(Operator::from($op), k)
+            crate::execution::kernel_helpers::nullary_box::<crate::execution::SyncSession, $u, $plc>(k)
         }
     };
 
@@ -67,25 +67,24 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc| {
                 $k(sess, &plc, $($attr.clone()),+)
             });
-
-            crate::execution::kernel_helpers::nullary_box::<crate::execution::SyncSession, $u, $plc>(Operator::from($op), k)
+            crate::execution::kernel_helpers::nullary_box::<crate::execution::SyncSession, $u, $plc>(k)
         }
     };
 
     (sync nullary $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::nullary_fn::<crate::execution::SyncSession, $u, $plc>(Operator::from($op), $k)
+        crate::execution::kernel_helpers::nullary_fn::<crate::execution::SyncSession, $u, $plc>($k)
     };
 
     (symbolic nullary runtime $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op))
+        crate::execution::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op))
+        crate::execution::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic nullary runtime $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op))
+        crate::execution::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic nullary concrete $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
@@ -102,7 +101,7 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
                 _,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::symbolic_nullary_concrete_box::<$u, $plc>(Operator::from($op), k)
+            crate::execution::kernel_helpers::symbolic_nullary_concrete_box::<$u, $plc>(Operator::from($op.clone()), k)
         }
     };
 
@@ -118,7 +117,7 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc| {
                 $k(sess, &plc, $($attr.clone()),+)
             });
-            crate::execution::kernel_helpers::symbolic_nullary_concrete_box::<$u, $plc>(Operator::from($op), k)
+            crate::execution::kernel_helpers::symbolic_nullary_concrete_box::<$u, $plc>(Operator::from($op.clone()), k)
         }
     };
 
@@ -170,7 +169,7 @@ macro_rules! ng_derive_runtime_kernel {
                 $plc,
                 $u,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::nullary_box::<crate::execution::AsyncSession, $u, $plc>(Operator::from($op), k)
+            crate::execution::kernel_helpers::nullary_box::<crate::execution::AsyncSession, $u, $plc>(k)
         }
     };
 
@@ -186,12 +185,12 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc| {
                 $k(sess, &plc, $($attr.clone()),+)
             });
-            crate::execution::kernel_helpers::nullary_box::<crate::execution::AsyncSession, $u, $plc>(Operator::from($op), k)
+            crate::execution::kernel_helpers::nullary_box::<crate::execution::AsyncSession, $u, $plc>(k)
         }
     };
 
     (async nullary runtime $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::nullary_fn::<crate::execution::AsyncSession, $u, $plc>(Operator::from($op), $k)
+        crate::execution::kernel_helpers::nullary_fn::<crate::execution::AsyncSession, $u, $plc>($k)
     };
 
     (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
@@ -828,8 +827,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            let op = self.clone();
-                            ng_derive_runtime_kernel![sync nullary $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, op]
+                            ng_derive_runtime_kernel![sync nullary $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -853,8 +851,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SymbolicSession>>::TY,
                             })
                         ) => {
-                            let op = self.clone();
-                            ng_derive_runtime_kernel![symbolic nullary $flavour $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, op]
+                            ng_derive_runtime_kernel![symbolic nullary $flavour $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -877,8 +874,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            let op = self.clone();
-                            ng_derive_runtime_kernel![async nullary runtime $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, op]
+                            ng_derive_runtime_kernel![async nullary runtime $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
