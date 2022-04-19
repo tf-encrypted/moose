@@ -340,6 +340,12 @@ class LessExpression(Expression):
 
 
 @dataclass
+class GreaterExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class BitwiseOrExpression(Expression):
     def __hash__(self):
         return id(self)
@@ -557,6 +563,18 @@ def less(lhs, rhs, placement=None):
     placement = placement or get_current_placement()
     return BinaryOpExpression(
         op_name="less",
+        placement=placement,
+        inputs=[lhs, rhs],
+        vtype=ty.TensorType(dtype=dtypes.bool_),
+    )
+
+
+def greater(lhs, rhs, placement=None):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
+    return BinaryOpExpression(
+        op_name="greater",
         placement=placement,
         inputs=[lhs, rhs],
         vtype=ty.TensorType(dtype=dtypes.bool_),

@@ -883,8 +883,8 @@ operators![
     Neg,
     Equal,
     EqualZero,
-    LessThan,
-    GreaterThan,
+    Less,
+    Greater,
     // Additive operators
     AdtToRep,
     // Replicated operators
@@ -1285,14 +1285,14 @@ pub struct EqualZeroOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-pub struct LessThanOp {
+pub struct LessOp {
     pub sig: Signature,
 }
 
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-pub struct GreaterThanOp {
+pub struct GreaterOp {
     pub sig: Signature,
 }
 

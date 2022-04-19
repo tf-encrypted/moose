@@ -833,7 +833,7 @@ impl DotOp {
     }
 }
 
-impl LessThanOp {
+impl LessOp {
     pub(crate) fn logical_host_kernel<
         S: Session,
         Fixed64T,
@@ -849,10 +849,10 @@ impl LessThanOp {
         y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
     where
-        HostPlacement: PlacementLessThan<S, Fixed64T, Fixed64T, BoolT>,
-        HostPlacement: PlacementLessThan<S, Fixed128T, Fixed128T, BoolT>,
-        HostPlacement: PlacementLessThan<S, Float32T, Float32T, BoolT>,
-        HostPlacement: PlacementLessThan<S, Float64T, Float64T, BoolT>,
+        HostPlacement: PlacementLess<S, Fixed64T, Fixed64T, BoolT>,
+        HostPlacement: PlacementLess<S, Fixed128T, Fixed128T, BoolT>,
+        HostPlacement: PlacementLess<S, Float32T, Float32T, BoolT>,
+        HostPlacement: PlacementLess<S, Float64T, Float64T, BoolT>,
     {
         use AbstractTensor::*;
         match (&x, &y) {
@@ -900,8 +900,8 @@ impl LessThanOp {
         y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
     where
-        ReplicatedPlacement: PlacementLessThan<S, Fixed64T, Fixed64T, BoolT>,
-        ReplicatedPlacement: PlacementLessThan<S, Fixed128T, Fixed128T, BoolT>,
+        ReplicatedPlacement: PlacementLess<S, Fixed64T, Fixed64T, BoolT>,
+        ReplicatedPlacement: PlacementLess<S, Fixed128T, Fixed128T, BoolT>,
     {
         use AbstractTensor::*;
         match (&x, &y) {
@@ -920,6 +920,100 @@ impl LessThanOp {
             | (Uint64(_), _)
             | (Bool(_), _) => Err(Error::UnimplementedOperator(format!(
                 "Missing host less op for {:?} and {:?}",
+                x.ty_desc(),
+                y.ty_desc()
+            ))),
+        }
+    }
+}
+
+impl GreaterOp {
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementGreater<S, Fixed64T, Fixed64T, BoolT>,
+        HostPlacement: PlacementGreater<S, Fixed128T, Fixed128T, BoolT>,
+        HostPlacement: PlacementGreater<S, Float32T, Float32T, BoolT>,
+        HostPlacement: PlacementGreater<S, Float64T, Float64T, BoolT>,
+    {
+        use AbstractTensor::*;
+        match (&x, &y) {
+            (Fixed64(x), Fixed64(y)) => {
+                let result = plc.greater(sess, x, y);
+                Ok(Bool(result))
+            }
+            (Fixed128(x), Fixed128(y)) => {
+                let result = plc.greater(sess, x, y);
+                Ok(Bool(result))
+            }
+            (Float32(x), Float32(y)) => {
+                let result = plc.greater(sess, x, y);
+                Ok(Bool(result))
+            }
+            (Float64(x), Float64(y)) => {
+                let result = plc.greater(sess, x, y);
+                Ok(Bool(result))
+            }
+            (Fixed64(_), _)
+            | (Fixed128(_), _)
+            | (Float32(_), _)
+            | (Float64(_), _)
+            | (Uint64(_), _)
+            | (Bool(_), _) => Err(Error::UnimplementedOperator(format!(
+                "Missing host greater op for {:?} and {:?}",
+                x.ty_desc(),
+                y.ty_desc()
+            ))),
+        }
+    }
+
+    pub(crate) fn logical_rep_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        ReplicatedPlacement: PlacementGreater<S, Fixed64T, Fixed64T, BoolT>,
+        ReplicatedPlacement: PlacementGreater<S, Fixed128T, Fixed128T, BoolT>,
+    {
+        use AbstractTensor::*;
+        match (&x, &y) {
+            (Fixed64(x), Fixed64(y)) => {
+                let result = plc.greater(sess, x, y);
+                Ok(Bool(result))
+            }
+            (Fixed128(x), Fixed128(y)) => {
+                let result = plc.greater(sess, x, y);
+                Ok(Bool(result))
+            }
+            (Fixed64(_), _)
+            | (Fixed128(_), _)
+            | (Float32(_), _)
+            | (Float64(_), _)
+            | (Uint64(_), _)
+            | (Bool(_), _) => Err(Error::UnimplementedOperator(format!(
+                "Missing host greater op for {:?} and {:?}",
                 x.ty_desc(),
                 y.ty_desc()
             ))),

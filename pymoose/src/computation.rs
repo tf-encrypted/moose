@@ -25,6 +25,7 @@ enum PyOperation {
     DotOperation(PyDotOperation),
     BitwiseOrOperation(PyBitwiseOrOperation),
     LessOperation(PyLessOperation),
+    GreaterOperation(PyGreaterOperation),
     MuxOperation(PyMuxOperation),
     AtLeast2DOperation(PyAtLeast2DOperation),
     ShapeOperation(PyShapeOperation),
@@ -184,6 +185,14 @@ struct PyDotOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyLessOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyGreaterOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -833,7 +842,22 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     LessOperation(op) => Ok(Operation {
-                        kind: LessThanOp {
+                        kind: LessOp {
+                            sig: map_signature(
+                                &op.signature,
+                                &placements,
+                                &op.placement_name,
+                                &["lhs", "rhs"],
+                            )?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    GreaterOperation(op) => Ok(Operation {
+                        kind: GreaterOp {
                             sig: map_signature(
                                 &op.signature,
                                 &placements,
