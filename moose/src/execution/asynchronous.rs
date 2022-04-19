@@ -181,17 +181,17 @@ impl AsyncSession {
                     .load(&key.0, &session_id, Some(expected_ty), &query.0)
                     .await?;
 
-                if value.ty() == expected_ty {
-                    // TODO: Hmm, placement of a Value does not work like this... But perhaps it should?
-                    // let value = plc.place(&sess, value);
-                    map_send_result(sender.send(value))?;
-                    Ok(())
-                } else {
-                    Err(Error::TypeMismatch {
+                if value.ty() != expected_ty {
+                    return Err(Error::TypeMismatch {
                         expected: expected_ty.to_string(),
                         found: value.ty(),
-                    })
+                    });
                 }
+
+                // TODO(Morten) check or fill-in placement?
+
+                map_send_result(sender.send(value))?;
+                Ok(())
             });
             Self::add_task(&self.tasks, task)?;
             Ok(receiver)
@@ -257,8 +257,6 @@ impl AsyncSession {
                 let value = networking
                     .receive(&networking_sender, &rendezvous_key, &session_id)
                     .await?;
-                // TODO: Hmm, placement of a Value does not work like this... But perhaps it should?
-                // let value = plc.place(&sess, value);
 
                 if value.ty() != expected_ty {
                     return Err(Error::TypeMismatch {
@@ -266,6 +264,9 @@ impl AsyncSession {
                         found: value.ty(),
                     });
                 }
+
+                // TODO(Morten) check or fill-in placement?
+
                 map_send_result(sender.send(value))?;
                 Ok(())
             });
@@ -297,10 +298,10 @@ impl AsyncSession {
             let task = tokio::spawn(async move {
                 let mut operands = operands;
 
-                let x = operands.pop().unwrap().await.map_err(map_receive_error)?;
+                let value = operands.pop().unwrap().await.map_err(map_receive_error)?;
 
                 networking
-                    .send(&x, &networking_receiver, &rendezvous_key, &session_id)
+                    .send(&value, &networking_receiver, &rendezvous_key, &session_id)
                     .await?;
 
                 map_send_result(sender.send(unit))?;
