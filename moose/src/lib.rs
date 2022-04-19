@@ -37,7 +37,7 @@ macro_rules! ng_derive_runtime_kernel {
 
     /* Nullary */
 
-    (sync nullary runtime $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+    (sync nullary $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
         {
             let kf: &dyn Fn(&Self) -> crate::error::Result<
                 crate::kernels::TypedNullaryKernel<
@@ -55,7 +55,7 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (sync nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
+    (sync nullary $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
@@ -72,7 +72,7 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (sync nullary runtime $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
+    (sync nullary $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::nullary_fn::<crate::execution::SyncSession, $u, $plc>(Operator::from($op), $k)
     };
 
@@ -829,7 +829,7 @@ macro_rules! modelled_kernel {
                             })
                         ) => {
                             let op = self.clone();
-                            ng_derive_runtime_kernel![sync nullary runtime $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, op]
+                            ng_derive_runtime_kernel![sync nullary $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, op]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
