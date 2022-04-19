@@ -18,6 +18,8 @@ impl SqrtOp {
         ReplicatedPlacement: PlacementPow2<S, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementLog2<S, RepFixedT, RepFixedT>,
     {
+        // 2^(0.5 * log_2 x) = (2^log_2 x)^0.5 = x^0.5 = sqrt(x)
+
         let log2_x = rep.log2(sess, &x);
 
         let half = rep.shape_fill(
