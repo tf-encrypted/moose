@@ -486,6 +486,25 @@ modelled_kernel! {
     ]
 }
 
+pub trait PlacementRelu<S: Session, T, O> {
+    fn relu(&self, sess: &S, x: &T) -> O;
+}
+modelled_kernel! {
+    PlacementRelu::relu, ReluOp,
+    [
+        (HostPlacement, (Tensor) -> Tensor => [concrete] Self::logical_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::host_kernel),
+
+
+    ]
+}
 pub trait PlacementReluAsFixedpoint<S: Session, T, O> {
     fn relu_as_fixedpoint(&self, sess: &S, x: &T) -> O;
 }

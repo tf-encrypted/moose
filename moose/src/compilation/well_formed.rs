@@ -108,6 +108,7 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             Decrypt(op) => DispatchKernel::compile(op, plc),
             Sqrt(op) => DispatchKernel::compile(op, plc),
             Abs(op) => DispatchKernel::compile(op, plc),
+            Relu(op) => DispatchKernel::compile(op, plc),
             Diag(op) => DispatchKernel::compile(op, plc),
         }?;
     }

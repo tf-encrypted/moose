@@ -252,6 +252,24 @@ impl AbsOp {
     }
 }
 
+impl ReluOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        // Ok(HostTensor::<T>(
+        //     x.0.map(|x| plc.relu(_sess, x)).into_shared(),
+        //     plc.clone(),
+        // ))
+
+        Ok(plc.relu(_sess, &x))
+    }
+}
+
 impl AddOp {
     pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,

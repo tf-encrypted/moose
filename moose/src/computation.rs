@@ -860,6 +860,7 @@ operators![
     Shl,
     Shr,
     Abs,
+    Relu,
     Diag,
     Sign,
     RingFixedpointMean,
@@ -1376,6 +1377,13 @@ pub struct AdtToRepOp {
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct AbsOp {
+    pub sig: Signature,
+}
+
+#[derive(
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+)]
+pub struct ReluOp {
     pub sig: Signature,
 }
 

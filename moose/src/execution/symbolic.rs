@@ -310,6 +310,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Shr(op) => DispatchKernel::execute(op, plc, sess, operands),
             Msb(op) => DispatchKernel::execute(op, plc, sess, operands),
             Abs(op) => DispatchKernel::execute(op, plc, sess, operands),
+            Relu(op) => DispatchKernel::execute(op, plc, sess, operands),
             Mux(op) => DispatchKernel::execute(op, plc, sess, operands),
             Maximum(op) => DispatchKernel::execute(op, plc, sess, operands),
             Softmax(op) => DispatchKernel::execute(op, plc, sess, operands),

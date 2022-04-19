@@ -204,6 +204,7 @@ impl Session for SyncSession {
             TruncPr(op) => DispatchKernel::execute(op, plc, self, operands)?,
             Msb(op) => DispatchKernel::execute(op, plc, self, operands)?,
             Abs(op) => DispatchKernel::execute(op, plc, self, operands)?,
+            Relu(op) => DispatchKernel::execute(op, plc, self, operands)?,
             RepToAdt(op) => DispatchKernel::execute(op, plc, self, operands)?,
             AddN(op) => DispatchKernel::execute(op, plc, self, operands)?,
             Index(op) => DispatchKernel::execute(op, plc, self, operands)?,
