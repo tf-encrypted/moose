@@ -8,9 +8,7 @@ use crate::execution::Session;
 use crate::kernels::NgKernel;
 use std::convert::{TryFrom, TryInto};
 
-pub(crate) fn nullary_fn<S, U, P>(
-    kf: fn(&S, &P) -> Result<U>,
-) -> Result<NgKernel<S, Value>>
+pub(crate) fn nullary_fn<S, U, P>(kf: fn(&S, &P) -> Result<U>) -> Result<NgKernel<S, Value>>
 where
     S: Session + 'static,
     U: 'static,
@@ -70,7 +68,6 @@ where
 }
 
 pub(crate) fn symbolic_nullary_concrete_box<U, P>(
-    _op: Operator,
     kf: Box<
         dyn Fn(&SymbolicSession, &P) -> Result<<U as PartiallySymbolicType>::Type> + Send + Sync,
     >,
@@ -97,7 +94,6 @@ where
 // be certain that we only get two copies? What are the correct trait bounds?
 
 pub(crate) fn unary_box<S, T0, U, P>(
-    _op: Operator,
     kf: Box<dyn Fn(&S, &P, T0) -> Result<U> + Send + Sync>,
 ) -> Result<NgKernel<S, Value>>
 where
@@ -121,10 +117,7 @@ where
     })
 }
 
-pub(crate) fn unary_fn<S, T0, U, P>(
-    _op: Operator,
-    kf: fn(&S, &P, T0) -> Result<U>,
-) -> Result<NgKernel<S, Value>>
+pub(crate) fn unary_fn<S, T0, U, P>(kf: fn(&S, &P, T0) -> Result<U>) -> Result<NgKernel<S, Value>>
 where
     S: Session + 'static,
 
@@ -282,7 +275,6 @@ where
 //     SymbolicValue::from(y)
 
 pub(crate) fn symbolic_unary_transparent_box<T0, U, P>(
-    _op: Operator,
     kf: Box<
         dyn Fn(
                 &SymbolicSession,
@@ -320,7 +312,6 @@ where
 }
 
 pub(crate) fn symbolic_unary_transparent_fn<T0, U, P>(
-    _op: Operator,
     kf: fn(&SymbolicSession, &P, <T0 as SymbolicType>::Type) -> Result<<U as SymbolicType>::Type>,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
@@ -460,7 +451,6 @@ where
 }
 
 pub(crate) fn binary_box<S, T0, T1, U, P>(
-    _op: Operator,
     kf: Box<dyn Fn(&S, &P, T0, T1) -> Result<U> + Send + Sync>,
 ) -> Result<NgKernel<S, Value>>
 where
@@ -489,7 +479,6 @@ where
 }
 
 pub(crate) fn binary_fn<S, T0, T1, U, P>(
-    _op: Operator,
     kf: fn(&S, &P, T0, T1) -> Result<U>,
 ) -> Result<NgKernel<S, Value>>
 where
@@ -668,7 +657,6 @@ where
 }
 
 pub(crate) fn symbolic_binary_transparent_fn<T0, T1, U, P>(
-    _op: Operator,
     kf: fn(
         &SymbolicSession,
         &P,
@@ -835,7 +823,6 @@ where
 }
 
 pub(crate) fn ternary_fn<S, T0, T1, T2, U, P>(
-    _op: Operator,
     kf: fn(&S, &P, T0, T1, T2) -> Result<U>,
 ) -> Result<NgKernel<S, Value>>
 where
@@ -1058,7 +1045,6 @@ where
 }
 
 pub(crate) fn _symbolic_ternary_transparent_fn<T0, T1, T2, U, P>(
-    _op: Operator,
     kf: fn(
         &SymbolicSession,
         &P,
@@ -1110,7 +1096,6 @@ where
 }
 
 pub(crate) fn variadic_box<S, TS, U, P>(
-    _op: Operator,
     kf: Box<dyn Fn(&S, &P, &[TS]) -> Result<U> + Send + Sync>,
 ) -> Result<NgKernel<S, Value>>
 where
@@ -1140,7 +1125,6 @@ where
 }
 
 pub(crate) fn variadic_fn<S, TS, U, P>(
-    _op: Operator,
     kf: fn(&S, &P, &[TS]) -> Result<U>,
 ) -> Result<NgKernel<S, Value>>
 where
@@ -1213,7 +1197,6 @@ where
 }
 
 pub(crate) fn symbolic_variadic_transparent_fn<TS, U, P>(
-    _op: Operator,
     kf: fn(
         &SymbolicSession,
         &P,
