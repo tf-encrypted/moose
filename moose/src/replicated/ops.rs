@@ -294,6 +294,40 @@ impl ExpandDimsOp {
     }
 }
 
+impl ReshapeOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT, HostShapeT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: RepTensor<HostRingT>,
+        shape: RepShape<HostShapeT>,
+    ) -> Result<RepTensor<HostRingT>>
+    where
+        HostPlacement: PlacementReshape<S, HostRingT, HostShapeT, HostRingT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+        let RepTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let RepShape {
+            shapes: [s0, s1, s2],
+        } = &shape;
+
+        let z00 = player0.reshape(sess, x00, s0.clone());
+        let z10 = player0.reshape(sess, x10, s0);
+
+        let z11 = player1.reshape(sess, x11, s1.clone());
+        let z21 = player1.reshape(sess, x21, s1);
+
+        let z22 = player2.reshape(sess, x22, s2.clone());
+        let z02 = player2.reshape(sess, x02, s2);
+
+        Ok(RepTensor {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        })
+    }
+}
+
 impl IndexAxisOp {
     pub(crate) fn rep_kernel<S: Session, HostRingT>(
         sess: &S,
