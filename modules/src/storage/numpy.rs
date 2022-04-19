@@ -6,20 +6,11 @@ use ndarray_npy::{read_npy, write_npy};
 use std::fs::File;
 use std::io::Read;
 
-pub(crate) enum NumpyDtype {
-    Float32,
-    Float64,
-    Int32,
-    Int64,
-    Uint32,
-    Uint64,
-}
-
 #[allow(dead_code)]
 pub(crate) async fn read_numpy(
     filename: &str,
     placement: &HostPlacement,
-    dtype: Option<NumpyDtype>,
+    dtype: Option<Ty>,
 ) -> Result<Value> {
     let dtype = match dtype {
         Some(dtype) => Ok(dtype),
@@ -31,7 +22,7 @@ pub(crate) async fn read_numpy(
         }),
     }?;
     match dtype {
-        NumpyDtype::Float64 => {
+        Ty::HostFloat64Tensor => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
                 Error::Storage(format!(
                     "failed to read numpy data file: {}: {}",
@@ -42,7 +33,7 @@ pub(crate) async fn read_numpy(
             let value = Value::from(tensor);
             Ok(value)
         }
-        NumpyDtype::Float32 => {
+        Ty::HostFloat32Tensor => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
                 Error::Storage(format!(
                     "failed to read numpy data file: {}: {}",
@@ -53,7 +44,7 @@ pub(crate) async fn read_numpy(
             let value = Value::from(tensor);
             Ok(value)
         }
-        NumpyDtype::Int32 => {
+        Ty::HostInt32Tensor => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
                 Error::Storage(format!(
                     "failed to read numpy data file: {}: {}",
@@ -64,7 +55,7 @@ pub(crate) async fn read_numpy(
             let value = Value::from(tensor);
             Ok(value)
         }
-        NumpyDtype::Int64 => {
+        Ty::HostInt64Tensor => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
                 Error::Storage(format!(
                     "failed to read numpy data file: {}: {}",
@@ -75,7 +66,7 @@ pub(crate) async fn read_numpy(
             let value = Value::from(tensor);
             Ok(value)
         }
-        NumpyDtype::Uint64 => {
+        Ty::HostUint64Tensor => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
                 Error::Storage(format!(
                     "failed to read numpy data file: {}: {}",
@@ -86,7 +77,7 @@ pub(crate) async fn read_numpy(
             let value = Value::from(tensor);
             Ok(value)
         }
-        NumpyDtype::Uint32 => {
+        Ty::HostUint32Tensor => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
                 Error::Storage(format!(
                     "failed to read numpy data file: {}: {}",
@@ -97,6 +88,10 @@ pub(crate) async fn read_numpy(
             let value = Value::from(tensor);
             Ok(value)
         }
+        _ => Err(Error::Storage(format!(
+            "invalid dtype for numpy storage read: {}",
+            dtype
+        ))),
     }
 }
 
@@ -247,7 +242,7 @@ fn extract_descr(file: &mut File) -> Result<Vec<char>> {
     }
 }
 
-fn descr_to_dtype(descr: &[char]) -> Result<NumpyDtype> {
+fn descr_to_dtype(descr: &[char]) -> Result<Ty> {
     if descr.is_empty() {
         return Err(Error::Storage(
             "descr is empty in numpy data dictionary".to_string(),
@@ -271,13 +266,13 @@ fn descr_to_dtype(descr: &[char]) -> Result<NumpyDtype> {
     // number_code:
     //     specifies the number of bytes, e.g., 4 means 32 bits, 8 means 64 bits
     match (letter_code, number_code) {
-        ('f', Some('4')) => Ok(NumpyDtype::Float32),
-        ('f', Some('8')) => Ok(NumpyDtype::Float64),
-        ('d', None) => Ok(NumpyDtype::Float64),
-        ('i', Some('4')) => Ok(NumpyDtype::Int32),
-        ('i', Some('8')) => Ok(NumpyDtype::Int64),
-        ('u', Some('4')) => Ok(NumpyDtype::Uint32),
-        ('u', Some('8')) => Ok(NumpyDtype::Uint64),
+        ('f', Some('4')) => Ok(Ty::HostFloat32Tensor),
+        ('f', Some('8')) => Ok(Ty::HostFloat64Tensor),
+        ('d', None) => Ok(Ty::HostFloat64Tensor),
+        ('i', Some('4')) => Ok(Ty::HostInt32Tensor),
+        ('i', Some('8')) => Ok(Ty::HostInt64Tensor),
+        ('u', Some('4')) => Ok(Ty::HostUint32Tensor),
+        ('u', Some('8')) => Ok(Ty::HostUint64Tensor),
         _ => {
             let number_code_display = match number_code {
                 Some(c) => c.to_string(),
@@ -291,7 +286,7 @@ fn descr_to_dtype(descr: &[char]) -> Result<NumpyDtype> {
     }
 }
 
-fn extract_dtype(npy_filename: &str) -> Result<NumpyDtype> {
+fn extract_dtype(npy_filename: &str) -> Result<Ty> {
     let mut file = std::fs::File::open(npy_filename).map_err(|e| {
         Error::Storage(format!(
             "failed to open numpy data file for reading: {}: {}",
