@@ -8,7 +8,9 @@ use crate::execution::Session;
 use crate::kernels::NgKernel;
 use std::convert::{TryFrom, TryInto};
 
-pub(crate) fn nullary_fn<S: Session, U, P>(kf: fn(&S, &P) -> Result<U>) -> Result<NgKernel<S, Value>>
+pub(crate) fn nullary_fn<S: Session, U, P>(
+    kf: fn(&S, &P) -> Result<U>,
+) -> Result<NgKernel<S, Value>>
 where
     S: 'static,
     U: 'static,
