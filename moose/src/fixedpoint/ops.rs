@@ -2881,8 +2881,8 @@ mod tests {
     rep_approx_unary_fixed_test!(test_rep_exp_fixed64, exp<i64, u64>, 10, 10, 0.1);
     rep_approx_unary_fixed_test!(test_rep_exp_fixed128, exp<i128, u128>, 20, 20, 0.001);
 
-    rep_approx_unary_fixed_test!(test_rep_sqrt_fixed64, exp<i64, u64>, 10, 10, 0.1);
-    rep_approx_unary_fixed_test!(test_rep_sqrt_fixed128, exp<i128, u128>, 20, 20, 0.001);
+    rep_approx_unary_fixed_test!(test_rep_sqrt_fixed64, sqrt<i64, u64>, 10, 10, 0.1);
+    rep_approx_unary_fixed_test!(test_rep_sqrt_fixed128, sqrt<i128, u128>, 20, 20, 0.001);
 
     #[test]
     fn test_exp2_64() {
@@ -2914,15 +2914,20 @@ mod tests {
 
     #[test]
     fn test_sqrt_64() {
-        let x = array![1f64, 2., 3., 4.,].into_dyn();
-        let y_targets: Vec<_> = x.iter().map(|item| item.exp()).collect();
+        let x =
+            array![0.001, 0.01, 0.1, 1f64, 2., 3., 4., 10., 20., 30., 40., 50., 100., 1000., 2000.]
+                .into_dyn();
+        let y_targets: Vec<_> = x.iter().map(|item| item.sqrt()).collect();
         test_rep_sqrt_fixed64(x, y_targets);
     }
 
     #[test]
     fn test_sqrt_128() {
-        let x = array![1f64, 2., 3., 4.,].into_dyn();
-        let y_targets: Vec<_> = x.iter().map(|item| item.exp()).collect();
+        let x = array![
+            0.001, 0.01, 0.1, 1f64, 2., 3., 4., 10., 50., 100., 1000., 10000., 100000., 1000000.
+        ]
+        .into_dyn();
+        let y_targets: Vec<_> = x.iter().map(|item| item.sqrt()).collect();
         test_rep_sqrt_fixed128(x, y_targets);
     }
 
