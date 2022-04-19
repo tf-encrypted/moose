@@ -8,9 +8,9 @@ use crate::execution::Session;
 use crate::kernels::NgKernel;
 use std::convert::{TryFrom, TryInto};
 
-pub(crate) fn nullary_fn<S, U, P>(kf: fn(&S, &P) -> Result<U>) -> Result<NgKernel<S, Value>>
+pub(crate) fn nullary_fn<S: Session, U, P>(kf: fn(&S, &P) -> Result<U>) -> Result<NgKernel<S, Value>>
 where
-    S: Session + 'static,
+    S: 'static,
     U: 'static,
     P: 'static,
 
@@ -26,11 +26,11 @@ where
     })
 }
 
-pub(crate) fn nullary_box<S, U, P>(
+pub(crate) fn nullary_box<S: Session, U, P>(
     kf: Box<dyn Fn(&S, &P) -> Result<U> + Send + Sync>,
 ) -> Result<NgKernel<S, Value>>
 where
-    S: Session + 'static,
+    S: 'static,
     U: 'static,
     P: 'static,
 
@@ -264,15 +264,6 @@ where
         ),
     })
 }
-// v = SymbolicValue::RepTensor(Symbolic<RepTensor>::Concrete(x))
-
-// concrete:
-//     y: (concrete) = kf(x)
-//     SymbolicValue::from(Symbolic::Concrete(y))
-
-// transparent:
-//     y: Symbolic = kf(Symbolic::Concrete(x))
-//     SymbolicValue::from(y)
 
 pub(crate) fn symbolic_unary_transparent_box<T0, U, P>(
     kf: Box<
