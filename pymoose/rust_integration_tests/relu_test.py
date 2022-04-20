@@ -53,9 +53,9 @@ class ReplicatedExample(parameterized.TestCase):
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
-        
+
         def relu(x):
-            return x * (x > 0) 
+            return x * (x > 0)
 
         np.testing.assert_almost_equal(actual_result, relu(x_arg), decimal=5)
 

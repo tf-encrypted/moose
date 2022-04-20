@@ -406,6 +406,7 @@ class AstTracer:
                 ),
             )
         )
+
     def visit_LogExpression(self, log_expression):
         assert isinstance(log_expression, expr.LogExpression)
         (x_expression,) = log_expression.inputs

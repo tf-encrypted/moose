@@ -14,7 +14,6 @@ from pymoose.computation.types import StringType
 from pymoose.computation.types import TensorType
 from pymoose.edsl.base import Argument
 from pymoose.edsl.base import abs
-from pymoose.edsl.base import relu
 from pymoose.edsl.base import add
 from pymoose.edsl.base import add_n
 from pymoose.edsl.base import argmax
@@ -43,6 +42,7 @@ from pymoose.edsl.base import mirrored_placement
 from pymoose.edsl.base import mul
 from pymoose.edsl.base import mux
 from pymoose.edsl.base import ones
+from pymoose.edsl.base import relu
 from pymoose.edsl.base import replicated_placement
 from pymoose.edsl.base import reshape
 from pymoose.edsl.base import save

@@ -262,7 +262,7 @@ impl ReluOp {
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         Ok(HostTensor::<T>(
-            x.0.mapv(|x| clamp_min(x.clone(), T::zero())).into_shared(),
+            x.0.mapv(|x| clamp_min(x, T::zero())).into_shared(),
             plc.clone(),
         ))
     }
