@@ -9,6 +9,7 @@ use crate::networking::{LocalSyncNetworking, SyncNetworking};
 use crate::replicated::*;
 use crate::storage::LocalSyncStorage;
 use crate::storage::SyncStorage;
+use std::convert::TryInto;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -243,25 +244,24 @@ impl Session for SyncSession {
         &self,
         op: &Operator,
         plc: &Placement,
-        mut operands: Operands<Value>,
+        operands: Operands<Value>,
     ) -> Result<Value> {
+        let mut operands = operands;
         let kernel: NgKernel<SyncSession, _> = match op {
             Operator::Load(op) => {
-                use std::convert::TryInto;
                 assert_eq!(operands.len(), 2);
-                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
-                let query: HostString = operands.get(1).unwrap().clone().try_into()?;
+                let query: HostString = operands.pop().unwrap().try_into()?;
+                let key: HostString = operands.pop().unwrap().try_into()?;
                 // TODO(Morten) we should verify type of loaded value
                 return self
                     .storage
                     .load(&key.0, &self.session_id, Some(op.sig.ret()), &query.0);
             }
             Operator::Save(_) => {
-                use std::convert::TryInto;
                 assert_eq!(operands.len(), 2);
-                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
-                let x = operands.get(1).unwrap().clone();
-                self.storage.save(&key.0, &self.session_id, &x)?;
+                let value: Value = operands.pop().unwrap();
+                let key: HostString = operands.pop().unwrap().try_into()?;
+                self.storage.save(&key.0, &self.session_id, &value)?;
                 let host = match plc {
                     Placement::Host(host) => host,
                     _ => unimplemented!(
