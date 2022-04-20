@@ -334,6 +334,14 @@ class SliceExpression(Expression):
 
 
 @dataclass
+class BetterSliceExpression(Expression):
+    slices: Optional[Tuple[slice]]
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class LessExpression(Expression):
     def __hash__(self):
         return id(self)
@@ -721,13 +729,28 @@ def index_axis(x, axis, index, placement=None):
     )
 
 
-def slice(x, begin, end, placement=None):
+def sliced(x, begin, end, placement=None):
     assert isinstance(x, Expression)
     assert isinstance(begin, int)
     assert isinstance(end, int)
     placement = placement or get_current_placement()
     return SliceExpression(
         placement=placement, inputs=[x], begin=begin, end=end, vtype=x.vtype
+    )
+
+
+def better_slice(x, slices, placement=None):
+    assert isinstance(x, Expression)
+    assert isinstance(slices, (tuple, list))
+    for s in slices:
+        if not isinstance(s, slice):
+            raise ValueError(
+                "`slices` argument must a list/tuple of slices, found " f"{type(s)}"
+            )
+
+    placement = placement or get_current_placement()
+    return BetterSliceExpression(
+        placement=placement, inputs=[x], slices=slices, vtype=x.vtype
     )
 
 

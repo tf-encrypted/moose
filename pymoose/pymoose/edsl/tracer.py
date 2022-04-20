@@ -645,6 +645,24 @@ class AstTracer:
             )
         )
 
+    def visit_BetterSliceExpression(self, slice_expression):
+        assert isinstance(slice_expression, expr.BetterSliceExpression)
+        (x_expression,) = slice_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(slice_expression.placement)
+        return self.computation.add_operation(
+            ops.BetterSliceOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("better_slice"),
+                inputs={"x": x_operation.name},
+                slices=slice_expression.slices,
+                signature=ops.OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=slice_expression.vtype,
+                ),
+            )
+        )
+
     def visit_ShapeExpression(self, shape_expression):
         assert isinstance(shape_expression, expr.ShapeExpression)
         (x_expression,) = shape_expression.inputs

@@ -215,6 +215,11 @@ class SliceOperation(Operation):
 
 
 @dataclass
+class BetterSliceOperation(Operation):
+    slices: Optional[Tuple[slice]]
+
+
+@dataclass
 class BitwiseOrOperation(Operation):
     pass
 
