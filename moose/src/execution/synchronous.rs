@@ -9,8 +9,8 @@ use crate::networking::{LocalSyncNetworking, SyncNetworking};
 use crate::replicated::*;
 use crate::storage::LocalSyncStorage;
 use crate::storage::SyncStorage;
-use std::convert::TryInto;
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -240,12 +240,7 @@ impl NgDispatchKernel<SyncSession, Value> for Operator {
 impl Session for SyncSession {
     type Value = Value;
 
-    fn execute(
-        &self,
-        op: &Operator,
-        plc: &Placement,
-        operands: Operands<Value>,
-    ) -> Result<Value> {
+    fn execute(&self, op: &Operator, plc: &Placement, operands: Operands<Value>) -> Result<Value> {
         let mut operands = operands;
         let kernel: NgKernel<SyncSession, _> = match op {
             Operator::Load(op) => {

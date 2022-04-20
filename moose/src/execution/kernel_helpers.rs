@@ -5,8 +5,11 @@ use crate::error::Result;
 use crate::execution::symbolic::{Symbolic, SymbolicSession};
 use crate::execution::Operands;
 use crate::execution::Session;
-use crate::kernels::NgKernel;
+use crate::kernels::{NgKernel, TypedNullaryKernel, TypedUnaryKernel};
 use std::convert::{TryFrom, TryInto};
+
+// TODO(Morten) can we merge some of the _box and _fn functions and still
+// be certain that we only get two copies? What are the correct trait bounds?
 
 pub(crate) fn nullary_fn<S: Session, U, P>(
     kf: fn(&S, &P) -> Result<U>,
@@ -15,7 +18,6 @@ where
     S: 'static,
     U: 'static,
     P: 'static,
-
     Placement: TryInto<P, Error = crate::Error>,
     Value: From<U>,
 {
@@ -29,13 +31,12 @@ where
 }
 
 pub(crate) fn nullary_box<S: Session, U, P>(
-    kf: Box<dyn Fn(&S, &P) -> Result<U> + Send + Sync>,
+    kf: TypedNullaryKernel<S, P, U>,
 ) -> Result<NgKernel<S, Value>>
 where
     S: 'static,
     U: 'static,
     P: 'static,
-
     Placement: TryInto<P, Error = crate::Error>,
     Value: From<U>,
 {
@@ -54,7 +55,6 @@ pub(crate) fn symbolic_nullary_runtime<U, P>(
 where
     P: Clone + TryFrom<Placement, Error = crate::Error>,
     Placement: From<P>,
-
     U: PartiallySymbolicType,
     <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
     SymbolicValue: From<<U as SymbolicType>::Type>,
@@ -70,15 +70,12 @@ where
 }
 
 pub(crate) fn symbolic_nullary_concrete_box<U, P>(
-    kf: Box<
-        dyn Fn(&SymbolicSession, &P) -> Result<<U as PartiallySymbolicType>::Type> + Send + Sync,
-    >,
+    kf: TypedNullaryKernel<SymbolicSession, P, <U as PartiallySymbolicType>::Type>,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
     P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
     Placement: From<P>,
-
-    U: PartiallySymbolicType, // TODO use SymbolicType here?
+    U: PartiallySymbolicType,
     <U as PartiallySymbolicType>::Type: Placed + 'static,
     <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
     SymbolicValue: From<<U as SymbolicType>::Type>,
@@ -92,19 +89,14 @@ where
     })
 }
 
-// TODO(Morten) can we merge sync_unary_box and sync_unary_fn and still
-// be certain that we only get two copies? What are the correct trait bounds?
-
-pub(crate) fn unary_box<S, T0, U, P>(
-    kf: Box<dyn Fn(&S, &P, T0) -> Result<U> + Send + Sync>,
+pub(crate) fn unary_box<S: Session, T0, U, P>(
+    kf: TypedUnaryKernel<S, P, T0, U>,
 ) -> Result<NgKernel<S, Value>>
 where
-    S: Session + 'static,
-
+    S: 'static,
     T0: 'static,
     U: 'static,
     P: 'static,
-
     Placement: TryInto<P, Error = crate::Error>,
     Value: TryInto<T0, Error = crate::Error>,
     Value: From<U>,
@@ -119,10 +111,11 @@ where
     })
 }
 
-pub(crate) fn unary_fn<S, T0, U, P>(kf: fn(&S, &P, T0) -> Result<U>) -> Result<NgKernel<S, Value>>
+pub(crate) fn unary_fn<S: Session, T0, U, P>(
+    kf: fn(&S, &P, T0) -> Result<U>,
+) -> Result<NgKernel<S, Value>>
 where
-    S: Session + 'static,
-
+    S: 'static,
     T0: 'static,
     U: 'static,
     P: 'static,
@@ -146,13 +139,10 @@ pub(crate) fn symbolic_unary_runtime<T0, U, P>(
 where
     P: Clone + TryFrom<Placement, Error = crate::Error>,
     Placement: From<P>,
-
     T0: PartiallySymbolicType,
     U: PartiallySymbolicType,
-
     <T0 as PartiallySymbolicType>::Type: Placed,
     <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
-
     SymbolicValue: TryInto<Symbolic<<T0 as PartiallySymbolicType>::Type>, Error = crate::Error>,
     SymbolicValue: From<<U as SymbolicType>::Type>,
 {
@@ -161,7 +151,6 @@ where
             move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
                 let plc = P::try_from(plc.clone())?;
                 let v0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
-
                 match v0 {
                     Symbolic::Symbolic(x0) => {
                         let h = sess.add_operation(&op, &[&x0.op], &plc);
@@ -177,23 +166,18 @@ where
 
 pub(crate) fn symbolic_unary_concrete_box<T0, U, P>(
     op: Operator,
-    kf: Box<
-        dyn Fn(
-                &SymbolicSession,
-                &P,
-                <T0 as PartiallySymbolicType>::Type,
-            ) -> Result<<U as PartiallySymbolicType>::Type>
-            + Send
-            + Sync,
+    kf: TypedUnaryKernel<
+        SymbolicSession,
+        P,
+        <T0 as PartiallySymbolicType>::Type,
+        <U as PartiallySymbolicType>::Type,
     >,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
     P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
     Placement: From<P>,
-
     T0: PartiallySymbolicType,
-    U: PartiallySymbolicType, // TODO use SymbolicType here?
-
+    U: PartiallySymbolicType,
     <T0 as PartiallySymbolicType>::Type: Placed + 'static,
     <U as PartiallySymbolicType>::Type: Placed + 'static,
     // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
@@ -206,7 +190,6 @@ where
             move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
                 let plc = P::try_from(plc.clone())?;
                 let v0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
-
                 match v0 {
                     Symbolic::Concrete(x0) => {
                         let y = kf(sess, &plc, x0)?;
@@ -234,10 +217,8 @@ pub(crate) fn symbolic_unary_concrete_fn<T0, U, P>(
 where
     P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
     Placement: From<P>,
-
     T0: PartiallySymbolicType,
-    U: PartiallySymbolicType, // TODO use SymbolicType here?
-
+    U: PartiallySymbolicType,
     <T0 as PartiallySymbolicType>::Type: Placed + 'static,
     <U as PartiallySymbolicType>::Type: Placed + 'static,
     // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
@@ -250,7 +231,6 @@ where
             move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
                 let plc = P::try_from(plc.clone())?;
                 let v0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
-
                 match v0 {
                     Symbolic::Concrete(x0) => {
                         let y = kf(sess, &plc, x0)?;
