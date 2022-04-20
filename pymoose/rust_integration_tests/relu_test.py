@@ -22,10 +22,10 @@ class ReplicatedExample(parameterized.TestCase):
             with bob:
                 x = edsl.constant(x_array)
                 y = edsl.relu(x)
-                # x_enc = edsl.cast(x, dtype=edsl.fixed(8, 27))
+                x_enc = edsl.cast(x, dtype=edsl.fixed(8, 27))
 
-            # with rep:
-            #     y = edsl.relu(x_enc)
+            with rep:
+                y = edsl.relu(x_enc)
 
             with alice:
                 res = edsl.save("y_uri", edsl.cast(y, edsl.float64))

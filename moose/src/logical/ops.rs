@@ -283,9 +283,40 @@ impl ReluOp {
                 let result = plc.relu(sess, &x);
                 Ok(AbstractTensor::Float64(result))
             }
-            // TODO(Morten) would be nice to catch statically; perhaps if custom kernel?!
             _ => Err(Error::UnimplementedOperator(format!(
                 "Missing host relu for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+    pub(crate) fn rep_logical_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        ReplicatedPlacement: PlacementRelu<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementRelu<S, Fixed128T, Fixed128T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = plc.relu(sess, &x);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = plc.relu(sess, &x);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated relu for {:?}",
                 &x.ty_desc(),
             ))),
         }
