@@ -209,7 +209,13 @@ macro_rules! ng_derive_runtime_kernel {
                 $t0,
                 $u,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::unary_box::<crate::execution::SyncSession, $t0, $u, $plc>(k)
+            crate::execution::kernel_helpers::unary::<
+                crate::execution::SyncSession,
+                $t0,
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
@@ -226,12 +232,24 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, x0| {
                 $k(sess, &plc, $($attr.clone()),+, x0)
             });
-            crate::execution::kernel_helpers::unary_box::<crate::execution::SyncSession, $t0, $u, $plc>(k)
+            crate::execution::kernel_helpers::unary::<
+                crate::execution::SyncSession,
+                $t0,
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
     (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::unary_fn::<crate::execution::SyncSession, $t0, $u, $plc>($k)
+        crate::execution::kernel_helpers::unary::<
+            crate::execution::SyncSession,
+            $t0,
+            $u,
+            $plc,
+            fn(&crate::execution::SyncSession, &$plc, $t0) -> Result<$u>,
+        >($k)
     };
 
     (async unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
@@ -250,7 +268,13 @@ macro_rules! ng_derive_runtime_kernel {
                 $t0,
                 $u,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::unary_box::<crate::execution::AsyncSession, $t0, $u, $plc>(k)
+            crate::execution::kernel_helpers::unary::<
+                crate::execution::AsyncSession,
+                $t0,
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
@@ -267,12 +291,24 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, x0| {
                 $k(sess, &plc, $($attr.clone()),+, x0)
             });
-            crate::execution::kernel_helpers::unary_box::<crate::execution::AsyncSession, $t0, $u, $plc>(k)
+            crate::execution::kernel_helpers::unary::<
+                crate::execution::AsyncSession,
+                $t0,
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
     (async unary runtime $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::unary_fn::<crate::execution::AsyncSession, $t0, $u, $plc>($k)
+        crate::execution::kernel_helpers::unary::<
+            crate::execution::AsyncSession,
+            $t0,
+            $u,
+            $plc,
+            fn(&crate::execution::AsyncSession, &$plc, $t0) -> Result<$u>,
+        >($k)
     };
 
     (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {

@@ -89,32 +89,9 @@ where
     })
 }
 
-pub(crate) fn unary_box<S: Session, T0, U, P>(
-    kf: TypedUnaryKernel<S, P, T0, U>,
-) -> Result<NgKernel<S, Value>>
+pub(crate) fn unary<S: Session, T0, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
 where
-    S: 'static,
-    T0: 'static,
-    U: 'static,
-    P: 'static,
-    Placement: TryInto<P, Error = crate::Error>,
-    Value: TryInto<T0, Error = crate::Error>,
-    Value: From<U>,
-{
-    Ok(NgKernel::Unary {
-        closure: Box::new(move |sess: &S, plc: &Placement, v0: Value| {
-            let plc: P = Placement::try_into(plc.clone())?;
-            let x0: T0 = Value::try_into(v0)?;
-            let y = kf(sess, &plc, x0)?;
-            Ok(Value::from(y))
-        }),
-    })
-}
-
-pub(crate) fn unary_fn<S: Session, T0, U, P>(
-    kf: fn(&S, &P, T0) -> Result<U>,
-) -> Result<NgKernel<S, Value>>
-where
+    F: Fn(&S, &P, T0) -> Result<U> + Send + Sync + 'static,
     S: 'static,
     T0: 'static,
     U: 'static,
@@ -423,9 +400,7 @@ where
     })
 }
 
-pub(crate) fn binary<S, T0, T1, U, P, F>(
-    kf: F,
-) -> Result<NgKernel<S, Value>>
+pub(crate) fn binary<S, T0, T1, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
 where
     F: Fn(&S, &P, T0, T1) -> Result<U> + Send + Sync + 'static,
 
