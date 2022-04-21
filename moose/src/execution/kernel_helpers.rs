@@ -107,7 +107,9 @@ where
     })
 }
 
-pub(crate) fn symbolic_nullary_runtime<U, P>(op: Operator) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+pub(crate) fn symbolic_nullary_runtime<U, P>(
+    op: Operator,
+) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
     P: TryFrom<Placement, Error = crate::Error> + Clone,
     Placement: From<P>,
