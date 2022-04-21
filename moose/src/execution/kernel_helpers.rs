@@ -716,12 +716,10 @@ where
     })
 }
 
-pub(crate) fn ternary_fn<S, T0, T1, T2, U, P>(
-    kf: fn(&S, &P, T0, T1, T2) -> Result<U>,
-) -> Result<NgKernel<S, Value>>
+pub(crate) fn ternary<S, T0, T1, T2, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
 where
-    S: Session,
-    S: 'static,
+    F: Fn(&S, &P, T0, T1, T2) -> Result<U> + Send + Sync + 'static,
+    S: Session + 'static,
 
     T0: 'static,
     T1: 'static,

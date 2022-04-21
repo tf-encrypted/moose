@@ -775,11 +775,27 @@ macro_rules! ng_derive_runtime_kernel {
     /* Ternary */
 
     (sync ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::ternary_fn::<crate::execution::SyncSession, $t0, $t1, $t2, $u, $plc>($k)
+        crate::execution::kernel_helpers::ternary::<
+            crate::execution::SyncSession,
+            $t0,
+            $t1,
+            $t2,
+            $u,
+            $plc,
+            fn(&crate::execution::SyncSession, &$plc, $t0, $t1, $t2) -> Result<$u>,
+        >($k)
     };
 
     (async ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::ternary_fn::<crate::execution::AsyncSession, $t0, $t1, $t2, $u, $plc>($k)
+        crate::execution::kernel_helpers::ternary::<
+            crate::execution::AsyncSession,
+            $t0,
+            $t1,
+            $t2,
+            $u,
+            $plc,
+            fn(&crate::execution::AsyncSession, &$plc, $t0, $t1, $t2) -> Result<$u>,
+        >($k)
     };
 
     (symbolic ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
