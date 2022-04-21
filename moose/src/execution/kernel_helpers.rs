@@ -25,6 +25,109 @@ where
     })
 }
 
+pub(crate) fn unary<S: Session, T0, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
+where
+    F: Fn(&S, &P, T0) -> Result<U> + Send + Sync + 'static,
+    S: 'static,
+    T0: 'static,
+    U: 'static,
+    P: 'static,
+    Placement: TryInto<P, Error = crate::Error>,
+    Value: TryInto<T0, Error = crate::Error>,
+    Value: From<U>,
+{
+    Ok(NgKernel::Unary {
+        closure: Box::new(move |sess: &S, plc: &Placement, v0: Value| {
+            let plc: P = Placement::try_into(plc.clone())?;
+            let x0: T0 = Value::try_into(v0)?;
+            let y = kf(sess, &plc, x0)?;
+            Ok(Value::from(y))
+        }),
+    })
+}
+
+pub(crate) fn binary<S, T0, T1, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
+where
+    F: Fn(&S, &P, T0, T1) -> Result<U> + Send + Sync + 'static,
+    S: Session + 'static,
+    T0: 'static,
+    T1: 'static,
+    U: 'static,
+    Value: TryInto<T0, Error = crate::Error>,
+    Value: TryInto<T1, Error = crate::Error>,
+    Value: From<U>,
+    P: 'static,
+    Placement: TryInto<P, Error = crate::Error>,
+{
+    Ok(NgKernel::Binary {
+        closure: Box::new(move |sess: &S, plc: &Placement, v0: Value, v1: Value| {
+            let plc: P = Placement::try_into(plc.clone())?;
+            let x0: T0 = Value::try_into(v0)?;
+            let x1: T1 = Value::try_into(v1)?;
+            let y = kf(sess, &plc, x0, x1)?;
+            Ok(Value::from(y))
+        }),
+    })
+}
+
+pub(crate) fn ternary<S, T0, T1, T2, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
+where
+    F: Fn(&S, &P, T0, T1, T2) -> Result<U> + Send + Sync + 'static,
+    S: Session + 'static,
+
+    T0: 'static,
+    T1: 'static,
+    T2: 'static,
+
+    U: 'static,
+    P: 'static,
+    Placement: TryInto<P, Error = crate::Error>,
+    Value: TryInto<T0, Error = crate::Error>,
+    Value: TryInto<T1, Error = crate::Error>,
+    Value: TryInto<T2, Error = crate::Error>,
+
+    Value: From<U>,
+{
+    Ok(NgKernel::Ternary {
+        closure: Box::new(
+            move |sess: &S, plc: &Placement, v0: Value, v1: Value, v2: Value| {
+                let plc: P = Placement::try_into(plc.clone())?;
+                let x0: T0 = Value::try_into(v0)?;
+                let x1: T1 = Value::try_into(v1)?;
+                let x2: T2 = Value::try_into(v2)?;
+                let y = kf(sess, &plc, x0, x1, x2)?;
+                Ok(Value::from(y))
+            },
+        ),
+    })
+}
+
+pub(crate) fn variadic<S, TS, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
+where
+    F: Fn(&S, &P, &[TS]) -> Result<U> + Send + Sync + 'static,
+    S: Session + 'static,
+    TS: 'static,
+    U: 'static,
+    P: 'static,
+    Placement: TryInto<P, Error = crate::Error>,
+    Value: TryInto<TS, Error = crate::Error>,
+    Value: From<U>,
+{
+    Ok(NgKernel::Variadic {
+        closure: Box::new(move |sess: &S, plc: &Placement, vs: Operands<Value>| {
+            let plc: P = Placement::try_into(plc.clone())?;
+            let xs: Operands<TS> = vs
+                .into_iter()
+                .map(|xi| Value::try_into(xi.clone()))
+                .collect::<Result<_>>()?;
+
+            let y = kf(sess, &plc, &xs)?;
+
+            Ok(Value::from(y))
+        }),
+    })
+}
+
 pub(crate) fn symbolic_nullary_runtime<U, P>(
     op: Operator,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
@@ -61,27 +164,6 @@ where
             let plc = P::try_from(plc.clone())?;
             let y = kf(sess, &plc)?;
             Ok(SymbolicValue::from(Symbolic::Concrete(y)))
-        }),
-    })
-}
-
-pub(crate) fn unary<S: Session, T0, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
-where
-    F: Fn(&S, &P, T0) -> Result<U> + Send + Sync + 'static,
-    S: 'static,
-    T0: 'static,
-    U: 'static,
-    P: 'static,
-    Placement: TryInto<P, Error = crate::Error>,
-    Value: TryInto<T0, Error = crate::Error>,
-    Value: From<U>,
-{
-    Ok(NgKernel::Unary {
-        closure: Box::new(move |sess: &S, plc: &Placement, v0: Value| {
-            let plc: P = Placement::try_into(plc.clone())?;
-            let x0: T0 = Value::try_into(v0)?;
-            let y = kf(sess, &plc, x0)?;
-            Ok(Value::from(y))
         }),
     })
 }
@@ -373,30 +455,6 @@ where
                 }
             },
         ),
-    })
-}
-
-pub(crate) fn binary<S, T0, T1, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
-where
-    F: Fn(&S, &P, T0, T1) -> Result<U> + Send + Sync + 'static,
-    S: Session + 'static,
-    T0: 'static,
-    T1: 'static,
-    U: 'static,
-    Value: TryInto<T0, Error = crate::Error>,
-    Value: TryInto<T1, Error = crate::Error>,
-    Value: From<U>,
-    P: 'static,
-    Placement: TryInto<P, Error = crate::Error>,
-{
-    Ok(NgKernel::Binary {
-        closure: Box::new(move |sess: &S, plc: &Placement, v0: Value, v1: Value| {
-            let plc: P = Placement::try_into(plc.clone())?;
-            let x0: T0 = Value::try_into(v0)?;
-            let x1: T1 = Value::try_into(v1)?;
-            let y = kf(sess, &plc, x0, x1)?;
-            Ok(Value::from(y))
-        }),
     })
 }
 
@@ -716,38 +774,6 @@ where
     })
 }
 
-pub(crate) fn ternary<S, T0, T1, T2, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
-where
-    F: Fn(&S, &P, T0, T1, T2) -> Result<U> + Send + Sync + 'static,
-    S: Session + 'static,
-
-    T0: 'static,
-    T1: 'static,
-    T2: 'static,
-
-    U: 'static,
-    P: 'static,
-    Placement: TryInto<P, Error = crate::Error>,
-    Value: TryInto<T0, Error = crate::Error>,
-    Value: TryInto<T1, Error = crate::Error>,
-    Value: TryInto<T2, Error = crate::Error>,
-
-    Value: From<U>,
-{
-    Ok(NgKernel::Ternary {
-        closure: Box::new(
-            move |sess: &S, plc: &Placement, v0: Value, v1: Value, v2: Value| {
-                let plc: P = Placement::try_into(plc.clone())?;
-                let x0: T0 = Value::try_into(v0)?;
-                let x1: T1 = Value::try_into(v1)?;
-                let x2: T2 = Value::try_into(v2)?;
-                let y = kf(sess, &plc, x0, x1, x2)?;
-                Ok(Value::from(y))
-            },
-        ),
-    })
-}
-
 pub(crate) fn symbolic_ternary_runtime<T0, T1, T2, U, P>(
     op: Operator,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
@@ -984,32 +1010,6 @@ where
                 Ok(SymbolicValue::from(y))
             },
         ),
-    })
-}
-
-pub(crate) fn variadic<S, TS, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
-where
-    F: Fn(&S, &P, &[TS]) -> Result<U> + Send + Sync + 'static,
-    S: Session + 'static,
-    TS: 'static,
-    U: 'static,
-    P: 'static,
-    Placement: TryInto<P, Error = crate::Error>,
-    Value: TryInto<TS, Error = crate::Error>,
-    Value: From<U>,
-{
-    Ok(NgKernel::Variadic {
-        closure: Box::new(move |sess: &S, plc: &Placement, vs: Operands<Value>| {
-            let plc: P = Placement::try_into(plc.clone())?;
-            let xs: Operands<TS> = vs
-                .into_iter()
-                .map(|xi| Value::try_into(xi.clone()))
-                .collect::<Result<_>>()?;
-
-            let y = kf(sess, &plc, &xs)?;
-
-            Ok(Value::from(y))
-        }),
     })
 }
 
