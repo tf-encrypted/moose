@@ -490,19 +490,17 @@ impl SliceOp {
         Ok(HostRingTensor(sliced.to_shared(), plc.clone()))
     }
 
-    pub(crate) fn host_float_kernel<S: RuntimeSession, T>(
-        _sess: &S,
+    pub(crate) fn host_float_kernel<S: RuntimeSession, T: Clone>(
+        sess: &S,
         plc: &HostPlacement,
-        slice_info: SliceInfo,
+        info: SliceInfo,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>>
     where
-        T: Clone,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        let slice_info =
-            ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(slice_info);
-        let sliced = x.0.slice(slice_info).to_owned();
-        Ok(HostTensor(sliced.to_shared(), plc.clone()))
+        let x = plc.place(sess, x);
+        x.slice(info)
     }
 
     pub(crate) fn shape_kernel<S: RuntimeSession>(
@@ -572,6 +570,20 @@ impl<T: LinalgScalar> HostTensor<T> {
         }
         let axis = Axis(axis);
         let result = self.0.index_axis(axis, index);
+        Ok(HostTensor(result.to_owned().into_shared(), self.1.clone()))
+    }
+}
+impl<T: Clone> HostTensor<T> {
+    fn slice(&self, info: SliceInfo) -> Result<HostTensor<T>> {
+        if info.0.len() != self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "The input dimension of `info` must match the array to be sliced. Used slice info dim {}, tensor had dim {}",
+                info.0.len(),
+                self.0.ndim()
+            )));
+        }
+        let info = ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(info);
+        let result = self.0.slice(info);
         Ok(HostTensor(result.to_owned().into_shared(), self.1.clone()))
     }
 }

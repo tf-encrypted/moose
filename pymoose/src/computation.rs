@@ -964,13 +964,6 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     BetterSliceOperation(op) => {
-                        println!(
-                            "on the better slice operation I've received: {:?}",
-                            op.slices
-                        );
-                        for slice in op.slices.iter() {
-                            println!("slice: {:?} {:?} {:?}", slice.start, slice.stop, slice.step);
-                        }
                         let slices: Vec<_> = op
                             .slices
                             .iter()

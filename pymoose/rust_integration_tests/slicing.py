@@ -26,22 +26,37 @@ class SliceExample(parameterized.TestCase):
         ):
             with bob:
                 x = edsl.load(x_uri, dtype=edsl.float64)
-                xs = edsl.better_slice(x, (slice(None), slice(None)))
+                xs = edsl.better_slice(
+                    x, (slice(None), slice(1, None, None), slice(1, None, None))
+                )
                 res = (edsl.save("sliced", xs),)
 
             return res
 
         return my_comp
 
-    def test_example_execute(self):
+    @parameterized.parameters(([[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]],))
+    def test_example_execute(self, x):
         comp = self._setup_comp()
         traced_sliced_comp = edsl.trace(comp)
 
-        print(traced_sliced_comp)
-        comp_bin = utils.serialize_computation(traced_sliced_comp)
-        _ = elk_compiler.compile_computation(comp_bin)
+        x_arg = np.array(x, dtype=np.float64)
 
-        # x_arg = np.array(x, dtype=np.float64)
+        storage = {
+            "alice": {},
+            "carole": {},
+            "bob": {"x_arg": x_arg},
+        }
+
+        runtime = LocalMooseRuntime(storage_mapping=storage)
+        _ = runtime.evaluate_computation(
+            computation=traced_sliced_comp,
+            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            arguments={"x_uri": "x_arg"},
+        )
+
+        x_sliced = runtime.read_value_from_storage("bob", "sliced")
+        np.testing.assert_equal(x_sliced, x_arg[::, 1::, 1::])
 
 
 if __name__ == "__main__":
