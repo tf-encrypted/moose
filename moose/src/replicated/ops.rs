@@ -313,13 +313,13 @@ impl ReshapeOp {
             shapes: [s0, s1, s2],
         } = &shape;
 
-        let z00 = player0.reshape(sess, x00, s0.clone());
+        let z00 = player0.reshape(sess, x00, s0);
         let z10 = player0.reshape(sess, x10, s0);
 
-        let z11 = player1.reshape(sess, x11, s1.clone());
+        let z11 = player1.reshape(sess, x11, s1);
         let z21 = player1.reshape(sess, x21, s1);
 
-        let z22 = player2.reshape(sess, x22, s2.clone());
+        let z22 = player2.reshape(sess, x22, s2);
         let z02 = player2.reshape(sess, x02, s2);
 
         Ok(RepTensor {
