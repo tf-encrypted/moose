@@ -322,7 +322,6 @@ modelled_kernel! {
         (HostPlacement, () -> HostUint64Tensor => [runtime] custom |op| unwrapper!(op, HostUint64Tensor, Self::kernel)),
         (HostPlacement, () -> HostBitTensor => [runtime] custom |op| unwrapper!(op, HostBitTensor, Self::kernel)),
         (HostPlacement, () -> HostString => [runtime] custom |op| unwrapper!(op, String, Self::string_kernel)),
-        (HostPlacement, () -> HostShape => [runtime] custom |op| unwrapper!(op, RawShape, Self::shape_kernel)),
         (HostPlacement, () -> HostPrfKey => [runtime] custom |op| unwrapper!(op, RawPrfKey, Self::prf_key_kernel)),
         (HostPlacement, () -> HostSeed => [runtime] custom |op| unwrapper!(op, RawSeed, Self::seed_kernel)),
         (HostPlacement, () -> Tensor => [concrete] custom |op| {
@@ -345,5 +344,13 @@ modelled_kernel! {
         }),
         (Mirrored3Placement, () -> Float32Tensor => [concrete] Self::mir3_float_kernel),
         (Mirrored3Placement, () -> Float64Tensor => [concrete] Self::mir3_float_kernel),
+        (HostPlacement, () -> Shape => [concrete] custom |op| {
+            let sig = op.sig;
+            let value = op.value.clone();
+            Ok(Box::new(move |sess, plc| {
+                Self::shape_logical_kernel(sess, plc, sig, value.clone())
+            }))
+        }),
+        (HostPlacement, () -> HostShape => [runtime] custom |op| unwrapper!(op, RawShape, Self::shape_kernel)),
     ]
 }

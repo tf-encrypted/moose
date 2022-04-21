@@ -2200,6 +2200,27 @@ impl ConstantOp {
             ))),
         }
     }
+
+    pub(crate) fn shape_logical_kernel<S: Session, HostShapeT, RepShapeT>(
+        sess: &S,
+        plc: &HostPlacement,
+        sig: Signature,
+        value: Constant,
+    ) -> Result<AbstractShape<HostShapeT, RepShapeT>>
+    where
+        HostPlacement: PlacementConstant<S, HostShapeT>,
+    {
+        match sig.ret() {
+            Ty::Shape(TensorShape::Host) => {
+                let z = plc.constant(sess, value);
+                Ok(AbstractShape::Host(z))
+            }
+            ret => Err(Error::UnimplementedOperator(format!(
+                "ConstantOp can not produce tensors of type {:?} yet",
+                ret
+            ))),
+        }
+    }
 }
 
 impl InputOp {

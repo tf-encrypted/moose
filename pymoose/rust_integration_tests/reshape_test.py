@@ -22,12 +22,12 @@ class ReshapeExample(parameterized.TestCase):
         def my_comp():
             with input_placement:
                 x = edsl.constant(np.array([[1.0, 2.0], [3.0, 4.0]]), dtype=dtype)
-                shape = edsl.constant(np.array([[1., 1., 1., 1.]]), dtype=dtype)
+                # shape = edsl.constant(np.array([[1., 1., 1., 1.]]), dtype=dtype)
 
             with reshape_placement:
-                shape = edsl.shape(shape)
-                x_reshape = edsl.reshape(x, shape)
-                # x_reshape = edsl.reshape(x, [4, 1])
+                # shape = edsl.shape(shape)
+                # x_reshape = edsl.reshape(x, shape)
+                x_reshape = edsl.reshape(x, [1, 4])
 
             with input_placement:
                 res = edsl.save("x_reshape", x_reshape)
