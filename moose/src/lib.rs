@@ -819,12 +819,24 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, ts| {
                 $k(sess, &plc, $($attr.clone()),+, ts)
             });
-            crate::execution::kernel_helpers::variadic_box::<crate::execution::SyncSession, $ts, $u, $plc>(k)
+            crate::execution::kernel_helpers::variadic::<
+                crate::execution::SyncSession,
+                $ts,
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
     (sync variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::variadic_fn::<crate::execution::SyncSession, $ts, $u, $plc>($k)
+        crate::execution::kernel_helpers::variadic::<
+            crate::execution::SyncSession,
+            $ts,
+            $u,
+            $plc,
+            fn(&crate::execution::SyncSession, &$plc, &[$ts]) -> Result<$u>,
+        >($k)
     };
 
     (symbolic variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
@@ -873,12 +885,24 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, xs| {
                 $k(sess, &plc, $($attr.clone()),+, xs)
             });
-            crate::execution::kernel_helpers::variadic_box::<crate::execution::AsyncSession, $ts, $u, $plc>(k)
+            crate::execution::kernel_helpers::variadic::<
+                crate::execution::AsyncSession,
+                $ts,
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
     (async variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::variadic_fn::<crate::execution::AsyncSession, $ts, $u, $plc>($k)
+        crate::execution::kernel_helpers::variadic::<
+            crate::execution::AsyncSession,
+            $ts,
+            $u,
+            $plc,
+            fn(&crate::execution::AsyncSession, &$plc, &[$ts]) -> Result<$u>,
+        >($k)
     };
 }
 

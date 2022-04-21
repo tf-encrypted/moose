@@ -989,42 +989,10 @@ where
     })
 }
 
-pub(crate) fn variadic_box<S, TS, U, P>(
-    kf: Box<dyn Fn(&S, &P, &[TS]) -> Result<U> + Send + Sync>,
-) -> Result<NgKernel<S, Value>>
+pub(crate) fn variadic<S, TS, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
 where
-    S: Session,
-    S: 'static,
-
-    TS: 'static,
-    U: 'static,
-    P: 'static,
-    Placement: TryInto<P, Error = crate::Error>,
-    Value: TryInto<TS, Error = crate::Error>,
-    Value: From<U>,
-{
-    Ok(NgKernel::Variadic {
-        closure: Box::new(move |sess: &S, plc: &Placement, vs: Operands<Value>| {
-            let plc: P = Placement::try_into(plc.clone())?;
-            let xs: Operands<TS> = vs
-                .into_iter()
-                .map(|xi| Value::try_into(xi.clone()))
-                .collect::<Result<_>>()?;
-
-            let y = kf(sess, &plc, &xs)?;
-
-            Ok(Value::from(y))
-        }),
-    })
-}
-
-pub(crate) fn variadic_fn<S, TS, U, P>(
-    kf: fn(&S, &P, &[TS]) -> Result<U>,
-) -> Result<NgKernel<S, Value>>
-where
-    S: Session,
-    S: 'static,
-
+    F: Fn(&S, &P, &[TS]) -> Result<U> + Send + Sync + 'static,
+    S: Session + 'static,
     TS: 'static,
     U: 'static,
     P: 'static,
