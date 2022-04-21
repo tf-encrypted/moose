@@ -61,7 +61,6 @@ from pymoose.edsl.tracer import trace_and_compile
 
 __all__ = [
     abs,
-    relu,
     add,
     add_n,
     AesKeyType,
@@ -101,7 +100,7 @@ __all__ = [
     mux,
     mean,
     ones,
-    zeros,
+    relu,
     replicated_placement,
     reshape,
     ring64,
@@ -120,4 +119,5 @@ __all__ = [
     trace,
     trace_and_compile,
     StringType,
+    zeros,
 ]

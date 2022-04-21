@@ -131,7 +131,11 @@ impl ReluOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(_v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "ReluOp @ Mirrored3Placement".to_string(),
+                ))
+            }
         };
         Ok(FloatTensor::Host(plc.relu(sess, &x)))
     }

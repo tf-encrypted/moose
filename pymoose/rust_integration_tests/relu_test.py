@@ -21,7 +21,6 @@ class ReplicatedExample(parameterized.TestCase):
         def my_relu_comp():
             with bob:
                 x = edsl.constant(x_array)
-                y = edsl.relu(x)
                 x_enc = edsl.cast(x, dtype=edsl.fixed(8, 27))
 
             with rep:
@@ -36,6 +35,11 @@ class ReplicatedExample(parameterized.TestCase):
 
     @parameterized.parameters(
         ([-1, -2, 0, 2, 3],),
+        ([-1.25, -2.84, 0.001, 2.39, 3.12],),
+        ([10.1, 8.3, 1.1],),
+        ([-0.01, -0.03],),
+        ([0.02, -0.04, 1.08, -1.38, 3.65, -1.56],),
+        ([-0.71, 2.3, -0.74, 0.02, -0.04, 1.08, -0.64, 0.76, 0.97],),
     )
     def test_relu_example_execute(self, x):
         x_arg = np.array(x, dtype=np.float64)

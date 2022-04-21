@@ -390,11 +390,11 @@ class AstTracer:
             )
         )
 
-    def visit_ReluExpression(self, exp_expression):
-        assert isinstance(exp_expression, expr.ReluExpression)
-        (x_expression,) = exp_expression.inputs
+    def visit_ReluExpression(self, relu_expression):
+        assert isinstance(relu_expression, expr.ReluExpression)
+        (x_expression,) = relu_expression.inputs
         x_operation = self.visit(x_expression)
-        placement = self.visit_placement_expression(exp_expression.placement)
+        placement = self.visit_placement_expression(relu_expression.placement)
         return self.computation.add_operation(
             ops.ReluOperation(
                 placement_name=placement.name,
@@ -402,7 +402,7 @@ class AstTracer:
                 inputs={"x": x_operation.name},
                 signature=ops.OpSignature(
                     input_types={"x": x_operation.return_type},
-                    return_type=exp_expression.vtype,
+                    return_type=relu_expression.vtype,
                 ),
             )
         )
