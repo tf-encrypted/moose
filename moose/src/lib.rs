@@ -369,7 +369,12 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
                 _,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::symbolic_unary_concrete_box::<$t0, $u, $plc>(Operator::from($op.clone()), k)
+            crate::execution::kernel_helpers::symbolic_unary_concrete::<
+                $t0,
+                $u,
+                $plc,
+                _,
+            >(Operator::from($op.clone()), k)
         }
     };
 
@@ -386,12 +391,26 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, x0| {
                 $k(sess, &plc, $($attr.clone()),+, x0)
             });
-            crate::execution::kernel_helpers::symbolic_unary_concrete_box::<$t0, $u, $plc>(Operator::from($op.clone()), k)
+            crate::execution::kernel_helpers::symbolic_unary_concrete::<
+                $t0,
+                $u,
+                $plc,
+                _,
+            >(Operator::from($op.clone()), k)
         }
     };
 
     (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_unary_concrete_fn::<$t0, $u, $plc>(Operator::from($op.clone()), $k)
+        crate::execution::kernel_helpers::symbolic_unary_concrete::<
+            $t0,
+            $u,
+            $plc,
+            fn(
+                &SymbolicSession,
+                &$plc,
+                <$t0 as PartiallySymbolicType>::Type,
+            ) -> Result<<$u as PartiallySymbolicType>::Type>,
+        >(Operator::from($op.clone()), $k)
     };
 
     (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {

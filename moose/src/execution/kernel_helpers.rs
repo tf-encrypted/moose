@@ -5,7 +5,7 @@ use crate::error::Result;
 use crate::execution::symbolic::{Symbolic, SymbolicSession};
 use crate::execution::Operands;
 use crate::execution::Session;
-use crate::kernels::{NgKernel, TypedNullaryKernel, TypedUnaryKernel};
+use crate::kernels::{NgKernel, TypedNullaryKernel};
 use std::convert::{TryFrom, TryInto};
 
 pub(crate) fn nullary<S, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
@@ -178,57 +178,12 @@ where
     })
 }
 
-pub(crate) fn symbolic_unary_concrete_box<T0, U, P>(
+pub(crate) fn symbolic_unary_concrete<T0, U, P, F>(
     op: Operator,
-    kf: TypedUnaryKernel<
-        SymbolicSession,
-        P,
-        <T0 as PartiallySymbolicType>::Type,
-        <U as PartiallySymbolicType>::Type,
-    >,
+    kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
-    P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
-    Placement: From<P>,
-    T0: PartiallySymbolicType,
-    U: PartiallySymbolicType,
-    <T0 as PartiallySymbolicType>::Type: Placed + 'static,
-    <U as PartiallySymbolicType>::Type: Placed + 'static,
-    // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
-    <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
-    SymbolicValue: TryInto<Symbolic<<T0 as PartiallySymbolicType>::Type>, Error = crate::Error>,
-    SymbolicValue: From<<U as SymbolicType>::Type>,
-{
-    Ok(NgKernel::Unary {
-        closure: Box::new(
-            move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
-                let plc = P::try_from(plc.clone())?;
-                let v0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
-                match v0 {
-                    Symbolic::Concrete(x0) => {
-                        let y = kf(sess, &plc, x0)?;
-                        Ok(SymbolicValue::from(Symbolic::Concrete(y)))
-                    }
-                    Symbolic::Symbolic(h0) => {
-                        let h = sess.add_operation(&op, &[&h0.op], &plc);
-                        let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
-                        Ok(SymbolicValue::from(h))
-                    }
-                }
-            },
-        ),
-    })
-}
-
-pub(crate) fn symbolic_unary_concrete_fn<T0, U, P>(
-    op: Operator,
-    kf: fn(
-        &SymbolicSession,
-        &P,
-        <T0 as PartiallySymbolicType>::Type,
-    ) -> Result<<U as PartiallySymbolicType>::Type>,
-) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
-where
+    F: Fn(&SymbolicSession, &P, <T0 as PartiallySymbolicType>::Type) -> Result<<U as PartiallySymbolicType>::Type> + Send + Sync + 'static,
     P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
     Placement: From<P>,
     T0: PartiallySymbolicType,
