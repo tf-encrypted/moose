@@ -8,43 +8,19 @@ use crate::execution::Session;
 use crate::kernels::{NgKernel, TypedNullaryKernel, TypedUnaryKernel};
 use std::convert::{TryFrom, TryInto};
 
-// TODO(Morten) can we merge some of the _box and _fn functions and still
-// be certain that we only get two copies? What are the correct trait bounds?
-
-pub(crate) fn nullary_fn<S: Session, U, P>(
-    kf: fn(&S, &P) -> Result<U>,
-) -> Result<NgKernel<S, Value>>
+pub(crate) fn nullary<S, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
 where
-    S: 'static,
-    U: 'static,
+    F: Fn(&S, &P) -> Result<U> + Send + Sync + 'static,
+    S: Session + 'static,
+    U: Into<Value> + 'static,
     P: 'static,
     Placement: TryInto<P, Error = crate::Error>,
-    Value: From<U>,
 {
     Ok(NgKernel::Nullary {
         closure: Box::new(move |sess: &S, plc: &Placement| {
             let plc: P = Placement::try_into(plc.clone())?;
             let y = kf(sess, &plc)?;
-            Ok(Value::from(y))
-        }),
-    })
-}
-
-pub(crate) fn nullary_box<S: Session, U, P>(
-    kf: TypedNullaryKernel<S, P, U>,
-) -> Result<NgKernel<S, Value>>
-where
-    S: 'static,
-    U: 'static,
-    P: 'static,
-    Placement: TryInto<P, Error = crate::Error>,
-    Value: From<U>,
-{
-    Ok(NgKernel::Nullary {
-        closure: Box::new(move |sess: &S, plc: &Placement| {
-            let plc: P = Placement::try_into(plc.clone())?;
-            let y = kf(sess, &plc)?;
-            Ok(Value::from(y))
+            Ok(y.into())
         }),
     })
 }
@@ -403,19 +379,15 @@ where
 pub(crate) fn binary<S, T0, T1, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
 where
     F: Fn(&S, &P, T0, T1) -> Result<U> + Send + Sync + 'static,
-
-    S: Session,
-    S: 'static,
-
+    S: Session + 'static,
     T0: 'static,
     T1: 'static,
-
     U: 'static,
-    P: 'static,
-    Placement: TryInto<P, Error = crate::Error>,
     Value: TryInto<T0, Error = crate::Error>,
     Value: TryInto<T1, Error = crate::Error>,
     Value: From<U>,
+    P: 'static,
+    Placement: TryInto<P, Error = crate::Error>,
 {
     Ok(NgKernel::Binary {
         closure: Box::new(move |sess: &S, plc: &Placement, v0: Value, v1: Value| {

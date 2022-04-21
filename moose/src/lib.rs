@@ -51,7 +51,12 @@ macro_rules! ng_derive_runtime_kernel {
                 $plc,
                 $u,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::nullary_box::<crate::execution::SyncSession, $u, $plc>(k)
+            crate::execution::kernel_helpers::nullary::<
+                crate::execution::SyncSession,
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
@@ -67,12 +72,22 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc| {
                 $k(sess, &plc, $($attr.clone()),+)
             });
-            crate::execution::kernel_helpers::nullary_box::<crate::execution::SyncSession, $u, $plc>(k)
+            crate::execution::kernel_helpers::nullary::<
+                crate::execution::SyncSession,
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
     (sync nullary $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::nullary_fn::<crate::execution::SyncSession, $u, $plc>($k)
+        crate::execution::kernel_helpers::nullary::<
+            crate::execution::SyncSession,
+            $u,
+            $plc,
+            fn(&crate::execution::SyncSession, &$plc) -> Result<$u>,
+        >($k)
     };
 
     (symbolic nullary runtime $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
@@ -169,7 +184,12 @@ macro_rules! ng_derive_runtime_kernel {
                 $plc,
                 $u,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::nullary_box::<crate::execution::AsyncSession, $u, $plc>(k)
+            crate::execution::kernel_helpers::nullary::<
+                crate::execution::AsyncSession,
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
@@ -185,12 +205,22 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc| {
                 $k(sess, &plc, $($attr.clone()),+)
             });
-            crate::execution::kernel_helpers::nullary_box::<crate::execution::AsyncSession, $u, $plc>(k)
+            crate::execution::kernel_helpers::nullary::<
+                crate::execution::AsyncSession,
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
     (async nullary runtime $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::nullary_fn::<crate::execution::AsyncSession, $u, $plc>($k)
+        crate::execution::kernel_helpers::nullary::<
+            crate::execution::AsyncSession,
+            $u,
+            $plc,
+            _,
+        >($k)
     };
 
     (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
