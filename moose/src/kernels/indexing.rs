@@ -59,6 +59,11 @@ modelled_kernel! {
     [
         (HostPlacement, (Shape) -> Shape => [concrete]  Self::logical_host_shape),
         (HostPlacement, (HostShape) -> HostShape => [runtime] Self::shape_kernel),
+        (HostPlacement, (Tensor) -> Tensor => [concrete] Self::logical_host_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::host_float_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::host_float_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_kernel),
         (ReplicatedPlacement, (Shape) -> Shape => [concrete]  Self::logical_rep_shape),

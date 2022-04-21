@@ -30,6 +30,7 @@ enum PyOperation {
     ShapeOperation(PyShapeOperation),
     IndexAxisOperation(PyIndexAxisOperation),
     SliceOperation(PySliceOperation),
+    BetterSliceOperation(PyBetterSliceOperation),
     OnesOperation(PyOnesOperation),
     ZerosOperation(PyZerosOperation),
     ConcatenateOperation(PyConcatenateOperation),
@@ -114,6 +115,13 @@ type Inputs = HashMap<String, String>;
 struct PyOpSignature {
     input_types: HashMap<String, PyValueType>,
     return_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PySlice {
+    start: Option<isize>,
+    step: Option<isize>,
+    stop: Option<isize>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -241,6 +249,15 @@ struct PySliceOperation {
     signature: PyOpSignature,
     begin: u32,
     end: u32,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyBetterSliceOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+    slices: Vec<PySlice>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -946,6 +963,40 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    BetterSliceOperation(op) => {
+                        println!(
+                            "on the better slice operation I've received: {:?}",
+                            op.slices
+                        );
+                        for slice in op.slices.iter() {
+                            println!("slice: {:?} {:?} {:?}", slice.start, slice.stop, slice.step);
+                        }
+                        let slices: Vec<_> = op
+                            .slices
+                            .iter()
+                            .map(|slice| SliceInfoElem {
+                                start: slice.start.unwrap_or(0),
+                                step: slice.step,
+                                end: slice.stop,
+                            })
+                            .collect();
+                        Ok(Operation {
+                            kind: SliceOp {
+                                sig: map_signature(
+                                    &op.signature,
+                                    &placements,
+                                    &op.placement_name,
+                                    &["x"],
+                                )?,
+                                slice: SliceInfo(slices),
+                            }
+                            .into(),
+                            inputs: map_inputs(&op.inputs, &["x"])
+                                .with_context(|| format!("Failed at op {:?}", op))?,
+                            name: op.name.clone(),
+                            placement: map_placement(&placements, &op.placement_name)?,
+                        })
+                    }
                     OnesOperation(op) => Ok(Operation {
                         kind: OnesOp {
                             sig: map_signature(

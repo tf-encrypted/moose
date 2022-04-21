@@ -4,7 +4,7 @@ use crate::computation::*;
 use crate::error::Error;
 use crate::error::Result;
 use crate::execution::Session;
-use crate::host::HostPlacement;
+use crate::host::{HostPlacement, SliceInfo};
 use crate::kernels::*;
 use crate::mirrored::{Mir3Tensor, Mirrored3Placement};
 use crate::types::*;
@@ -628,6 +628,29 @@ impl MuxOp {
         };
 
         let z = plc.mux(sess, &s, &x, &y);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
+impl SliceOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &HostPlacement,
+        slice: SliceInfo,
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementSlice<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "SliceOp @ Mirrored3Placement".to_string(),
+                ))
+            }
+        };
+        let z = plc.slice(sess, slice, &x);
         Ok(FloatTensor::Host(z))
     }
 }

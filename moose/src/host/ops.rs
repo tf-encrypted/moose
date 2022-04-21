@@ -490,6 +490,21 @@ impl SliceOp {
         Ok(HostRingTensor(sliced.to_shared(), plc.clone()))
     }
 
+    pub(crate) fn host_float_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        slice_info: SliceInfo,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        T: Clone,
+    {
+        let slice_info =
+            ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(slice_info);
+        let sliced = x.0.slice(slice_info).to_owned();
+        Ok(HostTensor(sliced.to_shared(), plc.clone()))
+    }
+
     pub(crate) fn shape_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
