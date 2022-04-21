@@ -3,9 +3,8 @@ use crate::computation::{
 };
 use crate::error::Result;
 use crate::execution::symbolic::{Symbolic, SymbolicSession};
-use crate::execution::Operands;
-use crate::execution::Session;
-use crate::kernels::{NgKernel, TypedNullaryKernel};
+use crate::execution::{Operands, Session};
+use crate::kernels::NgKernel;
 use std::convert::{TryFrom, TryInto};
 
 pub(crate) fn nullary<S, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
@@ -127,10 +126,11 @@ where
     })
 }
 
-pub(crate) fn symbolic_nullary_concrete_box<U, P>(
-    kf: TypedNullaryKernel<SymbolicSession, P, <U as PartiallySymbolicType>::Type>,
+pub(crate) fn symbolic_nullary_concrete<U, P, F>(
+    kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
+    F: Fn(&SymbolicSession, &P) -> Result<<U as PartiallySymbolicType>::Type> + Send + Sync + 'static,
     P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
     Placement: From<P>,
     U: PartiallySymbolicType,
@@ -216,47 +216,11 @@ where
     })
 }
 
-pub(crate) fn symbolic_unary_transparent_box<T0, U, P>(
-    kf: Box<
-        dyn Fn(
-                &SymbolicSession,
-                &P,
-                <T0 as SymbolicType>::Type,
-            ) -> Result<<U as SymbolicType>::Type>
-            + Send
-            + Sync,
-    >,
+pub(crate) fn symbolic_unary_transparent<T0, U, P, F>(
+    kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
-    P: 'static,
-    Placement: TryInto<P, Error = crate::Error>,
-
-    T0: PartiallySymbolicType,
-    <T0 as PartiallySymbolicType>::Type: Placed,
-    <T0 as PartiallySymbolicType>::Type: 'static,
-    SymbolicValue: TryInto<<T0 as SymbolicType>::Type, Error = crate::Error>,
-
-    U: PartiallySymbolicType,
-    <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
-    <U as PartiallySymbolicType>::Type: 'static,
-    SymbolicValue: From<<U as SymbolicType>::Type>,
-{
-    Ok(NgKernel::Unary {
-        closure: Box::new(
-            move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
-                let plc: P = Placement::try_into(plc.clone())?;
-                let x0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
-                let y: <U as SymbolicType>::Type = kf(sess, &plc, x0)?;
-                Ok(SymbolicValue::from(y))
-            },
-        ),
-    })
-}
-
-pub(crate) fn symbolic_unary_transparent_fn<T0, U, P>(
-    kf: fn(&SymbolicSession, &P, <T0 as SymbolicType>::Type) -> Result<<U as SymbolicType>::Type>,
-) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
-where
+    F: Fn(&SymbolicSession, &P, <T0 as SymbolicType>::Type) -> Result<<U as SymbolicType>::Type> + Send + Sync + 'static,
     P: 'static,
     Placement: TryInto<P, Error = crate::Error>,
 

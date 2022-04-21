@@ -116,7 +116,11 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
                 _,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::symbolic_nullary_concrete_box::<$u, $plc>(k)
+            crate::execution::kernel_helpers::symbolic_nullary_concrete::<
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
@@ -132,12 +136,20 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc| {
                 $k(sess, &plc, $($attr.clone()),+)
             });
-            crate::execution::kernel_helpers::symbolic_nullary_concrete_box::<$u, $plc>(k)
+            crate::execution::kernel_helpers::symbolic_nullary_concrete::<
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
     (symbolic nullary concrete $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_nullary_concrete::<$u, $plc>(Operator::from($op.clone()), k)
+        crate::execution::kernel_helpers::symbolic_nullary_concrete::<
+            $u,
+            $plc,
+            _, // TODO specify fn
+        >(Operator::from($op.clone()), k)
     };
 
     (symbolic nullary hybrid $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? $k:path, $op:ident) => {
@@ -429,7 +441,12 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
                 _,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::symbolic_unary_transparent_box::<$t0, $u, $plc>(k)
+            crate::execution::kernel_helpers::symbolic_unary_transparent::<
+                $t0,
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
@@ -446,12 +463,26 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, x0| {
                 $k(sess, &plc, $($attr.clone()),+, x0)
             });
-            crate::execution::kernel_helpers::symbolic_unary_transparent_box::<$t0, $u, $plc>(k)
+            crate::execution::kernel_helpers::symbolic_unary_transparent::<
+                $t0,
+                $u,
+                $plc,
+                _,
+            >(k)
         }
     };
 
     (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_unary_transparent_fn::<$t0, $u, $plc>($k)
+        crate::execution::kernel_helpers::symbolic_unary_transparent::<
+            $t0,
+            $u,
+            $plc,
+            fn(
+                &SymbolicSession,
+                &$plc,
+                <$t0 as SymbolicType>::Type,
+            ) -> Result<<$u as SymbolicType>::Type>,
+        >($k)
     };
 
     (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
