@@ -729,7 +729,7 @@ def index_axis(x, axis, index, placement=None):
     )
 
 
-def sliced(x, begin, end, placement=None):
+def slice(x, begin, end, placement=None):
     assert isinstance(x, Expression)
     assert isinstance(begin, int)
     assert isinstance(end, int)
@@ -740,10 +740,12 @@ def sliced(x, begin, end, placement=None):
 
 
 def better_slice(x, slices, placement=None):
+    import builtins
+
     assert isinstance(x, Expression)
     assert isinstance(slices, (tuple, list))
     for s in slices:
-        if not isinstance(s, slice):
+        if not isinstance(s, builtins.slice):
             raise ValueError(
                 "`slices` argument must a list/tuple of slices, found " f"{type(s)}"
             )

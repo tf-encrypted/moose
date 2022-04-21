@@ -30,7 +30,7 @@ class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
 
     @classmethod
     def bias_trick(cls, x, plc, dtype):
-        bias_shape = edsl.sliced(
+        bias_shape = edsl.slice(
             edsl.shape(x, placement=plc), begin=0, end=1, placement=plc
         )
         bias = edsl.ones(bias_shape, dtype=edsl.float64, placement=plc)
