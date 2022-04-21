@@ -430,7 +430,7 @@ macro_rules! ng_derive_runtime_kernel {
                 $t1,
                 $u,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::binary_box::<crate::execution::SyncSession, $t0, $t1, $u, $plc>(k)
+            crate::execution::kernel_helpers::binary::<crate::execution::SyncSession, $t0, $t1, $u, $plc, _>(k)
         }
     };
 
@@ -458,12 +458,12 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, x0, x1| {
                 $k(sess, &plc, $($attr.clone()),+, x0, x1)
             });
-            crate::execution::kernel_helpers::binary_box::<crate::execution::SyncSession, $t0, $t1, $u, $plc>(k)
+            crate::execution::kernel_helpers::binary::<crate::execution::SyncSession, $t0, $t1, $u, $plc, _>(k)
         }
     };
 
     (sync binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::binary_fn::<crate::execution::SyncSession, $t0, $t1, $u, $plc>($k)
+        crate::execution::kernel_helpers::binary::<crate::execution::SyncSession, $t0, $t1, $u, $plc, _>($k)
     };
 
     (async binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {
@@ -484,7 +484,7 @@ macro_rules! ng_derive_runtime_kernel {
                 $t1,
                 $u,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::binary_box::<crate::execution::AsyncSession, $t0, $t1, $u, $plc>(k)
+            crate::execution::kernel_helpers::binary::<crate::execution::AsyncSession, $t0, $t1, $u, $plc, _>(k)
         }
     };
 
@@ -502,12 +502,12 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, x0, x1| {
                 $k(sess, &plc, $($attr.clone()),+, x0, x1)
             });
-            crate::execution::kernel_helpers::binary_box::<crate::execution::AsyncSession, $t0, $t1, $u, $plc>(k)
+            crate::execution::kernel_helpers::binary::<crate::execution::AsyncSession, $t0, $t1, $u, $plc, _>(k)
         }
     };
 
     (async binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::binary_fn::<crate::execution::AsyncSession, $t0, $t1, $u, $plc>($k)
+        crate::execution::kernel_helpers::binary::<crate::execution::AsyncSession, $t0, $t1, $u, $plc, _>($k)
     };
 
     (symbolic binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {

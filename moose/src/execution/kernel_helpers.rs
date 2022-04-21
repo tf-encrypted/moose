@@ -423,38 +423,12 @@ where
     })
 }
 
-pub(crate) fn binary_box<S, T0, T1, U, P>(
-    kf: Box<dyn Fn(&S, &P, T0, T1) -> Result<U> + Send + Sync>,
+pub(crate) fn binary<S, T0, T1, U, P, F>(
+    kf: F,
 ) -> Result<NgKernel<S, Value>>
 where
-    S: Session,
-    S: 'static,
+    F: Fn(&S, &P, T0, T1) -> Result<U> + Send + Sync + 'static,
 
-    T0: 'static,
-    T1: 'static,
-
-    U: 'static,
-    P: 'static,
-    Placement: TryInto<P, Error = crate::Error>,
-    Value: TryInto<T0, Error = crate::Error>,
-    Value: TryInto<T1, Error = crate::Error>,
-    Value: From<U>,
-{
-    Ok(NgKernel::Binary {
-        closure: Box::new(move |sess: &S, plc: &Placement, v0: Value, v1: Value| {
-            let plc: P = Placement::try_into(plc.clone())?;
-            let x0: T0 = Value::try_into(v0)?;
-            let x1: T1 = Value::try_into(v1)?;
-            let y = kf(sess, &plc, x0, x1)?;
-            Ok(Value::from(y))
-        }),
-    })
-}
-
-pub(crate) fn binary_fn<S, T0, T1, U, P>(
-    kf: fn(&S, &P, T0, T1) -> Result<U>,
-) -> Result<NgKernel<S, Value>>
-where
     S: Session,
     S: 'static,
 
