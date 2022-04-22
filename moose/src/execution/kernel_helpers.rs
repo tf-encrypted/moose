@@ -106,6 +106,7 @@ where
     })
 }
 
+#[cfg(feature = "compile")]
 pub(crate) mod symbolic {
     use super::*;
 
@@ -437,17 +438,21 @@ pub(crate) mod symbolic {
             })
         }
 
-        pub(crate) fn ternary<T0, T1, T2, U, P>(
+        pub(crate) fn ternary<T0, T1, T2, U, P, F>(
             op: Operator,
-            kf: fn(
-                &SymbolicSession,
-                &P,
-                <T0 as PartiallySymbolicType>::Type,
-                <T1 as PartiallySymbolicType>::Type,
-                <T2 as PartiallySymbolicType>::Type,
-            ) -> Result<<U as PartiallySymbolicType>::Type>,
+            kf: F,
         ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
         where
+            F: Fn(
+                    &SymbolicSession,
+                    &P,
+                    <T0 as PartiallySymbolicType>::Type,
+                    <T1 as PartiallySymbolicType>::Type,
+                    <T2 as PartiallySymbolicType>::Type,
+                ) -> Result<<U as PartiallySymbolicType>::Type>
+                + Send
+                + Sync
+                + 'static,
             P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
             Placement: From<P>,
 
@@ -891,11 +896,12 @@ pub(crate) mod symbolic {
             })
         }
 
-        pub(crate) fn ternary<T0, T1, T2, U, X0, X1, X2, Y, P>(
+        pub(crate) fn ternary<T0, T1, T2, U, X0, X1, X2, Y, P, F>(
             op: Operator,
-            kf: fn(&SymbolicSession, &P, X0, X1, X2) -> Result<Y>,
+            kf: F,
         ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
         where
+            F: Fn(&SymbolicSession, &P, X0, X1, X2) -> Result<Y> + Send + Sync + 'static,
             P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
             Placement: From<P>,
 

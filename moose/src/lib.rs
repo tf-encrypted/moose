@@ -932,11 +932,23 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::runtime::ternary::<$t0, $t1, $t2, $u, $plc>(Operator::from($op.clone()))
+        crate::execution::kernel_helpers::symbolic::runtime::ternary::<
+            $t0,
+            $t1,
+            $t2,
+            $u,
+            $plc>(Operator::from($op.clone()))
     };
 
     (symbolic ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::concrete::ternary::<$t0, $t1, $t2, $u, $plc>(
+        crate::execution::kernel_helpers::symbolic::concrete::ternary::<
+            $t0,
+            $t1,
+            $t2,
+            $u,
+            $plc,
+            fn(&SymbolicSession, &$plc, _, _, _) -> _,
+        >(
             Operator::from($op.clone()),
             $k,
         )
@@ -954,7 +966,18 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::hybrid::ternary::<$t0, $t1, $t2, $u, _, _, _, _, $plc>(
+        crate::execution::kernel_helpers::symbolic::hybrid::ternary::<
+            $t0,
+            $t1,
+            $t2,
+            $u,
+            _,
+            _,
+            _,
+            _,
+            $plc,
+            fn(&SymbolicSession, &$plc, _, _, _) -> _,
+        >(
             Operator::from($op.clone()),
             $k,
         )
