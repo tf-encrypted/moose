@@ -334,7 +334,7 @@ class SliceExpression(Expression):
 
 
 @dataclass
-class BetterSliceExpression(Expression):
+class StridedSliceExpression(Expression):
     slices: Optional[Tuple[slice]]
 
     def __hash__(self):

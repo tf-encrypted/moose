@@ -48,7 +48,7 @@ SUPPORTED_TYPES = [
     ops.SaveOperation,
     ops.ShapeOperation,
     ops.SliceOperation,
-    ops.BetterSliceOperation,
+    ops.StridedSliceOperation,
     ops.SqueezeOperation,
     ops.SubOperation,
     ops.SumOperation,

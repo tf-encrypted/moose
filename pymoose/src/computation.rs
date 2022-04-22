@@ -30,7 +30,7 @@ enum PyOperation {
     ShapeOperation(PyShapeOperation),
     IndexAxisOperation(PyIndexAxisOperation),
     SliceOperation(PySliceOperation),
-    BetterSliceOperation(PyBetterSliceOperation),
+    StridedSliceOperation(PyStridedSliceOperation),
     OnesOperation(PyOnesOperation),
     ZerosOperation(PyZerosOperation),
     ConcatenateOperation(PyConcatenateOperation),
@@ -252,7 +252,7 @@ struct PySliceOperation {
 }
 
 #[derive(Deserialize, Debug)]
-struct PyBetterSliceOperation {
+struct PyStridedSliceOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -963,7 +963,7 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    BetterSliceOperation(op) => {
+                    StridedSliceOperation(op) => {
                         let slices: Vec<_> = op
                             .slices
                             .iter()
