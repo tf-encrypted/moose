@@ -111,10 +111,10 @@ pub(crate) fn symbolic_nullary_runtime<U, P>(
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
     P: TryFrom<Placement, Error = crate::Error> + Clone,
-    Placement: From<P>,
     U: PartiallySymbolicType,
     <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
-    SymbolicValue: From<<U as SymbolicType>::Type>,
+    SymbolicValue: From<Symbolic<<U as PartiallySymbolicType>::Type>>,
+    Placement: From<P>,
 {
     Ok(NgKernel::Nullary {
         closure: Box::new(move |sess: &SymbolicSession, plc: &Placement| {
@@ -246,66 +246,12 @@ where
     })
 }
 
-pub(crate) fn symbolic_unary_hybrid_fn<T0, U, X0, Y, P>(
+pub(crate) fn symbolic_unary_hybrid<T0, U, X0, Y, P, F>(
     op: Operator,
-    kf: fn(&SymbolicSession, &P, X0) -> Result<Y>,
+    kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
-    P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
-    Placement: From<P>,
-
-    T0: PartiallySymbolicType,
-    U: PartiallySymbolicType,
-
-    Symbolic<<T0 as PartiallySymbolicType>::Type>: Clone + TryInto<X0>,
-    Y: Into<<U as SymbolicType>::Type>,
-
-    X0: 'static,
-    Y: 'static,
-
-    <T0 as PartiallySymbolicType>::Type: Placed + 'static,
-    <U as PartiallySymbolicType>::Type: Placed + 'static,
-    // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
-    <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
-
-    SymbolicValue: TryInto<<T0 as SymbolicType>::Type, Error = crate::Error>,
-    SymbolicValue: From<<U as SymbolicType>::Type>,
-{
-    Ok(NgKernel::Unary {
-        closure: Box::new(
-            move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
-                let plc = P::try_from(plc.clone())?;
-
-                let vs0: Symbolic<<T0 as PartiallySymbolicType>::Type> =
-                    SymbolicValue::try_into(v0)?;
-
-                let v0 = vs0.clone().try_into();
-
-                match v0 {
-                    Ok(v0) => {
-                        let y = kf(sess, &plc, v0)?;
-                        let y: <U as SymbolicType>::Type = y.into();
-                        Ok(SymbolicValue::from(y))
-                    }
-                    _ => match vs0 {
-                        Symbolic::Symbolic(h0) => {
-                            let h = sess.add_operation(&op, &[&h0.op], &plc);
-                            let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
-                            Ok(SymbolicValue::from(h))
-                        }
-                        _ => unimplemented!(),
-                    },
-                }
-            },
-        ),
-    })
-}
-
-pub(crate) fn symbolic_unary_hybrid_box<T0, U, X0, Y, P>(
-    op: Operator,
-    kf: Box<dyn Fn(&SymbolicSession, &P, X0) -> Result<Y> + Send + Sync>,
-) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
-where
+    F: Fn(&SymbolicSession, &P, X0) -> Result<Y> + Send + Sync + 'static,
     P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
     Placement: From<P>,
 
