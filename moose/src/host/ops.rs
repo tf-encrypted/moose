@@ -817,6 +817,25 @@ impl SqrtOp {
     }
 }
 
+impl SoftmaxOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: 'static + Float>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,T: ndarray::ScalarOperand
+    {
+        let x_exp = x.0.mapv(T::exp);
+        let x_exp_sum = x_exp.sum();
+        use std::ops::Div;
+        let softmax = x_exp.div(x_exp_sum);
+        Ok(HostTensor::place(plc, softmax.into_shared()))
+    }
+}
+
 impl<T: LinalgScalar> HostTensor<T> {
     fn sum(self, axis: Option<usize>) -> Result<Self> {
         if let Some(i) = axis {
