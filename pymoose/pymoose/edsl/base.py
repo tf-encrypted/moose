@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from types import EllipsisType
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -101,6 +102,18 @@ class Expression:
 
     def __hash__(self):
         return id(self)
+
+    def __getitem__(self, slice_spec):
+        assert isinstance(self.vtype, (ty.TensorType, ty.AesTensorType))  # TODO ShapeType
+        assert isinstance(slice_spec, (slice, list, tuple, EllipsisType))
+        if isinstance(slice_spec, (slice, EllipsisType)):
+            slice_spec = (slice_spec,)
+        elif isinstance(slice_spec, (tuple, list)):
+            pass
+        else:
+            raise ValueError("Indexing with Ellipsis type is not yet supported.")
+        # TODO explicitly placement from self.placement and/or global placement context?
+        return strided_slice(self, slices=slice_spec)
 
 
 @dataclass
