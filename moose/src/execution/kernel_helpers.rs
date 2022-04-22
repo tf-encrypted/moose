@@ -344,72 +344,13 @@ where
     })
 }
 
-pub(crate) fn symbolic_binary_concrete_box<T0, T1, U, P>(
+pub(crate) fn symbolic_binary_concrete<T0, T1, U, P, F>(
     op: Operator,
-    kf: Box<
-        dyn Fn(
-                &SymbolicSession,
-                &P,
-                <T0 as PartiallySymbolicType>::Type,
-                <T1 as PartiallySymbolicType>::Type,
-            ) -> Result<<U as PartiallySymbolicType>::Type>
-            + Send
-            + Sync,
-    >,
+    kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
-    P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
-    Placement: From<P>,
-
-    T0: PartiallySymbolicType,
-    T1: PartiallySymbolicType,
-    U: PartiallySymbolicType, // TODO use SymbolicType here?
-
-    <T0 as PartiallySymbolicType>::Type: Placed + 'static,
-    <T1 as PartiallySymbolicType>::Type: Placed + 'static,
-    <U as PartiallySymbolicType>::Type: Placed + 'static,
-    // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
-    <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
-    SymbolicValue: TryInto<Symbolic<<T0 as PartiallySymbolicType>::Type>, Error = crate::Error>,
-    SymbolicValue: TryInto<Symbolic<<T1 as PartiallySymbolicType>::Type>, Error = crate::Error>,
-    SymbolicValue: From<<U as SymbolicType>::Type>,
-{
-    Ok(NgKernel::Binary {
-        closure: Box::new(
-            move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue, v1: SymbolicValue| {
-                let plc = P::try_from(plc.clone())?;
-                let v0: <T0 as SymbolicType>::Type = SymbolicValue::try_into(v0)?;
-                let v1: <T1 as SymbolicType>::Type = SymbolicValue::try_into(v1)?;
-
-                match (v0, v1) {
-                    (Symbolic::Concrete(x0), Symbolic::Concrete(x1)) => {
-                        let y = kf(sess, &plc, x0, x1)?;
-                        Ok(SymbolicValue::from(Symbolic::Concrete(y)))
-                    }
-                    (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                        let h = sess.add_operation(&op, &[&h0.op, &h1.op], &plc);
-                        let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
-                        Ok(SymbolicValue::from(h))
-                    }
-                    _ => Err(crate::error::Error::Unexpected(Some(
-                        "Mixed symbolic and concrete value during compilation".to_string(),
-                    ))),
-                }
-            },
-        ),
-    })
-}
-
-pub(crate) fn symbolic_binary_concrete_fn<T0, T1, U, P>(
-    op: Operator,
-    kf: fn(
-        &SymbolicSession,
-        &P,
-        <T0 as PartiallySymbolicType>::Type,
-        <T1 as PartiallySymbolicType>::Type,
-    ) -> Result<<U as PartiallySymbolicType>::Type>,
-) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
-where
+    F: Fn(&SymbolicSession, &P, <T0 as PartiallySymbolicType>::Type, <T1 as PartiallySymbolicType>::Type) -> Result<<U as PartiallySymbolicType>::Type>,
+    F: Send + Sync + 'static,
     P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
     Placement: From<P>,
 
