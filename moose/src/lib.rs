@@ -166,7 +166,7 @@ macro_rules! ng_derive_runtime_kernel {
     //     crate::execution::kernel_helpers::symbolic::hybrid::nullary::<$u, $plc>(Operator::from($op.clone()), $k)
     // };
 
-    (async nullary runtime $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+    (async nullary $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
         let kf: &dyn Fn(&Self) -> crate::error::Result<
             crate::kernels::TypedNullaryKernel<
                 crate::execution::AsyncSession,
@@ -187,7 +187,7 @@ macro_rules! ng_derive_runtime_kernel {
         >(k)
     }};
 
-    (async nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
+    (async nullary $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
         $(
             let $attr = $op.$attr.clone();
         )+
@@ -206,7 +206,7 @@ macro_rules! ng_derive_runtime_kernel {
         >(k)
     }};
 
-    (async nullary runtime $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
+    (async nullary $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::nullary::<
             crate::execution::AsyncSession,
             $u,
@@ -215,7 +215,7 @@ macro_rules! ng_derive_runtime_kernel {
         >($k)
     };
 
-    (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+    (sync unary $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
         let kf: &dyn Fn(&Self) -> crate::error::Result<
             crate::kernels::TypedUnaryKernel<
                 crate::execution::SyncSession,
@@ -239,7 +239,7 @@ macro_rules! ng_derive_runtime_kernel {
         >(k)
     }};
 
-    (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
+    (sync unary $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
         $(
             let $attr = $op.$attr.clone();
         )+
@@ -260,7 +260,7 @@ macro_rules! ng_derive_runtime_kernel {
         >(k)
     }};
 
-    (sync unary runtime $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
+    (sync unary $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::unary::<
             crate::execution::SyncSession,
             $t0,
@@ -270,7 +270,7 @@ macro_rules! ng_derive_runtime_kernel {
         >($k)
     };
 
-    (async unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+    (async unary $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
         let kf: &dyn Fn(&Self) -> crate::error::Result<
             crate::kernels::TypedUnaryKernel<
                 crate::execution::AsyncSession,
@@ -294,7 +294,7 @@ macro_rules! ng_derive_runtime_kernel {
         >(k)
     }};
 
-    (async unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
+    (async unary $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
         $(
             let $attr = $op.$attr.clone();
         )+
@@ -315,7 +315,7 @@ macro_rules! ng_derive_runtime_kernel {
         >(k)
     }};
 
-    (async unary runtime $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
+    (async unary $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::unary::<
             crate::execution::AsyncSession,
             $t0,
@@ -501,7 +501,7 @@ macro_rules! ng_derive_runtime_kernel {
 
     /* Binary */
 
-    (sync binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+    (sync binary $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {{
         let kf: &dyn Fn(&Self) -> crate::error::Result<
             crate::kernels::TypedBinaryKernel<
                 crate::execution::SyncSession,
@@ -528,7 +528,7 @@ macro_rules! ng_derive_runtime_kernel {
         >(k)
     }};
 
-    (sync binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {{
+    (sync binary $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {{
         $(
             let $attr = $op.$attr.clone();
         )+
@@ -551,7 +551,7 @@ macro_rules! ng_derive_runtime_kernel {
         >(k)
     }};
 
-    (sync binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
+    (sync binary $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::binary::<
             crate::execution::SyncSession,
             $t0,
@@ -562,7 +562,7 @@ macro_rules! ng_derive_runtime_kernel {
         >($k)
     };
 
-    (async binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+    (async binary $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {{
         let kf: &dyn Fn(&Self) -> crate::error::Result<
             crate::kernels::TypedBinaryKernel<
                 crate::execution::AsyncSession,
@@ -589,7 +589,7 @@ macro_rules! ng_derive_runtime_kernel {
         >(k)
     }};
 
-    (async binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
+    (async binary $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
         $(
             let $attr = $op.$attr.clone();
         )+
@@ -612,7 +612,7 @@ macro_rules! ng_derive_runtime_kernel {
         >(k)
     }};
 
-    (async binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
+    (async binary $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::binary::<
             crate::execution::AsyncSession,
             $t0,
@@ -819,7 +819,7 @@ macro_rules! ng_derive_runtime_kernel {
 
     /* Ternary */
 
-    (sync ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
+    (sync ternary $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::ternary::<
             crate::execution::SyncSession,
             $t0,
@@ -831,7 +831,7 @@ macro_rules! ng_derive_runtime_kernel {
         >($k)
     };
 
-    (async ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
+    (async ternary $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::ternary::<
             crate::execution::AsyncSession,
             $t0,
@@ -898,7 +898,7 @@ macro_rules! ng_derive_runtime_kernel {
 
     /* Variadic */
 
-    (sync variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
+    (sync variadic $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
@@ -921,7 +921,7 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (sync variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
+    (sync variadic $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::variadic::<
             crate::execution::SyncSession,
             $ts,
@@ -979,7 +979,7 @@ macro_rules! ng_derive_runtime_kernel {
         >(Operator::from($op.clone()), $k)
     };
 
-    (async variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
+    (async variadic $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
@@ -1002,7 +1002,7 @@ macro_rules! ng_derive_runtime_kernel {
         }
     };
 
-    (async variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
+    (async variadic $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::variadic::<
             crate::execution::AsyncSession,
             $ts,
@@ -1111,7 +1111,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![async nullary runtime $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            ng_derive_runtime_kernel![async nullary $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1346,7 +1346,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![sync unary runtime $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            ng_derive_runtime_kernel![sync unary $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1396,7 +1396,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![async unary runtime $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            ng_derive_runtime_kernel![async unary $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1649,7 +1649,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![sync binary runtime $plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            ng_derive_runtime_kernel![sync binary $plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1701,7 +1701,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![async binary runtime $plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            ng_derive_runtime_kernel![async binary $plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1976,7 +1976,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![sync ternary runtime $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            ng_derive_runtime_kernel![sync ternary $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -2030,7 +2030,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![async ternary runtime $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            ng_derive_runtime_kernel![async ternary $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -2324,7 +2324,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![sync variadic runtime $plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            ng_derive_runtime_kernel![sync variadic $plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -2374,7 +2374,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![async variadic runtime $plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            ng_derive_runtime_kernel![async variadic $plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
