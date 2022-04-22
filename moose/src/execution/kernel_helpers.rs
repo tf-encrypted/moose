@@ -130,7 +130,10 @@ pub(crate) fn symbolic_nullary_concrete<U, P, F>(
     kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
-    F: Fn(&SymbolicSession, &P) -> Result<<U as PartiallySymbolicType>::Type> + Send + Sync + 'static,
+    F: Fn(&SymbolicSession, &P) -> Result<<U as PartiallySymbolicType>::Type>
+        + Send
+        + Sync
+        + 'static,
     P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
     Placement: From<P>,
     U: PartiallySymbolicType,
@@ -183,7 +186,14 @@ pub(crate) fn symbolic_unary_concrete<T0, U, P, F>(
     kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
-    F: Fn(&SymbolicSession, &P, <T0 as PartiallySymbolicType>::Type) -> Result<<U as PartiallySymbolicType>::Type> + Send + Sync + 'static,
+    F: Fn(
+            &SymbolicSession,
+            &P,
+            <T0 as PartiallySymbolicType>::Type,
+        ) -> Result<<U as PartiallySymbolicType>::Type>
+        + Send
+        + Sync
+        + 'static,
     P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
     Placement: From<P>,
     T0: PartiallySymbolicType,
@@ -220,7 +230,10 @@ pub(crate) fn symbolic_unary_transparent<T0, U, P, F>(
     kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
-    F: Fn(&SymbolicSession, &P, <T0 as SymbolicType>::Type) -> Result<<U as SymbolicType>::Type> + Send + Sync + 'static,
+    F: Fn(&SymbolicSession, &P, <T0 as SymbolicType>::Type) -> Result<<U as SymbolicType>::Type>
+        + Send
+        + Sync
+        + 'static,
     P: 'static,
     Placement: TryInto<P, Error = crate::Error>,
 
@@ -349,7 +362,12 @@ pub(crate) fn symbolic_binary_concrete<T0, T1, U, P, F>(
     kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
-    F: Fn(&SymbolicSession, &P, <T0 as PartiallySymbolicType>::Type, <T1 as PartiallySymbolicType>::Type) -> Result<<U as PartiallySymbolicType>::Type>,
+    F: Fn(
+        &SymbolicSession,
+        &P,
+        <T0 as PartiallySymbolicType>::Type,
+        <T1 as PartiallySymbolicType>::Type,
+    ) -> Result<<U as PartiallySymbolicType>::Type>,
     F: Send + Sync + 'static,
     P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
     Placement: From<P>,
@@ -394,10 +412,15 @@ where
 }
 
 pub(crate) fn symbolic_binary_transparent<T0, T1, U, P, F>(
-    kf: F
+    kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
-    F: Fn(&SymbolicSession, &P, <T0 as SymbolicType>::Type, <T1 as SymbolicType>::Type) -> Result<<U as SymbolicType>::Type>,
+    F: Fn(
+        &SymbolicSession,
+        &P,
+        <T0 as SymbolicType>::Type,
+        <T1 as SymbolicType>::Type,
+    ) -> Result<<U as SymbolicType>::Type>,
     F: Send + Sync + 'static,
     P: 'static,
     Placement: TryInto<P, Error = crate::Error>,
@@ -683,10 +706,16 @@ where
 }
 
 pub(crate) fn _symbolic_ternary_transparent<T0, T1, T2, U, P, F>(
-    kf: F
+    kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
-    F: Fn(&SymbolicSession, &P, <T0 as SymbolicType>::Type, <T1 as SymbolicType>::Type, <T2 as SymbolicType>::Type) -> Result<<U as SymbolicType>::Type>,
+    F: Fn(
+        &SymbolicSession,
+        &P,
+        <T0 as SymbolicType>::Type,
+        <T1 as SymbolicType>::Type,
+        <T2 as SymbolicType>::Type,
+    ) -> Result<<U as SymbolicType>::Type>,
     F: Send + Sync + 'static,
     P: 'static,
     Placement: TryInto<P, Error = crate::Error>,
@@ -776,7 +805,10 @@ pub(crate) fn symbolic_variadic_transparent<TS, U, P, F>(
     kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
-    F: Fn(&SymbolicSession, &P, &[<TS as SymbolicType>::Type]) -> Result<<U as SymbolicType>::Type> + Send + Sync + 'static,
+    F: Fn(&SymbolicSession, &P, &[<TS as SymbolicType>::Type]) -> Result<<U as SymbolicType>::Type>
+        + Send
+        + Sync
+        + 'static,
     P: 'static,
     Placement: TryInto<P, Error = crate::Error>,
 
@@ -815,7 +847,14 @@ pub(crate) fn symbolic_variadic_concrete<TS, U, P, F>(
     kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
-    F: Fn(&SymbolicSession, &P, &[<TS as PartiallySymbolicType>::Type]) -> Result<<U as PartiallySymbolicType>::Type> + Send + Sync + 'static,
+    F: Fn(
+            &SymbolicSession,
+            &P,
+            &[<TS as PartiallySymbolicType>::Type],
+        ) -> Result<<U as PartiallySymbolicType>::Type>
+        + Send
+        + Sync
+        + 'static,
     P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
     Placement: From<P>,
 
