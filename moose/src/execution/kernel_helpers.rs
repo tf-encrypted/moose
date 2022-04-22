@@ -393,15 +393,12 @@ where
     })
 }
 
-pub(crate) fn symbolic_binary_transparent_fn<T0, T1, U, P>(
-    kf: fn(
-        &SymbolicSession,
-        &P,
-        <T0 as SymbolicType>::Type,
-        <T1 as SymbolicType>::Type,
-    ) -> Result<<U as SymbolicType>::Type>,
+pub(crate) fn symbolic_binary_transparent<T0, T1, U, P, F>(
+    kf: F
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
+    F: Fn(&SymbolicSession, &P, <T0 as SymbolicType>::Type, <T1 as SymbolicType>::Type) -> Result<<U as SymbolicType>::Type>,
+    F: Send + Sync + 'static,
     P: 'static,
     Placement: TryInto<P, Error = crate::Error>,
 
@@ -685,16 +682,12 @@ where
     })
 }
 
-pub(crate) fn _symbolic_ternary_transparent_fn<T0, T1, T2, U, P>(
-    kf: fn(
-        &SymbolicSession,
-        &P,
-        <T0 as SymbolicType>::Type,
-        <T1 as SymbolicType>::Type,
-        <T2 as SymbolicType>::Type,
-    ) -> Result<<U as SymbolicType>::Type>,
+pub(crate) fn _symbolic_ternary_transparent<T0, T1, T2, U, P, F>(
+    kf: F
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
+    F: Fn(&SymbolicSession, &P, <T0 as SymbolicType>::Type, <T1 as SymbolicType>::Type, <T2 as SymbolicType>::Type) -> Result<<U as SymbolicType>::Type>,
+    F: Send + Sync + 'static,
     P: 'static,
     Placement: TryInto<P, Error = crate::Error>,
 
