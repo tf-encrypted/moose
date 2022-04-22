@@ -817,7 +817,16 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
                 _,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::symbolic_binary_hybrid_box::<$t0, $t1, $u, _, _, _, $plc>(Operator::from($op.clone()), k)
+            crate::execution::kernel_helpers::symbolic_binary_hybrid::<
+                $t0,
+                $t1,
+                $u,
+                _,
+                _,
+                _,
+                $plc,
+                _,
+            >(Operator::from($op.clone()), k)
         }
     };
 
@@ -835,12 +844,30 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, x0, x1| {
                 $k(sess, &plc, $($attr.clone()),+, x0, x1)
             });
-            crate::execution::kernel_helpers::symbolic_binary_hybrid_box::<$t0, $t1, $u, _, _, _, $plc>(Operator::from($op.clone()), k)
+            crate::execution::kernel_helpers::symbolic_binary_hybrid::<
+                $t0,
+                $t1,
+                $u,
+                _,
+                _,
+                _,
+                $plc,
+                _,
+            >(Operator::from($op.clone()), k)
         }
     };
 
     (symbolic binary hybrid $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_binary_hybrid_fn::<$t0, $t1, $u, _, _, _, $plc>(Operator::from($op.clone()), $k)
+        crate::execution::kernel_helpers::symbolic_binary_hybrid::<
+            $t0,
+            $t1,
+            $u,
+            _,
+            _,
+            _,
+            $plc,
+            fn(&SymbolicSession, &$plc, _, _) -> Result<_>,
+        >(Operator::from($op.clone()), $k)
     };
 
     /* Ternary */
