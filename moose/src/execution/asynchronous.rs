@@ -310,9 +310,9 @@ impl AsyncSession {
             Self::add_task(&self.tasks, task)?;
             Ok(receiver)
         } else {
-            return Err(Error::UnimplementedOperator(
+            Err(Error::UnimplementedOperator(
                 "Send is only supported on host placements".to_string(),
-            ));
+            ))
         }
     }
 }

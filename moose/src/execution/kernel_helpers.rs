@@ -98,7 +98,7 @@ where
             let plc = P::try_from(plc.clone())?;
             let xs: Operands<TS> = vs
                 .into_iter()
-                .map(|xi| TS::try_from(xi.clone()))
+                .map(|xi| TS::try_from(xi))
                 .collect::<Result<_>>()?;
             let y = kf(sess, &plc, &xs)?;
             Ok(y.into())
@@ -118,10 +118,13 @@ pub(crate) mod symbolic {
         ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
         where
             P: TryFrom<Placement, Error = crate::Error> + Clone,
-            U: PartiallySymbolicType,
-            <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
-            SymbolicValue: From<Symbolic<<U as PartiallySymbolicType>::Type>>,
             Placement: From<P>,
+
+            U: PartiallySymbolicType,
+
+            <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
+
+            SymbolicValue: From<Symbolic<<U as PartiallySymbolicType>::Type>>,
         {
             Ok(NgKernel::Nullary {
                 closure: Box::new(move |sess: &SymbolicSession, plc: &Placement| {
@@ -139,10 +142,13 @@ pub(crate) mod symbolic {
         where
             P: Clone + TryFrom<Placement, Error = crate::Error>,
             Placement: From<P>,
+
             T0: PartiallySymbolicType,
             U: PartiallySymbolicType,
+
             <T0 as PartiallySymbolicType>::Type: Placed,
             <U as PartiallySymbolicType>::Type: Placed<Placement = P>,
+
             SymbolicValue:
                 TryInto<Symbolic<<T0 as PartiallySymbolicType>::Type>, Error = crate::Error>,
             SymbolicValue: From<<U as SymbolicType>::Type>,
