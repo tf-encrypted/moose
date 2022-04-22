@@ -91,15 +91,15 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic nullary runtime $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op.clone()))
+        crate::execution::kernel_helpers::symbolic::runtime::nullary::<$u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op.clone()))
+        crate::execution::kernel_helpers::symbolic::runtime::nullary::<$u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic nullary runtime $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_nullary_runtime::<$u, $plc>(Operator::from($op.clone()))
+        crate::execution::kernel_helpers::symbolic::runtime::nullary::<$u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic nullary concrete $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
@@ -116,7 +116,7 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
                 _,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::symbolic_nullary_concrete::<
+            crate::execution::kernel_helpers::symbolic::concrete::nullary::<
                 $u,
                 $plc,
                 _,
@@ -136,7 +136,7 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc| {
                 $k(sess, &plc, $($attr.clone()),+)
             });
-            crate::execution::kernel_helpers::symbolic_nullary_concrete::<
+            crate::execution::kernel_helpers::symbolic::concrete::nullary::<
                 $u,
                 $plc,
                 _,
@@ -145,7 +145,7 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic nullary concrete $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_nullary_concrete::<
+        crate::execution::kernel_helpers::symbolic::concrete::nullary::<
             $u,
             $plc,
             _, // TODO specify fn
@@ -354,15 +354,15 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_unary_runtime::<$t0, $u, $plc>(Operator::from($op.clone()))
+        crate::execution::kernel_helpers::symbolic::runtime::unary::<$t0, $u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_unary_runtime::<$t0, $u, $plc>(Operator::from($op.clone()))
+        crate::execution::kernel_helpers::symbolic::runtime::unary::<$t0, $u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_unary_runtime::<$t0, $u, $plc>(Operator::from($op.clone()))
+        crate::execution::kernel_helpers::symbolic::runtime::unary::<$t0, $u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
@@ -381,7 +381,7 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
                 _,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::symbolic_unary_concrete::<
+            crate::execution::kernel_helpers::symbolic::concrete::unary::<
                 $t0,
                 $u,
                 $plc,
@@ -403,7 +403,7 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, x0| {
                 $k(sess, &plc, $($attr.clone()),+, x0)
             });
-            crate::execution::kernel_helpers::symbolic_unary_concrete::<
+            crate::execution::kernel_helpers::symbolic::concrete::unary::<
                 $t0,
                 $u,
                 $plc,
@@ -413,7 +413,7 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_unary_concrete::<
+        crate::execution::kernel_helpers::symbolic::concrete::unary::<
             $t0,
             $u,
             $plc,
@@ -441,7 +441,7 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
                 _,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::symbolic_unary_transparent::<
+            crate::execution::kernel_helpers::symbolic::transparent::unary::<
                 $t0,
                 $u,
                 $plc,
@@ -463,7 +463,7 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, x0| {
                 $k(sess, &plc, $($attr.clone()),+, x0)
             });
-            crate::execution::kernel_helpers::symbolic_unary_transparent::<
+            crate::execution::kernel_helpers::symbolic::transparent::unary::<
                 $t0,
                 $u,
                 $plc,
@@ -473,7 +473,7 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_unary_transparent::<
+        crate::execution::kernel_helpers::symbolic::transparent::unary::<
             $t0,
             $u,
             $plc,
@@ -690,15 +690,15 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_binary_runtime::<$t0, $t1, $u, $plc>(Operator::from($op.clone()))
+        crate::execution::kernel_helpers::symbolic::runtime::binary::<$t0, $t1, $u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_binary_runtime::<$t0, $t1, $u, $plc>(Operator::from($op.clone()))
+        crate::execution::kernel_helpers::symbolic::runtime::binary::<$t0, $t1, $u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_binary_runtime::<$t0, $t1, $u, $plc>(Operator::from($op.clone()))
+        crate::execution::kernel_helpers::symbolic::runtime::binary::<$t0, $t1, $u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic binary concrete $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {
@@ -719,7 +719,7 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
                 _,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::symbolic_binary_concrete::<
+            crate::execution::kernel_helpers::symbolic::concrete::binary::<
                 $t0,
                 $u,
                 $plc,
@@ -752,7 +752,7 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, x0, x1| {
                 $k(sess, &plc, $($attr.clone()),+, x0, x1)
             });
-            crate::execution::kernel_helpers::symbolic_binary_concrete::<
+            crate::execution::kernel_helpers::symbolic::concrete::binary::<
                 $t0,
                 $t1,
                 $u,
@@ -763,7 +763,7 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic binary concrete $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_binary_concrete::<
+        crate::execution::kernel_helpers::symbolic::concrete::binary::<
             $t0,
             $t1,
             $u,
@@ -790,7 +790,7 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
                 _,
             > = kf(&$op)?;
-            crate::execution::kernel_helpers::symbolic_binary_transparent::<
+            crate::execution::kernel_helpers::symbolic::transparent::binary::<
                 $t0,
                 $t1,
                 $u,
@@ -814,7 +814,7 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, x0, x1| {
                 $k(sess, &plc, $($attr.clone()),+, x0, x1)
             });
-            crate::execution::kernel_helpers::symbolic_binary_transparent::<
+            crate::execution::kernel_helpers::symbolic::transparent::binary::<
                 $t0,
                 $t1,
                 $u,
@@ -825,7 +825,7 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic binary transparent $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_binary_transparent::<
+        crate::execution::kernel_helpers::symbolic::transparent::binary::<
             $t0,
             $t1,
             $u,
@@ -932,18 +932,18 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_ternary_runtime::<$t0, $t1, $t2, $u, $plc>(Operator::from($op.clone()))
+        crate::execution::kernel_helpers::symbolic::runtime::ternary::<$t0, $t1, $t2, $u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_ternary_concrete::<$t0, $t1, $t2, $u, $plc>(
+        crate::execution::kernel_helpers::symbolic::concrete::ternary::<$t0, $t1, $t2, $u, $plc>(
             Operator::from($op.clone()),
             $k,
         )
     };
 
     (symbolic ternary transparent $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_ternary_transparent::<
+        crate::execution::kernel_helpers::symbolic::transparent::ternary::<
             $t0,
             $t1,
             $t2,
@@ -996,15 +996,15 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_variadic_runtime::<$ts, $u, $plc>(Operator::from($op.clone()))
+        crate::execution::kernel_helpers::symbolic::runtime::variadic::<$ts, $u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_variadic_runtime::<$ts, $u, $plc>(Operator::from($op.clone()))
+        crate::execution::kernel_helpers::symbolic::runtime::variadic::<$ts, $u, $plc>(Operator::from($op.clone()))
     };
 
     (symbolic variadic transparent $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_variadic_transparent::<
+        crate::execution::kernel_helpers::symbolic::transparent::variadic::<
             $ts,
             $u,
             $plc,
@@ -1025,7 +1025,7 @@ macro_rules! ng_derive_runtime_kernel {
             > = Box::new(move |sess, plc, ts| {
                 $k(sess, &plc, $($attr.clone()),+, ts)
             });
-            crate::execution::kernel_helpers::symbolic_variadic_concrete::<
+            crate::execution::kernel_helpers::symbolic::concrete::variadic::<
                 $ts,
                 $u,
                 $plc,
@@ -1035,7 +1035,7 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic variadic concrete $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_variadic_concrete::<
+        crate::execution::kernel_helpers::symbolic::concrete::variadic::<
             $ts,
             $u,
             $plc,
