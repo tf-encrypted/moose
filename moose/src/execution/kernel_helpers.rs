@@ -838,14 +838,11 @@ where
     })
 }
 
-pub(crate) fn symbolic_variadic_transparent_fn<TS, U, P>(
-    kf: fn(
-        &SymbolicSession,
-        &P,
-        &[<TS as SymbolicType>::Type],
-    ) -> Result<<U as SymbolicType>::Type>,
+pub(crate) fn symbolic_variadic_transparent<TS, U, P, F>(
+    kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
+    F: Fn(&SymbolicSession, &P, &[<TS as SymbolicType>::Type]) -> Result<<U as SymbolicType>::Type> + Send + Sync + 'static,
     P: 'static,
     Placement: TryInto<P, Error = crate::Error>,
 
@@ -879,15 +876,12 @@ where
     })
 }
 
-pub(crate) fn symbolic_variadic_concrete_fn<TS, U, P>(
+pub(crate) fn symbolic_variadic_concrete<TS, U, P, F>(
     op: Operator,
-    kf: fn(
-        &SymbolicSession,
-        &P,
-        &[<TS as PartiallySymbolicType>::Type],
-    ) -> Result<<U as PartiallySymbolicType>::Type>,
+    kf: F,
 ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
 where
+    F: Fn(&SymbolicSession, &P, &[<TS as PartiallySymbolicType>::Type]) -> Result<<U as PartiallySymbolicType>::Type> + Send + Sync + 'static,
     P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
     Placement: From<P>,
 
@@ -931,79 +925,6 @@ where
                         .iter()
                         .filter_map(Symbolic::symbolic_handle)
                         .map(|v| v.op.as_str())
-                        .collect();
-                    if handles.len() == vs.len() {
-                        // success; we can record in graph
-                        let h = sess.add_operation(&op, &handles, &plc);
-                        let h: <U as SymbolicType>::Type = Symbolic::Symbolic(h);
-                        Ok(SymbolicValue::from(h))
-                    } else {
-                        Err(crate::error::Error::Unexpected(Some("Variadic concrete flavor found mixed symbolic and concrete value during compilation.".to_string())))
-                    }
-                }
-            },
-        ),
-    })
-}
-
-pub(crate) fn symbolic_variadic_concrete_box<TS, U, P>(
-    op: Operator,
-    kf: Box<
-        dyn Fn(
-                &SymbolicSession,
-                &P,
-                &[<TS as PartiallySymbolicType>::Type],
-            ) -> Result<<U as PartiallySymbolicType>::Type>
-            + Send
-            + Sync,
-    >,
-) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
-where
-    P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
-    Placement: From<P>,
-
-    TS: PartiallySymbolicType + Clone,
-    U: PartiallySymbolicType, // TODO use SymbolicType here?
-
-    <TS as PartiallySymbolicType>::Type: Placed + 'static + Clone,
-    <U as PartiallySymbolicType>::Type: Placed + 'static,
-    // TODO(Morten) shouldn't need this, we should have Placed<Placement = P> wrt U
-    <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
-    SymbolicValue: TryInto<Symbolic<<TS as PartiallySymbolicType>::Type>, Error = crate::Error>,
-    SymbolicValue: From<<U as SymbolicType>::Type>,
-{
-    Ok(NgKernel::Variadic {
-        closure: Box::new(
-            move |sess: &SymbolicSession, plc: &Placement, vs: Operands<SymbolicValue>| {
-                let plc = P::try_from(plc.clone())?;
-
-                let ts_vals: Vec<<TS as SymbolicType>::Type> = vs
-                    .iter()
-                    .map(|xi| {
-                        let x: Result<<TS as SymbolicType>::Type> =
-                            SymbolicValue::try_into(xi.clone());
-                        x
-                    })
-                    .collect::<Result<_>>()?;
-
-                let kernel_vals: Operands<_> = ts_vals
-                    .iter()
-                    .filter_map(|xi| match xi {
-                        Symbolic::Concrete(v) => Some(v.clone()),
-                        Symbolic::Symbolic(_) => None,
-                    })
-                    .collect();
-
-                if kernel_vals.len() == vs.len() {
-                    let y = kf(sess, &plc, kernel_vals.as_slice())?;
-                    Ok(SymbolicValue::from(Symbolic::Concrete(y)))
-                } else {
-                    let handles: Vec<_> = ts_vals
-                        .iter()
-                        .filter_map(|xi| match xi {
-                            Symbolic::Symbolic(v) => Some(v.op.as_str()),
-                            _ => None,
-                        })
                         .collect();
                     if handles.len() == vs.len() {
                         // success; we can record in graph

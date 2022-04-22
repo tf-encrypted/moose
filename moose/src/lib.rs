@@ -962,7 +962,12 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic variadic transparent $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_variadic_transparent_fn::<$ts, $u, $plc>($k)
+        crate::execution::kernel_helpers::symbolic_variadic_transparent::<
+            $ts,
+            $u,
+            $plc,
+            fn(&SymbolicSession, &_, &_) -> Result<_>,
+        >($k)
     };
 
     (symbolic variadic concrete $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
@@ -983,7 +988,12 @@ macro_rules! ng_derive_runtime_kernel {
     };
 
     (symbolic variadic concrete $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic_variadic_concrete_fn::<$ts, $u, $plc>(Operator::from($op.clone()), $k)
+        crate::execution::kernel_helpers::symbolic_variadic_concrete::<
+            $ts,
+            $u,
+            $plc,
+            fn(&SymbolicSession, &$plc, &_) -> _,
+        >(Operator::from($op.clone()), $k)
     };
 
     (async variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
