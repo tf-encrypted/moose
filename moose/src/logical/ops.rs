@@ -2078,6 +2078,42 @@ impl ReshapeOp {
             ))),
         }
     }
+
+    pub(crate) fn rep_logical_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+        HostShapeT,
+        RepShapeT,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+        shape: AbstractShape<HostShapeT, RepShapeT>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostShapeT, RepShapeT>,
+        ReplicatedPlacement: PlacementReshape<S, Fixed64T, RepShapeT, Fixed64T>,
+        ReplicatedPlacement: PlacementReshape<S, Fixed128T, RepShapeT, Fixed128T>,
+    {
+        let sh = match shape {
+            AbstractShape::Host(sh) => plc.share(sess, &sh),
+            AbstractShape::Replicated(sh) => sh,
+        };
+
+        use AbstractTensor::*;
+        match x {
+            Fixed64(x) => Ok(Fixed64(plc.reshape(sess, &x, &sh))),
+            Fixed128(x) => Ok(Fixed128(plc.reshape(sess, &x, &sh))),
+            Float32(_) | Float64(_) | Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
+                "Reshape op (Rep) op not supported on ReplicatedPlacement.".to_string(),
+            )),
+        }
+    }
 }
 
 impl SliceOp {
