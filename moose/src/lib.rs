@@ -1049,11 +1049,11 @@ macro_rules! modelled_kernel {
 
     ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? () -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
         #[cfg(feature = "sync_execute")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::SyncSession, crate::computation::Value> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::SyncSession, crate::computation::Value> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SyncSession, crate::computation::Value>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession, crate::computation::Value>> {
                 use crate::execution::SyncSession;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -1073,11 +1073,11 @@ macro_rules! modelled_kernel {
         }
 
         #[cfg(feature = "compile")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue>> {
                 use crate::execution::SymbolicSession;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -1097,11 +1097,11 @@ macro_rules! modelled_kernel {
         }
 
         #[cfg(feature = "async_execute")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::AsyncSession, crate::computation::Value> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession, crate::computation::Value> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::AsyncSession, crate::computation::Value>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession, crate::computation::Value>> {
                 use crate::execution::AsyncSession;
                 match (plc.ty(), self.sig.flatten()) {
                     $(
@@ -1330,11 +1330,11 @@ macro_rules! modelled_kernel {
 
     ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
         #[cfg(feature = "sync_execute")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::SyncSession, crate::computation::Value> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::SyncSession, crate::computation::Value> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SyncSession, crate::computation::Value>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession, crate::computation::Value>> {
                 use crate::execution::SyncSession;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -1355,11 +1355,11 @@ macro_rules! modelled_kernel {
         }
 
         #[cfg(feature = "compile")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue>> {
                 use crate::execution::SymbolicSession;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -1380,11 +1380,11 @@ macro_rules! modelled_kernel {
         }
 
         #[cfg(feature = "async_execute")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::AsyncSession, crate::computation::Value> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession, crate::computation::Value> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::AsyncSession, crate::computation::Value>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession, crate::computation::Value>> {
                 use crate::execution::AsyncSession;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -1632,11 +1632,11 @@ macro_rules! modelled_kernel {
 
     ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
         #[cfg(feature = "sync_execute")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::SyncSession, crate::computation::Value> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::SyncSession, crate::computation::Value> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SyncSession, crate::computation::Value>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession, crate::computation::Value>> {
                 use crate::execution::SyncSession;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -1658,11 +1658,11 @@ macro_rules! modelled_kernel {
         }
 
         #[cfg(feature = "compile")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue>> {
                 use crate::execution::SymbolicSession;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -1684,11 +1684,11 @@ macro_rules! modelled_kernel {
         }
 
         #[cfg(feature = "async_execute")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::AsyncSession, crate::computation::Value> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession, crate::computation::Value> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::AsyncSession, crate::computation::Value>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession, crate::computation::Value>> {
                 use crate::execution::AsyncSession;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -1958,11 +1958,11 @@ macro_rules! modelled_kernel {
 
     ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
         #[cfg(feature = "sync_execute")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::SyncSession, crate::computation::Value> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::SyncSession, crate::computation::Value> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SyncSession, crate::computation::Value>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession, crate::computation::Value>> {
                 use crate::execution::SyncSession;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -1985,11 +1985,11 @@ macro_rules! modelled_kernel {
         }
 
         #[cfg(feature = "compile")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue>> {
                 use crate::execution::SymbolicSession;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -2012,11 +2012,11 @@ macro_rules! modelled_kernel {
         }
 
         #[cfg(feature = "async_execute")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::AsyncSession, crate::computation::Value> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession, crate::computation::Value> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::AsyncSession, crate::computation::Value>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession, crate::computation::Value>> {
                 use crate::execution::AsyncSession;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -2308,11 +2308,11 @@ macro_rules! modelled_kernel {
 
     ($trait:ident::$trait_fn:ident, $op:ident, [$( ($plc:ty, $([$($attr_id:ident: $attr_ty:ty),+])? vec[$ts:ty] -> $u:ty => [$flavour:tt] $($kp:tt)+), )+]) => {
         #[cfg(feature = "sync_execute")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::SyncSession, crate::computation::Value> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::SyncSession, crate::computation::Value> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SyncSession, crate::computation::Value>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SyncSession, crate::computation::Value>> {
                 use crate::execution::SyncSession;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -2333,11 +2333,11 @@ macro_rules! modelled_kernel {
         }
 
         #[cfg(feature = "compile")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::SymbolicSession, crate::computation::SymbolicValue>> {
                 use crate::execution::SymbolicSession;
 
                 match (plc.ty(), self.sig.flatten()) {
@@ -2358,11 +2358,11 @@ macro_rules! modelled_kernel {
         }
 
         #[cfg(feature = "async_execute")]
-        impl crate::kernels::NgDispatchKernel<crate::execution::AsyncSession, crate::computation::Value> for $op {
+        impl crate::kernels::DispatchKernel<crate::execution::AsyncSession, crate::computation::Value> for $op {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<crate::kernels::NgKernel<crate::execution::AsyncSession, crate::computation::Value>> {
+            ) -> crate::error::Result<crate::kernels::Kernel<crate::execution::AsyncSession, crate::computation::Value>> {
                 use crate::execution::AsyncSession;
 
                 match (plc.ty(), self.sig.flatten()) {

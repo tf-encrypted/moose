@@ -4,17 +4,17 @@ use crate::computation::{
 use crate::error::Result;
 use crate::execution::symbolic::{Symbolic, SymbolicSession};
 use crate::execution::{Operands, Session};
-use crate::kernels::NgKernel;
+use crate::kernels::Kernel;
 use std::convert::{TryFrom, TryInto};
 
-pub(crate) fn nullary<S, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
+pub(crate) fn nullary<S, U, P, F>(kf: F) -> Result<Kernel<S, Value>>
 where
     F: Fn(&S, &P) -> Result<U> + Send + Sync + 'static,
     S: Session + 'static,
     P: TryFrom<Placement, Error = crate::Error> + 'static,
     U: Into<Value> + 'static,
 {
-    Ok(NgKernel::Nullary {
+    Ok(Kernel::Nullary {
         closure: Box::new(move |sess: &S, plc: &Placement| {
             let plc = P::try_from(plc.clone())?;
             let y = kf(sess, &plc)?;
@@ -23,7 +23,7 @@ where
     })
 }
 
-pub(crate) fn unary<S, T0, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
+pub(crate) fn unary<S, T0, U, P, F>(kf: F) -> Result<Kernel<S, Value>>
 where
     F: Fn(&S, &P, T0) -> Result<U> + Send + Sync + 'static,
     S: Session + 'static,
@@ -31,7 +31,7 @@ where
     T0: TryFrom<Value, Error = crate::Error> + 'static,
     U: Into<Value> + 'static,
 {
-    Ok(NgKernel::Unary {
+    Ok(Kernel::Unary {
         closure: Box::new(move |sess: &S, plc: &Placement, v0: Value| {
             let plc = P::try_from(plc.clone())?;
             let x0 = T0::try_from(v0)?;
@@ -41,7 +41,7 @@ where
     })
 }
 
-pub(crate) fn binary<S, T0, T1, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
+pub(crate) fn binary<S, T0, T1, U, P, F>(kf: F) -> Result<Kernel<S, Value>>
 where
     F: Fn(&S, &P, T0, T1) -> Result<U> + Send + Sync + 'static,
     S: Session + 'static,
@@ -50,7 +50,7 @@ where
     T1: TryFrom<Value, Error = crate::Error> + 'static,
     U: Into<Value> + 'static,
 {
-    Ok(NgKernel::Binary {
+    Ok(Kernel::Binary {
         closure: Box::new(move |sess: &S, plc: &Placement, v0: Value, v1: Value| {
             let plc = P::try_from(plc.clone())?;
             let x0 = T0::try_from(v0)?;
@@ -61,7 +61,7 @@ where
     })
 }
 
-pub(crate) fn ternary<S, T0, T1, T2, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
+pub(crate) fn ternary<S, T0, T1, T2, U, P, F>(kf: F) -> Result<Kernel<S, Value>>
 where
     F: Fn(&S, &P, T0, T1, T2) -> Result<U> + Send + Sync + 'static,
     S: Session + 'static,
@@ -71,7 +71,7 @@ where
     T2: TryFrom<Value, Error = crate::Error> + 'static,
     U: Into<Value> + 'static,
 {
-    Ok(NgKernel::Ternary {
+    Ok(Kernel::Ternary {
         closure: Box::new(
             move |sess: &S, plc: &Placement, v0: Value, v1: Value, v2: Value| {
                 let plc = P::try_from(plc.clone())?;
@@ -85,7 +85,7 @@ where
     })
 }
 
-pub(crate) fn variadic<S, TS, U, P, F>(kf: F) -> Result<NgKernel<S, Value>>
+pub(crate) fn variadic<S, TS, U, P, F>(kf: F) -> Result<Kernel<S, Value>>
 where
     F: Fn(&S, &P, &[TS]) -> Result<U> + Send + Sync + 'static,
     S: Session + 'static,
@@ -93,7 +93,7 @@ where
     TS: TryFrom<Value, Error = crate::Error> + 'static,
     U: Into<Value> + 'static,
 {
-    Ok(NgKernel::Variadic {
+    Ok(Kernel::Variadic {
         closure: Box::new(move |sess: &S, plc: &Placement, vs: Operands<Value>| {
             let plc = P::try_from(plc.clone())?;
             let xs: Operands<TS> = vs
@@ -115,7 +115,7 @@ pub(crate) mod symbolic {
 
         pub(crate) fn nullary<U, P>(
             op: Operator,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             P: TryFrom<Placement, Error = crate::Error> + Clone,
             Placement: From<P>,
@@ -126,7 +126,7 @@ pub(crate) mod symbolic {
 
             SymbolicValue: From<Symbolic<<U as PartiallySymbolicType>::Type>>,
         {
-            Ok(NgKernel::Nullary {
+            Ok(Kernel::Nullary {
                 closure: Box::new(move |sess: &SymbolicSession, plc: &Placement| {
                     let plc = P::try_from(plc.clone())?;
                     let h = sess.add_operation(&op, &[], &plc);
@@ -138,7 +138,7 @@ pub(crate) mod symbolic {
 
         pub(crate) fn unary<T0, U, P>(
             op: Operator,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             P: Clone + TryFrom<Placement, Error = crate::Error>,
             Placement: From<P>,
@@ -153,7 +153,7 @@ pub(crate) mod symbolic {
                 TryInto<Symbolic<<T0 as PartiallySymbolicType>::Type>, Error = crate::Error>,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(crate::kernels::NgKernel::Unary {
+            Ok(crate::kernels::Kernel::Unary {
                 closure: Box::new(
                     move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
                         let plc = P::try_from(plc.clone())?;
@@ -173,7 +173,7 @@ pub(crate) mod symbolic {
 
         pub(crate) fn binary<T0, T1, U, P>(
             op: Operator,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             P: Clone + TryFrom<Placement, Error = crate::Error>,
             Placement: From<P>,
@@ -192,7 +192,7 @@ pub(crate) mod symbolic {
                 TryInto<Symbolic<<T1 as PartiallySymbolicType>::Type>, Error = crate::Error>,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(crate::kernels::NgKernel::Binary {
+            Ok(crate::kernels::Kernel::Binary {
                 closure: Box::new(
                     move |sess: &crate::execution::SymbolicSession,
                           plc: &crate::computation::Placement,
@@ -217,7 +217,7 @@ pub(crate) mod symbolic {
 
         pub(crate) fn ternary<T0, T1, T2, U, P>(
             op: Operator,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             P: Clone + TryFrom<Placement, Error = crate::Error>,
             Placement: From<P>,
@@ -240,7 +240,7 @@ pub(crate) mod symbolic {
                 TryInto<Symbolic<<T2 as PartiallySymbolicType>::Type>, Error = crate::Error>,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(crate::kernels::NgKernel::Ternary {
+            Ok(crate::kernels::Kernel::Ternary {
                 closure: Box::new(
                     move |sess: &crate::execution::SymbolicSession,
                           plc: &crate::computation::Placement,
@@ -271,7 +271,7 @@ pub(crate) mod symbolic {
 
         pub(crate) fn variadic<TS, U, P>(
             op: Operator,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             P: Clone + TryFrom<Placement, Error = crate::Error>,
             Placement: From<P>,
@@ -286,7 +286,7 @@ pub(crate) mod symbolic {
                 TryInto<Symbolic<<TS as PartiallySymbolicType>::Type>, Error = crate::Error>,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(crate::kernels::NgKernel::Variadic {
+            Ok(crate::kernels::Kernel::Variadic {
                 closure: Box::new(
                     move |sess: &SymbolicSession, plc: &Placement, vs: Operands<SymbolicValue>| {
                         let plc = P::try_from(plc.clone())?;
@@ -317,7 +317,7 @@ pub(crate) mod symbolic {
     pub(crate) mod concrete {
         use super::*;
 
-        pub(crate) fn nullary<U, P, F>(kf: F) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        pub(crate) fn nullary<U, P, F>(kf: F) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             F: Fn(&SymbolicSession, &P) -> Result<<U as PartiallySymbolicType>::Type>
                 + Send
@@ -330,7 +330,7 @@ pub(crate) mod symbolic {
             <<U as PartiallySymbolicType>::Type as Placed>::Placement: From<P>,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(NgKernel::Nullary {
+            Ok(Kernel::Nullary {
                 closure: Box::new(move |sess: &SymbolicSession, plc: &Placement| {
                     let plc = P::try_from(plc.clone())?;
                     let y = kf(sess, &plc)?;
@@ -342,7 +342,7 @@ pub(crate) mod symbolic {
         pub(crate) fn unary<T0, U, P, F>(
             op: Operator,
             kf: F,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             F: Fn(
                     &SymbolicSession,
@@ -364,7 +364,7 @@ pub(crate) mod symbolic {
                 TryInto<Symbolic<<T0 as PartiallySymbolicType>::Type>, Error = crate::Error>,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(NgKernel::Unary {
+            Ok(Kernel::Unary {
                 closure: Box::new(
                     move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
                         let plc = P::try_from(plc.clone())?;
@@ -388,7 +388,7 @@ pub(crate) mod symbolic {
         pub(crate) fn binary<T0, T1, U, P, F>(
             op: Operator,
             kf: F,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             F: Fn(
                 &SymbolicSession,
@@ -415,7 +415,7 @@ pub(crate) mod symbolic {
                 TryInto<Symbolic<<T1 as PartiallySymbolicType>::Type>, Error = crate::Error>,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(NgKernel::Binary {
+            Ok(Kernel::Binary {
                 closure: Box::new(
                     move |sess: &SymbolicSession,
                           plc: &Placement,
@@ -447,7 +447,7 @@ pub(crate) mod symbolic {
         pub(crate) fn ternary<T0, T1, T2, U, P, F>(
             op: Operator,
             kf: F,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             F: Fn(
                     &SymbolicSession,
@@ -482,7 +482,7 @@ pub(crate) mod symbolic {
                 TryInto<Symbolic<<T2 as PartiallySymbolicType>::Type>, Error = crate::Error>,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(NgKernel::Ternary {
+            Ok(Kernel::Ternary {
                 closure: Box::new(
                     move |sess: &SymbolicSession,
                           plc: &Placement,
@@ -524,7 +524,7 @@ pub(crate) mod symbolic {
         pub(crate) fn variadic<TS, U, P, F>(
             op: Operator,
             kf: F,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             F: Fn(
                     &SymbolicSession,
@@ -548,7 +548,7 @@ pub(crate) mod symbolic {
                 TryInto<Symbolic<<TS as PartiallySymbolicType>::Type>, Error = crate::Error>,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(NgKernel::Variadic {
+            Ok(Kernel::Variadic {
                 closure: Box::new(
                     move |sess: &SymbolicSession, plc: &Placement, vs: Operands<SymbolicValue>| {
                         let plc = P::try_from(plc.clone())?;
@@ -597,7 +597,7 @@ pub(crate) mod symbolic {
     pub(crate) mod transparent {
         use super::*;
 
-        pub(crate) fn unary<T0, U, P, F>(kf: F) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        pub(crate) fn unary<T0, U, P, F>(kf: F) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             F: Fn(
                     &SymbolicSession,
@@ -620,7 +620,7 @@ pub(crate) mod symbolic {
             <U as PartiallySymbolicType>::Type: 'static,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(NgKernel::Unary {
+            Ok(Kernel::Unary {
                 closure: Box::new(
                     move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
                         let plc: P = Placement::try_into(plc.clone())?;
@@ -634,7 +634,7 @@ pub(crate) mod symbolic {
 
         pub(crate) fn binary<T0, T1, U, P, F>(
             kf: F,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             F: Fn(
                 &SymbolicSession,
@@ -661,7 +661,7 @@ pub(crate) mod symbolic {
             <U as PartiallySymbolicType>::Type: 'static,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(NgKernel::Binary {
+            Ok(Kernel::Binary {
                 closure: Box::new(
                     move |sess: &SymbolicSession,
                           plc: &Placement,
@@ -679,7 +679,7 @@ pub(crate) mod symbolic {
 
         pub(crate) fn _ternary<T0, T1, T2, U, P, F>(
             kf: F,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             F: Fn(
                 &SymbolicSession,
@@ -712,7 +712,7 @@ pub(crate) mod symbolic {
             <U as PartiallySymbolicType>::Type: 'static,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(NgKernel::Ternary {
+            Ok(Kernel::Ternary {
                 closure: Box::new(
                     move |sess: &SymbolicSession,
                           plc: &Placement,
@@ -732,7 +732,7 @@ pub(crate) mod symbolic {
 
         pub(crate) fn variadic<TS, U, P, F>(
             kf: F,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             F: Fn(
                     &SymbolicSession,
@@ -755,7 +755,7 @@ pub(crate) mod symbolic {
             <U as PartiallySymbolicType>::Type: 'static,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(NgKernel::Variadic {
+            Ok(Kernel::Variadic {
                 closure: Box::new(
                     move |sess: &SymbolicSession, plc: &Placement, vs: Operands<SymbolicValue>| {
                         let plc: P = Placement::try_into(plc.clone())?;
@@ -782,7 +782,7 @@ pub(crate) mod symbolic {
         pub(crate) fn unary<T0, U, X0, Y, P, F>(
             op: Operator,
             kf: F,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             F: Fn(&SymbolicSession, &P, X0) -> Result<Y> + Send + Sync + 'static,
             P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
@@ -805,7 +805,7 @@ pub(crate) mod symbolic {
             SymbolicValue: TryInto<<T0 as SymbolicType>::Type, Error = crate::Error>,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(NgKernel::Unary {
+            Ok(Kernel::Unary {
                 closure: Box::new(
                     move |sess: &SymbolicSession, plc: &Placement, v0: SymbolicValue| {
                         let plc = P::try_from(plc.clone())?;
@@ -838,7 +838,7 @@ pub(crate) mod symbolic {
         pub(crate) fn binary<T0, T1, U, X0, X1, Y, P, F>(
             op: Operator,
             kf: F,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             F: Fn(&SymbolicSession, &P, X0, X1) -> Result<Y> + Send + Sync + 'static,
             P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
@@ -866,7 +866,7 @@ pub(crate) mod symbolic {
             SymbolicValue: TryInto<<T1 as SymbolicType>::Type, Error = crate::Error>,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(NgKernel::Binary {
+            Ok(Kernel::Binary {
                 closure: Box::new(
                     move |sess: &SymbolicSession,
                           plc: &Placement,
@@ -905,7 +905,7 @@ pub(crate) mod symbolic {
         pub(crate) fn ternary<T0, T1, T2, U, X0, X1, X2, Y, P, F>(
             op: Operator,
             kf: F,
-        ) -> Result<NgKernel<SymbolicSession, SymbolicValue>>
+        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             F: Fn(&SymbolicSession, &P, X0, X1, X2) -> Result<Y> + Send + Sync + 'static,
             P: Clone + TryFrom<Placement, Error = crate::Error> + 'static,
@@ -938,7 +938,7 @@ pub(crate) mod symbolic {
             SymbolicValue: TryInto<<T2 as SymbolicType>::Type, Error = crate::Error>,
             SymbolicValue: From<<U as SymbolicType>::Type>,
         {
-            Ok(NgKernel::Ternary {
+            Ok(Kernel::Ternary {
                 closure: Box::new(
                     move |sess: &SymbolicSession,
                           plc: &Placement,

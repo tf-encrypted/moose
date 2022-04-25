@@ -31,7 +31,7 @@ pub use io::*;
 pub use sampling::*;
 pub use shapes::*;
 
-pub type NgNullaryKernel<S, V> = Box<
+pub type NullaryKernel<S, V> = Box<
     dyn Fn(
             &S,
             &Placement, // TODO get rid of this?
@@ -40,7 +40,7 @@ pub type NgNullaryKernel<S, V> = Box<
         + Sync,
 >;
 
-pub type NgUnaryKernel<S, V> = Box<
+pub type UnaryKernel<S, V> = Box<
     dyn Fn(
             &S,
             &Placement, // TODO get rid of this?
@@ -50,7 +50,7 @@ pub type NgUnaryKernel<S, V> = Box<
         + Sync,
 >;
 
-pub type NgBinaryKernel<S, V> = Box<
+pub type BinaryKernel<S, V> = Box<
     dyn Fn(
             &S,
             &Placement, // TODO get rid of this?
@@ -61,7 +61,7 @@ pub type NgBinaryKernel<S, V> = Box<
         + Sync,
 >;
 
-pub type NgTernaryKernel<S, V> = Box<
+pub type TernaryKernel<S, V> = Box<
     dyn Fn(
             &S,
             &Placement, // TODO get rid of this?
@@ -73,7 +73,7 @@ pub type NgTernaryKernel<S, V> = Box<
         + Sync,
 >;
 
-pub type NgVariadicKernel<S, V> = Box<
+pub type VariadicKernel<S, V> = Box<
     dyn Fn(
             &S,
             &Placement, // TODO get rid of this?
@@ -83,16 +83,16 @@ pub type NgVariadicKernel<S, V> = Box<
         + Sync,
 >;
 
-pub enum NgKernel<S: Session, V> {
-    Nullary { closure: NgNullaryKernel<S, V> },
-    Unary { closure: NgUnaryKernel<S, V> },
-    Binary { closure: NgBinaryKernel<S, V> },
-    Ternary { closure: NgTernaryKernel<S, V> },
-    Variadic { closure: NgVariadicKernel<S, V> },
+pub enum Kernel<S: Session, V> {
+    Nullary { closure: NullaryKernel<S, V> },
+    Unary { closure: UnaryKernel<S, V> },
+    Binary { closure: BinaryKernel<S, V> },
+    Ternary { closure: TernaryKernel<S, V> },
+    Variadic { closure: VariadicKernel<S, V> },
 }
 
-pub trait NgDispatchKernel<S: Session, V> {
-    fn compile(&self, plc: &Placement) -> Result<NgKernel<S, V>>;
+pub trait DispatchKernel<S: Session, V> {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<S, V>>;
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for

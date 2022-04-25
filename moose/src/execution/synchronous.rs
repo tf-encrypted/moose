@@ -4,7 +4,7 @@ use super::{Identity, Operands, RuntimeSession, Session, SetupGeneration};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::*;
-use crate::kernels::{NgDispatchKernel, NgKernel};
+use crate::kernels::{DispatchKernel, Kernel};
 use crate::networking::{LocalSyncNetworking, SyncNetworking};
 use crate::replicated::*;
 use crate::storage::LocalSyncStorage;
@@ -103,12 +103,12 @@ impl SyncSession {
     }
 }
 
-impl NgDispatchKernel<SyncSession, Value> for SendOp {
-    fn compile(&self, plc: &Placement) -> Result<NgKernel<SyncSession, Value>> {
+impl DispatchKernel<SyncSession, Value> for SendOp {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession, Value>> {
         if let Placement::Host(plc) = plc {
             let plc = plc.clone();
             let op = self.clone();
-            Ok(NgKernel::Unary {
+            Ok(Kernel::Unary {
                 closure: Box::new(move |sess, _plc, x| {
                     sess.networking.send(
                         &x,
@@ -125,11 +125,11 @@ impl NgDispatchKernel<SyncSession, Value> for SendOp {
     }
 }
 
-impl NgDispatchKernel<SyncSession, Value> for ReceiveOp {
-    fn compile(&self, plc: &Placement) -> Result<NgKernel<SyncSession, Value>> {
+impl DispatchKernel<SyncSession, Value> for ReceiveOp {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession, Value>> {
         if let Placement::Host(_plc) = plc {
             let op = self.clone();
-            Ok(NgKernel::Nullary {
+            Ok(Kernel::Nullary {
                 closure: Box::new(move |sess, _plc| {
                     // TODO(Morten) we should verify type of received value
                     sess.networking.receive(
@@ -148,91 +148,91 @@ impl NgDispatchKernel<SyncSession, Value> for ReceiveOp {
     }
 }
 
-impl NgDispatchKernel<SyncSession, Value> for Operator {
-    fn compile(&self, plc: &Placement) -> Result<NgKernel<SyncSession, Value>> {
+impl DispatchKernel<SyncSession, Value> for Operator {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession, Value>> {
         use Operator::*;
         match self {
             Load(_) => unimplemented!(),
             Save(_) => unimplemented!(),
-            Send(op) => NgDispatchKernel::compile(op, plc),
-            Receive(op) => NgDispatchKernel::compile(op, plc),
+            Send(op) => DispatchKernel::compile(op, plc),
+            Receive(op) => DispatchKernel::compile(op, plc),
 
-            Abs(op) => NgDispatchKernel::compile(op, plc),
-            Add(op) => NgDispatchKernel::compile(op, plc),
-            AdtToRep(op) => NgDispatchKernel::compile(op, plc),
-            AddN(op) => NgDispatchKernel::compile(op, plc),
-            And(op) => NgDispatchKernel::compile(op, plc),
-            Argmax(op) => NgDispatchKernel::compile(op, plc),
-            AtLeast2D(op) => NgDispatchKernel::compile(op, plc),
-            BitCompose(op) => NgDispatchKernel::compile(op, plc),
-            BitDecompose(op) => NgDispatchKernel::compile(op, plc),
-            BitExtract(op) => NgDispatchKernel::compile(op, plc),
-            Broadcast(op) => NgDispatchKernel::compile(op, plc),
-            Cast(op) => NgDispatchKernel::compile(op, plc),
-            Concat(op) => NgDispatchKernel::compile(op, plc),
-            Constant(op) => NgDispatchKernel::compile(op, plc),
-            Decrypt(op) => NgDispatchKernel::compile(op, plc),
-            Demirror(op) => NgDispatchKernel::compile(op, plc),
-            DeriveSeed(op) => NgDispatchKernel::compile(op, plc),
-            Dot(op) => NgDispatchKernel::compile(op, plc),
-            Diag(op) => NgDispatchKernel::compile(op, plc),
-            Div(op) => NgDispatchKernel::compile(op, plc),
-            Equal(op) => NgDispatchKernel::compile(op, plc),
-            EqualZero(op) => NgDispatchKernel::compile(op, plc),
-            Exp(op) => NgDispatchKernel::compile(op, plc),
-            ExpandDims(op) => NgDispatchKernel::compile(op, plc),
-            Fill(op) => NgDispatchKernel::compile(op, plc),
-            FixedpointDecode(op) => NgDispatchKernel::compile(op, plc),
-            FixedpointEncode(op) => NgDispatchKernel::compile(op, plc),
-            GreaterThan(op) => NgDispatchKernel::compile(op, plc),
-            Identity(op) => NgDispatchKernel::compile(op, plc),
-            Index(op) => NgDispatchKernel::compile(op, plc),
-            IndexAxis(op) => NgDispatchKernel::compile(op, plc),
-            Input(op) => NgDispatchKernel::compile(op, plc),
-            Inverse(op) => NgDispatchKernel::compile(op, plc),
-            LessThan(op) => NgDispatchKernel::compile(op, plc),
-            Log(op) => NgDispatchKernel::compile(op, plc),
-            Log2(op) => NgDispatchKernel::compile(op, plc),
-            Maximum(op) => NgDispatchKernel::compile(op, plc),
-            Mean(op) => NgDispatchKernel::compile(op, plc),
-            Mirror(op) => NgDispatchKernel::compile(op, plc),
-            Msb(op) => NgDispatchKernel::compile(op, plc),
-            Mul(op) => NgDispatchKernel::compile(op, plc),
-            Mux(op) => NgDispatchKernel::compile(op, plc),
-            Neg(op) => NgDispatchKernel::compile(op, plc),
-            Ones(op) => NgDispatchKernel::compile(op, plc),
-            Or(op) => NgDispatchKernel::compile(op, plc),
-            Pow2(op) => NgDispatchKernel::compile(op, plc),
-            PrfKeyGen(op) => NgDispatchKernel::compile(op, plc),
-            Reshape(op) => NgDispatchKernel::compile(op, plc),
-            Reveal(op) => NgDispatchKernel::compile(op, plc),
-            RepToAdt(op) => NgDispatchKernel::compile(op, plc),
-            RingFixedpointAbs(op) => NgDispatchKernel::compile(op, plc),
-            RingFixedpointArgmax(op) => NgDispatchKernel::compile(op, plc),
-            RingFixedpointDecode(op) => NgDispatchKernel::compile(op, plc),
-            RingFixedpointEncode(op) => NgDispatchKernel::compile(op, plc),
-            RingFixedpointMean(op) => NgDispatchKernel::compile(op, plc),
-            RingInject(op) => NgDispatchKernel::compile(op, plc),
-            Sample(op) => NgDispatchKernel::compile(op, plc),
-            SampleSeeded(op) => NgDispatchKernel::compile(op, plc),
-            Shape(op) => NgDispatchKernel::compile(op, plc),
-            Share(op) => NgDispatchKernel::compile(op, plc),
-            Shl(op) => NgDispatchKernel::compile(op, plc),
-            ShlDim(op) => NgDispatchKernel::compile(op, plc),
-            Shr(op) => NgDispatchKernel::compile(op, plc),
-            Sigmoid(op) => NgDispatchKernel::compile(op, plc),
-            Sign(op) => NgDispatchKernel::compile(op, plc),
-            Slice(op) => NgDispatchKernel::compile(op, plc),
-            Softmax(op) => NgDispatchKernel::compile(op, plc),
-            Sqrt(op) => NgDispatchKernel::compile(op, plc),
-            Squeeze(op) => NgDispatchKernel::compile(op, plc),
-            Sub(op) => NgDispatchKernel::compile(op, plc),
-            Sum(op) => NgDispatchKernel::compile(op, plc),
-            Transpose(op) => NgDispatchKernel::compile(op, plc),
-            TruncPr(op) => NgDispatchKernel::compile(op, plc),
-            Output(op) => NgDispatchKernel::compile(op, plc),
-            Xor(op) => NgDispatchKernel::compile(op, plc),
-            Zeros(op) => NgDispatchKernel::compile(op, plc),
+            Abs(op) => DispatchKernel::compile(op, plc),
+            Add(op) => DispatchKernel::compile(op, plc),
+            AdtToRep(op) => DispatchKernel::compile(op, plc),
+            AddN(op) => DispatchKernel::compile(op, plc),
+            And(op) => DispatchKernel::compile(op, plc),
+            Argmax(op) => DispatchKernel::compile(op, plc),
+            AtLeast2D(op) => DispatchKernel::compile(op, plc),
+            BitCompose(op) => DispatchKernel::compile(op, plc),
+            BitDecompose(op) => DispatchKernel::compile(op, plc),
+            BitExtract(op) => DispatchKernel::compile(op, plc),
+            Broadcast(op) => DispatchKernel::compile(op, plc),
+            Cast(op) => DispatchKernel::compile(op, plc),
+            Concat(op) => DispatchKernel::compile(op, plc),
+            Constant(op) => DispatchKernel::compile(op, plc),
+            Decrypt(op) => DispatchKernel::compile(op, plc),
+            Demirror(op) => DispatchKernel::compile(op, plc),
+            DeriveSeed(op) => DispatchKernel::compile(op, plc),
+            Dot(op) => DispatchKernel::compile(op, plc),
+            Diag(op) => DispatchKernel::compile(op, plc),
+            Div(op) => DispatchKernel::compile(op, plc),
+            Equal(op) => DispatchKernel::compile(op, plc),
+            EqualZero(op) => DispatchKernel::compile(op, plc),
+            Exp(op) => DispatchKernel::compile(op, plc),
+            ExpandDims(op) => DispatchKernel::compile(op, plc),
+            Fill(op) => DispatchKernel::compile(op, plc),
+            FixedpointDecode(op) => DispatchKernel::compile(op, plc),
+            FixedpointEncode(op) => DispatchKernel::compile(op, plc),
+            GreaterThan(op) => DispatchKernel::compile(op, plc),
+            Identity(op) => DispatchKernel::compile(op, plc),
+            Index(op) => DispatchKernel::compile(op, plc),
+            IndexAxis(op) => DispatchKernel::compile(op, plc),
+            Input(op) => DispatchKernel::compile(op, plc),
+            Inverse(op) => DispatchKernel::compile(op, plc),
+            LessThan(op) => DispatchKernel::compile(op, plc),
+            Log(op) => DispatchKernel::compile(op, plc),
+            Log2(op) => DispatchKernel::compile(op, plc),
+            Maximum(op) => DispatchKernel::compile(op, plc),
+            Mean(op) => DispatchKernel::compile(op, plc),
+            Mirror(op) => DispatchKernel::compile(op, plc),
+            Msb(op) => DispatchKernel::compile(op, plc),
+            Mul(op) => DispatchKernel::compile(op, plc),
+            Mux(op) => DispatchKernel::compile(op, plc),
+            Neg(op) => DispatchKernel::compile(op, plc),
+            Ones(op) => DispatchKernel::compile(op, plc),
+            Or(op) => DispatchKernel::compile(op, plc),
+            Pow2(op) => DispatchKernel::compile(op, plc),
+            PrfKeyGen(op) => DispatchKernel::compile(op, plc),
+            Reshape(op) => DispatchKernel::compile(op, plc),
+            Reveal(op) => DispatchKernel::compile(op, plc),
+            RepToAdt(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointAbs(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointArgmax(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointDecode(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointEncode(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointMean(op) => DispatchKernel::compile(op, plc),
+            RingInject(op) => DispatchKernel::compile(op, plc),
+            Sample(op) => DispatchKernel::compile(op, plc),
+            SampleSeeded(op) => DispatchKernel::compile(op, plc),
+            Shape(op) => DispatchKernel::compile(op, plc),
+            Share(op) => DispatchKernel::compile(op, plc),
+            Shl(op) => DispatchKernel::compile(op, plc),
+            ShlDim(op) => DispatchKernel::compile(op, plc),
+            Shr(op) => DispatchKernel::compile(op, plc),
+            Sigmoid(op) => DispatchKernel::compile(op, plc),
+            Sign(op) => DispatchKernel::compile(op, plc),
+            Slice(op) => DispatchKernel::compile(op, plc),
+            Softmax(op) => DispatchKernel::compile(op, plc),
+            Sqrt(op) => DispatchKernel::compile(op, plc),
+            Squeeze(op) => DispatchKernel::compile(op, plc),
+            Sub(op) => DispatchKernel::compile(op, plc),
+            Sum(op) => DispatchKernel::compile(op, plc),
+            Transpose(op) => DispatchKernel::compile(op, plc),
+            TruncPr(op) => DispatchKernel::compile(op, plc),
+            Output(op) => DispatchKernel::compile(op, plc),
+            Xor(op) => DispatchKernel::compile(op, plc),
+            Zeros(op) => DispatchKernel::compile(op, plc),
         }
     }
 }
@@ -242,7 +242,7 @@ impl Session for SyncSession {
 
     fn execute(&self, op: &Operator, plc: &Placement, operands: Operands<Value>) -> Result<Value> {
         let mut operands = operands;
-        let kernel: NgKernel<SyncSession, _> = match op {
+        let kernel: Kernel<SyncSession, _> = match op {
             Operator::Load(op) => {
                 assert_eq!(operands.len(), 2);
                 let query: HostString = operands.pop().unwrap().try_into()?;
@@ -265,32 +265,32 @@ impl Session for SyncSession {
                 };
                 return Ok(HostUnit(host.clone()).into());
             }
-            op => NgDispatchKernel::compile(op, plc),
+            op => DispatchKernel::compile(op, plc),
         }?;
         match kernel {
-            NgKernel::Nullary { closure } => {
+            Kernel::Nullary { closure } => {
                 assert_eq!(operands.len(), 0);
                 closure(self, plc)
             }
-            NgKernel::Unary { closure } => {
+            Kernel::Unary { closure } => {
                 assert_eq!(operands.len(), 1);
                 let x0 = operands.pop().unwrap();
                 closure(self, plc, x0)
             }
-            NgKernel::Binary { closure } => {
+            Kernel::Binary { closure } => {
                 assert_eq!(operands.len(), 2);
                 let x1 = operands.pop().unwrap();
                 let x0 = operands.pop().unwrap();
                 closure(self, plc, x0, x1)
             }
-            NgKernel::Ternary { closure } => {
+            Kernel::Ternary { closure } => {
                 assert_eq!(operands.len(), 3);
                 let x2 = operands.pop().unwrap();
                 let x1 = operands.pop().unwrap();
                 let x0 = operands.pop().unwrap();
                 closure(self, plc, x0, x1, x2)
             }
-            NgKernel::Variadic { closure } => closure(self, plc, operands),
+            Kernel::Variadic { closure } => closure(self, plc, operands),
         }
     }
 }
