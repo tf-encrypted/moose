@@ -828,7 +828,9 @@ impl SoftmaxOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,T: ndarray::ScalarOperand
     {
-        let x_exp = x.0.mapv(T::exp);
+        let x_max = x.0.index_axis(ndarray::Axis(axis), upmost_index);
+        let x_normalized = x.0.clone() - x_max;
+        let x_exp = x_normalized.mapv(T::exp);
         let x_exp_sum = x_exp.sum();
         use std::ops::Div;
         let softmax = x_exp.div(x_exp_sum);
