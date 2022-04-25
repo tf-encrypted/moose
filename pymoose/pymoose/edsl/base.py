@@ -616,8 +616,8 @@ def ones(shape, dtype, placement=None):
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
     if isinstance(shape, (list, tuple)):
-        # TODO (Yann) currently we only have the ability to declare HostShape as constant
-        # In the future, we should add the ability to declare RepShape as constant.
+        # TODO (Yann) Currently we only have the ability to declare HostShape
+        # as constant. We should add the ability to declare RepShape as constant.
         if isinstance(placement, ReplicatedPlacementExpression):
             host_placement = placement.players[0]
         else:
@@ -637,8 +637,8 @@ def zeros(shape, dtype, placement=None):
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
     if isinstance(shape, (list, tuple)):
-        # TODO (Yann) currently we only have the ability to declare HostShape as constant
-        # In the future, we should add the ability to declare RepShape as constant.
+        # TODO (Yann) Currently we only have the ability to declare HostShape
+        # as constant. We should add the ability to declare RepShape as constant.
         if isinstance(placement, ReplicatedPlacementExpression):
             host_placement = placement.players[0]
         else:
@@ -782,8 +782,8 @@ def reshape(x, shape, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     if isinstance(shape, (list, tuple)):
-        # TODO (Yann) currently we only have the ability to declare HostShape as constant
-        # In the future, we should add the ability to declare RepShape as constant.
+        # TODO (Yann) Currently we only have the ability to declare HostShape
+        # as constant. We should add the ability to declare RepShape as constant.
         if isinstance(placement, ReplicatedPlacementExpression):
             host_placement = placement.players[0]
         else:
