@@ -859,7 +859,6 @@ operators![
     RingFixedpointEncode,
     RingInject,
     RingFixedpointMean,
-    RingFixedpointRelu,
     Sample,
     SampleSeeded,
     Send,
@@ -1344,13 +1343,6 @@ pub struct RingFixedpointDecodeOp {
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
 pub struct RingFixedpointAbsOp {
-    pub sig: Signature,
-}
-
-#[derive(
-    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
-)]
-pub struct RingFixedpointReluOp {
     pub sig: Signature,
 }
 

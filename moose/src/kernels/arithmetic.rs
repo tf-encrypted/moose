@@ -503,15 +503,6 @@ modelled_kernel! {
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::rep_fixed_kernel),
         (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::rep_fixed_kernel),
-    ]
-}
-pub trait PlacementReluAsFixedpoint<S: Session, T, O> {
-    fn relu_as_fixedpoint(&self, sess: &S, x: &T) -> O;
-}
-
-modelled_kernel! {
-    PlacementReluAsFixedpoint::relu_as_fixedpoint, RingFixedpointReluOp,
-    [
         (ReplicatedPlacement,  (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [transparent] Self::rep_ring_kernel),
         (ReplicatedPlacement,  (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [transparent] Self::rep_ring_kernel),
     ]

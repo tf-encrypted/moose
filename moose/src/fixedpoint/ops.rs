@@ -302,13 +302,30 @@ impl ReluOp {
         x: RepFixedTensor<RepRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
-        ReplicatedPlacement: PlacementReluAsFixedpoint<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementRelu<S, RepRingT, RepRingT>,
     {
         Ok(RepFixedTensor {
-            tensor: plc.relu_as_fixedpoint(sess, &x.tensor),
+            tensor: plc.relu(sess, &x.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
         })
+    }
+
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, ShapeT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepRingT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
+        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
+        ReplicatedPlacement: PlacementMux<S, RepRingT, RepRingT, RepRingT, RepRingT>,
+    {
+        let sign_bit = rep.msb(sess, &x);
+        let zeros = rep.fill(sess, 0_u8.into(), &rep.shape(sess, &x));
+
+        Ok(rep.mux(sess, &sign_bit, &zeros, &x))
     }
 }
 
