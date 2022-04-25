@@ -12,39 +12,28 @@ from pymoose.testing import LocalMooseRuntime
 
 
 class SoftmaxExample(parameterized.TestCase):
-    def _setup_comp(self, axis, axis_idx_max, replicated=True):
+    def _setup_comp(self, axis, axis_idx_max):
         alice = edsl.host_placement(name="alice")
         bob = edsl.host_placement(name="bob")
         carole = edsl.host_placement(name="carole")
         rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
-        print("Replicated ", replicated)
-        if replicated:
-            @edsl.computation
-            def my_comp(
-                x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
-            ):
-                with bob:
-                    x = edsl.load(x_uri, dtype=edsl.float64)
-                    x_fixed = edsl.cast(x, dtype=edsl.fixed(8, 27))
 
-                with rep:
-                    x_soft = edsl.softmax(x_fixed, axis=axis, upmost_index=axis_idx_max)
+        @edsl.computation
+        def my_comp(
+            x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+        ):
+            with bob:
+                x = edsl.load(x_uri, dtype=edsl.float64)
+                x_fixed = edsl.cast(x, dtype=edsl.fixed(8, 27))
 
-                with bob:
-                    x_soft_host = edsl.cast(x_soft, dtype=edsl.float64)
-                    res = edsl.save("softmax", x_soft_host)
+            with rep:
+                x_soft = edsl.softmax(x_fixed, axis=axis, upmost_index=axis_idx_max)
 
-                return res
-        else:
-            @edsl.computation
-            def my_comp(
-                x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
-            ):
-                with bob:
-                    x = edsl.load(x_uri, dtype=edsl.float64)
-                    x_soft = edsl.softmax(x, axis=axis, upmost_index=axis_idx_max)
-                    res = edsl.save("softmax", x_soft)
-                return res
+            with bob:
+                x_soft_host = edsl.cast(x_soft, dtype=edsl.float64)
+                res = edsl.save("softmax", x_soft_host)
+
+            return res
 
         return my_comp
 
@@ -75,34 +64,30 @@ class SoftmaxExample(parameterized.TestCase):
         ),
     )
     def test_example_execute(self, x, axis, axis_idx_max):
-        # comp_replicated = self._setup_comp(axis, axis_idx_max, replicated=True)
-        comp_host = self._setup_comp(axis, axis_idx_max, replicated=False)
-        computations = [comp_host]
-        for comp in computations:
-            traced_less_comp = edsl.trace(comp)
+        comp = self._setup_comp(axis, axis_idx_max)
+        traced_less_comp = edsl.trace(comp)
 
-            x_arg = np.array(x, dtype=np.float64)
+        x_arg = np.array(x, dtype=np.float64)
 
-            storage = {
-                "alice": {},
-                "carole": {},
-                "bob": {"x_arg": x_arg},
-            }
+        storage = {
+            "alice": {},
+            "carole": {},
+            "bob": {"x_arg": x_arg},
+        }
 
-            runtime = LocalMooseRuntime(storage_mapping=storage)
-            _ = runtime.evaluate_computation(
-                computation=traced_less_comp,
-                role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
-                arguments={"x_uri": "x_arg"},
-            )
+        runtime = LocalMooseRuntime(storage_mapping=storage)
+        _ = runtime.evaluate_computation(
+            computation=traced_less_comp,
+            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            arguments={"x_uri": "x_arg"},
+        )
 
-            softmax_runtime = runtime.read_value_from_storage("bob", "softmax")
-            print(softmax_runtime)
+        softmax_runtime = runtime.read_value_from_storage("bob", "softmax")
 
-            ex = np.exp(x_arg - x_arg.max(axis=axis, keepdims=True))
-            softmax_numpy = ex / np.sum(ex, axis=axis, keepdims=True)
-            print(softmax_numpy)
-            np.testing.assert_almost_equal(softmax_runtime, softmax_numpy, decimal=2)
+        ex = np.exp(x_arg - x_arg.max(axis=axis, keepdims=True))
+        softmax_numpy = ex / np.sum(ex, axis=axis, keepdims=True)
+
+        np.testing.assert_almost_equal(softmax_runtime, softmax_numpy, decimal=2)
 
 
 if __name__ == "__main__":
