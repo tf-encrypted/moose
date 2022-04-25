@@ -113,9 +113,7 @@ pub(crate) mod symbolic {
     pub(crate) mod runtime {
         use super::*;
 
-        pub(crate) fn nullary<U, P>(
-            op: Operator,
-        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
+        pub(crate) fn nullary<U, P>(op: Operator) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             P: TryFrom<Placement, Error = crate::Error> + Clone,
             Placement: From<P>,
@@ -730,9 +728,7 @@ pub(crate) mod symbolic {
             })
         }
 
-        pub(crate) fn variadic<TS, U, P, F>(
-            kf: F,
-        ) -> Result<Kernel<SymbolicSession, SymbolicValue>>
+        pub(crate) fn variadic<TS, U, P, F>(kf: F) -> Result<Kernel<SymbolicSession, SymbolicValue>>
         where
             F: Fn(
                     &SymbolicSession,
