@@ -1146,6 +1146,43 @@ impl ReshapeOp {
             integral_precision: x.integral_precision,
         })
     }
+
+    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT, HostShapeT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        shape: HostShapeT,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementReshape<S, HostFixedT, HostShapeT, HostFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Host(v) => v,
+        };
+        let z = plc.reshape(sess, &x, &shape);
+        Ok(FixedTensor::Host(z))
+    }
+
+    pub(crate) fn hostfixed_kernel<S: Session, HostRingT, HostShapeT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostFixedTensor<HostRingT>,
+        shape: HostShapeT,
+    ) -> Result<HostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementReshape<S, HostRingT, HostShapeT, HostRingT>,
+    {
+        let y = plc.reshape(sess, &x.tensor, &shape);
+        Ok(HostFixedTensor {
+            tensor: y,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
 }
 
 impl ShapeOp {
