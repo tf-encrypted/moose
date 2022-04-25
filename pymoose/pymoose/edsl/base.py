@@ -754,11 +754,17 @@ def reshape(x, shape, placement=None):
     placement = placement or get_current_placement()
     assert isinstance(x, Expression)
     if isinstance(shape, (list, tuple)):
+        # TODO (Yann) currently we only have the ability to declare HostShape as constant
+        # In the future, we should add the ability to declare RepShape as constant.
         if isinstance(placement, ReplicatedPlacementExpression):
-            placement = placement.players[0]
+            host_placement = placement.players[0]
+        else:
+            host_placement = placement
 
         shape = constant(
-            values.ShapeConstant(value=shape), vtype=ty.ShapeType(), placement=placement
+            values.ShapeConstant(value=shape),
+            vtype=ty.ShapeType(),
+            placement=host_placement,
         )
 
     assert isinstance(shape, Expression)
