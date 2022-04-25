@@ -1231,6 +1231,7 @@ impl ToTextual for Operator {
             TruncPr(op) => op.to_textual(),
             AdtToRep(op) => op.to_textual(),
             Abs(op) => op.to_textual(),
+            Relu(op) => op.to_textual(),
             Fill(op) => op.to_textual(),
             Msb(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),

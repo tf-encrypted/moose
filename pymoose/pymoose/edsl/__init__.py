@@ -42,6 +42,7 @@ from pymoose.edsl.base import mirrored_placement
 from pymoose.edsl.base import mul
 from pymoose.edsl.base import mux
 from pymoose.edsl.base import ones
+from pymoose.edsl.base import relu
 from pymoose.edsl.base import replicated_placement
 from pymoose.edsl.base import reshape
 from pymoose.edsl.base import save
@@ -100,7 +101,7 @@ __all__ = [
     mux,
     mean,
     ones,
-    zeros,
+    relu,
     replicated_placement,
     reshape,
     ring64,
@@ -120,4 +121,5 @@ __all__ = [
     trace,
     trace_and_compile,
     StringType,
+    zeros,
 ]

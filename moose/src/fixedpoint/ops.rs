@@ -276,6 +276,59 @@ impl AbsOp {
     }
 }
 
+impl ReluOp {
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementRelu<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let z = plc.relu(sess, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementRelu<S, RepRingT, RepRingT>,
+    {
+        Ok(RepFixedTensor {
+            tensor: plc.relu(sess, &x.tensor),
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, ShapeT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepRingT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
+        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
+        ReplicatedPlacement: PlacementMux<S, RepRingT, RepRingT, RepRingT, RepRingT>,
+    {
+        let sign_bit = rep.msb(sess, &x);
+        let zeros = rep.fill(sess, 0_u8.into(), &rep.shape(sess, &x));
+
+        Ok(rep.mux(sess, &sign_bit, &zeros, &x))
+    }
+}
+
 impl AddOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
