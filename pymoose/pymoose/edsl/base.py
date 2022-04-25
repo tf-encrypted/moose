@@ -751,13 +751,17 @@ def atleast_2d(x, to_column_vector=False, placement=None):
 
 
 def reshape(x, shape, placement=None):
+    placement = placement or get_current_placement()
     assert isinstance(x, Expression)
     if isinstance(shape, (list, tuple)):
+        if isinstance(placement, ReplicatedPlacementExpression):
+            placement = placement.players[0]
+
         shape = constant(
             values.ShapeConstant(value=shape), vtype=ty.ShapeType(), placement=placement
         )
+
     assert isinstance(shape, Expression)
-    placement = placement or get_current_placement()
     return ReshapeExpression(placement=placement, inputs=[x, shape], vtype=x.vtype)
 
 
