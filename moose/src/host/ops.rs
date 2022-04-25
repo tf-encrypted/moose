@@ -826,7 +826,8 @@ impl SoftmaxOp {
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>>
     where
-        HostPlacement: PlacementPlace<S, HostTensor<T>>,T: ndarray::ScalarOperand
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+        T: ndarray::ScalarOperand,
     {
         let x_max = x.0.index_axis(ndarray::Axis(axis), upmost_index);
         let x_normalized = x.0.clone() - x_max;
