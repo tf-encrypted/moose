@@ -1,9 +1,9 @@
+import builtins
 from dataclasses import dataclass
 from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Union
-import builtins
 
 import numpy as np
 
@@ -104,26 +104,29 @@ class Expression:
         return id(self)
 
     def __getitem__(self, slice_spec):
-        assert isinstance(self.vtype, (ty.TensorType, ty.AesTensorType))  # TODO ShapeType
-        assert isinstance(slice_spec, (builtins.slice, list, tuple, type(Ellipsis)))
-        print("slice spec: ", slice_spec, type(slice_spec))
-        if isinstance(slice_spec, builtins.slice):
+        assert isinstance(
+            self.vtype, (ty.TensorType, ty.ShapeType, ty.AesTensorType)
+        )  # TODO ShapeType
+        assert isinstance(slice_spec, (builtins.slice, type(Ellipsis), list, tuple))
+
+        # turn single entry to a list of entries
+        if isinstance(slice_spec, (builtins.slice, type(Ellipsis))):
             slice_spec = (slice_spec,)
-        elif isinstance(slice_spec, type(Ellipsis)):
-            slice_spec = (builtins.slice(None, None, None),)
-        elif isinstance(slice_spec, (tuple, list)):
-            no_nulls = []
-            for item in slice_spec:
-                if isinstance(item, type(Ellipsis)):
-                    no_nulls.append(builtins.slice(None, None, None))
-            slice_spec = [builtins.slice(None, None, None) if isinstance(item, type(Ellipsis)) for item in slice_spec else ]
-            pass
-        else:
-            raise ValueError("Indexing with Ellipsis type is not yet supported.")
-        print("REACHED")
-        print("Final slice: ", slice_spec)
+
+        assert isinstance(slice_spec, (list, tuple))
+        slice_rewrite = []
+        for cur_slice in slice_spec:
+            assert isinstance(cur_slice, (builtins.slice, type(Ellipsis)))
+            if isinstance(cur_slice, type(Ellipsis)):
+                slice_rewrite.append(builtins.slice(None, None, None))
+            elif isinstance(cur_slice, builtins.slice):
+                slice_rewrite.append(cur_slice)
+            else:
+                raise ValueError(
+                    "Indexing with other types different than Ellipsis and builtins.slice is not yet supported."
+                )
         # TODO explicitly placement from self.placement and/or global placement context?
-        return strided_slice(self, slices=slice_spec)
+        return strided_slice(self, slices=slice_rewrite)
 
 
 @dataclass

@@ -25,13 +25,8 @@ class SliceExample(parameterized.TestCase):
             x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
         ):
             with bob:
-                x = edsl.load(x_uri, dtype=edsl.float64)
-                # xs = x[slice(None), slice(None)]
-                xs = x[...]
-                # edsl.strided_slice(
-                #     x, (slice(None), slice(1, None, None), slice(1, None, None))
-                # )
-                res = (edsl.save("sliced", xs),)
+                x = edsl.load(x_uri, dtype=edsl.float64)[::, ..., 1:]
+                res = (edsl.save("sliced", x),)
 
             return res
 
@@ -58,7 +53,7 @@ class SliceExample(parameterized.TestCase):
         )
 
         x_sliced = runtime.read_value_from_storage("bob", "sliced")
-        np.testing.assert_equal(x_sliced, x_arg[::, 1::, 1::])
+        np.testing.assert_equal(x_sliced, x_arg[::, ::, 1::])
 
 
 if __name__ == "__main__":

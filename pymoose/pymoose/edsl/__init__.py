@@ -18,7 +18,6 @@ from pymoose.edsl.base import add
 from pymoose.edsl.base import add_n
 from pymoose.edsl.base import argmax
 from pymoose.edsl.base import atleast_2d
-from pymoose.edsl.base import strided_slice 
 from pymoose.edsl.base import cast
 from pymoose.edsl.base import computation
 from pymoose.edsl.base import concatenate
@@ -52,6 +51,7 @@ from pymoose.edsl.base import slice
 from pymoose.edsl.base import softmax
 from pymoose.edsl.base import square
 from pymoose.edsl.base import squeeze
+from pymoose.edsl.base import strided_slice
 from pymoose.edsl.base import sub
 from pymoose.edsl.base import sum
 from pymoose.edsl.base import transpose
