@@ -18,7 +18,7 @@ from pymoose.edsl.base import add
 from pymoose.edsl.base import add_n
 from pymoose.edsl.base import argmax
 from pymoose.edsl.base import atleast_2d
-from pymoose.edsl.base import better_slice
+from pymoose.edsl.base import strided_slice 
 from pymoose.edsl.base import cast
 from pymoose.edsl.base import computation
 from pymoose.edsl.base import concatenate
@@ -106,7 +106,7 @@ __all__ = [
     ring64,
     save,
     slice,
-    better_slice,
+    strided_slice,
     shape,
     softmax,
     square,

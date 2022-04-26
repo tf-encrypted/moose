@@ -26,9 +26,11 @@ class SliceExample(parameterized.TestCase):
         ):
             with bob:
                 x = edsl.load(x_uri, dtype=edsl.float64)
-                xs = edsl.better_slice(
-                    x, (slice(None), slice(1, None, None), slice(1, None, None))
-                )
+                # xs = x[slice(None), slice(None)]
+                xs = x[...]
+                # edsl.strided_slice(
+                #     x, (slice(None), slice(1, None, None), slice(1, None, None))
+                # )
                 res = (edsl.save("sliced", xs),)
 
             return res

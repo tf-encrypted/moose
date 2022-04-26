@@ -215,7 +215,7 @@ class SliceOperation(Operation):
 
 
 @dataclass
-class BetterSliceOperation(Operation):
+class StridedSliceOperation(Operation):
     slices: Optional[Tuple[slice]]
 
 
