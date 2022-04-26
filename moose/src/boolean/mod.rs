@@ -282,6 +282,24 @@ impl IndexAxisOp {
 }
 
 impl SliceOp {
+    pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        info: SliceInfo,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        ReplicatedPlacement: PlacementSlice<S, RepT, RepT>,
+        ReplicatedPlacement: PlacementShare<S, HostT, RepT>,
+    {
+        let x = match x {
+            BoolTensor::Host(v) => plc.share(sess, &v),
+            BoolTensor::Replicated(v) => v,
+        };
+        let z = plc.slice(sess, info, &x);
+        Ok(BoolTensor::Replicated(z))
+    }
+
     pub(crate) fn bool_host_kernel<S: Session, HostT, RepT>(
         sess: &S,
         plc: &HostPlacement,

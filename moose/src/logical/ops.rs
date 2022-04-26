@@ -2131,6 +2131,46 @@ impl SliceOp {
             }
         }
     }
+
+    pub(crate) fn logical_rep_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        info: SliceInfo,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        ReplicatedPlacement: PlacementSlice<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementSlice<S, Fixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementSlice<S, BoolT, BoolT>,
+    {
+        use AbstractTensor::*;
+        match x {
+            Fixed64(x) => {
+                let result = plc.slice(sess, info, &x);
+                Ok(Fixed64(result))
+            }
+            Fixed128(x) => {
+                let result = plc.slice(sess, info, &x);
+                Ok(Fixed128(result))
+            }
+            Bool(x) => {
+                let result = plc.slice(sess, info, &x);
+                Ok(Bool(result))
+            }
+            Uint64(_) | Float32(_) | Float64(_) => Err(Error::UnimplementedOperator(format!(
+                "Missing host slice for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
 }
 
 impl ConstantOp {
