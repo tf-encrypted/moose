@@ -231,6 +231,12 @@ class SoftmaxExpression(Expression):
 
 
 @dataclass
+class ReluExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class ArgmaxExpression(Expression):
     axis: Optional[Union[int, Tuple[int]]]
     upmost_index: int
@@ -660,6 +666,12 @@ def sigmoid(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return SigmoidExpression(placement=placement, inputs=[x], vtype=x.vtype)
+
+
+def relu(x, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return ReluExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def softmax(x, axis, upmost_index, placement=None):
