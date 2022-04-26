@@ -371,7 +371,7 @@ impl DiagOp {
 }
 
 impl SliceOp {
-    pub(crate) fn rep_kernel<S: Session, ShapeT>(
+    pub(crate) fn rep_shape_kernel<S: Session, ShapeT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         slice: SliceInfo,
@@ -392,6 +392,34 @@ impl SliceOp {
 
         Ok(RepShape {
             shapes: [new_shape0, new_shape1, new_shape2],
+        })
+    }
+
+    pub(crate) fn rep_ring_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        info: SliceInfo,
+        x: RepTensor<HostRingT>,
+    ) -> Result<RepTensor<HostRingT>>
+    where
+        HostPlacement: PlacementSlice<S, HostRingT, HostRingT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+        let RepTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let z00 = player0.slice(sess, info.clone(), x00);
+        let z10 = player0.slice(sess, info.clone(), x10);
+
+        let z11 = player1.slice(sess, info.clone(), x11);
+        let z21 = player1.slice(sess, info.clone(), x21);
+
+        let z22 = player2.slice(sess, info.clone(), x22);
+        let z02 = player2.slice(sess, info, x02);
+
+        Ok(RepTensor {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
 }

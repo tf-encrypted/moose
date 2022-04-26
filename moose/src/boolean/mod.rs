@@ -4,7 +4,7 @@ use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::Session;
 use crate::floatingpoint::FloatTensor;
-use crate::host::HostPlacement;
+use crate::host::{HostPlacement, SliceInfo};
 use crate::integer::AbstractUint64Tensor;
 use crate::kernels::*;
 use crate::replicated::ReplicatedPlacement;
@@ -278,6 +278,26 @@ impl IndexAxisOp {
         };
         let result = plc.index_axis(sess, axis, index, &x);
         Ok(BoolTensor::Host(result))
+    }
+}
+
+impl SliceOp {
+    pub(crate) fn bool_host_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        info: SliceInfo,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementSlice<S, HostT, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+    {
+        let x = match x {
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+            BoolTensor::Host(v) => v,
+        };
+        let z = plc.slice(sess, info, &x);
+        Ok(BoolTensor::Host(z))
     }
 }
 

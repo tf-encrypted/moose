@@ -492,6 +492,19 @@ impl SliceOp {
         })
     }
 
+    pub(crate) fn host_bit_kernel<S: RuntimeSession>(
+        sess: &S,
+        plc: &HostPlacement,
+        info: SliceInfo,
+        x: HostBitTensor,
+    ) -> Result<HostBitTensor>
+    where
+        HostPlacement: PlacementPlace<S, HostBitTensor>,
+    {
+        let x = plc.place(sess, x);
+        x.slice(info)
+    }
+
     pub(crate) fn host_float_kernel<S: RuntimeSession, T: Clone>(
         sess: &S,
         plc: &HostPlacement,
@@ -661,6 +674,21 @@ impl HostBitTensor {
         }
         let result = self.0.index_axis(axis, index);
         Ok(HostBitTensor(result, self.1))
+    }
+
+    fn slice(&self, info: SliceInfo) -> Result<HostBitTensor> {
+        if info.0.len() != self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "The input dimension of `info` must match the array to be sliced. Used slice info dim {}, tensor had dim {}",
+                info.0.len(),
+                self.0.ndim()
+            )));
+        }
+        let result = self
+            .0
+            .slice(info)
+            .map_err(|e| Error::KernelError(e.to_string()))?;
+        Ok(HostBitTensor(result, self.1.clone()))
     }
 }
 
