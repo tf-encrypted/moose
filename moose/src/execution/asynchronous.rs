@@ -380,7 +380,6 @@ impl DispatchKernel<AsyncSession> for Operator {
             Shr(op) => DispatchKernel::compile(op, plc),
             Sample(op) => DispatchKernel::compile(op, plc),
             SampleSeeded(op) => DispatchKernel::compile(op, plc),
-            RingFixedpointAbs(op) => DispatchKernel::compile(op, plc),
             RingFixedpointArgmax(op) => DispatchKernel::compile(op, plc),
             RingFixedpointMean(op) => DispatchKernel::compile(op, plc),
             RingFixedpointEncode(op) => DispatchKernel::compile(op, plc),
