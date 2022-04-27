@@ -1964,7 +1964,7 @@ impl MaximumOp {
 }
 
 impl SoftmaxOp {
-    pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: usize,
@@ -1984,6 +1984,45 @@ impl SoftmaxOp {
 
         let z = plc.softmax(sess, axis, upmost_index, &x);
         Ok(FixedTensor::Replicated(z))
+    }
+
+    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementSoftmax<S, HostFixedT, HostFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Host(v) => v,
+        };
+
+        let z = plc.softmax(sess, axis, upmost_index, &x);
+        Ok(FixedTensor::Host(z))
+    }
+    pub(crate) fn hostfixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        upmost_index: usize,
+        x: HostFixedTensor<HostRingT>,
+    ) -> Result<HostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementSoftmax<S, HostRingT, HostRingT>,
+    {
+        let y = plc.softmax(sess, axis, upmost_index, &x.tensor);
+        Ok(HostFixedTensor {
+            tensor: y,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
     }
 }
 
