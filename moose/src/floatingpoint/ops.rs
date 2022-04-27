@@ -96,11 +96,7 @@ impl SoftmaxOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(_v) => {
-                return Err(Error::UnimplementedOperator(
-                    "SoftmaxOp @ Mirrored3Placement".to_string(),
-                ))
-            }
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
         let z = plc.softmax(sess, axis, upmost_index, &x);
         Ok(FloatTensor::Host(z))

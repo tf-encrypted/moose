@@ -853,25 +853,6 @@ impl SoftmaxOp {
         let softmax = x_exp.div(x_exp_sum);
         Ok(HostTensor::place(plc, softmax.into_shared()))
     }
-
-    pub(crate) fn ring_kernel<S: RuntimeSession, T: 'static + Float>(
-        sess: &S,
-        plc: &HostPlacement,
-        axis: usize,
-        upmost_index: usize,
-        x: HostRingTensor<T>,
-    ) -> Result<HostRingTensor<T>>
-    where
-        HostPlacement: PlacementPlace<S, HostTensor<T>>,
-        T: ndarray::ScalarOperand,
-    {
-        let x_max = x.0.index_axis(ndarray::Axis(axis), upmost_index);
-        let x_normalized = x.0.clone() - x_max;
-        let x_exp = x_normalized.mapv(T::exp);
-        let x_exp_sum = x_exp.sum();
-        let softmax = x_exp.div(x_exp_sum);
-        Ok(HostRingTensor::place(plc, softmax.into_shared()))
-    }
 }
 
 impl<T: LinalgScalar> HostTensor<T> {

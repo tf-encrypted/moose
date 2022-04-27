@@ -2738,8 +2738,6 @@ impl SoftmaxOp {
     where
         HostPlacement: PlacementSoftmax<S, Float32T, Float32T>,
         HostPlacement: PlacementSoftmax<S, Float64T, Float64T>,
-        HostPlacement: PlacementSoftmax<S, Fixed64T, Fixed64T>,
-        HostPlacement: PlacementSoftmax<S, Fixed128T, Fixed128T>,
     {
         use AbstractTensor::*;
         match x {
@@ -2751,15 +2749,7 @@ impl SoftmaxOp {
                 let result = plc.softmax(sess, axis, upmost_index, &x);
                 Ok(Float64(result))
             }
-            Fixed64(x) => {
-                let result = plc.softmax(sess, axis, upmost_index, &x);
-                Ok(Fixed64(result))
-            }
-            Fixed128(x) => {
-                let result = plc.softmax(sess, axis, upmost_index, &x);
-                Ok(Fixed128(result))
-            }
-            Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
+            Fixed64(_) | Fixed128(_) | Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
                 format!("Missing replicated softmax for {:?}", &x.ty_desc(),),
             )),
         }
