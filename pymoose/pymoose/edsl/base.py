@@ -11,6 +11,11 @@ from pymoose.computation import dtypes
 from pymoose.computation import types as ty
 from pymoose.computation import values
 
+try:  # post python 3.10
+    from types import EllipsisType
+except ImportError:
+    EllipsisType = type(...)
+
 CURRENT_PLACEMENT: List = []
 _NUMPY_DTYPES_MAP = {
     np.uint32: dtypes.uint32,
@@ -104,29 +109,49 @@ class Expression:
         return id(self)
 
     def __getitem__(self, slice_spec):
+        # TODO explicitly construe placement from global placement context and/or self.placement?
         assert isinstance(
             self.vtype, (ty.TensorType, ty.ShapeType, ty.AesTensorType)
-        )  # TODO ShapeType
-        assert isinstance(slice_spec, (builtins.slice, type(Ellipsis), list, tuple))
+        )
+        assert isinstance(slice_spec, (slice, EllipsisType, list, tuple))
+        if isinstance(self.vtype, (ty.TensorType, ty.AesTensorType)):
 
-        # turn single entry to a list of entries
-        if isinstance(slice_spec, (builtins.slice, type(Ellipsis))):
-            slice_spec = (slice_spec,)
+            # turn single entry to a list of entries
+            if isinstance(slice_spec, (slice, EllipsisType)):
+                slice_spec = (slice_spec,)
 
-        assert isinstance(slice_spec, (list, tuple))
-        slice_rewrite = []
-        for cur_slice in slice_spec:
-            assert isinstance(cur_slice, (builtins.slice, type(Ellipsis)))
-            if isinstance(cur_slice, type(Ellipsis)):
-                slice_rewrite.append(builtins.slice(None, None, None))
-            elif isinstance(cur_slice, builtins.slice):
-                slice_rewrite.append(cur_slice)
-            else:
-                raise ValueError(
-                    "Indexing with other types different than Ellipsis and builtins.slice is not yet supported."
-                )
-        # TODO explicitly placement from self.placement and/or global placement context?
-        return strided_slice(self, slices=slice_rewrite)
+            assert isinstance(slice_spec, (list, tuple))
+            slice_rewrite = []
+            for cur_slice in slice_spec:
+                assert isinstance(cur_slice, (slice, EllipsisType))
+                if isinstance(cur_slice, EllipsisType):
+                    slice_rewrite.append(slice(None, None, None))
+                elif isinstance(cur_slice, slice):
+                    slice_rewrite.append(cur_slice)
+                else:
+                    raise ValueError(
+                        "Indexing with other types different than Ellipsis and slice is not yet supported."
+                    )
+            return strided_slice(self, slices=slice_rewrite)
+        elif isinstance(self.vtype, ty.ShapeType):
+            if isinstance(slice_spec, (tuple, list)):
+                if len(slice_spec) > 2:
+                    raise ValueError(
+                        "Indexing ShapeType requires a simple slice, including only "
+                        "`start` & `stop` slice values."
+                    )
+                begin, end = slice_spec
+                assert isinstance(begin, int) and isinstance(end, int)
+            elif isinstance(slice_spec, slice):
+                if slice_spec.step is not None:
+                    raise ValueError(
+                        "Indexing ShapeType requires a simple slice, including only "
+                        "`start` & `stop` slice values."
+                    )
+                begin, end = slice_spec.start, slice_spec.stop
+            return sliced(self, begin, end)
+        else:
+            raise IndexError(f"Expression of vtype {self.vtype} is not slice-able.")
 
 
 @dataclass
@@ -755,7 +780,7 @@ def index_axis(x, axis, index, placement=None):
     )
 
 
-def slice(x, begin, end, placement=None):
+def sliced(x, begin, end, placement=None):
     assert isinstance(x, Expression)
     assert isinstance(begin, int)
     assert isinstance(end, int)
@@ -770,7 +795,7 @@ def strided_slice(x, slices, placement=None):
     assert isinstance(slices, (tuple, list))
     placement = _materialize_placement_arg(placement)
     for s in slices:
-        if not isinstance(s, builtins.slice):
+        if not isinstance(s, slice):
             raise ValueError(
                 "`slices` argument must a list/tuple of slices, found " f"{type(s)}"
             )

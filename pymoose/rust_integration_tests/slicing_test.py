@@ -156,6 +156,30 @@ class SliceExample(parameterized.TestCase):
         x_from_runtime = compile_and_run(traced_slice_comp, x_arg)
         np.testing.assert_equal(x_from_runtime, x_arg[1:, 1:2])
 
+    def test_shape_slice(self):
+        alice = edsl.host_placement("alice")
+
+        @edsl.computation
+        def my_comp(x: edsl.Argument(alice, edsl.float64)):
+            with alice:
+                x_shape = edsl.shape(x)
+                sliced_shape = x_shape[1:3]
+                ones_res = edsl.ones(sliced_shape, edsl.float64)
+                res = edsl.save("ones", ones_res)
+            return res
+
+        traced_slice_comp = edsl.trace(my_comp)
+        x_arg = np.ones([4, 3, 5], dtype=np.float64)
+        runtime = LocalMooseRuntime(storage_mapping={"alice": {}})
+        _ = runtime.evaluate_computation(
+            computation=traced_slice_comp,
+            role_assignment={"alice": "alice"},
+            arguments={"x": x_arg},
+        )
+
+        y_ones = runtime.read_value_from_storage("alice", "ones")
+        assert y_ones.shape == (3, 5)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="comparison example")
