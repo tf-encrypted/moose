@@ -2082,6 +2082,7 @@ impl SliceOp {
         HostPlacement: PlacementSlice<S, Fixed64T, Fixed64T>,
         HostPlacement: PlacementSlice<S, Fixed128T, Fixed128T>,
         HostPlacement: PlacementSlice<S, BoolT, BoolT>,
+        HostPlacement: PlacementSlice<S, Uint64T, Uint64T>,
     {
         use AbstractTensor::*;
         match x {
@@ -2105,10 +2106,10 @@ impl SliceOp {
                 let result = plc.slice(sess, slice, &x);
                 Ok(Bool(result))
             }
-            Uint64(_) => Err(Error::UnimplementedOperator(format!(
-                "Missing host slice for {:?}",
-                &x.ty_desc(),
-            ))),
+            Uint64(x) => {
+                let result = plc.slice(sess, slice, &x);
+                Ok(Uint64(result))
+            }
         }
     }
 
@@ -2166,7 +2167,7 @@ impl SliceOp {
                 Ok(Bool(result))
             }
             Uint64(_) | Float32(_) | Float64(_) => Err(Error::UnimplementedOperator(format!(
-                "Missing host slice for {:?}",
+                "Missing rep slice for {:?}",
                 &x.ty_desc(),
             ))),
         }

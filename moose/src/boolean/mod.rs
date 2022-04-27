@@ -319,6 +319,22 @@ impl SliceOp {
     }
 }
 
+impl LoadOp {
+    pub(crate) fn bool_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        key: m!(HostString),
+        query: m!(HostString),
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostString: KnownType<S>,
+        HostPlacement: PlacementLoad<S, m!(HostString), m!(HostString), HostT>,
+    {
+        let z = plc.load(sess, &key, &query);
+        Ok(BoolTensor::Host(z))
+    }
+}
+
 impl SaveOp {
     pub(crate) fn bool_kernel<S: Session, HostT, RepT>(
         sess: &S,

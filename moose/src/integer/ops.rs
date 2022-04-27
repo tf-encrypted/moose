@@ -2,7 +2,8 @@ use super::*;
 use crate::error::{Error, Result};
 use crate::execution::Session;
 use crate::floatingpoint::FloatTensor;
-use crate::host::HostPlacement;
+use crate::host::{HostPlacement, SliceInfo};
+use crate::replicated::ReplicatedPlacement;
 use crate::types::HostString;
 
 impl ConstantOp {
@@ -15,6 +16,22 @@ impl ConstantOp {
         HostPlacement: PlacementConstant<S, HostT>,
     {
         let z = plc.constant(sess, value);
+        Ok(AbstractUint64Tensor::Host(z))
+    }
+}
+
+impl LoadOp {
+    pub(crate) fn u64_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        key: m!(HostString),
+        query: m!(HostString),
+    ) -> Result<AbstractUint64Tensor<HostT, RepT>>
+    where
+        HostString: KnownType<S>,
+        HostPlacement: PlacementLoad<S, m!(HostString), m!(HostString), HostT>,
+    {
+        let z = plc.load(sess, &key, &query);
         Ok(AbstractUint64Tensor::Host(z))
     }
 }
@@ -95,5 +112,46 @@ impl CastOp {
             FloatTensor::Mirrored3(v) => plc.demirror(sess, &v),
         };
         Ok(AbstractUint64Tensor::Host(plc.cast(sess, &x)))
+    }
+}
+
+impl SliceOp {
+    pub(crate) fn u64_rep_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        info: SliceInfo,
+        x: AbstractUint64Tensor<HostT, RepT>,
+    ) -> Result<AbstractUint64Tensor<HostT, RepT>>
+    where
+        ReplicatedPlacement: PlacementSlice<S, RepT, RepT>,
+    {
+        let x = match x {
+            AbstractUint64Tensor::Host(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "Cannot share a HostUint64Tensor to a replicated placement".to_string(),
+                ));
+            }
+            AbstractUint64Tensor::Replicated(v) => v,
+        };
+        let z = plc.slice(sess, info, &x);
+        Ok(AbstractUint64Tensor::Replicated(z))
+    }
+
+    pub(crate) fn u64_host_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        info: SliceInfo,
+        x: AbstractUint64Tensor<HostT, RepT>,
+    ) -> Result<AbstractUint64Tensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementSlice<S, HostT, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+    {
+        let x = match x {
+            AbstractUint64Tensor::Replicated(v) => plc.reveal(sess, &v),
+            AbstractUint64Tensor::Host(v) => v,
+        };
+        let z = plc.slice(sess, info, &x);
+        Ok(AbstractUint64Tensor::Host(z))
     }
 }

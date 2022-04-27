@@ -505,7 +505,7 @@ impl SliceOp {
         x.slice(info)
     }
 
-    pub(crate) fn host_float_kernel<S: RuntimeSession, T: Clone>(
+    pub(crate) fn host_generic_kernel<S: RuntimeSession, T: Clone>(
         sess: &S,
         plc: &HostPlacement,
         info: SliceInfo,

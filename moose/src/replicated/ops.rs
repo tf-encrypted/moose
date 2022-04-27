@@ -422,6 +422,20 @@ impl SliceOp {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         })
     }
+
+    pub(crate) fn rep_uint_kernel<S: Session, RepRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        info: SliceInfo,
+        x: RepUintTensor<RepRingT>,
+    ) -> Result<RepUintTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementSlice<S, RepRingT, RepRingT>,
+    {
+        Ok(RepUintTensor {
+            tensor: rep.slice(sess, info, &x.tensor),
+        })
+    }
 }
 
 impl ShlDimOp {

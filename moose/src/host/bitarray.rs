@@ -128,7 +128,8 @@ impl BitArrayRepr {
     }
 
     pub(crate) fn slice(&self, _info: SliceInfo) -> anyhow::Result<BitArrayRepr> {
-        unimplemented!()
+        // TODO(Dragos) Implement this in future
+        Err(anyhow::anyhow!("slicing not implemented for BitArray yet"))
     }
 }
 

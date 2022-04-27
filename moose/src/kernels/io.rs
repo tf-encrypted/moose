@@ -144,8 +144,10 @@ modelled_kernel! {
         (HostPlacement, (HostString, HostString) -> HostUint64Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostString, HostString) -> HostFixed64Tensor => [runtime] Self::missing_kernel),
         (HostPlacement, (HostString, HostString) -> HostFixed128Tensor => [runtime] Self::missing_kernel),
+        (HostPlacement, (HostString, HostString) -> BooleanTensor => [hybrid] Self::bool_kernel),
         (HostPlacement, (HostString, HostString) -> Float32Tensor => [hybrid] Self::float_kernel),
         (HostPlacement, (HostString, HostString) -> Float64Tensor => [hybrid] Self::float_kernel),
+        (HostPlacement, (HostString, HostString) -> Uint64Tensor => [hybrid] Self::u64_kernel),
         (HostPlacement, (HostString, HostString) -> Tensor => [hybrid] custom |op| {
             use crate::logical::{AbstractTensor, TensorDType};
             match op.sig.ret() {
@@ -154,6 +156,12 @@ modelled_kernel! {
                 })),
                 Ty::Tensor(TensorDType::Float64) => Ok(Box::new(move |sess, plc, key, query| {
                     Self::logical_kernel::<_, Float64Tensor>(sess, plc, key, query).map(AbstractTensor::Float64)
+                })),
+                Ty::Tensor(TensorDType::Bool) => Ok(Box::new(move |sess, plc, key, query| {
+                    Self::logical_kernel::<_, BooleanTensor>(sess, plc, key, query).map(AbstractTensor::Bool)
+                })),
+                Ty::Tensor(TensorDType::Uint64) => Ok(Box::new(move |sess, plc, key, query| {
+                    Self::logical_kernel::<_, Uint64Tensor>(sess, plc, key, query).map(AbstractTensor::Uint64)
                 })),
                 other => {
                     return Err(Error::UnimplementedOperator(
