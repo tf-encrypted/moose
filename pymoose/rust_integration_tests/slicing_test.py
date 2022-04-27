@@ -77,6 +77,85 @@ class SliceExample(parameterized.TestCase):
         expected_npy = x_arg[slice_spec]
         np.testing.assert_equal(x_from_runtime, expected_npy)
 
+    def test_basic(self):
+        def setup_basic_comp():
+            bob = edsl.host_placement(name="bob")
+
+            @edsl.computation
+            def my_comp(
+                x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+            ):
+                with bob:
+                    x = edsl.load(x_uri, dtype=edsl.float64)[1:, 1:2]
+                    res = (edsl.save("sliced", x),)
+                return res
+
+            return my_comp
+
+        comp = setup_basic_comp()
+        traced_slice_comp = edsl.trace(comp)
+        x_arg = np.array(
+            [[1, 23.0, 321, 30.321, 321], [32.0, 321, 5, 3.0, 32.0]], dtype=np.float64
+        )
+        x_from_runtime = compile_and_run(traced_slice_comp, x_arg)
+        np.testing.assert_equal(x_from_runtime, x_arg[1:, 1:2])
+
+    def test_basic_colons(self):
+        def setup_basic_comp():
+            bob = edsl.host_placement(name="bob")
+
+            @edsl.computation
+            def my_comp(
+                x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+            ):
+                with bob:
+                    x = edsl.load(x_uri, dtype=edsl.float64)[:, 2:4]
+                    res = (edsl.save("sliced", x),)
+                return res
+
+            return my_comp
+
+        comp = setup_basic_comp()
+        traced_slice_comp = edsl.trace(comp)
+        x_arg = np.array(
+            [[1, 23.0, 321, 30.321, 321], [32.0, 321, 5, 3.0, 32.0]], dtype=np.float64
+        )
+        x_from_runtime = compile_and_run(traced_slice_comp, x_arg)
+        np.testing.assert_equal(x_from_runtime, x_arg[:, 2:4])
+
+    def test_rep_basic(self):
+        def setup_basic_comp():
+            alice = edsl.host_placement(name="alice")
+            bob = edsl.host_placement(name="bob")
+            carole = edsl.host_placement(name="carole")
+            rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+
+            @edsl.computation
+            def my_comp(
+                x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+            ):
+                with bob:
+                    x = edsl.load(x_uri, dtype=edsl.float64)
+                    x_fixed = edsl.cast(x, dtype=edsl.fixed(8, 27))
+
+                with rep:
+                    x_sliced_rep = x_fixed[1:, 1:2]
+
+                with bob:
+                    x_sliced_host = edsl.cast(x_sliced_rep, dtype=edsl.float64)
+                    res = edsl.save("sliced", x_sliced_host)
+                return res
+
+            return my_comp
+
+        comp = setup_basic_comp()
+        traced_slice_comp = edsl.trace(comp)
+        x_arg = np.array(
+            [[1, 23.0, 321, 30.321, 321], [32.0, 321, 5, 3.0, 32.0]], dtype=np.float64
+        )
+        x_from_runtime = compile_and_run(traced_slice_comp, x_arg)
+        np.testing.assert_equal(x_from_runtime, x_arg[1:, 1:2])
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="comparison example")
