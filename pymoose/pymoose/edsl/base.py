@@ -110,9 +110,7 @@ class Expression:
 
     def __getitem__(self, slice_spec):
         # TODO explicitly construe placement from global placement context and/or self.placement?
-        assert isinstance(
-            self.vtype, (ty.TensorType, ty.ShapeType, ty.AesTensorType)
-        )
+        assert isinstance(self.vtype, (ty.TensorType, ty.ShapeType, ty.AesTensorType))
         assert isinstance(slice_spec, (slice, EllipsisType, list, tuple))
         if isinstance(self.vtype, (ty.TensorType, ty.AesTensorType)):
 
