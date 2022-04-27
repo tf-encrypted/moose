@@ -2151,6 +2151,7 @@ impl SliceOp {
         ReplicatedPlacement: PlacementSlice<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementSlice<S, Fixed128T, Fixed128T>,
         ReplicatedPlacement: PlacementSlice<S, BoolT, BoolT>,
+        ReplicatedPlacement: PlacementSlice<S, Uint64T, Uint64T>,
     {
         use AbstractTensor::*;
         match x {
@@ -2166,7 +2167,11 @@ impl SliceOp {
                 let result = plc.slice(sess, info, &x);
                 Ok(Bool(result))
             }
-            Uint64(_) | Float32(_) | Float64(_) => Err(Error::UnimplementedOperator(format!(
+            Uint64(x) => {
+                let result = plc.slice(sess, info, &x);
+                Ok(Uint64(result))
+            }
+            Float32(_) | Float64(_) => Err(Error::UnimplementedOperator(format!(
                 "Missing rep slice for {:?}",
                 &x.ty_desc(),
             ))),
