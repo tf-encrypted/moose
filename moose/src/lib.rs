@@ -33,94 +33,49 @@ macro_rules! m {
     };
 }
 
-macro_rules! derive_kernel {
+macro_rules! derive_execute_kernel {
 
     /* Nullary */
 
-    (sync nullary $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+    ($plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
         let kf: &dyn Fn(&Self) -> crate::error::Result<
             crate::kernels::TypedNullaryKernel<
-                crate::execution::SyncSession,
+                _,
                 $plc,
                 $u,
             >
         > = &|$op_ke| $ke;
         let k = kf(&$op)?;
         crate::execution::kernel_helpers::nullary::<
-            crate::execution::SyncSession,
+            _,
             $u,
             $plc,
             Box<_>,
         >(k)
     }};
 
-    (sync nullary $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
+    ($plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
         $(
             let $attr = $op.$attr.clone();
         )+
         let k: crate::kernels::TypedNullaryKernel<
-            crate::execution::SyncSession,
+            _,
             _,
             _,
         > = Box::new(move |sess, plc| {
             $k(sess, &plc, $($attr.clone()),+)
         });
         crate::execution::kernel_helpers::nullary::<
-            crate::execution::SyncSession,
+            _,
             $u,
             $plc,
             Box<_>,
         >(k)
     }};
 
-    (sync nullary $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
+    ($plc:ty, () -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::nullary::<
-            crate::execution::SyncSession,
-            $u,
-            $plc,
-            fn(&_, &_) -> _,
-        >($k)
-    };
-
-    (async nullary $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
-        let kf: &dyn Fn(&Self) -> crate::error::Result<
-            crate::kernels::TypedNullaryKernel<
-                crate::execution::AsyncSession,
-                $plc,
-                $u,
-            >
-        > = &|$op_ke| $ke;
-        let k = kf(&$op)?;
-        crate::execution::kernel_helpers::nullary::<
-            crate::execution::AsyncSession,
-            $u,
-            $plc,
-            Box<_>,
-        >(k)
-    }};
-
-    (async nullary $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
-        $(
-            let $attr = $op.$attr.clone();
-        )+
-        let k: crate::kernels::TypedNullaryKernel<
-            crate::execution::AsyncSession,
-            $plc,
-            $u,
-        > = Box::new(move |sess, plc| {
-            $k(sess, &plc, $($attr.clone()),+)
-        });
-        crate::execution::kernel_helpers::nullary::<
-            crate::execution::AsyncSession,
-            $u,
-            $plc,
-            Box<_>,
-        >(k)
-    }};
-
-    (async nullary $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::nullary::<
-            crate::execution::AsyncSession,
+            _,
             $u,
             $plc,
             fn(&_, &_) -> _,
@@ -129,10 +84,10 @@ macro_rules! derive_kernel {
 
     /* Unary */
 
-    (sync unary $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+    ($plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
         let kf: &dyn Fn(&Self) -> crate::error::Result<
             crate::kernels::TypedUnaryKernel<
-                crate::execution::SyncSession,
+                _,
                 $plc,
                 $t0,
                 $u,
@@ -140,7 +95,7 @@ macro_rules! derive_kernel {
         > = &|$op_ke| $ke;
         let k = kf(&$op)?;
         crate::execution::kernel_helpers::unary::<
-            crate::execution::SyncSession,
+            _,
             $t0,
             $u,
             $plc,
@@ -148,12 +103,12 @@ macro_rules! derive_kernel {
         >(k)
     }};
 
-    (sync unary $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
+    ($plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
         $(
             let $attr = $op.$attr.clone();
         )+
         let k: crate::kernels::TypedUnaryKernel<
-            crate::execution::SyncSession,
+            _,
             $plc,
             $t0,
             $u,
@@ -161,7 +116,7 @@ macro_rules! derive_kernel {
             $k(sess, &plc, $($attr.clone()),+, x0)
         });
         crate::execution::kernel_helpers::unary::<
-            crate::execution::SyncSession,
+            _,
             $t0,
             $u,
             $plc,
@@ -169,59 +124,9 @@ macro_rules! derive_kernel {
         >(k)
     }};
 
-    (sync unary $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
+    ($plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::unary::<
-            crate::execution::SyncSession,
-            $t0,
-            $u,
-            $plc,
-            fn(&_, &_, _) -> _,
-        >($k)
-    };
-
-    (async unary $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
-        let kf: &dyn Fn(&Self) -> crate::error::Result<
-            crate::kernels::TypedUnaryKernel<
-                crate::execution::AsyncSession,
-                $plc,
-                $t0,
-                $u,
-            >
-        > = &|$op_ke| $ke;
-        let k = kf(&$op)?;
-        crate::execution::kernel_helpers::unary::<
-            crate::execution::AsyncSession,
-            $t0,
-            $u,
-            $plc,
-            Box<_>,
-        >(k)
-    }};
-
-    (async unary $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
-        $(
-            let $attr = $op.$attr.clone();
-        )+
-        let k: crate::kernels::TypedUnaryKernel<
-            crate::execution::AsyncSession,
-            $plc,
-            $t0,
-            $u,
-        > = Box::new(move |sess, plc, x0| {
-            $k(sess, &plc, $($attr.clone()),+, x0)
-        });
-        crate::execution::kernel_helpers::unary::<
-            crate::execution::AsyncSession,
-            $t0,
-            $u,
-            $plc,
-            Box<_>,
-        >(k)
-    }};
-
-    (async unary $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::unary::<
-            crate::execution::AsyncSession,
+            _,
             $t0,
             $u,
             $plc,
@@ -231,10 +136,10 @@ macro_rules! derive_kernel {
 
     /* Binary */
 
-    (sync binary $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+    ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {{
         let kf: &dyn Fn(&Self) -> crate::error::Result<
             crate::kernels::TypedBinaryKernel<
-                crate::execution::SyncSession,
+                _,
                 $plc,
                 $t0,
                 $t1,
@@ -243,7 +148,7 @@ macro_rules! derive_kernel {
         > = &|$op_ke| $ke;
         let k = kf(&$op)?;
         crate::execution::kernel_helpers::binary::<
-            crate::execution::SyncSession,
+            _,
             $t0,
             $t1,
             $u,
@@ -252,12 +157,12 @@ macro_rules! derive_kernel {
         >(k)
     }};
 
-    (sync binary $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {{
+    ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {{
         $(
             let $attr = $op.$attr.clone();
         )+
         let k: crate::kernels::TypedBinaryKernel<
-            crate::execution::SyncSession,
+            _,
             $plc,
             $t0,
             $t1,
@@ -266,7 +171,7 @@ macro_rules! derive_kernel {
             $k(sess, &plc, $($attr.clone()),+, x0, x1)
         });
         crate::execution::kernel_helpers::binary::<
-            crate::execution::SyncSession,
+            _,
             $t0,
             $t1,
             $u,
@@ -275,64 +180,9 @@ macro_rules! derive_kernel {
         >(k)
     }};
 
-    (sync binary $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
+    ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::binary::<
-            crate::execution::SyncSession,
-            $t0,
-            $t1,
-            $u,
-            $plc,
-            fn(&_, &_, _, _) -> _,
-        >($k)
-    };
-
-    (async binary $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {{
-        let kf: &dyn Fn(&Self) -> crate::error::Result<
-            crate::kernels::TypedBinaryKernel<
-                crate::execution::AsyncSession,
-                $plc,
-                $t0,
-                $t1,
-                $u,
-            >
-        > = &|$op_ke| $ke;
-        let k = kf(&$op)?;
-        crate::execution::kernel_helpers::binary::<
-            crate::execution::AsyncSession,
-            $t0,
-            $t1,
-            $u,
-            $plc,
-            Box<_>,
-        >(k)
-    }};
-
-    (async binary $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
-        $(
-            let $attr = $op.$attr.clone();
-        )+
-        let k: crate::kernels::TypedBinaryKernel<
-            crate::execution::AsyncSession,
-            $plc,
-            $t0,
-            $t1,
-            $u,
-        > = Box::new(move |sess, plc, x0, x1| {
-            $k(sess, &plc, $($attr.clone()),+, x0, x1)
-        });
-        crate::execution::kernel_helpers::binary::<
-            crate::execution::AsyncSession,
-            $t0,
-            $t1,
-            $u,
-            $plc,
-            Box<_>,
-        >(k)
-    }};
-
-    (async binary $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::binary::<
-            crate::execution::AsyncSession,
+            _,
             $t0,
             $t1,
             $u,
@@ -343,21 +193,9 @@ macro_rules! derive_kernel {
 
     /* Ternary */
 
-    (sync ternary $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
+    ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::ternary::<
-            crate::execution::SyncSession,
-            $t0,
-            $t1,
-            $t2,
-            $u,
-            $plc,
-            fn(&_, &_, _, _, _) -> _,
-        >($k)
-    };
-
-    (async ternary $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::ternary::<
-            crate::execution::AsyncSession,
+            _,
             $t0,
             $t1,
             $t2,
@@ -369,13 +207,13 @@ macro_rules! derive_kernel {
 
     /* Variadic */
 
-    (sync variadic $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
+    ($plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
                 let $attr = $op.$attr.clone();
             )+
             let k: crate::kernels::TypedVariadicKernel<
-                crate::execution::SyncSession,
+                _,
                 $plc,
                 $ts,
                 $u,
@@ -383,7 +221,7 @@ macro_rules! derive_kernel {
                 $k(sess, &plc, $($attr.clone()),+, ts)
             });
             crate::execution::kernel_helpers::variadic::<
-                crate::execution::SyncSession,
+                _,
                 $ts,
                 $u,
                 $plc,
@@ -392,42 +230,9 @@ macro_rules! derive_kernel {
         }
     };
 
-    (sync variadic $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
+    ($plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
         crate::execution::kernel_helpers::variadic::<
-            crate::execution::SyncSession,
-            $ts,
-            $u,
-            $plc,
-            fn(&_, &_, &[$ts]) -> _,
-        >($k)
-    };
-
-    (async variadic $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
-        {
-            $(
-                let $attr = $op.$attr.clone();
-            )+
-            let k: crate::kernels::TypedVariadicKernel<
-                crate::execution::AsyncSession,
-                $plc,
-                $ts,
-                $u,
-            > = Box::new(move |sess, plc, xs| {
-                $k(sess, &plc, $($attr.clone()),+, xs)
-            });
-            crate::execution::kernel_helpers::variadic::<
-                crate::execution::AsyncSession,
-                $ts,
-                $u,
-                $plc,
-                Box<_>,
-            >(k)
-        }
-    };
-
-    (async variadic $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::variadic::<
-            crate::execution::AsyncSession,
+            _,
             $ts,
             $u,
             $plc,
@@ -990,7 +795,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            derive_kernel![sync nullary $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_execute_kernel![$plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1037,7 +842,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            derive_kernel![async nullary $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_execute_kernel![$plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1272,7 +1077,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            derive_kernel![sync unary $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_execute_kernel![$plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1322,7 +1127,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            derive_kernel![async unary $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_execute_kernel![$plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1575,7 +1380,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            derive_kernel![sync binary $plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_execute_kernel![$plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1627,7 +1432,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            derive_kernel![async binary $plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_execute_kernel![$plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1902,7 +1707,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            derive_kernel![sync ternary $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_execute_kernel![$plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1956,7 +1761,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            derive_kernel![async ternary $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_execute_kernel![$plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -2250,7 +2055,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            derive_kernel![sync variadic $plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_execute_kernel![$plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -2300,7 +2105,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            derive_kernel![async variadic $plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_execute_kernel![$plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
