@@ -27,7 +27,7 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
         use Operator::*;
         let plc = &op.placement;
         let compile_error: Option<Error> = match &op.kind {
-            // TODO(Morten) use NgDispatchKernel::compile for these as well
+            // TODO(Morten) use DispatchKernel::compile for these as well
             Load(_) | Save(_) | Send(_) | Receive(_) => None,
 
             Shape(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
