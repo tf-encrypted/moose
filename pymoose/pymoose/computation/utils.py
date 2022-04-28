@@ -27,6 +27,7 @@ SUPPORTED_TYPES = [
     ops.DotOperation,
     ops.ExpandDimsOperation,
     ops.ExpOperation,
+    ops.GreaterOperation,
     ops.IdentityOperation,
     ops.IndexAxisOperation,
     ops.InputOperation,

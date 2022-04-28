@@ -268,6 +268,7 @@ class AstTracer:
             "dot": ops.DotOperation,
             "or": ops.BitwiseOrOperation,
             "less": ops.LessOperation,
+            "greater": ops.GreaterOperation,
         }[op_name]
         lhs_type = lhs_operation.return_type
         rhs_type = rhs_operation.return_type

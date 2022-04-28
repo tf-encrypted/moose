@@ -1324,8 +1324,8 @@ mod tests {
         test_rep_lt128(x, y, target);
     }
 
-    rep_binary_func_test_bit!(test_rep_gt64, greater_than<u64>);
-    rep_binary_func_test_bit!(test_rep_gt128, greater_than<u128>);
+    rep_binary_func_test_bit!(test_rep_gt64, greater<u64>);
+    rep_binary_func_test_bit!(test_rep_gt128, greater<u128>);
 
     #[test]
     fn test_rep_gt_64() {

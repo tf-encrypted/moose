@@ -880,8 +880,8 @@ operators![
     Exp,
     FixedpointEncode,
     FixedpointDecode,
-    GreaterThan,
-    LessThan,
+    Greater,
+    Less,
     Neg,
     Pow2,
     Sigmoid,
@@ -1285,14 +1285,14 @@ pub struct EqualZeroOp {
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-pub struct LessThanOp {
+pub struct LessOp {
     pub sig: Signature,
 }
 
 #[derive(
     Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
 )]
-pub struct GreaterThanOp {
+pub struct GreaterOp {
     pub sig: Signature,
 }
 

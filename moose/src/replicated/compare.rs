@@ -88,7 +88,7 @@ impl EqualZeroOp {
     }
 }
 
-impl LessThanOp {
+impl LessOp {
     pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -132,7 +132,7 @@ impl LessThanOp {
     }
 }
 
-impl GreaterThanOp {
+impl GreaterOp {
     pub(crate) fn rep_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,

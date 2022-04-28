@@ -91,6 +91,11 @@ class LessOperation(Operation):
 
 
 @dataclass
+class GreaterOperation(Operation):
+    pass
+
+
+@dataclass
 class AbsOperation(Operation):
     pass
 
