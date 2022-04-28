@@ -192,6 +192,30 @@ class EdslTest(parameterized.TestCase):
             ),
         )
 
+    def test_relu(self):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            x = np.array([1.0, -2.0, 3.0, -4.0])
+            x0 = edsl.relu(
+                edsl.constant(x, dtype=dtypes.float64, placement=player0),
+                placement=player0,
+            )
+            return x0
+
+        concrete_comp = trace(my_comp)
+        op = concrete_comp.operation("relu_0")
+        assert op == ops.ReluOperation(
+            placement_name="player0",
+            name="relu_0",
+            inputs={"x": "constant_0"},
+            signature=ops.OpSignature(
+                input_types={"x": ty.TensorType(dtype=dtypes.float64)},
+                return_type=ty.TensorType(dtype=dtypes.float64),
+            ),
+        )
+
     def test_square(self):
         player0 = edsl.host_placement(name="player0")
 

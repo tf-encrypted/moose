@@ -10,7 +10,7 @@ pub(crate) trait TreeReduceArgmax<S: Session, T, O> {
 impl<S: Session, T: Clone> TreeReduceArgmax<S, T, T> for ReplicatedPlacement
 where
     ReplicatedPlacement: PlacementMul<S, T, T, T>,
-    ReplicatedPlacement: PlacementLessThan<S, T, T, m!(ReplicatedBitTensor)>,
+    ReplicatedPlacement: PlacementLess<S, T, T, m!(ReplicatedBitTensor)>,
     ReplicatedBitTensor: KnownType<S>,
     ReplicatedPlacement: PlacementRingInject<S, m!(ReplicatedBitTensor), T>,
     ReplicatedPlacement: PlacementMux<S, T, T, T, T>,

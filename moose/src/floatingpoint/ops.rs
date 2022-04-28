@@ -120,6 +120,27 @@ impl AbsOp {
     }
 }
 
+impl ReluOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementRelu<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "ReluOp @ Mirrored3Placement".to_string(),
+                ))
+            }
+        };
+        Ok(FloatTensor::Host(plc.relu(sess, &x)))
+    }
+}
+
 impl AddOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
@@ -276,7 +297,7 @@ impl DotOp {
     }
 }
 
-impl LessThanOp {
+impl LessOp {
     pub(crate) fn float_kernel<S: Session, HostFloatT, HostBitT, RepBitT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
@@ -284,7 +305,7 @@ impl LessThanOp {
         y: FloatTensor<HostFloatT, MirroredT>,
     ) -> Result<BoolTensor<HostBitT, RepBitT>>
     where
-        HostPlacement: PlacementLessThan<S, HostFloatT, HostFloatT, HostBitT>,
+        HostPlacement: PlacementLess<S, HostFloatT, HostFloatT, HostBitT>,
     {
         let x = match x {
             FloatTensor::Host(v) => v,
@@ -296,6 +317,39 @@ impl LessThanOp {
         };
 
         let z = plc.less(sess, &x, &y);
+        Ok(BoolTensor::Host(z))
+    }
+}
+
+impl GreaterOp {
+    pub(crate) fn float_kernel<S: Session, HostFloatT, HostBitT, RepBitT, MirroredT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT, MirroredT>,
+        y: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<BoolTensor<HostBitT, RepBitT>>
+    where
+        HostPlacement: PlacementGreater<S, HostFloatT, HostFloatT, HostBitT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "Greater @ Mirrored3Placement".to_string(),
+                ))
+            }
+        };
+
+        let y = match y {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "Greater @ Mirrored3Placement".to_string(),
+                ))
+            }
+        };
+
+        let z = plc.greater(sess, &x, &y);
         Ok(BoolTensor::Host(z))
     }
 }
@@ -471,6 +525,28 @@ impl Log2Op {
             }
         };
         let z = plc.log2(sess, &x);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
+impl SqrtOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementSqrt<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "SqrtOp @ Mirrored3Placement".to_string(),
+                ))
+            }
+        };
+        let z = plc.sqrt(sess, &x);
         Ok(FloatTensor::Host(z))
     }
 }

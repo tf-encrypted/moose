@@ -25,6 +25,7 @@ enum PyOperation {
     DotOperation(PyDotOperation),
     BitwiseOrOperation(PyBitwiseOrOperation),
     LessOperation(PyLessOperation),
+    GreaterOperation(PyGreaterOperation),
     MuxOperation(PyMuxOperation),
     AtLeast2DOperation(PyAtLeast2DOperation),
     ShapeOperation(PyShapeOperation),
@@ -41,6 +42,7 @@ enum PyOperation {
     ExpOperation(PyExpOperation),
     InverseOperation(PyInverseOperation),
     MeanOperation(PyMeanOperation),
+    ReluOperation(PyReluOperation),
     SigmoidOperation(PySigmoidOperation),
     LogOperation(PyLogOperation),
     Log2Operation(PyLog2Operation),
@@ -199,6 +201,14 @@ struct PyLessOperation {
 }
 
 #[derive(Deserialize, Debug)]
+struct PyGreaterOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
 struct PyBitwiseOrOperation {
     name: String,
     inputs: Inputs,
@@ -287,6 +297,14 @@ struct PyExpandDimsOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyExpOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyReluOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -850,7 +868,22 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     LessOperation(op) => Ok(Operation {
-                        kind: LessThanOp {
+                        kind: LessOp {
+                            sig: map_signature(
+                                &op.signature,
+                                &placements,
+                                &op.placement_name,
+                                &["lhs", "rhs"],
+                            )?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    GreaterOperation(op) => Ok(Operation {
+                        kind: GreaterOp {
                             sig: map_signature(
                                 &op.signature,
                                 &placements,
@@ -1038,6 +1071,21 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ExpOperation(op) => Ok(Operation {
                         kind: ExpOp {
+                            sig: map_signature(
+                                &op.signature,
+                                &placements,
+                                &op.placement_name,
+                                &["x"],
+                            )?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    ReluOperation(op) => Ok(Operation {
+                        kind: ReluOp {
                             sig: map_signature(
                                 &op.signature,
                                 &placements,

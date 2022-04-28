@@ -91,6 +91,11 @@ class LessOperation(Operation):
 
 
 @dataclass
+class GreaterOperation(Operation):
+    pass
+
+
+@dataclass
 class AbsOperation(Operation):
     pass
 
@@ -152,6 +157,11 @@ class ExpOperation(Operation):
 
 @dataclass
 class SigmoidOperation(Operation):
+    pass
+
+
+@dataclass
+class ReluOperation(Operation):
     pass
 
 

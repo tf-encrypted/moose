@@ -9,7 +9,7 @@ use ndarray::LinalgScalar;
 use ndarray::Zip;
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack};
-use num_traits::{Float, FromPrimitive, Signed, Zero};
+use num_traits::{clamp_min, Float, FromPrimitive, Signed, Zero};
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::Wrapping;
@@ -185,25 +185,7 @@ impl OutputOp {
 }
 
 impl LoadOp {
-    pub(crate) fn kernel<S: RuntimeSession, O>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _key: HostString,
-        _query: HostString,
-    ) -> Result<O>
-    where
-        O: KnownType<S>,
-        O: TryFrom<Value, Error = Error>,
-        HostPlacement: PlacementPlace<S, O>,
-    {
-        // use std::convert::TryInto;
-        // let value = sess.storage.load(&key.0, &query.0, Some(<O as KnownType<S>>::TY))?;
-        // let value = plc.place(sess, value.try_into()?);
-        // Ok(value)
-        todo!()
-    }
-
-    pub(crate) fn missing_kernel<S: RuntimeSession, O>(
+    pub(crate) fn session_specific_kernel<S: RuntimeSession, O>(
         _sess: &S,
         _plc: &HostPlacement,
         _key: HostString,
@@ -212,27 +194,27 @@ impl LoadOp {
     where
         O: KnownType<S>,
     {
-        Err(Error::KernelError(format!(
-            "missing HostPlacement: PlacementPlace trait implementation for '{}'",
+        Err(Error::Unexpected(Some(format!(
+            "Load kernel for '{}' should be handled specifically by session",
             &<O as KnownType<S>>::TY
-        )))
+        ))))
     }
 }
 
 impl SaveOp {
-    pub(crate) fn kernel<S: RuntimeSession, O>(
+    pub(crate) fn session_specific_kernel<S: RuntimeSession, O>(
         _sess: &S,
         _plc: &HostPlacement,
         _key: HostString,
         _x: O,
     ) -> Result<HostUnit>
     where
-        Value: From<O>,
+        O: KnownType<S>,
     {
-        // let x: Value = x.into();
-        // sess.storage.save(&key.0, &x)?;
-        // Ok(HostUnit(plc.clone()))
-        todo!()
+        Err(Error::Unexpected(Some(format!(
+            "Save kernel for '{}' should be handled specifically by session",
+            &<O as KnownType<S>>::TY
+        ))))
     }
 }
 
@@ -247,6 +229,22 @@ impl AbsOp {
     {
         Ok(HostTensor::<T>(
             x.0.map(|x| T::abs(x)).into_shared(),
+            plc.clone(),
+        ))
+    }
+}
+
+impl ReluOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: Clone + Signed + PartialOrd>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        Ok(HostTensor::<T>(
+            x.0.mapv(|x| clamp_min(x, T::zero())).into_shared(),
             plc.clone(),
         ))
     }
@@ -1878,7 +1876,7 @@ impl SampleSeededOp {
     }
 }
 
-impl LessThanOp {
+impl LessOp {
     pub(crate) fn host_fixed_kernel<S: Session, HostRingT, HostBitT>(
         sess: &S,
         plc: &HostPlacement,
@@ -1886,7 +1884,7 @@ impl LessThanOp {
         y: HostFixedTensor<HostRingT>,
     ) -> Result<HostBitT>
     where
-        HostPlacement: PlacementLessThan<S, HostRingT, HostRingT, HostBitT>,
+        HostPlacement: PlacementLess<S, HostRingT, HostRingT, HostBitT>,
     {
         Ok(plc.less(sess, &x.tensor, &y.tensor))
     }
@@ -1952,19 +1950,77 @@ impl LessThanOp {
     }
 }
 
-impl GreaterThanOp {
-    pub(crate) fn host_kernel<S: Session, HostRingT>(
+impl GreaterOp {
+    pub(crate) fn host_fixed_kernel<S: Session, HostRingT, HostBitT>(
         sess: &S,
         plc: &HostPlacement,
-        x: HostRingT,
-        y: HostRingT,
-    ) -> Result<HostRingT>
+        x: HostFixedTensor<HostRingT>,
+        y: HostFixedTensor<HostRingT>,
+    ) -> Result<HostBitT>
     where
-        HostPlacement: PlacementSign<S, HostRingT, HostRingT>,
-        HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
+        HostPlacement: PlacementGreater<S, HostRingT, HostRingT, HostBitT>,
     {
-        let z = plc.sub(sess, &y, &x);
-        Ok(plc.sign(sess, &z))
+        Ok(plc.greater(sess, &x.tensor, &y.tensor))
+    }
+
+    pub(crate) fn host_ring64_kernel<S: Session>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing64Tensor,
+        y: HostRing64Tensor,
+    ) -> Result<HostBitTensor> {
+        use bitvec::prelude::*;
+        let dim = x.0.dim();
+        let data: BitVec<u8, Lsb0> = (x.0 - y.0)
+            .as_standard_layout()
+            .as_slice()
+            .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
+            .iter()
+            .map(|&Wrapping(item)| (item as i64) > 0)
+            .collect();
+        let result = BitArrayRepr::from_raw(data, dim);
+        Ok(HostBitTensor(result, plc.clone()))
+    }
+
+    pub(crate) fn host_ring128_kernel<S: Session>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing128Tensor,
+        y: HostRing128Tensor,
+    ) -> Result<HostBitTensor> {
+        use bitvec::prelude::*;
+        let dim = x.0.dim();
+        let data: BitVec<u8, Lsb0> = (x.0 - y.0)
+            .as_standard_layout()
+            .as_slice()
+            .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
+            .iter()
+            .map(|&Wrapping(item)| (item as i128) > 0)
+            .collect();
+        let result = BitArrayRepr::from_raw(data, dim);
+        Ok(HostBitTensor(result, plc.clone()))
+    }
+
+    pub(crate) fn host_float_kernel<S: Session, T: LinalgScalar + FromPrimitive>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+        y: HostTensor<T>,
+    ) -> Result<HostBitTensor>
+    where
+        T: std::cmp::PartialOrd + Zero,
+    {
+        use bitvec::prelude::*;
+        let dim = x.0.dim();
+        let data: BitVec<u8, Lsb0> = (x.0 - y.0)
+            .as_standard_layout()
+            .as_slice()
+            .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
+            .iter()
+            .map(|&item| item > T::zero())
+            .collect();
+        let result = BitArrayRepr::from_raw(data, dim);
+        Ok(HostBitTensor(result, plc.clone()))
     }
 }
 

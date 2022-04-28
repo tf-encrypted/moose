@@ -1,8 +1,12 @@
+use csv::WriterBuilder;
 use moose::error::Error;
 use moose::prelude::*;
 use moose::Result;
 use ndarray::prelude::*;
+use ndarray::ArcArray;
+use serde::Serialize;
 use std::collections::HashSet;
+use std::fs::File;
 
 #[allow(dead_code)]
 pub(crate) async fn read_csv(
@@ -59,6 +63,135 @@ pub(crate) async fn read_csv(
     Ok(Value::from(tensor))
 }
 
+#[allow(dead_code)]
+pub(crate) async fn write_csv(filename: &str, data: &Value) -> Result<()> {
+    match data {
+        Value::HostFloat64Tensor(t) => {
+            write_array_to_csv(filename, &t.0).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write moose value to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+        }
+
+        Value::HostFloat32Tensor(t) => {
+            write_array_to_csv(filename, &t.0).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write moose value to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+        }
+        Value::HostUint32Tensor(t) => {
+            write_array_to_csv(filename, &t.0).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write moose value to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+        }
+        Value::HostUint64Tensor(t) => {
+            write_array_to_csv(filename, &t.0).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write moose value to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+        }
+        Value::HostInt32Tensor(t) => {
+            write_array_to_csv(filename, &t.0).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write moose value to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+        }
+        Value::HostInt64Tensor(t) => {
+            write_array_to_csv(filename, &t.0).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write moose value to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+        }
+        _ => {
+            return Err(Error::Storage(format!(
+                "cannot write unsupported tensor to csv file: {}",
+                filename
+            )))
+        }
+    }
+    Ok(())
+}
+
+fn write_array_to_csv<T>(filename: &str, array: &ArcArray<T, IxDyn>) -> Result<()>
+where
+    T: Serialize,
+    T: Copy,
+    T: std::fmt::Debug,
+    T: std::fmt::Display,
+{
+    let file = File::create(filename)
+        .map_err(|e| Error::Storage(format!("failed to open file: '{}': {}", filename, e)))?;
+
+    let mut writer = WriterBuilder::new().has_headers(false).from_writer(file);
+    let shape = array.shape();
+    match shape.len() {
+        2 => {
+            let ncols = shape[1];
+            let chunks = array
+                .as_slice()
+                .ok_or_else(|| Error::Storage("could not take slice from array".to_string()))?
+                .chunks(ncols);
+
+            let header = (0..ncols)
+                .map(|i| format!("col_{}", i))
+                .collect::<Vec<String>>();
+            writer.write_record(&header).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write record to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+            for row in chunks {
+                let row_vec: Vec<String> = row.iter().map(|item| item.to_string()).collect();
+                writer.write_record(row_vec).map_err(|e| {
+                    Error::Storage(format!(
+                        "failed to write record to file: '{}': {}",
+                        filename, e
+                    ))
+                })?
+            }
+            Ok(())
+        }
+        1 => {
+            let header = vec!["col_0"];
+            writer.write_record(&header).map_err(|e| {
+                Error::Storage(format!(
+                    "failed to write record to file: '{}': {}",
+                    filename, e
+                ))
+            })?;
+
+            for row in array.iter() {
+                let str_row = row.to_string();
+                writer.write_record(&[str_row]).map_err(|e| {
+                    Error::Storage(format!(
+                        "failed to write record to file: '{}': {}",
+                        filename, e
+                    ))
+                })?;
+            }
+            Ok(())
+        }
+        _ => Err(Error::Storage(format!(
+            "can only save tensors of 1 or 2 dimensions to csv, got shape: {:?}",
+            shape
+        ))),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -82,6 +215,26 @@ mod tests {
             .to_string();
 
         let plc = HostPlacement::from("host");
+        let data = read_csv(&filename, &[], &plc).await.unwrap();
+        assert_eq!(data, expected);
+    }
+
+    #[tokio::test]
+    async fn test_write_csv() {
+        let plc = HostPlacement::from("host");
+        let arr = array![[1.1, 2.2], [3.3, 4.4], [5.5, 6.6]];
+        let tensor: HostFloat64Tensor = plc.from_raw(arr);
+        let expected = Value::from(tensor);
+
+        let file = NamedTempFile::new().expect("trying to create tempfile");
+        let path = file.path();
+        let filename = path
+            .to_str()
+            .expect("trying to get path from temp file")
+            .to_string();
+
+        write_csv(&filename, &expected).await.unwrap();
+
         let data = read_csv(&filename, &[], &plc).await.unwrap();
         assert_eq!(data, expected);
     }

@@ -280,6 +280,12 @@ class SoftmaxExpression(Expression):
 
 
 @dataclass
+class ReluExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class ArgmaxExpression(Expression):
     axis: Optional[Union[int, Tuple[int]]]
     upmost_index: int
@@ -392,6 +398,12 @@ class StridedSliceExpression(Expression):
 
 @dataclass
 class LessExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class GreaterExpression(Expression):
     def __hash__(self):
         return id(self)
 
@@ -620,6 +632,18 @@ def less(lhs, rhs, placement=None):
     )
 
 
+def greater(lhs, rhs, placement=None):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
+    return BinaryOpExpression(
+        op_name="greater",
+        placement=placement,
+        inputs=[lhs, rhs],
+        vtype=ty.TensorType(dtype=dtypes.bool_),
+    )
+
+
 def logical_or(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
@@ -707,10 +731,22 @@ def exp(x, placement=None):
     return ExpExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
+def sqrt(x, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return SqrtExpression(placement=placement, inputs=[x], vtype=x.vtype)
+
+
 def sigmoid(x, placement=None):
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return SigmoidExpression(placement=placement, inputs=[x], vtype=x.vtype)
+
+
+def relu(x, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return ReluExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def softmax(x, axis, upmost_index, placement=None):
