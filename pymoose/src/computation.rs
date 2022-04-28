@@ -25,12 +25,14 @@ enum PyOperation {
     DotOperation(PyDotOperation),
     BitwiseOrOperation(PyBitwiseOrOperation),
     LessOperation(PyLessOperation),
+    GreaterOperation(PyGreaterOperation),
     MuxOperation(PyMuxOperation),
     AtLeast2DOperation(PyAtLeast2DOperation),
     ReshapeOperation(PyReshapeOperation),
     ShapeOperation(PyShapeOperation),
     IndexAxisOperation(PyIndexAxisOperation),
     SliceOperation(PySliceOperation),
+    StridedSliceOperation(PyStridedSliceOperation),
     OnesOperation(PyOnesOperation),
     ZerosOperation(PyZerosOperation),
     ConcatenateOperation(PyConcatenateOperation),
@@ -41,6 +43,7 @@ enum PyOperation {
     ExpOperation(PyExpOperation),
     InverseOperation(PyInverseOperation),
     MeanOperation(PyMeanOperation),
+    ReluOperation(PyReluOperation),
     SigmoidOperation(PySigmoidOperation),
     LogOperation(PyLogOperation),
     Log2Operation(PyLog2Operation),
@@ -118,6 +121,13 @@ struct PyOpSignature {
 }
 
 #[derive(Deserialize, Debug)]
+struct PySlice {
+    start: Option<isize>,
+    step: Option<isize>,
+    stop: Option<isize>,
+}
+
+#[derive(Deserialize, Debug)]
 struct PyAbsOperation {
     name: String,
     inputs: Inputs,
@@ -192,6 +202,14 @@ struct PyLessOperation {
 }
 
 #[derive(Deserialize, Debug)]
+struct PyGreaterOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
 struct PyBitwiseOrOperation {
     name: String,
     inputs: Inputs,
@@ -253,6 +271,15 @@ struct PySliceOperation {
 }
 
 #[derive(Deserialize, Debug)]
+struct PyStridedSliceOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+    slices: Vec<PySlice>,
+}
+
+#[derive(Deserialize, Debug)]
 struct PyOnesOperation {
     name: String,
     inputs: Inputs,
@@ -279,6 +306,14 @@ struct PyExpandDimsOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyExpOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyReluOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -842,7 +877,22 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     LessOperation(op) => Ok(Operation {
-                        kind: LessThanOp {
+                        kind: LessOp {
+                            sig: map_signature(
+                                &op.signature,
+                                &placements,
+                                &op.placement_name,
+                                &["lhs", "rhs"],
+                            )?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    GreaterOperation(op) => Ok(Operation {
+                        kind: GreaterOp {
                             sig: map_signature(
                                 &op.signature,
                                 &placements,
@@ -970,6 +1020,33 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    StridedSliceOperation(op) => {
+                        let slices: Vec<_> = op
+                            .slices
+                            .iter()
+                            .map(|slice| SliceInfoElem {
+                                start: slice.start.unwrap_or(0),
+                                step: slice.step,
+                                end: slice.stop,
+                            })
+                            .collect();
+                        Ok(Operation {
+                            kind: SliceOp {
+                                sig: map_signature(
+                                    &op.signature,
+                                    &placements,
+                                    &op.placement_name,
+                                    &["x"],
+                                )?,
+                                slice: SliceInfo(slices),
+                            }
+                            .into(),
+                            inputs: map_inputs(&op.inputs, &["x"])
+                                .with_context(|| format!("Failed at op {:?}", op))?,
+                            name: op.name.clone(),
+                            placement: map_placement(&placements, &op.placement_name)?,
+                        })
+                    }
                     OnesOperation(op) => Ok(Operation {
                         kind: OnesOp {
                             sig: map_signature(
@@ -1018,6 +1095,21 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ExpOperation(op) => Ok(Operation {
                         kind: ExpOp {
+                            sig: map_signature(
+                                &op.signature,
+                                &placements,
+                                &op.placement_name,
+                                &["x"],
+                            )?,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    ReluOperation(op) => Ok(Operation {
+                        kind: ReluOp {
                             sig: map_signature(
                                 &op.signature,
                                 &placements,

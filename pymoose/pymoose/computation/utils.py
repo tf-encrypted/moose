@@ -27,6 +27,7 @@ SUPPORTED_TYPES = [
     ops.DotOperation,
     ops.ExpandDimsOperation,
     ops.ExpOperation,
+    ops.GreaterOperation,
     ops.IdentityOperation,
     ops.IndexAxisOperation,
     ops.InputOperation,
@@ -43,12 +44,15 @@ SUPPORTED_TYPES = [
     ops.ZerosOperation,
     ops.OutputOperation,
     ops.SigmoidOperation,
+    ops.ReluOperation,
     ops.SoftmaxOperation,
     ops.ReshapeOperation,
     ops.SaveOperation,
     ops.ShapeOperation,
     ops.SliceOperation,
+    ops.StridedSliceOperation,
     ops.SqueezeOperation,
+    ops.SqrtOperation,
     ops.SubOperation,
     ops.SumOperation,
     ops.TransposeOperation,
@@ -119,6 +123,13 @@ def _encode(val):
             "dtype": str(val.dtype),
             "items": val.flatten().tolist(),
             "shape": list(val.shape),
+        }
+    elif isinstance(val, slice):
+        return {
+            "__type__": "PySlice",
+            "start": val.start,
+            "step": val.step,
+            "stop": val.stop,
         }
 
     raise NotImplementedError(f"{type(val)}")

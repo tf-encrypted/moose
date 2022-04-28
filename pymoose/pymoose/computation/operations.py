@@ -91,6 +91,11 @@ class LessOperation(Operation):
 
 
 @dataclass
+class GreaterOperation(Operation):
+    pass
+
+
+@dataclass
 class AbsOperation(Operation):
     pass
 
@@ -156,6 +161,11 @@ class SigmoidOperation(Operation):
 
 
 @dataclass
+class ReluOperation(Operation):
+    pass
+
+
+@dataclass
 class LogOperation(Operation):
     pass
 
@@ -212,6 +222,11 @@ class IndexAxisOperation(Operation):
 class SliceOperation(Operation):
     begin: int
     end: int
+
+
+@dataclass
+class StridedSliceOperation(Operation):
+    slices: Optional[Tuple[slice]]
 
 
 @dataclass

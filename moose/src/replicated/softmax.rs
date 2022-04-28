@@ -15,7 +15,7 @@ impl MaximumOp {
     ) -> Result<RepRingT>
     where
         RepRingT: Clone,
-        ReplicatedPlacement: PlacementLessThan<S, RepRingT, RepRingT, RepBitT>,
+        ReplicatedPlacement: PlacementLess<S, RepRingT, RepRingT, RepBitT>,
         ReplicatedPlacement: PlacementMul<S, RepRingT, RepRingT, RepRingT>,
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
         ReplicatedPlacement: PlacementNeg<S, RepRingT, RepRingT>,
@@ -70,7 +70,7 @@ impl SoftmaxOp {
         ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
         ReplicatedPlacement: PlacementShape<S, RepFixedT, ShapeT>,
         ReplicatedPlacement: PlacementSub<S, RepFixedT, RepFixedT, RepFixedT>,
-        ReplicatedPlacement: PlacementGreaterThan<S, RepFixedT, RepFixedT, RepBitT>,
+        ReplicatedPlacement: PlacementGreater<S, RepFixedT, RepFixedT, RepBitT>,
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
         ReplicatedPlacement: PlacementMux<S, RepRingT, RepFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
@@ -107,7 +107,7 @@ impl SoftmaxOp {
         .into();
 
         // x - max(x) > get_limit
-        let threshold = rep.greater_than(sess, &lower_bound, &max_diff);
+        let threshold = rep.greater(sess, &lower_bound, &max_diff);
         let threshold_ring = rep.ring_inject(sess, 0, &threshold);
         let normalized = rep.mux(sess, &threshold_ring, &zeros_rep, &e_x);
 

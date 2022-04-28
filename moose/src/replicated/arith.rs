@@ -652,7 +652,7 @@ impl MsbOp {
     }
 }
 
-impl RingFixedpointAbsOp {
+impl AbsOp {
     pub(crate) fn rep_ring_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -689,7 +689,7 @@ impl SigmoidOp {
         ReplicatedPlacement: PlacementDiv<S, RepFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementExp<S, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementNeg<S, RepFixedT, RepFixedT>,
-        ReplicatedPlacement: PlacementGreaterThan<S, RepFixedT, RepFixedT, RepBitT>,
+        ReplicatedPlacement: PlacementGreater<S, RepFixedT, RepFixedT, RepBitT>,
         ReplicatedPlacement: PlacementMux<S, RepRingT, RepFixedT, RepFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
     {
@@ -729,12 +729,12 @@ impl SigmoidOp {
         .into();
 
         // compute upper bound
-        let upper = rep.greater_than(sess, &x, &max_val_rep); // x > max_val?
+        let upper = rep.greater(sess, &x, &max_val_rep); // x > max_val?
         let upper_ring = rep.ring_inject(sess, 0, &upper);
         let upper_wall = rep.mux(sess, &upper_ring, &ones_rep, &output);
 
         // compute lower bound
-        let lower = rep.greater_than(sess, &rep.neg(sess, &max_val_rep), &x); // -max_val > x?
+        let lower = rep.greater(sess, &rep.neg(sess, &max_val_rep), &x); // -max_val > x?
         let lower_ring = rep.ring_inject(sess, 0, &lower);
         let res = rep.mux(sess, &lower_ring, &zeros_rep, &upper_wall);
 

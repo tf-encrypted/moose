@@ -9,7 +9,7 @@ use ndarray::LinalgScalar;
 use ndarray::Zip;
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack};
-use num_traits::{Float, FromPrimitive, Signed, Zero};
+use num_traits::{clamp_min, Float, FromPrimitive, Signed, Zero};
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::Wrapping;
@@ -185,25 +185,7 @@ impl OutputOp {
 }
 
 impl LoadOp {
-    pub(crate) fn kernel<S: RuntimeSession, O>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _key: HostString,
-        _query: HostString,
-    ) -> Result<O>
-    where
-        O: KnownType<S>,
-        O: TryFrom<Value, Error = Error>,
-        HostPlacement: PlacementPlace<S, O>,
-    {
-        // use std::convert::TryInto;
-        // let value = sess.storage.load(&key.0, &query.0, Some(<O as KnownType<S>>::TY))?;
-        // let value = plc.place(sess, value.try_into()?);
-        // Ok(value)
-        todo!()
-    }
-
-    pub(crate) fn missing_kernel<S: RuntimeSession, O>(
+    pub(crate) fn session_specific_kernel<S: RuntimeSession, O>(
         _sess: &S,
         _plc: &HostPlacement,
         _key: HostString,
@@ -212,27 +194,27 @@ impl LoadOp {
     where
         O: KnownType<S>,
     {
-        Err(Error::KernelError(format!(
-            "missing HostPlacement: PlacementPlace trait implementation for '{}'",
+        Err(Error::Unexpected(Some(format!(
+            "Load kernel for '{}' should be handled specifically by session",
             &<O as KnownType<S>>::TY
-        )))
+        ))))
     }
 }
 
 impl SaveOp {
-    pub(crate) fn kernel<S: RuntimeSession, O>(
+    pub(crate) fn session_specific_kernel<S: RuntimeSession, O>(
         _sess: &S,
         _plc: &HostPlacement,
         _key: HostString,
         _x: O,
     ) -> Result<HostUnit>
     where
-        Value: From<O>,
+        O: KnownType<S>,
     {
-        // let x: Value = x.into();
-        // sess.storage.save(&key.0, &x)?;
-        // Ok(HostUnit(plc.clone()))
-        todo!()
+        Err(Error::Unexpected(Some(format!(
+            "Save kernel for '{}' should be handled specifically by session",
+            &<O as KnownType<S>>::TY
+        ))))
     }
 }
 
@@ -247,6 +229,22 @@ impl AbsOp {
     {
         Ok(HostTensor::<T>(
             x.0.map(|x| T::abs(x)).into_shared(),
+            plc.clone(),
+        ))
+    }
+}
+
+impl ReluOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: Clone + Signed + PartialOrd>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        Ok(HostTensor::<T>(
+            x.0.mapv(|x| clamp_min(x, T::zero())).into_shared(),
             plc.clone(),
         ))
     }
@@ -475,31 +473,71 @@ impl AtLeast2DOp {
 }
 
 impl SliceOp {
-    pub(crate) fn host_kernel<S: RuntimeSession, T>(
-        _sess: &S,
+    pub(crate) fn host_fixed_kernel<S: Session, HostRingT>(
+        sess: &S,
         plc: &HostPlacement,
-        slice_info: SliceInfo,
+        info: SliceInfo,
+        x: HostFixedTensor<HostRingT>,
+    ) -> Result<HostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementSlice<S, HostRingT, HostRingT>,
+    {
+        let tensor = plc.slice(sess, info, &x.tensor);
+        Ok(HostFixedTensor::<HostRingT> {
+            tensor,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+
+    pub(crate) fn host_bit_kernel<S: RuntimeSession>(
+        sess: &S,
+        plc: &HostPlacement,
+        info: SliceInfo,
+        x: HostBitTensor,
+    ) -> Result<HostBitTensor>
+    where
+        HostPlacement: PlacementPlace<S, HostBitTensor>,
+    {
+        let x = plc.place(sess, x);
+        x.slice(info)
+    }
+
+    pub(crate) fn host_generic_kernel<S: RuntimeSession, T: Clone>(
+        sess: &S,
+        plc: &HostPlacement,
+        info: SliceInfo,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        let x = plc.place(sess, x);
+        x.slice(info)
+    }
+
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
+        sess: &S,
+        plc: &HostPlacement,
+        info: SliceInfo,
         x: HostRingTensor<T>,
     ) -> Result<HostRingTensor<T>>
     where
         T: Clone,
+        HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
     {
-        let slice_info =
-            ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(slice_info);
-        let sliced = x.0.slice(slice_info).to_owned();
-        Ok(HostRingTensor(sliced.to_shared(), plc.clone()))
+        let x = plc.place(sess, x);
+        x.slice(info)
     }
 
     pub(crate) fn shape_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        slice_info: SliceInfo,
+        info: SliceInfo,
         x: HostShape,
     ) -> Result<HostShape> {
-        let slice = x.0.slice(
-            slice_info.0[0].start as usize,
-            slice_info.0[0].end.unwrap() as usize,
-        );
+        let slice =
+            x.0.slice(info.0[0].start as usize, info.0[0].end.unwrap() as usize);
         Ok(HostShape(slice, plc.clone()))
     }
 }
@@ -561,6 +599,21 @@ impl<T: LinalgScalar> HostTensor<T> {
     }
 }
 
+impl<T: Clone> HostTensor<T> {
+    fn slice(&self, info: SliceInfo) -> Result<HostTensor<T>> {
+        if info.0.len() != self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "The input dimension of `info` must match the array to be sliced. Used slice info dim {}, tensor had dim {}",
+                info.0.len(),
+                self.0.ndim()
+            )));
+        }
+        let info = ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(info);
+        let result = self.0.slice(info);
+        Ok(HostTensor(result.to_owned().into_shared(), self.1.clone()))
+    }
+}
+
 impl<T: Clone> HostRingTensor<T> {
     fn index_axis(self, axis: usize, index: usize) -> Result<HostRingTensor<T>> {
         if axis >= self.0.ndim() {
@@ -583,6 +636,24 @@ impl<T: Clone> HostRingTensor<T> {
     }
 }
 
+impl<T: Clone> HostRingTensor<T> {
+    fn slice(&self, info: SliceInfo) -> Result<HostRingTensor<T>> {
+        if info.0.len() != self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "The input dimension of `info` must match the array to be sliced. Used slice info dim {}, tensor had dim {}",
+                info.0.len(),
+                self.0.ndim()
+            )));
+        }
+        let info = ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(info);
+        let result = self.0.slice(info);
+        Ok(HostRingTensor(
+            result.to_owned().into_shared(),
+            self.1.clone(),
+        ))
+    }
+}
+
 impl HostBitTensor {
     fn index_axis(self, axis: usize, index: usize) -> Result<HostBitTensor> {
         if axis >= self.0.ndim() {
@@ -601,6 +672,21 @@ impl HostBitTensor {
         }
         let result = self.0.index_axis(axis, index);
         Ok(HostBitTensor(result, self.1))
+    }
+
+    fn slice(&self, info: SliceInfo) -> Result<HostBitTensor> {
+        if info.0.len() != self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "The input dimension of `info` must match the array to be sliced. Used slice info dim {}, tensor had dim {}",
+                info.0.len(),
+                self.0.ndim()
+            )));
+        }
+        let result = self
+            .0
+            .slice(info)
+            .map_err(|e| Error::KernelError(e.to_string()))?;
+        Ok(HostBitTensor(result, self.1.clone()))
     }
 }
 
@@ -1790,7 +1876,7 @@ impl SampleSeededOp {
     }
 }
 
-impl LessThanOp {
+impl LessOp {
     pub(crate) fn host_fixed_kernel<S: Session, HostRingT, HostBitT>(
         sess: &S,
         plc: &HostPlacement,
@@ -1798,7 +1884,7 @@ impl LessThanOp {
         y: HostFixedTensor<HostRingT>,
     ) -> Result<HostBitT>
     where
-        HostPlacement: PlacementLessThan<S, HostRingT, HostRingT, HostBitT>,
+        HostPlacement: PlacementLess<S, HostRingT, HostRingT, HostBitT>,
     {
         Ok(plc.less(sess, &x.tensor, &y.tensor))
     }
@@ -1864,19 +1950,77 @@ impl LessThanOp {
     }
 }
 
-impl GreaterThanOp {
-    pub(crate) fn host_kernel<S: Session, HostRingT>(
+impl GreaterOp {
+    pub(crate) fn host_fixed_kernel<S: Session, HostRingT, HostBitT>(
         sess: &S,
         plc: &HostPlacement,
-        x: HostRingT,
-        y: HostRingT,
-    ) -> Result<HostRingT>
+        x: HostFixedTensor<HostRingT>,
+        y: HostFixedTensor<HostRingT>,
+    ) -> Result<HostBitT>
     where
-        HostPlacement: PlacementSign<S, HostRingT, HostRingT>,
-        HostPlacement: PlacementSub<S, HostRingT, HostRingT, HostRingT>,
+        HostPlacement: PlacementGreater<S, HostRingT, HostRingT, HostBitT>,
     {
-        let z = plc.sub(sess, &y, &x);
-        Ok(plc.sign(sess, &z))
+        Ok(plc.greater(sess, &x.tensor, &y.tensor))
+    }
+
+    pub(crate) fn host_ring64_kernel<S: Session>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing64Tensor,
+        y: HostRing64Tensor,
+    ) -> Result<HostBitTensor> {
+        use bitvec::prelude::*;
+        let dim = x.0.dim();
+        let data: BitVec<u8, Lsb0> = (x.0 - y.0)
+            .as_standard_layout()
+            .as_slice()
+            .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
+            .iter()
+            .map(|&Wrapping(item)| (item as i64) > 0)
+            .collect();
+        let result = BitArrayRepr::from_raw(data, dim);
+        Ok(HostBitTensor(result, plc.clone()))
+    }
+
+    pub(crate) fn host_ring128_kernel<S: Session>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing128Tensor,
+        y: HostRing128Tensor,
+    ) -> Result<HostBitTensor> {
+        use bitvec::prelude::*;
+        let dim = x.0.dim();
+        let data: BitVec<u8, Lsb0> = (x.0 - y.0)
+            .as_standard_layout()
+            .as_slice()
+            .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
+            .iter()
+            .map(|&Wrapping(item)| (item as i128) > 0)
+            .collect();
+        let result = BitArrayRepr::from_raw(data, dim);
+        Ok(HostBitTensor(result, plc.clone()))
+    }
+
+    pub(crate) fn host_float_kernel<S: Session, T: LinalgScalar + FromPrimitive>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+        y: HostTensor<T>,
+    ) -> Result<HostBitTensor>
+    where
+        T: std::cmp::PartialOrd + Zero,
+    {
+        use bitvec::prelude::*;
+        let dim = x.0.dim();
+        let data: BitVec<u8, Lsb0> = (x.0 - y.0)
+            .as_standard_layout()
+            .as_slice()
+            .ok_or_else(|| Error::KernelError("Failed to get tensor's slice".to_string()))?
+            .iter()
+            .map(|&item| item > T::zero())
+            .collect();
+        let result = BitArrayRepr::from_raw(data, dim);
+        Ok(HostBitTensor(result, plc.clone()))
     }
 }
 

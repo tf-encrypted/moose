@@ -266,13 +266,66 @@ impl AbsOp {
         x: RepFixedTensor<RepRingT>,
     ) -> Result<RepFixedTensor<RepRingT>>
     where
-        ReplicatedPlacement: PlacementAbsAsFixedpoint<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementAbs<S, RepRingT, RepRingT>,
     {
         Ok(RepFixedTensor {
-            tensor: plc.abs_as_fixedpoint(sess, &x.tensor),
+            tensor: plc.abs(sess, &x.tensor),
             fractional_precision: x.fractional_precision,
             integral_precision: x.integral_precision,
         })
+    }
+}
+
+impl ReluOp {
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementRelu<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let z = plc.relu(sess, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+
+    pub(crate) fn rep_fixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementRelu<S, RepRingT, RepRingT>,
+    {
+        Ok(RepFixedTensor {
+            tensor: plc.relu(sess, &x.tensor),
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+
+    pub(crate) fn rep_ring_kernel<S: Session, RepRingT, ShapeT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepRingT,
+    ) -> Result<RepRingT>
+    where
+        ReplicatedPlacement: PlacementMsb<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementFill<S, ShapeT, RepRingT>,
+        ReplicatedPlacement: PlacementShape<S, RepRingT, ShapeT>,
+        ReplicatedPlacement: PlacementMux<S, RepRingT, RepRingT, RepRingT, RepRingT>,
+    {
+        let sign_bit = rep.msb(sess, &x);
+        let zeros = rep.fill(sess, 0_u8.into(), &rep.shape(sess, &x));
+
+        Ok(rep.mux(sess, &sign_bit, &zeros, &x))
     }
 }
 
@@ -1185,6 +1238,65 @@ impl ReshapeOp {
     }
 }
 
+impl SliceOp {
+    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        info: SliceInfo,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementSlice<S, HostFixedT, HostFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Host(v) => v,
+        };
+        let z = plc.slice(sess, info, &x);
+        Ok(FixedTensor::Host(z))
+    }
+
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        info: SliceInfo,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementSlice<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let z = plc.slice(sess, info, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+
+    pub(crate) fn repfixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        info: SliceInfo,
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementSlice<S, RepRingT, RepRingT>,
+    {
+        let y = plc.slice(sess, info, &x.tensor);
+        Ok(RepFixedTensor {
+            tensor: y,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+}
+
 impl ShapeOp {
     pub(crate) fn host_fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT, HostShapeT>(
         sess: &S,
@@ -1578,6 +1690,27 @@ impl ExpOp {
     }
 }
 
+impl SqrtOp {
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementSqrt<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let z = plc.sqrt(sess, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+}
+
 impl SigmoidOp {
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
         sess: &S,
@@ -1599,7 +1732,7 @@ impl SigmoidOp {
     }
 }
 
-impl LessThanOp {
+impl LessOp {
     pub(crate) fn fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT, HostBitT, RepBitT>(
         sess: &S,
         plc: &HostPlacement,
@@ -1607,7 +1740,7 @@ impl LessThanOp {
         y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<BoolTensor<HostBitT, RepBitT>>
     where
-        HostPlacement: PlacementLessThan<S, HostFixedT, HostFixedT, HostBitT>,
+        HostPlacement: PlacementLess<S, HostFixedT, HostFixedT, HostBitT>,
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
         HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
     {
@@ -1639,7 +1772,7 @@ impl LessThanOp {
         y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
     ) -> Result<BoolTensor<HostBitT, RepBitT>>
     where
-        ReplicatedPlacement: PlacementLessThan<S, RepFixedT, RepFixedT, RepBitT>,
+        ReplicatedPlacement: PlacementLess<S, RepFixedT, RepFixedT, RepBitT>,
         ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
         ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
     {
@@ -1664,7 +1797,7 @@ impl LessThanOp {
         y: RepFixedTensor<RepRingT>,
     ) -> Result<RepBitT>
     where
-        ReplicatedPlacement: PlacementLessThan<S, RepRingT, RepRingT, RepBitT>,
+        ReplicatedPlacement: PlacementLess<S, RepRingT, RepRingT, RepBitT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         Ok(plc.less(sess, &x.tensor, &y.tensor))
@@ -1677,7 +1810,7 @@ impl LessThanOp {
         y: RepFixedTensor<RepRingT>,
     ) -> Result<RepBitT>
     where
-        ReplicatedPlacement: PlacementLessThan<S, MirRingT, RepRingT, RepBitT>,
+        ReplicatedPlacement: PlacementLess<S, MirRingT, RepRingT, RepBitT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         Ok(plc.less(sess, &x.tensor, &y.tensor))
@@ -1690,14 +1823,78 @@ impl LessThanOp {
         y: MirFixedTensor<MirRingT>,
     ) -> Result<RepBitT>
     where
-        ReplicatedPlacement: PlacementLessThan<S, RepRingT, MirRingT, RepBitT>,
+        ReplicatedPlacement: PlacementLess<S, RepRingT, MirRingT, RepBitT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
         Ok(plc.less(sess, &x.tensor, &y.tensor))
     }
 }
 
-impl GreaterThanOp {
+impl GreaterOp {
+    pub(crate) fn fixed_host_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostBitT,
+        RepBitT,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<BoolTensor<HostBitT, RepBitT>>
+    where
+        HostPlacement: PlacementGreater<S, HostFixedT, HostFixedT, HostBitT>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let y = match y {
+            FixedTensor::Host(v) => v,
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let z = plc.greater(sess, &x, &y);
+        Ok(BoolTensor::Host(z))
+    }
+
+    pub(crate) fn fixed_rep_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostBitT,
+        RepBitT,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+        y: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<BoolTensor<HostBitT, RepBitT>>
+    where
+        ReplicatedPlacement: PlacementGreater<S, RepFixedT, RepFixedT, RepBitT>,
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let y = match y {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let z = plc.greater(sess, &x, &y);
+        Ok(BoolTensor::Replicated(z))
+    }
+
     pub(crate) fn rep_fixed_kernel<S: Session, RepRingT, RepBitT>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -1705,10 +1902,10 @@ impl GreaterThanOp {
         y: RepFixedTensor<RepRingT>,
     ) -> Result<RepBitT>
     where
-        ReplicatedPlacement: PlacementGreaterThan<S, RepRingT, RepRingT, RepBitT>,
+        ReplicatedPlacement: PlacementGreater<S, RepRingT, RepRingT, RepBitT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
-        Ok(plc.greater_than(sess, &x.tensor, &y.tensor))
+        Ok(plc.greater(sess, &x.tensor, &y.tensor))
     }
 
     pub(crate) fn rep_mir_fixed_kernel<S: Session, RepRingT, MirRingT, RepBitT>(
@@ -1718,10 +1915,10 @@ impl GreaterThanOp {
         y: RepFixedTensor<RepRingT>,
     ) -> Result<RepBitT>
     where
-        ReplicatedPlacement: PlacementGreaterThan<S, MirRingT, RepRingT, RepBitT>,
+        ReplicatedPlacement: PlacementGreater<S, MirRingT, RepRingT, RepBitT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
-        Ok(plc.greater_than(sess, &x.tensor, &y.tensor))
+        Ok(plc.greater(sess, &x.tensor, &y.tensor))
     }
 
     pub(crate) fn rep_fixed_mir_kernel<S: Session, RepRingT, MirRingT, RepBitT>(
@@ -1731,10 +1928,10 @@ impl GreaterThanOp {
         y: MirFixedTensor<MirRingT>,
     ) -> Result<RepBitT>
     where
-        ReplicatedPlacement: PlacementGreaterThan<S, RepRingT, MirRingT, RepBitT>,
+        ReplicatedPlacement: PlacementGreater<S, RepRingT, MirRingT, RepBitT>,
     {
         assert_eq!(x.fractional_precision, y.fractional_precision);
-        Ok(plc.greater_than(sess, &x.tensor, &y.tensor))
+        Ok(plc.greater(sess, &x.tensor, &y.tensor))
     }
 }
 
@@ -2587,23 +2784,23 @@ mod tests {
         }
 
         #[test]
-        fn test_fuzzy_fixed_rep_greater_than64((a,b) in pairwise_bounded_same_length64(10 + 1))
+        fn test_fuzzy_fixed_rep_greater64((a,b) in pairwise_bounded_same_length64(10 + 1))
         {
             let mut target: Vec<u64> = vec![0_u64; a.len()];
             for i in 0..a.len() {
                 target[i] = (a[i] > b[i]) as u64;
             }
-            test_rep_greater_than64(a.map(|x| *x as f64), b.map(|x| *x as f64), target);
+            test_rep_greater64(a.map(|x| *x as f64), b.map(|x| *x as f64), target);
         }
 
         #[test]
-        fn test_fuzzy_fixed_rep_greater_than128((a,b) in pairwise_bounded_same_length128(10 + 1))
+        fn test_fuzzy_fixed_rep_greater128((a,b) in pairwise_bounded_same_length128(10 + 1))
         {
             let mut target: Vec<u128> = vec![0_u128; a.len()];
             for i in 0..a.len() {
                 target[i] = (a[i] > b[i]) as u128;
             }
-            test_rep_greater_than128(a.map(|x| *x as f64), b.map(|x| *x as f64), target);
+            test_rep_greater128(a.map(|x| *x as f64), b.map(|x| *x as f64), target);
         }
     }
 
@@ -2937,6 +3134,9 @@ mod tests {
     rep_approx_unary_fixed_test!(test_rep_exp_fixed64, exp<i64, u64>, 10, 10, 0.1);
     rep_approx_unary_fixed_test!(test_rep_exp_fixed128, exp<i128, u128>, 20, 20, 0.001);
 
+    rep_approx_unary_fixed_test!(test_rep_sqrt_fixed64, sqrt<i64, u64>, 10, 10, 0.1);
+    rep_approx_unary_fixed_test!(test_rep_sqrt_fixed128, sqrt<i128, u128>, 20, 20, 0.001);
+
     #[test]
     fn test_exp2_64() {
         let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
@@ -2963,6 +3163,24 @@ mod tests {
         let x = array![1f64, 2.5, -3.0, 4.0].into_dyn();
         let y_targets: Vec<_> = x.iter().map(|item| item.exp()).collect();
         test_rep_exp_fixed128(x, y_targets);
+    }
+
+    #[test]
+    fn test_sqrt_64() {
+        let x = array![0.001, 0.01, 0.1, 1f64, 2., 3., 4., 10., 20., 30., 40., 50., 100., 1000.]
+            .into_dyn();
+        let y_targets: Vec<_> = x.iter().map(|item| item.sqrt()).collect();
+        test_rep_sqrt_fixed64(x, y_targets);
+    }
+
+    #[test]
+    fn test_sqrt_128() {
+        let x = array![
+            0.001, 0.01, 0.1, 1f64, 2., 3., 4., 10., 50., 100., 1000., 10000., 100000., 500000.
+        ]
+        .into_dyn();
+        let y_targets: Vec<_> = x.iter().map(|item| item.sqrt()).collect();
+        test_rep_sqrt_fixed128(x, y_targets);
     }
 
     rep_approx_unary_fixed_test!(test_rep_sigmoid_fixed64, sigmoid<i64, u64>, 10, 10, 0.1);
@@ -3069,26 +3287,26 @@ mod tests {
         };
     }
 
-    rep_signed_binary_func_test!(test_rep_greater_than64, greater_than<i64, u64>, 10, 10);
-    rep_signed_binary_func_test!(test_rep_greater_than128, greater_than<i128, u128>, 10, 10);
+    rep_signed_binary_func_test!(test_rep_greater64, greater<i64, u64>, 10, 10);
+    rep_signed_binary_func_test!(test_rep_greater128, greater<i128, u128>, 10, 10);
 
     rep_signed_binary_func_test!(test_rep_less_than64, less<i64, u64>, 10, 10);
     rep_signed_binary_func_test!(test_rep_less_than128, less<i128, u128>, 20, 20);
 
     #[test]
-    fn test_fixed_rep_greater_than64() {
+    fn test_fixed_rep_greater64() {
         let x = array![0f64, 2.7, -2.9, 4.1].into_dyn();
         let y = array![1f64, 2.5, -3.0, 4.0].into_dyn();
         let targets: Vec<u64> = vec![0_u64, 1, 1, 1];
-        test_rep_greater_than64(x, y, targets);
+        test_rep_greater64(x, y, targets);
     }
 
     #[test]
-    fn test_fixed_rep_greater_than128() {
+    fn test_fixed_rep_greater128() {
         let x = array![0f64, 2.7, -2.9, 4.1, -3.555].into_dyn();
         let y = array![1f64, 2.5, -3.0, 4.0, -3.354].into_dyn();
         let targets: Vec<u128> = vec![0_u128, 1, 1, 1, 0];
-        test_rep_greater_than128(x, y, targets);
+        test_rep_greater128(x, y, targets);
     }
 
     #[test]

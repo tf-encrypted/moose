@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 #[cfg(feature = "async_execute")]
 pub mod asynchronous;
+pub(crate) mod kernel_helpers;
 #[cfg(feature = "compile")]
 pub mod symbolic;
 #[cfg(feature = "sync_execute")]

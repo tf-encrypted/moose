@@ -77,7 +77,7 @@ class LinearRegressionExample(parameterized.TestCase):
                 # the past. For now, we've decided to implement squeeze and unsqueeze
                 # ops instead.
                 # But we have a feeling this issue will continue to come up!
-                bias_shape = edsl.slice(edsl.shape(X), begin=0, end=1)
+                bias_shape = edsl.shape(X)[0:1]
                 bias = edsl.ones(bias_shape, dtype=edsl.float64)
                 reshaped_bias = edsl.expand_dims(bias, 1)
                 X_b = edsl.concatenate([reshaped_bias, X], axis=1)
