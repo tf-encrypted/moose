@@ -10,6 +10,7 @@ use crate::replicated::*;
 use crate::storage::LocalSyncStorage;
 use crate::storage::SyncStorage;
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -102,41 +103,42 @@ impl SyncSession {
     }
 }
 
-impl DispatchKernel<SyncSession> for SendOp {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession>> {
+impl DispatchKernel<SyncSession, Value> for SendOp {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession, Value>> {
         if let Placement::Host(plc) = plc {
             let plc = plc.clone();
             let op = self.clone();
-            Ok(Box::new(move |sess, operands| {
-                assert_eq!(operands.len(), 1);
-                let x = operands.get(0).unwrap();
-                sess.networking.send(
-                    x,
-                    sess.find_role_assignment(&op.receiver)?,
-                    &op.rendezvous_key,
-                    &sess.session_id,
-                )?;
-                Ok(HostUnit(plc.clone()).into())
-            }))
+            Ok(Kernel::Unary {
+                closure: Box::new(move |sess, _plc, x| {
+                    sess.networking.send(
+                        &x,
+                        sess.find_role_assignment(&op.receiver)?,
+                        &op.rendezvous_key,
+                        &sess.session_id,
+                    )?;
+                    Ok(HostUnit(plc.clone()).into())
+                }),
+            })
         } else {
             unimplemented!()
         }
     }
 }
 
-impl DispatchKernel<SyncSession> for ReceiveOp {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession>> {
+impl DispatchKernel<SyncSession, Value> for ReceiveOp {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession, Value>> {
         if let Placement::Host(_plc) = plc {
             let op = self.clone();
-            Ok(Box::new(move |sess, operands| {
-                assert_eq!(operands.len(), 0);
-                // TODO(Morten) we should verify type of received value
-                sess.networking.receive(
-                    sess.find_role_assignment(&op.sender)?,
-                    &op.rendezvous_key,
-                    &sess.session_id,
-                )
-            }))
+            Ok(Kernel::Nullary {
+                closure: Box::new(move |sess, _plc| {
+                    // TODO(Morten) we should verify type of received value
+                    sess.networking.receive(
+                        sess.find_role_assignment(&op.sender)?,
+                        &op.rendezvous_key,
+                        &sess.session_id,
+                    )
+                }),
+            })
         } else {
             Err(Error::UnimplementedOperator(format!(
                 "ReceiveOp is not implemented for placement {:?}",
@@ -146,118 +148,150 @@ impl DispatchKernel<SyncSession> for ReceiveOp {
     }
 }
 
+impl DispatchKernel<SyncSession, Value> for Operator {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<SyncSession, Value>> {
+        use Operator::*;
+        match self {
+            Load(_) => unimplemented!(),
+            Save(_) => unimplemented!(),
+            Send(op) => DispatchKernel::compile(op, plc),
+            Receive(op) => DispatchKernel::compile(op, plc),
+
+            Abs(op) => DispatchKernel::compile(op, plc),
+            Add(op) => DispatchKernel::compile(op, plc),
+            AdtToRep(op) => DispatchKernel::compile(op, plc),
+            AddN(op) => DispatchKernel::compile(op, plc),
+            And(op) => DispatchKernel::compile(op, plc),
+            Argmax(op) => DispatchKernel::compile(op, plc),
+            AtLeast2D(op) => DispatchKernel::compile(op, plc),
+            BitCompose(op) => DispatchKernel::compile(op, plc),
+            BitDecompose(op) => DispatchKernel::compile(op, plc),
+            BitExtract(op) => DispatchKernel::compile(op, plc),
+            Broadcast(op) => DispatchKernel::compile(op, plc),
+            Cast(op) => DispatchKernel::compile(op, plc),
+            Concat(op) => DispatchKernel::compile(op, plc),
+            Constant(op) => DispatchKernel::compile(op, plc),
+            Decrypt(op) => DispatchKernel::compile(op, plc),
+            Demirror(op) => DispatchKernel::compile(op, plc),
+            DeriveSeed(op) => DispatchKernel::compile(op, plc),
+            Dot(op) => DispatchKernel::compile(op, plc),
+            Diag(op) => DispatchKernel::compile(op, plc),
+            Div(op) => DispatchKernel::compile(op, plc),
+            Equal(op) => DispatchKernel::compile(op, plc),
+            EqualZero(op) => DispatchKernel::compile(op, plc),
+            Exp(op) => DispatchKernel::compile(op, plc),
+            ExpandDims(op) => DispatchKernel::compile(op, plc),
+            Fill(op) => DispatchKernel::compile(op, plc),
+            FixedpointDecode(op) => DispatchKernel::compile(op, plc),
+            FixedpointEncode(op) => DispatchKernel::compile(op, plc),
+            GreaterThan(op) => DispatchKernel::compile(op, plc),
+            Identity(op) => DispatchKernel::compile(op, plc),
+            Index(op) => DispatchKernel::compile(op, plc),
+            IndexAxis(op) => DispatchKernel::compile(op, plc),
+            Input(op) => DispatchKernel::compile(op, plc),
+            Inverse(op) => DispatchKernel::compile(op, plc),
+            LessThan(op) => DispatchKernel::compile(op, plc),
+            Log(op) => DispatchKernel::compile(op, plc),
+            Log2(op) => DispatchKernel::compile(op, plc),
+            Maximum(op) => DispatchKernel::compile(op, plc),
+            Mean(op) => DispatchKernel::compile(op, plc),
+            Mirror(op) => DispatchKernel::compile(op, plc),
+            Msb(op) => DispatchKernel::compile(op, plc),
+            Mul(op) => DispatchKernel::compile(op, plc),
+            Mux(op) => DispatchKernel::compile(op, plc),
+            Neg(op) => DispatchKernel::compile(op, plc),
+            Ones(op) => DispatchKernel::compile(op, plc),
+            Or(op) => DispatchKernel::compile(op, plc),
+            Pow2(op) => DispatchKernel::compile(op, plc),
+            PrfKeyGen(op) => DispatchKernel::compile(op, plc),
+            Relu(op) => DispatchKernel::compile(op, plc),
+            Reshape(op) => DispatchKernel::compile(op, plc),
+            Reveal(op) => DispatchKernel::compile(op, plc),
+            RepToAdt(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointArgmax(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointDecode(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointEncode(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointMean(op) => DispatchKernel::compile(op, plc),
+            RingInject(op) => DispatchKernel::compile(op, plc),
+            Sample(op) => DispatchKernel::compile(op, plc),
+            SampleSeeded(op) => DispatchKernel::compile(op, plc),
+            Shape(op) => DispatchKernel::compile(op, plc),
+            Share(op) => DispatchKernel::compile(op, plc),
+            Shl(op) => DispatchKernel::compile(op, plc),
+            ShlDim(op) => DispatchKernel::compile(op, plc),
+            Shr(op) => DispatchKernel::compile(op, plc),
+            Sigmoid(op) => DispatchKernel::compile(op, plc),
+            Sign(op) => DispatchKernel::compile(op, plc),
+            Slice(op) => DispatchKernel::compile(op, plc),
+            Softmax(op) => DispatchKernel::compile(op, plc),
+            Sqrt(op) => DispatchKernel::compile(op, plc),
+            Squeeze(op) => DispatchKernel::compile(op, plc),
+            Sub(op) => DispatchKernel::compile(op, plc),
+            Sum(op) => DispatchKernel::compile(op, plc),
+            Transpose(op) => DispatchKernel::compile(op, plc),
+            TruncPr(op) => DispatchKernel::compile(op, plc),
+            Output(op) => DispatchKernel::compile(op, plc),
+            Xor(op) => DispatchKernel::compile(op, plc),
+            Zeros(op) => DispatchKernel::compile(op, plc),
+        }
+    }
+}
+
 impl Session for SyncSession {
     type Value = Value;
 
     fn execute(&self, op: &Operator, plc: &Placement, operands: Operands<Value>) -> Result<Value> {
-        use Operator::*;
-        let kernel_output = match op {
-            Send(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Receive(op) => DispatchKernel::execute(op, plc, self, operands)?,
-
-            // TODO(Morten) we should verify type of loaded value
-            Load(op) => {
-                use std::convert::TryInto;
+        let mut operands = operands;
+        let kernel: Kernel<SyncSession, _> = match op {
+            Operator::Load(op) => {
                 assert_eq!(operands.len(), 2);
-                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
-                let query: HostString = operands.get(1).unwrap().clone().try_into()?;
-                self.storage
-                    .load(&key.0, &self.session_id, Some(op.sig.ret()), &query.0)?
+                let query: HostString = operands.pop().unwrap().try_into()?;
+                let key: HostString = operands.pop().unwrap().try_into()?;
+                // TODO(Morten) we should verify type of loaded value
+                return self
+                    .storage
+                    .load(&key.0, &self.session_id, Some(op.sig.ret()), &query.0);
             }
-            Save(_) => {
-                use std::convert::TryInto;
+            Operator::Save(_) => {
                 assert_eq!(operands.len(), 2);
-                let key: HostString = operands.get(0).unwrap().clone().try_into()?;
-                let x = operands.get(1).unwrap().clone();
-                self.storage.save(&key.0, &self.session_id, &x)?;
+                let value: Value = operands.pop().unwrap();
+                let key: HostString = operands.pop().unwrap().try_into()?;
+                self.storage.save(&key.0, &self.session_id, &value)?;
                 let host = match plc {
                     Placement::Host(host) => host,
                     _ => unimplemented!(
                         "SyncSession does not support running Save on non-host placements yet"
                     ),
                 };
-                HostUnit(host.clone()).into()
+                return Ok(HostUnit(host.clone()).into());
             }
-
-            // The regular kernels
-            Shape(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Broadcast(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            PrfKeyGen(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Xor(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            And(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Or(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            BitExtract(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Sample(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            SampleSeeded(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Shl(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Shr(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            RingFixedpointArgmax(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            RingFixedpointMean(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            RingFixedpointEncode(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            RingFixedpointDecode(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            RingInject(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Fill(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Share(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Reveal(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            TruncPr(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Msb(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Abs(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Relu(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            RepToAdt(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            AddN(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Index(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            BitDecompose(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            BitCompose(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            ShlDim(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            AdtToRep(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            DeriveSeed(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Decrypt(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Constant(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Input(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Output(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Sqrt(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            FixedpointEncode(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            FixedpointDecode(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Diag(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            ExpandDims(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Squeeze(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Sign(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Identity(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Cast(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            AtLeast2D(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            IndexAxis(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Slice(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Ones(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Zeros(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Concat(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Reshape(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Transpose(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Dot(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Inverse(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Add(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Sub(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Mul(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Mean(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Neg(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Sum(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Div(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Mux(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Pow2(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Exp(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Sigmoid(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Log2(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Log(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Equal(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            EqualZero(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            LessThan(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            GreaterThan(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Maximum(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Softmax(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Argmax(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Demirror(op) => DispatchKernel::execute(op, plc, self, operands)?,
-            Mirror(op) => DispatchKernel::execute(op, plc, self, operands)?,
-        };
-        Ok(kernel_output)
+            op => DispatchKernel::compile(op, plc),
+        }?;
+        match kernel {
+            Kernel::Nullary { closure } => {
+                assert_eq!(operands.len(), 0);
+                closure(self, plc)
+            }
+            Kernel::Unary { closure } => {
+                assert_eq!(operands.len(), 1);
+                let x0 = operands.pop().unwrap();
+                closure(self, plc, x0)
+            }
+            Kernel::Binary { closure } => {
+                assert_eq!(operands.len(), 2);
+                let x1 = operands.pop().unwrap();
+                let x0 = operands.pop().unwrap();
+                closure(self, plc, x0, x1)
+            }
+            Kernel::Ternary { closure } => {
+                assert_eq!(operands.len(), 3);
+                let x2 = operands.pop().unwrap();
+                let x1 = operands.pop().unwrap();
+                let x0 = operands.pop().unwrap();
+                closure(self, plc, x0, x1, x2)
+            }
+            Kernel::Variadic { closure } => closure(self, plc, operands),
+        }
     }
 }
 
