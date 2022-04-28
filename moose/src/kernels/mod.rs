@@ -31,6 +31,18 @@ pub use io::*;
 pub use sampling::*;
 pub use shapes::*;
 
+pub trait DispatchKernel<S: Session, V> {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<S, V>>;
+}
+
+pub enum Kernel<S: Session, V> {
+    Nullary { closure: NullaryKernel<S, V> },
+    Unary { closure: UnaryKernel<S, V> },
+    Binary { closure: BinaryKernel<S, V> },
+    Ternary { closure: TernaryKernel<S, V> },
+    Variadic { closure: VariadicKernel<S, V> },
+}
+
 pub type NullaryKernel<S, V> = Box<
     dyn Fn(
             &S,
@@ -83,22 +95,6 @@ pub type VariadicKernel<S, V> = Box<
         + Sync,
 >;
 
-pub enum Kernel<S: Session, V> {
-    Nullary { closure: NullaryKernel<S, V> },
-    Unary { closure: UnaryKernel<S, V> },
-    Binary { closure: BinaryKernel<S, V> },
-    Ternary { closure: TernaryKernel<S, V> },
-    Variadic { closure: VariadicKernel<S, V> },
-}
-
-pub trait DispatchKernel<S: Session, V> {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<S, V>>;
-}
-
-// TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
-// function kernels then we could consider returning an enum over
-// fn.. and Box<dyn Fn...> in the traits below instead
-
 pub(crate) type TypedNullaryKernel<S, P, Y> = Box<dyn Fn(&S, &P) -> Result<Y> + Send + Sync>;
 
 pub(crate) type TypedUnaryKernel<S, P, X0, Y> = Box<dyn Fn(&S, &P, X0) -> Result<Y> + Send + Sync>;
@@ -106,7 +102,7 @@ pub(crate) type TypedUnaryKernel<S, P, X0, Y> = Box<dyn Fn(&S, &P, X0) -> Result
 pub(crate) type TypedBinaryKernel<S, P, X0, X1, Y> =
     Box<dyn Fn(&S, &P, X0, X1) -> Result<Y> + Send + Sync>;
 
-pub(crate) type TypedVariadicKernelSlice<S, P, XS, Y> =
+pub(crate) type TypedVariadicKernel<S, P, XS, Y> =
     Box<dyn Fn(&S, &P, &[XS]) -> Result<Y> + Send + Sync>;
 
 pub trait PlacementKeyGen<S: Session, KeyT> {

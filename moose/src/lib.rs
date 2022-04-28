@@ -45,11 +45,7 @@ macro_rules! ng_derive_runtime_kernel {
                 $u,
             >
         > = &|$op_ke| $ke;
-        let k: crate::kernels::TypedNullaryKernel<
-            crate::execution::SyncSession,
-            $plc,
-            $u,
-        > = kf(&$op)?;
+        let k = kf(&$op)?;
         crate::execution::kernel_helpers::nullary::<
             crate::execution::SyncSession,
             $u,
@@ -106,11 +102,7 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
             >
         > = &|$op_ke| $ke;
-        let k: crate::kernels::TypedNullaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-        > = kf(&$op)?;
+        let k = kf(&$op)?;
         crate::execution::kernel_helpers::symbolic::concrete::nullary::<
             $u,
             $plc,
@@ -144,28 +136,6 @@ macro_rules! ng_derive_runtime_kernel {
         >(Operator::from($op.clone()), k)
     };
 
-    // TODO outdated
-    // (symbolic nullary hybrid $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? $k:path, $op:ident) => {
-    //     {
-    //         $(
-    //             let $attr = $op.$attr.clone();
-    //         )+
-    //         let k: crate::kernels::TypedNullaryKernel<
-    //             crate::execution::SymbolicSession,
-    //             _,
-    //             _,
-    //         > = Box::new(move |sess, plc| {
-    //             $k(sess, &plc, $($attr.clone()),+)
-    //         });
-    //         crate::execution::kernel_helpers::symbolic::hybrid::nullary::<$u, $plc>(Operator::from($op.clone()), $k)
-    //     }
-    // };
-
-    // TODO outdated
-    // (symbolic nullary hybrid $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-    //     crate::execution::kernel_helpers::symbolic::hybrid::nullary::<$u, $plc>(Operator::from($op.clone()), $k)
-    // };
-
     (async nullary $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
         let kf: &dyn Fn(&Self) -> crate::error::Result<
             crate::kernels::TypedNullaryKernel<
@@ -174,11 +144,7 @@ macro_rules! ng_derive_runtime_kernel {
                 $u,
             >
         > = &|$op_ke| $ke;
-        let k: crate::kernels::TypedNullaryKernel<
-            crate::execution::AsyncSession,
-            $plc,
-            $u,
-        > = kf(&$op)?;
+        let k = kf(&$op)?;
         crate::execution::kernel_helpers::nullary::<
             crate::execution::AsyncSession,
             $u,
@@ -224,12 +190,7 @@ macro_rules! ng_derive_runtime_kernel {
                 $u,
             >
         > = &|$op_ke| $ke;
-        let k: crate::kernels::TypedUnaryKernel<
-            crate::execution::SyncSession,
-            $plc,
-            $t0,
-            $u,
-        > = kf(&$op)?;
+        let k = kf(&$op)?;
         crate::execution::kernel_helpers::unary::<
             crate::execution::SyncSession,
             $t0,
@@ -279,12 +240,7 @@ macro_rules! ng_derive_runtime_kernel {
                 $u,
             >
         > = &|$op_ke| $ke;
-        let k: crate::kernels::TypedUnaryKernel<
-            crate::execution::AsyncSession,
-            $plc,
-            $t0,
-            $u,
-        > = kf(&$op)?;
+        let k = kf(&$op)?;
         crate::execution::kernel_helpers::unary::<
             crate::execution::AsyncSession,
             $t0,
@@ -346,12 +302,7 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
             >
         > = &|$op_ke| $ke;
-        let k: crate::kernels::TypedUnaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-            _,
-        > = kf(&$op)?;
+        let k = kf(&$op)?;
         crate::execution::kernel_helpers::symbolic::concrete::unary::<
             $t0,
             $u,
@@ -398,12 +349,7 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
             >
         > = &|$op_ke| $ke;
-        let k: crate::kernels::TypedUnaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-            _,
-        > = kf(&$op)?;
+        let k = kf(&$op)?;
         crate::execution::kernel_helpers::symbolic::transparent::unary::<
             $t0,
             $u,
@@ -450,12 +396,7 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
             >
         > = &|$op_ke| $ke;
-        let k: crate::kernels::TypedUnaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-            _,
-        > = kf(&$op)?;
+        let k = kf(&$op)?;
         crate::execution::kernel_helpers::symbolic::hybrid::unary::<
             $t0,
             $u,
@@ -511,13 +452,7 @@ macro_rules! ng_derive_runtime_kernel {
                 $u,
             >
         > = &|$op_ke| $ke;
-        let k: crate::kernels::TypedBinaryKernel<
-            crate::execution::SyncSession,
-            $plc,
-            $t0,
-            $t1,
-            $u,
-        > = kf(&$op)?;
+        let k = kf(&$op)?;
         crate::execution::kernel_helpers::binary::<
             crate::execution::SyncSession,
             $t0,
@@ -572,13 +507,7 @@ macro_rules! ng_derive_runtime_kernel {
                 $u,
             >
         > = &|$op_ke| $ke;
-        let k: crate::kernels::TypedBinaryKernel<
-            crate::execution::AsyncSession,
-            $plc,
-            $t0,
-            $t1,
-            $u,
-        > = kf(&$op)?;
+        let k = kf(&$op)?;
         crate::execution::kernel_helpers::binary::<
             crate::execution::AsyncSession,
             $t0,
@@ -645,13 +574,7 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
             >
         > = &|$op_ke| $ke;
-        let k: crate::kernels::TypedBinaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-            _,
-            _,
-        > = kf(&$op)?;
+        let k = kf(&$op)?;
         crate::execution::kernel_helpers::symbolic::concrete::binary::<
             $t0,
             $u,
@@ -702,13 +625,7 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
             >
         > = &|$op_ke| $ke;
-        let k: crate::kernels::TypedBinaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-            _,
-            _,
-        > = kf(&$op)?;
+        let k = kf(&$op)?;
         crate::execution::kernel_helpers::symbolic::transparent::binary::<
             $t0,
             $t1,
@@ -760,13 +677,7 @@ macro_rules! ng_derive_runtime_kernel {
                 _,
             >
         > = &|$op_ke| $ke;
-        let k: crate::kernels::TypedBinaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-            _,
-            _,
-        > = kf(&$op)?;
+        let k = kf(&$op)?;
         crate::execution::kernel_helpers::symbolic::hybrid::binary::<
             $t0,
             $t1,
@@ -903,7 +814,7 @@ macro_rules! ng_derive_runtime_kernel {
             $(
                 let $attr = $op.$attr.clone();
             )+
-            let k: crate::kernels::TypedVariadicKernelSlice<
+            let k: crate::kernels::TypedVariadicKernel<
                 crate::execution::SyncSession,
                 $plc,
                 $ts,
@@ -953,7 +864,7 @@ macro_rules! ng_derive_runtime_kernel {
             $(
                 let $attr = $op.$attr.clone();
             )+
-            let k: crate::kernels::TypedVariadicKernelSlice<
+            let k: crate::kernels::TypedVariadicKernel<
                 crate::execution::SymbolicSession,
                 _,
                 _,
@@ -965,7 +876,7 @@ macro_rules! ng_derive_runtime_kernel {
                 $ts,
                 $u,
                 $plc,
-                _,
+                Box<_>,
             >(Operator::from($op.clone()), k)
         }
     };
@@ -984,7 +895,7 @@ macro_rules! ng_derive_runtime_kernel {
             $(
                 let $attr = $op.$attr.clone();
             )+
-            let k: crate::kernels::TypedVariadicKernelSlice<
+            let k: crate::kernels::TypedVariadicKernel<
                 crate::execution::AsyncSession,
                 $plc,
                 $ts,
