@@ -10,6 +10,11 @@ from pymoose.computation import dtypes
 from pymoose.computation import types as ty
 from pymoose.computation import values
 
+try:  # post python 3.10
+    from types import EllipsisType
+except ImportError:
+    EllipsisType = type(...)
+
 CURRENT_PLACEMENT: List = []
 _NUMPY_DTYPES_MAP = {
     np.uint32: dtypes.uint32,
@@ -101,6 +106,51 @@ class Expression:
 
     def __hash__(self):
         return id(self)
+
+    def __getitem__(self, slice_spec):
+        # TODO explicitly construe placement from
+        # global placement context and/or self.placement?
+        assert isinstance(self.vtype, (ty.TensorType, ty.ShapeType, ty.AesTensorType))
+        assert isinstance(slice_spec, (slice, EllipsisType, list, tuple))
+        if isinstance(self.vtype, (ty.TensorType, ty.AesTensorType)):
+
+            # turn single entry to a list of entries
+            if isinstance(slice_spec, (slice, EllipsisType)):
+                slice_spec = (slice_spec,)
+
+            assert isinstance(slice_spec, (list, tuple))
+            slice_rewrite = []
+            for cur_slice in slice_spec:
+                assert isinstance(cur_slice, (slice, EllipsisType))
+                if isinstance(cur_slice, EllipsisType):
+                    slice_rewrite.append(slice(None, None, None))
+                elif isinstance(cur_slice, slice):
+                    slice_rewrite.append(cur_slice)
+                else:
+                    raise ValueError(
+                        "Indexing with other types different than Ellipsis and slice "
+                        "is not yet supported."
+                    )
+            return strided_slice(self, slices=slice_rewrite)
+        elif isinstance(self.vtype, ty.ShapeType):
+            if isinstance(slice_spec, (tuple, list)):
+                if len(slice_spec) > 2:
+                    raise ValueError(
+                        "Indexing ShapeType requires a simple slice, including only "
+                        "`start` & `stop` slice values."
+                    )
+                begin, end = slice_spec
+                assert isinstance(begin, int) and isinstance(end, int)
+            elif isinstance(slice_spec, slice):
+                if slice_spec.step is not None:
+                    raise ValueError(
+                        "Indexing ShapeType requires a simple slice, including only "
+                        "`start` & `stop` slice values."
+                    )
+                begin, end = slice_spec.start, slice_spec.stop
+            return sliced(self, begin, end)
+        else:
+            raise IndexError(f"Expression of vtype {self.vtype} is not slice-able.")
 
 
 @dataclass
@@ -340,6 +390,14 @@ class SliceExpression(Expression):
 
 
 @dataclass
+class StridedSliceExpression(Expression):
+    slices: Optional[Tuple[slice]]
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class LessExpression(Expression):
     def __hash__(self):
         return id(self)
@@ -364,7 +422,7 @@ class MuxExpression(Expression):
 
 
 def add_n(arrays, placement=None):
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     if not isinstance(arrays, (tuple, list)):
         raise ValueError(
             "Inputs to `add_n` must be array-like, found argument "
@@ -390,12 +448,12 @@ def add_n(arrays, placement=None):
 
 
 def identity(x, placement=None):
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return IdentityExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def concatenate(arrays, axis=0, placement=None):
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     if not isinstance(arrays, (tuple, list)):
         raise ValueError(
             "Inputs to `concatenate` must be array-like, found argument "
@@ -424,7 +482,7 @@ def concatenate(arrays, axis=0, placement=None):
 
 
 def maximum(arrays, placement=None):
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     if not isinstance(arrays, (tuple, list)):
         raise ValueError(
             "Inputs to `concatenate` must be array-like, found argument "
@@ -451,7 +509,7 @@ def maximum(arrays, placement=None):
 
 
 def decrypt(key, ciphertext, placement=None):
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
 
     # key expr typecheck
     if not isinstance(key.vtype, ty.AesKeyType):
@@ -477,7 +535,7 @@ def decrypt(key, ciphertext, placement=None):
 
 
 def constant(value, dtype=None, vtype=None, placement=None):
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     vtype = _maybe_lift_dtype_to_tensor_vtype(dtype, vtype)
 
     if isinstance(value, np.ndarray):
@@ -516,7 +574,7 @@ def constant(value, dtype=None, vtype=None, placement=None):
 def add(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "add")
     return BinaryOpExpression(
         op_name="add", placement=placement, inputs=[lhs, rhs], vtype=vtype
@@ -526,7 +584,7 @@ def add(lhs, rhs, placement=None):
 def sub(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "sub")
     return BinaryOpExpression(
         op_name="sub", placement=placement, inputs=[lhs, rhs], vtype=vtype
@@ -536,7 +594,7 @@ def sub(lhs, rhs, placement=None):
 def mul(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "mul")
     return BinaryOpExpression(
         op_name="mul", placement=placement, inputs=[lhs, rhs], vtype=vtype
@@ -546,7 +604,7 @@ def mul(lhs, rhs, placement=None):
 def dot(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "dot")
     return BinaryOpExpression(
         op_name="dot", placement=placement, inputs=[lhs, rhs], vtype=vtype
@@ -556,7 +614,7 @@ def dot(lhs, rhs, placement=None):
 def div(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "div")
     return BinaryOpExpression(
         op_name="div", placement=placement, inputs=[lhs, rhs], vtype=vtype
@@ -566,7 +624,7 @@ def div(lhs, rhs, placement=None):
 def less(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return BinaryOpExpression(
         op_name="less",
         placement=placement,
@@ -590,7 +648,7 @@ def greater(lhs, rhs, placement=None):
 def logical_or(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "or")
     return BinaryOpExpression(
         op_name="or", placement=placement, inputs=[lhs, rhs], vtype=vtype
@@ -599,7 +657,7 @@ def logical_or(lhs, rhs, placement=None):
 
 def inverse(x, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     vtype = x.vtype
     if not isinstance(vtype, ty.TensorType):
         raise ValueError(
@@ -624,7 +682,7 @@ def expand_dims(x, axis, placement=None):
                 )
     elif isinstance(axis, int):
         axis = [axis]
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return ExpandDimsExpression(
         placement=placement, inputs=[x], axis=axis, vtype=x.vtype
     )
@@ -632,45 +690,45 @@ def expand_dims(x, axis, placement=None):
 
 def squeeze(x, axis=None, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return SqueezeExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
 
 
 def ones(shape, dtype, placement=None):
     assert isinstance(shape, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     vtype = ty.TensorType(dtype)
     return OnesExpression(placement=placement, inputs=[shape], vtype=vtype)
 
 
 def zeros(shape, dtype, placement=None):
     assert isinstance(shape, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     vtype = ty.TensorType(dtype)
     return ZerosExpression(placement=placement, inputs=[shape], vtype=vtype)
 
 
 def square(x, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return mul(x, x, placement=placement)
 
 
 def sum(x, axis=None, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return SumExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
 
 
 def mean(x, axis=None, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return MeanExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
 
 
 def exp(x, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return ExpExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
@@ -682,7 +740,7 @@ def sqrt(x, placement=None):
 
 def sigmoid(x, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return SigmoidExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
@@ -694,7 +752,7 @@ def relu(x, placement=None):
 
 def softmax(x, axis, upmost_index, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return SoftmaxExpression(
         placement=placement,
         inputs=[x],
@@ -706,7 +764,7 @@ def softmax(x, axis, upmost_index, placement=None):
 
 def argmax(x, axis, upmost_index, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return ArgmaxExpression(
         placement=placement,
         inputs=[x],
@@ -718,7 +776,7 @@ def argmax(x, axis, upmost_index, placement=None):
 
 def log(x, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return LogExpression(
         placement=placement,
         inputs=[x],
@@ -728,13 +786,13 @@ def log(x, placement=None):
 
 def log2(x, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return Log2Expression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def shape(x, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return ShapeExpression(placement=placement, inputs=[x], vtype=ty.ShapeType())
 
 
@@ -751,25 +809,39 @@ def index_axis(x, axis, index, placement=None):
             f"{index} of type {type(index)}"
         )
 
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return IndexAxisExpression(
         placement=placement, inputs=[x], axis=axis, index=index, vtype=x.vtype
     )
 
 
-def slice(x, begin, end, placement=None):
+def sliced(x, begin, end, placement=None):
     assert isinstance(x, Expression)
     assert isinstance(begin, int)
     assert isinstance(end, int)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return SliceExpression(
         placement=placement, inputs=[x], begin=begin, end=end, vtype=x.vtype
     )
 
 
+def strided_slice(x, slices, placement=None):
+    assert isinstance(x, Expression)
+    assert isinstance(slices, (tuple, list))
+    placement = _materialize_placement_arg(placement)
+    for s in slices:
+        if not isinstance(s, slice):
+            raise ValueError(
+                "`slices` argument must a list/tuple of slices, found " f"{type(s)}"
+            )
+    return StridedSliceExpression(
+        placement=placement, inputs=[x], slices=slices, vtype=x.vtype
+    )
+
+
 def transpose(x, axes=None, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return TransposeExpression(
         placement=placement, inputs=[x], axes=axes, vtype=x.vtype
     )
@@ -777,7 +849,7 @@ def transpose(x, axes=None, placement=None):
 
 def atleast_2d(x, to_column_vector=False, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return AtLeast2DExpression(
         placement=placement,
         inputs=[x],
@@ -793,13 +865,13 @@ def reshape(x, shape, placement=None):
             values.ShapeConstant(value=shape), vtype=ty.ShapeType(), placement=placement
         )
     assert isinstance(shape, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return ReshapeExpression(placement=placement, inputs=[x, shape], vtype=x.vtype)
 
 
 def abs(x, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return AbsExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
@@ -813,7 +885,7 @@ def mux(selector, x, y, placement=None):
     assert isinstance(y, Expression)
     assert isinstance(y.vtype, ty.TensorType), y.vtype
     assert y.vtype.dtype.is_fixedpoint, y.vtype.dtype
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     assert isinstance(placement, ReplicatedPlacementExpression)
     vtype = _assimilate_arg_vtypes(x.vtype, y.vtype, "mux")
     return MuxExpression(placement=placement, inputs=[selector, x, y], vtype=vtype)
@@ -821,7 +893,7 @@ def mux(selector, x, y, placement=None):
 
 def cast(x, dtype, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
 
     if not isinstance(x.vtype, ty.TensorType):
         raise ValueError(
@@ -860,7 +932,7 @@ def cast(x, dtype, placement=None):
 
 
 def load(key, query="", dtype=None, vtype=None, placement=None):
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     vtype = _maybe_lift_dtype_to_tensor_vtype(dtype, vtype)
     if isinstance(key, str):
         key = constant(key, placement=placement, vtype=ty.StringType())
@@ -893,7 +965,7 @@ def load(key, query="", dtype=None, vtype=None, placement=None):
 
 def save(key, value, placement=None):
     assert isinstance(value, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     if isinstance(key, str):
         key = constant(key, placement=placement, vtype=ty.StringType())
     elif isinstance(key, Argument) and key.vtype not in [ty.StringType(), None]:
@@ -918,12 +990,40 @@ class AbstractComputation:
         self.func = func
 
 
+def _assimilate_arg_dtypes(lhs_vtype, rhs_vtype, fn_name):
+    lhs_dtype = lhs_vtype.dtype
+    rhs_dtype = rhs_vtype.dtype
+    if lhs_dtype != rhs_dtype:
+        raise ValueError(
+            f"Function `{fn_name}` expected arguments of similar dtype: "
+            f"found mismatched dtypes `{lhs_dtype}` and `{rhs_dtype}`."
+        )
+    return lhs_vtype
+
+
+def _assimilate_arg_vtypes(lhs_vtype, rhs_vtype, fn_name):
+    if isinstance(lhs_vtype, ty.TensorType) and isinstance(rhs_vtype, ty.TensorType):
+        return _assimilate_arg_dtypes(lhs_vtype, rhs_vtype, fn_name)
+    if lhs_vtype != rhs_vtype:
+        raise ValueError(
+            f"Function `{fn_name}` expected arguments of similar type: "
+            f"found mismatched types `{lhs_vtype}` and `{rhs_vtype}`."
+        )
+    return lhs_vtype
+
+
 def _check_tensor_type_arg_consistency(dtype, vtype):
     if isinstance(vtype, ty.TensorType) and vtype.dtype != dtype:
         raise ValueError(
             f"Inconsistent type information for tensor: dtype {dtype} is "
             f"inconsistent with tensor type {vtype}."
         )
+
+
+def _materialize_placement_arg(plc):
+    plc = plc or get_current_placement()
+    assert isinstance(plc, PlacementExpression)
+    return plc
 
 
 def _maybe_lift_dtype_to_tensor_vtype(dtype, vtype):
@@ -956,25 +1056,3 @@ def _interpret_numeric_value(value, vtype, fallback_vtype):
             "Cannot interpret numeric constant as non-numeric type {vtype}."
         )
     return value, vtype
-
-
-def _assimilate_arg_vtypes(lhs_vtype, rhs_vtype, fn_name):
-    if isinstance(lhs_vtype, ty.TensorType) and isinstance(rhs_vtype, ty.TensorType):
-        return _assimilate_arg_dtypes(lhs_vtype, rhs_vtype, fn_name)
-    if lhs_vtype != rhs_vtype:
-        raise ValueError(
-            f"Function `{fn_name}` expected arguments of similar type: "
-            f"found mismatched types `{lhs_vtype}` and `{rhs_vtype}`."
-        )
-    return lhs_vtype
-
-
-def _assimilate_arg_dtypes(lhs_vtype, rhs_vtype, fn_name):
-    lhs_dtype = lhs_vtype.dtype
-    rhs_dtype = rhs_vtype.dtype
-    if lhs_dtype != rhs_dtype:
-        raise ValueError(
-            f"Function `{fn_name}` expected arguments of similar dtype: "
-            f"found mismatched dtypes `{lhs_dtype}` and `{rhs_dtype}`."
-        )
-    return lhs_vtype

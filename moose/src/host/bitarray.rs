@@ -1,4 +1,5 @@
 use crate::host::RawShape;
+use crate::host::SliceInfo;
 use anyhow::anyhow;
 use bitvec::prelude::*;
 use ndarray::{prelude::*, RemoveAxis};
@@ -124,6 +125,11 @@ impl BitArrayRepr {
             data: Arc::new(data),
             dim: Arc::new(IxDyn(&[len])),
         }
+    }
+
+    pub(crate) fn slice(&self, _info: SliceInfo) -> anyhow::Result<BitArrayRepr> {
+        // TODO(Dragos) Implement this in future
+        Err(anyhow::anyhow!("slicing not implemented for BitArray yet"))
     }
 }
 

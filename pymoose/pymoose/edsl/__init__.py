@@ -49,11 +49,12 @@ from pymoose.edsl.base import reshape
 from pymoose.edsl.base import save
 from pymoose.edsl.base import shape
 from pymoose.edsl.base import sigmoid
-from pymoose.edsl.base import slice
+from pymoose.edsl.base import sliced
 from pymoose.edsl.base import softmax
 from pymoose.edsl.base import sqrt
 from pymoose.edsl.base import square
 from pymoose.edsl.base import squeeze
+from pymoose.edsl.base import strided_slice
 from pymoose.edsl.base import sub
 from pymoose.edsl.base import sum
 from pymoose.edsl.base import transpose
@@ -85,6 +86,7 @@ __all__ = [
     float64,
     FloatType,
     host_placement,
+    greater,
     identity,
     index_axis,
     int32,
@@ -107,11 +109,12 @@ __all__ = [
     reshape,
     ring64,
     save,
-    slice,
     shape,
+    sliced,
     softmax,
     square,
     squeeze,
+    strided_slice,
     sigmoid,
     sub,
     sum,

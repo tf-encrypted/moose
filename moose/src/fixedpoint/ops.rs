@@ -1161,6 +1161,65 @@ impl IndexAxisOp {
     }
 }
 
+impl SliceOp {
+    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        info: SliceInfo,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementSlice<S, HostFixedT, HostFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Host(v) => v,
+        };
+        let z = plc.slice(sess, info, &x);
+        Ok(FixedTensor::Host(z))
+    }
+
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        info: SliceInfo,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementSlice<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+        let z = plc.slice(sess, info, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+
+    pub(crate) fn repfixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        info: SliceInfo,
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementSlice<S, RepRingT, RepRingT>,
+    {
+        let y = plc.slice(sess, info, &x.tensor);
+        Ok(RepFixedTensor {
+            tensor: y,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+}
+
 impl ShapeOp {
     pub(crate) fn host_fixed_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT, HostShapeT>(
         sess: &S,

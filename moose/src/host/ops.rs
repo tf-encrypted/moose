@@ -473,31 +473,71 @@ impl AtLeast2DOp {
 }
 
 impl SliceOp {
-    pub(crate) fn host_kernel<S: RuntimeSession, T>(
-        _sess: &S,
+    pub(crate) fn host_fixed_kernel<S: Session, HostRingT>(
+        sess: &S,
         plc: &HostPlacement,
-        slice_info: SliceInfo,
+        info: SliceInfo,
+        x: HostFixedTensor<HostRingT>,
+    ) -> Result<HostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementSlice<S, HostRingT, HostRingT>,
+    {
+        let tensor = plc.slice(sess, info, &x.tensor);
+        Ok(HostFixedTensor::<HostRingT> {
+            tensor,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+
+    pub(crate) fn host_bit_kernel<S: RuntimeSession>(
+        sess: &S,
+        plc: &HostPlacement,
+        info: SliceInfo,
+        x: HostBitTensor,
+    ) -> Result<HostBitTensor>
+    where
+        HostPlacement: PlacementPlace<S, HostBitTensor>,
+    {
+        let x = plc.place(sess, x);
+        x.slice(info)
+    }
+
+    pub(crate) fn host_generic_kernel<S: RuntimeSession, T: Clone>(
+        sess: &S,
+        plc: &HostPlacement,
+        info: SliceInfo,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        let x = plc.place(sess, x);
+        x.slice(info)
+    }
+
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
+        sess: &S,
+        plc: &HostPlacement,
+        info: SliceInfo,
         x: HostRingTensor<T>,
     ) -> Result<HostRingTensor<T>>
     where
         T: Clone,
+        HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
     {
-        let slice_info =
-            ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(slice_info);
-        let sliced = x.0.slice(slice_info).to_owned();
-        Ok(HostRingTensor(sliced.to_shared(), plc.clone()))
+        let x = plc.place(sess, x);
+        x.slice(info)
     }
 
     pub(crate) fn shape_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        slice_info: SliceInfo,
+        info: SliceInfo,
         x: HostShape,
     ) -> Result<HostShape> {
-        let slice = x.0.slice(
-            slice_info.0[0].start as usize,
-            slice_info.0[0].end.unwrap() as usize,
-        );
+        let slice =
+            x.0.slice(info.0[0].start as usize, info.0[0].end.unwrap() as usize);
         Ok(HostShape(slice, plc.clone()))
     }
 }
@@ -559,6 +599,21 @@ impl<T: LinalgScalar> HostTensor<T> {
     }
 }
 
+impl<T: Clone> HostTensor<T> {
+    fn slice(&self, info: SliceInfo) -> Result<HostTensor<T>> {
+        if info.0.len() != self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "The input dimension of `info` must match the array to be sliced. Used slice info dim {}, tensor had dim {}",
+                info.0.len(),
+                self.0.ndim()
+            )));
+        }
+        let info = ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(info);
+        let result = self.0.slice(info);
+        Ok(HostTensor(result.to_owned().into_shared(), self.1.clone()))
+    }
+}
+
 impl<T: Clone> HostRingTensor<T> {
     fn index_axis(self, axis: usize, index: usize) -> Result<HostRingTensor<T>> {
         if axis >= self.0.ndim() {
@@ -581,6 +636,24 @@ impl<T: Clone> HostRingTensor<T> {
     }
 }
 
+impl<T: Clone> HostRingTensor<T> {
+    fn slice(&self, info: SliceInfo) -> Result<HostRingTensor<T>> {
+        if info.0.len() != self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "The input dimension of `info` must match the array to be sliced. Used slice info dim {}, tensor had dim {}",
+                info.0.len(),
+                self.0.ndim()
+            )));
+        }
+        let info = ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(info);
+        let result = self.0.slice(info);
+        Ok(HostRingTensor(
+            result.to_owned().into_shared(),
+            self.1.clone(),
+        ))
+    }
+}
+
 impl HostBitTensor {
     fn index_axis(self, axis: usize, index: usize) -> Result<HostBitTensor> {
         if axis >= self.0.ndim() {
@@ -599,6 +672,21 @@ impl HostBitTensor {
         }
         let result = self.0.index_axis(axis, index);
         Ok(HostBitTensor(result, self.1))
+    }
+
+    fn slice(&self, info: SliceInfo) -> Result<HostBitTensor> {
+        if info.0.len() != self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "The input dimension of `info` must match the array to be sliced. Used slice info dim {}, tensor had dim {}",
+                info.0.len(),
+                self.0.ndim()
+            )));
+        }
+        let result = self
+            .0
+            .slice(info)
+            .map_err(|e| Error::KernelError(e.to_string()))?;
+        Ok(HostBitTensor(result, self.1.clone()))
     }
 }
 

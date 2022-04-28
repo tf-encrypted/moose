@@ -225,6 +225,11 @@ class SliceOperation(Operation):
 
 
 @dataclass
+class StridedSliceOperation(Operation):
+    slices: Optional[Tuple[slice]]
+
+
+@dataclass
 class BitwiseOrOperation(Operation):
     pass
 

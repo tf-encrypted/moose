@@ -2223,6 +2223,57 @@ impl SliceOp {
         }
     }
 
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        slice: SliceInfo,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementSlice<S, Float32T, Float32T>,
+        HostPlacement: PlacementSlice<S, Float64T, Float64T>,
+        HostPlacement: PlacementSlice<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementSlice<S, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementSlice<S, BoolT, BoolT>,
+        HostPlacement: PlacementSlice<S, Uint64T, Uint64T>,
+    {
+        use AbstractTensor::*;
+        match x {
+            Float32(x) => {
+                let result = plc.slice(sess, slice, &x);
+                Ok(Float32(result))
+            }
+            Float64(x) => {
+                let result = plc.slice(sess, slice, &x);
+                Ok(Float64(result))
+            }
+            Fixed64(x) => {
+                let result = plc.slice(sess, slice, &x);
+                Ok(Fixed64(result))
+            }
+            Fixed128(x) => {
+                let result = plc.slice(sess, slice, &x);
+                Ok(Fixed128(result))
+            }
+            Bool(x) => {
+                let result = plc.slice(sess, slice, &x);
+                Ok(Bool(result))
+            }
+            Uint64(x) => {
+                let result = plc.slice(sess, slice, &x);
+                Ok(Uint64(result))
+            }
+        }
+    }
+
     pub(crate) fn logical_rep_shape<S: Session, HostS, RepS>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -2240,6 +2291,51 @@ impl SliceOp {
                 let sh = plc.share(sess, &x);
                 Ok(Replicated(plc.slice(sess, slice, &sh)))
             }
+        }
+    }
+
+    pub(crate) fn logical_rep_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        info: SliceInfo,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        ReplicatedPlacement: PlacementSlice<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementSlice<S, Fixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementSlice<S, BoolT, BoolT>,
+        ReplicatedPlacement: PlacementSlice<S, Uint64T, Uint64T>,
+    {
+        use AbstractTensor::*;
+        match x {
+            Fixed64(x) => {
+                let result = plc.slice(sess, info, &x);
+                Ok(Fixed64(result))
+            }
+            Fixed128(x) => {
+                let result = plc.slice(sess, info, &x);
+                Ok(Fixed128(result))
+            }
+            Bool(x) => {
+                let result = plc.slice(sess, info, &x);
+                Ok(Bool(result))
+            }
+            Uint64(x) => {
+                let result = plc.slice(sess, info, &x);
+                Ok(Uint64(result))
+            }
+            Float32(_) | Float64(_) => Err(Error::UnimplementedOperator(format!(
+                "Missing rep slice for {:?}",
+                &x.ty_desc(),
+            ))),
         }
     }
 }
