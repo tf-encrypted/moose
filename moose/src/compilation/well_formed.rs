@@ -30,6 +30,7 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             // TODO(Morten) use DispatchKernel::compile for these as well
             Load(_) | Save(_) | Send(_) | Receive(_) => None,
 
+            Abs(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             Shape(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             Broadcast(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             PrfKeyGen(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
@@ -42,7 +43,6 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             Shr(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             Sample(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             SampleSeeded(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
-            RingFixedpointAbs(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             RingFixedpointArgmax(op) => {
                 DispatchKernel::<SymbolicSession, _>::compile(op, plc).err()
             }
@@ -109,9 +109,9 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             Mirror(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             Decrypt(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             Sqrt(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
-            Abs(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             Diag(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             Zeros(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Relu(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
         };
         if let Some(e) = compile_error {
             return Err(e.into());
