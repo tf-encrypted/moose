@@ -368,6 +368,26 @@ impl OnesOp {
     }
 }
 
+impl ReshapeOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT, HostS>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT, MirroredT>,
+        shape: HostS,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementReshape<S, HostFloatT, HostS, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+
+        let z = plc.reshape(sess, &x, &shape);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
 impl ZerosOp {
     pub(crate) fn host_float_kernel<S: Session, HostFloatT, MirroredT, HostS>(
         sess: &S,

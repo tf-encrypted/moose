@@ -697,6 +697,20 @@ def squeeze(x, axis=None, placement=None):
 def ones(shape, dtype, placement=None):
     assert isinstance(shape, Expression)
     placement = _materialize_placement_arg(placement)
+    if isinstance(shape, (list, tuple)):
+        # TODO (Yann) Currently we only have the ability to declare HostShape
+        # as constant. We should add the ability to declare RepShape as constant.
+        if isinstance(placement, ReplicatedPlacementExpression):
+            host_placement = placement.players[0]
+        else:
+            host_placement = placement
+
+        shape = constant(
+            values.ShapeConstant(value=shape),
+            vtype=ty.ShapeType(),
+            placement=host_placement,
+        )
+
     vtype = ty.TensorType(dtype)
     return OnesExpression(placement=placement, inputs=[shape], vtype=vtype)
 
@@ -704,6 +718,20 @@ def ones(shape, dtype, placement=None):
 def zeros(shape, dtype, placement=None):
     assert isinstance(shape, Expression)
     placement = _materialize_placement_arg(placement)
+    if isinstance(shape, (list, tuple)):
+        # TODO (Yann) Currently we only have the ability to declare HostShape
+        # as constant. We should add the ability to declare RepShape as constant.
+        if isinstance(placement, ReplicatedPlacementExpression):
+            host_placement = placement.players[0]
+        else:
+            host_placement = placement
+
+        shape = constant(
+            values.ShapeConstant(value=shape),
+            vtype=ty.ShapeType(),
+            placement=host_placement,
+        )
+
     vtype = ty.TensorType(dtype)
     return ZerosExpression(placement=placement, inputs=[shape], vtype=vtype)
 
@@ -860,12 +888,22 @@ def atleast_2d(x, to_column_vector=False, placement=None):
 
 def reshape(x, shape, placement=None):
     assert isinstance(x, Expression)
-    if isinstance(shape, (list, tuple)):
-        shape = constant(
-            values.ShapeConstant(value=shape), vtype=ty.ShapeType(), placement=placement
-        )
-    assert isinstance(shape, Expression)
     placement = _materialize_placement_arg(placement)
+    if isinstance(shape, (list, tuple)):
+        # TODO (Yann) Currently we only have the ability to declare HostShape
+        # as constant. We should add the ability to declare RepShape as constant.
+        if isinstance(placement, ReplicatedPlacementExpression):
+            host_placement = placement.players[0]
+        else:
+            host_placement = placement
+
+        shape = constant(
+            values.ShapeConstant(value=shape),
+            vtype=ty.ShapeType(),
+            placement=host_placement,
+        )
+
+    assert isinstance(shape, Expression)
     return ReshapeExpression(placement=placement, inputs=[x, shape], vtype=x.vtype)
 
 

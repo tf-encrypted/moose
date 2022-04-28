@@ -185,6 +185,13 @@ pub trait PlacementReshape<S: Session, T, ShapeT, O> {
 modelled_kernel! {
     PlacementReshape::reshape, ReshapeOp,
     [
+        (HostPlacement, (Tensor, Shape) -> Tensor => [concrete] Self::host_logical_kernel),
+        (HostPlacement, (Float32Tensor, HostShape) -> Float32Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor, HostShape) -> Float64Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Fixed64Tensor, HostShape) -> Fixed64Tensor => [hybrid] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor, HostShape) -> Fixed128Tensor => [hybrid] Self::fixed_host_kernel),
+        (HostPlacement, (HostFixed64Tensor, HostShape) -> HostFixed64Tensor => [hybrid] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor, HostShape) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
         (HostPlacement, (HostRing64Tensor, HostShape) -> HostRing64Tensor => [runtime] Self::host_ring_kernel),
         (HostPlacement, (HostRing128Tensor, HostShape) -> HostRing128Tensor => [runtime] Self::host_ring_kernel),
         (HostPlacement, (HostBitTensor, HostShape) -> HostBitTensor => [runtime] Self::host_bit_kernel),
@@ -198,5 +205,12 @@ modelled_kernel! {
         (HostPlacement, (HostUint16Tensor, HostShape) -> HostUint16Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostUint32Tensor, HostShape) -> HostUint32Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostUint64Tensor, HostShape) -> HostUint64Tensor => [runtime] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor, Shape) -> Tensor => [concrete] Self::rep_logical_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor, ReplicatedShape) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, ReplicatedShape) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedShape) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedShape) -> ReplicatedFixed128Tensor => [hybrid] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor, ReplicatedShape) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedShape) -> ReplicatedRing128Tensor => [concrete] Self::rep_kernel),
     ]
 }
