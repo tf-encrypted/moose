@@ -86,6 +86,7 @@ __all__ = [
     float64,
     FloatType,
     host_placement,
+    greater,
     identity,
     index_axis,
     int32,

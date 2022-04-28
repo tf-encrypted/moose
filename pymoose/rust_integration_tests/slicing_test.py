@@ -6,9 +6,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from pymoose import edsl
-from pymoose import elk_compiler
 from pymoose.computation import types as ty
-from pymoose.computation import utils
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
@@ -33,10 +31,7 @@ def compile_and_run(traced_slice_comp, x_arg):
 
 class SliceExample(parameterized.TestCase):
     def _setup_comp(self, slice_spec, to_dtype):
-        alice = edsl.host_placement(name="alice")
         bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
         @edsl.computation
         def my_comp(

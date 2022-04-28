@@ -1,4 +1,3 @@
-import builtins
 from dataclasses import dataclass
 from typing import List
 from typing import Optional
@@ -109,7 +108,8 @@ class Expression:
         return id(self)
 
     def __getitem__(self, slice_spec):
-        # TODO explicitly construe placement from global placement context and/or self.placement?
+        # TODO explicitly construe placement from
+        # global placement context and/or self.placement?
         assert isinstance(self.vtype, (ty.TensorType, ty.ShapeType, ty.AesTensorType))
         assert isinstance(slice_spec, (slice, EllipsisType, list, tuple))
         if isinstance(self.vtype, (ty.TensorType, ty.AesTensorType)):
@@ -128,7 +128,8 @@ class Expression:
                     slice_rewrite.append(cur_slice)
                 else:
                     raise ValueError(
-                        "Indexing with other types different than Ellipsis and slice is not yet supported."
+                        "Indexing with other types different than Ellipsis and slice "
+                        "is not yet supported."
                     )
             return strided_slice(self, slices=slice_rewrite)
         elif isinstance(self.vtype, ty.ShapeType):
