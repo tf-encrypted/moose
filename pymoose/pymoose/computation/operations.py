@@ -161,6 +161,11 @@ class SigmoidOperation(Operation):
 
 
 @dataclass
+class ReluOperation(Operation):
+    pass
+
+
+@dataclass
 class LogOperation(Operation):
     pass
 

@@ -256,6 +256,73 @@ impl AbsOp {
     }
 }
 
+impl ReluOp {
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementRelu<S, Float32T, Float32T>,
+        HostPlacement: PlacementRelu<S, Float64T, Float64T>,
+    {
+        match x {
+            AbstractTensor::Float32(x) => {
+                let result = plc.relu(sess, &x);
+                Ok(AbstractTensor::Float32(result))
+            }
+            AbstractTensor::Float64(x) => {
+                let result = plc.relu(sess, &x);
+                Ok(AbstractTensor::Float64(result))
+            }
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing host relu for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+    pub(crate) fn rep_logical_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        ReplicatedPlacement: PlacementRelu<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementRelu<S, Fixed128T, Fixed128T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let result = plc.relu(sess, &x);
+                Ok(AbstractTensor::Fixed64(result))
+            }
+            AbstractTensor::Fixed128(x) => {
+                let result = plc.relu(sess, &x);
+                Ok(AbstractTensor::Fixed128(result))
+            }
+            _ => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated relu for {:?}",
+                &x.ty_desc(),
+            ))),
+        }
+    }
+}
+
 impl AddNOp {
     pub(crate) fn host_logical_kernel<
         S: Session,
@@ -2355,6 +2422,74 @@ impl ExpOp {
             }
             Float32(_) | Float64(_) | Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
                 format!("Missing replicated exp for {:?}", &x.ty_desc(),),
+            )),
+        }
+    }
+}
+
+impl SqrtOp {
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementSqrt<S, Float32T, Float32T>,
+        HostPlacement: PlacementSqrt<S, Float64T, Float64T>,
+    {
+        use AbstractTensor::*;
+        match x {
+            Float32(x) => {
+                let z = plc.sqrt(sess, &x);
+                Ok(Float32(z))
+            }
+            Float64(x) => {
+                let z = plc.sqrt(sess, &x);
+                Ok(Float64(z))
+            }
+            Fixed64(_) | Fixed128(_) | Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
+                format!("Sqrt op (host) is unsupported for {:?}.", x.ty_desc()),
+            )),
+        }
+    }
+
+    pub(crate) fn logical_rep_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        ReplicatedPlacement: PlacementSqrt<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementSqrt<S, Fixed128T, Fixed128T>,
+    {
+        use AbstractTensor::*;
+        match x {
+            Fixed64(x) => {
+                let result = plc.sqrt(sess, &x);
+                Ok(Fixed64(result))
+            }
+            Fixed128(x) => {
+                let result = plc.sqrt(sess, &x);
+                Ok(Fixed128(result))
+            }
+            Float32(_) | Float64(_) | Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
+                format!("Missing replicated sqrt for {:?}", &x.ty_desc(),),
             )),
         }
     }

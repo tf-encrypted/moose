@@ -652,7 +652,7 @@ impl MsbOp {
     }
 }
 
-impl RingFixedpointAbsOp {
+impl AbsOp {
     pub(crate) fn rep_ring_kernel<S: Session, RepRingT, MirRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,

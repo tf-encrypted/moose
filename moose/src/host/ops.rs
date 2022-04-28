@@ -9,7 +9,7 @@ use ndarray::LinalgScalar;
 use ndarray::Zip;
 #[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack};
-use num_traits::{Float, FromPrimitive, Signed, Zero};
+use num_traits::{clamp_min, Float, FromPrimitive, Signed, Zero};
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::Wrapping;
@@ -185,25 +185,7 @@ impl OutputOp {
 }
 
 impl LoadOp {
-    pub(crate) fn kernel<S: RuntimeSession, O>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _key: HostString,
-        _query: HostString,
-    ) -> Result<O>
-    where
-        O: KnownType<S>,
-        O: TryFrom<Value, Error = Error>,
-        HostPlacement: PlacementPlace<S, O>,
-    {
-        // use std::convert::TryInto;
-        // let value = sess.storage.load(&key.0, &query.0, Some(<O as KnownType<S>>::TY))?;
-        // let value = plc.place(sess, value.try_into()?);
-        // Ok(value)
-        todo!()
-    }
-
-    pub(crate) fn missing_kernel<S: RuntimeSession, O>(
+    pub(crate) fn session_specific_kernel<S: RuntimeSession, O>(
         _sess: &S,
         _plc: &HostPlacement,
         _key: HostString,
@@ -212,27 +194,27 @@ impl LoadOp {
     where
         O: KnownType<S>,
     {
-        Err(Error::KernelError(format!(
-            "missing HostPlacement: PlacementPlace trait implementation for '{}'",
+        Err(Error::Unexpected(Some(format!(
+            "Load kernel for '{}' should be handled specifically by session",
             &<O as KnownType<S>>::TY
-        )))
+        ))))
     }
 }
 
 impl SaveOp {
-    pub(crate) fn kernel<S: RuntimeSession, O>(
+    pub(crate) fn session_specific_kernel<S: RuntimeSession, O>(
         _sess: &S,
         _plc: &HostPlacement,
         _key: HostString,
         _x: O,
     ) -> Result<HostUnit>
     where
-        Value: From<O>,
+        O: KnownType<S>,
     {
-        // let x: Value = x.into();
-        // sess.storage.save(&key.0, &x)?;
-        // Ok(HostUnit(plc.clone()))
-        todo!()
+        Err(Error::Unexpected(Some(format!(
+            "Save kernel for '{}' should be handled specifically by session",
+            &<O as KnownType<S>>::TY
+        ))))
     }
 }
 
@@ -247,6 +229,22 @@ impl AbsOp {
     {
         Ok(HostTensor::<T>(
             x.0.map(|x| T::abs(x)).into_shared(),
+            plc.clone(),
+        ))
+    }
+}
+
+impl ReluOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: Clone + Signed + PartialOrd>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        Ok(HostTensor::<T>(
+            x.0.mapv(|x| clamp_min(x, T::zero())).into_shared(),
             plc.clone(),
         ))
     }

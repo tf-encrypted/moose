@@ -2,7 +2,7 @@ use super::{RoleAssignment, RuntimeSession, Session, SetupGeneration};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{Identity, Operands};
-use crate::host::{HostPlacement, HostPrfKey, HostString};
+use crate::host::{HostPrfKey, HostString};
 use crate::kernels::{DispatchKernel, Kernel};
 use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
@@ -11,46 +11,16 @@ use futures::future::{Map, Shared};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use std::collections::{HashMap, HashSet};
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
-type AsyncSender = oneshot::Sender<Value>;
-
-type AsyncReceiver = Shared<
-    Map<
-        oneshot::Receiver<Value>,
-        fn(anyhow::Result<Value, oneshot::error::RecvError>) -> anyhow::Result<Value, ()>,
-    >,
->;
-
-pub type AsyncTask = tokio::task::JoinHandle<Result<()>>;
+pub(crate) type AsyncTask = tokio::task::JoinHandle<Result<()>>;
 
 pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
 
 pub type AsyncStorageImpl = Arc<dyn AsyncStorage + Send + Sync>;
-
-pub(crate) fn map_send_result(
-    res: std::result::Result<(), Value>,
-) -> std::result::Result<(), Error> {
-    match res {
-        Ok(_) => Ok(()),
-        Err(val) => {
-            if val.ty() == Ty::HostUnit {
-                // ignoring unit value is okay
-                Ok(())
-            } else {
-                Err(Error::ResultUnused)
-            }
-        }
-    }
-}
-
-pub(crate) fn map_receive_error<T>(_: T) -> Error {
-    tracing::debug!("Failed to receive on channel, sender was dropped");
-    Error::OperandUnavailable
-}
 
 pub struct AsyncSessionHandle {
     tasks: FuturesUnordered<AsyncTask>,
@@ -179,149 +149,207 @@ impl AsyncSession {
     fn storage_load(
         &self,
         op: &LoadOp,
-        _plc: &HostPlacement,
+        plc: &Placement,
         operands: Operands<AsyncValue>,
     ) -> Result<AsyncValue> {
-        use std::convert::TryInto;
-
         assert_eq!(operands.len(), 2);
-        let sess = self.clone();
-        let type_hint = Some(op.sig.ret());
 
-        let (sender, receiver) = new_async_value();
-        let task = tokio::spawn(async move {
-            let operands = futures::future::join_all(operands).await;
-            let key: HostString = operands
-                .get(0)
-                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 0)))?
-                .clone()
-                .map_err(map_receive_error)?
-                .try_into()?;
-            let query: HostString = operands
-                .get(1)
-                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 1)))?
-                .clone()
-                .map_err(map_receive_error)?
-                .try_into()?;
+        if let Placement::Host(_) = plc {
+            let storage = Arc::clone(&self.storage);
+            let session_id = self.session_id.clone();
+            let expected_ty = op.sig.ret();
 
-            let value: Value = sess
-                .storage
-                .load(&key.0, &sess.session_id, type_hint, &query.0)
-                .await?;
-            // TODO: Hmm, placement of a Value does not work like this... But perhaps it should?
-            // let value = plc.place(&sess, value);
-            map_send_result(sender.send(value))?;
-            Ok(())
-        });
-        Self::add_task(&self.tasks, task)?;
+            let (sender, receiver) = new_channel();
+            let task = tokio::spawn(async move {
+                let mut operands = operands;
 
-        Ok(receiver)
+                let query: HostString = operands
+                    .pop()
+                    .unwrap()
+                    .await
+                    .map_err(map_receive_error)?
+                    .try_into()?;
+
+                let key: HostString = operands
+                    .pop()
+                    .unwrap()
+                    .await
+                    .map_err(map_receive_error)?
+                    .try_into()?;
+
+                let value: Value = storage
+                    .load(&key.0, &session_id, Some(expected_ty), &query.0)
+                    .await?;
+
+                if value.ty() != expected_ty {
+                    return Err(Error::TypeMismatch {
+                        expected: expected_ty.to_string(),
+                        found: value.ty(),
+                    });
+                }
+
+                // TODO(Morten) check or fill-in placement?
+
+                map_send_result(sender.send(value))?;
+                Ok(())
+            });
+            Self::add_task(&self.tasks, task)?;
+            Ok(receiver)
+        } else {
+            Err(Error::UnimplementedOperator(
+                "Load is only supported on host placements".to_string(),
+            ))
+        }
     }
 
-    fn storage_save(
-        &self,
-        plc: &HostPlacement,
-        operands: Operands<AsyncValue>,
-    ) -> Result<AsyncValue> {
-        use std::convert::TryInto;
-
+    fn storage_save(&self, plc: &Placement, operands: Operands<AsyncValue>) -> Result<AsyncValue> {
         assert_eq!(operands.len(), 2);
-        let sess = self.clone(); // TODO(Morten) avoid clone
-        let plc = plc.clone();
 
-        let (sender, receiver) = new_async_value();
-        let task = tokio::spawn(async move {
-            let operands = futures::future::join_all(operands).await;
-            let key: HostString = operands
-                .get(0)
-                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 0)))?
-                .clone()
-                .map_err(map_receive_error)?
-                .try_into()?;
-            let x: Value = operands
-                .get(1)
-                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 1)))?
-                .clone()
-                .map_err(map_receive_error)?;
+        if let Placement::Host(plc) = plc {
+            let session_id = self.session_id.clone();
+            let storage = Arc::clone(&self.storage);
+            let unit = Value::from(HostUnit(plc.clone()));
 
-            sess.storage.save(&key.0, &sess.session_id, &x).await?;
+            let (sender, receiver) = new_channel();
+            let task = tokio::spawn(async move {
+                let mut operands = operands;
 
-            let result = HostUnit(plc);
-            map_send_result(sender.send(result.into()))?;
-            Ok(())
-        });
-        Self::add_task(&self.tasks, task)?;
+                let x: Value = operands.pop().unwrap().await.map_err(map_receive_error)?;
 
-        Ok(receiver)
+                let key: HostString = operands
+                    .pop()
+                    .unwrap()
+                    .await
+                    .map_err(map_receive_error)?
+                    .try_into()?;
+
+                storage.save(&key.0, &session_id, &x).await?;
+
+                map_send_result(sender.send(unit))?;
+                Ok(())
+            });
+            Self::add_task(&self.tasks, task)?;
+            Ok(receiver)
+        } else {
+            Err(Error::UnimplementedOperator(
+                "Save is only supported on host placements".to_string(),
+            ))
+        }
     }
 
     fn networking_receive(
         &self,
-        op: ReceiveOp,
-        _plc: &HostPlacement,
+        op: &ReceiveOp,
+        plc: &Placement,
         operands: Operands<AsyncValue>,
     ) -> Result<AsyncValue> {
         assert_eq!(operands.len(), 0);
-        let sess = self.clone();
 
-        let (sender, receiver) = new_async_value();
-        let task = tokio::spawn(async move {
-            let net_sender = sess.find_role_assignment(&op.sender)?;
+        if let Placement::Host(_) = plc {
+            let networking_sender = self.find_role_assignment(&op.sender)?.clone();
+            let session_id = self.session_id.clone();
+            let rendezvous_key = op.rendezvous_key.clone();
+            let networking = Arc::clone(&self.networking);
+            let expected_ty = op.sig.ret();
 
-            let value = sess
-                .networking
-                .receive(net_sender, &op.rendezvous_key, &sess.session_id)
-                .await?;
-            // TODO: Hmm, placement of a Value does not work like this... But perhaps it should?
-            // let value = plc.place(&sess, value);
-            map_send_result(sender.send(value))?;
-            Ok(())
-        });
-        Self::add_task(&self.tasks, task)?;
+            let (sender, receiver) = new_channel();
+            let task = tokio::spawn(async move {
+                let value = networking
+                    .receive(&networking_sender, &rendezvous_key, &session_id)
+                    .await?;
 
-        Ok(receiver)
+                if value.ty() != expected_ty {
+                    return Err(Error::TypeMismatch {
+                        expected: expected_ty.to_string(),
+                        found: value.ty(),
+                    });
+                }
+
+                // TODO(Morten) check or fill-in placement?
+
+                map_send_result(sender.send(value))?;
+                Ok(())
+            });
+            Self::add_task(&self.tasks, task)?;
+            Ok(receiver)
+        } else {
+            Err(Error::UnimplementedOperator(
+                "Receive is only supported on host placements".to_string(),
+            ))
+        }
     }
 
     fn networking_send(
         &self,
-        op: SendOp,
-        plc: &HostPlacement,
+        op: &SendOp,
+        plc: &Placement,
         operands: Operands<AsyncValue>,
     ) -> Result<AsyncValue> {
         assert_eq!(operands.len(), 1);
 
-        let sess = self.clone(); // TODO(Morten) avoid
-        let plc = plc.clone();
+        if let Placement::Host(plc) = plc {
+            let networking_receiver = self.find_role_assignment(&op.receiver)?.clone();
+            let session_id = self.session_id.clone();
+            let rendezvous_key = op.rendezvous_key.clone();
+            let networking = Arc::clone(&self.networking);
+            let unit = Value::from(HostUnit(plc.clone()));
 
-        let (sender, receiver) = new_async_value();
-        let task = tokio::spawn(async move {
-            let receiver = sess.find_role_assignment(&op.receiver)?;
-            let operands = futures::future::join_all(operands).await;
-            let x = operands
-                .get(0)
-                .ok_or_else(|| Error::MalformedEnvironment(format!("Argument {} is missing", 0)))?
-                .clone()
-                .map_err(map_receive_error)?;
+            let (sender, receiver) = new_channel();
+            let task = tokio::spawn(async move {
+                let mut operands = operands;
 
-            sess.networking
-                .send(&x, receiver, &op.rendezvous_key, &sess.session_id)
-                .await?;
+                let value = operands.pop().unwrap().await.map_err(map_receive_error)?;
 
-            let result = HostUnit(plc);
-            map_send_result(sender.send(result.into()))?;
-            Ok(())
-        });
-        Self::add_task(&self.tasks, task)?;
+                networking
+                    .send(&value, &networking_receiver, &rendezvous_key, &session_id)
+                    .await?;
 
-        Ok(receiver)
+                map_send_result(sender.send(unit))?;
+                Ok(())
+            });
+            Self::add_task(&self.tasks, task)?;
+            Ok(receiver)
+        } else {
+            Err(Error::UnimplementedOperator(
+                "Send is only supported on host placements".to_string(),
+            ))
+        }
     }
 }
 
-pub type AsyncValue = AsyncReceiver;
+pub type AsyncValue = Receiver;
 
-pub(crate) fn new_async_value() -> (AsyncSender, AsyncReceiver) {
-    // TODO(Morten) make second attempt at inlining
+type Sender = oneshot::Sender<Value>;
+
+type Receiver = Shared<
+    Map<
+        oneshot::Receiver<Value>,
+        fn(anyhow::Result<Value, oneshot::error::RecvError>) -> anyhow::Result<Value, ()>,
+    >,
+>;
+
+fn map_send_result(res: std::result::Result<(), Value>) -> std::result::Result<(), Error> {
+    match res {
+        Ok(_) => Ok(()),
+        Err(val) => {
+            if val.ty() == Ty::HostUnit {
+                // ignoring unit value is okay
+                Ok(())
+            } else {
+                Err(Error::ResultUnused)
+            }
+        }
+    }
+}
+
+fn map_receive_error<T>(_: T) -> Error {
+    tracing::debug!("Failed to receive on channel, sender was dropped");
+    Error::OperandUnavailable
+}
+
+fn new_channel() -> (Sender, Receiver) {
     use futures::FutureExt;
+
     fn remove_err<T, E>(r: std::result::Result<T, E>) -> std::result::Result<T, ()> {
         r.map_err(|_| ())
     }
@@ -331,125 +359,99 @@ pub(crate) fn new_async_value() -> (AsyncSender, AsyncReceiver) {
     (sender, shared_receiver)
 }
 
-impl DispatchKernel<AsyncSession> for SendOp {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession>> {
-        if let Placement::Host(plc) = plc {
-            let plc = plc.clone();
-            let op = self.clone();
-            Ok(Box::new(move |sess, operands| {
-                sess.networking_send(op.clone(), &plc, operands)
-            }))
-        } else {
-            unimplemented!()
-        }
-    }
-}
-
-impl DispatchKernel<AsyncSession> for ReceiveOp {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession>> {
-        if let Placement::Host(plc) = plc {
-            let plc = plc.clone();
-            let op = self.clone();
-            Ok(Box::new(move |sess, operands| {
-                sess.networking_receive(op.clone(), &plc, operands)
-            }))
-        } else {
-            unimplemented!()
-        }
-    }
-}
-
-impl DispatchKernel<AsyncSession> for Operator {
-    fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession>> {
+impl DispatchKernel<AsyncSession, Value> for Operator {
+    fn compile(&self, plc: &Placement) -> Result<Kernel<AsyncSession, Value>> {
         use Operator::*;
         match self {
-            // these must be handled elsewhere by AsyncSession
-            Load(_) | Save(_) => unimplemented!(),
+            // These must be handled elsewhere
+            Load(_) => unimplemented!(),
+            Save(_) => unimplemented!(),
+            Send(_) => unimplemented!(),
+            Receive(_) => unimplemented!(),
 
-            Send(op) => DispatchKernel::compile(op, plc),
-            Receive(op) => DispatchKernel::compile(op, plc),
-            Shape(op) => DispatchKernel::compile(op, plc),
-            Broadcast(op) => DispatchKernel::compile(op, plc),
-            PrfKeyGen(op) => DispatchKernel::compile(op, plc),
-            Xor(op) => DispatchKernel::compile(op, plc),
+            Abs(op) => DispatchKernel::compile(op, plc),
+            Add(op) => DispatchKernel::compile(op, plc),
+            AdtToRep(op) => DispatchKernel::compile(op, plc),
+            AddN(op) => DispatchKernel::compile(op, plc),
             And(op) => DispatchKernel::compile(op, plc),
-            Or(op) => DispatchKernel::compile(op, plc),
+            Argmax(op) => DispatchKernel::compile(op, plc),
+            AtLeast2D(op) => DispatchKernel::compile(op, plc),
+            BitCompose(op) => DispatchKernel::compile(op, plc),
+            BitDecompose(op) => DispatchKernel::compile(op, plc),
             BitExtract(op) => DispatchKernel::compile(op, plc),
+            Broadcast(op) => DispatchKernel::compile(op, plc),
+            Cast(op) => DispatchKernel::compile(op, plc),
+            Concat(op) => DispatchKernel::compile(op, plc),
+            Constant(op) => DispatchKernel::compile(op, plc),
+            Decrypt(op) => DispatchKernel::compile(op, plc),
+            Demirror(op) => DispatchKernel::compile(op, plc),
+            DeriveSeed(op) => DispatchKernel::compile(op, plc),
+            Dot(op) => DispatchKernel::compile(op, plc),
+            Diag(op) => DispatchKernel::compile(op, plc),
+            Div(op) => DispatchKernel::compile(op, plc),
+            Equal(op) => DispatchKernel::compile(op, plc),
+            EqualZero(op) => DispatchKernel::compile(op, plc),
+            Exp(op) => DispatchKernel::compile(op, plc),
+            ExpandDims(op) => DispatchKernel::compile(op, plc),
+            Fill(op) => DispatchKernel::compile(op, plc),
+            FixedpointDecode(op) => DispatchKernel::compile(op, plc),
+            FixedpointEncode(op) => DispatchKernel::compile(op, plc),
+            Greater(op) => DispatchKernel::compile(op, plc),
+            Identity(op) => DispatchKernel::compile(op, plc),
+            Index(op) => DispatchKernel::compile(op, plc),
+            IndexAxis(op) => DispatchKernel::compile(op, plc),
+            Input(op) => DispatchKernel::compile(op, plc),
+            Inverse(op) => DispatchKernel::compile(op, plc),
+            Less(op) => DispatchKernel::compile(op, plc),
+            Log(op) => DispatchKernel::compile(op, plc),
+            Log2(op) => DispatchKernel::compile(op, plc),
+            Maximum(op) => DispatchKernel::compile(op, plc),
+            Mean(op) => DispatchKernel::compile(op, plc),
+            Mirror(op) => DispatchKernel::compile(op, plc),
+            Msb(op) => DispatchKernel::compile(op, plc),
+            Mul(op) => DispatchKernel::compile(op, plc),
+            Mux(op) => DispatchKernel::compile(op, plc),
+            Neg(op) => DispatchKernel::compile(op, plc),
+            Ones(op) => DispatchKernel::compile(op, plc),
+            Or(op) => DispatchKernel::compile(op, plc),
+            Pow2(op) => DispatchKernel::compile(op, plc),
+            PrfKeyGen(op) => DispatchKernel::compile(op, plc),
+            Relu(op) => DispatchKernel::compile(op, plc),
+            Reshape(op) => DispatchKernel::compile(op, plc),
+            Reveal(op) => DispatchKernel::compile(op, plc),
+            RepToAdt(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointArgmax(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointDecode(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointEncode(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointMean(op) => DispatchKernel::compile(op, plc),
+            RingInject(op) => DispatchKernel::compile(op, plc),
+            Sample(op) => DispatchKernel::compile(op, plc),
+            SampleSeeded(op) => DispatchKernel::compile(op, plc),
+            Shape(op) => DispatchKernel::compile(op, plc),
+            Share(op) => DispatchKernel::compile(op, plc),
             Shl(op) => DispatchKernel::compile(op, plc),
             ShlDim(op) => DispatchKernel::compile(op, plc),
             Shr(op) => DispatchKernel::compile(op, plc),
-            Sample(op) => DispatchKernel::compile(op, plc),
-            SampleSeeded(op) => DispatchKernel::compile(op, plc),
-            RingFixedpointAbs(op) => DispatchKernel::compile(op, plc),
-            RingFixedpointArgmax(op) => DispatchKernel::compile(op, plc),
-            RingFixedpointMean(op) => DispatchKernel::compile(op, plc),
-            RingFixedpointEncode(op) => DispatchKernel::compile(op, plc),
-            RingFixedpointDecode(op) => DispatchKernel::compile(op, plc),
-            RingInject(op) => DispatchKernel::compile(op, plc),
-            Fill(op) => DispatchKernel::compile(op, plc),
-            Share(op) => DispatchKernel::compile(op, plc),
-            Reveal(op) => DispatchKernel::compile(op, plc),
-            TruncPr(op) => DispatchKernel::compile(op, plc),
-            Msb(op) => DispatchKernel::compile(op, plc),
-            RepToAdt(op) => DispatchKernel::compile(op, plc),
-            BitDecompose(op) => DispatchKernel::compile(op, plc),
-            BitCompose(op) => DispatchKernel::compile(op, plc),
-            AdtToRep(op) => DispatchKernel::compile(op, plc),
-            DeriveSeed(op) => DispatchKernel::compile(op, plc),
-            Constant(op) => DispatchKernel::compile(op, plc),
-            Input(op) => DispatchKernel::compile(op, plc),
-            Output(op) => DispatchKernel::compile(op, plc),
-            AtLeast2D(op) => DispatchKernel::compile(op, plc),
-            FixedpointEncode(op) => DispatchKernel::compile(op, plc),
-            FixedpointDecode(op) => DispatchKernel::compile(op, plc),
-            Sign(op) => DispatchKernel::compile(op, plc),
-            Transpose(op) => DispatchKernel::compile(op, plc),
-            Squeeze(op) => DispatchKernel::compile(op, plc),
-            Identity(op) => DispatchKernel::compile(op, plc),
-            Cast(op) => DispatchKernel::compile(op, plc),
-            Reshape(op) => DispatchKernel::compile(op, plc),
-            Slice(op) => DispatchKernel::compile(op, plc),
-            Ones(op) => DispatchKernel::compile(op, plc),
-            Zeros(op) => DispatchKernel::compile(op, plc),
-            ExpandDims(op) => DispatchKernel::compile(op, plc),
-            Concat(op) => DispatchKernel::compile(op, plc),
-            Dot(op) => DispatchKernel::compile(op, plc),
-            Inverse(op) => DispatchKernel::compile(op, plc),
-            Add(op) => DispatchKernel::compile(op, plc),
-            Sub(op) => DispatchKernel::compile(op, plc),
-            Mul(op) => DispatchKernel::compile(op, plc),
-            Mean(op) => DispatchKernel::compile(op, plc),
-            Sum(op) => DispatchKernel::compile(op, plc),
-            Div(op) => DispatchKernel::compile(op, plc),
-            AddN(op) => DispatchKernel::compile(op, plc),
-            Exp(op) => DispatchKernel::compile(op, plc),
-            Pow2(op) => DispatchKernel::compile(op, plc),
-            Neg(op) => DispatchKernel::compile(op, plc),
-            Log(op) => DispatchKernel::compile(op, plc),
-            Log2(op) => DispatchKernel::compile(op, plc),
-            Equal(op) => DispatchKernel::compile(op, plc),
-            EqualZero(op) => DispatchKernel::compile(op, plc),
-            Mux(op) => DispatchKernel::compile(op, plc),
-            Less(op) => DispatchKernel::compile(op, plc),
-            Greater(op) => DispatchKernel::compile(op, plc),
-            IndexAxis(op) => DispatchKernel::compile(op, plc),
-            Index(op) => DispatchKernel::compile(op, plc),
             Sigmoid(op) => DispatchKernel::compile(op, plc),
-            Maximum(op) => DispatchKernel::compile(op, plc),
+            Sign(op) => DispatchKernel::compile(op, plc),
+            Slice(op) => DispatchKernel::compile(op, plc),
             Softmax(op) => DispatchKernel::compile(op, plc),
-            Argmax(op) => DispatchKernel::compile(op, plc),
-            Demirror(op) => DispatchKernel::compile(op, plc),
-            Mirror(op) => DispatchKernel::compile(op, plc),
-            Decrypt(op) => DispatchKernel::compile(op, plc),
             Sqrt(op) => DispatchKernel::compile(op, plc),
-            Abs(op) => DispatchKernel::compile(op, plc),
-            Diag(op) => DispatchKernel::compile(op, plc),
+            Squeeze(op) => DispatchKernel::compile(op, plc),
+            Sub(op) => DispatchKernel::compile(op, plc),
+            Sum(op) => DispatchKernel::compile(op, plc),
+            Transpose(op) => DispatchKernel::compile(op, plc),
+            TruncPr(op) => DispatchKernel::compile(op, plc),
+            Output(op) => DispatchKernel::compile(op, plc),
+            Xor(op) => DispatchKernel::compile(op, plc),
+            Zeros(op) => DispatchKernel::compile(op, plc),
         }
     }
 }
 
 impl Session for AsyncSession {
     type Value = AsyncValue;
+
     fn execute(
         &self,
         op: &Operator,
@@ -457,26 +459,73 @@ impl Session for AsyncSession {
         operands: Operands<Self::Value>,
     ) -> Result<Self::Value> {
         use Operator::*;
-        use Placement::*;
-        match op {
-            // The kernels that are doing funny things to the async context, such as awaiting for more than their inputs.
-            Load(op) => {
-                if let Host(plc) = plc {
-                    self.storage_load(op, plc, operands)
-                } else {
-                    unimplemented!()
-                }
+        let kernel: Kernel<AsyncSession, _> = match op {
+            // Kernels that take advantage of async
+            Load(op) => return self.storage_load(op, plc, operands),
+            Save(_) => return self.storage_save(plc, operands),
+            Send(op) => return self.networking_send(op, plc, operands),
+            Receive(op) => return self.networking_receive(op, plc, operands),
+            // Compute kernels
+            op => DispatchKernel::compile(op, plc),
+        }?;
+
+        let (sender, receiver) = new_channel();
+        let sess = self.clone();
+        let plc = plc.clone();
+
+        let task = match kernel {
+            Kernel::Nullary { closure } => {
+                assert_eq!(operands.len(), 0);
+                tokio::spawn(async move {
+                    let y: Value = closure(&sess, &plc)?;
+                    map_send_result(sender.send(y))?;
+                    Ok(())
+                })
             }
-            Save(_) => {
-                if let Host(plc) = plc {
-                    self.storage_save(plc, operands)
-                } else {
-                    unimplemented!()
-                }
+            Kernel::Unary { closure } => {
+                assert_eq!(operands.len(), 1);
+                tokio::spawn(async move {
+                    let mut operands = operands;
+                    let x0: Value = operands.pop().unwrap().await.map_err(map_receive_error)?;
+                    let y: Value = closure(&sess, &plc, x0)?;
+                    map_send_result(sender.send(y))?;
+                    Ok(())
+                })
             }
-            // The regular kernels, which use the dispatch kernel to await for the inputs and are not touching async in their kernels.
-            op => DispatchKernel::execute(op, plc, self, operands),
-        }
+            Kernel::Binary { closure } => {
+                assert_eq!(operands.len(), 2);
+                tokio::spawn(async move {
+                    let mut operands = operands;
+                    let x1: Value = operands.pop().unwrap().await.map_err(map_receive_error)?;
+                    let x0: Value = operands.pop().unwrap().await.map_err(map_receive_error)?;
+                    let y: Value = closure(&sess, &plc, x0, x1)?;
+                    map_send_result(sender.send(y))?;
+                    Ok(())
+                })
+            }
+            Kernel::Ternary { closure } => {
+                assert_eq!(operands.len(), 3);
+                tokio::spawn(async move {
+                    let mut operands = operands;
+                    let x2: Value = operands.pop().unwrap().await.map_err(map_receive_error)?;
+                    let x1: Value = operands.pop().unwrap().await.map_err(map_receive_error)?;
+                    let x0: Value = operands.pop().unwrap().await.map_err(map_receive_error)?;
+                    let y: Value = closure(&sess, &plc, x0, x1, x2)?;
+                    map_send_result(sender.send(y))?;
+                    Ok(())
+                })
+            }
+            Kernel::Variadic { closure } => tokio::spawn(async move {
+                let operands = futures::future::join_all(operands).await;
+                let xs: std::result::Result<Operands<Value>, _> = operands.into_iter().collect();
+                let xs = xs.map_err(map_receive_error)?;
+                let y: Value = closure(&sess, &plc, xs)?;
+                map_send_result(sender.send(y))?;
+                Ok(())
+            }),
+        };
+        Self::add_task(&self.tasks, task)?;
+        Ok(receiver)
     }
 }
 

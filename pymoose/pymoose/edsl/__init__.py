@@ -43,6 +43,7 @@ from pymoose.edsl.base import mirrored_placement
 from pymoose.edsl.base import mul
 from pymoose.edsl.base import mux
 from pymoose.edsl.base import ones
+from pymoose.edsl.base import relu
 from pymoose.edsl.base import replicated_placement
 from pymoose.edsl.base import reshape
 from pymoose.edsl.base import save
@@ -50,6 +51,7 @@ from pymoose.edsl.base import shape
 from pymoose.edsl.base import sigmoid
 from pymoose.edsl.base import slice
 from pymoose.edsl.base import softmax
+from pymoose.edsl.base import sqrt
 from pymoose.edsl.base import square
 from pymoose.edsl.base import squeeze
 from pymoose.edsl.base import sub
@@ -100,7 +102,7 @@ __all__ = [
     mux,
     mean,
     ones,
-    zeros,
+    relu,
     replicated_placement,
     reshape,
     ring64,
@@ -113,10 +115,12 @@ __all__ = [
     sigmoid,
     sub,
     sum,
+    sqrt,
     uint64,
     TensorType,
     transpose,
     trace,
     trace_and_compile,
     StringType,
+    zeros,
 ]
