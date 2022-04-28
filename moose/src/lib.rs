@@ -33,7 +33,7 @@ macro_rules! m {
     };
 }
 
-macro_rules! ng_derive_runtime_kernel {
+macro_rules! derive_kernel {
 
     /* Nullary */
 
@@ -82,60 +82,6 @@ macro_rules! ng_derive_runtime_kernel {
         >($k)
     };
 
-    (symbolic nullary runtime $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::runtime::nullary::<$u, $plc>(Operator::from($op.clone()))
-    };
-
-    (symbolic nullary runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::runtime::nullary::<$u, $plc>(Operator::from($op.clone()))
-    };
-
-    (symbolic nullary runtime $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::runtime::nullary::<$u, $plc>(Operator::from($op.clone()))
-    };
-
-    (symbolic nullary concrete $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
-        let kf: &dyn Fn(&Self) -> crate::error::Result<
-            crate::kernels::TypedNullaryKernel<
-                crate::execution::SymbolicSession,
-                _,
-                _,
-            >
-        > = &|$op_ke| $ke;
-        let k = kf(&$op)?;
-        crate::execution::kernel_helpers::symbolic::concrete::nullary::<
-            $u,
-            $plc,
-            Box<_>,
-        >(k)
-    }};
-
-    (symbolic nullary concrete $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
-        $(
-            let $attr = $op.$attr.clone();
-        )+
-        let k: crate::kernels::TypedNullaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-        > = Box::new(move |sess, plc| {
-            $k(sess, &plc, $($attr.clone()),+)
-        });
-        crate::execution::kernel_helpers::symbolic::concrete::nullary::<
-            $u,
-            $plc,
-            Box<_>,
-        >(k)
-    }};
-
-    (symbolic nullary concrete $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::concrete::nullary::<
-            $u,
-            $plc,
-            fn(&_, &_) -> _,
-        >(Operator::from($op.clone()), k)
-    };
-
     (async nullary $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
         let kf: &dyn Fn(&Self) -> crate::error::Result<
             crate::kernels::TypedNullaryKernel<
@@ -180,6 +126,8 @@ macro_rules! ng_derive_runtime_kernel {
             fn(&_, &_) -> _,
         >($k)
     };
+
+    /* Unary */
 
     (sync unary $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
         let kf: &dyn Fn(&Self) -> crate::error::Result<
@@ -279,165 +227,6 @@ macro_rules! ng_derive_runtime_kernel {
             $plc,
             fn(&_, &_, _) -> _,
         >($k)
-    };
-
-    (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::runtime::unary::<$t0, $u, $plc>(Operator::from($op.clone()))
-    };
-
-    (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::runtime::unary::<$t0, $u, $plc>(Operator::from($op.clone()))
-    };
-
-    (symbolic unary runtime $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::runtime::unary::<$t0, $u, $plc>(Operator::from($op.clone()))
-    };
-
-    (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
-        let kf: &dyn Fn(&Self) -> crate::error::Result<
-            crate::kernels::TypedUnaryKernel<
-                crate::execution::SymbolicSession,
-                _,
-                _,
-                _,
-            >
-        > = &|$op_ke| $ke;
-        let k = kf(&$op)?;
-        crate::execution::kernel_helpers::symbolic::concrete::unary::<
-            $t0,
-            $u,
-            $plc,
-            Box<_>,
-        >(Operator::from($op.clone()), k)
-    }};
-
-    (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
-        $(
-            let $attr = $op.$attr.clone();
-        )+
-        let k: crate::kernels::TypedUnaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-            _,
-        > = Box::new(move |sess, plc, x0| {
-            $k(sess, &plc, $($attr.clone()),+, x0)
-        });
-        crate::execution::kernel_helpers::symbolic::concrete::unary::<
-            $t0,
-            $u,
-            $plc,
-            Box<_>,
-        >(Operator::from($op.clone()), k)
-    }};
-
-    (symbolic unary concrete $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::concrete::unary::<
-            $t0,
-            $u,
-            $plc,
-            fn(&_, &_, _) -> _,
-        >(Operator::from($op.clone()), $k)
-    };
-
-    (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
-        let kf: &dyn Fn(&Self) -> crate::error::Result<
-            crate::kernels::TypedUnaryKernel<
-                crate::execution::SymbolicSession,
-                _,
-                _,
-                _,
-            >
-        > = &|$op_ke| $ke;
-        let k = kf(&$op)?;
-        crate::execution::kernel_helpers::symbolic::transparent::unary::<
-            $t0,
-            $u,
-            $plc,
-            Box<_>,
-        >(k)
-    }};
-
-    (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
-        $(
-            let $attr = $op.$attr.clone();
-        )+
-        let k: crate::kernels::TypedUnaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-            _,
-        > = Box::new(move |sess, plc, x0| {
-            $k(sess, &plc, $($attr.clone()),+, x0)
-        });
-        crate::execution::kernel_helpers::symbolic::transparent::unary::<
-            $t0,
-            $u,
-            $plc,
-            Box<_>,
-        >(k)
-    }};
-
-    (symbolic unary transparent $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::transparent::unary::<
-            $t0,
-            $u,
-            $plc,
-            fn(&_, &_, _) -> _,
-        >($k)
-    };
-
-    (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
-        let kf: &dyn Fn(&Self) -> crate::error::Result<
-            crate::kernels::TypedUnaryKernel<
-                crate::execution::SymbolicSession,
-                _,
-                _,
-                _,
-            >
-        > = &|$op_ke| $ke;
-        let k = kf(&$op)?;
-        crate::execution::kernel_helpers::symbolic::hybrid::unary::<
-            $t0,
-            $u,
-            _,
-            _,
-            $plc,
-            Box<_>,
-        >(Operator::from($op.clone()), k)
-    }};
-
-    (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
-        $(
-            let $attr = $op.$attr.clone();
-        )+
-        let k: crate::kernels::TypedUnaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-            _,
-        > = Box::new(move |sess, plc, x0| {
-            $k(sess, &plc, $($attr.clone()),+, x0)
-        });
-        crate::execution::kernel_helpers::symbolic::hybrid::unary::<
-            $t0,
-            $u,
-            _,
-            _,
-            $plc,
-            Box<_>,
-        >(Operator::from($op.clone()), k)
-    }};
-
-    (symbolic unary hybrid $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::hybrid::unary::<
-            $t0,
-            $u,
-            _,
-            _,
-            $plc,
-            fn(&_, &_, _) -> _,
-        >(Operator::from($op.clone()), $k)
     };
 
     /* Binary */
@@ -552,182 +341,6 @@ macro_rules! ng_derive_runtime_kernel {
         >($k)
     };
 
-    (symbolic binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::runtime::binary::<$t0, $t1, $u, $plc>(Operator::from($op.clone()))
-    };
-
-    (symbolic binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::runtime::binary::<$t0, $t1, $u, $plc>(Operator::from($op.clone()))
-    };
-
-    (symbolic binary runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::runtime::binary::<$t0, $t1, $u, $plc>(Operator::from($op.clone()))
-    };
-
-    (symbolic binary concrete $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {{
-        let kf: &dyn Fn(&Self) -> crate::error::Result<
-            crate::kernels::TypedBinaryKernel<
-                crate::execution::SymbolicSession,
-                _,
-                _,
-                _,
-                _,
-            >
-        > = &|$op_ke| $ke;
-        let k = kf(&$op)?;
-        crate::execution::kernel_helpers::symbolic::concrete::binary::<
-            $t0,
-            $u,
-            $plc,
-            Box<_>,
-        >(Operator::from($op.clone()), k)
-    }};
-
-    (symbolic binary concrete $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {{
-        $(
-            let $attr = $op.$attr.clone();
-        )+
-        let k: crate::kernels::TypedBinaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-            _,
-            _,
-        > = Box::new(move |sess, plc, x0, x1| {
-            $k(sess, &plc, $($attr.clone()),+, x0, x1)
-        });
-        crate::execution::kernel_helpers::symbolic::concrete::binary::<
-            $t0,
-            $t1,
-            $u,
-            $plc,
-            Box<_>,
-        >(Operator::from($op.clone()), k)
-    }};
-
-    (symbolic binary concrete $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::concrete::binary::<
-            $t0,
-            $t1,
-            $u,
-            $plc,
-            fn(&_, &_, _, _) -> _,
-        >(Operator::from($op.clone()), $k)
-    };
-
-    (symbolic binary transparent $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {{
-        let kf: &dyn Fn(&Self) -> crate::error::Result<
-            crate::kernels::TypedBinaryKernel<
-                crate::execution::SymbolicSession,
-                _,
-                _,
-                _,
-                _,
-            >
-        > = &|$op_ke| $ke;
-        let k = kf(&$op)?;
-        crate::execution::kernel_helpers::symbolic::transparent::binary::<
-            $t0,
-            $t1,
-            $u,
-            $plc,
-            Box<_>,
-        >(Operator::from($op.clone()), k)
-    }};
-
-    (symbolic binary transparent $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
-        $(
-            let $attr = $op.$attr.clone();
-        )+
-        let k: crate::kernels::TypedBinaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-            _,
-            _,
-        > = Box::new(move |sess, plc, x0, x1| {
-            $k(sess, &plc, $($attr.clone()),+, x0, x1)
-        });
-        crate::execution::kernel_helpers::symbolic::transparent::binary::<
-            $t0,
-            $t1,
-            $u,
-            $plc,
-            Box<_>,
-        >(Operator::from($op.clone()), k)
-    }};
-
-    (symbolic binary transparent $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::transparent::binary::<
-            $t0,
-            $t1,
-            $u,
-            $plc,
-            fn(&_, &_, _, _) -> _,
-        >($k)
-    };
-
-    (symbolic binary hybrid $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {{
-        let kf: &dyn Fn(&Self) -> crate::error::Result<
-            crate::kernels::TypedBinaryKernel<
-                crate::execution::SymbolicSession,
-                _,
-                _,
-                _,
-                _,
-            >
-        > = &|$op_ke| $ke;
-        let k = kf(&$op)?;
-        crate::execution::kernel_helpers::symbolic::hybrid::binary::<
-            $t0,
-            $t1,
-            $u,
-            _,
-            _,
-            _,
-            $plc,
-            Box<_>,
-        >(Operator::from($op.clone()), k)
-    }};
-
-    (symbolic binary hybrid $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
-        $(
-            let $attr = $op.$attr.clone();
-        )+
-        let k: crate::kernels::TypedBinaryKernel<
-            crate::execution::SymbolicSession,
-            _,
-            _,
-            _,
-            _,
-        > = Box::new(move |sess, plc, x0, x1| {
-            $k(sess, &plc, $($attr.clone()),+, x0, x1)
-        });
-        crate::execution::kernel_helpers::symbolic::hybrid::binary::<
-            $t0,
-            $t1,
-            $u,
-            _,
-            _,
-            _,
-            $plc,
-            Box<_>,
-        >(Operator::from($op.clone()), k)
-    }};
-
-    (symbolic binary hybrid $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::hybrid::binary::<
-            $t0,
-            $t1,
-            $u,
-            _,
-            _,
-            _,
-            $plc,
-            fn(&_, &_, _, _) -> _,
-        >(Operator::from($op.clone()), $k)
-    };
-
     /* Ternary */
 
     (sync ternary $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
@@ -752,59 +365,6 @@ macro_rules! ng_derive_runtime_kernel {
             $plc,
             fn(&_, &_, _, _, _) -> _,
         >($k)
-    };
-
-    (symbolic ternary runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::runtime::ternary::<
-            $t0,
-            $t1,
-            $t2,
-            $u,
-            $plc,
-        >(Operator::from($op.clone()))
-    };
-
-    (symbolic ternary concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::concrete::ternary::<
-            $t0,
-            $t1,
-            $t2,
-            $u,
-            $plc,
-            fn(&_, &_, _, _, _) -> _,
-        >(
-            Operator::from($op.clone()),
-            $k,
-        )
-    };
-
-    (symbolic ternary transparent $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::transparent::ternary::<
-            $t0,
-            $t1,
-            $t2,
-            $u,
-            $plc,
-            fn(&_, &_, _, _, _) -> _,
-        >(Operator::from($op.clone()), $k)
-    };
-
-    (symbolic ternary hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::hybrid::ternary::<
-            $t0,
-            $t1,
-            $t2,
-            $u,
-            _,
-            _,
-            _,
-            _,
-            $plc,
-            fn(&_, &_, _, _, _) -> _,
-        >(
-            Operator::from($op.clone()),
-            $k,
-        )
     };
 
     /* Variadic */
@@ -842,54 +402,6 @@ macro_rules! ng_derive_runtime_kernel {
         >($k)
     };
 
-    (symbolic variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::runtime::variadic::<$ts, $u, $plc>(Operator::from($op.clone()))
-    };
-
-    (symbolic variadic runtime $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::runtime::variadic::<$ts, $u, $plc>(Operator::from($op.clone()))
-    };
-
-    (symbolic variadic transparent $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::transparent::variadic::<
-            $ts,
-            $u,
-            $plc,
-            fn(&_, &_, &_) -> _,
-        >($k)
-    };
-
-    (symbolic variadic concrete $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
-        {
-            $(
-                let $attr = $op.$attr.clone();
-            )+
-            let k: crate::kernels::TypedVariadicKernel<
-                crate::execution::SymbolicSession,
-                _,
-                _,
-                _,
-            > = Box::new(move |sess, plc, ts| {
-                $k(sess, &plc, $($attr.clone()),+, ts)
-            });
-            crate::execution::kernel_helpers::symbolic::concrete::variadic::<
-                $ts,
-                $u,
-                $plc,
-                Box<_>,
-            >(Operator::from($op.clone()), k)
-        }
-    };
-
-    (symbolic variadic concrete $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
-        crate::execution::kernel_helpers::symbolic::concrete::variadic::<
-            $ts,
-            $u,
-            $plc,
-            fn(&_, &_, &_) -> _,
-        >(Operator::from($op.clone()), $k)
-    };
-
     (async variadic $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
         {
             $(
@@ -921,6 +433,509 @@ macro_rules! ng_derive_runtime_kernel {
             $plc,
             fn(&_, &_, &[$ts]) -> _,
         >($k)
+    };
+}
+
+macro_rules! derive_symbolic_kernel {
+
+    /* Nullary */
+
+    (runtime $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::runtime::nullary::<$u, $plc>(Operator::from($op.clone()))
+    };
+
+    (runtime $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::runtime::nullary::<$u, $plc>(Operator::from($op.clone()))
+    };
+
+    (runtime $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::runtime::nullary::<$u, $plc>(Operator::from($op.clone()))
+    };
+
+    (concrete $plc:ty, () -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+        let kf: &dyn Fn(&Self) -> crate::error::Result<
+            crate::kernels::TypedNullaryKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+            >
+        > = &|$op_ke| $ke;
+        let k = kf(&$op)?;
+        crate::execution::kernel_helpers::symbolic::concrete::nullary::<
+            $u,
+            $plc,
+            Box<_>,
+        >(k)
+    }};
+
+    (concrete $plc:ty, () -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
+        $(
+            let $attr = $op.$attr.clone();
+        )+
+        let k: crate::kernels::TypedNullaryKernel<
+            crate::execution::SymbolicSession,
+            _,
+            _,
+        > = Box::new(move |sess, plc| {
+            $k(sess, &plc, $($attr.clone()),+)
+        });
+        crate::execution::kernel_helpers::symbolic::concrete::nullary::<
+            $u,
+            $plc,
+            Box<_>,
+        >(k)
+    }};
+
+    (concrete $plc:ty, () -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::concrete::nullary::<
+            $u,
+            $plc,
+            fn(&_, &_) -> _,
+        >(Operator::from($op.clone()), k)
+    };
+
+    /* Unary */
+
+    (runtime $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::runtime::unary::<$t0, $u, $plc>(Operator::from($op.clone()))
+    };
+
+    (runtime $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::runtime::unary::<$t0, $u, $plc>(Operator::from($op.clone()))
+    };
+
+    (runtime $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::runtime::unary::<$t0, $u, $plc>(Operator::from($op.clone()))
+    };
+
+    (concrete $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+        let kf: &dyn Fn(&Self) -> crate::error::Result<
+            crate::kernels::TypedUnaryKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+                _,
+            >
+        > = &|$op_ke| $ke;
+        let k = kf(&$op)?;
+        crate::execution::kernel_helpers::symbolic::concrete::unary::<
+            $t0,
+            $u,
+            $plc,
+            Box<_>,
+        >(Operator::from($op.clone()), k)
+    }};
+
+    (concrete $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
+        $(
+            let $attr = $op.$attr.clone();
+        )+
+        let k: crate::kernels::TypedUnaryKernel<
+            crate::execution::SymbolicSession,
+            _,
+            _,
+            _,
+        > = Box::new(move |sess, plc, x0| {
+            $k(sess, &plc, $($attr.clone()),+, x0)
+        });
+        crate::execution::kernel_helpers::symbolic::concrete::unary::<
+            $t0,
+            $u,
+            $plc,
+            Box<_>,
+        >(Operator::from($op.clone()), k)
+    }};
+
+    (concrete $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::concrete::unary::<
+            $t0,
+            $u,
+            $plc,
+            fn(&_, &_, _) -> _,
+        >(Operator::from($op.clone()), $k)
+    };
+
+    (transparent $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+        let kf: &dyn Fn(&Self) -> crate::error::Result<
+            crate::kernels::TypedUnaryKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+                _,
+            >
+        > = &|$op_ke| $ke;
+        let k = kf(&$op)?;
+        crate::execution::kernel_helpers::symbolic::transparent::unary::<
+            $t0,
+            $u,
+            $plc,
+            Box<_>,
+        >(k)
+    }};
+
+    (transparent $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
+        $(
+            let $attr = $op.$attr.clone();
+        )+
+        let k: crate::kernels::TypedUnaryKernel<
+            crate::execution::SymbolicSession,
+            _,
+            _,
+            _,
+        > = Box::new(move |sess, plc, x0| {
+            $k(sess, &plc, $($attr.clone()),+, x0)
+        });
+        crate::execution::kernel_helpers::symbolic::transparent::unary::<
+            $t0,
+            $u,
+            $plc,
+            Box<_>,
+        >(k)
+    }};
+
+    (transparent $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::transparent::unary::<
+            $t0,
+            $u,
+            $plc,
+            fn(&_, &_, _) -> _,
+        >($k)
+    };
+
+    (hybrid $plc:ty, ($t0:ty) -> $u:ty, $(attributes[$($_attrs:tt)*])? custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+        let kf: &dyn Fn(&Self) -> crate::error::Result<
+            crate::kernels::TypedUnaryKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+                _,
+            >
+        > = &|$op_ke| $ke;
+        let k = kf(&$op)?;
+        crate::execution::kernel_helpers::symbolic::hybrid::unary::<
+            $t0,
+            $u,
+            _,
+            _,
+            $plc,
+            Box<_>,
+        >(Operator::from($op.clone()), k)
+    }};
+
+    (hybrid $plc:ty, ($t0:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
+        $(
+            let $attr = $op.$attr.clone();
+        )+
+        let k: crate::kernels::TypedUnaryKernel<
+            crate::execution::SymbolicSession,
+            _,
+            _,
+            _,
+        > = Box::new(move |sess, plc, x0| {
+            $k(sess, &plc, $($attr.clone()),+, x0)
+        });
+        crate::execution::kernel_helpers::symbolic::hybrid::unary::<
+            $t0,
+            $u,
+            _,
+            _,
+            $plc,
+            Box<_>,
+        >(Operator::from($op.clone()), k)
+    }};
+
+    (hybrid $plc:ty, ($t0:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::hybrid::unary::<
+            $t0,
+            $u,
+            _,
+            _,
+            $plc,
+            fn(&_, &_, _) -> _,
+        >(Operator::from($op.clone()), $k)
+    };
+
+    /* Binary */
+
+    (runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::runtime::binary::<$t0, $t1, $u, $plc>(Operator::from($op.clone()))
+    };
+
+    (runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::runtime::binary::<$t0, $t1, $u, $plc>(Operator::from($op.clone()))
+    };
+
+    (runtime $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::runtime::binary::<$t0, $t1, $u, $plc>(Operator::from($op.clone()))
+    };
+
+    (concrete $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+        let kf: &dyn Fn(&Self) -> crate::error::Result<
+            crate::kernels::TypedBinaryKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+                _,
+                _,
+            >
+        > = &|$op_ke| $ke;
+        let k = kf(&$op)?;
+        crate::execution::kernel_helpers::symbolic::concrete::binary::<
+            $t0,
+            $u,
+            $plc,
+            Box<_>,
+        >(Operator::from($op.clone()), k)
+    }};
+
+    (concrete $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:path, $op:ident) => {{
+        $(
+            let $attr = $op.$attr.clone();
+        )+
+        let k: crate::kernels::TypedBinaryKernel<
+            crate::execution::SymbolicSession,
+            _,
+            _,
+            _,
+            _,
+        > = Box::new(move |sess, plc, x0, x1| {
+            $k(sess, &plc, $($attr.clone()),+, x0, x1)
+        });
+        crate::execution::kernel_helpers::symbolic::concrete::binary::<
+            $t0,
+            $t1,
+            $u,
+            $plc,
+            Box<_>,
+        >(Operator::from($op.clone()), k)
+    }};
+
+    (concrete $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::concrete::binary::<
+            $t0,
+            $t1,
+            $u,
+            $plc,
+            fn(&_, &_, _, _) -> _,
+        >(Operator::from($op.clone()), $k)
+    };
+
+    (transparent $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+        let kf: &dyn Fn(&Self) -> crate::error::Result<
+            crate::kernels::TypedBinaryKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+                _,
+                _,
+            >
+        > = &|$op_ke| $ke;
+        let k = kf(&$op)?;
+        crate::execution::kernel_helpers::symbolic::transparent::binary::<
+            $t0,
+            $t1,
+            $u,
+            $plc,
+            Box<_>,
+        >(Operator::from($op.clone()), k)
+    }};
+
+    (transparent $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
+        $(
+            let $attr = $op.$attr.clone();
+        )+
+        let k: crate::kernels::TypedBinaryKernel<
+            crate::execution::SymbolicSession,
+            _,
+            _,
+            _,
+            _,
+        > = Box::new(move |sess, plc, x0, x1| {
+            $k(sess, &plc, $($attr.clone()),+, x0, x1)
+        });
+        crate::execution::kernel_helpers::symbolic::transparent::binary::<
+            $t0,
+            $t1,
+            $u,
+            $plc,
+            Box<_>,
+        >(Operator::from($op.clone()), k)
+    }};
+
+    (transparent $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::transparent::binary::<
+            $t0,
+            $t1,
+            $u,
+            $plc,
+            fn(&_, &_, _, _) -> _,
+        >($k)
+    };
+
+    (hybrid $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, custom |$op_ke:ident| $ke:expr, $op:ident) => {{
+        let kf: &dyn Fn(&Self) -> crate::error::Result<
+            crate::kernels::TypedBinaryKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+                _,
+                _,
+            >
+        > = &|$op_ke| $ke;
+        let k = kf(&$op)?;
+        crate::execution::kernel_helpers::symbolic::hybrid::binary::<
+            $t0,
+            $t1,
+            $u,
+            _,
+            _,
+            _,
+            $plc,
+            Box<_>,
+        >(Operator::from($op.clone()), k)
+    }};
+
+    (hybrid $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {{
+        $(
+            let $attr = $op.$attr.clone();
+        )+
+        let k: crate::kernels::TypedBinaryKernel<
+            crate::execution::SymbolicSession,
+            _,
+            _,
+            _,
+            _,
+        > = Box::new(move |sess, plc, x0, x1| {
+            $k(sess, &plc, $($attr.clone()),+, x0, x1)
+        });
+        crate::execution::kernel_helpers::symbolic::hybrid::binary::<
+            $t0,
+            $t1,
+            $u,
+            _,
+            _,
+            _,
+            $plc,
+            Box<_>,
+        >(Operator::from($op.clone()), k)
+    }};
+
+    (hybrid $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::hybrid::binary::<
+            $t0,
+            $t1,
+            $u,
+            _,
+            _,
+            _,
+            $plc,
+            fn(&_, &_, _, _) -> _,
+        >(Operator::from($op.clone()), $k)
+    };
+
+    /* Ternary */
+
+    (runtime $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::runtime::ternary::<
+            $t0,
+            $t1,
+            $t2,
+            $u,
+            $plc,
+        >(Operator::from($op.clone()))
+    };
+
+    (concrete $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::concrete::ternary::<
+            $t0,
+            $t1,
+            $t2,
+            $u,
+            $plc,
+            fn(&_, &_, _, _, _) -> _,
+        >(
+            Operator::from($op.clone()),
+            $k,
+        )
+    };
+
+    (transparent $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::transparent::ternary::<
+            $t0,
+            $t1,
+            $t2,
+            $u,
+            $plc,
+            fn(&_, &_, _, _, _) -> _,
+        >(Operator::from($op.clone()), $k)
+    };
+
+    (hybrid $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::hybrid::ternary::<
+            $t0,
+            $t1,
+            $t2,
+            $u,
+            _,
+            _,
+            _,
+            _,
+            $plc,
+            fn(&_, &_, _, _, _) -> _,
+        >(
+            Operator::from($op.clone()),
+            $k,
+        )
+    };
+
+    /* Variadic */
+
+    (runtime $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::runtime::variadic::<$ts, $u, $plc>(Operator::from($op.clone()))
+    };
+
+    (runtime $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::runtime::variadic::<$ts, $u, $plc>(Operator::from($op.clone()))
+    };
+
+    (transparent $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::transparent::variadic::<
+            $ts,
+            $u,
+            $plc,
+            fn(&_, &_, &_) -> _,
+        >($k)
+    };
+
+    (concrete $plc:ty, vec[$ts:ty] -> $u:ty, attributes[$($attr:ident),+] $k:path, $op:ident) => {
+        {
+            $(
+                let $attr = $op.$attr.clone();
+            )+
+            let k: crate::kernels::TypedVariadicKernel<
+                crate::execution::SymbolicSession,
+                _,
+                _,
+                _,
+            > = Box::new(move |sess, plc, ts| {
+                $k(sess, &plc, $($attr.clone()),+, ts)
+            });
+            crate::execution::kernel_helpers::symbolic::concrete::variadic::<
+                $ts,
+                $u,
+                $plc,
+                Box<_>,
+            >(Operator::from($op.clone()), k)
+        }
+    };
+
+    (concrete $plc:ty, vec[$ts:ty] -> $u:ty, $k:path, $op:ident) => {
+        crate::execution::kernel_helpers::symbolic::concrete::variadic::<
+            $ts,
+            $u,
+            $plc,
+            fn(&_, &_, &_) -> _,
+        >(Operator::from($op.clone()), $k)
     };
 }
 
@@ -975,7 +990,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![sync nullary $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_kernel![sync nullary $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -999,7 +1014,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SymbolicSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![symbolic nullary $flavour $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_symbolic_kernel![$flavour $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1022,7 +1037,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![async nullary $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_kernel![async nullary $plc, () -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1257,7 +1272,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![sync unary $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_kernel![sync unary $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1282,7 +1297,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SymbolicSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![symbolic unary $flavour $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_symbolic_kernel![$flavour $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1307,7 +1322,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![async unary $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_kernel![async unary $plc, ($t0) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1560,7 +1575,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![sync binary $plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_kernel![sync binary $plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1586,7 +1601,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SymbolicSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![symbolic binary $flavour $plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_symbolic_kernel![$flavour $plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1612,7 +1627,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![async binary $plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_kernel![async binary $plc, ($t0, $t1) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1887,7 +1902,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![sync ternary $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_kernel![sync ternary $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1914,7 +1929,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SymbolicSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![symbolic ternary $flavour $plc, ($t0, $t1, $t2) -> $u, $($kp)+, self]
+                            derive_symbolic_kernel![$flavour $plc, ($t0, $t1, $t2) -> $u, $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -1941,7 +1956,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![async ternary $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_kernel![async ternary $plc, ($t0, $t1, $t2) -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -2235,7 +2250,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![sync variadic $plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_kernel![sync variadic $plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -2260,7 +2275,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<SymbolicSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![symbolic variadic $flavour $plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_symbolic_kernel![$flavour $plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
@@ -2285,7 +2300,7 @@ macro_rules! modelled_kernel {
                                 ret: <$u as KnownType<AsyncSession>>::TY,
                             })
                         ) => {
-                            ng_derive_runtime_kernel![async variadic $plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
+                            derive_kernel![async variadic $plc, vec[$ts] -> $u, $(attributes[$($attr_id),+])? $($kp)+, self]
                         }
                     )+
                     _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
