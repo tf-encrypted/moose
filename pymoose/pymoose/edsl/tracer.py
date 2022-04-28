@@ -373,6 +373,23 @@ class AstTracer:
             )
         )
 
+    def visit_SqrtExpression(self, exp_expression):
+        assert isinstance(exp_expression, expr.SqrtExpression)
+        (x_expression,) = exp_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(exp_expression.placement)
+        return self.computation.add_operation(
+            ops.SqrtOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("sqrt"),
+                inputs={"x": x_operation.name},
+                signature=ops.OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=exp_expression.vtype,
+                ),
+            )
+        )
+
     def visit_SigmoidExpression(self, exp_expression):
         assert isinstance(exp_expression, expr.SigmoidExpression)
         (x_expression,) = exp_expression.inputs
@@ -386,6 +403,23 @@ class AstTracer:
                 signature=ops.OpSignature(
                     input_types={"x": x_operation.return_type},
                     return_type=exp_expression.vtype,
+                ),
+            )
+        )
+
+    def visit_ReluExpression(self, relu_expression):
+        assert isinstance(relu_expression, expr.ReluExpression)
+        (x_expression,) = relu_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(relu_expression.placement)
+        return self.computation.add_operation(
+            ops.ReluOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("relu"),
+                inputs={"x": x_operation.name},
+                signature=ops.OpSignature(
+                    input_types={"x": x_operation.return_type},
+                    return_type=relu_expression.vtype,
                 ),
             )
         )

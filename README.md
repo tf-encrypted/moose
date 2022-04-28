@@ -147,7 +147,9 @@ To ease your development we encourage you to install the following extra cargo c
 
 - [`cargo expand`](https://github.com/dtolnay/cargo-expand) to dump what macros expand into.
 
-- [`cargo llvm-lines`](cargo install cargo-llvm-lines) to inspect code bloat.
+- [`cargo asm`](https://github.com/gnzlbg/cargo-asm) to dump assembly or LLVM IR (the latter via `cargo llvm-ir`).
+
+- [`cargo llvm-lines`](https://github.com/dtolnay/cargo-llvm-lines) to inspect code bloat.
 
 [Tokio Console](https://tokio.rs/blog/2021-12-announcing-tokio-console) is also interesting.
 
