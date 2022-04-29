@@ -859,7 +859,8 @@ impl SoftmaxOp {
         x_max.insert_axis_inplace(ndarray::Axis(axis));
         let x_normalized = x.0.into_owned() - x_max;
         let x_exp = x_normalized.mapv(T::exp);
-        let x_exp_sum = x_exp.sum();
+        let mut x_exp_sum = x_exp.sum_axis(ndarray::Axis(axis));
+        x_exp_sum.insert_axis_inplace(ndarray::Axis(axis));
         use std::ops::Div;
         let softmax = x_exp.div(x_exp_sum);
         Ok(HostTensor::place(plc, softmax.into_shared()))
