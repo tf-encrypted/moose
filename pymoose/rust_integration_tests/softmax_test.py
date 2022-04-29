@@ -68,6 +68,8 @@ class SoftmaxExample(parameterized.TestCase):
         traced_less_comp = edsl.trace(comp)
 
         x_arg = np.array(x, dtype=np.float64)
+        print("x_arg")
+        print(x_arg)
 
         storage = {
             "alice": {},
@@ -85,8 +87,13 @@ class SoftmaxExample(parameterized.TestCase):
         softmax_runtime = runtime.read_value_from_storage("bob", "softmax")
 
         ex = np.exp(x_arg - x_arg.max(axis=axis, keepdims=True))
+        print("ex", ex)
+        print("x_arg.max(axis=axis, keepdims=True)", x_arg.max(axis=axis, keepdims=True))
         softmax_numpy = ex / np.sum(ex, axis=axis, keepdims=True)
 
+        print("softmax_numpy start")
+        print(softmax_numpy)
+        print("softmax numpy end")
         np.testing.assert_almost_equal(softmax_runtime, softmax_numpy, decimal=2)
 
 

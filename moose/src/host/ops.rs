@@ -841,12 +841,15 @@ impl SoftmaxOp {
         upmost_index: usize,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>>
+
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
-        T: ndarray::ScalarOperand,
+        T: ndarray::ScalarOperand + std::cmp::Ord,
     {
-        let x_max = x.0.index_axis(ndarray::Axis(axis), upmost_index);
-        let x_normalized = x.0.clone() - x_max;
+        let x_max = x.iter().fold(f32::NAN, |a, &b| (a.max()).max(b.abs()));
+        let x_max = x.0.map_axis(ndarray::Axis(axis), |vx| vx.partial_cmp().unwrap_or());
+        x_max.insert_axis_inplace(ndarray::Axis(axis));
+        let x_normalized = x.0.into_owned() - x_max;
         let x_exp = x_normalized.mapv(T::exp);
         let x_exp_sum = x_exp.sum();
         use std::ops::Div;
