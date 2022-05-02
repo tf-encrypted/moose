@@ -841,20 +841,18 @@ impl SoftmaxOp {
         _upmost_index: usize,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>>
-
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
         T: ndarray::ScalarOperand + std::cmp::PartialOrd,
     {
         let mut x_max = x.0.map_axis(ndarray::Axis(axis), |vx| {
-            vx.iter()
-            .max_by(
-                // will only panic if encounters an uncomparable element, e.g. f64::NAN
-                // TODO error handle this case with e.g. ok_or and result collecting
-                |x, y| x.partial_cmp(y).unwrap()
-            )
-            .unwrap()  // unwrap ok here because vx.iter() cannot ever be empty
-            .clone()
+            *vx.iter()
+                .max_by(
+                    // will only panic if encounters an uncomparable element, e.g. f64::NAN
+                    // TODO error handle this case with e.g. ok_or and result collecting
+                    |x, y| x.partial_cmp(y).unwrap(),
+                )
+                .unwrap() // unwrap ok here because vx.iter() cannot ever be empty
         });
         x_max.insert_axis_inplace(ndarray::Axis(axis));
         let x_normalized = x.0.into_owned() - x_max;
