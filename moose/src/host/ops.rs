@@ -903,6 +903,38 @@ impl SqrtOp {
     }
 }
 
+impl SoftmaxOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: 'static + Float>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        _upmost_index: usize,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+        T: ndarray::ScalarOperand + std::cmp::PartialOrd,
+    {
+        let mut x_max = x.0.map_axis(ndarray::Axis(axis), |vx| {
+            *vx.iter()
+                .max_by(
+                    // will only panic if encounters an uncomparable element, e.g. f64::NAN
+                    // TODO error handle this case with e.g. ok_or and result collecting
+                    |x, y| x.partial_cmp(y).unwrap(),
+                )
+                .unwrap() // unwrap ok here because vx.iter() cannot ever be empty
+        });
+        x_max.insert_axis_inplace(ndarray::Axis(axis));
+        let x_normalized = x.0.into_owned() - x_max;
+        let x_exp = x_normalized.mapv(T::exp);
+        let mut x_exp_sum = x_exp.sum_axis(ndarray::Axis(axis));
+        x_exp_sum.insert_axis_inplace(ndarray::Axis(axis));
+        use std::ops::Div;
+        let softmax = x_exp.div(x_exp_sum);
+        Ok(HostTensor::place(plc, softmax.into_shared()))
+    }
+}
+
 impl<T: LinalgScalar> HostTensor<T> {
     fn sum(self, axis: Option<usize>) -> Result<Self> {
         if let Some(i) = axis {
