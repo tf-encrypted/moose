@@ -2327,3 +2327,32 @@ impl ArgmaxOp {
         Ok(plc.cast(sess, &arg_out))
     }
 }
+
+impl MaximumOp {
+    pub(crate) fn host_kernel<S: Session, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        xs: &[HostTensor<T>],
+    ) -> Result<HostTensor<T>>
+    where
+        T: Clone + std::cmp::PartialOrd + Copy,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot reduce on empty array of tensors".to_string(),
+            ))
+        } else {
+            let mut init = xs[0].0.clone();
+            for item in xs.iter() {
+                Zip::from(&mut init)
+                .and(&item.0)
+                .for_each(|a, &b| {
+                    if *a < b {
+                        *a = b
+                    }
+                });
+            }
+            Ok(HostTensor(init, plc.clone()))
+        }
+    }
+}

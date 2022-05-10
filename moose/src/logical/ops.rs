@@ -3113,3 +3113,62 @@ impl ArgmaxOp {
         }
     }
 }
+
+impl MaximumOp {
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>],
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementMaximum<S, Float32T, Float32T>,
+        HostPlacement: PlacementMaximum<S, Float64T, Float64T>,
+        Float32T: Clone,
+        Float64T: Clone,
+    {
+        use AbstractTensor::*;
+        match xs[0] {
+            Float32(_) => {
+                let xs: Operands<Float32T> = xs
+                    .iter()
+                    .map(|x| match x {
+                        AbstractTensor::Float32(x) => x.clone(),
+                        _ => {
+                            unimplemented!(
+                                "ConcatOp can not concatenate tensors of different kinds"
+                            )
+                        }
+                    })
+                    .collect();
+                let result = plc.maximum(sess, &xs);
+                Ok(Float32(result))
+            }
+            Float64(_) => {
+                let xs: Operands<Float64T> = xs
+                    .iter()
+                    .map(|x| match x {
+                        AbstractTensor::Float64(x) => x.clone(),
+                        _ => {
+                            unimplemented!(
+                                "ConcatOp can not concatenate tensors of different kinds"
+                            )
+                        }
+                    })
+                    .collect();
+                let result = plc.maximum(sess, &xs);
+                Ok(Float64(result))
+            }
+            Fixed64(_) | Fixed128(_) | Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
+                "ConcatOp missing an implementation.".to_string(),
+            )),
+        }
+    }
+}
