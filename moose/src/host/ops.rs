@@ -2353,4 +2353,30 @@ impl MaximumOp {
             Ok(HostTensor(init, plc.clone()))
         }
     }
+
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        xs: &[HostRingTensor<T>],
+    ) -> Result<HostRingTensor<T>>
+    where
+        T: Clone,
+        Wrapping<T>: std::cmp::PartialOrd + Copy,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot reduce on empty array of tensors".to_string(),
+            ))
+        } else {
+            let mut init = xs[0].0.clone();
+            for item in xs.iter() {
+                Zip::from(&mut init).and(&item.0).for_each(|a, &b| {
+                    if *a < b {
+                        *a = b
+                    }
+                });
+            }
+            Ok(HostRingTensor(init, plc.clone()))
+        }
+    }
 }

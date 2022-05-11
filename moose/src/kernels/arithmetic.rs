@@ -447,6 +447,15 @@ modelled_kernel! {
     [
         (HostPlacement, vec[HostFloat32Tensor] -> HostFloat32Tensor => [runtime] Self::host_kernel),
         (HostPlacement, vec[HostFloat64Tensor] -> HostFloat64Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor => [runtime] Self::host_ring_kernel),
+        (HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor => [runtime] Self::host_ring_kernel),
+
+        (HostPlacement, vec[HostFixed64Tensor] -> HostFixed64Tensor => [concrete] Self::host_fixed_kernel),
+        (HostPlacement, vec[HostFixed128Tensor] -> HostFixed128Tensor => [concrete] Self::host_fixed_kernel),
+        (HostPlacement, vec[Fixed64Tensor] -> Fixed64Tensor => [concrete] Self::fixed_lowering_kernel),
+        (HostPlacement, vec[Fixed128Tensor] -> Fixed128Tensor => [concrete] Self::fixed_lowering_kernel),
+
+
         (HostPlacement, vec[Float32Tensor] -> Float32Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, vec[Float64Tensor] -> Float64Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, vec[Tensor] -> Tensor => [concrete] Self::logical_host_kernel),

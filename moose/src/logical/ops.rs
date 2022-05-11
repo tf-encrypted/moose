@@ -2976,6 +2976,101 @@ impl MaximumOp {
         };
         Ok(out)
     }
+
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        x: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>],
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementMaximum<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementMaximum<S, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementMaximum<S, Float32T, Float32T>,
+        HostPlacement: PlacementMaximum<S, Float64T, Float64T>,
+        Fixed64T: Clone,
+        Fixed128T: Clone,
+        Float32T: Clone,
+        Float64T: Clone,
+    {
+        use AbstractTensor::*;
+        match x[0] {
+            Fixed64(_) => {
+                let xs: Operands<Fixed64T> = x
+                    .iter()
+                    .filter_map(|x| match x {
+                        AbstractTensor::Fixed64(x) => Some(x.clone()),
+                        _ => None,
+                    })
+                    .collect();
+                if xs.len() != x.len() {
+                    return Err(Error::Unexpected(Some(
+                        "maximum op all args to have same types".to_string(),
+                    )));
+                }
+                let result = plc.maximum(sess, &xs);
+                Ok(Fixed64(result))
+            }
+            Fixed128(_) => {
+                let xs: Operands<Fixed128T> = x
+                    .iter()
+                    .filter_map(|x| match x {
+                        AbstractTensor::Fixed128(x) => Some(x.clone()),
+                        _ => None,
+                    })
+                    .collect();
+                if xs.len() != x.len() {
+                    return Err(Error::Unexpected(Some(
+                        "maximum op all args to have same types".to_string(),
+                    )));
+                }
+                let result = plc.maximum(sess, &xs);
+                Ok(Fixed128(result))
+            }
+            Float32(_) => {
+                let xs: Operands<Float32T> = x
+                    .iter()
+                    .filter_map(|x| match x {
+                        AbstractTensor::Float32(x) => Some(x.clone()),
+                        _ => None,
+                    })
+                    .collect();
+                if xs.len() != x.len() {
+                    return Err(Error::Unexpected(Some(
+                        "maximum op all args to have same types".to_string(),
+                    )));
+                }
+                let result = plc.maximum(sess, &xs);
+                Ok(Float32(result))
+            }
+            Float64(_) => {
+                let xs: Operands<Float64T> = x
+                    .iter()
+                    .filter_map(|x| match x {
+                        AbstractTensor::Float64(x) => Some(x.clone()),
+                        _ => None,
+                    })
+                    .collect();
+                if xs.len() != x.len() {
+                    return Err(Error::Unexpected(Some(
+                        "maximum op all args to have same types".to_string(),
+                    )));
+                }
+                let result = plc.maximum(sess, &xs);
+                Ok(Float64(result))
+            }
+            Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
+                "MaximumOp missing an implementation.".to_string(),
+            )),
+        }
+    }
 }
 
 impl SoftmaxOp {
@@ -3114,61 +3209,4 @@ impl ArgmaxOp {
     }
 }
 
-impl MaximumOp {
-    pub(crate) fn logical_host_kernel<
-        S: Session,
-        Fixed64T,
-        Fixed128T,
-        Float32T,
-        Float64T,
-        BoolT,
-        Uint64T,
-    >(
-        sess: &S,
-        plc: &HostPlacement,
-        xs: &[AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>],
-    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
-    where
-        HostPlacement: PlacementMaximum<S, Float32T, Float32T>,
-        HostPlacement: PlacementMaximum<S, Float64T, Float64T>,
-        Float32T: Clone,
-        Float64T: Clone,
-    {
-        use AbstractTensor::*;
-        match xs[0] {
-            Float32(_) => {
-                let xs: Operands<Float32T> = xs
-                    .iter()
-                    .map(|x| match x {
-                        AbstractTensor::Float32(x) => x.clone(),
-                        _ => {
-                            unimplemented!(
-                                "ConcatOp can not concatenate tensors of different kinds"
-                            )
-                        }
-                    })
-                    .collect();
-                let result = plc.maximum(sess, &xs);
-                Ok(Float32(result))
-            }
-            Float64(_) => {
-                let xs: Operands<Float64T> = xs
-                    .iter()
-                    .map(|x| match x {
-                        AbstractTensor::Float64(x) => x.clone(),
-                        _ => {
-                            unimplemented!(
-                                "ConcatOp can not concatenate tensors of different kinds"
-                            )
-                        }
-                    })
-                    .collect();
-                let result = plc.maximum(sess, &xs);
-                Ok(Float64(result))
-            }
-            Fixed64(_) | Fixed128(_) | Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
-                "ConcatOp missing an implementation.".to_string(),
-            )),
-        }
-    }
-}
+impl MaximumOp {}
