@@ -2344,9 +2344,7 @@ impl MaximumOp {
         } else {
             let mut init = xs[0].0.clone();
             for item in xs.iter() {
-                Zip::from(&mut init)
-                .and(&item.0)
-                .for_each(|a, &b| {
+                Zip::from(&mut init).and(&item.0).for_each(|a, &b| {
                     if *a < b {
                         *a = b
                     }

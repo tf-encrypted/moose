@@ -792,12 +792,10 @@ impl MaximumOp {
         if xs_f.len() != xs.len() {
             return Err(Error::UnimplementedOperator(
                 "MaximumOp @ Mirrored3Placement".to_string(),
-            ))
+            ));
         }
 
         let z = plc.maximum(sess, &xs_f);
         Ok(FloatTensor::Host(z))
     }
 }
-
-
