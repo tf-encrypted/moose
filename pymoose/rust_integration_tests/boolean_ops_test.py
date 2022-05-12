@@ -5,7 +5,7 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.computation import types as ty
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
@@ -13,45 +13,45 @@ from pymoose.testing import LocalMooseRuntime
 
 class BooleanLogicExample(parameterized.TestCase):
     def _setup_comp(self):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
+        carole = pm.host_placement(name="carole")
+        rep = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 
-        @edsl.computation
+        @pm.computation
         def my_comp(
-            x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
-            y_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
-            ya_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+            x_uri: pm.Argument(placement=bob, vtype=ty.StringType()),
+            y_uri: pm.Argument(placement=bob, vtype=ty.StringType()),
+            ya_uri: pm.Argument(placement=bob, vtype=ty.StringType()),
         ):
             with bob:
-                x = edsl.load(x_uri, dtype=edsl.float64)
-                x = edsl.cast(x, dtype=edsl.fixed(8, 27))
+                x = pm.load(x_uri, dtype=pm.float64)
+                x = pm.cast(x, dtype=pm.fixed(8, 27))
 
-                y = edsl.load(y_uri, dtype=edsl.float64)
-                y = edsl.cast(y, dtype=edsl.fixed(8, 27))
+                y = pm.load(y_uri, dtype=pm.float64)
+                y = pm.cast(y, dtype=pm.fixed(8, 27))
 
             with rep:
-                z_less = edsl.less(x, y)
-                z_greater = edsl.greater(x, y)
-                z_twice = edsl.concatenate([z_less, z_less])
-                z_mux = edsl.mux(z_less, x, y)
+                z_less = pm.less(x, y)
+                z_greater = pm.greater(x, y)
+                z_twice = pm.concatenate([z_less, z_less])
+                z_mux = pm.mux(z_less, x, y)
 
             with alice:
-                zl_alice = edsl.logical_or(z_less, z_less)
-                zg_alice = edsl.logical_or(z_greater, z_greater)
-                zm_alice = edsl.cast(z_mux, dtype=edsl.float64)
+                zl_alice = pm.logical_or(z_less, z_less)
+                zg_alice = pm.logical_or(z_greater, z_greater)
+                zm_alice = pm.cast(z_mux, dtype=pm.float64)
 
-                y_alice = edsl.load(ya_uri, dtype=edsl.float64)
+                y_alice = pm.load(ya_uri, dtype=pm.float64)
                 r_alice = (
-                    edsl.save("z0", edsl.index_axis(zl_alice, axis=0, index=0)),
-                    edsl.save("z1", edsl.index_axis(zl_alice, axis=0, index=1)),
-                    edsl.save("z2", edsl.index_axis(zl_alice, axis=0, index=2)),
-                    edsl.save("less_result", zl_alice),
-                    edsl.save("greater_result", zg_alice),
-                    edsl.save("y0", edsl.index_axis(y_alice, axis=0, index=2)),
-                    edsl.save("mux", zm_alice),
-                    edsl.save("z_twice", z_twice),
+                    pm.save("z0", pm.index_axis(zl_alice, axis=0, index=0)),
+                    pm.save("z1", pm.index_axis(zl_alice, axis=0, index=1)),
+                    pm.save("z2", pm.index_axis(zl_alice, axis=0, index=2)),
+                    pm.save("less_result", zl_alice),
+                    pm.save("greater_result", zg_alice),
+                    pm.save("y0", pm.index_axis(y_alice, axis=0, index=2)),
+                    pm.save("mux", zm_alice),
+                    pm.save("z_twice", z_twice),
                 )
 
             return r_alice
@@ -63,7 +63,7 @@ class BooleanLogicExample(parameterized.TestCase):
     )
     def test_bool_example_execute(self, x, y):
         less_comp = self._setup_comp()
-        traced_less_comp = edsl.trace(less_comp)
+        traced_less_comp = pm.trace(less_comp)
         storage = {
             "alice": {},
             "bob": {},

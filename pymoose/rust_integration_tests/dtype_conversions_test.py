@@ -5,21 +5,21 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 
 class DTypeConversionTest(parameterized.TestCase):
     def _setup_comp(self, x_array, from_dtype, to_dtype):
-        alice = edsl.host_placement(name="alice")
+        alice = pm.host_placement(name="alice")
 
-        @edsl.computation
+        @pm.computation
         def my_cast_comp():
             with alice:
-                x = edsl.constant(x_array, dtype=from_dtype)
-                x_new = edsl.cast(x, dtype=to_dtype)
-                res = edsl.save("x", x_new)
+                x = pm.constant(x_array, dtype=from_dtype)
+                x_new = pm.cast(x, dtype=to_dtype)
+                res = pm.save("x", x_new)
             return res
 
         return my_cast_comp
@@ -28,67 +28,67 @@ class DTypeConversionTest(parameterized.TestCase):
         ##
         # float <-> float
         ##
-        ([-1.0, 0, 1, 2], edsl.float64, edsl.float32),
-        ([-1.0, 0, 1, 2], edsl.float32, edsl.float64),
+        ([-1.0, 0, 1, 2], pm.float64, pm.float32),
+        ([-1.0, 0, 1, 2], pm.float32, pm.float64),
         ##
         # float <-> bool
         ##
-        ([-1.0, 0, 1, 2], edsl.float64, edsl.bool_),
-        ([-1.0, 0, 1, 2], edsl.float32, edsl.bool_),
-        ([1, 0, 1, 1], edsl.bool_, edsl.float64),
-        ([1, 0, 1, 1], edsl.bool_, edsl.float32),
+        ([-1.0, 0, 1, 2], pm.float64, pm.bool_),
+        ([-1.0, 0, 1, 2], pm.float32, pm.bool_),
+        ([1, 0, 1, 1], pm.bool_, pm.float64),
+        ([1, 0, 1, 1], pm.bool_, pm.float32),
         ##
         # float <-> int
         ##
-        ([3.0, 0, 1, 2], edsl.float64, edsl.uint64),
-        # ([3.0, 0, 1, 2], edsl.float64, edsl.uint32),
-        # ([-1.0, 0, 1, 2], edsl.float64, edsl.int64),
-        # ([-1.0, 0, 1, 2], edsl.float64, edsl.int32),
-        ([3, 0, 1, 2], edsl.uint64, edsl.float64),
-        # ([3, 0, 1, 2], edsl.uint32, edsl.float64),
-        # ([-1, 0, 1, 2], edsl.int64, edsl.float64),
-        # ([-1, 0, 1, 2], edsl.int32, edsl.float64),
-        ([3.0, 0, 1, 2], edsl.float32, edsl.uint64),
-        # ([3.0, 0, 1, 2], edsl.float32, edsl.uint32),
-        # ([-1.0, 0, 1, 2], edsl.float32, edsl.int64),
-        # ([-1.0, 0, 1, 2], edsl.float32, edsl.int32),
-        ([3, 0, 1, 2], edsl.uint64, edsl.float32),
-        # ([3, 0, 1, 2], edsl.uint32, edsl.float32),
-        # ([-1, 0, 1, 2], edsl.int64, edsl.float32),
-        # ([-1, 0, 1, 2], edsl.int32, edsl.float32),
-        ([3, 0, 1, 2], edsl.uint64, edsl.float32),
+        ([3.0, 0, 1, 2], pm.float64, pm.uint64),
+        # ([3.0, 0, 1, 2], pm.float64, pm.uint32),
+        # ([-1.0, 0, 1, 2], pm.float64, pm.int64),
+        # ([-1.0, 0, 1, 2], pm.float64, pm.int32),
+        ([3, 0, 1, 2], pm.uint64, pm.float64),
+        # ([3, 0, 1, 2], pm.uint32, pm.float64),
+        # ([-1, 0, 1, 2], pm.int64, pm.float64),
+        # ([-1, 0, 1, 2], pm.int32, pm.float64),
+        ([3.0, 0, 1, 2], pm.float32, pm.uint64),
+        # ([3.0, 0, 1, 2], pm.float32, pm.uint32),
+        # ([-1.0, 0, 1, 2], pm.float32, pm.int64),
+        # ([-1.0, 0, 1, 2], pm.float32, pm.int32),
+        ([3, 0, 1, 2], pm.uint64, pm.float32),
+        # ([3, 0, 1, 2], pm.uint32, pm.float32),
+        # ([-1, 0, 1, 2], pm.int64, pm.float32),
+        # ([-1, 0, 1, 2], pm.int32, pm.float32),
+        ([3, 0, 1, 2], pm.uint64, pm.float32),
         ##
         # int <-> bool
         ##
-        ([3, 0, 1, 2], edsl.uint64, edsl.bool_),
-        # ([3, 0, 1, 2], edsl.uint32, edsl.bool_),
-        # ([-1, 0, 1, 2], edsl.int64, edsl.bool_),
-        # ([-1, 0, 1, 2], edsl.int32, edsl.bool_),
-        ([1, 0, 1, 1], edsl.bool_, edsl.uint64),
-        # ([1, 0, 1, 1], edsl.bool_, edsl.uint32),
-        # ([1, 0, 1, 1], edsl.bool_, edsl.int64),
-        # ([1, 0, 1, 1], edsl.bool_, edsl.int32),
+        ([3, 0, 1, 2], pm.uint64, pm.bool_),
+        # ([3, 0, 1, 2], pm.uint32, pm.bool_),
+        # ([-1, 0, 1, 2], pm.int64, pm.bool_),
+        # ([-1, 0, 1, 2], pm.int32, pm.bool_),
+        ([1, 0, 1, 1], pm.bool_, pm.uint64),
+        # ([1, 0, 1, 1], pm.bool_, pm.uint32),
+        # ([1, 0, 1, 1], pm.bool_, pm.int64),
+        # ([1, 0, 1, 1], pm.bool_, pm.int32),
         ##
         # int <-> int
         ##
-        # ([3, 0, 1, 2], edsl.uint64, edsl.uint32),
-        # ([3, 0, 1, 2], edsl.uint64, edsl.int64),
-        # ([3, 0, 1, 2], edsl.uint64, edsl.int32),
-        # ([3, 0, 1, 2], edsl.uint32, edsl.uint64),
-        # ([3, 0, 1, 2], edsl.uint32, edsl.int64),
-        # ([3, 0, 1, 2], edsl.uint32, edsl.int32),
-        # ([3, 0, 1, 2], edsl.int64, edsl.uint64),
-        # ([3, 0, 1, 2], edsl.int64, edsl.uint32),
-        # ([3, 0, 1, 2], edsl.int64, edsl.int32),
-        # ([3, 0, 1, 2], edsl.int32, edsl.uint64),
-        # ([3, 0, 1, 2], edsl.int32, edsl.uint32),
-        # ([3, 0, 1, 2], edsl.int32, edsl.int64),
+        # ([3, 0, 1, 2], pm.uint64, pm.uint32),
+        # ([3, 0, 1, 2], pm.uint64, pm.int64),
+        # ([3, 0, 1, 2], pm.uint64, pm.int32),
+        # ([3, 0, 1, 2], pm.uint32, pm.uint64),
+        # ([3, 0, 1, 2], pm.uint32, pm.int64),
+        # ([3, 0, 1, 2], pm.uint32, pm.int32),
+        # ([3, 0, 1, 2], pm.int64, pm.uint64),
+        # ([3, 0, 1, 2], pm.int64, pm.uint32),
+        # ([3, 0, 1, 2], pm.int64, pm.int32),
+        # ([3, 0, 1, 2], pm.int32, pm.uint64),
+        # ([3, 0, 1, 2], pm.int32, pm.uint32),
+        # ([3, 0, 1, 2], pm.int32, pm.int64),
     )
     def test_host_dtype_conversions(self, x_array, from_dtype, to_dtype):
         x_npy = np.array(x_array, dtype=from_dtype.numpy_dtype)
         expected_npy = x_npy.astype(to_dtype.numpy_dtype)
         cast_comp = self._setup_comp(x_npy, from_dtype, to_dtype)
-        traced_comp = edsl.trace(cast_comp)
+        traced_comp = pm.trace(cast_comp)
         storage = {
             "alice": {},
             "bob": {},

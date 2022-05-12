@@ -5,46 +5,46 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
-alice = edsl.host_placement(name="alice")
-bob = edsl.host_placement(name="bob")
-carole = edsl.host_placement(name="carole")
-mir = edsl.mirrored_placement(name="mir", players=[alice, bob, carole])
-rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+alice = pm.host_placement(name="alice")
+bob = pm.host_placement(name="bob")
+carole = pm.host_placement(name="carole")
+mir = pm.mirrored_placement(name="mir", players=[alice, bob, carole])
+rep = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 
 
 class ReshapeExample(parameterized.TestCase):
     def _setup_rep_comp(self):
-        @edsl.computation
+        @pm.computation
         def my_comp():
             with bob:
-                x = edsl.constant(
-                    np.array([[1.0, 2.0], [3.0, 4.0]]), dtype=edsl.fixed(8, 27)
+                x = pm.constant(
+                    np.array([[1.0, 2.0], [3.0, 4.0]]), dtype=pm.fixed(8, 27)
                 )
 
             with rep:
-                x_reshape = edsl.reshape(x, [1, 4])
+                x_reshape = pm.reshape(x, [1, 4])
 
             with bob:
-                x_reshape = edsl.cast(x_reshape, dtype=edsl.float64)
-                res = edsl.save("x_reshape", x_reshape)
+                x_reshape = pm.cast(x_reshape, dtype=pm.float64)
+                res = pm.save("x_reshape", x_reshape)
 
             return res
 
         return my_comp
 
     def _setup_host_comp(self):
-        @edsl.computation
+        @pm.computation
         def my_comp():
             with bob:
-                x = edsl.constant(
-                    np.array([[1.0, 2.0], [3.0, 4.0]]), dtype=edsl.float64
+                x = pm.constant(
+                    np.array([[1.0, 2.0], [3.0, 4.0]]), dtype=pm.float64
                 )
-                x_reshape = edsl.reshape(x, [1, 4])
-                res = edsl.save("x_reshape", x_reshape)
+                x_reshape = pm.reshape(x, [1, 4])
+                res = pm.save("x_reshape", x_reshape)
 
             return res
 
@@ -60,7 +60,7 @@ class ReshapeExample(parameterized.TestCase):
         elif reshape_placement == rep:
             comp = self._setup_rep_comp()
 
-        traced_comp = edsl.trace(comp)
+        traced_comp = pm.trace(comp)
 
         storage = {
             "alice": {},

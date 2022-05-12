@@ -5,16 +5,16 @@ Moose is a framework for secure multi-party computation, written in Rust.
 Moose includes an API, a compiler, and a runtime. It’s designed to be secure, fast, scalable, and extensible. Moose is production ready and secure by default.
 
 ### Components
-- `The Moose API` is an easy to use method of expressing a program of mathematical operations (addition, matrix multiplication, comparison, etc) which may contain inputs from one or more parties. Moose programs can be written in Python ([PyMoose](/pymoose)) or directly in Rust ([examples](/moose/examples)).
-- `The Moose Compiler` builds, type checks, and optimizes the operations into a distributed data flow graph (we call this encrypted data flow).
-- `The Moose Runtime` securely and efficiently executes the graph across a network of (potentially untrusted) compute clusters while protecting the secrecy of the inputs.
+- The `Moose eDSL` is an easy-to-use language for expressing programs of algebraic operations on `n`-dimensional arrays, which may contain inputs from one or more parties. Moose programs can be written in Python ([PyMoose](/pymoose)) or directly in Rust ([examples](/moose/examples)).
+- The `Moose Compiler` builds, type checks, and optimizes the operations into a distributed data flow graph. We call this encrypted data flow.
+- The `Moose Runtime` securely and efficiently executes the graph across a network of (potentially untrusted) compute clusters while protecting the secrecy of the inputs.
 
-Moose contains the mathematical primitives to compose machine learning and deep learning models (see [PyCape](https://github.com/capeprivacy/pycape)).
+Moose contains the mathematical primitives to compose machine learning and deep learning models.
 
 Moose is designed to support many different secure multi-party computation protocols. Initially, replicated secret sharing is supported. Contributions of additional protocols are welcome.
 
 ### Community
-Moose is a community driven, open source project. Moose was created at Cape, where it continues to be actively developed.
+Moose is a community driven, open source project. Moose was created at Cape.
 
 ## Installation
 

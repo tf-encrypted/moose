@@ -1,7 +1,7 @@
 import abc
 import json
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.predictors import aes_predictor
 from pymoose.predictors import predictor_utils as utils
 
@@ -32,7 +32,7 @@ class DecisionTreeRegressor(aes_predictor.AesPredictor):
 
     def __call__(self, x, n_features, rescale_factor, fixedpoint_dtype):
         leaf_weights = {ix: rescale_factor * w for ix, w in self.weights.items()}
-        features_vec = [edsl.index_axis(x, axis=1, index=i) for i in range(n_features)]
+        features_vec = [pm.index_axis(x, axis=1, index=i) for i in range(n_features)]
         return self._traverse_tree(0, leaf_weights, features_vec, fixedpoint_dtype)
 
     def _traverse_tree(self, node, leaf_weights, x_features, fixedpoint_dtype):
@@ -40,14 +40,14 @@ class DecisionTreeRegressor(aes_predictor.AesPredictor):
         right_child = self.right[node]
         if left_child != 0 and right_child != 0:
             # we're at an inner node; this is the recursive case
-            selector = edsl.less(
+            selector = pm.less(
                 x_features[self.split_indices[node]],
                 self.fixedpoint_constant(
                     self.split_conditions[node], self.mirrored, dtype=fixedpoint_dtype
                 ),
             )
 
-            return edsl.mux(
+            return pm.mux(
                 selector,
                 self._traverse_tree(
                     left_child, leaf_weights, x_features, fixedpoint_dtype
@@ -94,17 +94,17 @@ class TreeEnsemble(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         # variadic ops will not necessarily know to move their results from source
         # placements to replicated placement.
         # it's a bit ugly, but it works for now.
-        return list(map(edsl.identity, forest_scores))
+        return list(map(pm.identity, forest_scores))
 
     def predictor_factory(self, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE):
-        # TODO[jason] make it more ergonomic for edsl.computation to bind args during
-        #   tracing w/ edsl.trace
-        @edsl.computation
+        # TODO[jason] make it more ergonomic for pm.computation to bind args during
+        #   tracing w/ pm.trace
+        @pm.computation
         def predictor(
-            aes_data: edsl.Argument(
-                self.alice, vtype=edsl.AesTensorType(dtype=fixedpoint_dtype)
+            aes_data: pm.Argument(
+                self.alice, vtype=pm.AesTensorType(dtype=fixedpoint_dtype)
             ),
-            aes_key: edsl.Argument(self.replicated, vtype=edsl.AesKeyType()),
+            aes_key: pm.Argument(self.replicated, vtype=pm.AesKeyType()),
         ):
             x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
             with self.replicated:
@@ -263,19 +263,19 @@ class TreeEnsembleClassifier(TreeEnsemble):
                 tree_scores, axis=1, fixedpoint_dtype=fixedpoint_dtype
             )
             if self.transform_output:
-                return edsl.softmax(logit, axis=1, upmost_index=self.n_classes)
+                return pm.softmax(logit, axis=1, upmost_index=self.n_classes)
             return logit
 
     def _maybe_sigmoid(self, tree_scores, fixedpoint_dtype):
         base_score = self.fixedpoint_constant(
             self.base_score, self.carole, dtype=fixedpoint_dtype
         )
-        logit = edsl.add(edsl.add_n(tree_scores), base_score)
-        pos_prob = edsl.sigmoid(logit) if self.transform_output else logit
-        pos_prob = edsl.expand_dims(pos_prob, axis=1)
+        logit = pm.add(pm.add_n(tree_scores), base_score)
+        pos_prob = pm.sigmoid(logit) if self.transform_output else logit
+        pos_prob = pm.expand_dims(pos_prob, axis=1)
         one = self.fixedpoint_constant(1, plc=self.mirrored, dtype=fixedpoint_dtype)
-        neg_prob = edsl.sub(one, pos_prob)
-        return edsl.concatenate([neg_prob, pos_prob], axis=1)
+        neg_prob = pm.sub(one, pos_prob)
+        return pm.concatenate([neg_prob, pos_prob], axis=1)
 
     def _ovr_logit(self, tree_scores, axis, fixedpoint_dtype):
         ovr_results = [[] for _ in range(self.n_classes)]
@@ -284,9 +284,9 @@ class TreeEnsembleClassifier(TreeEnsemble):
         base_score = self.fixedpoint_constant(
             self.base_score, self.carole, dtype=fixedpoint_dtype
         )
-        ovr_logits = [edsl.add(edsl.add_n(ovr), base_score) for ovr in ovr_results]
-        reformed_logits = edsl.concatenate(
-            [edsl.expand_dims(ovr, axis=axis) for ovr in ovr_logits], axis=axis
+        ovr_logits = [pm.add(pm.add_n(ovr), base_score) for ovr in ovr_results]
+        reformed_logits = pm.concatenate(
+            [pm.expand_dims(ovr, axis=axis) for ovr in ovr_logits], axis=axis
         )
         return reformed_logits
 
@@ -353,8 +353,8 @@ class TreeEnsembleRegressor(TreeEnsemble):
         base_score = self.fixedpoint_constant(
             self.base_score, self.carole, dtype=fixedpoint_dtype
         )
-        penultimate_score = edsl.add_n(tree_scores)
-        return edsl.add(base_score, penultimate_score)
+        penultimate_score = pm.add_n(tree_scores)
+        return pm.add(base_score, penultimate_score)
 
     @classmethod
     def _unbundle_forest(cls, model_json):

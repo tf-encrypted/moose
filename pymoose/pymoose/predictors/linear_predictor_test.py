@@ -5,9 +5,7 @@ import numpy as np
 import onnx
 from absl.testing import parameterized
 
-import pymoose
-from pymoose import edsl
-from pymoose import elk_compiler
+import pymoose as pm
 from pymoose import testing
 from pymoose.computation import utils as comp_utils
 from pymoose.predictors import linear_predictor
@@ -64,10 +62,10 @@ class LinearPredictorTest(parameterized.TestCase):
     def _build_prediction_logic(self, model_name, predictor_cls):
         predictor = self._build_linear_predictor(model_name, predictor_cls)
 
-        @edsl.computation
-        def predictor_no_aes(x: edsl.Argument(predictor.alice, dtype=edsl.float64)):
+        @pm.computation
+        def predictor_no_aes(x: pm.Argument(predictor.alice, dtype=pm.float64)):
             with predictor.alice:
-                x_fixed = edsl.cast(x, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
+                x_fixed = pm.cast(x, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
             with predictor.replicated:
                 y = predictor.linear_predictor_fn(
                     x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE
@@ -83,7 +81,7 @@ class LinearPredictorTest(parameterized.TestCase):
             model_name, linear_predictor.LinearRegressor
         )
 
-        traced_predictor = edsl.trace(regressor_logic)
+        traced_predictor = pm.trace(regressor_logic)
         storage = {plc.name: {} for plc in regressor.host_placements}
         runtime = testing.LocalMooseRuntime(storage_mapping=storage)
         role_assignment = {plc.name: plc.name for plc in regressor.host_placements}
@@ -106,7 +104,7 @@ class LinearPredictorTest(parameterized.TestCase):
             model_name, linear_predictor.LinearClassifier
         )
 
-        traced_predictor = edsl.trace(classifier_logic)
+        traced_predictor = pm.trace(classifier_logic)
         storage = {plc.name: {} for plc in classifier.host_placements}
         runtime = testing.LocalMooseRuntime(storage_mapping=storage)
         role_assignment = {plc.name: plc.name for plc in classifier.host_placements}
@@ -136,11 +134,11 @@ class LinearPredictorTest(parameterized.TestCase):
     def test_serde(self, model_name, predictor_cls):
         regressor = self._build_linear_predictor(model_name, predictor_cls)
         predictor = regressor.predictor_factory()
-        traced_predictor = edsl.trace(predictor)
+        traced_predictor = pm.trace(predictor)
         serialized = comp_utils.serialize_computation(traced_predictor)
-        logical_comp_rustref = elk_compiler.compile_computation(serialized, [])
+        logical_comp_rustref = pm.elk_compiler.compile_computation(serialized, [])
         logical_comp_rustbytes = logical_comp_rustref.to_bytes()
-        pymoose.MooseComputation.from_bytes(logical_comp_rustbytes)
+        pm.MooseComputation.from_bytes(logical_comp_rustbytes)
         # NOTE: could also dump to disk as follows (but we don't in the test)
         # logical_comp_rustref.to_disk(path)
-        # pymoose.MooseComputation.from_disk(path)
+        # pm.MooseComputation.from_disk(path)

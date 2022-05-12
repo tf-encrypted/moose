@@ -5,7 +5,7 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.computation import types as ty
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
@@ -13,40 +13,40 @@ from pymoose.testing import LocalMooseRuntime
 
 class SoftmaxExample(parameterized.TestCase):
     def _setup_comp(self, axis, axis_idx_max, replicated=True):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
+        carole = pm.host_placement(name="carole")
+        rep = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 
         if replicated:
 
-            @edsl.computation
+            @pm.computation
             def my_comp(
-                x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+                x_uri: pm.Argument(placement=bob, vtype=ty.StringType()),
             ):
                 with bob:
-                    x = edsl.load(x_uri, dtype=edsl.float64)
-                    x_fixed = edsl.cast(x, dtype=edsl.fixed(8, 27))
+                    x = pm.load(x_uri, dtype=pm.float64)
+                    x_fixed = pm.cast(x, dtype=pm.fixed(8, 27))
 
                 with rep:
-                    x_soft = edsl.softmax(x_fixed, axis=axis, upmost_index=axis_idx_max)
+                    x_soft = pm.softmax(x_fixed, axis=axis, upmost_index=axis_idx_max)
 
                 with bob:
-                    x_soft_host = edsl.cast(x_soft, dtype=edsl.float64)
-                    res = edsl.save("softmax", x_soft_host)
+                    x_soft_host = pm.cast(x_soft, dtype=pm.float64)
+                    res = pm.save("softmax", x_soft_host)
 
                 return res
 
         else:
 
-            @edsl.computation
+            @pm.computation
             def my_comp(
-                x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+                x_uri: pm.Argument(placement=bob, vtype=ty.StringType()),
             ):
                 with bob:
-                    x = edsl.load(x_uri, dtype=edsl.float64)
-                    x_soft = edsl.softmax(x, axis=axis, upmost_index=axis_idx_max)
-                    res = edsl.save("softmax", x_soft)
+                    x = pm.load(x_uri, dtype=pm.float64)
+                    x_soft = pm.softmax(x, axis=axis, upmost_index=axis_idx_max)
+                    res = pm.save("softmax", x_soft)
                 return res
 
         return my_comp
@@ -79,7 +79,7 @@ class SoftmaxExample(parameterized.TestCase):
     )
     def test_example_execute(self, x, axis, axis_idx_max):
         comp_rep = self._setup_comp(axis, axis_idx_max, replicated=True)
-        traced_softmax_rep_comp = edsl.trace(comp_rep)
+        traced_softmax_rep_comp = pm.trace(comp_rep)
 
         x_arg = np.array(x, dtype=np.float64)
 
@@ -99,7 +99,7 @@ class SoftmaxExample(parameterized.TestCase):
         softmax_runtime_rep = runtime_rep.read_value_from_storage("bob", "softmax")
 
         comp_host = self._setup_comp(axis, axis_idx_max, replicated=False)
-        traced_softmax_host_comp = edsl.trace(comp_host)
+        traced_softmax_host_comp = pm.trace(comp_host)
 
         x_arg = np.array(x, dtype=np.float64)
 

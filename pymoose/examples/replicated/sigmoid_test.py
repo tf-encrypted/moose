@@ -5,8 +5,7 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
-from pymoose import elk_compiler
+import pymoose as pm
 from pymoose.computation import utils
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
@@ -14,22 +13,22 @@ from pymoose.testing import LocalMooseRuntime
 
 class ReplicatedExample(parameterized.TestCase):
     def _setup_sigmoid_comp(self):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
+        carole = pm.host_placement(name="carole")
+        rep = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 
-        @edsl.computation
+        @pm.computation
         def my_sigmoid_comp():
             with bob:
-                x = edsl.constant(np.array([2], dtype=np.float64))
-                x = edsl.cast(x, dtype=edsl.fixed(8, 27))
+                x = pm.constant(np.array([2], dtype=np.float64))
+                x = pm.cast(x, dtype=pm.fixed(8, 27))
 
             with rep:
-                y = edsl.sigmoid(x)
+                y = pm.sigmoid(x)
 
             with alice:
-                res = edsl.save("y_uri", edsl.cast(y, edsl.float64))
+                res = pm.save("y_uri", pm.cast(y, pm.float64))
 
             return res
 
@@ -37,21 +36,21 @@ class ReplicatedExample(parameterized.TestCase):
 
     def test_sigmoid_example_serde(self):
         sigmoid_comp = self._setup_sigmoid_comp()
-        traced_sigmoid_comp = edsl.trace(sigmoid_comp)
+        traced_sigmoid_comp = pm.trace(sigmoid_comp)
         comp_bin = utils.serialize_computation(traced_sigmoid_comp)
         # Compile in Rust
         # If this does not error, rust was able to deserialize the pycomputation
-        elk_compiler.compile_computation(comp_bin, [])
+        pm.elk_compiler.compile_computation(comp_bin, [])
 
     def test_sigmoid_example_compile(self):
         sigmoid_comp = self._setup_sigmoid_comp()
-        traced_sigmoid_comp = edsl.trace(sigmoid_comp)
+        traced_sigmoid_comp = pm.trace(sigmoid_comp)
         comp_bin = utils.serialize_computation(traced_sigmoid_comp)
-        _ = elk_compiler.compile_computation(comp_bin)
+        _ = pm.elk_compiler.compile_computation(comp_bin)
 
     def test_sigmoid_example_execute(self):
         sigmoid_comp = self._setup_sigmoid_comp()
-        traced_sigmoid_comp = edsl.trace(sigmoid_comp)
+        traced_sigmoid_comp = pm.trace(sigmoid_comp)
         storage = {
             "alice": {},
             "bob": {},

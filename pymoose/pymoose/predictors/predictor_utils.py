@@ -1,7 +1,7 @@
-from pymoose import edsl
+import pymoose as pm
 
-DEFAULT_FLOAT_DTYPE = edsl.float64
-DEFAULT_FIXED_DTYPE = edsl.fixed(24, 40)
+DEFAULT_FLOAT_DTYPE = pm.float64
+DEFAULT_FIXED_DTYPE = pm.fixed(24, 40)
 
 
 def find_attribute_in_node(node, attribute_name, enforce=True):

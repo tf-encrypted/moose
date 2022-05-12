@@ -4,9 +4,7 @@ import tempfile
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import MooseComputation
-from pymoose import edsl
-from pymoose import elk_compiler
+import pymoose as pm
 from pymoose.computation.utils import deserialize_computation
 from pymoose.computation.utils import serialize_computation
 from pymoose.edsl import tracer
@@ -14,17 +12,17 @@ from pymoose.edsl import tracer
 
 class SerdeTest(parameterized.TestCase):
     def _build_comp_fixture(self):
-        alice = edsl.host_placement("alice")
-        bob = edsl.host_placement("bob")
-        carole = edsl.host_placement("carole")
-        replicated = edsl.replicated_placement("rep", players=[alice, bob, carole])
+        alice = pm.host_placement("alice")
+        bob = pm.host_placement("bob")
+        carole = pm.host_placement("carole")
+        replicated = pm.replicated_placement("rep", players=[alice, bob, carole])
 
-        @edsl.computation
+        @pm.computation
         def my_comp():
-            x = edsl.constant(1, dtype=edsl.float32, placement=alice)
-            y = edsl.constant(2, dtype=edsl.float32, placement=bob)
-            z = edsl.add(x, y, placement=replicated)
-            v = edsl.add(z, z, placement=carole)
+            x = pm.constant(1, dtype=pm.float32, placement=alice)
+            y = pm.constant(2, dtype=pm.float32, placement=bob)
+            z = pm.add(x, y, placement=replicated)
+            v = pm.add(z, z, placement=carole)
             return v
 
         return my_comp
@@ -41,11 +39,11 @@ class SerdeTest(parameterized.TestCase):
         my_comp = self._build_comp_fixture()
         traced_comp = tracer.trace(my_comp)
         serialized = serialize_computation(traced_comp)
-        # just need to convert PyComputation to MooseComputation,
+        # just need to convert PyComputation to pm.MooseComputation,
         # so compile w/ empty passes arg
-        moose_comp: MooseComputation = elk_compiler.compile_computation(serialized, [])
+        moose_comp: pm.MooseComputation = pm.elk_compiler.compile_computation(serialized, [])
         original_bytes = moose_comp.to_bytes()
-        rebuilt_moose_comp = MooseComputation.from_bytes(original_bytes)
+        rebuilt_moose_comp = pm.MooseComputation.from_bytes(original_bytes)
         result_bytes = rebuilt_moose_comp.to_bytes()
 
         assert hash(original_bytes) == hash(result_bytes)
@@ -54,16 +52,16 @@ class SerdeTest(parameterized.TestCase):
         my_comp = self._build_comp_fixture()
         traced_comp = tracer.trace(my_comp)
         serialized = serialize_computation(traced_comp)
-        # just need to convert PyComputation to MooseComputation,
+        # just need to convert PyComputation to pm.MooseComputation,
         # so compile w/ empty passes arg
-        moose_comp: MooseComputation = elk_compiler.compile_computation(serialized, [])
+        moose_comp: pm.MooseComputation = pm.elk_compiler.compile_computation(serialized, [])
         original_bytes = moose_comp.to_bytes()
         assert len(original_bytes) > 0
 
         tempdir = tempfile.gettempdir()
         filepath = os.path.join(tempdir, "temp_comp.moose")
         moose_comp.to_disk(filepath)
-        result = MooseComputation.from_disk(filepath)
+        result = pm.MooseComputation.from_disk(filepath)
         result_bytes = result.to_bytes()
 
         assert hash(original_bytes) == hash(result_bytes)

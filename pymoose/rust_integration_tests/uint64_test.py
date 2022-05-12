@@ -5,24 +5,24 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(parameterized.TestCase):
     def _setup_int64_comp(self, x_array):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
 
-        @edsl.computation
+        @pm.computation
         def my_int_comp():
             with bob:
-                x = edsl.constant(x_array)
+                x = pm.constant(x_array)
 
             with alice:
-                x_alice = edsl.identity(x)
-                res = edsl.save("x_uri", x_alice)
+                x_alice = pm.identity(x)
+                res = pm.save("x_uri", x_alice)
 
             return res
 
@@ -34,7 +34,7 @@ class ReplicatedExample(parameterized.TestCase):
     def test_int_example_execute(self, x):
         x_arg = np.array(x, dtype=np.uint64)
         int_comp = self._setup_int64_comp(x_arg)
-        traced_exp_comp = edsl.trace(int_comp)
+        traced_exp_comp = pm.trace(int_comp)
         storage = {
             "alice": {},
             "bob": {},
