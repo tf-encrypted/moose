@@ -2376,5 +2376,4 @@ impl ExpOp {
         let x_exp = x.0.mapv(T::exp);
         Ok(HostTensor::place(plc, x_exp.into_shared()))
     }
-
 }
