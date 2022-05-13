@@ -858,6 +858,7 @@ operators![
     RingFixedpointEncode,
     RingInject,
     RingFixedpointMean,
+    RingFixedpointExp,
     Sample,
     SampleSeeded,
     Send,
@@ -1185,6 +1186,15 @@ pub struct DecryptOp {
 pub struct RingFixedpointMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
+    pub scaling_base: u64,
+    pub scaling_exp: u32,
+}
+
+#[derive(
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+)]
+pub struct RingFixedpointExpOp {
+    pub sig: Signature,
     pub scaling_base: u64,
     pub scaling_exp: u32,
 }

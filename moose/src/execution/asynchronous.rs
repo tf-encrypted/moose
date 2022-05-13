@@ -368,7 +368,6 @@ impl DispatchKernel<AsyncSession, Value> for Operator {
             Save(_) => unimplemented!(),
             Send(_) => unimplemented!(),
             Receive(_) => unimplemented!(),
-
             Abs(op) => DispatchKernel::compile(op, plc),
             Add(op) => DispatchKernel::compile(op, plc),
             AdtToRep(op) => DispatchKernel::compile(op, plc),
@@ -423,6 +422,7 @@ impl DispatchKernel<AsyncSession, Value> for Operator {
             RingFixedpointArgmax(op) => DispatchKernel::compile(op, plc),
             RingFixedpointDecode(op) => DispatchKernel::compile(op, plc),
             RingFixedpointEncode(op) => DispatchKernel::compile(op, plc),
+            RingFixedpointExp(op) => DispatchKernel::compile(op, plc),
             RingFixedpointMean(op) => DispatchKernel::compile(op, plc),
             RingInject(op) => DispatchKernel::compile(op, plc),
             Sample(op) => DispatchKernel::compile(op, plc),

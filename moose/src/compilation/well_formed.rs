@@ -47,6 +47,7 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
                 DispatchKernel::<SymbolicSession, _>::compile(op, plc).err()
             }
             RingFixedpointMean(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            RingFixedpointExp(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             RingFixedpointEncode(op) => {
                 DispatchKernel::<SymbolicSession, _>::compile(op, plc).err()
             }
