@@ -2124,22 +2124,18 @@ impl MaximumOp {
         ReplicatedPlacement: PlacementMaximum<S, RepRingT, RepRingT>,
         RepRingT: Clone,
     {
-        // leave it up to the reduce op to identify whethere x is empty.
+        // leave it up to the reduce op to identify whether x is empty.
         let integral_precision = x
             .iter()
             .map(|item| item.integral_precision)
             .reduce(u32::max);
-        let integral_precision = match integral_precision {
-            Some(v) => v,
-            None => {
-                return Err(Error::Unexpected(Some(
-                    "maximum op had no inputs".to_string(),
-                )))
-            }
-        };
 
+        let integral_precision = integral_precision
+            .ok_or_else(|| Error::Unexpected(Some("maximum op had no inputs".to_string())))?;
+
+        // x is always going to be non-empty due to the condition above
         let fractional_precision = x[0].fractional_precision;
-        for item in x.iter() {
+        for item in x {
             if item.fractional_precision != fractional_precision {
                 return Err(Error::InvalidArgument(
                     "maximum op needs all array entries to have same precision".to_string(),
@@ -2194,22 +2190,17 @@ impl MaximumOp {
         HostPlacement: PlacementMaximum<S, HostRingT, HostRingT>,
         HostRingT: Clone,
     {
-        // leave it up to the reduce op to identify whethere x is empty.
+        // leave it up to the reduce op to identify whether x is empty.
         let integral_precision = x
             .iter()
             .map(|item| item.integral_precision)
             .reduce(u32::max);
-        let integral_precision = match integral_precision {
-            Some(v) => v,
-            None => {
-                return Err(Error::Unexpected(Some(
-                    "maximum op had no inputs".to_string(),
-                )))
-            }
-        };
+        let integral_precision = integral_precision
+            .ok_or_else(|| Error::Unexpected(Some("maximum op had no inputs".to_string())))?;
 
+        // x is always going to be non-empty due to the condition above
         let fractional_precision = x[0].fractional_precision;
-        for item in x.iter() {
+        for item in x {
             if item.fractional_precision != fractional_precision {
                 return Err(Error::InvalidArgument(
                     "maximum op needs all array entries to have same precision".to_string(),

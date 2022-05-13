@@ -3001,6 +3001,13 @@ impl MaximumOp {
         Float64T: Clone,
     {
         use AbstractTensor::*;
+
+        if x.is_empty() {
+            return Err(Error::InvalidArgument(
+                "maximum op needs a non-empty array of tensors".to_string(),
+            ));
+        }
+
         match x[0] {
             Fixed64(_) => {
                 let xs: Operands<Fixed64T> = x
@@ -3208,5 +3215,3 @@ impl ArgmaxOp {
         }
     }
 }
-
-impl MaximumOp {}
