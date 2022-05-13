@@ -1688,41 +1688,6 @@ impl ExpOp {
         let z = plc.exp(sess, &x);
         Ok(FixedTensor::Replicated(z))
     }
-
-    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
-        sess: &S,
-        plc: &HostPlacement,
-        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
-    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
-    where
-        HostPlacement: PlacementExp<S, HostFixedT, HostFixedT>,
-        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
-        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
-    {
-        let v = match x {
-            FixedTensor::Host(x) => x,
-            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
-            FixedTensor::Replicated(x) => plc.reveal(sess, &x),
-        };
-        let z = plc.exp(sess, &v);
-        Ok(FixedTensor::Host(z))
-    }
-
-    pub(crate) fn hostfixed_kernel<S: Session, HostRingT>(
-        sess: &S,
-        plc: &HostPlacement,
-        x: HostFixedTensor<HostRingT>,
-    ) -> Result<HostFixedTensor<HostRingT>>
-    where
-        HostPlacement: PlacementExpAsFixedpoint<S, HostRingT, HostRingT>,
-    {
-        let z = plc.exp_as_fixedpoint(sess, 2, x.fractional_precision, &x.tensor);
-        Ok(HostFixedTensor {
-            tensor: z,
-            fractional_precision: x.fractional_precision,
-            integral_precision: x.integral_precision,
-        })
-    }
 }
 
 impl SqrtOp {

@@ -11,43 +11,25 @@ from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(parameterized.TestCase):
-    def _setup_fixed_exp_comp(self, x_array, replicated=True):
+    def _setup_fixed_exp_comp(self, x_array):
         alice = edsl.host_placement(name="alice")
         bob = edsl.host_placement(name="bob")
         carole = edsl.host_placement(name="carole")
         rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
 
-        if replicated:
+        @edsl.computation
+        def my_exp_comp():
+            with bob:
+                x = edsl.constant(x_array)
+                x_enc = edsl.cast(x, dtype=edsl.fixed(8, 27))
 
-            @edsl.computation
-            def my_exp_comp():
-                with bob:
-                    x = edsl.constant(x_array)
-                    x_enc = edsl.cast(x, dtype=edsl.fixed(8, 27))
+            with rep:
+                y = edsl.exp(x_enc)
 
-                with rep:
-                    y = edsl.exp(x_enc)
+            with alice:
+                res = edsl.save("y_uri", edsl.cast(y, edsl.float64))
 
-                with alice:
-                    res = edsl.save("y_uri", edsl.cast(y, edsl.float64))
-
-                return res
-
-        else:
-
-            @edsl.computation
-            def my_exp_comp():
-                with bob:
-                    x = edsl.constant(x_array)
-                    x_enc = edsl.cast(x, dtype=edsl.fixed(8, 27))
-
-                with alice:
-                    y = edsl.exp(x_enc)
-
-                with alice:
-                    res = edsl.save("y_uri", edsl.cast(y, edsl.float64))
-
-                return res
+            return res
 
         return my_exp_comp
 
@@ -71,16 +53,13 @@ class ReplicatedExample(parameterized.TestCase):
         return my_exp_comp
 
     @parameterized.parameters(
-        ([1, 0, 2, 3], True),
-        ([-1, 0, -2, -3.5], True),
-        ([-4.132, 0, -2, -3.5], True),
-        ([1, 0, 2, 3], False),
-        ([-1, 0, -2, -3.5], False),
-        ([-4.132, 0, -2, -3.5], False),
+        ([1, 0, 2, 3],),
+        ([-1, 0, -2, -3.5],),
+        ([-4.132, 0, -2, -3.5],),
     )
-    def test_exp_example_execute(self, x, replicated_flag):
+    def test_exp_example_execute(self, x):
         x_arg = np.array(x, dtype=np.float64)
-        exp_comp = self._setup_fixed_exp_comp(x_arg, replicated_flag)
+        exp_comp = self._setup_fixed_exp_comp(x_arg)
         traced_exp_comp = edsl.trace(exp_comp)
         storage = {
             "alice": {},

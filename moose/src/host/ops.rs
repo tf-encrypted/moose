@@ -1257,42 +1257,6 @@ impl RingFixedpointEncodeOp {
     }
 }
 
-impl RingFixedpointExpOp {
-    pub(crate) fn ring64_kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        scaling_base: u64,
-        scaling_exp: u32,
-        x: HostRing64Tensor,
-    ) -> Result<HostRing64Tensor> {
-        let scaling_factor = f64::powf(scaling_base as f64, scaling_exp as f64);
-        let x_converted: ArrayD<Wrapping<u64>> = x.0.mapv(|el| {
-            let elf = (el.0 as i64) as f64;
-            let r = (elf / scaling_factor).exp();
-            let r_scaled = ((r * scaling_factor) as i64) as u64;
-            Wrapping(r_scaled)
-        });
-        Ok(HostRingTensor(x_converted.into_shared(), plc.clone()))
-    }
-
-    pub(crate) fn ring128_kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        scaling_base: u64,
-        scaling_exp: u32,
-        x: HostRing128Tensor,
-    ) -> Result<HostRing128Tensor> {
-        let scaling_factor = f64::powf(scaling_base as f64, scaling_exp as f64);
-        let x_converted: ArrayD<Wrapping<u128>> = x.0.mapv(|el| {
-            let elf = (el.0 as i128) as f64;
-            let r = (elf / scaling_factor).exp();
-            let r_scaled = ((r * scaling_factor) as i128) as u128;
-            Wrapping(r_scaled)
-        });
-        Ok(HostRingTensor(x_converted.into_shared(), plc.clone()))
-    }
-}
-
 impl RingFixedpointDecodeOp {
     pub(crate) fn float32_kernel<S: RuntimeSession>(
         _sess: &S,

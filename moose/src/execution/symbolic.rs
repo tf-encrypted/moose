@@ -329,7 +329,6 @@ impl DispatchKernel<SymbolicSession, SymbolicValue> for Operator {
             RingFixedpointArgmax(op) => DispatchKernel::compile(op, plc),
             RingFixedpointDecode(op) => DispatchKernel::compile(op, plc),
             RingFixedpointEncode(op) => DispatchKernel::compile(op, plc),
-            RingFixedpointExp(op) => DispatchKernel::compile(op, plc),
             RingFixedpointMean(op) => DispatchKernel::compile(op, plc),
             RingInject(op) => DispatchKernel::compile(op, plc),
             Sample(op) => DispatchKernel::compile(op, plc),

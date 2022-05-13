@@ -2634,8 +2634,6 @@ impl ExpOp {
     where
         HostPlacement: PlacementExp<S, Float32T, Float32T>,
         HostPlacement: PlacementExp<S, Float64T, Float64T>,
-        HostPlacement: PlacementExp<S, Fixed64T, Fixed64T>,
-        HostPlacement: PlacementExp<S, Fixed128T, Fixed128T>,
     {
         use AbstractTensor::*;
         match x {
@@ -2647,14 +2645,10 @@ impl ExpOp {
                 let result = plc.exp(sess, &x);
                 Ok(Float64(result))
             }
-            Fixed64(x) => {
-                let result = plc.exp(sess, &x);
-                Ok(Fixed64(result))
-            }
-            Fixed128(x) => {
-                let result = plc.exp(sess, &x);
-                Ok(Fixed128(result))
-            }
+            Fixed64(_) | Fixed128(_) => Err(Error::UnimplementedOperator(
+                "Missing host exp for fixed point tensors. Try casting to Float instead"
+                    .to_string(),
+            )),
             Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(format!(
                 "Missing host exp for {:?}",
                 &x.ty_desc(),

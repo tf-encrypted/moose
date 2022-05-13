@@ -361,12 +361,8 @@ modelled_kernel! {
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::host_kernel),
         // host lowering kernels
-        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_host_kernel),
-        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_host_kernel),
         (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_kernel),
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [concrete] Self::hostfixed_kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::hostfixed_kernel),
         (HostPlacement, (Tensor) -> Tensor => [concrete] Self::logical_host_kernel),
         // replicated protocols
         (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [transparent] Self::rep_rep_kernel),
@@ -448,18 +444,6 @@ modelled_kernel! {
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_kernel),
-    ]
-}
-
-pub trait PlacementExpAsFixedpoint<S: Session, T, O> {
-    fn exp_as_fixedpoint(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
-}
-
-modelled_kernel! {
-    PlacementExpAsFixedpoint::exp_as_fixedpoint, RingFixedpointExpOp{scaling_base: u64, scaling_exp: u32},
-    [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
     ]
 }
 

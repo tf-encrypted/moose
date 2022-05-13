@@ -1211,7 +1211,6 @@ impl ToTextual for Operator {
             Sign(op) => op.to_textual(),
             RingFixedpointArgmax(op) => op.to_textual(),
             RingFixedpointEncode(op) => op.to_textual(),
-            RingFixedpointExp(op) => op.to_textual(),
             RingFixedpointDecode(op) => op.to_textual(),
             RingFixedpointMean(op) => op.to_textual(),
             Sample(op) => op.to_textual(),
