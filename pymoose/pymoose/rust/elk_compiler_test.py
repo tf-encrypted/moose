@@ -8,6 +8,7 @@ from absl.testing import parameterized
 import pymoose as pm
 from pymoose.computation import utils
 from pymoose.logger import get_logger
+from pymoose.rust import moose_runtime
 
 _alice = pm.host_placement(name="alice")
 _bob = pm.host_placement(name="bob")
@@ -49,7 +50,7 @@ class CompileComputation(parameterized.TestCase):
         self._trace_and_compile()
 
     def _build_new_runtime(self):
-        return pm.rust.LocalRuntime(self.empty_storage)
+        return moose_runtime.LocalRuntime(self.empty_storage)
 
     def _trace_and_compile(self, passes=None):
         traced = pm.trace(_reference_computation)

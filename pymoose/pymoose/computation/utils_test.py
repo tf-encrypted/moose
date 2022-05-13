@@ -41,7 +41,9 @@ class SerdeTest(parameterized.TestCase):
         serialized = serialize_computation(traced_comp)
         # just need to convert PyComputation to pm.MooseComputation,
         # so compile w/ empty passes arg
-        moose_comp: pm.MooseComputation = pm.elk_compiler.compile_computation(serialized, [])
+        moose_comp: pm.MooseComputation = pm.elk_compiler.compile_computation(
+            serialized, []
+        )
         original_bytes = moose_comp.to_bytes()
         rebuilt_moose_comp = pm.MooseComputation.from_bytes(original_bytes)
         result_bytes = rebuilt_moose_comp.to_bytes()
@@ -54,7 +56,9 @@ class SerdeTest(parameterized.TestCase):
         serialized = serialize_computation(traced_comp)
         # just need to convert PyComputation to pm.MooseComputation,
         # so compile w/ empty passes arg
-        moose_comp: pm.MooseComputation = pm.elk_compiler.compile_computation(serialized, [])
+        moose_comp: pm.MooseComputation = pm.elk_compiler.compile_computation(
+            serialized, []
+        )
         original_bytes = moose_comp.to_bytes()
         assert len(original_bytes) > 0
 

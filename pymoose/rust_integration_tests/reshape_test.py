@@ -40,9 +40,7 @@ class ReshapeExample(parameterized.TestCase):
         @pm.computation
         def my_comp():
             with bob:
-                x = pm.constant(
-                    np.array([[1.0, 2.0], [3.0, 4.0]]), dtype=pm.float64
-                )
+                x = pm.constant(np.array([[1.0, 2.0], [3.0, 4.0]]), dtype=pm.float64)
                 x_reshape = pm.reshape(x, [1, 4])
                 res = pm.save("x_reshape", x_reshape)
 

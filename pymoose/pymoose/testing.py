@@ -1,8 +1,8 @@
-import pymoose as pm
 from pymoose.computation import utils
+from pymoose.rust import moose_runtime
 
 
-class LocalMooseRuntime(pm.rust.LocalRuntime):
+class LocalMooseRuntime(moose_runtime.LocalRuntime):
     def __new__(cls, *, identities=None, storage_mapping=None):
         if identities is None and storage_mapping is None:
             raise ValueError(
@@ -13,7 +13,9 @@ class LocalMooseRuntime(pm.rust.LocalRuntime):
             assert storage_mapping.keys() == identities
         elif identities is not None:
             storage_mapping = {identity: {} for identity in identities}
-        return pm.rust.LocalRuntime.__new__(LocalMooseRuntime, storage_mapping=storage_mapping)
+        return moose_runtime.LocalRuntime.__new__(
+            LocalMooseRuntime, storage_mapping=storage_mapping
+        )
 
     def evaluate_computation(
         self,

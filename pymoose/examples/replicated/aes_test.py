@@ -24,9 +24,7 @@ class ReplicatedExample(parameterized.TestCase):
         @pm.computation
         def my_aes_comp(
             key: pm.Argument(rep, vtype=pm.AesKeyType()),
-            ciphertext: pm.Argument(
-                alice, vtype=pm.AesTensorType(pm.fixed(24, 40))
-            ),
+            ciphertext: pm.Argument(alice, vtype=pm.AesTensorType(pm.fixed(24, 40))),
         ):
             with decryptor:
                 data = pm.decrypt(key, ciphertext)

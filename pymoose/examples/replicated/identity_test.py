@@ -55,9 +55,7 @@ class TensorIdentityExample(parameterized.TestCase):
                 x = pm.identity(x)
 
             with output_plc:
-                x = pm.add(
-                    x, zero
-                )  # "send" tensor without using pm.identity codepath
+                x = pm.add(x, zero)  # "send" tensor without using pm.identity codepath
                 if encoded_tensor:
                     x = pm.cast(x, dtype=pm.float64)
 

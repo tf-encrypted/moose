@@ -52,7 +52,5 @@ class AesPredictor(metaclass=abc.ABCMeta):
         replicated = pm.replicated_placement(
             name="replicated", players=[alice, bob, carole]
         )
-        mirrored = pm.mirrored_placement(
-            name="mirrored", players=[alice, bob, carole]
-        )
+        mirrored = pm.mirrored_placement(name="mirrored", players=[alice, bob, carole])
         return (alice, bob, carole), mirrored, replicated

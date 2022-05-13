@@ -1,7 +1,7 @@
-import pymoose as pm
+from pymoose.computation import dtypes
 
-DEFAULT_FLOAT_DTYPE = pm.float64
-DEFAULT_FIXED_DTYPE = pm.fixed(24, 40)
+DEFAULT_FLOAT_DTYPE = dtypes.float64
+DEFAULT_FIXED_DTYPE = dtypes.fixed(24, 40)
 
 
 def find_attribute_in_node(node, attribute_name, enforce=True):

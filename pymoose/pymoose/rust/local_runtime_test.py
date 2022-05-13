@@ -5,6 +5,7 @@ from absl.testing import parameterized
 import pymoose as pm
 from pymoose.computation import types as ty
 from pymoose.computation import utils
+from pymoose.rust import moose_runtime
 
 _x_owner = pm.host_placement(name="x_owner")
 _y_owner = pm.host_placement(name="y_owner")
@@ -95,7 +96,7 @@ class RunComputation(parameterized.TestCase):
 
     def _inner_prepare_runtime(self, comp, storage_dict):
         logical_comp = pm.trace(comp)
-        runtime = pm.rust.LocalRuntime(storage_mapping=storage_dict)
+        runtime = moose_runtime.LocalRuntime(storage_mapping=storage_dict)
         comp_bin = utils.serialize_computation(logical_comp)
         return comp_bin, runtime
 
@@ -152,14 +153,14 @@ class RunComputation(parameterized.TestCase):
             np.testing.assert_array_equal(r, e)
 
     def test_write_to_storage(self):
-        runtime = pm.rust.LocalRuntime(storage_mapping=self.empty_storage)
+        runtime = moose_runtime.LocalRuntime(storage_mapping=self.empty_storage)
         x = np.array([1.0, 2.0, 3.0])
         runtime.write_value_to_storage("x_owner", "x", x)
         result = runtime.read_value_from_storage("x_owner", "x")
         np.testing.assert_array_equal(x, result)
 
     def test_write_wrong_identity(self):
-        runtime = pm.rust.LocalRuntime(storage_mapping=self.empty_storage)
+        runtime = moose_runtime.LocalRuntime(storage_mapping=self.empty_storage)
         x = np.array([1.0, 2.0, 3.0])
         self.assertRaises(
             RuntimeError,

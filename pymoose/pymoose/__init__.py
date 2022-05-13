@@ -1,5 +1,4 @@
 from pymoose import predictors
-from pymoose import rust
 from pymoose.computation.dtypes import bool_
 from pymoose.computation.dtypes import fixed
 from pymoose.computation.dtypes import float32
@@ -63,9 +62,10 @@ from pymoose.edsl.base import transpose
 from pymoose.edsl.base import zeros
 from pymoose.edsl.tracer import trace
 from pymoose.edsl.tracer import trace_and_compile
+from pymoose.rust import elk_compiler
+from pymoose.rust import moose_runtime as _moose_runtime
 
-elk_compiler = rust.elk_compiler
-MooseComputation = rust.moose_runtime.MooseComputation
+MooseComputation = _moose_runtime.MooseComputation
 
 __all__ = [
     abs,
