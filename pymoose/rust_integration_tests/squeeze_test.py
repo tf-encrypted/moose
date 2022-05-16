@@ -74,12 +74,23 @@ class SqueezeExample(parameterized.TestCase):
         return my_comp
 
     @parameterized.parameters(
-        # (
-        #     np.array([1.0, 2.0, 9.0]),
-        #     np.array([1.0, 2.0, 3.0]),
-        #     np.array([4.0, 5.0, 6.0]),
-        #     True,
-        # ),
+        # test replicated
+        (
+            np.array([1.0, 2.0, 9.0]),
+            None,
+            True,
+        ),
+        (
+            np.zeros((1, 3, 1)),
+            0,
+            True,
+        ),
+        (
+            np.zeros((1, 3, 1)),
+            2,
+            True,
+        ),
+        # test on host
         (
             np.array([1.0, 2.0, 9.0]),
             None,
