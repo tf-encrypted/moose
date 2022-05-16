@@ -1068,17 +1068,44 @@ impl ExpandDimsOp {
 }
 
 impl SqueezeOp {
-    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>>
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         let x = plc.place(sess, x);
-        let axis = axis.map(|a| a as usize);
+        let newshape = HostShape(x.shape().0.squeeze(axis), plc.clone());
+        Ok(x.reshape(newshape))
+    }
+
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<usize>,
+        x: HostRingTensor<T>,
+    ) -> Result<HostRingTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
+    {
+        let x = plc.place(sess, x);
+        let newshape = HostShape(x.shape().0.squeeze(axis), plc.clone());
+        Ok(x.reshape(newshape))
+    }
+
+    pub(crate) fn host_bit_kernel<S: RuntimeSession>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<usize>,
+        x: HostBitTensor,
+    ) -> Result<HostBitTensor>
+    where
+        HostPlacement: PlacementPlace<S, HostBitTensor>,
+    {
+        let x = plc.place(sess, x);
         let newshape = HostShape(x.shape().0.squeeze(axis), plc.clone());
         Ok(x.reshape(newshape))
     }

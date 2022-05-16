@@ -379,3 +379,23 @@ impl ConcatOp {
         Ok(BoolTensor::Replicated(z))
     }
 }
+
+impl SqueezeOp {
+    pub(crate) fn bool_host_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<usize>,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementSqueeze<S, HostT, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+    {
+        let x = match x {
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+            BoolTensor::Host(v) => v,
+        };
+        let result = plc.squeeze(sess, axis, &x);
+        Ok(BoolTensor::Host(result))
+    }
+}
