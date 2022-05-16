@@ -2585,7 +2585,7 @@ impl OutputOp {
 }
 
 impl ExpOp {
-    pub(crate) fn logical_kernel<
+    pub(crate) fn logical_rep_kernel<
         S: Session,
         Fixed64T,
         Fixed128T,
@@ -2615,6 +2615,44 @@ impl ExpOp {
             Float32(_) | Float64(_) | Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
                 format!("Missing replicated exp for {:?}", &x.ty_desc(),),
             )),
+        }
+    }
+
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementExp<S, Float32T, Float32T>,
+        HostPlacement: PlacementExp<S, Float64T, Float64T>,
+    {
+        use AbstractTensor::*;
+        match x {
+            Float32(x) => {
+                let result = plc.exp(sess, &x);
+                Ok(Float32(result))
+            }
+            Float64(x) => {
+                let result = plc.exp(sess, &x);
+                Ok(Float64(result))
+            }
+            Fixed64(_) | Fixed128(_) => Err(Error::UnimplementedOperator(
+                "Missing host exp for fixed point tensors. Try casting to Float instead"
+                    .to_string(),
+            )),
+            Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(format!(
+                "Missing host exp for {:?}",
+                &x.ty_desc(),
+            ))),
         }
     }
 }

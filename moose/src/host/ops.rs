@@ -2380,3 +2380,17 @@ impl MaximumOp {
         }
     }
 }
+
+impl ExpOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: 'static + Float>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        let x_exp = x.0.mapv(T::exp);
+        Ok(HostTensor::place(plc, x_exp.into_shared()))
+    }
+}

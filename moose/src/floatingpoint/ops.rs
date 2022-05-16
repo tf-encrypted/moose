@@ -591,6 +591,28 @@ impl SqrtOp {
     }
 }
 
+impl ExpOp {
+    pub(crate) fn float_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementExp<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "ExpOp @ Mirrored3Placement".to_string(),
+                ))
+            }
+        };
+        let z = plc.exp(sess, &x);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
 impl LoadOp {
     pub(crate) fn float_kernel<S: Session, HostT, MirroredT>(
         sess: &S,
