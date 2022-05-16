@@ -33,7 +33,7 @@ class ReplicatedExample(parameterized.TestCase):
 
         return my_sigmoid_comp
 
-    def _setup_float_exp_comp(self, x_array, dtype):
+    def _setup_float_sigmoid_comp(self, x_array, dtype):
         alice = edsl.host_placement(name="alice")
         bob = edsl.host_placement(name="bob")
 
@@ -57,10 +57,10 @@ class ReplicatedExample(parameterized.TestCase):
         ([-1, 0, -2, -3.5],),
         ([-4.132, 0, -2, -3.5],),
     )
-    def test_exp_example_execute(self, x):
+    def test_sigmoid_example_execute(self, x):
         x_arg = np.array(x, dtype=np.float64)
-        exp_comp = self._setup_rep_sigmoid_comp(x_arg)
-        traced_exp_comp = edsl.trace(exp_comp)
+        sigmoid_comp = self._setup_rep_sigmoid_comp(x_arg)
+        traced_sigmoid_comp = edsl.trace(sigmoid_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -68,7 +68,7 @@ class ReplicatedExample(parameterized.TestCase):
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_exp_comp,
+            computation=traced_sigmoid_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
@@ -82,10 +82,10 @@ class ReplicatedExample(parameterized.TestCase):
         ([-4.132, 0, -2, -3.5], edsl.float32),
         ([-4.132, 0, -2, -3.5], edsl.float32),
     )
-    def test_float_exp_execute(self, x, edsl_dtype):
+    def test_float_sigmoid_execute(self, x, edsl_dtype):
         x_arg = np.array(x, dtype=edsl_dtype.numpy_dtype)
-        exp_comp = self._setup_float_exp_comp(x_arg, edsl_dtype)
-        traced_exp_comp = edsl.trace(exp_comp)
+        sigmoid_comp = self._setup_float_sigmoid_comp(x_arg, edsl_dtype)
+        traced_sigmoid_comp = edsl.trace(sigmoid_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -93,7 +93,7 @@ class ReplicatedExample(parameterized.TestCase):
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_exp_comp,
+            computation=traced_sigmoid_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
@@ -103,7 +103,7 @@ class ReplicatedExample(parameterized.TestCase):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Exp example")
+    parser = argparse.ArgumentParser(description="Sigmoid example")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
