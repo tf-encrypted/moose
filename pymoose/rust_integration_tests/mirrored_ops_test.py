@@ -5,25 +5,25 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 
 class MirroredOpsExample(parameterized.TestCase):
     def _setup_comp(self):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        mir3 = edsl.mirrored_placement(name="mir3", players=[alice, bob, carole])
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
+        carole = pm.host_placement(name="carole")
+        mir3 = pm.mirrored_placement(name="mir3", players=[alice, bob, carole])
 
-        @edsl.computation
+        @pm.computation
         def my_comp():
             with mir3:
-                x = edsl.constant(np.array([1.5, 2.3, 3, 3], dtype=np.float64))
-                x = edsl.cast(x, dtype=edsl.fixed(8, 27))
+                x = pm.constant(np.array([1.5, 2.3, 3, 3], dtype=np.float64))
+                x = pm.cast(x, dtype=pm.fixed(8, 27))
             with alice:
-                y = edsl.cast(x, dtype=edsl.float64)
+                y = pm.cast(x, dtype=pm.float64)
 
             return y
 
@@ -31,7 +31,7 @@ class MirroredOpsExample(parameterized.TestCase):
 
     def test_example_execute(self):
         comp = self._setup_comp()
-        traced_less_comp = edsl.trace(comp)
+        traced_less_comp = pm.trace(comp)
         storage = {
             "alice": {},
             "bob": {},

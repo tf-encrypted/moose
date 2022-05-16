@@ -9,9 +9,7 @@ import onnx
 from absl.testing import absltest
 from absl.testing import parameterized
 
-import pymoose
-from pymoose import edsl
-from pymoose import elk_compiler
+import pymoose as pm
 from pymoose.computation import utils as comp_utils
 from pymoose.logger import get_logger
 from pymoose.predictors import predictor_utils
@@ -138,10 +136,10 @@ class TreeEnsembleTest(parameterized.TestCase):
         else:
             raise ValueError()
 
-        @edsl.computation
-        def predictor_no_aes(x: edsl.Argument(predictor.alice, dtype=edsl.float64)):
+        @pm.computation
+        def predictor_no_aes(x: pm.Argument(predictor.alice, dtype=pm.float64)):
             with predictor.alice:
-                x_fixed = edsl.cast(x, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
+                x_fixed = pm.cast(x, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
             with predictor.replicated:
                 y = predictor.forest_fn(x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE)
                 y = predictor.post_transform(y, predictor_utils.DEFAULT_FIXED_DTYPE)
@@ -165,7 +163,7 @@ class TreeEnsembleTest(parameterized.TestCase):
             model_name, "onnx", predictor_cls
         )
 
-        traced_model_comp = edsl.trace(predictor_logic)
+        traced_model_comp = pm.trace(predictor_logic)
         storage = {plc.name: {} for plc in predictor.host_placements}
         runtime = LocalMooseRuntime(storage_mapping=storage)
         role_assignment = {plc.name: plc.name for plc in predictor.host_placements}
@@ -191,11 +189,11 @@ class TreeEnsembleTest(parameterized.TestCase):
     def test_serde(self, model_name, predictor_cls):
         forest = self._build_forest_from_onnx(model_name, predictor_cls)
         predictor = forest.predictor_factory()
-        traced = edsl.trace(predictor)
+        traced = pm.trace(predictor)
         serialized = comp_utils.serialize_computation(traced)
-        logical_rustref = elk_compiler.compile_computation(serialized, [])
+        logical_rustref = pm.elk_compiler.compile_computation(serialized, [])
         logical_rustbytes = logical_rustref.to_bytes()
-        pymoose.MooseComputation.from_bytes(logical_rustbytes)
+        pm.MooseComputation.from_bytes(logical_rustbytes)
 
 
 if __name__ == "__main__":

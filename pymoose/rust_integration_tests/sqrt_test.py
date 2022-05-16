@@ -5,29 +5,29 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(parameterized.TestCase):
     def _setup_sqrt_comp(self, x_array):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
+        carole = pm.host_placement(name="carole")
+        rep = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 
-        @edsl.computation
+        @pm.computation
         def my_sqrt_comp():
             with bob:
-                x = edsl.constant(x_array)
-                x_enc = edsl.cast(x, dtype=edsl.fixed(8, 27))
+                x = pm.constant(x_array)
+                x_enc = pm.cast(x, dtype=pm.fixed(8, 27))
 
             with rep:
-                y = edsl.sqrt(x_enc)
+                y = pm.sqrt(x_enc)
 
             with alice:
-                res = edsl.save("y_uri", edsl.cast(y, edsl.float64))
+                res = pm.save("y_uri", pm.cast(y, pm.float64))
 
             return res
 
@@ -40,7 +40,7 @@ class ReplicatedExample(parameterized.TestCase):
     def test_sqrt_example_execute(self, x):
         x_arg = np.array(x, dtype=np.float64)
         sqrt_comp = self._setup_sqrt_comp(x_arg)
-        traced_sqrt_comp = edsl.trace(sqrt_comp)
+        traced_sqrt_comp = pm.trace(sqrt_comp)
         storage = {
             "alice": {},
             "bob": {},

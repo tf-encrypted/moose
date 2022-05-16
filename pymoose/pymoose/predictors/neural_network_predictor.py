@@ -3,7 +3,7 @@ from enum import Enum
 
 import numpy as np
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.predictors import aes_predictor
 from pymoose.predictors import predictor_utils
 
@@ -30,22 +30,22 @@ class NeuralNetwork(aes_predictor.AesPredictor):
         b = self.fixedpoint_constant(
             self.biases[i], plc=self.mirrored, dtype=fixedpoint_dtype
         )
-        y = edsl.dot(input, w)
-        z = edsl.add(y, b)
+        y = pm.dot(input, w)
+        z = pm.add(y, b)
         return z
 
     def activation_fn(self, z, i):
         activation = self.activations[i]
         if activation == Activation.SIGMOID:
-            activation_output = edsl.sigmoid(z)
+            activation_output = pm.sigmoid(z)
         elif activation == Activation.RELU:
-            z_shape = edsl.shape(z)
+            z_shape = pm.shape(z)
             with self.bob:
-                zeros = edsl.zeros(z_shape, dtype=predictor_utils.DEFAULT_FLOAT_DTYPE)
-                zeros = edsl.cast(zeros, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
-            activation_output = edsl.maximum([zeros, z])
+                zeros = pm.zeros(z_shape, dtype=predictor_utils.DEFAULT_FLOAT_DTYPE)
+                zeros = pm.cast(zeros, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
+            activation_output = pm.maximum([zeros, z])
         elif activation == Activation.SOFTMAX:
-            activation_output = edsl.softmax(z, axis=1, upmost_index=self.n_classes)
+            activation_output = pm.softmax(z, axis=1, upmost_index=self.n_classes)
         elif activation == Activation.IDENTITY:
             activation_output = z
         else:
@@ -62,12 +62,12 @@ class NeuralNetwork(aes_predictor.AesPredictor):
         return x
 
     def predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
-        @edsl.computation
+        @pm.computation
         def predictor(
-            aes_data: edsl.Argument(
-                self.alice, vtype=edsl.AesTensorType(dtype=fixedpoint_dtype)
+            aes_data: pm.Argument(
+                self.alice, vtype=pm.AesTensorType(dtype=fixedpoint_dtype)
             ),
-            aes_key: edsl.Argument(self.replicated, vtype=edsl.AesKeyType()),
+            aes_key: pm.Argument(self.replicated, vtype=pm.AesKeyType()),
         ):
             x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
             with self.replicated:

@@ -4,39 +4,39 @@ import unittest
 
 import numpy as np
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
-FIXED = edsl.fixed(14, 23)
+FIXED = pm.fixed(14, 23)
 
 
 class ReplicatedExample(unittest.TestCase):
     def test_replicated_example(self):
 
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        dave = edsl.host_placement(name="dave")
-        rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
+        carole = pm.host_placement(name="carole")
+        dave = pm.host_placement(name="dave")
+        rep = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 
-        @edsl.computation
+        @pm.computation
         def my_comp():
 
             with alice:
-                x = edsl.constant(np.array([1, 2], dtype=np.float64))
-                x = edsl.cast(x, dtype=FIXED)
+                x = pm.constant(np.array([1, 2], dtype=np.float64))
+                x = pm.cast(x, dtype=FIXED)
 
             with bob:
-                y = edsl.constant(np.array([2, 2], dtype=np.float64))
-                y = edsl.cast(y, dtype=FIXED)
+                y = pm.constant(np.array([2, 2], dtype=np.float64))
+                y = pm.cast(y, dtype=FIXED)
 
             with rep:
-                z1 = edsl.div(x, y)
+                z1 = pm.div(x, y)
 
             with dave:
-                z1 = edsl.cast(z1, dtype=edsl.float64)
-                res_dave = edsl.save("res", z1)
+                z1 = pm.cast(z1, dtype=pm.float64)
+                res_dave = pm.save("res", z1)
 
             return res_dave
 
@@ -48,7 +48,7 @@ class ReplicatedExample(unittest.TestCase):
         }
         runtime = LocalMooseRuntime(storage_mapping=executors_storage)
 
-        logical_comp = edsl.trace(my_comp)
+        logical_comp = pm.trace(my_comp)
         runtime.evaluate_computation(
             computation=logical_comp,
             role_assignment={

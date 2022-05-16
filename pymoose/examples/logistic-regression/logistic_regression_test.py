@@ -5,8 +5,7 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
-from pymoose import elk_compiler
+import pymoose as pm
 from pymoose.computation import utils
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
@@ -14,25 +13,25 @@ from pymoose.testing import LocalMooseRuntime
 
 class ReplicatedExample(parameterized.TestCase):
     def _setup_model_comp(self):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
+        carole = pm.host_placement(name="carole")
+        rep = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 
-        @edsl.computation
+        @pm.computation
         def my_model_comp(
-            x: edsl.Argument(bob, vtype=edsl.TensorType(edsl.float64)),
-            w: edsl.Argument(bob, vtype=edsl.TensorType(edsl.float64)),
+            x: pm.Argument(bob, vtype=pm.TensorType(pm.float64)),
+            w: pm.Argument(bob, vtype=pm.TensorType(pm.float64)),
         ):
             with bob:
-                x = edsl.cast(x, dtype=edsl.fixed(8, 27))
-                w = edsl.cast(w, dtype=edsl.fixed(8, 27))
+                x = pm.cast(x, dtype=pm.fixed(8, 27))
+                w = pm.cast(w, dtype=pm.fixed(8, 27))
 
             with rep:
-                y = edsl.sigmoid(edsl.dot(x, w))
+                y = pm.sigmoid(pm.dot(x, w))
 
             with alice:
-                res = edsl.save("y_uri", edsl.cast(y, edsl.float64))
+                res = pm.save("y_uri", pm.cast(y, pm.float64))
 
             return res
 
@@ -40,23 +39,23 @@ class ReplicatedExample(parameterized.TestCase):
 
     def test_logistic_regression_example_serde(self):
         model_comp = self._setup_model_comp()
-        traced_model_comp = edsl.trace(model_comp)
+        traced_model_comp = pm.trace(model_comp)
         comp_bin = utils.serialize_computation(traced_model_comp)
         # Compile in Rust
         # If this does not error, rust was able to deserialize the pycomputation
-        elk_compiler.compile_computation(comp_bin, [])
+        pm.elk_compiler.compile_computation(comp_bin, [])
 
     def test_logistic_regression_example_compile(self):
         model_comp = self._setup_model_comp()
-        traced_model_comp = edsl.trace(model_comp)
+        traced_model_comp = pm.trace(model_comp)
         comp_bin = utils.serialize_computation(traced_model_comp)
-        _ = elk_compiler.compile_computation(comp_bin)
+        _ = pm.elk_compiler.compile_computation(comp_bin)
 
     def test_logistic_regression_example_execute(self):
         input_x = np.array([2.0, 1.0], dtype=np.float64)
         input_weights = np.array([0.5, 0.1], dtype=np.float64)
         model_comp = self._setup_model_comp()
-        traced_model_comp = edsl.trace(model_comp)
+        traced_model_comp = pm.trace(model_comp)
         storage = {
             "alice": {},
             "bob": {},

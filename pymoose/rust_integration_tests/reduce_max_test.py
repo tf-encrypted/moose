@@ -5,7 +5,7 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.computation import types as ty
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
@@ -13,26 +13,26 @@ from pymoose.testing import LocalMooseRuntime
 
 class ReducemaxLogicExample(parameterized.TestCase):
     def _setup_comp(self):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
+        carole = pm.host_placement(name="carole")
+        rep = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 
-        @edsl.computation
-        def my_comp(x_uri: edsl.Argument(placement=bob, vtype=ty.StringType())):
+        @pm.computation
+        def my_comp(x_uri: pm.Argument(placement=bob, vtype=ty.StringType())):
             with bob:
-                x = edsl.load(x_uri, dtype=edsl.float64)
-                x_fixed = edsl.cast(x, dtype=edsl.fixed(8, 27))
-                x0 = edsl.index_axis(x_fixed, axis=2, index=0)
-                x1 = edsl.index_axis(x_fixed, axis=2, index=1)
-                x2 = edsl.index_axis(x_fixed, axis=2, index=2)
+                x = pm.load(x_uri, dtype=pm.float64)
+                x_fixed = pm.cast(x, dtype=pm.fixed(8, 27))
+                x0 = pm.index_axis(x_fixed, axis=2, index=0)
+                x1 = pm.index_axis(x_fixed, axis=2, index=1)
+                x2 = pm.index_axis(x_fixed, axis=2, index=2)
 
             with rep:
-                x_max = edsl.maximum([x0, x1, x2])
+                x_max = pm.maximum([x0, x1, x2])
 
             with bob:
-                x_max_host = edsl.cast(x_max, dtype=edsl.float64)
-                res = edsl.save("reduce_max", x_max_host)
+                x_max_host = pm.cast(x_max, dtype=pm.float64)
+                res = pm.save("reduce_max", x_max_host)
 
             return res
 
@@ -44,7 +44,7 @@ class ReducemaxLogicExample(parameterized.TestCase):
     )
     def test_example_execute(self, x):
         comp = self._setup_comp()
-        traced_less_comp = edsl.trace(comp)
+        traced_less_comp = pm.trace(comp)
 
         x_arg = np.array(x, dtype=np.float64)
 

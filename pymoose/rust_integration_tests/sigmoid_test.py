@@ -5,48 +5,48 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(parameterized.TestCase):
     def _setup_rep_sigmoid_comp(self, x_array):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
+        carole = pm.host_placement(name="carole")
+        rep = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 
-        @edsl.computation
+        @pm.computation
         def my_sigmoid_comp():
             with bob:
-                x = edsl.constant(x_array)
-                x_enc = edsl.cast(x, dtype=edsl.fixed(8, 27))
+                x = pm.constant(x_array)
+                x_enc = pm.cast(x, dtype=pm.fixed(8, 27))
 
             with rep:
-                y = edsl.sigmoid(x_enc)
+                y = pm.sigmoid(x_enc)
 
             with alice:
-                res = edsl.save("y_uri", edsl.cast(y, edsl.float64))
+                res = pm.save("y_uri", pm.cast(y, pm.float64))
 
             return res
 
         return my_sigmoid_comp
 
     def _setup_float_sigmoid_comp(self, x_array, dtype):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
 
-        @edsl.computation
+        @pm.computation
         def my_sigmoid_comp():
             with bob:
-                x = edsl.constant(x_array, dtype=dtype)
+                x = pm.constant(x_array, dtype=dtype)
 
             with alice:
-                y = edsl.sigmoid(x)
+                y = pm.sigmoid(x)
 
             with alice:
-                res = edsl.save("y_uri", edsl.cast(y, dtype=dtype))
+                res = pm.save("y_uri", pm.cast(y, dtype=dtype))
 
             return res
 
@@ -60,7 +60,7 @@ class ReplicatedExample(parameterized.TestCase):
     def test_sigmoid_example_execute(self, x):
         x_arg = np.array(x, dtype=np.float64)
         sigmoid_comp = self._setup_rep_sigmoid_comp(x_arg)
-        traced_sigmoid_comp = edsl.trace(sigmoid_comp)
+        traced_sigmoid_comp = pm.trace(sigmoid_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -77,15 +77,15 @@ class ReplicatedExample(parameterized.TestCase):
         np.testing.assert_almost_equal(actual_result, sigmoid(x_arg), decimal=5)
 
     @parameterized.parameters(
-        ([1, 0, 2, 3], edsl.float64),
-        ([-1, 0, -2, -3.5], edsl.float64),
-        ([-4.132, 0, -2, -3.5], edsl.float32),
-        ([-4.132, 0, -2, -3.5], edsl.float32),
+        ([1, 0, 2, 3], pm.float64),
+        ([-1, 0, -2, -3.5], pm.float64),
+        ([-4.132, 0, -2, -3.5], pm.float32),
+        ([-4.132, 0, -2, -3.5], pm.float32),
     )
-    def test_float_sigmoid_execute(self, x, edsl_dtype):
-        x_arg = np.array(x, dtype=edsl_dtype.numpy_dtype)
-        sigmoid_comp = self._setup_float_sigmoid_comp(x_arg, edsl_dtype)
-        traced_sigmoid_comp = edsl.trace(sigmoid_comp)
+    def test_float_sigmoid_execute(self, x, dtype):
+        x_arg = np.array(x, dtype=dtype.numpy_dtype)
+        sigmoid_comp = self._setup_float_sigmoid_comp(x_arg, dtype)
+        traced_sigmoid_comp = pm.trace(sigmoid_comp)
         storage = {
             "alice": {},
             "bob": {},

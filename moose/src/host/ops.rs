@@ -1084,17 +1084,44 @@ impl ExpandDimsOp {
 }
 
 impl SqueezeOp {
-    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
         sess: &S,
         plc: &HostPlacement,
-        axis: Option<u32>,
+        axis: Option<usize>,
         x: HostTensor<T>,
     ) -> Result<HostTensor<T>>
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         let x = plc.place(sess, x);
-        let axis = axis.map(|a| a as usize);
+        let newshape = HostShape(x.shape().0.squeeze(axis), plc.clone());
+        Ok(x.reshape(newshape))
+    }
+
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<usize>,
+        x: HostRingTensor<T>,
+    ) -> Result<HostRingTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
+    {
+        let x = plc.place(sess, x);
+        let newshape = HostShape(x.shape().0.squeeze(axis), plc.clone());
+        Ok(x.reshape(newshape))
+    }
+
+    pub(crate) fn host_bit_kernel<S: RuntimeSession>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<usize>,
+        x: HostBitTensor,
+    ) -> Result<HostBitTensor>
+    where
+        HostPlacement: PlacementPlace<S, HostBitTensor>,
+    {
+        let x = plc.place(sess, x);
         let newshape = HostShape(x.shape().0.squeeze(axis), plc.clone());
         Ok(x.reshape(newshape))
     }
@@ -2341,6 +2368,59 @@ impl ArgmaxOp {
     {
         let arg_out = plc.argmax(sess, axis, upmost_index, &x.tensor);
         Ok(plc.cast(sess, &arg_out))
+    }
+}
+
+impl MaximumOp {
+    pub(crate) fn host_kernel<S: Session, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        xs: &[HostTensor<T>],
+    ) -> Result<HostTensor<T>>
+    where
+        T: Clone + std::cmp::PartialOrd + Copy,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot reduce on empty array of tensors".to_string(),
+            ))
+        } else {
+            let mut init = xs[0].0.clone();
+            for item in xs.iter() {
+                Zip::from(&mut init).and(&item.0).for_each(|a, &b| {
+                    if *a < b {
+                        *a = b
+                    }
+                });
+            }
+            Ok(HostTensor(init, plc.clone()))
+        }
+    }
+
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        xs: &[HostRingTensor<T>],
+    ) -> Result<HostRingTensor<T>>
+    where
+        T: Clone,
+        Wrapping<T>: std::cmp::PartialOrd + Copy,
+    {
+        if xs.is_empty() {
+            Err(Error::InvalidArgument(
+                "cannot reduce on empty array of tensors".to_string(),
+            ))
+        } else {
+            let mut init = xs[0].0.clone();
+            for item in xs.iter() {
+                Zip::from(&mut init).and(&item.0).for_each(|a, &b| {
+                    if *a < b {
+                        *a = b
+                    }
+                });
+            }
+            Ok(HostRingTensor(init, plc.clone()))
+        }
     }
 }
 

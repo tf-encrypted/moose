@@ -5,7 +5,7 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.computation import types as ty
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
@@ -31,15 +31,15 @@ def compile_and_run(traced_slice_comp, x_arg):
 
 class SliceExample(parameterized.TestCase):
     def _setup_comp(self, slice_spec, to_dtype):
-        bob = edsl.host_placement(name="bob")
+        bob = pm.host_placement(name="bob")
 
-        @edsl.computation
+        @pm.computation
         def my_comp(
-            x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+            x_uri: pm.Argument(placement=bob, vtype=ty.StringType()),
         ):
             with bob:
-                x = edsl.load(x_uri, dtype=to_dtype)[slice_spec]
-                res = (edsl.save("sliced", x),)
+                x = pm.load(x_uri, dtype=to_dtype)[slice_spec]
+                res = (pm.save("sliced", x),)
 
             return res
 
@@ -48,23 +48,23 @@ class SliceExample(parameterized.TestCase):
     @parameterized.parameters(
         (
             [[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]],
-            edsl.float32,
+            pm.float32,
             (slice(1, None, None), slice(1, None, None), slice(1, None, None)),
         ),
         (
             [[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]],
-            edsl.float64,
+            pm.float64,
             (slice(None, None, None), slice(None, None, None), slice(1, None, None)),
         ),
         (
             [[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]],
-            edsl.uint64,
+            pm.uint64,
             (slice(None, None, None), slice(None, None, None), slice(1, None, None)),
         ),
     )
     def test_slice_types_execute(self, x, to_dtype, slice_spec):
         comp = self._setup_comp(slice_spec, to_dtype)
-        traced_slice_comp = edsl.trace(comp)
+        traced_slice_comp = pm.trace(comp)
 
         x_arg = np.array(x, dtype=to_dtype.numpy_dtype)
         x_from_runtime = compile_and_run(traced_slice_comp, x_arg)
@@ -74,21 +74,21 @@ class SliceExample(parameterized.TestCase):
 
     def test_basic(self):
         def setup_basic_comp():
-            bob = edsl.host_placement(name="bob")
+            bob = pm.host_placement(name="bob")
 
-            @edsl.computation
+            @pm.computation
             def my_comp(
-                x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+                x_uri: pm.Argument(placement=bob, vtype=ty.StringType()),
             ):
                 with bob:
-                    x = edsl.load(x_uri, dtype=edsl.float64)[1:, 1:2]
-                    res = (edsl.save("sliced", x),)
+                    x = pm.load(x_uri, dtype=pm.float64)[1:, 1:2]
+                    res = (pm.save("sliced", x),)
                 return res
 
             return my_comp
 
         comp = setup_basic_comp()
-        traced_slice_comp = edsl.trace(comp)
+        traced_slice_comp = pm.trace(comp)
         x_arg = np.array(
             [[1, 23.0, 321, 30.321, 321], [32.0, 321, 5, 3.0, 32.0]], dtype=np.float64
         )
@@ -97,21 +97,21 @@ class SliceExample(parameterized.TestCase):
 
     def test_basic_colons(self):
         def setup_basic_comp():
-            bob = edsl.host_placement(name="bob")
+            bob = pm.host_placement(name="bob")
 
-            @edsl.computation
+            @pm.computation
             def my_comp(
-                x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+                x_uri: pm.Argument(placement=bob, vtype=ty.StringType()),
             ):
                 with bob:
-                    x = edsl.load(x_uri, dtype=edsl.float64)[:, 2:4]
-                    res = (edsl.save("sliced", x),)
+                    x = pm.load(x_uri, dtype=pm.float64)[:, 2:4]
+                    res = (pm.save("sliced", x),)
                 return res
 
             return my_comp
 
         comp = setup_basic_comp()
-        traced_slice_comp = edsl.trace(comp)
+        traced_slice_comp = pm.trace(comp)
         x_arg = np.array(
             [[1, 23.0, 321, 30.321, 321], [32.0, 321, 5, 3.0, 32.0]], dtype=np.float64
         )
@@ -120,31 +120,31 @@ class SliceExample(parameterized.TestCase):
 
     def test_rep_basic(self):
         def setup_basic_comp():
-            alice = edsl.host_placement(name="alice")
-            bob = edsl.host_placement(name="bob")
-            carole = edsl.host_placement(name="carole")
-            rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+            alice = pm.host_placement(name="alice")
+            bob = pm.host_placement(name="bob")
+            carole = pm.host_placement(name="carole")
+            rep = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 
-            @edsl.computation
+            @pm.computation
             def my_comp(
-                x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+                x_uri: pm.Argument(placement=bob, vtype=ty.StringType()),
             ):
                 with bob:
-                    x = edsl.load(x_uri, dtype=edsl.float64)
-                    x_fixed = edsl.cast(x, dtype=edsl.fixed(8, 27))
+                    x = pm.load(x_uri, dtype=pm.float64)
+                    x_fixed = pm.cast(x, dtype=pm.fixed(8, 27))
 
                 with rep:
                     x_sliced_rep = x_fixed[1:, 1:2]
 
                 with bob:
-                    x_sliced_host = edsl.cast(x_sliced_rep, dtype=edsl.float64)
-                    res = edsl.save("sliced", x_sliced_host)
+                    x_sliced_host = pm.cast(x_sliced_rep, dtype=pm.float64)
+                    res = pm.save("sliced", x_sliced_host)
                 return res
 
             return my_comp
 
         comp = setup_basic_comp()
-        traced_slice_comp = edsl.trace(comp)
+        traced_slice_comp = pm.trace(comp)
         x_arg = np.array(
             [[1, 23.0, 321, 30.321, 321], [32.0, 321, 5, 3.0, 32.0]], dtype=np.float64
         )
@@ -152,18 +152,18 @@ class SliceExample(parameterized.TestCase):
         np.testing.assert_equal(x_from_runtime, x_arg[1:, 1:2])
 
     def test_shape_slice(self):
-        alice = edsl.host_placement("alice")
+        alice = pm.host_placement("alice")
 
-        @edsl.computation
-        def my_comp(x: edsl.Argument(alice, edsl.float64)):
+        @pm.computation
+        def my_comp(x: pm.Argument(alice, pm.float64)):
             with alice:
-                x_shape = edsl.shape(x)
+                x_shape = pm.shape(x)
                 sliced_shape = x_shape[1:3]
-                ones_res = edsl.ones(sliced_shape, edsl.float64)
-                res = edsl.save("ones", ones_res)
+                ones_res = pm.ones(sliced_shape, pm.float64)
+                res = pm.save("ones", ones_res)
             return res
 
-        traced_slice_comp = edsl.trace(my_comp)
+        traced_slice_comp = pm.trace(my_comp)
         x_arg = np.ones([4, 3, 5], dtype=np.float64)
         runtime = LocalMooseRuntime(storage_mapping={"alice": {}})
         _ = runtime.evaluate_computation(

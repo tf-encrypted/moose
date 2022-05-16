@@ -5,42 +5,42 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 
 class HostExample(parameterized.TestCase):
     def _setup_zeros_comp(self, dtype, x_array, zeros_op):
-        bob = edsl.host_placement(name="bob")
+        bob = pm.host_placement(name="bob")
 
-        @edsl.computation
+        @pm.computation
         def my_zeros_comp():
             with bob:
-                x = edsl.constant(x_array, dtype=dtype)
-                x_shape = edsl.shape(x)
+                x = pm.constant(x_array, dtype=dtype)
+                x_shape = pm.shape(x)
                 res = zeros_op(x_shape, dtype)
-                res = edsl.save("zeros", res)
+                res = pm.save("zeros", res)
             return res
 
         return my_zeros_comp
 
     @parameterized.parameters(
-        ([1, 3, 2, 3], edsl.zeros, np.zeros),
-        ([1.32, 10.42, 2.321, 3.5913], edsl.zeros, np.zeros),
-        ([4.132, 1.932, 2, 4.5321], edsl.zeros, np.zeros),
-        ([1, 2, 4, 8, 4.5, 10.5], edsl.zeros, np.zeros),
+        ([1, 3, 2, 3], pm.zeros, np.zeros),
+        ([1.32, 10.42, 2.321, 3.5913], pm.zeros, np.zeros),
+        ([4.132, 1.932, 2, 4.5321], pm.zeros, np.zeros),
+        ([1, 2, 4, 8, 4.5, 10.5], pm.zeros, np.zeros),
         (
             [[1.0, 2.0], [4.0, 23.3124], [42.954, 4.5], [10.5, 13.4219]],
-            edsl.zeros,
+            pm.zeros,
             np.zeros,
         ),
     )
     def test_zeros_example_execute(self, x, zeros_op, np_zeros):
-        dtype = edsl.float64
+        dtype = pm.float64
         x_arg = np.array(x, dtype=np.float64)
         zeros_comp = self._setup_zeros_comp(dtype, x_arg, zeros_op)
-        traced_zeros_comp = edsl.trace(zeros_comp)
+        traced_zeros_comp = pm.trace(zeros_comp)
         storage = {
             "bob": {},
         }

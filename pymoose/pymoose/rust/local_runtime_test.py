@@ -2,73 +2,73 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import LocalRuntime
-from pymoose import edsl
+import pymoose as pm
 from pymoose.computation import types as ty
 from pymoose.computation import utils
+from pymoose.rust import moose_runtime
 
-_x_owner = edsl.host_placement(name="x_owner")
-_y_owner = edsl.host_placement(name="y_owner")
-_output_owner = edsl.host_placement("output_owner")
+_x_owner = pm.host_placement(name="x_owner")
+_y_owner = pm.host_placement(name="y_owner")
+_output_owner = pm.host_placement("output_owner")
 
 
-@edsl.computation
+@pm.computation
 def add_full_storage(
-    x_key: edsl.Argument(_x_owner, vtype=ty.StringType()),
-    y_key: edsl.Argument(_y_owner, vtype=ty.StringType()),
+    x_key: pm.Argument(_x_owner, vtype=ty.StringType()),
+    y_key: pm.Argument(_y_owner, vtype=ty.StringType()),
 ):
     with _x_owner:
-        x = edsl.load(x_key, dtype=edsl.float64)
+        x = pm.load(x_key, dtype=pm.float64)
     with _y_owner:
-        y = edsl.load(y_key, dtype=edsl.float64)
+        y = pm.load(y_key, dtype=pm.float64)
     with _output_owner:
-        out = edsl.add(x, y)
-        res = edsl.save("output", out)
+        out = pm.add(x, y)
+        res = pm.save("output", out)
     return res
 
 
-@edsl.computation
+@pm.computation
 def add_input_storage(
-    x_key: edsl.Argument(_x_owner, vtype=ty.StringType()),
-    y_key: edsl.Argument(_y_owner, vtype=ty.StringType()),
+    x_key: pm.Argument(_x_owner, vtype=ty.StringType()),
+    y_key: pm.Argument(_y_owner, vtype=ty.StringType()),
 ):
     with _x_owner:
-        x = edsl.load(x_key, dtype=edsl.float64)
+        x = pm.load(x_key, dtype=pm.float64)
     with _y_owner:
-        y = edsl.load(y_key, dtype=edsl.float64)
+        y = pm.load(y_key, dtype=pm.float64)
     with _output_owner:
-        out = edsl.add(x, y)
+        out = pm.add(x, y)
     return out
 
 
-@edsl.computation
+@pm.computation
 def add_output_storage(
-    x: edsl.Argument(_x_owner, dtype=edsl.float64),
-    y: edsl.Argument(_y_owner, dtype=edsl.float64),
+    x: pm.Argument(_x_owner, dtype=pm.float64),
+    y: pm.Argument(_y_owner, dtype=pm.float64),
 ):
     with _output_owner:
-        out = edsl.add(x, y)
-        res = edsl.save("output", out)
+        out = pm.add(x, y)
+        res = pm.save("output", out)
     return res
 
 
-@edsl.computation
+@pm.computation
 def add_no_storage(
-    x: edsl.Argument(_x_owner, dtype=edsl.float64),
-    y: edsl.Argument(_y_owner, dtype=edsl.float64),
+    x: pm.Argument(_x_owner, dtype=pm.float64),
+    y: pm.Argument(_y_owner, dtype=pm.float64),
 ):
     with _output_owner:
-        out = edsl.add(x, y)
+        out = pm.add(x, y)
     return out
 
 
-@edsl.computation
+@pm.computation
 def add_multioutput(
-    x: edsl.Argument(_x_owner, dtype=edsl.float64),
-    y: edsl.Argument(_y_owner, dtype=edsl.float64),
+    x: pm.Argument(_x_owner, dtype=pm.float64),
+    y: pm.Argument(_y_owner, dtype=pm.float64),
 ):
     with _output_owner:
-        out = edsl.add(x, y)
+        out = pm.add(x, y)
     return (out, x, y)
 
 
@@ -95,8 +95,8 @@ class RunComputation(parameterized.TestCase):
         }
 
     def _inner_prepare_runtime(self, comp, storage_dict):
-        logical_comp = edsl.trace(comp)
-        runtime = LocalRuntime(storage_mapping=storage_dict)
+        logical_comp = pm.trace(comp)
+        runtime = moose_runtime.LocalRuntime(storage_mapping=storage_dict)
         comp_bin = utils.serialize_computation(logical_comp)
         return comp_bin, runtime
 
@@ -153,14 +153,14 @@ class RunComputation(parameterized.TestCase):
             np.testing.assert_array_equal(r, e)
 
     def test_write_to_storage(self):
-        runtime = LocalRuntime(storage_mapping=self.empty_storage)
+        runtime = moose_runtime.LocalRuntime(storage_mapping=self.empty_storage)
         x = np.array([1.0, 2.0, 3.0])
         runtime.write_value_to_storage("x_owner", "x", x)
         result = runtime.read_value_from_storage("x_owner", "x")
         np.testing.assert_array_equal(x, result)
 
     def test_write_wrong_identity(self):
-        runtime = LocalRuntime(storage_mapping=self.empty_storage)
+        runtime = moose_runtime.LocalRuntime(storage_mapping=self.empty_storage)
         x = np.array([1.0, 2.0, 3.0])
         self.assertRaises(
             RuntimeError,

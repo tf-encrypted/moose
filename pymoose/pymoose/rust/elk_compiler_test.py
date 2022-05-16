@@ -5,29 +5,28 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import LocalRuntime
-from pymoose import edsl
-from pymoose import elk_compiler
+import pymoose as pm
 from pymoose.computation import utils
 from pymoose.logger import get_logger
+from pymoose.rust import moose_runtime
 
-_alice = edsl.host_placement(name="alice")
-_bob = edsl.host_placement(name="bob")
-_carole = edsl.host_placement("carole")
-_rep = edsl.replicated_placement("replicated", [_alice, _bob, _carole])
-_fpd = edsl.fixed(24, 40)
+_alice = pm.host_placement(name="alice")
+_bob = pm.host_placement(name="bob")
+_carole = pm.host_placement("carole")
+_rep = pm.replicated_placement("replicated", [_alice, _bob, _carole])
+_fpd = pm.fixed(24, 40)
 
 
-@edsl.computation
+@pm.computation
 def _reference_computation():
     with _alice:
-        a = edsl.constant(np.array([[1.0], [2.0]], dtype=np.float64), dtype=_fpd)
+        a = pm.constant(np.array([[1.0], [2.0]], dtype=np.float64), dtype=_fpd)
     with _bob:
-        b = edsl.constant(np.array([[3.0], [4.0]], dtype=np.float64), dtype=_fpd)
+        b = pm.constant(np.array([[3.0], [4.0]], dtype=np.float64), dtype=_fpd)
     with _rep:
-        c = edsl.mul(a, b)
+        c = pm.mul(a, b)
     with _carole:
-        c = edsl.cast(c, edsl.float64)
+        c = pm.cast(c, pm.float64)
     return c
 
 
@@ -51,12 +50,12 @@ class CompileComputation(parameterized.TestCase):
         self._trace_and_compile()
 
     def _build_new_runtime(self):
-        return LocalRuntime(self.empty_storage)
+        return moose_runtime.LocalRuntime(self.empty_storage)
 
     def _trace_and_compile(self, passes=None):
-        traced = edsl.trace(_reference_computation)
+        traced = pm.trace(_reference_computation)
         pyserialized = utils.serialize_computation(traced)
-        rustref = elk_compiler.compile_computation(pyserialized, passes=passes)
+        rustref = pm.elk_compiler.compile_computation(pyserialized, passes=passes)
         return rustref
 
 

@@ -5,42 +5,42 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 
 class HostExample(parameterized.TestCase):
     def _setup_ones_comp(self, dtype, x_array, ones_op):
-        bob = edsl.host_placement(name="bob")
+        bob = pm.host_placement(name="bob")
 
-        @edsl.computation
+        @pm.computation
         def my_ones_comp():
             with bob:
-                x = edsl.constant(x_array, dtype=dtype)
-                x_shape = edsl.shape(x)
+                x = pm.constant(x_array, dtype=dtype)
+                x_shape = pm.shape(x)
                 res = ones_op(x_shape, dtype)
-                res = edsl.save("ones", res)
+                res = pm.save("ones", res)
             return res
 
         return my_ones_comp
 
     @parameterized.parameters(
-        ([1, 3, 2, 3], edsl.ones, np.ones),
-        ([1.32, 10.42, 2.321, 3.5913], edsl.ones, np.ones),
-        ([4.132, 1.932, 2, 4.5321], edsl.ones, np.ones),
-        ([1, 2, 4, 8, 4.5, 10.5], edsl.ones, np.ones),
+        ([1, 3, 2, 3], pm.ones, np.ones),
+        ([1.32, 10.42, 2.321, 3.5913], pm.ones, np.ones),
+        ([4.132, 1.932, 2, 4.5321], pm.ones, np.ones),
+        ([1, 2, 4, 8, 4.5, 10.5], pm.ones, np.ones),
         (
             [[1.0, 2.0], [4.0, 23.3124], [42.954, 4.5], [10.5, 13.4219]],
-            edsl.ones,
+            pm.ones,
             np.ones,
         ),
     )
     def test_ones_example_execute(self, x, ones_op, np_ones):
-        dtype = edsl.float64
+        dtype = pm.float64
         x_arg = np.array(x, dtype=np.float64)
         ones_comp = self._setup_ones_comp(dtype, x_arg, ones_op)
-        traced_ones_comp = edsl.trace(ones_comp)
+        traced_ones_comp = pm.trace(ones_comp)
         storage = {
             "bob": {},
         }

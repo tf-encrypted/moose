@@ -810,3 +810,55 @@ impl SliceOp {
         Ok(FloatTensor::Host(z))
     }
 }
+
+impl MaximumOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &HostPlacement,
+        xs: &[FloatTensor<HostFloatT, MirroredT>],
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementMaximum<S, HostFloatT, HostFloatT>,
+        HostFloatT: Clone,
+    {
+        let xs_f: Vec<HostFloatT> = xs
+            .iter()
+            .filter_map(|x| match x {
+                FloatTensor::Host(x) => Some((*x).clone()),
+                _ => None,
+            })
+            .collect();
+
+        if xs_f.len() != xs.len() {
+            return Err(Error::UnimplementedOperator(
+                "MaximumOp @ Mirrored3Placement".to_string(),
+            ));
+        }
+
+        let z = plc.maximum(sess, &xs_f);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
+impl SqueezeOp {
+    pub(crate) fn float_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<usize>,
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementSqueeze<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "SqueezeOp @ Mirrored3Placement".to_string(),
+                ))
+            }
+        };
+        let z = plc.squeeze(sess, axis, &x);
+        Ok(FloatTensor::Host(z))
+    }
+}
