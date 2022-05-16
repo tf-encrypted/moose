@@ -899,7 +899,7 @@ mod tests {
     #[rstest]
     #[case(None)]
     #[case(Some(2))]
-    fn test_kernel_squeeze(#[case] axis: Option<u32>) {
+    fn test_kernel_squeeze(#[case] axis: Option<usize>) {
         let plc = HostPlacement::from("host");
         let sess = SyncSession::default();
 
