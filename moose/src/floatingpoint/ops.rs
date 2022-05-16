@@ -821,3 +821,26 @@ impl MaximumOp {
         Ok(FloatTensor::Host(z))
     }
 }
+
+impl SqueezeOp {
+    pub(crate) fn float_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<usize>,
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementSqueeze<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "SqueezeOp @ Mirrored3Placement".to_string(),
+                ))
+            }
+        };
+        let z = plc.squeeze(sess, axis, &x);
+        Ok(FloatTensor::Host(z))
+    }
+}

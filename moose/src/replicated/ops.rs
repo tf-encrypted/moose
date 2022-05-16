@@ -574,3 +574,47 @@ impl BroadcastOp {
         })
     }
 }
+
+impl SqueezeOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Option<usize>,
+        x: RepTensor<HostRingT>,
+    ) -> Result<RepTensor<HostRingT>>
+    where
+        HostPlacement: PlacementSqueeze<S, HostRingT, HostRingT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+        let RepTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let z00 = player0.squeeze(sess, axis, x00);
+        let z10 = player0.squeeze(sess, axis, x10);
+
+        let z11 = player1.squeeze(sess, axis, x11);
+        let z21 = player1.squeeze(sess, axis, x21);
+
+        let z22 = player2.squeeze(sess, axis, x22);
+        let z02 = player2.squeeze(sess, axis, x02);
+
+        Ok(RepTensor {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        })
+    }
+
+    pub(crate) fn rep_uint_kernel<S: Session, RepRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        axis: Option<usize>,
+        x: RepUintTensor<RepRingT>,
+    ) -> Result<RepUintTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementSqueeze<S, RepRingT, RepRingT>,
+    {
+        Ok(RepUintTensor {
+            tensor: rep.squeeze(sess, axis, &x.tensor),
+        })
+    }
+}

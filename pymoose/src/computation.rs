@@ -33,6 +33,7 @@ enum PyOperation {
     IndexAxisOperation(PyIndexAxisOperation),
     SliceOperation(PySliceOperation),
     StridedSliceOperation(PyStridedSliceOperation),
+    SqueezeOperation(PySqueezeOperation),
     OnesOperation(PyOnesOperation),
     ZerosOperation(PyZerosOperation),
     ConcatenateOperation(PyConcatenateOperation),
@@ -302,6 +303,15 @@ struct PyExpandDimsOperation {
     placement_name: String,
     signature: PyOpSignature,
     axis: Vec<usize>,
+}
+
+#[derive(Deserialize, Debug)]
+struct PySqueezeOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+    axis: Option<usize>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -1086,6 +1096,22 @@ impl TryFrom<PyComputation> for Computation {
                                 &["x"],
                             )?,
                             axis: op.axis.clone(),
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    SqueezeOperation(op) => Ok(Operation {
+                        kind: SqueezeOp {
+                            sig: map_signature(
+                                &op.signature,
+                                &placements,
+                                &op.placement_name,
+                                &["x"],
+                            )?,
+                            axis: op.axis,
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
