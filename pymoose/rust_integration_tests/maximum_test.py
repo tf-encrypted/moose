@@ -5,7 +5,7 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.computation import types as ty
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
@@ -13,89 +13,89 @@ from pymoose.testing import LocalMooseRuntime
 
 class MaximumExample(parameterized.TestCase):
     def _setup_max_comp(self, replicated=True):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
+        carole = pm.host_placement(name="carole")
+        rep = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 
         if replicated:
 
-            @edsl.computation
+            @pm.computation
             def my_comp(
-                x_uri: edsl.Argument(placement=alice, vtype=ty.StringType()),
-                y_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
-                z_uri: edsl.Argument(placement=carole, vtype=ty.StringType()),
+                x_uri: pm.Argument(placement=alice, vtype=pm.StringType()),
+                y_uri: pm.Argument(placement=bob, vtype=pm.StringType()),
+                z_uri: pm.Argument(placement=carole, vtype=pm.StringType()),
             ):
                 with alice:
-                    x = edsl.load(x_uri, dtype=edsl.float64)
-                    x = edsl.cast(x, dtype=edsl.fixed(14, 23))
+                    x = pm.load(x_uri, dtype=pm.float64)
+                    x = pm.cast(x, dtype=pm.fixed(14, 23))
 
                 with bob:
-                    y = edsl.load(y_uri, dtype=edsl.float64)
-                    y = edsl.cast(y, dtype=edsl.fixed(14, 23))
+                    y = pm.load(y_uri, dtype=pm.float64)
+                    y = pm.cast(y, dtype=pm.fixed(14, 23))
 
                 with carole:
-                    z = edsl.load(z_uri, dtype=edsl.float64)
-                    z = edsl.cast(z, dtype=edsl.fixed(14, 23))
+                    z = pm.load(z_uri, dtype=pm.float64)
+                    z = pm.cast(z, dtype=pm.fixed(14, 23))
 
                 with rep:
-                    mx = edsl.maximum([x, y, z])
+                    mx = pm.maximum([x, y, z])
 
                 with bob:
-                    mx_host = edsl.cast(mx, dtype=edsl.float64)
-                    result = edsl.save("maximum", mx_host)
+                    mx_host = pm.cast(mx, dtype=pm.float64)
+                    result = pm.save("maximum", mx_host)
 
                 return result
 
         else:
 
-            @edsl.computation
+            @pm.computation
             def my_comp(
-                x_uri: edsl.Argument(placement=alice, vtype=ty.StringType()),
-                y_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
-                z_uri: edsl.Argument(placement=carole, vtype=ty.StringType()),
+                x_uri: pm.Argument(placement=alice, vtype=pm.StringType()),
+                y_uri: pm.Argument(placement=bob, vtype=pm.StringType()),
+                z_uri: pm.Argument(placement=carole, vtype=pm.StringType()),
             ):
                 with alice:
-                    x = edsl.load(x_uri, dtype=edsl.float64)
-                    x = edsl.cast(x, dtype=edsl.fixed(14, 23))
+                    x = pm.load(x_uri, dtype=pm.float64)
+                    x = pm.cast(x, dtype=pm.fixed(14, 23))
 
                 with carole:
-                    z = edsl.load(z_uri, dtype=edsl.float64)
-                    z = edsl.cast(z, dtype=edsl.fixed(14, 23))
+                    z = pm.load(z_uri, dtype=pm.float64)
+                    z = pm.cast(z, dtype=pm.fixed(14, 23))
 
                 with bob:
-                    y = edsl.load(y_uri, dtype=edsl.float64)
-                    y = edsl.cast(y, dtype=edsl.fixed(14, 23))
-                    mx = edsl.cast(edsl.maximum([x, y, z]), dtype=edsl.float64)
-                    result = edsl.save("maximum", mx)
+                    y = pm.load(y_uri, dtype=pm.float64)
+                    y = pm.cast(y, dtype=pm.fixed(14, 23))
+                    mx = pm.cast(pm.maximum([x, y, z]), dtype=pm.float64)
+                    result = pm.save("maximum", mx)
 
                 return result
 
         return my_comp
 
     def _setup_float_max_comp(self, edsl_type):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
+        carole = pm.host_placement(name="carole")
 
-        @edsl.computation
+        @pm.computation
         def my_comp(
-            x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
-            y_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
-            z_uri: edsl.Argument(placement=carole, vtype=ty.StringType()),
+            x_uri: pm.Argument(placement=bob, vtype=pm.StringType()),
+            y_uri: pm.Argument(placement=bob, vtype=pm.StringType()),
+            z_uri: pm.Argument(placement=carole, vtype=pm.StringType()),
         ):
             with alice:
-                x = edsl.load(x_uri, dtype=edsl_type)
+                x = pm.load(x_uri, dtype=edsl_type)
 
             with bob:
-                y = edsl.load(y_uri, dtype=edsl_type)
+                y = pm.load(y_uri, dtype=edsl_type)
 
             with carole:
-                z = edsl.load(z_uri, dtype=edsl_type)
+                z = pm.load(z_uri, dtype=edsl_type)
 
             with bob:
-                mx = edsl.maximum([x, y, z])
-                result = edsl.save("maximum", mx)
+                mx = pm.maximum([x, y, z])
+                result = pm.save("maximum", mx)
 
             return result
 
@@ -117,7 +117,7 @@ class MaximumExample(parameterized.TestCase):
     )
     def test_maximum_fixed(self, x, y, z, run_rep):
         comp = self._setup_max_comp(replicated=run_rep)
-        traced_maximum_comp = edsl.trace(comp)
+        traced_maximum_comp = pm.trace(comp)
 
         x_arg = np.array(x, dtype=np.float64)
         y_arg = np.array(y, dtype=np.float64)
@@ -145,13 +145,13 @@ class MaximumExample(parameterized.TestCase):
             np.array([1.0, 2.0, 9.0]),
             np.array([1.0, 2.0, 3.0]),
             np.array([4.0, 5.0, 6.0]),
-            edsl.float64,
+            pm.float64,
         ),
         (
             np.array([1.0, 2.0, 9.0]),
             np.array([3.0, 2.0, 3.0]),
             np.array([321.0, 5.0, 6.0]),
-            edsl.float32,
+            pm.float32,
         ),
     )
     def test_float_maximum_execute(self, x, y, z, edsl_dtype):
@@ -160,7 +160,7 @@ class MaximumExample(parameterized.TestCase):
         z_arg = np.array(z, dtype=edsl_dtype.numpy_dtype)
 
         comp = self._setup_float_max_comp(edsl_dtype)
-        traced_maximum_comp = edsl.trace(comp)
+        traced_maximum_comp = pm.trace(comp)
         storage = {
             "alice": {"x_arg": x_arg},
             "bob": {"y_arg": y_arg},
