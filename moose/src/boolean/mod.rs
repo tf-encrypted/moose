@@ -398,4 +398,22 @@ impl SqueezeOp {
         let result = plc.squeeze(sess, axis, &x);
         Ok(BoolTensor::Host(result))
     }
+
+    pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Option<usize>,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        ReplicatedPlacement: PlacementSqueeze<S, RepT, RepT>,
+        ReplicatedPlacement: PlacementShare<S, HostT, RepT>,
+    {
+        let x = match x {
+            BoolTensor::Host(v) => plc.share(sess, &v),
+            BoolTensor::Replicated(v) => v,
+        };
+        let result = plc.squeeze(sess, axis, &x);
+        Ok(BoolTensor::Replicated(result))
+    }
 }

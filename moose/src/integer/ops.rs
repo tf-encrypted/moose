@@ -155,3 +155,44 @@ impl SliceOp {
         Ok(AbstractUint64Tensor::Host(z))
     }
 }
+
+impl SqueezeOp {
+    pub(crate) fn u64_rep_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Option<usize>,
+        x: AbstractUint64Tensor<HostT, RepT>,
+    ) -> Result<AbstractUint64Tensor<HostT, RepT>>
+    where
+        ReplicatedPlacement: PlacementSqueeze<S, RepT, RepT>,
+    {
+        let x = match x {
+            AbstractUint64Tensor::Host(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "Cannot share a HostUint64Tensor to a replicated placement".to_string(),
+                ));
+            }
+            AbstractUint64Tensor::Replicated(v) => v,
+        };
+        let z = plc.squeeze(sess, axis, &x);
+        Ok(AbstractUint64Tensor::Replicated(z))
+    }
+
+    pub(crate) fn u64_host_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<usize>,
+        x: AbstractUint64Tensor<HostT, RepT>,
+    ) -> Result<AbstractUint64Tensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementSqueeze<S, HostT, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+    {
+        let x = match x {
+            AbstractUint64Tensor::Replicated(v) => plc.reveal(sess, &v),
+            AbstractUint64Tensor::Host(v) => v,
+        };
+        let z = plc.squeeze(sess, axis, &x);
+        Ok(AbstractUint64Tensor::Host(z))
+    }
+}
