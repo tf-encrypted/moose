@@ -1054,7 +1054,7 @@ pub struct ReshapeOp {
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, FromTextual)]
 pub struct SqueezeOp {
     pub sig: Signature,
-    pub axis: Option<u32>,
+    pub axis: Option<usize>,
 }
 
 #[derive(

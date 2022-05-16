@@ -2353,6 +2353,84 @@ impl Log2Op {
     }
 }
 
+impl SqueezeOp {
+    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<usize>,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementSqueeze<S, HostFixedT, HostFixedT>,
+    {
+        let v = match x {
+            FixedTensor::Host(x) => x,
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
+            FixedTensor::Replicated(x) => plc.reveal(sess, &x),
+        };
+
+        let result = plc.squeeze(sess, axis, &v);
+        Ok(FixedTensor::Host(result))
+    }
+
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Option<usize>,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementSqueeze<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+
+        let z = plc.squeeze(sess, axis, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+
+    pub(crate) fn hostfixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<usize>,
+        x: HostFixedTensor<HostRingT>,
+    ) -> Result<HostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementSqueeze<S, HostRingT, HostRingT>,
+    {
+        let tensor = plc.squeeze(sess, axis, &x.tensor);
+        Ok(HostFixedTensor {
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+            tensor,
+        })
+    }
+
+    pub(crate) fn repfixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Option<usize>,
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementSqueeze<S, RepRingT, RepRingT>,
+    {
+        let tensor = plc.squeeze(sess, axis, &x.tensor);
+        Ok(RepFixedTensor {
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+            tensor,
+        })
+    }
+}
+
 #[cfg(feature = "sync_execute")]
 #[cfg(test)]
 mod tests {
