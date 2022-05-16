@@ -454,13 +454,28 @@ pub trait PlacementMaximum<S: Session, TS, O> {
 modelled_kernel! {
     PlacementMaximum::maximum, MaximumOp,
     [
-        (ReplicatedPlacement, vec[Tensor] -> Tensor => [concrete] Self::rep_logical_kernel),
+        // runtime kernels
+        (HostPlacement, vec[HostFloat32Tensor] -> HostFloat32Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, vec[HostFloat64Tensor] -> HostFloat64Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, vec[HostRing64Tensor] -> HostRing64Tensor => [runtime] Self::host_ring_kernel),
+        (HostPlacement, vec[HostRing128Tensor] -> HostRing128Tensor => [runtime] Self::host_ring_kernel),
+        // host lowering kernels
+        (HostPlacement, vec[Fixed64Tensor] -> Fixed64Tensor => [concrete] Self::fixed_lowering_kernel),
+        (HostPlacement, vec[Fixed128Tensor] -> Fixed128Tensor => [concrete] Self::fixed_lowering_kernel),
+        (HostPlacement, vec[Float32Tensor] -> Float32Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, vec[Float64Tensor] -> Float64Tensor => [concrete] Self::float_host_kernel),
+        (HostPlacement, vec[HostFixed64Tensor] -> HostFixed64Tensor => [concrete] Self::host_fixed_kernel),
+        (HostPlacement, vec[HostFixed128Tensor] -> HostFixed128Tensor => [concrete] Self::host_fixed_kernel),
+        (HostPlacement, vec[Tensor] -> Tensor => [concrete] Self::logical_host_kernel),
+        // replicated kernels
+        (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [transparent] Self::kernel),
+        (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [transparent] Self::kernel),
+        // replicated lowering kernels
         (ReplicatedPlacement, vec[Fixed64Tensor] -> Fixed64Tensor => [concrete] Self::fixed_kernel),
         (ReplicatedPlacement, vec[Fixed128Tensor] -> Fixed128Tensor => [concrete] Self::fixed_kernel),
         (ReplicatedPlacement, vec[ReplicatedFixed64Tensor] -> ReplicatedFixed64Tensor => [concrete] Self::rep_fixed_kernel),
         (ReplicatedPlacement, vec[ReplicatedFixed128Tensor] -> ReplicatedFixed128Tensor => [concrete] Self::rep_fixed_kernel),
-        (ReplicatedPlacement, vec[ReplicatedRing64Tensor] -> ReplicatedRing64Tensor => [transparent] Self::kernel),
-        (ReplicatedPlacement, vec[ReplicatedRing128Tensor] -> ReplicatedRing128Tensor => [transparent] Self::kernel),
+        (ReplicatedPlacement, vec[Tensor] -> Tensor => [concrete] Self::rep_logical_kernel),
     ]
 }
 
