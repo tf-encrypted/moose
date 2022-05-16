@@ -2124,22 +2124,18 @@ impl MaximumOp {
         ReplicatedPlacement: PlacementMaximum<S, RepRingT, RepRingT>,
         RepRingT: Clone,
     {
-        // leave it up to the reduce op to identify whethere x is empty.
+        // leave it up to the reduce op to identify whether x is empty.
         let integral_precision = x
             .iter()
             .map(|item| item.integral_precision)
             .reduce(u32::max);
-        let integral_precision = match integral_precision {
-            Some(v) => v,
-            None => {
-                return Err(Error::Unexpected(Some(
-                    "maximum op had no inputs".to_string(),
-                )))
-            }
-        };
 
+        let integral_precision = integral_precision
+            .ok_or_else(|| Error::Unexpected(Some("maximum op had no inputs".to_string())))?;
+
+        // x is always going to be non-empty due to the condition above
         let fractional_precision = x[0].fractional_precision;
-        for item in x.iter() {
+        for item in x {
             if item.fractional_precision != fractional_precision {
                 return Err(Error::InvalidArgument(
                     "maximum op needs all array entries to have same precision".to_string(),
@@ -2156,6 +2152,71 @@ impl MaximumOp {
             .collect();
 
         Ok(RepFixedTensor {
+            tensor: plc.maximum(sess, &xv),
+            fractional_precision,
+            integral_precision,
+        })
+    }
+
+    pub(crate) fn fixed_lowering_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: &[FixedTensor<HostFixedT, MirFixedT, RepFixedT>],
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementMaximum<S, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostFixedT: Clone,
+    {
+        let xv: Vec<HostFixedT> = x
+            .iter()
+            .map(|item| match item {
+                FixedTensor::Host(v) => v.clone(),
+                FixedTensor::Mirrored3(v) => plc.demirror(sess, v),
+                FixedTensor::Replicated(v) => plc.reveal(sess, v),
+            })
+            .collect();
+        let z = plc.maximum(sess, &xv);
+        Ok(FixedTensor::Host(z))
+    }
+
+    pub(crate) fn host_fixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: &[HostFixedTensor<HostRingT>],
+    ) -> Result<HostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementMaximum<S, HostRingT, HostRingT>,
+        HostRingT: Clone,
+    {
+        // leave it up to the reduce op to identify whether x is empty.
+        let integral_precision = x
+            .iter()
+            .map(|item| item.integral_precision)
+            .reduce(u32::max);
+        let integral_precision = integral_precision
+            .ok_or_else(|| Error::Unexpected(Some("maximum op had no inputs".to_string())))?;
+
+        // x is always going to be non-empty due to the condition above
+        let fractional_precision = x[0].fractional_precision;
+        for item in x {
+            if item.fractional_precision != fractional_precision {
+                return Err(Error::InvalidArgument(
+                    "maximum op needs all array entries to have same precision".to_string(),
+                ));
+            };
+        }
+
+        let xv: Vec<_> = x
+            .iter()
+            .map(|item| {
+                // TODO(Dragos) can we get rid of this cloning?
+                item.tensor.clone()
+            })
+            .collect();
+
+        Ok(HostFixedTensor {
             tensor: plc.maximum(sess, &xv),
             fractional_precision,
             integral_precision,
