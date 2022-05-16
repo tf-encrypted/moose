@@ -5,7 +5,7 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.computation import types as ty
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
@@ -13,28 +13,28 @@ from pymoose.testing import LocalMooseRuntime
 
 class ArgmaxExample(parameterized.TestCase):
     def _setup_comp(self, axis, axis_idx_max):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
+        carole = pm.host_placement(name="carole")
+        rep = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 
-        @edsl.computation
+        @pm.computation
         def my_comp(
-            x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+            x_uri: pm.Argument(placement=bob, vtype=ty.StringType()),
         ):
             with bob:
-                x = edsl.load(x_uri, dtype=edsl.float64)
-                x_fixed = edsl.cast(x, dtype=edsl.fixed(8, 27))
+                x = pm.load(x_uri, dtype=pm.float64)
+                x_fixed = pm.cast(x, dtype=pm.fixed(8, 27))
 
             with rep:
-                x_arg = edsl.argmax(x_fixed, axis=axis, upmost_index=axis_idx_max)
+                x_arg = pm.argmax(x_fixed, axis=axis, upmost_index=axis_idx_max)
 
             with bob:
-                x_arg_host = edsl.identity(x_arg)
-                argmax_host = edsl.argmax(x_fixed, axis=axis, upmost_index=axis_idx_max)
+                x_arg_host = pm.identity(x_arg)
+                argmax_host = pm.argmax(x_fixed, axis=axis, upmost_index=axis_idx_max)
                 res = (
-                    edsl.save("argmax_rep", x_arg_host),
-                    edsl.save("argmax_host", argmax_host),
+                    pm.save("argmax_rep", x_arg_host),
+                    pm.save("argmax_host", argmax_host),
                 )
 
             return res
@@ -67,7 +67,7 @@ class ArgmaxExample(parameterized.TestCase):
     )
     def test_example_execute(self, x, axis, axis_idx_max):
         comp = self._setup_comp(axis, axis_idx_max)
-        traced_less_comp = edsl.trace(comp)
+        traced_less_comp = pm.trace(comp)
 
         x_arg = np.array(x, dtype=np.float64)
 

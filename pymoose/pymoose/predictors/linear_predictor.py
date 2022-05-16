@@ -3,7 +3,7 @@ from enum import Enum
 
 import numpy as np
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.predictors import aes_predictor
 from pymoose.predictors import predictor_utils
 
@@ -30,10 +30,10 @@ class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
 
     @classmethod
     def bias_trick(cls, x, plc, dtype):
-        bias_shape = edsl.shape(x, placement=plc)[0:1]
-        bias = edsl.ones(bias_shape, dtype=edsl.float64, placement=plc)
-        reshaped_bias = edsl.expand_dims(bias, 1, placement=plc)
-        return edsl.cast(reshaped_bias, dtype=dtype, placement=plc)
+        bias_shape = pm.shape(x, placement=plc)[0:1]
+        bias = pm.ones(bias_shape, dtype=pm.float64, placement=plc)
+        reshaped_bias = pm.expand_dims(bias, 1, placement=plc)
+        return pm.cast(reshaped_bias, dtype=dtype, placement=plc)
 
     def linear_predictor_fn(self, x, fixedpoint_dtype):
         if self.intercepts is not None:
@@ -48,18 +48,18 @@ class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
                 self.coeffs.T, plc=self.mirrored, dtype=fixedpoint_dtype
             )
         if self.intercepts is not None:
-            x = edsl.concatenate([bias, x], axis=1)
+            x = pm.concatenate([bias, x], axis=1)
 
-        y = edsl.dot(x, w)
+        y = pm.dot(x, w)
         return y
 
     def predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
-        @edsl.computation
+        @pm.computation
         def predictor(
-            aes_data: edsl.Argument(
-                self.alice, vtype=edsl.AesTensorType(dtype=fixedpoint_dtype)
+            aes_data: pm.Argument(
+                self.alice, vtype=pm.AesTensorType(dtype=fixedpoint_dtype)
             ),
-            aes_key: edsl.Argument(self.replicated, vtype=edsl.AesKeyType()),
+            aes_key: pm.Argument(self.replicated, vtype=pm.AesKeyType()),
         ):
             x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
             with self.replicated:
@@ -146,11 +146,11 @@ class LinearClassifier(LinearPredictor):
         if post_transform == post_transform.NONE:
             self._post_transform = lambda x: x
         elif post_transform == post_transform.SIGMOID and n_classes == 2:
-            self._post_transform = lambda x: edsl.sigmoid(x)
+            self._post_transform = lambda x: pm.sigmoid(x)
         elif post_transform == post_transform.SIGMOID and n_classes > 2:
             self._post_transform = lambda x: self._normalized_sigmoid(x, axis=1)
         elif post_transform == post_transform.SOFTMAX:
-            self._post_transform = lambda x: edsl.softmax(
+            self._post_transform = lambda x: pm.softmax(
                 x, axis=1, upmost_index=n_classes
             )
         else:
@@ -250,9 +250,9 @@ class LinearClassifier(LinearPredictor):
         return self._post_transform(y)
 
     def _normalized_sigmoid(self, x, axis):
-        y = edsl.sigmoid(x)
-        y_sum = edsl.expand_dims(edsl.sum(y, axis), axis)
-        return edsl.div(y, y_sum)
+        y = pm.sigmoid(x)
+        y_sum = pm.expand_dims(pm.sum(y, axis), axis)
+        return pm.div(y, y_sum)
 
 
 def _validate_model_args(coeffs, intercepts):

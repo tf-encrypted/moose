@@ -3,7 +3,7 @@ from enum import Enum
 
 import numpy as np
 
-from pymoose import edsl
+import pymoose as pm
 from pymoose.predictors import aes_predictor
 from pymoose.predictors import predictor_utils
 
@@ -91,19 +91,19 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         b = self.fixedpoint_constant(
             self.biases[i], plc=self.mirrored, dtype=fixedpoint_dtype
         )
-        y = edsl.dot(input, w)
-        z = edsl.add(y, b)
+        y = pm.dot(input, w)
+        z = pm.add(y, b)
         return z
 
     def activation_fn(self, z):
         if self.activation == Activation.SIGMOID:
-            activation_output = edsl.sigmoid(z)
+            activation_output = pm.sigmoid(z)
         elif self.activation == Activation.RELU:
-            z_shape = edsl.shape(z)
+            z_shape = pm.shape(z)
             with self.bob:
-                zeros = edsl.zeros(z_shape, dtype=predictor_utils.DEFAULT_FLOAT_DTYPE)
-                zeros = edsl.cast(zeros, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
-            activation_output = edsl.maximum([zeros, z])
+                zeros = pm.zeros(z_shape, dtype=predictor_utils.DEFAULT_FLOAT_DTYPE)
+                zeros = pm.cast(zeros, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
+            activation_output = pm.maximum([zeros, z])
         elif self.activation == Activation.IDENTITY:
             activation_output = z
         else:
@@ -121,12 +121,12 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         return x
 
     def predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
-        @edsl.computation
+        @pm.computation
         def predictor(
-            aes_data: edsl.Argument(
-                self.alice, vtype=edsl.AesTensorType(dtype=fixedpoint_dtype)
+            aes_data: pm.Argument(
+                self.alice, vtype=pm.AesTensorType(dtype=fixedpoint_dtype)
             ),
-            aes_key: edsl.Argument(self.replicated, vtype=edsl.AesKeyType()),
+            aes_key: pm.Argument(self.replicated, vtype=pm.AesKeyType()),
         ):
             x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
             with self.replicated:
@@ -153,7 +153,7 @@ class MLPClassifier(MLPPredictor):
             )
             return self._post_transform(y)
         elif n_classes > 1:
-            self._post_transform = lambda x: edsl.softmax(
+            self._post_transform = lambda x: pm.softmax(
                 x, axis=1, upmost_index=n_classes
             )
             return self._post_transform(y)
@@ -164,7 +164,7 @@ class MLPClassifier(MLPPredictor):
         """
         returns both probabilities
         """
-        pos_prob = edsl.sigmoid(y)
+        pos_prob = pm.sigmoid(y)
         one = self.fixedpoint_constant(1, plc=self.mirrored, dtype=fixedpoint_dtype)
-        neg_prob = edsl.sub(one, pos_prob)
-        return edsl.concatenate([neg_prob, pos_prob], axis=1)
+        neg_prob = pm.sub(one, pos_prob)
+        return pm.concatenate([neg_prob, pos_prob], axis=1)

@@ -14,7 +14,7 @@ setuptools.setup(
     setup_requires=["setuptools-rust~=0.11.5"],
     rust_extensions=[
         setuptools_rust.RustExtension(
-            "pymoose.rust", "./Cargo.toml", features=["extension-module"]
+            "pymoose._rust", "./Cargo.toml", features=["extension-module"]
         ),
     ],
     zip_safe=False,
