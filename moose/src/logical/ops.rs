@@ -3299,7 +3299,7 @@ impl SqueezeOp {
                 Ok(AbstractTensor::Bool(z))
             }
             Uint64(_) => Err(Error::UnimplementedOperator(format!(
-                "Expand dims op (host) is unsupported for {:?}.",
+                "Squeeze op (host) is unsupported for {:?}.",
                 x.ty_desc()
             ))),
         }
