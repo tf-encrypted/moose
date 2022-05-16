@@ -5,69 +5,68 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from pymoose import edsl
-from pymoose.computation import types as ty
+import pymoose as pm
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
 
 class SqueezeExample(parameterized.TestCase):
     def _setup_squeeze_comp(self, axis, replicated=True):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
-        carole = edsl.host_placement(name="carole")
-        rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
+        carole = pm.host_placement(name="carole")
+        rep = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 
         if replicated:
 
-            @edsl.computation
+            @pm.computation
             def my_comp(
-                x_uri: edsl.Argument(placement=alice, vtype=ty.StringType()),
+                x_uri: pm.Argument(placement=alice, vtype=pm.StringType()),
             ):
                 with alice:
-                    x = edsl.load(x_uri, dtype=edsl.float64)
-                    x = edsl.cast(x, dtype=edsl.fixed(14, 23))
+                    x = pm.load(x_uri, dtype=pm.float64)
+                    x = pm.cast(x, dtype=pm.fixed(14, 23))
 
                 with rep:
-                    sq = edsl.squeeze(x, axis)
+                    sq = pm.squeeze(x, axis)
 
                 with bob:
-                    sq_host = edsl.cast(sq, dtype=edsl.float64)
-                    result = edsl.save("squeeze", sq_host)
+                    sq_host = pm.cast(sq, dtype=pm.float64)
+                    result = pm.save("squeeze", sq_host)
 
                 return result
 
         else:
 
-            @edsl.computation
+            @pm.computation
             def my_comp(
-                x_uri: edsl.Argument(placement=alice, vtype=ty.StringType()),
+                x_uri: pm.Argument(placement=alice, vtype=pm.StringType()),
             ):
                 with alice:
-                    x = edsl.load(x_uri, dtype=edsl.float64)
+                    x = pm.load(x_uri, dtype=pm.float64)
 
                 with bob:
-                    sq = edsl.cast(edsl.squeeze(x, axis), dtype=edsl.float64)
-                    result = edsl.save("squeeze", sq)
+                    sq = pm.cast(pm.squeeze(x, axis), dtype=pm.float64)
+                    result = pm.save("squeeze", sq)
 
                 return result
 
         return my_comp
 
     def _setup_float_squeeze_comp(self, axis, edsl_type):
-        alice = edsl.host_placement(name="alice")
-        bob = edsl.host_placement(name="bob")
+        alice = pm.host_placement(name="alice")
+        bob = pm.host_placement(name="bob")
 
-        @edsl.computation
+        @pm.computation
         def my_comp(
-            x_uri: edsl.Argument(placement=bob, vtype=ty.StringType()),
+            x_uri: pm.Argument(placement=bob, vtype=pm.StringType()),
         ):
             with alice:
-                x = edsl.load(x_uri, dtype=edsl_type)
+                x = pm.load(x_uri, dtype=edsl_type)
 
             with bob:
-                sq = edsl.squeeze(x, axis)
-                result = edsl.save("squeeze", sq)
+                sq = pm.squeeze(x, axis)
+                result = pm.save("squeeze", sq)
 
             return result
 
@@ -109,7 +108,7 @@ class SqueezeExample(parameterized.TestCase):
     )
     def test_squeeze_fixed(self, x, axis, run_rep):
         comp = self._setup_squeeze_comp(axis, replicated=run_rep)
-        traced_squeeze_comp = edsl.trace(comp)
+        traced_squeeze_comp = pm.trace(comp)
 
         storage_rep = {
             "alice": {"x_arg": x},
@@ -132,24 +131,24 @@ class SqueezeExample(parameterized.TestCase):
         (
             np.array([1.0, 2.0, 9.0]),
             None,
-            edsl.float64,
+            pm.float64,
         ),
         (
             np.array([[[1.0, 2.0, 9.0]]]),
             1,
-            edsl.float32,
+            pm.float32,
         ),
         (
             np.array([[False, True, False]]),
             0,
-            edsl.bool_,
+            pm.bool_,
         ),
     )
     def test_float_squeeze_execute(self, x, axis, edsl_dtype):
         x_arg = np.array(x, dtype=edsl_dtype.numpy_dtype)
 
         comp = self._setup_float_squeeze_comp(axis, edsl_dtype)
-        traced_maximum_comp = edsl.trace(comp)
+        traced_maximum_comp = pm.trace(comp)
         storage = {
             "alice": {"x_arg": x_arg},
             "bob": {},
