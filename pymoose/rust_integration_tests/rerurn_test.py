@@ -82,7 +82,7 @@ class RerunExample(parameterized.TestCase):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="rerun example")
+    parser = argparse.ArgumentParser(description="Rerun example")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 

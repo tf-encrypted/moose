@@ -77,7 +77,7 @@ class AddNExample(parameterized.TestCase):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="add_n example")
+    parser = argparse.ArgumentParser(description="Add_n example")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
