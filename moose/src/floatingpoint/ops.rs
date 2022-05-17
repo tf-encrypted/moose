@@ -94,7 +94,11 @@ impl SigmoidOp {
     {
         let x = match x {
             FloatTensor::Host(v) => v,
-            FloatTensor::Mirrored3(_v) => unimplemented!(),
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "SigmoidOp @ Mirrored3Placement".to_string(),
+                ))
+            }
         };
         let z = plc.sigmoid(sess, &x);
         Ok(FloatTensor::Host(z))
