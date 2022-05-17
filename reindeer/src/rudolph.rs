@@ -37,11 +37,6 @@ struct Opt {
     telemetry: bool,
 }
 
-const CA_NAME: &str = "ca";
-pub fn certificate(endpoint: &str) -> String {
-    endpoint.replace(':', "_")
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
@@ -50,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root_span = tracing::span!(tracing::Level::INFO, "app_start");
     let _enter = root_span.enter();
 
-    let my_cert_name = certificate(&opt.identity);
+    let my_cert_name = opt.identity.replace(':', "_");
 
     let manager = match opt.certs {
         Some(ref certs_dir) => {
@@ -62,19 +57,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let own_identity = Identity::from(opt.identity);
 
-    let addr = format!("0.0.0.0:{}", &opt.port).parse()?;
-
     let mut server = Server::builder();
 
-    match opt.certs {
-        Some(ref certs_dir) => {
-            let tls_server_config = reindeer::setup_tls_server(&my_cert_name, &certs_dir)?;
-            server = server.tls_config(tls_server_config)?;
-        }
-        None => (),
-    };
+    if let Some(ref certs_dir) = opt.certs {
+        let tls_server_config = reindeer::setup_tls_server(&my_cert_name, &certs_dir)?;
+        server = server.tls_config(tls_server_config)?;
+    }
 
     let router = server.add_service(manager.new_server());
+
+    let addr = format!("0.0.0.0:{}", &opt.port).parse()?;
     let _server_task = tokio::spawn(async move {
         let res = router.serve(addr).await;
         if let Err(e) = res {

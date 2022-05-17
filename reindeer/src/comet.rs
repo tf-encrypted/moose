@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root_span = tracing::span!(tracing::Level::INFO, "app_start");
     let _enter = root_span.enter();
 
-    let my_cert_name = certificate(&opt.identity);
+    let my_cert_name = opt.identity.replace(':', "_");
     let own_identity = Identity::from(opt.identity);
 
     let networking = match opt.certs {
@@ -52,23 +52,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         own_identity: own_identity.clone(),
     };
 
-    let addr = format!("0.0.0.0:{}", &opt.port).parse()?;
-
     let mut server = Server::builder();
 
-    match opt.certs {
-        Some(ref certs_dir) => {
-            let tls_server_config = reindeer::setup_tls_server(&my_cert_name, &certs_dir)?;
-            server = server.tls_config(tls_server_config)?;
-        }
-        None => (),
-    };
+    if let Some(ref certs_dir) = opt.certs {
+        let tls_server_config = reindeer::setup_tls_server(&my_cert_name, &certs_dir)?;
+        server = server.tls_config(tls_server_config)?;
+    }
 
     let router = server
         .add_service(networking.new_server())
         .add_service(choreography.new_server());
 
-    let _server_task = tokio::spawn(async move {
+    let addr = format!("0.0.0.0:{}", &opt.port).parse()?;
+    let _server_task = tokio::spawn(async move {    
         let res = router.serve(addr).await;
         if let Err(e) = res {
             tracing::error!("gRPC error: {}", e);

@@ -48,22 +48,6 @@ pub fn setup_tls_server(
     Ok(server_tls)
 }
 
-// pub fn grpc_server(port: u16, certs_dir: Option<String>) -> Result<tonic::transport::Server, Box<dyn std::error::Error>> {
-
-//     let addr = format!("0.0.0.0:{}", port).parse()?;
-
-//     let mut server = Server::builder();
-
-//     match certs_dir {
-//         Some(ref certs_dir) => {
-//             let tls_server_config = setup_tls_server(&my_cert_name, &certs_dir)?;
-//             server = server.tls_config(tls_server_config)?;
-//         }
-//         None => (),
-//     };
-
-// }
-
 const CA_NAME: &str = "ca";
 
 pub fn load_identity_and_ca(
