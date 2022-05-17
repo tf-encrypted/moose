@@ -2431,6 +2431,80 @@ impl SqueezeOp {
     }
 }
 
+impl TransposeOp {
+    pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementTranspose<S, HostFixedT, HostFixedT>,
+    {
+        let v = match x {
+            FixedTensor::Host(x) => x,
+            FixedTensor::Mirrored3(x) => plc.demirror(sess, &x),
+            FixedTensor::Replicated(x) => plc.reveal(sess, &x),
+        };
+
+        let result = plc.transpose(sess, &v);
+        Ok(FixedTensor::Host(result))
+    }
+
+    pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        ReplicatedPlacement: PlacementShare<S, HostFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementShare<S, MirFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementTranspose<S, RepFixedT, RepFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Host(v) => plc.share(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.share(sess, &v),
+            FixedTensor::Replicated(v) => v,
+        };
+
+        let z = plc.transpose(sess, &x);
+        Ok(FixedTensor::Replicated(z))
+    }
+
+    pub(crate) fn hostfixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostFixedTensor<HostRingT>,
+    ) -> Result<HostFixedTensor<HostRingT>>
+    where
+        HostPlacement: PlacementTranspose<S, HostRingT, HostRingT>,
+    {
+        let tensor = plc.transpose(sess, &x.tensor);
+        Ok(HostFixedTensor {
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+            tensor,
+        })
+    }
+
+    pub(crate) fn repfixed_kernel<S: Session, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: RepFixedTensor<RepRingT>,
+    ) -> Result<RepFixedTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementTranspose<S, RepRingT, RepRingT>,
+    {
+        let tensor = plc.transpose(sess, &x.tensor);
+        Ok(RepFixedTensor {
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+            tensor,
+        })
+    }
+}
+
 #[cfg(feature = "sync_execute")]
 #[cfg(test)]
 mod tests {

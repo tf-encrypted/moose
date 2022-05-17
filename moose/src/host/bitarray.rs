@@ -131,6 +131,25 @@ impl BitArrayRepr {
         // TODO(Dragos) Implement this in future
         Err(anyhow::anyhow!("slicing not implemented for BitArray yet"))
     }
+
+    pub(crate) fn reversed_axes(&self) -> BitArrayRepr {
+        // TODO(Dragos) handle zero dim
+        let mut dim = IxDyn(self.dim.slice());
+        let strides = dim.default_strides();
+        let fortran_strides = dim.fortran_strides();
+
+        let mut new_data = (*self.data).clone();
+        for i in 0..dim[0] {
+            for j in 0..strides[0] {
+                new_data.set(fortran_strides[0] * j + i, (*self.data)[i * strides[0] + j]);
+            }
+        }
+        dim.slice_mut().reverse();
+        BitArrayRepr {
+            data: Arc::new(new_data),
+            dim: Arc::new(dim),
+        }
+    }
 }
 
 impl std::ops::BitXor for &BitArrayRepr {

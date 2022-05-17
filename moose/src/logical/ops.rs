@@ -2033,11 +2033,27 @@ impl TransposeOp {
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
     where
+        HostPlacement: PlacementTranspose<S, BoolT, BoolT>,
+        HostPlacement: PlacementTranspose<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementTranspose<S, Fixed128T, Fixed128T>,
         HostPlacement: PlacementTranspose<S, Float32T, Float32T>,
         HostPlacement: PlacementTranspose<S, Float64T, Float64T>,
+        HostPlacement: PlacementTranspose<S, Uint64T, Uint64T>,
     {
         use AbstractTensor::*;
         match x {
+            Bool(x) => {
+                let z = plc.transpose(sess, &x);
+                Ok(Bool(z))
+            }
+            Fixed64(x) => {
+                let z = plc.transpose(sess, &x);
+                Ok(Fixed64(z))
+            }
+            Fixed128(x) => {
+                let z = plc.transpose(sess, &x);
+                Ok(Fixed128(z))
+            }
             Float32(x) => {
                 let z = plc.transpose(sess, &x);
                 Ok(Float32(z))
@@ -2046,9 +2062,54 @@ impl TransposeOp {
                 let z = plc.transpose(sess, &x);
                 Ok(Float64(z))
             }
-            Fixed64(_) | Fixed128(_) | Bool(_) | Uint64(_) => Err(Error::UnimplementedOperator(
-                format!("Transpose op (host) is unsupported for {:?}.", x.ty_desc()),
-            )),
+            Uint64(x) => {
+                let z = plc.transpose(sess, &x);
+                Ok(Uint64(z))
+            }
+        }
+    }
+
+    pub(crate) fn logical_rep_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        ReplicatedPlacement: PlacementTranspose<S, BoolT, BoolT>,
+        ReplicatedPlacement: PlacementTranspose<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementTranspose<S, Fixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementTranspose<S, Uint64T, Uint64T>,
+    {
+        use AbstractTensor::*;
+        match x {
+            Fixed64(x) => {
+                let z = plc.transpose(sess, &x);
+                Ok(AbstractTensor::Fixed64(z))
+            }
+            Fixed128(x) => {
+                let z = plc.transpose(sess, &x);
+                Ok(AbstractTensor::Fixed128(z))
+            }
+            Bool(x) => {
+                let z = plc.transpose(sess, &x);
+                Ok(AbstractTensor::Bool(z))
+            }
+            Uint64(x) => {
+                let z = plc.transpose(sess, &x);
+                Ok(AbstractTensor::Uint64(z))
+            }
+            Float32(_) | Float64(_) => Err(Error::UnimplementedOperator(format!(
+                "Transpose op (rep) is unsupported for {:?}.",
+                x.ty_desc()
+            ))),
         }
     }
 }
