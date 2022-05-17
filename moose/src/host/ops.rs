@@ -903,6 +903,22 @@ impl SqrtOp {
     }
 }
 
+impl SigmoidOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: 'static + Float>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> Result<HostTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        let ones = ArcArrayD::ones(x.0.shape());
+        let neg_e_x = x.0.mapv(|x| T::exp(-x));
+        let sigmoid_x = ones.clone() / (ones + neg_e_x);
+        Ok(HostTensor::place(plc, sigmoid_x.into_shared()))
+    }
+}
+
 impl SoftmaxOp {
     pub(crate) fn host_kernel<S: RuntimeSession, T: 'static + Float>(
         _sess: &S,

@@ -105,7 +105,7 @@ class DTypeConversionTest(parameterized.TestCase):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Log example")
+    parser = argparse.ArgumentParser(description="Dtype conversation example")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 

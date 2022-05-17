@@ -83,6 +83,28 @@ impl SumOp {
     }
 }
 
+impl SigmoidOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementSigmoid<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => {
+                return Err(Error::UnimplementedOperator(
+                    "SigmoidOp @ Mirrored3Placement".to_string(),
+                ))
+            }
+        };
+        let z = plc.sigmoid(sess, &x);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
 impl SoftmaxOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
